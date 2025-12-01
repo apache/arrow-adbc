@@ -121,7 +121,7 @@ use toml::de::DeTable;
 use adbc_core::{
     constants,
     error::{AdbcStatusCode, Error, Result, Status},
-    options::{self, AdbcVersion, InfoCode, OptionValue},
+    options::{self, AdbcVersion, InfoCode, OptionDatabase, OptionValue},
     Connection, Database, Driver, LoadFlags, Optionable, PartitionedResult, Statement,
     LOAD_FLAG_ALLOW_RELATIVE_PATHS, LOAD_FLAG_SEARCH_ENV, LOAD_FLAG_SEARCH_SYSTEM,
     LOAD_FLAG_SEARCH_USER,
@@ -160,7 +160,7 @@ struct ManagedDriverInner {
     _library: Option<libloading::Library>,
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct DriverInfo {
     lib_path: std::path::PathBuf,
     entrypoint: Option<Vec<u8>>,
@@ -890,6 +890,47 @@ pub struct ManagedDatabase {
 }
 
 impl ManagedDatabase {
+    pub fn from_uri(
+        uri: &str,
+        entrypoint: Option<&[u8]>,
+        version: AdbcVersion,
+        load_flags: LoadFlags,
+        additional_search_paths: Option<Vec<PathBuf>>,
+    ) -> Result<Self> {
+        Self::from_uri_with_opts(
+            uri,
+            entrypoint,
+            version,
+            load_flags,
+            additional_search_paths,
+            std::iter::empty(),
+        )
+    }
+
+    pub fn from_uri_with_opts(
+        uri: &str,
+        entrypoint: Option<&[u8]>,
+        version: AdbcVersion,
+        load_flags: LoadFlags,
+        additional_search_paths: Option<Vec<PathBuf>>,
+        opts: impl IntoIterator<Item = (<Self as Optionable>::Option, OptionValue)>,
+    ) -> Result<Self> {
+        let (driver, final_uri) = parse_driver_uri(uri)?;
+
+        let mut drv = ManagedDriver::load_from_name(
+            driver,
+            entrypoint,
+            version,
+            load_flags,
+            additional_search_paths,
+        )?;
+
+        drv.new_database_with_opts(opts.into_iter().chain(std::iter::once((
+            OptionDatabase::Uri,
+            OptionValue::String(final_uri.to_string()),
+        ))))
+    }
+
     fn ffi_driver(&self) -> &adbc_ffi::FFI_AdbcDriver {
         &self.inner.driver.driver
     }
@@ -1876,6 +1917,30 @@ fn get_search_paths(lvls: LoadFlags) -> Vec<PathBuf> {
     result
 }
 
+fn parse_driver_uri(uri: &str) -> Result<(&str, &str)> {
+    let idx = uri.find(":").ok_or(Error::with_message_and_status(
+        format!("Invalid URI: {uri}"),
+        Status::InvalidArguments,
+    ))?;
+
+    let driver = &uri[..idx];
+    if uri.len() <= idx + 2 {
+        return Ok((driver, uri));
+    }
+
+    #[cfg(target_os = "windows")]
+    if let Ok(true) = std::fs::exists(uri) {
+        return Ok((uri, ""));
+    }
+
+    if &uri[idx..idx + 2] == ":/" {
+        // scheme is also driver
+        return Ok((driver, uri));
+    }
+
+    Ok((driver, &uri[idx + 1..]))
+}
+
 const fn arch_triplet() -> (&'static str, &'static str, &'static str) {
     #[cfg(target_arch = "x86_64")]
     const ARCH: &str = "amd64";
@@ -2013,6 +2078,30 @@ mod tests {
         for driver in ["driver_example", "libdriver_example.so"] {
             assert_eq!(get_default_entrypoint(driver), "AdbcDriverExampleInit");
         }
+    }
+
+    /// Regression test for https://github.com/apache/arrow-adbc/pull/3693
+    /// Ensures driver manager tests for Windows pull in Windows crates. This
+    /// can be removed/replace when more complete tests are added.
+    #[test]
+    fn test_user_config_dir() {
+        let _ = user_config_dir().unwrap();
+    }
+
+    /// Regression test for https://github.com/apache/arrow-adbc/pull/3693
+    /// Ensures driver manager tests for Windows pull in Windows crates. This
+    /// can be removed/replace when more complete tests are added.
+    #[test]
+    #[cfg(target_os = "windows")]
+    fn test_load_driver_from_registry() {
+        use std::ffi::OsStr;
+        let result = load_driver_from_registry(
+            windows_registry::CURRENT_USER,
+            OsStr::new("nonexistent_test_driver"),
+            None,
+        );
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().status, Status::NotFound);
     }
 
     #[test]
@@ -2374,5 +2463,62 @@ mod tests {
         } else {
             assert_eq!(search_paths, Vec::<PathBuf>::new());
         }
+    }
+
+    #[test]
+    fn test_parse_driver_uri() {
+        let cases = vec![
+            ("sqlite", Err(Status::InvalidArguments)),
+            ("sqlite:", Ok(("sqlite", "sqlite:"))),
+            ("sqlite:file::memory:", Ok(("sqlite", "file::memory:"))),
+            (
+                "sqlite:file::memory:?cache=shared",
+                Ok(("sqlite", "file::memory:?cache=shared")),
+            ),
+            (
+                "postgresql://a:b@localhost:9999/nonexistent",
+                Ok(("postgresql", "postgresql://a:b@localhost:9999/nonexistent")),
+            ),
+        ];
+
+        for (input, expected) in cases {
+            let result = parse_driver_uri(input);
+            match expected {
+                Ok((exp_driver, exp_conn)) => {
+                    let (driver, conn) = result.expect("Expected Ok result");
+                    assert_eq!(driver, exp_driver);
+                    assert_eq!(conn, exp_conn);
+                }
+                Err(exp_status) => {
+                    let err = result.expect_err("Expected Err result");
+                    assert_eq!(err.status, exp_status);
+                }
+            }
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    #[test]
+    fn test_parse_driver_uri_windows_file() {
+        let tmp_dir = Builder::new()
+            .prefix("adbc_tests")
+            .tempdir()
+            .expect("Failed to create temporary directory for driver manager manifest test");
+
+        let temp_db_path = tmp_dir.path().join("test.dll");
+        if let Some(parent) = temp_db_path.parent() {
+            std::fs::create_dir_all(parent)
+                .expect("Failed to create parent directory for manifest");
+        }
+        std::fs::write(&temp_db_path, b"").expect("Failed to create temporary database file");
+
+        let (driver, conn) = parse_driver_uri(temp_db_path.to_str().unwrap()).unwrap();
+
+        assert_eq!(driver, temp_db_path.to_str().unwrap());
+        assert_eq!(conn, "");
+
+        tmp_dir
+            .close()
+            .expect("Failed to close/remove temporary directory");
     }
 }

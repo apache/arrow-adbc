@@ -103,7 +103,7 @@ CloudFetch is Databricks' high-performance result retrieval system that download
 | :--- | :--- | :--- |
 | `adbc.databricks.cloudfetch.enabled` | Whether to use CloudFetch for retrieving results | `true` |
 | `adbc.databricks.cloudfetch.lz4.enabled` | Whether the client can decompress LZ4 compressed results | `true` |
-| `adbc.databricks.cloudfetch.max_bytes_per_file` | Maximum bytes per file for CloudFetch (e.g., `20971520` for 20MB) | `20971520` |
+| `adbc.databricks.cloudfetch.max_bytes_per_file` | Maximum bytes per file for CloudFetch. Supports unit suffixes (B, KB, MB, GB). Examples: `20MB`, `1024KB`, `20971520` | `20MB` |
 | `adbc.databricks.cloudfetch.parallel_downloads` | Maximum number of parallel downloads | `3` |
 | `adbc.databricks.cloudfetch.prefetch_count` | Number of files to prefetch | `2` |
 | `adbc.databricks.cloudfetch.memory_buffer_size_mb` | Maximum memory buffer size in MB for prefetched files | `200` |
@@ -128,6 +128,8 @@ CloudFetch is Databricks' high-performance result retrieval system that download
 | `adbc.databricks.use_desc_table_extended` | Whether to use DESC TABLE EXTENDED to get extended column metadata when supported by DBR | `true` |
 | `adbc.databricks.enable_run_async_thrift` | Whether to enable RunAsync flag in Thrift operations | `true` |
 | `adbc.databricks.driver_config_take_precedence` | Whether driver configuration overrides passed-in properties during configuration merging | `false` |
+| `adbc.apache.statement.batch_size` | Sets the maximum number of rows to retrieve in a single batch request | `2000000` |
+| `adbc.apache.connection.polltime_ms` | The time in milliseconds between each poll for query execution status. Databricks default is 100ms (Apache default: 500ms) | `100` |
 
 ### Tracing Properties
 

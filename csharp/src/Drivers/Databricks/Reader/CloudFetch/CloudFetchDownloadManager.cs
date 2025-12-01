@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
@@ -33,9 +34,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         // Default values
         private const int DefaultParallelDownloads = 3;
         private const int DefaultPrefetchCount = 2;
-        private const int DefaultMemoryBufferSizeMB = 200;
+        private const int DefaultMemoryBufferSizeMB = 100;
         private const bool DefaultPrefetchEnabled = true;
-        private const int DefaultFetchBatchSize = 2000000;
         private const int DefaultTimeoutMinutes = 5;
         private const int DefaultMaxUrlRefreshAttempts = 3;
         private const int DefaultUrlExpirationBufferSeconds = 60;
@@ -203,11 +203,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 initialResults,
                 _memoryManager,
                 _downloadQueue,
-                DefaultFetchBatchSize,
+                _statement.BatchSize,
                 urlExpirationBufferSeconds);
 
             // Initialize the downloader
             _downloader = new CloudFetchDownloader(
+                _statement,
                 _downloadQueue,
                 _resultQueue,
                 _memoryManager,

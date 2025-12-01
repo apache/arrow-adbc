@@ -57,9 +57,11 @@ main() {
   base_names+=(Apache.Arrow.Adbc.Drivers.Apache.${VERSION_CSHARP})
   base_names+=(Apache.Arrow.Adbc.Drivers.BigQuery.${VERSION_CSHARP})
   base_names+=(Apache.Arrow.Adbc.Drivers.Databricks.${VERSION_CSHARP})
-  base_names+=(Apache.Arrow.Adbc.Drivers.FlightSql.${VERSION_CSHARP})
   base_names+=(Apache.Arrow.Adbc.Drivers.Interop.FlightSql.${VERSION_CSHARP})
   base_names+=(Apache.Arrow.Adbc.Drivers.Interop.Snowflake.${VERSION_CSHARP})
+  base_names+=(Apache.Arrow.Adbc.Telemetry.Traces.Exporters.${VERSION_CSHARP})
+  base_names+=(Apache.Arrow.Adbc.Telemetry.Traces.Listeners.${VERSION_CSHARP})
+  base_names+=(Apache.Arrow.Adbc.Testing.${VERSION_CSHARP})
   for base_name in "${base_names[@]}"; do
     dotnet nuget push \
       "${tmp}/${base_name}.nupkg" \

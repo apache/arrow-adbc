@@ -35,7 +35,7 @@ vcpkg_version=${2:-$default_vcpkg_version}
 vcpkg_ports_patch=${3:-$default_vcpkg_ports_patch}
 
 # reduce the fetched data using a shallow clone
-git clone --shallow-since=2024-01-01 https://github.com/microsoft/vcpkg ${vcpkg_destination}
+git clone --shallow-since=2025-09-01 https://github.com/microsoft/vcpkg ${vcpkg_destination}
 
 pushd ${vcpkg_destination}
 

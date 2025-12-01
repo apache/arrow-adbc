@@ -103,7 +103,7 @@ jobs:
         run: |
           .\ci\scripts\cpp_build.ps1 $pwd ${{ github.workspace }}\build
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: driver-manager-${{ matrix.os }}
           retention-days: 3
@@ -224,7 +224,7 @@ jobs:
           cache: true
           cache-dependency-path: go/adbc/go.sum
 
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: driver-manager-${{ matrix.os }}
           path: ${{ github.workspace }}/build
@@ -254,7 +254,7 @@ jobs:
     strategy:
       matrix:
         os: ["windows-latest"]
-        python: ["3.9", "3.13"]
+        python: ["3.10", "3.14"]
     steps:
       - uses: actions/checkout@v5
         with:
@@ -284,7 +284,7 @@ jobs:
             --file ci\conda_env_cpp.txt `
             --file ci\conda_env_python.txt
 
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: driver-manager-${{ matrix.os }}
           path: ${{ github.workspace }}/build

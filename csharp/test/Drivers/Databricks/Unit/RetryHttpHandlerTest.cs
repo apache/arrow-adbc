@@ -26,6 +26,11 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
 {
     /// <summary>
     /// Tests for the RetryHttpHandler class.
+    ///
+    /// IMPORTANT: These tests verify retry behavior in isolation. In production, RetryHttpHandler
+    /// must be positioned INSIDE (closer to network) ThriftErrorMessageHandler in the handler chain
+    /// so that retries happen before exceptions are thrown. See DatabricksConnection.CreateHttpHandler()
+    /// for the correct handler chain ordering and detailed explanation.
     /// </summary>
     public class RetryHttpHandlerTest
     {
@@ -44,7 +49,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
                 });
 
             // Create the RetryHttpHandler with retry enabled and a 5-second timeout
-            var retryHandler = new RetryHttpHandler(mockHandler, 5);
+            var retryHandler = new RetryHttpHandler(mockHandler, 5, 5);
 
             // Create an HttpClient with our handler
             var httpClient = new HttpClient(retryHandler);
@@ -79,7 +84,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
                 });
 
             // Create the RetryHttpHandler with retry enabled and a 1-second timeout
-            var retryHandler = new RetryHttpHandler(mockHandler, 1);
+            var retryHandler = new RetryHttpHandler(mockHandler, 1, 1);
 
             // Create an HttpClient with our handler
             var httpClient = new HttpClient(retryHandler);
@@ -110,7 +115,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
                 });
 
             // Create the RetryHttpHandler with retry enabled
-            var retryHandler = new RetryHttpHandler(mockHandler, 5);
+            var retryHandler = new RetryHttpHandler(mockHandler, 5, 5);
 
             // Create an HttpClient with our handler
             var httpClient = new HttpClient(retryHandler);
@@ -138,7 +143,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
                 });
 
             // Create the RetryHttpHandler with retry enabled
-            var retryHandler = new RetryHttpHandler(mockHandler, 5);
+            var retryHandler = new RetryHttpHandler(mockHandler, 5, 5);
 
             // Create an HttpClient with our handler
             var httpClient = new HttpClient(retryHandler);
@@ -186,7 +191,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
             });
 
             // Create the RetryHttpHandler with retry enabled
-            var retryHandler = new RetryHttpHandler(mockHandler, 5);
+            var retryHandler = new RetryHttpHandler(mockHandler, 5, 5);
 
             // Create an HttpClient with our handler
             var httpClient = new HttpClient(retryHandler);
@@ -218,7 +223,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
                 });
 
             // Create the RetryHttpHandler with retry enabled
-            var retryHandler = new RetryHttpHandler(mockHandler, 5);
+            var retryHandler = new RetryHttpHandler(mockHandler, 5, 5);
 
             // Create an HttpClient with our handler
             var httpClient = new HttpClient(retryHandler);
@@ -252,7 +257,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
                 });
 
             // Create the RetryHttpHandler with retry enabled and a generous timeout
-            var retryHandler = new RetryHttpHandler(mockHandler, 10);
+            var retryHandler = new RetryHttpHandler(mockHandler, 10, 10);
 
             // Create an HttpClient with our handler
             var httpClient = new HttpClient(retryHandler);
@@ -291,7 +296,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
                 });
 
             // Create the RetryHttpHandler with a short timeout to make the test run faster
-            var retryHandler = new RetryHttpHandler(mockHandler, 3);
+            var retryHandler = new RetryHttpHandler(mockHandler, 3, 3);
 
             // Create an HttpClient with our handler
             var httpClient = new HttpClient(retryHandler);
@@ -306,6 +311,73 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit
 
             // Verify we tried multiple times before giving up
             Assert.True(mockHandler.RequestCount > 1, $"Expected multiple requests, but got {mockHandler.RequestCount}");
+        }
+
+        /// <summary>
+        /// Tests that the RetryHttpHandler properly handles HTTP TooManyRequests (429) responses with separate timeout.
+        /// </summary>
+        [Fact]
+        public async Task RetryHandlerHandlesRateLimitWithSeparateTimeout()
+        {
+            // Create a mock handler that returns a TooManyRequests (429) response with a Retry-After header
+            var mockHandler = new MockHttpMessageHandler(
+                new HttpResponseMessage((HttpStatusCode)429)
+                {
+                    Headers = { { "Retry-After", "1" } },
+                    Content = new StringContent("Too Many Requests")
+                });
+
+            // Create the RetryHttpHandler with different timeouts: 900s for ServiceUnavailable, 2s for TooManyRequests
+            var retryHandler = new RetryHttpHandler(mockHandler, 900, 2);
+
+            // Create an HttpClient with our handler
+            var httpClient = new HttpClient(retryHandler);
+
+            // Set the mock handler to return a success response after the first retry
+            mockHandler.SetResponseAfterRetryCount(1, new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("Success")
+            });
+
+            // Send a request
+            var response = await httpClient.GetAsync("http://test.com");
+
+            // Verify the response is OK
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.Equal("Success", await response.Content.ReadAsStringAsync());
+            Assert.Equal(2, mockHandler.RequestCount); // Initial request + 1 retry
+        }
+
+        /// <summary>
+        /// Tests that the RetryHttpHandler respects the rate limit timeout for TooManyRequests (429) responses.
+        /// </summary>
+        [Fact]
+        public async Task RetryHandlerRespectsRateLimitTimeout()
+        {
+            // Create a mock handler that always returns a TooManyRequests (429) response with a Retry-After header
+            var mockHandler = new MockHttpMessageHandler(
+                new HttpResponseMessage((HttpStatusCode)429)
+                {
+                    Headers = { { "Retry-After", "2" } },
+                    Content = new StringContent("Too Many Requests")
+                });
+
+            // Create the RetryHttpHandler with different timeouts: 900s for ServiceUnavailable, 1s for TooManyRequests
+            var retryHandler = new RetryHttpHandler(mockHandler, 900, 1);
+
+            // Create an HttpClient with our handler
+            var httpClient = new HttpClient(retryHandler);
+
+            // Send a request and expect a DatabricksException
+            var exception = await Assert.ThrowsAsync<DatabricksException>(async () =>
+                await httpClient.GetAsync("http://test.com"));
+
+            // Verify the exception has the correct SQL state
+            Assert.Contains("08001", exception.SqlState);
+            Assert.Equal(AdbcStatusCode.IOError, exception.Status);
+
+            // Verify we only tried once (since the Retry-After value of 2 exceeds our TooManyRequests timeout of 1)
+            Assert.Equal(1, mockHandler.RequestCount);
         }
 
         /// <summary>

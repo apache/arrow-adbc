@@ -48,7 +48,8 @@ import (
 
 const (
 	bindStageName            = "ADBC$BIND"
-	createTemporaryStageStmt = "CREATE OR REPLACE TEMPORARY STAGE " + bindStageName + " FILE_FORMAT = (TYPE = PARQUET USE_LOGICAL_TYPE = TRUE BINARY_AS_TEXT = FALSE USE_VECTORIZED_SCANNER=TRUE REPLACE_INVALID_CHARACTERS = TRUE)"
+	createTemporaryStageTmpl = "CREATE OR REPLACE TEMPORARY STAGE " + bindStageName + " FILE_FORMAT = (TYPE = PARQUET USE_LOGICAL_TYPE = TRUE BINARY_AS_TEXT = FALSE %s REPLACE_INVALID_CHARACTERS = TRUE)"
+	vectorizedScannerOption  = "USE_VECTORIZED_SCANNER=TRUE"
 	putQueryTmpl             = "PUT 'file:///tmp/placeholder/%s' @" + bindStageName + " OVERWRITE = TRUE"
 	copyQuery                = "COPY INTO IDENTIFIER(?) FROM @" + bindStageName + " MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE"
 	countQuery               = "SELECT COUNT(*) FROM IDENTIFIER(?)"
@@ -63,6 +64,8 @@ var (
 
 	defaultCompressionCodec compress.Compression = compress.Codecs.Snappy
 	defaultCompressionLevel int                  = flate.DefaultCompression
+
+	defaultVectorizedScanner bool = true
 
 	ErrNoRecordsInStream = errors.New("no records in stream to write")
 )
@@ -110,6 +113,10 @@ type ingestOptions struct {
 	// notably Snappy.
 	// Default is the default level for the specified compressionCodec.
 	compressionLevel int
+	// Whether to use the vectorized scanner when ingesting Parquet files into Snowvake.
+	//
+	// Default is true.
+	vectorizedScanner bool
 }
 
 func DefaultIngestOptions() *ingestOptions {
@@ -120,6 +127,7 @@ func DefaultIngestOptions() *ingestOptions {
 		copyConcurrency:   defaultCopyConcurrency,
 		compressionCodec:  defaultCompressionCodec,
 		compressionLevel:  defaultCompressionLevel,
+		vectorizedScanner: defaultVectorizedScanner,
 	}
 }
 
@@ -171,6 +179,12 @@ func (st *statement) ingestRecord(ctx context.Context) (nrows int64, err error) 
 	})
 
 	// Create a temporary stage, we can't start uploading until it has been created
+	var createTemporaryStageStmt string
+	if st.ingestOptions.vectorizedScanner {
+		createTemporaryStageStmt = fmt.Sprintf(createTemporaryStageTmpl, vectorizedScannerOption)
+	} else {
+		createTemporaryStageStmt = fmt.Sprintf(createTemporaryStageTmpl, "")
+	}
 	_, err = st.cnxn.cn.ExecContext(ctx, createTemporaryStageStmt, nil)
 	if err != nil {
 		return
@@ -267,6 +281,12 @@ func (st *statement) ingestStream(ctx context.Context) (nrows int64, err error) 
 	})
 
 	// Create a temporary stage, we can't start uploading until it has been created
+	var createTemporaryStageStmt string
+	if st.ingestOptions.vectorizedScanner {
+		createTemporaryStageStmt = fmt.Sprintf(createTemporaryStageTmpl, vectorizedScannerOption)
+	} else {
+		createTemporaryStageStmt = fmt.Sprintf(createTemporaryStageTmpl, "")
+	}
 	_, err = st.cnxn.cn.ExecContext(ctx, createTemporaryStageStmt, nil)
 	if err != nil {
 		return

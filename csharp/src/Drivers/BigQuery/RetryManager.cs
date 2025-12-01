@@ -18,6 +18,7 @@
 
 using System;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Apache.Arrow.Adbc.Drivers.BigQuery
@@ -32,7 +33,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             Func<Task<T>> action,
             Activity? activity,
             int maxRetries = 5,
-            int initialDelayMilliseconds = 200)
+            int initialDelayMilliseconds = 200,
+            CancellationToken cancellationToken = default)
         {
             if (action == null)
             {
@@ -49,8 +51,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     T result = await action();
                     return result;
                 }
-                catch (Exception ex)
+                catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
                 {
+                    // Note: OperationCanceledException could be thrown from the call,
+                    // but we only want to break out when the cancellation was requested from the caller.
                     activity?.AddBigQueryTag("retry_attempt", retryCount);
                     activity?.AddException(ex);
 

@@ -182,8 +182,9 @@ else:
 
 
 def connect(
-    *,
     driver: Union[str, pathlib.Path],
+    uri: Optional[str] = None,
+    *,
     entrypoint: Optional[str] = None,
     db_kwargs: Optional[Dict[str, Union[str, pathlib.Path]]] = None,
     conn_kwargs: Optional[Dict[str, str]] = None,
@@ -195,11 +196,30 @@ def connect(
     Parameters
     ----------
     driver
-        The driver name. For example, "adbc_driver_sqlite" will
-        attempt to load libadbc_driver_sqlite.so on Linux systems,
-        libadbc_driver_sqlite.dylib on MacOS, and
-        adbc_driver_sqlite.dll on Windows. This may also be a path to
-        the library to load.
+        The driver to use.  This can be one of several values:
+
+        - A driver name or manifest name.
+
+          For example, "adbc_driver_sqlite" will first attempt to load
+          adbc_driver_sqlite.toml from the various search paths.  Then, it
+          will try to load libadbc_driver_sqlite.so on Linux,
+          libadbc_driver_sqlite.dylib on macOS, or adbc_driver_sqlite.dll on
+          Windows.  See :doc:`/format/driver_manifests`.
+
+        - A relative or absolute path to a shared library to load.
+
+        - Only a URI, in which case the URI scheme will be assumed to be the
+          driver name and will be loaded as above.  This will happen when
+          "://" is detected in the driver name.  (It is not assumed that the
+          URI is actually a valid URI.)  The driver manager will pass the URI
+          on unchanged, so this is only useful if the driver supports URIs
+          where the scheme happens to be the same as the driver name (so
+          PostgreSQL works, but not SQLite, for example, as SQLite uses
+          ``file:`` URIs).
+    uri
+        The "uri" parameter to the database (if applicable).  This is
+        equivalent to passing it in ``db_kwargs`` but is slightly cleaner.
+        If given, takes precedence over any value in ``db_kwargs``.
     entrypoint
         The driver-specific entrypoint, if different than the default.
     db_kwargs
@@ -218,10 +238,14 @@ def connect(
 
     db_kwargs = dict(db_kwargs or {})
     db_kwargs["driver"] = driver
+    if uri:
+        db_kwargs["uri"] = uri
     if entrypoint:
         db_kwargs["entrypoint"] = entrypoint
     if conn_kwargs is None:
         conn_kwargs = {}
+    # N.B. treating uri = "postgresql://..." as driver = "postgresql", uri =
+    # "..." is handled at the C driver manager layer
 
     try:
         db = _lib.AdbcDatabase(**db_kwargs)
@@ -370,7 +394,7 @@ class Connection(_Closeable):
         adbc_stmt_kwargs : dict, optional
           ADBC-specific options to pass to the underlying ADBC statement.
         """
-        return Cursor(self, adbc_stmt_kwargs)
+        return Cursor(self, adbc_stmt_kwargs, dbapi_backend=self._backend)
 
     def rollback(self) -> None:
         """Explicitly rollback."""
@@ -385,6 +409,22 @@ class Connection(_Closeable):
     # ------------------------------------------------------------
     # API Extensions
     # ------------------------------------------------------------
+
+    def execute(
+        self,
+        operation: Union[bytes, str],
+        parameters=None,
+        *,
+        adbc_stmt_kwargs: Optional[Dict[str, Any]] = None,
+    ) -> "Cursor":
+        """
+        Execute a query on a new cursor.
+
+        This is a convenience for creating a new cursor and executing a query.
+        """
+        return self.cursor(adbc_stmt_kwargs=adbc_stmt_kwargs).execute(
+            operation, parameters
+        )
 
     def adbc_cancel(self) -> None:
         """
@@ -608,9 +648,12 @@ class Cursor(_Closeable):
         self,
         conn: Connection,
         adbc_stmt_kwargs: Optional[Dict[str, Any]] = None,
+        *,
+        dbapi_backend: Optional[_dbapi_backend.DbapiBackend] = None,
     ) -> None:
         # Must be at top in case __init__ is interrupted and then __del__ is called
         self._closed = True
+        self._backend = dbapi_backend or _dbapi_backend.default_backend()
         self._conn = conn
         self._stmt = _lib.AdbcStatement(conn._conn)
         self._closed = False
@@ -723,7 +766,7 @@ class Cursor(_Closeable):
                 )
                 self._bind_by_name = False
 
-    def execute(self, operation: Union[bytes, str], parameters=None) -> None:
+    def execute(self, operation: Union[bytes, str], parameters=None) -> "Self":
         """
         Execute a query.
 
@@ -744,6 +787,11 @@ class Cursor(_Closeable):
 
             Note that providing a list of tuples is not supported (this mode
             of usage is deprecated in DBAPI-2.0; use executemany() instead).
+
+        Returns
+        -------
+        Self
+            This cursor (to enable chaining).
         """
         self._clear()
         self._prepare_execute(operation, parameters)
@@ -751,7 +799,8 @@ class Cursor(_Closeable):
         handle, self._rowcount = _blocking_call(
             self._stmt.execute_query, (), {}, self._stmt.cancel
         )
-        self._results = _RowIterator(self._stmt, handle)
+        self._results = _RowIterator(self._stmt, handle, self._backend)
+        return self
 
     def executemany(self, operation: Union[bytes, str], seq_of_parameters) -> None:
         """
@@ -775,6 +824,8 @@ class Cursor(_Closeable):
         -----
         Allowing ``None`` for parameters is outside of the DB-API
         specification.
+
+        This does not return ``self`` as there is no result set.
         """
         self._clear()
         if operation != self._last_query:
@@ -1117,7 +1168,7 @@ class Cursor(_Closeable):
             self._conn._conn.read_partition, (partition,), {}, self._stmt.cancel
         )
         self._rowcount = -1
-        self._results = _RowIterator(self._stmt, handle)
+        self._results = _RowIterator(self._stmt, handle, self._backend)
 
     @property
     def adbc_statement(self) -> _lib.AdbcStatement:
@@ -1237,8 +1288,8 @@ class Cursor(_Closeable):
         Fetch the result as an object implementing the Arrow PyCapsule interface.
 
         This can only be called once.  It must be called before any other
-        method that inspect the data (e.g. description, fetchone,
-        fetch_arrow_table, etc.).  Once this is called, other methods that
+        method that consume data (e.g. fetchone, fetch_arrow_table, etc.;
+        description is allowed).  Once this is called, other methods that
         inspect the data may not be called.
 
         Notes
@@ -1261,10 +1312,14 @@ class _RowIterator(_Closeable):
     """Track state needed to iterate over the result set."""
 
     def __init__(
-        self, stmt: _lib.AdbcStatement, handle: _lib.ArrowArrayStreamHandle
+        self,
+        stmt: _lib.AdbcStatement,
+        handle: _lib.ArrowArrayStreamHandle,
+        dbapi_backend: _dbapi_backend.DbapiBackend,
     ) -> None:
         self._stmt = stmt
         self._handle: Optional[_lib.ArrowArrayStreamHandle] = handle
+        self._backend = dbapi_backend
         self._reader: Optional["_reader.AdbcRecordBatchReader"] = None
         self._current_batch = None
         self._next_row = 0
@@ -1297,10 +1352,16 @@ class _RowIterator(_Closeable):
 
     @property
     def description(self) -> List[tuple]:
-        return [
-            (field.name, field.type, None, None, None, None, None)
-            for field in self.reader.schema
-        ]
+        if self._handle is None:
+            # Invalid state, or already imported into the reader
+            # (we assume PyArrow here for now)
+            return [
+                (field.name, field.type, None, None, None, None, None)
+                for field in self.reader.schema
+            ]
+        else:
+            # Not yet imported into the reader.  Do not force consumption
+            return self._backend.convert_description(self._handle.__arrow_c_schema__())
 
     def fetchone(self) -> Optional[tuple]:
         if self._current_batch is None or self._next_row >= len(self._current_batch):

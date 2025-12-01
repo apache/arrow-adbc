@@ -130,20 +130,17 @@ class ADBCPackageTask < PackageTask
   def apt_targets_default
     [
       "debian-bookworm",
-      # "debian-bookworm-arm64",
+      "debian-trixie",
       "ubuntu-jammy",
-      # "ubuntu-jammy-arm64",
       "ubuntu-noble",
-      # "ubuntu-noble-arm64",
     ]
   end
 
   def yum_targets_default
     [
       "almalinux-8",
-      # "almalinux-8-aarch64",
       "almalinux-9",
-      # "almalinux-9-aarch64",
+      "almalinux-10",
     ]
   end
 

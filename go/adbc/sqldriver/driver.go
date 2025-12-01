@@ -104,6 +104,14 @@ func (c *connector) Connect(ctx context.Context) (driver.Conn, error) {
 // mainly to maintain compatibility with the Driver method on sql.DB
 func (c *connector) Driver() driver.Driver { return Driver{c.drv} }
 
+// Close closes the underlying database handle that the connector was using.
+//
+// By implementing the io.Closer interface, sql.DB will correctly call
+// Close on the connector when sql.DB.Close is called.
+func (c *connector) Close() error {
+	return c.db.Close()
+}
+
 type Driver struct {
 	Driver adbc.Driver
 }
@@ -638,8 +646,10 @@ func (r *rows) Close() error {
 
 	r.rdr.Release()
 	r.rdr = nil
+
+	err := r.stmt.Close()
 	r.stmt = nil
-	return nil
+	return err
 }
 
 func (r *rows) Next(dest []driver.Value) error {

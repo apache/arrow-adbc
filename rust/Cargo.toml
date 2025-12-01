@@ -20,7 +20,7 @@ members = ["core", "driver_manager", "ffi", "driver/*"]
 resolver = "2"
 
 [workspace.package]
-version = "0.21.0"
+version = "0.22.0"
 description = "Rust implementation of Arrow Database Connectivity (ADBC)"
 edition = "2021"
 rust-version = "1.81"
@@ -34,12 +34,12 @@ keywords = ["arrow"]
 categories = ["database"]
 
 [workspace.dependencies]
-adbc_core = { path = "./core", version = "0.21.0" }
-adbc_driver_manager = { path = "./driver_manager", version = "0.21.0" }
-adbc_ffi = { path = "./ffi", version = "0.21.0" }
-arrow-array = { version = ">=53.1.0, <57", default-features = false, features = [
+adbc_core = { path = "./core", version = "0.22.0" }
+adbc_driver_manager = { path = "./driver_manager", version = "0.22.0" }
+adbc_ffi = { path = "./ffi", version = "0.22.0" }
+arrow-array = { version = ">=53.1.0, <58", default-features = false, features = [
     "ffi",
 ] }
-arrow-buffer = { version = ">=53.1.0, <57", default-features = false }
-arrow-schema = { version = ">=53.1.0, <57", default-features = false }
-arrow-select = { version = ">=53.1.0, <57", default-features = false }
+arrow-buffer = { version = ">=53.1.0, <58", default-features = false }
+arrow-schema = { version = ">=53.1.0, <58", default-features = false }
+arrow-select = { version = ">=53.1.0, <58", default-features = false }

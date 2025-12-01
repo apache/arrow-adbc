@@ -24,6 +24,11 @@ Authenticate with a username and password
 
 .. recipe:: postgresql_authenticate.py
 
+Enable autocommit mode
+=======================
+
+.. recipe:: postgresql_autocommit.py
+
 .. _recipe-postgresql-create-append:
 
 Create/append to a table from an Arrow dataset

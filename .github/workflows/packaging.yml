@@ -85,7 +85,7 @@ jobs:
             apache-arrow-adbc-${VERSION} \
             $(git log -n 1 --format=%h)
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: source
           retention-days: 7
@@ -100,10 +100,10 @@ jobs:
 
     strategy:
       matrix:
-        os: ["ubuntu-latest", "windows-latest", "macos-13"]
+        os: ["ubuntu-latest", "windows-latest", "macos-15-intel"]
 
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: source
 
@@ -136,7 +136,7 @@ jobs:
           popd
 
       - name: Upload Go binaries
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: go-${{ matrix.os }}
           retention-days: 7
@@ -152,7 +152,7 @@ jobs:
       - go-binaries
 
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: source
 
@@ -172,7 +172,7 @@ jobs:
           echo "schedule: ${{ github.event.schedule }}" >> $GITHUB_STEP_SUMMARY
           echo "ref: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
 
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           pattern: go-*
           path: adbc/go/adbc/pkg
@@ -193,7 +193,7 @@ jobs:
           popd
 
       - name: Archive nupkg
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: csharp
           retention-days: 7
@@ -207,7 +207,7 @@ jobs:
     needs:
       - source
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: source
 
@@ -242,7 +242,7 @@ jobs:
           popd
 
       - name: Archive docs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: docs
           retention-days: 2
@@ -263,7 +263,7 @@ jobs:
           - { os: Windows, arch: amd64, runner: windows-latest }
 
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: source
       - name: Extract source archive
@@ -296,7 +296,7 @@ jobs:
           ls -laR artifacts
           mv artifacts artifacts-${{ matrix.os }}-${{ matrix.arch }}
           tar czf artifacts-${{ matrix.os }}-${{ matrix.arch }}.tgz artifacts-${{ matrix.os }}-${{ matrix.arch }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: jni-artifacts-${{ matrix.os }}-${{ matrix.arch }}
           retention-days: 7
@@ -310,11 +310,11 @@ jobs:
       - source
       - java-jni
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: source
 
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           path: artifacts
           pattern: jni-artifacts-*
@@ -352,7 +352,7 @@ jobs:
           cp -a adbc/dist/ ./
 
       - name: Archive JARs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: java
           retention-days: 7
@@ -371,11 +371,13 @@ jobs:
         target:
           - almalinux-8
           - almalinux-9
+          - almalinux-10
           - debian-bookworm
+          - debian-trixie
           - ubuntu-jammy
           - ubuntu-noble
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: source
 
@@ -415,7 +417,7 @@ jobs:
           mv apache-arrow-adbc-$VERSION.tar.gz adbc/ci/linux-packages/
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@0481980f17b760ef6bca5e8c55809102a0af1e5a  # v1.263.0
+        uses: ruby/setup-ruby@8aeb6ff8030dd539317f8e1769a044873b56ea71  # v1.268.0
         with:
           ruby-version: ruby
 
@@ -451,7 +453,7 @@ jobs:
           tar czf ${{ matrix.target }}.tar.gz ${DISTRIBUTION}
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: ${{ matrix.target }}
           retention-days: 7
@@ -505,7 +507,7 @@ jobs:
         # TODO: "linux_aarch64_"
         arch: ["linux_64_"]
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: source
 
@@ -537,7 +539,7 @@ jobs:
           popd
 
       - name: Archive Conda packages
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: python-${{ matrix.arch }}-conda
           retention-days: 7
@@ -556,7 +558,7 @@ jobs:
 
   python-conda-macos:
     name: "Python ${{ matrix.arch }} Conda"
-    runs-on: macos-13
+    runs-on: macos-15-intel
     # No need for Conda packages during release
     # TODO(apache/arrow-adbc#468): re-enable
     if: false
@@ -571,7 +573,7 @@ jobs:
       run:
         shell: bash -l -eo pipefail {0}
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: source
 
@@ -611,7 +613,7 @@ jobs:
           ./adbc/ci/scripts/python_conda_build.sh $(pwd)/adbc ${ARCH_CONDA_FORGE}.yaml $(pwd)/adbc/build
 
       - name: Archive Conda packages
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: python-${{ matrix.arch }}-conda
           retention-days: 7
@@ -642,7 +644,7 @@ jobs:
             platform: "linux/arm64/v8"
             runs_on: "ubuntu-24.04-arm"
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: source
 
@@ -681,7 +683,7 @@ jobs:
           popd
 
       - name: Archive wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: python-${{ matrix.arch }}-manylinux${{ matrix.manylinux_version }}
           retention-days: 7
@@ -692,14 +694,6 @@ jobs:
             adbc/python/adbc_driver_postgresql/repaired_wheels/*.whl
             adbc/python/adbc_driver_sqlite/repaired_wheels/*.whl
             adbc/python/adbc_driver_snowflake/repaired_wheels/*.whl
-
-      - name: Test wheel 3.9
-        env:
-          ARCH: ${{ matrix.arch }}
-          PLATFORM: ${{ matrix.platform }}
-        run: |
-          pushd adbc
-          env PYTHON=3.9 docker compose run python-wheel-manylinux-test
 
       - name: Test wheel 3.10
         env:
@@ -733,6 +727,22 @@ jobs:
           pushd adbc
           env PYTHON=3.13 docker compose run python-wheel-manylinux-test
 
+      - name: Test wheel 3.14
+        env:
+          ARCH: ${{ matrix.arch }}
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          pushd adbc
+          env PYTHON=3.14 docker compose run python-wheel-manylinux-test
+
+      - name: Test wheel 3.14t
+        env:
+          ARCH: ${{ matrix.arch }}
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          pushd adbc
+          env PYTHON=3.14t docker compose run python-wheel-manylinux-freethreaded-test
+
   python-macos:
     name: "Python ${{ matrix.arch }} macOS"
     runs-on: ${{ matrix.os }}
@@ -741,19 +751,19 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["macos-13", "macos-latest"]
+        os: ["macos-15-intel", "macos-latest"]
         include:
-          - os: macos-13
+          - os: macos-15-intel
             arch: amd64
           - os: macos-latest
             arch: arm64v8
     env:
       MACOSX_DEPLOYMENT_TARGET: "10.15"
-      PYTHON: "/Library/Frameworks/Python.framework/Versions/3.10/bin/python3.10"
+      PYTHON: "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3.14"
       # Where to install vcpkg
       VCPKG_ROOT: "${{ github.workspace }}/vcpkg"
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: source
 
@@ -805,13 +815,6 @@ jobs:
           cache: true
           cache-dependency-path: adbc/go/adbc/go.sum
 
-      - name: Install Python (AMD64 only)
-        if: matrix.arch == 'amd64'
-        run: |
-          pushd adbc
-          sudo ci/scripts/install_python.sh macos 3.9
-          popd
-
       - name: Install Python
         run: |
           pushd adbc
@@ -819,6 +822,7 @@ jobs:
           sudo ci/scripts/install_python.sh macos 3.11
           sudo ci/scripts/install_python.sh macos 3.12
           sudo ci/scripts/install_python.sh macos 3.13
+          sudo ci/scripts/install_python.sh macos 3.14
           popd
 
       - name: Downgrade XCode
@@ -839,7 +843,7 @@ jobs:
           popd
 
       - name: Archive wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: python-${{ matrix.arch }}-macos
           retention-days: 7
@@ -850,17 +854,6 @@ jobs:
             adbc/python/adbc_driver_postgresql/repaired_wheels/*.whl
             adbc/python/adbc_driver_sqlite/repaired_wheels/*.whl
             adbc/python/adbc_driver_snowflake/repaired_wheels/*.whl
-
-      - name: Test wheel 3.9
-        if: matrix.arch == 'amd64'
-        run: |
-          pushd adbc
-
-          /Library/Frameworks/Python.framework/Versions/3.9/bin/python3.9 -m venv test-env-39
-          source test-env-39/bin/activate
-          export PYTHON_VERSION=3.9
-          ./ci/scripts/python_wheel_unix_test.sh $(pwd)
-          deactivate
 
       - name: Test wheel 3.10
         run: |
@@ -902,6 +895,35 @@ jobs:
           ./ci/scripts/python_wheel_unix_test.sh $(pwd)
           deactivate
 
+      - name: Test wheel 3.14
+        run: |
+          pushd adbc
+
+          /Library/Frameworks/Python.framework/Versions/3.14/bin/python3.14 -m venv test-env-314
+          source test-env-314/bin/activate
+          export PYTHON_VERSION=3.14
+          ./ci/scripts/python_wheel_unix_test.sh $(pwd)
+          deactivate
+
+      - name: Assemble logs
+        if: failure()
+        run: |
+          mkdir ~/logs
+          counter=0
+          for log in $(find "$VCPKG_ROOT" -name 'build-*.log' -or -name 'config-*.log'); do
+            echo cp "$log" ~/logs/$counter-$(basename "$log")
+            cp "$log" ~/logs/$counter-$(basename "$log")
+            counter=$((counter+1))
+          done
+
+      - name: Upload failure logs
+        if: failure()
+        uses: actions/upload-artifact@v5
+        with:
+          name: vcpkg-logs-${{ matrix.os }}-${{ matrix.arch }}
+          retention-days: 7
+          path: ~/logs
+
   python-windows:
     name: "Python ${{ matrix.python_version }} Windows"
     runs-on: windows-latest
@@ -910,13 +932,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python_version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
+        python_version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
     env:
       PYTHON_VERSION: "${{ matrix.python_version }}"
       # Where to install vcpkg
       VCPKG_ROOT: "${{ github.workspace }}\\vcpkg"
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: source
 
@@ -989,7 +1011,7 @@ jobs:
           popd
 
       - name: Archive wheels
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: python${{ matrix.python_version }}-windows
           retention-days: 7
@@ -1018,7 +1040,7 @@ jobs:
     needs:
       - source
     steps:
-      - uses: actions/download-artifact@v5
+      - uses: actions/download-artifact@v6
         with:
           name: source
 
@@ -1049,7 +1071,7 @@ jobs:
           popd
 
       - name: Archive sdist
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: python-sdist
           retention-days: 7
@@ -1083,7 +1105,7 @@ jobs:
       - python-sdist
     steps:
       - name: Get All Artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           path: release-artifacts
       - name: Release
@@ -1142,7 +1164,7 @@ jobs:
           persist-credentials: true
           submodules: recursive
       - name: Get All Artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           path: conda-packages
       - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
@@ -1205,7 +1227,7 @@ jobs:
           persist-credentials: true
           submodules: recursive
       - name: Get All Artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v6
         with:
           path: nightly-artifacts
       - name: Upload

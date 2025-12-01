@@ -27,11 +27,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Apache.Arrow.Adbc.Client" Version="[$(ApacheArrowAdbcClientVersion)]" />
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.6.0" />
-    <PackageReference Include="Moq" Version="4.20.69" />
-    <PackageReference Include="System.Text.Json" Version="8.0.5" />
-    <PackageReference Include="xunit" Version="2.5.3" />
+    <PackageReference Include="Apache.Arrow.Adbc.Client" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Moq" />
+    <PackageReference Include="System.Text.Json" />
+    <PackageReference Include="xunit" />
   </ItemGroup>
 
   <ItemGroup>

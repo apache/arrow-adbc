@@ -6,20 +6,20 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
-    <PackageReference Include="xunit" Version="2.9.3" />
-    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5">
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Xunit.SkippableFact" Version="1.5.23" />
-    <PackageReference Include="System.Net.Http" Version="4.3.4" />
-    <PackageReference Include="K4os.Compression.LZ4" Version="1.3.8" />
+    <PackageReference Include="Xunit.SkippableFact" />
+    <PackageReference Include="System.Net.Http" />
+    <PackageReference Include="K4os.Compression.LZ4" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\Drivers\Databricks\Apache.Arrow.Adbc.Drivers.Databricks.csproj" />
-    <ProjectReference Include="..\..\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Tests.csproj" />
+    <ProjectReference Include="..\..\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Testing.csproj" />
     <ProjectReference Include="..\Apache\Apache.Arrow.Adbc.Tests.Drivers.Apache.csproj" />
   </ItemGroup>
 

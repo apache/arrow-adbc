@@ -40,6 +40,13 @@ std::string InternalAdbcDriverManagerDefaultEntrypoint(const std::string& filena
 std::vector<std::filesystem::path> InternalAdbcParsePath(const std::string_view path);
 std::filesystem::path InternalAdbcUserConfigDir();
 
+struct ParseDriverUriResult {
+  std::string_view driver;
+  std::optional<std::string_view> uri;
+};
+
+std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view& str);
+
 // Tests of the SQLite example driver, except using the driver manager
 
 namespace adbc {
@@ -169,6 +176,37 @@ TEST_F(DriverManager, MultiDriverTest) {
               IsStatus(ADBC_STATUS_IO, &error.value));
   ASSERT_THAT(error->message, ::testing::HasSubstr("[libpq] Failed to connect"));
   error->release(&error.value);
+}
+
+TEST_F(DriverManager, NoDefaultEntrypoint) {
+#if !defined(ADBC_DRIVER_MANAGER_ENTRYPOINT_TEST_LIB)
+  GTEST_SKIP() << "ADBC_DRIVER_MANAGER_ENTRYPOINT_TEST_LIB is not defined";
+#else
+  adbc_validation::Handle<struct AdbcError> error;
+  adbc_validation::Handle<struct AdbcDriver> driver;
+  // Must fail with expected status
+  ASSERT_THAT(AdbcLoadDriver(ADBC_DRIVER_MANAGER_ENTRYPOINT_TEST_LIB, nullptr,
+                             ADBC_VERSION_1_1_0, &driver.value, &error.value),
+              IsStatus(ADBC_STATUS_IO, &error.value));
+
+#endif  // !defined(ADBC_DRIVER_MANAGER_ENTRYPOINT_TEST_LIB)
+}
+
+TEST_F(DriverManager, NoDefaultEntrypointFound) {
+#if !defined(ADBC_DRIVER_MANAGER_NO_ENTRYPOINT_TEST_LIB)
+  GTEST_SKIP() << "ADBC_DRIVER_MANAGER_NO_ENTRYPOINT_TEST_LIB is not defined";
+#else
+  adbc_validation::Handle<struct AdbcError> error;
+  adbc_validation::Handle<struct AdbcDriver> driver;
+  ASSERT_THAT(AdbcLoadDriver(ADBC_DRIVER_MANAGER_NO_ENTRYPOINT_TEST_LIB, nullptr,
+                             ADBC_VERSION_1_1_0, &driver.value, &error.value),
+              IsStatus(ADBC_STATUS_INTERNAL, &error.value));
+  // Both symbols should not be found, should be mentioned in error message
+  ASSERT_THAT(error->message,
+              ::testing::HasSubstr("(AdbcDriverNoEntrypointInit) failed"));
+  ASSERT_THAT(error->message, ::testing::HasSubstr("(AdbcDriverInit) failed"));
+
+#endif  // !defined(ADBC_DRIVER_MANAGER_NO_ENTRYPOINT_TEST_LIB)
 }
 
 class SqliteQuirks : public adbc_validation::DriverQuirks {
@@ -380,6 +418,51 @@ TEST(AdbcDriverManagerInternal, InternalAdbcParsePath) {
 
   auto output = InternalAdbcParsePath(joined.str());
   EXPECT_THAT(output, ::testing::ElementsAreArray(paths));
+}
+
+TEST(AdbcDriverManagerInternal, InternalAdbcParseDriverUri) {
+  std::vector<std::pair<std::string, std::optional<ParseDriverUriResult>>> uris = {
+      {"sqlite", std::nullopt},
+      {"sqlite:", {{"sqlite", std::nullopt}}},
+      {"sqlite:file::memory:", {{"sqlite", "file::memory:"}}},
+      {"sqlite:file::memory:?cache=shared", {{"sqlite", "file::memory:?cache=shared"}}},
+      {"postgresql://a:b@localhost:9999/nonexistent",
+       {{"postgresql", "postgresql://a:b@localhost:9999/nonexistent"}}}};
+
+#ifdef _WIN32
+  auto temp_dir = std::filesystem::temp_directory_path() / "adbc_driver_manager_tests";
+  std::filesystem::create_directories(temp_dir);
+  std::string temp_driver_path = temp_dir.string() + "\\driver.dll";
+  std::ofstream temp_driver_file(temp_driver_path);
+  temp_driver_file << "placeholder";
+  temp_driver_file.close();
+
+  uris.push_back({temp_driver_path, {{temp_driver_path, std::nullopt}}});
+#endif
+
+  auto cmp = [](std::optional<ParseDriverUriResult> a,
+                std::optional<ParseDriverUriResult> b) {
+    if (!a.has_value()) {
+      EXPECT_FALSE(b.has_value());
+      return;
+    }
+    EXPECT_EQ(a->driver, b->driver);
+    if (!a->uri) {
+      EXPECT_FALSE(b->uri);
+    } else {
+      EXPECT_EQ(*a->uri, *b->uri);
+    }
+  };
+
+  for (const auto& [uri, expected] : uris) {
+    std::string_view uri_view = uri;
+    auto result = InternalAdbcParseDriverUri(uri_view);
+    cmp(result, expected);
+  }
+
+#ifdef _WIN32
+  std::filesystem::remove_all(temp_dir);
+#endif
 }
 
 class DriverManifest : public ::testing::Test {
@@ -1000,6 +1083,24 @@ TEST_F(DriverManifest, LoadSystemLevelManifest) {
 }
 #endif
 
+TEST_F(DriverManifest, AllDisabled) {
+  // Test that if the user doesn't set load flags, we properly flag this
+  ASSERT_THAT(AdbcFindLoadDriver("adbc-test-sqlite", nullptr, ADBC_VERSION_1_1_0, 0,
+                                 nullptr, &driver, &error),
+              IsStatus(ADBC_STATUS_NOT_FOUND, &error));
+  EXPECT_THAT(error.message,
+              ::testing::HasSubstr("not enabled at run time: ADBC_DRIVER_PATH (enable "
+                                   "ADBC_LOAD_FLAG_SEARCH_ENV)"));
+  EXPECT_THAT(error.message,
+              ::testing::HasSubstr("not enabled at run time: user config dir /"));
+  EXPECT_THAT(error.message,
+              ::testing::HasSubstr(" (enable ADBC_LOAD_FLAG_SEARCH_USER)"));
+  EXPECT_THAT(error.message,
+              ::testing::HasSubstr("not enabled at run time: system config dir /"));
+  EXPECT_THAT(error.message,
+              ::testing::HasSubstr(" (enable ADBC_LOAD_FLAG_SEARCH_SYSTEM)"));
+}
+
 TEST_F(DriverManifest, CondaPrefix) {
 #if ADBC_CONDA_BUILD
   constexpr bool is_conda_build = true;
@@ -1034,6 +1135,59 @@ TEST_F(DriverManifest, CondaPrefix) {
     ASSERT_THAT(error.message,
                 ::testing::HasSubstr("not enabled at build time: Conda prefix"));
   }
+}
+
+TEST_F(DriverManifest, ImplicitUri) {
+  auto filepath = temp_dir / "postgresql.toml";
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << R"([Driver]
+shared = "adbc_driver_postgresql")";
+  test_manifest_file.close();
+
+  // Should attempt to load the "postgresql" driver by inferring from the URI
+  std::string uri = "postgresql://a:b@localhost:9999/nonexistent";
+  adbc_validation::Handle<struct AdbcDatabase> database;
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "driver", uri.c_str(), &error),
+              IsOkStatus(&error));
+  std::string search_path = temp_dir.string();
+  ASSERT_THAT(AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
+                  &database.value, search_path.data(), &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+              IsStatus(ADBC_STATUS_IO, &error));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("Failed to connect"));
+
+  ASSERT_TRUE(std::filesystem::remove(filepath));
+}
+
+TEST_F(DriverManifest, DriverFromUri) {
+  auto filepath = temp_dir / "sqlite.toml";
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << R"([Driver]
+shared = "adbc_driver_sqlite")";
+  test_manifest_file.close();
+
+  const std::string uri = "sqlite:file::memory:";
+  for (const auto& driver_option : {"driver", "uri"}) {
+    SCOPED_TRACE(driver_option);
+    SCOPED_TRACE(uri);
+    adbc_validation::Handle<struct AdbcDatabase> database;
+    ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+    ASSERT_THAT(
+        AdbcDatabaseSetOption(&database.value, driver_option, uri.c_str(), &error),
+        IsOkStatus(&error));
+    std::string search_path = temp_dir.string();
+    ASSERT_THAT(AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
+                    &database.value, search_path.data(), &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+                IsStatus(ADBC_STATUS_OK, &error));
+  }
+
+  ASSERT_TRUE(std::filesystem::remove(filepath));
 }
 
 }  // namespace adbc

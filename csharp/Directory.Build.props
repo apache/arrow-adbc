@@ -29,7 +29,7 @@
     <Product>Apache Arrow ADBC library</Product>
     <Copyright>Copyright 2022-2025 The Apache Software Foundation</Copyright>
     <Company>The Apache Software Foundation</Company>
-    <VersionPrefix>0.21.0</VersionPrefix>
+    <VersionPrefix>0.22.0</VersionPrefix>
     <VersionSuffix>SNAPSHOT</VersionSuffix>
   </PropertyGroup>
 
@@ -45,7 +45,7 @@
   </PropertyGroup>
 
   <ItemGroup Condition="!$([MSBuild]::IsTargetFrameworkCompatible($(TargetFramework), 'net8.0'))">
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All"/>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" PrivateAssets="All"/>
   </ItemGroup>
 
   <!-- NuGet properties -->

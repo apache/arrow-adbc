@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+using Apache.Arrow.Adbc.Drivers.Apache;
 using Apache.Arrow.Adbc.Drivers.Apache.Spark;
 using System.Collections.Generic;
 
@@ -40,6 +41,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         /// <summary>
         /// Maximum bytes per file for CloudFetch.
+        /// The value can be specified with unit suffixes: B (bytes), KB (kilobytes), MB (megabytes), GB (gigabytes).
+        /// If no unit is specified, the value is treated as bytes.
         /// Default value is 20MB if not specified.
         /// </summary>
         public const string MaxBytesPerFile = "adbc.databricks.cloudfetch.max_bytes_per_file";
@@ -96,16 +99,30 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// </summary>
         public const string ServerSidePropertyPrefix = "adbc.databricks.ssp_";
 
-        /// Controls whether to retry requests that receive a 503 response with a Retry-After header.
+        /// <summary>
+        /// Controls whether to retry requests that receive retryable responses (408, 502, 503, 504).
         /// Default value is true (enabled). Set to false to disable retry behavior.
         /// </summary>
         public const string TemporarilyUnavailableRetry = "adbc.spark.temporarily_unavailable_retry";
 
         /// <summary>
-        /// Maximum total time in seconds to retry 503 responses before failing.
+        /// Maximum total time in seconds to retry retryable responses (408, 502, 503, 504) before failing.
         /// Default value is 900 seconds (15 minutes). Set to 0 to retry indefinitely.
         /// </summary>
         public const string TemporarilyUnavailableRetryTimeout = "adbc.spark.temporarily_unavailable_retry_timeout";
+
+        /// <summary>
+        /// Controls whether to retry requests that receive HTTP 429 (TooManyRequests) response.
+        /// Default value is true. Set to false to disable rate limit retry behavior.
+        /// </summary>
+        public const string RateLimitRetry = "adbc.databricks.rate_limit_retry";
+
+        /// <summary>
+        /// The number of seconds that the connector waits before stopping an attempt to retry an operation
+        /// when the operation receives an HTTP 429 response.
+        /// Default value is 120 seconds. Set to 0 to retry indefinitely.
+        /// </summary>
+        public const string RateLimitRetryTimeout = "adbc.databricks.rate_limit_retry_timeout";
 
         /// <summary>
         /// Maximum number of parallel downloads for CloudFetch operations.
@@ -130,6 +147,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Default value is true if not specified.
         /// </summary>
         public const string CloudFetchPrefetchEnabled = "adbc.databricks.cloudfetch.prefetch_enabled";
+
+        /// <summary>
+        /// Maximum bytes per fetch request when retrieving query results from servers.
+        /// The value can be specified with unit suffixes: B (bytes), KB (kilobytes), MB (megabytes), GB (gigabytes).
+        /// If no unit is specified, the value is treated as bytes.
+        /// Default value is 400MB if not specified.
+        /// </summary>
+        public const string MaxBytesPerFetchRequest = "adbc.databricks.max_bytes_per_fetch_request";
 
         /// <summary>
         /// The OAuth grant type to use for authentication.
@@ -244,6 +269,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Must be a positive integer value.
         /// </summary>
         public const string OperationStatusRequestTimeout = "adbc.databricks.operation_status_request_timeout";
+
     }
 
     /// <summary>
@@ -260,6 +286,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         /// Default timeout in seconds for operation status polling requests.
         /// </summary>
         public const int DefaultOperationStatusRequestTimeoutSeconds = 30;
+
+        /// <summary>
+        /// Default async execution poll interval in milliseconds.
+        /// </summary>
+        public const int DefaultAsyncExecPollIntervalMs = 100;
 
         /// <summary>
         /// OAuth grant type constants

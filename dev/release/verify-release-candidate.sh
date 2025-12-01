@@ -840,7 +840,7 @@ test_linux_wheels() {
     local arch="x86_64"
   fi
 
-  local python_versions="${TEST_PYTHON_VERSIONS:-3.9 3.10 3.11 3.12 3.13}"
+  local python_versions="${TEST_PYTHON_VERSIONS:-3.10 3.11 3.12 3.13 3.14}"
 
   for python in ${python_versions}; do
     local pyver=${python/m}
@@ -862,7 +862,7 @@ test_macos_wheels() {
     local platform_tags="x86_64"
   fi
 
-  local python_versions="${TEST_PYTHON_VERSIONS:-3.9 3.10 3.11 3.12 3.13}"
+  local python_versions="${TEST_PYTHON_VERSIONS:-3.10 3.11 3.12 3.13 3.14}"
 
   # verify arch-native wheels inside an arch-native conda environment
   for python in ${python_versions}; do

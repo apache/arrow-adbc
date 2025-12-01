@@ -46,7 +46,7 @@ jobs:
       matrix:
         # See: https://github.com/apache/arrow-adbc/pull/1803#issuecomment-2117669300
         os:
-          - macos-13
+          - macos-15-intel
           - macos-latest
           - ubuntu-latest
           - windows-latest
@@ -148,7 +148,7 @@ jobs:
           echo "DYLD_LIBRARY_PATH=/opt/homebrew/opt/sqlite/lib:${{ github.workspace }}/local/lib:$DYLD_LIBRARY_PATH" >> "$GITHUB_ENV"
           echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/local/lib/libadbc_driver_sqlite.dylib" >> "$GITHUB_ENV"
       - name: Set dynamic linker path
-        if: matrix.os == 'macos-13'
+        if: matrix.os == 'macos-15-intel'
         run: |
           echo "DYLD_LIBRARY_PATH=/usr/local/opt/sqlite/lib:${{ github.workspace }}/local/lib:$DYLD_LIBRARY_PATH" >> "$GITHUB_ENV"
           echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/local/lib/libadbc_driver_sqlite.dylib" >> "$GITHUB_ENV"
@@ -163,6 +163,7 @@ jobs:
         if: runner.os != 'Linux' && ! matrix.minimal-versions
         working-directory: rust
         run: |
+          rustup component add clippy
           cargo clippy --workspace --all-targets --all-features --locked -- -Dwarnings
       - name: Clippy (nightly)
         if: runner.os == 'Linux' && ! matrix.minimal-versions
@@ -170,7 +171,14 @@ jobs:
         run: |
           rustup toolchain install nightly --component clippy
           cargo +nightly clippy --workspace --all-targets --all-features --locked -- -Dwarnings -Zcrate-attr='feature(non_exhaustive_omitted_patterns_lint)'
-      - name: Test
+      - name: Test (Default Features)
+        working-directory: rust
+        # TODO: enable snowflake tests on windows
+        run: >
+          cargo test --all-targets --workspace
+          ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
+          ${{ runner.os == 'Windows' && '--exclude adbc_snowflake' || '' }}
+      - name: Test (All Features)
         working-directory: rust
         # TODO: enable snowflake tests on windows
         run: >

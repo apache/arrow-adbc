@@ -1213,6 +1213,33 @@ AdbcStatusCode PostgresConnection::SetOption(const char* key, const char* value,
     PqResultHelper result_helper{conn_, query};
     RAISE_STATUS(error, result_helper.Execute());
     return ADBC_STATUS_OK;
+  } else if (std::strcmp(key, ADBC_CONNECTION_OPTION_ISOLATION_LEVEL) == 0) {
+    if (!conn_) {
+      post_init_options_.emplace_back(key, value);
+      return ADBC_STATUS_OK;
+    }
+
+    std::string pg_level;
+    if (std::strcmp(value, ADBC_OPTION_ISOLATION_LEVEL_DEFAULT) == 0) {
+      pg_level = "READ COMMITTED";  // PostgreSQL default
+    } else if (std::strcmp(value, ADBC_OPTION_ISOLATION_LEVEL_READ_UNCOMMITTED) == 0) {
+      pg_level = "READ UNCOMMITTED";
+    } else if (std::strcmp(value, ADBC_OPTION_ISOLATION_LEVEL_READ_COMMITTED) == 0) {
+      pg_level = "READ COMMITTED";
+    } else if (std::strcmp(value, ADBC_OPTION_ISOLATION_LEVEL_REPEATABLE_READ) == 0) {
+      pg_level = "REPEATABLE READ";
+    } else if (std::strcmp(value, ADBC_OPTION_ISOLATION_LEVEL_SERIALIZABLE) == 0) {
+      pg_level = "SERIALIZABLE";
+    } else {
+      InternalAdbcSetError(error, "[libpq] Invalid isolation level: %s", value);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+
+    std::string query = fmt::format(
+        "SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL {}", pg_level);
+    PqResultHelper result_helper{conn_, query};
+    RAISE_STATUS(error, result_helper.Execute());
+    return ADBC_STATUS_OK;
   }
   InternalAdbcSetError(error, "%s%s", "[libpq] Unknown option ", key);
   return ADBC_STATUS_NOT_IMPLEMENTED;

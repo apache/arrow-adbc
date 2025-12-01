@@ -45,6 +45,16 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: "chore(java): "
+    groups:
+      linters:
+        applies-to: version-updates
+        patterns:
+          - "com.google.errorprone:*"
+          - "com.uber.nullaway:*"
+          # This seems to be different since it's controlled via property
+          - "dep.org.checkerframework*"
+          - "org.checkerframework:*"
+          - "org.junit:*"
   - package-ecosystem: "nuget"
     directory: "/csharp/"
     schedule:

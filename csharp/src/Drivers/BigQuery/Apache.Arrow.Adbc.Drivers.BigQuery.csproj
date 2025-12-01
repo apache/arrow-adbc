@@ -4,12 +4,12 @@
     <PackageReadmeFile>readme.md</PackageReadmeFile>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="System.Net.Http.WinHttpHandler" Version="8.0.3" Condition="'$(TargetFrameworkIdentifier)' == '.NETStandard'" />
-    <PackageReference Include="Google.Cloud.BigQuery.Storage.V1" Version="3.17.0" />
-    <PackageReference Include="Google.Cloud.BigQuery.V2" Version="3.11.0" />
+    <PackageReference Include="System.Net.Http.WinHttpHandler" Condition="'$(TargetFrameworkIdentifier)' == '.NETStandard'" />
+    <PackageReference Include="Google.Cloud.BigQuery.Storage.V1" />
+    <PackageReference Include="Google.Cloud.BigQuery.V2" />
   </ItemGroup>
   <ItemGroup Condition="!$([MSBuild]::IsTargetFrameworkCompatible($(TargetFramework), 'net6.0'))">
-    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    <PackageReference Include="System.Text.Json" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />

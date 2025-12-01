@@ -22,6 +22,8 @@ using System.IO;
 using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Tracing;
 using K4os.Compression.LZ4.Streams;
 
 namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
@@ -29,8 +31,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
     /// <summary>
     /// Downloads files from URLs.
     /// </summary>
-    internal sealed class CloudFetchDownloader : ICloudFetchDownloader
+    internal sealed class CloudFetchDownloader : ICloudFetchDownloader, IActivityTracer
     {
+        private readonly IHiveServer2Statement _statement;
         private readonly BlockingCollection<IDownloadResult> _downloadQueue;
         private readonly BlockingCollection<IDownloadResult> _resultQueue;
         private readonly ICloudFetchMemoryBufferManager _memoryManager;
@@ -52,6 +55,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         /// <summary>
         /// Initializes a new instance of the <see cref="CloudFetchDownloader"/> class.
         /// </summary>
+        /// <param name="statement">The Hive2 statement for Activity context and connection access.</param>
         /// <param name="downloadQueue">The queue of downloads to process.</param>
         /// <param name="resultQueue">The queue to add completed downloads to.</param>
         /// <param name="memoryManager">The memory buffer manager.</param>
@@ -64,6 +68,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         /// <param name="maxUrlRefreshAttempts">The maximum number of URL refresh attempts.</param>
         /// <param name="urlExpirationBufferSeconds">Buffer time in seconds before URL expiration to trigger refresh.</param>
         public CloudFetchDownloader(
+            IHiveServer2Statement statement,
             BlockingCollection<IDownloadResult> downloadQueue,
             BlockingCollection<IDownloadResult> resultQueue,
             ICloudFetchMemoryBufferManager memoryManager,
@@ -76,6 +81,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             int maxUrlRefreshAttempts = 3,
             int urlExpirationBufferSeconds = 60)
         {
+            _statement = statement ?? throw new ArgumentNullException(nameof(statement));
             _downloadQueue = downloadQueue ?? throw new ArgumentNullException(nameof(downloadQueue));
             _resultQueue = resultQueue ?? throw new ArgumentNullException(nameof(resultQueue));
             _memoryManager = memoryManager ?? throw new ArgumentNullException(nameof(memoryManager));
@@ -194,299 +200,376 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
 
         private async Task DownloadFilesAsync(CancellationToken cancellationToken)
         {
-            await Task.Yield();
-
-            int totalFiles = 0;
-            int successfulDownloads = 0;
-            int failedDownloads = 0;
-            long totalBytes = 0;
-            var overallStopwatch = Stopwatch.StartNew();
-
-            try
+            await this.TraceActivityAsync(async activity =>
             {
-                // Keep track of active download tasks
-                var downloadTasks = new ConcurrentDictionary<Task, IDownloadResult>();
-                var downloadTaskCompletionSource = new TaskCompletionSource<bool>();
+                await Task.Yield();
 
-                // Process items from the download queue until it's completed
-                foreach (var downloadResult in _downloadQueue.GetConsumingEnumerable(cancellationToken))
+                int totalFiles = 0;
+                int successfulDownloads = 0;
+                int failedDownloads = 0;
+                long totalBytes = 0;
+                var overallStopwatch = Stopwatch.StartNew();
+
+                try
                 {
-                    totalFiles++;
+                    // Keep track of active download tasks
+                    var downloadTasks = new ConcurrentDictionary<Task, IDownloadResult>();
+                    var downloadTaskCompletionSource = new TaskCompletionSource<bool>();
 
-                    // Check if there's an error before processing more downloads
-                    if (HasError)
+                    // Process items from the download queue until it's completed
+                    foreach (var downloadResult in _downloadQueue.GetConsumingEnumerable(cancellationToken))
                     {
-                        // Add the failed download result to the queue to signal the error
-                        // This will be caught by GetNextDownloadedFileAsync
-                        break;
-                    }
-
-                    // Check if this is the end of results guard
-                    if (downloadResult == EndOfResultsGuard.Instance)
-                    {
-                        // Wait for all active downloads to complete
-                        if (downloadTasks.Count > 0)
+                        // Check if there's an error before processing more downloads
+                        if (HasError)
                         {
-                            try
+                            // Add the failed download result to the queue to signal the error
+                            // This will be caught by GetNextDownloadedFileAsync
+                            break;
+                        }
+
+                        // Check if this is the end of results guard
+                        if (downloadResult == EndOfResultsGuard.Instance)
+                        {
+                            // Wait for all active downloads to complete
+                            if (downloadTasks.Count > 0)
                             {
-                                await Task.WhenAll(downloadTasks.Keys).ConfigureAwait(false);
+                                try
+                                {
+                                    await Task.WhenAll(downloadTasks.Keys).ConfigureAwait(false);
+                                }
+                                catch (Exception ex)
+                                {
+                                    activity?.AddException(ex, [new("error.context", "cloudfetch.wait_for_downloads")]);
+                                    // Don't set error here, as individual download tasks will handle their own errors
+                                }
                             }
-                            catch (Exception ex)
+
+                            // Only add the guard if there's no error
+                            if (!HasError)
                             {
-                                Trace.TraceWarning($"Error waiting for downloads to complete: {ex.Message}");
-                                // Don't set error here, as individual download tasks will handle their own errors
+                                // Add the guard to the result queue to signal the end of results
+                                _resultQueue.Add(EndOfResultsGuard.Instance, cancellationToken);
+                                _isCompleted = true;
+                            }
+                            break;
+                        }
+
+                        // This is a real file, count it
+                        totalFiles++;
+
+                        // Check if the URL is expired or about to expire
+                        if (downloadResult.IsExpiredOrExpiringSoon(_urlExpirationBufferSeconds))
+                        {
+                            // Get a refreshed URL before starting the download
+                            var refreshedLink = await _resultFetcher.GetUrlAsync(downloadResult.Link.StartRowOffset, cancellationToken);
+                            if (refreshedLink != null)
+                            {
+                                // Update the download result with the refreshed link
+                                downloadResult.UpdateWithRefreshedLink(refreshedLink);
+                                activity?.AddEvent("cloudfetch.url_refreshed_before_download", [
+                                    new("offset", refreshedLink.StartRowOffset)
+                                ]);
                             }
                         }
 
-                        // Only add the guard if there's no error
-                        if (!HasError)
-                        {
-                            // Add the guard to the result queue to signal the end of results
-                            _resultQueue.Add(EndOfResultsGuard.Instance, cancellationToken);
-                            _isCompleted = true;
-                        }
-                        break;
-                    }
+                        // Acquire a download slot
+                        await _downloadSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
 
-                    // Check if the URL is expired or about to expire
-                    if (downloadResult.IsExpiredOrExpiringSoon(_urlExpirationBufferSeconds))
-                    {
-                        // Get a refreshed URL before starting the download
-                        var refreshedLink = await _resultFetcher.GetUrlAsync(downloadResult.Link.StartRowOffset, cancellationToken);
-                        if (refreshedLink != null)
-                        {
-                            // Update the download result with the refreshed link
-                            downloadResult.UpdateWithRefreshedLink(refreshedLink);
-                            Trace.TraceInformation($"Updated URL for file at offset {refreshedLink.StartRowOffset} before download");
-                        }
-                    }
-
-                    // Acquire a download slot
-                    await _downloadSemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
-
-                    // Start the download task
-                    Task downloadTask = DownloadFileAsync(downloadResult, cancellationToken)
-                        .ContinueWith(t =>
-                        {
-                            // Release the download slot
-                            _downloadSemaphore.Release();
-
-                            // Remove the task from the dictionary
-                            downloadTasks.TryRemove(t, out _);
-
-                            // Handle any exceptions
-                            if (t.IsFaulted)
+                        // Start the download task
+                        Task downloadTask = DownloadFileAsync(downloadResult, cancellationToken)
+                            .ContinueWith(t =>
                             {
-                                Exception ex = t.Exception?.InnerException ?? new Exception("Unknown error");
-                                Trace.TraceError($"Download failed for file {SanitizeUrl(downloadResult.Link.FileLink)}: {ex.Message}");
+                                // Release the download slot
+                                _downloadSemaphore.Release();
 
-                                // Set the download as failed
-                                downloadResult.SetFailed(ex);
-                                failedDownloads++;
+                                // Remove the task from the dictionary
+                                downloadTasks.TryRemove(t, out _);
 
-                                // Set the error state to stop the download process
-                                SetError(ex);
+                                // Handle any exceptions
+                                if (t.IsFaulted)
+                                {
+                                    Exception ex = t.Exception?.InnerException ?? new Exception("Unknown error");
+                                    string sanitizedUrl = SanitizeUrl(downloadResult.Link.FileLink);
+                                    activity?.AddException(ex, [
+                                        new("error.context", "cloudfetch.download_failed"),
+                                        new("offset", downloadResult.Link.StartRowOffset),
+                                        new("sanitized_url", sanitizedUrl)
+                                    ]);
 
-                                // Signal that we should stop processing downloads
-                                downloadTaskCompletionSource.TrySetException(ex);
-                            }
-                            else if (!t.IsFaulted && !t.IsCanceled)
-                            {
-                                successfulDownloads++;
-                                totalBytes += downloadResult.Size;
-                            }
-                        }, cancellationToken);
+                                    // Set the download as failed
+                                    downloadResult.SetFailed(ex);
+                                    failedDownloads++;
 
-                    // Add the task to the dictionary
-                    downloadTasks[downloadTask] = downloadResult;
+                                    // Set the error state to stop the download process
+                                    SetError(ex, activity);
 
-                    // Add the result to the result queue add the result here to assure the download sequence.
-                    _resultQueue.Add(downloadResult, cancellationToken);
+                                    // Signal that we should stop processing downloads
+                                    downloadTaskCompletionSource.TrySetException(ex);
+                                }
+                                else if (!t.IsFaulted && !t.IsCanceled)
+                                {
+                                    successfulDownloads++;
+                                    totalBytes += downloadResult.Size;
+                                }
+                            }, cancellationToken);
 
-                    // If there's an error, stop processing more downloads
-                    if (HasError)
-                    {
-                        break;
+                        // Add the task to the dictionary
+                        downloadTasks[downloadTask] = downloadResult;
+
+                        // Add the result to the result queue add the result here to assure the download sequence.
+                        _resultQueue.Add(downloadResult, cancellationToken);
+
+                        // If there's an error, stop processing more downloads
+                        if (HasError)
+                        {
+                            break;
+                        }
                     }
                 }
-            }
-            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-            {
-                // Expected when cancellation is requested
-                Trace.TraceInformation("Download process was cancelled");
-            }
-            catch (Exception ex)
-            {
-                Trace.TraceError($"Error in download loop: {ex.Message}");
-                SetError(ex);
-            }
-            finally
-            {
-                overallStopwatch.Stop();
-
-                Trace.TraceInformation(
-                    $"Download process completed. Total files: {totalFiles}, Successful: {successfulDownloads}, " +
-                    $"Failed: {failedDownloads}, Total size: {totalBytes / 1024.0 / 1024.0:F2} MB, Total time: {overallStopwatch.ElapsedMilliseconds / 1000.0:F2} sec");
-
-                // If there's an error, add the error to the result queue
-                if (HasError)
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
-                    CompleteWithError();
+                    // Expected when cancellation is requested
+                    activity?.AddEvent("cloudfetch.download_cancelled");
                 }
-            }
+                catch (Exception ex)
+                {
+                    activity?.AddException(ex, [new("error.context", "cloudfetch.download_loop")]);
+                    SetError(ex, activity);
+                }
+                finally
+                {
+                    overallStopwatch.Stop();
+
+                    activity?.AddEvent("cloudfetch.download_summary", [
+                        new("total_files", totalFiles),
+                        new("successful_downloads", successfulDownloads),
+                        new("failed_downloads", failedDownloads),
+                        new("total_bytes", totalBytes),
+                        new("total_mb", totalBytes / 1024.0 / 1024.0),
+                        new("total_time_ms", overallStopwatch.ElapsedMilliseconds),
+                        new("total_time_sec", overallStopwatch.ElapsedMilliseconds / 1000.0)
+                    ]);
+
+                    // If there's an error, add the error to the result queue
+                    if (HasError)
+                    {
+                        CompleteWithError(activity);
+                    }
+                }
+            });
         }
 
         private async Task DownloadFileAsync(IDownloadResult downloadResult, CancellationToken cancellationToken)
         {
-            string url = downloadResult.Link.FileLink;
-            string sanitizedUrl = SanitizeUrl(downloadResult.Link.FileLink);
-            byte[]? fileData = null;
-
-            // Use the size directly from the download result
-            long size = downloadResult.Size;
-
-            // Create a stopwatch to track download time
-            var stopwatch = Stopwatch.StartNew();
-
-            // Log download start
-            Trace.TraceInformation($"Starting download of file {sanitizedUrl}, expected size: {size / 1024.0:F2} KB");
-
-            // Acquire memory before downloading
-            await _memoryManager.AcquireMemoryAsync(size, cancellationToken).ConfigureAwait(false);
-
-            // Retry logic for downloading files
-            for (int retry = 0; retry < _maxRetries; retry++)
+            await this.TraceActivityAsync(async activity =>
             {
-                try
-                {
-                    // Download the file directly
-                    using HttpResponseMessage response = await _httpClient.GetAsync(
-                        url,
-                        HttpCompletionOption.ResponseHeadersRead,
-                        cancellationToken).ConfigureAwait(false);
+                string url = downloadResult.Link.FileLink;
+                string sanitizedUrl = SanitizeUrl(downloadResult.Link.FileLink);
+                byte[]? fileData = null;
 
-                    // Check if the response indicates an expired URL (typically 403 or 401)
-                    if (response.StatusCode == System.Net.HttpStatusCode.Forbidden ||
-                        response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                // Use the size directly from the download result
+                long size = downloadResult.Size;
+
+                // Add tags to the Activity for filtering/searching
+                activity?.SetTag("cloudfetch.offset", downloadResult.Link.StartRowOffset);
+                activity?.SetTag("cloudfetch.sanitized_url", sanitizedUrl);
+                activity?.SetTag("cloudfetch.expected_size_bytes", size);
+
+                // Create a stopwatch to track download time
+                var stopwatch = Stopwatch.StartNew();
+
+                // Log download start
+                activity?.AddEvent("cloudfetch.download_start", [
+                new("offset", downloadResult.Link.StartRowOffset),
+                    new("sanitized_url", sanitizedUrl),
+                    new("expected_size_bytes", size),
+                    new("expected_size_kb", size / 1024.0)
+            ]);
+
+                // Acquire memory before downloading
+                await _memoryManager.AcquireMemoryAsync(size, cancellationToken).ConfigureAwait(false);
+
+                // Retry logic for downloading files
+                for (int retry = 0; retry < _maxRetries; retry++)
+                {
+                    try
                     {
-                        // If we've already tried refreshing too many times, fail
-                        if (downloadResult.RefreshAttempts >= _maxUrlRefreshAttempts)
+                        // Download the file directly
+                        using HttpResponseMessage response = await _httpClient.GetAsync(
+                            url,
+                            HttpCompletionOption.ResponseHeadersRead,
+                            cancellationToken).ConfigureAwait(false);
+
+                        // Check if the response indicates an expired URL (typically 403 or 401)
+                        if (response.StatusCode == System.Net.HttpStatusCode.Forbidden ||
+                            response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
                         {
-                            throw new InvalidOperationException($"Failed to download file after {downloadResult.RefreshAttempts} URL refresh attempts.");
+                            // If we've already tried refreshing too many times, fail
+                            if (downloadResult.RefreshAttempts >= _maxUrlRefreshAttempts)
+                            {
+                                throw new InvalidOperationException($"Failed to download file after {downloadResult.RefreshAttempts} URL refresh attempts.");
+                            }
+
+                            // Try to refresh the URL
+                            var refreshedLink = await _resultFetcher.GetUrlAsync(downloadResult.Link.StartRowOffset, cancellationToken);
+                            if (refreshedLink != null)
+                            {
+                                // Update the download result with the refreshed link
+                                downloadResult.UpdateWithRefreshedLink(refreshedLink);
+                                url = refreshedLink.FileLink;
+                                sanitizedUrl = SanitizeUrl(url);
+
+                                activity?.AddEvent("cloudfetch.url_refreshed_after_auth_error", [
+                                    new("offset", refreshedLink.StartRowOffset),
+                                    new("sanitized_url", sanitizedUrl)
+                                ]);
+
+                                // Continue to the next retry attempt with the refreshed URL
+                                continue;
+                            }
+                            else
+                            {
+                                // If refresh failed, throw an exception
+                                throw new InvalidOperationException("Failed to refresh expired URL.");
+                            }
                         }
 
-                        // Try to refresh the URL
-                        var refreshedLink = await _resultFetcher.GetUrlAsync(downloadResult.Link.StartRowOffset, cancellationToken);
-                        if (refreshedLink != null)
+                        response.EnsureSuccessStatusCode();
+
+                        // Log the download size if available from response headers
+                        long? contentLength = response.Content.Headers.ContentLength;
+                        if (contentLength.HasValue && contentLength.Value > 0)
                         {
-                            // Update the download result with the refreshed link
-                            downloadResult.UpdateWithRefreshedLink(refreshedLink);
-                            url = refreshedLink.FileLink;
-                            sanitizedUrl = SanitizeUrl(url);
-
-                            Trace.TraceInformation($"URL for file at offset {refreshedLink.StartRowOffset} was refreshed after expired URL response");
-
-                            // Continue to the next retry attempt with the refreshed URL
-                            continue;
+                            activity?.AddEvent("cloudfetch.content_length", [
+                                new("offset", downloadResult.Link.StartRowOffset),
+                                new("sanitized_url", sanitizedUrl),
+                                new("content_length_bytes", contentLength.Value),
+                                new("content_length_mb", contentLength.Value / 1024.0 / 1024.0)
+                            ]);
                         }
-                        else
-                        {
-                            // If refresh failed, throw an exception
-                            throw new InvalidOperationException("Failed to refresh expired URL.");
-                        }
+
+                        // Read the file data
+                        fileData = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+                        break; // Success, exit retry loop
                     }
-
-                    response.EnsureSuccessStatusCode();
-
-                    // Log the download size if available from response headers
-                    long? contentLength = response.Content.Headers.ContentLength;
-                    if (contentLength.HasValue && contentLength.Value > 0)
+                    catch (Exception ex) when (retry < _maxRetries - 1 && !cancellationToken.IsCancellationRequested)
                     {
-                        Trace.TraceInformation($"Actual file size for {sanitizedUrl}: {contentLength.Value / 1024.0 / 1024.0:F2} MB");
+                        // Log the error and retry
+                        activity?.AddException(ex, [
+                            new("error.context", "cloudfetch.download_retry"),
+                            new("offset", downloadResult.Link.StartRowOffset),
+                            new("sanitized_url", SanitizeUrl(url)),
+                            new("attempt", retry + 1),
+                            new("max_retries", _maxRetries)
+                        ]);
+
+                        await Task.Delay(_retryDelayMs * (retry + 1), cancellationToken).ConfigureAwait(false);
                     }
-
-                    // Read the file data
-                    fileData = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
-                    break; // Success, exit retry loop
                 }
-                catch (Exception ex) when (retry < _maxRetries - 1 && !cancellationToken.IsCancellationRequested)
-                {
-                    // Log the error and retry
-                    Trace.TraceError($"Error downloading file {SanitizeUrl(url)} (attempt {retry + 1}/{_maxRetries}): {ex.Message}");
 
-                    await Task.Delay(_retryDelayMs * (retry + 1), cancellationToken).ConfigureAwait(false);
-                }
-            }
-
-            if (fileData == null)
-            {
-                stopwatch.Stop();
-                Trace.TraceError($"Failed to download file {sanitizedUrl} after {_maxRetries} attempts. Elapsed time: {stopwatch.ElapsedMilliseconds} ms");
-
-                // Release the memory we acquired
-                _memoryManager.ReleaseMemory(size);
-                throw new InvalidOperationException($"Failed to download file from {url} after {_maxRetries} attempts.");
-            }
-
-            // Process the downloaded file data
-            MemoryStream dataStream;
-            long actualSize = fileData.Length;
-
-            // If the data is LZ4 compressed, decompress it
-            if (_isLz4Compressed)
-            {
-                try
-                {
-                    var decompressStopwatch = Stopwatch.StartNew();
-                    dataStream = new MemoryStream();
-                    using (var inputStream = new MemoryStream(fileData))
-                    using (var decompressor = LZ4Stream.Decode(inputStream))
-                    {
-                        await decompressor.CopyToAsync(dataStream, 81920, cancellationToken).ConfigureAwait(false);
-                    }
-                    dataStream.Position = 0;
-                    decompressStopwatch.Stop();
-
-                    Trace.TraceInformation($"Decompressed file {sanitizedUrl} in {decompressStopwatch.ElapsedMilliseconds} ms. Compressed size: {actualSize / 1024.0:F2} KB, Decompressed size: {dataStream.Length / 1024.0:F2} KB");
-
-                    actualSize = dataStream.Length;
-                }
-                catch (Exception ex)
+                if (fileData == null)
                 {
                     stopwatch.Stop();
-                    Trace.TraceError($"Error decompressing data for file {sanitizedUrl}: {ex.Message}. Elapsed time: {stopwatch.ElapsedMilliseconds} ms");
+                    activity?.AddEvent("cloudfetch.download_failed_all_retries", [
+                        new("offset", downloadResult.Link.StartRowOffset),
+                        new("sanitized_url", sanitizedUrl),
+                        new("max_retries", _maxRetries),
+                        new("elapsed_time_ms", stopwatch.ElapsedMilliseconds)
+                    ]);
 
                     // Release the memory we acquired
                     _memoryManager.ReleaseMemory(size);
-                    throw new InvalidOperationException($"Error decompressing data: {ex.Message}", ex);
+                    throw new InvalidOperationException($"Failed to download file from {url} after {_maxRetries} attempts.");
                 }
-            }
-            else
-            {
-                dataStream = new MemoryStream(fileData);
-            }
 
-            // Stop the stopwatch and log download completion
-            stopwatch.Stop();
-            Trace.TraceInformation($"Completed download of file {sanitizedUrl}. Size: {actualSize / 1024.0:F2} KB, Latency: {stopwatch.ElapsedMilliseconds} ms, Throughput: {(actualSize / 1024.0 / 1024.0) / (stopwatch.ElapsedMilliseconds / 1000.0):F2} MB/s");
+                // Process the downloaded file data
+                Stream dataStream;
+                long actualSize = fileData.Length;
 
-            // Set the download as completed with the original size
-            downloadResult.SetCompleted(dataStream, size);
+                // If the data is LZ4 compressed, decompress it
+                if (_isLz4Compressed)
+                {
+                    try
+                    {
+                        var decompressStopwatch = Stopwatch.StartNew();
+
+                        // Use shared Lz4Utilities for decompression with both RecyclableMemoryStream and ArrayPool
+                        // The returned stream must be disposed by Arrow after reading
+                        var connection = (DatabricksConnection)_statement.Connection;
+                        dataStream = await Lz4Utilities.DecompressLz4Async(
+                            fileData,
+                            connection.RecyclableMemoryStreamManager,
+                            connection.Lz4BufferPool,
+                            cancellationToken).ConfigureAwait(false);
+
+                        decompressStopwatch.Stop();
+
+                        // Calculate throughput metrics
+                        double compressionRatio = (double)dataStream.Length / actualSize;
+
+                        activity?.AddEvent("cloudfetch.decompression_complete", [
+                            new("offset", downloadResult.Link.StartRowOffset),
+                            new("sanitized_url", sanitizedUrl),
+                            new("decompression_time_ms", decompressStopwatch.ElapsedMilliseconds),
+                            new("compressed_size_bytes", actualSize),
+                            new("compressed_size_kb", actualSize / 1024.0),
+                            new("decompressed_size_bytes", dataStream.Length),
+                            new("decompressed_size_kb", dataStream.Length / 1024.0),
+                            new("compression_ratio", compressionRatio)
+                        ]);
+
+                        actualSize = dataStream.Length;
+                    }
+                    catch (Exception ex)
+                    {
+                        stopwatch.Stop();
+                        activity?.AddException(ex, [
+                            new("error.context", "cloudfetch.decompression"),
+                            new("offset", downloadResult.Link.StartRowOffset),
+                            new("sanitized_url", sanitizedUrl),
+                            new("elapsed_time_ms", stopwatch.ElapsedMilliseconds)
+                        ]);
+
+                        // Release the memory we acquired
+                        _memoryManager.ReleaseMemory(size);
+                        throw new InvalidOperationException($"Error decompressing data: {ex.Message}", ex);
+                    }
+                }
+                else
+                {
+                    dataStream = new MemoryStream(fileData);
+                }
+
+                // Stop the stopwatch and log download completion
+                stopwatch.Stop();
+                double throughputMBps = (actualSize / 1024.0 / 1024.0) / (stopwatch.ElapsedMilliseconds / 1000.0);
+                activity?.AddEvent("cloudfetch.download_complete", [
+                    new("offset", downloadResult.Link.StartRowOffset),
+                    new("sanitized_url", sanitizedUrl),
+                    new("actual_size_bytes", actualSize),
+                    new("actual_size_kb", actualSize / 1024.0),
+                    new("latency_ms", stopwatch.ElapsedMilliseconds),
+                    new("throughput_mbps", throughputMBps)
+                ]);
+
+                // Set the download as completed with the original size
+                downloadResult.SetCompleted(dataStream, size);
+            }, activityName: "DownloadFile");
         }
 
-        private void SetError(Exception ex)
+        private void SetError(Exception ex, Activity? activity = null)
         {
             lock (_errorLock)
             {
                 if (_error == null)
                 {
-                    Trace.TraceError($"Setting error state: {ex.Message}");
+                    activity?.AddException(ex, [new("error.context", "cloudfetch.error_state_set")]);
                     _error = ex;
                 }
             }
         }
 
-        private void CompleteWithError()
+        private void CompleteWithError(Activity? activity = null)
         {
             try
             {
@@ -498,7 +581,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             }
             catch (Exception ex)
             {
-                Trace.TraceError($"Error completing with error: {ex.Message}");
+                activity?.AddException(ex, [new("error.context", "cloudfetch.complete_with_error_failed")]);
             }
         }
 
@@ -516,5 +599,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 return "cloud-storage-url";
             }
         }
+
+        // IActivityTracer implementation - delegates to statement
+        ActivityTrace IActivityTracer.Trace => _statement.Trace;
+
+        string? IActivityTracer.TraceParent => _statement.TraceParent;
+
+        public string AssemblyVersion => _statement.AssemblyVersion;
+
+        public string AssemblyName => _statement.AssemblyName;
     }
 }

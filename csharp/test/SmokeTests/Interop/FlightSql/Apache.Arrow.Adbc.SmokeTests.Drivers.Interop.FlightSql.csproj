@@ -10,14 +10,14 @@
       <Compile Include="..\..\..\Drivers\Interop\FlightSql\FlightSqlTestingUtils.cs" Link="FlightSqlTestingUtils.cs" />
     </ItemGroup>
     <ItemGroup>
-     <PackageReference Include="Apache.Arrow.Adbc.Drivers.Interop.FlightSql" Version="[$(ApacheArrowAdbcDriversInteropFlightSqlVersion)]" />
-     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.7.2" />
-     <PackageReference Include="xunit" Version="2.5.3" />
-     <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3">
+     <PackageReference Include="Apache.Arrow.Adbc.Drivers.Interop.FlightSql" />
+     <PackageReference Include="Microsoft.NET.Test.Sdk" />
+     <PackageReference Include="xunit" />
+     <PackageReference Include="xunit.runner.visualstudio">
        <PrivateAssets>all</PrivateAssets>
        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
      </PackageReference>
-     <PackageReference Include="Xunit.SkippableFact" Version="1.4.13" />
+     <PackageReference Include="Xunit.SkippableFact" />
    </ItemGroup>
     <ItemGroup>
       <Folder Include="Resources\" />

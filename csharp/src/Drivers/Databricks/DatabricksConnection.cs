@@ -70,9 +70,13 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         private bool _useCloudFetch = true;
         private bool _canDecompressLz4 = true;
         private long _maxBytesPerFile = DefaultMaxBytesPerFile;
+        private const long DefaultMaxBytesPerFetchRequest = 400 * 1024 * 1024; // 400MB
+        private long _maxBytesPerFetchRequest = DefaultMaxBytesPerFetchRequest;
         private const bool DefaultRetryOnUnavailable = true;
+        private const bool DefaultRateLimitRetry = true;
         private const int DefaultTemporarilyUnavailableRetryTimeout = 900;
-        private bool _useDescTableExtended = true;
+        private const int DefaultRateLimitRetryTimeout = 120;
+        private bool _useDescTableExtended = false;
 
         // Trace propagation configuration
         private bool _tracePropagationEnabled = true;
@@ -93,8 +97,35 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
 
         private HttpClient? _authHttpClient;
 
-        public DatabricksConnection(IReadOnlyDictionary<string, string> properties) : base(MergeWithDefaultEnvironmentConfig(properties))
+        /// <summary>
+        /// RecyclableMemoryStreamManager for LZ4 decompression.
+        /// If provided by Database, this is shared across all connections for optimal pooling.
+        /// If created directly, each connection has its own pool.
+        /// </summary>
+        internal Microsoft.IO.RecyclableMemoryStreamManager RecyclableMemoryStreamManager { get; }
+
+        /// <summary>
+        /// LZ4 buffer pool for decompression.
+        /// If provided by Database, this is shared across all connections for optimal pooling.
+        /// If created directly, each connection has its own pool.
+        /// </summary>
+        internal System.Buffers.ArrayPool<byte> Lz4BufferPool { get; }
+
+        public DatabricksConnection(IReadOnlyDictionary<string, string> properties)
+            : this(properties, null, null)
         {
+        }
+
+        internal DatabricksConnection(
+            IReadOnlyDictionary<string, string> properties,
+            Microsoft.IO.RecyclableMemoryStreamManager? memoryStreamManager,
+            System.Buffers.ArrayPool<byte>? lz4BufferPool)
+            : base(MergeWithDefaultEnvironmentConfig(properties))
+        {
+            // Use provided manager (from Database) or create new instance (for direct construction)
+            RecyclableMemoryStreamManager = memoryStreamManager ?? new Microsoft.IO.RecyclableMemoryStreamManager();
+            // Use provided pool (from Database) or create new instance (for direct construction)
+            Lz4BufferPool = lz4BufferPool ?? System.Buffers.ArrayPool<byte>.Create(maxArrayLength: 4 * 1024 * 1024, maxArraysPerBucket: 10);
             ValidateProperties();
         }
 
@@ -322,6 +353,26 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 _maxBytesPerFile = maxBytesPerFileValue;
             }
 
+            if (Properties.TryGetValue(DatabricksParameters.MaxBytesPerFetchRequest, out string? maxBytesPerFetchRequestStr))
+            {
+                try
+                {
+                    long maxBytesPerFetchRequestValue = ParseBytesWithUnits(maxBytesPerFetchRequestStr);
+                    if (maxBytesPerFetchRequestValue < 0)
+                    {
+                        throw new ArgumentOutOfRangeException(
+                            nameof(Properties),
+                            maxBytesPerFetchRequestValue,
+                            $"Parameter '{DatabricksParameters.MaxBytesPerFetchRequest}' value must be a non-negative integer. Use 0 for no limit.");
+                    }
+                    _maxBytesPerFetchRequest = maxBytesPerFetchRequestValue;
+                }
+                catch (FormatException)
+                {
+                    throw new ArgumentException($"Parameter '{DatabricksParameters.MaxBytesPerFetchRequest}' value '{maxBytesPerFetchRequestStr}' could not be parsed. Valid formats: number with optional unit suffix (B, KB, MB, GB). Examples: '400MB', '1024KB', '1073741824'.");
+                }
+            }
+
             // Parse default namespace
             string? defaultCatalog = null;
             string? defaultSchema = null;
@@ -478,6 +529,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         internal long MaxBytesPerFile => _maxBytesPerFile;
 
         /// <summary>
+        /// Gets the maximum bytes per fetch request.
+        /// </summary>
+        internal long MaxBytesPerFetchRequest => _maxBytesPerFetchRequest;
+
+        /// <summary>
         /// Gets the default namespace to use for SQL queries.
         /// </summary>
         internal TNamespace? DefaultNamespace => _defaultNamespace;
@@ -513,33 +569,75 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         public bool RunAsyncInThrift => _runAsyncInThrift;
 
         /// <summary>
-        /// Gets a value indicating whether to retry requests that receive a 503 response with a Retry-After header.
+        /// Gets a value indicating whether to retry requests that receive retryable responses (408, 502, 503, 504) .
         /// </summary>
         protected bool TemporarilyUnavailableRetry { get; private set; } = DefaultRetryOnUnavailable;
 
         /// <summary>
-        /// Gets the maximum total time in seconds to retry 503 responses before failing.
+        /// Gets the maximum total time in seconds to retry retryable responses (408, 502, 503, 504) before failing.
         /// </summary>
         protected int TemporarilyUnavailableRetryTimeout { get; private set; } = DefaultTemporarilyUnavailableRetryTimeout;
+
+        /// <summary>
+        /// Gets a value indicating whether to retry requests that receive HTTP 429 responses.
+        /// </summary>
+        protected bool RateLimitRetry { get; private set; } = DefaultRateLimitRetry;
+
+        /// <summary>
+        /// Gets the number of seconds to wait before stopping an attempt to retry HTTP 429 responses.
+        /// </summary>
+        protected int RateLimitRetryTimeout { get; private set; } = DefaultRateLimitRetryTimeout;
 
         protected override HttpMessageHandler CreateHttpHandler()
         {
             HttpMessageHandler baseHandler = base.CreateHttpHandler();
             HttpMessageHandler baseAuthHandler = HiveServer2TlsImpl.NewHttpClientHandler(TlsOptions, _proxyConfigurator);
 
-            // Add tracing handler to propagate W3C trace context if enabled
+            // IMPORTANT: Handler Order Matters!
+            //
+            // HTTP delegating handlers form a chain where execution flows from outermost to innermost
+            // on the request, and then innermost to outermost on the response.
+            //
+            // Request flow (outer → inner):  Handler1 → Handler2 → Handler3 → Network
+            // Response flow (inner → outer): Network → Handler3 → Handler2 → Handler1
+            //
+            // Current chain order (outermost to innermost):
+            // 1. OAuth handlers (OAuthDelegatingHandler, etc.) - only on baseHandler for API requests
+            // 2. ThriftErrorMessageHandler - extracts x-thriftserver-error-message and throws descriptive exceptions
+            // 3. RetryHttpHandler - retries 408, 429, 502, 503, 504 with Retry-After support
+            // 4. TracingDelegatingHandler - propagates W3C trace context
+            // 5. Base HTTP handler - actual network communication
+            //
+            // Why this order:
+            // - TracingDelegatingHandler must be innermost (closest to network) to capture full request timing
+            // - RetryHttpHandler must be INSIDE ThriftErrorMessageHandler so it can retry 503 responses
+            //   (e.g., during cluster auto-start) before ThriftErrorMessageHandler throws an exception
+            // - ThriftErrorMessageHandler must be OUTSIDE RetryHttpHandler so it only processes final
+            //   error responses after all retry attempts are exhausted
+            // - OAuth handlers are outermost since they modify request headers and don't need retry logic
+            //
+            // DO NOT change this order without understanding the implications!
+
+            // Add tracing handler to propagate W3C trace context if enabled (INNERMOST - closest to network)
             if (_tracePropagationEnabled)
             {
                 baseHandler = new TracingDelegatingHandler(baseHandler, this, _traceParentHeaderName, _traceStateEnabled);
                 baseAuthHandler = new TracingDelegatingHandler(baseAuthHandler, this, _traceParentHeaderName, _traceStateEnabled);
             }
 
-            if (TemporarilyUnavailableRetry)
+            if (TemporarilyUnavailableRetry || RateLimitRetry)
             {
-                // Add retry handler for 503 responses
-                baseHandler = new RetryHttpHandler(baseHandler, TemporarilyUnavailableRetryTimeout);
-                baseAuthHandler = new RetryHttpHandler(baseAuthHandler, TemporarilyUnavailableRetryTimeout);
+                // Add retry handler for 408, 429, 502, 503, 504 responses with Retry-After support
+                // This must be INSIDE ThriftErrorMessageHandler so retries happen before exceptions are thrown
+                baseHandler = new RetryHttpHandler(baseHandler, TemporarilyUnavailableRetryTimeout, RateLimitRetryTimeout, TemporarilyUnavailableRetry, RateLimitRetry);
+                baseAuthHandler = new RetryHttpHandler(baseAuthHandler, TemporarilyUnavailableRetryTimeout, RateLimitRetryTimeout, TemporarilyUnavailableRetry, RateLimitRetry);
             }
+
+            // Add Thrift error message handler AFTER retry handler (OUTSIDE in the chain)
+            // This ensures retryable status codes (408, 429, 502, 503, 504) are retried by RetryHttpHandler
+            // before ThriftErrorMessageHandler throws exceptions with Thrift error messages
+            baseHandler = new ThriftErrorMessageHandler(baseHandler);
+            baseAuthHandler = new ThriftErrorMessageHandler(baseAuthHandler);
 
             if (Properties.TryGetValue(SparkParameters.AuthType, out string? authType) &&
                 SparkAuthTypeParser.TryParse(authType, out SparkAuthType authTypeValue) &&
@@ -771,6 +869,61 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
             return "`" + value.Replace("`", "``") + "`";
         }
 
+        /// <summary>
+        /// Parses a byte value that may include unit suffixes (B, KB, MB, GB).
+        /// </summary>
+        /// <param name="value">The value to parse, e.g., "400MB", "1024KB", "1073741824"</param>
+        /// <returns>The value in bytes</returns>
+        /// <exception cref="FormatException">Thrown when the value cannot be parsed</exception>
+        internal static long ParseBytesWithUnits(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                throw new FormatException("Value cannot be null or empty");
+            }
+
+            value = value.Trim().ToUpperInvariant();
+
+            // Check for unit suffixes
+            long multiplier = 1;
+            string numberPart = value;
+
+            if (value.EndsWith("GB"))
+            {
+                multiplier = 1024L * 1024L * 1024L;
+                numberPart = value.Substring(0, value.Length - 2);
+            }
+            else if (value.EndsWith("MB"))
+            {
+                multiplier = 1024L * 1024L;
+                numberPart = value.Substring(0, value.Length - 2);
+            }
+            else if (value.EndsWith("KB"))
+            {
+                multiplier = 1024L;
+                numberPart = value.Substring(0, value.Length - 2);
+            }
+            else if (value.EndsWith("B"))
+            {
+                multiplier = 1L;
+                numberPart = value.Substring(0, value.Length - 1);
+            }
+
+            if (!long.TryParse(numberPart.Trim(), out long number))
+            {
+                throw new FormatException($"Invalid number format: {numberPart}");
+            }
+
+            try
+            {
+                return checked(number * multiplier);
+            }
+            catch (OverflowException)
+            {
+                throw new FormatException($"Value {value} results in overflow when converted to bytes");
+            }
+        }
+
         protected override void ValidateOptions()
         {
             base.ValidateOptions();
@@ -786,6 +939,16 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                 TemporarilyUnavailableRetry = tempUnavailableRetryValue;
             }
 
+            if (Properties.TryGetValue(DatabricksParameters.RateLimitRetry, out string? rateLimitRetryStr))
+            {
+                if (!bool.TryParse(rateLimitRetryStr, out bool rateLimitRetryValue))
+                {
+                    throw new ArgumentOutOfRangeException(DatabricksParameters.RateLimitRetry, rateLimitRetryStr,
+                        $"must be a value of false (disabled) or true (enabled). Default is true.");
+                }
+
+                RateLimitRetry = rateLimitRetryValue;
+            }
 
             if (Properties.TryGetValue(DatabricksParameters.TemporarilyUnavailableRetryTimeout, out string? tempUnavailableRetryTimeoutStr))
             {
@@ -796,6 +959,17 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
                         $"must be a value of 0 (retry indefinitely) or a positive integer representing seconds. Default is 900 seconds (15 minutes).");
                 }
                 TemporarilyUnavailableRetryTimeout = tempUnavailableRetryTimeoutValue;
+            }
+
+            if (Properties.TryGetValue(DatabricksParameters.RateLimitRetryTimeout, out string? rateLimitRetryTimeoutStr))
+            {
+                if (!int.TryParse(rateLimitRetryTimeoutStr, out int rateLimitRetryTimeoutValue) ||
+                    rateLimitRetryTimeoutValue < 0)
+                {
+                    throw new ArgumentOutOfRangeException(DatabricksParameters.RateLimitRetryTimeout, rateLimitRetryTimeoutStr,
+                        $"must be a value of 0 (retry indefinitely) or a positive integer representing seconds. Default is 120 seconds (2 minutes).");
+                }
+                RateLimitRetryTimeout = rateLimitRetryTimeoutValue;
             }
 
             // When TemporarilyUnavailableRetry is enabled, we need to make sure connection timeout (which is used to cancel the HttpConnection) is equal
