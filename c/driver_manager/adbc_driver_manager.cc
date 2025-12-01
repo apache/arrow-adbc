@@ -483,8 +483,8 @@ SearchPaths GetEnvPaths(const char_type* env_var) {
   std::string path(path_var);
 #endif  // _WIN32
   SearchPaths paths;
-  for (auto path : InternalAdbcParsePath(path)) {
-    paths.emplace_back(SearchPathSource::kEnv, path);
+  for (auto parsedPath : InternalAdbcParsePath(path)) {
+    paths.emplace_back(SearchPathSource::kEnv, parsedPath);
   }
   return paths;
 }
