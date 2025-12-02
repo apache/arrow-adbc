@@ -35,10 +35,11 @@ BEGIN
         BLOCK US_ENGLISH_UNICODE
         BEGIN
             VALUE "FileDescription", "ADBC: Arrow Database Connectivity"
-            VALUE "FileVersion", "@ADBC_FULL_SO_VERSION@"
-            VALUE "ProductVersion", "@ADBC_FULL_SO_VERSION@"
+            VALUE "FileVersion", "@ADBC_VERSION@"
+            VALUE "ProductVersion", "@ADBC_VERSION@"
             VALUE "CompanyName", "Apache Software Foundation"
             VALUE "ProductName", "@LIB_NAME@"
+            VALUE "InternalName", "@LIB_NAME@"
         END
     END
     BLOCK "VarFileInfo"
