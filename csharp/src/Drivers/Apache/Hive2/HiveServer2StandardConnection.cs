@@ -23,6 +23,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Hive.Service.Rpc.Thrift;
+using Thrift;
 using Thrift.Protocol;
 using Thrift.Transport;
 using Thrift.Transport.Client;
@@ -108,6 +109,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             bool connectClient = false;
             int portValue = int.Parse(port!);
 
+            TConfiguration thriftConfig = GetTconfiguration();
+
             // TLS setup
             TTransport baseTransport;
             if (TlsOptions.IsTlsEnabled)
@@ -120,16 +123,16 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                 if (IPAddress.TryParse(hostName!, out var ipAddress))
                 {
-                    baseTransport = new TTlsSocketTransport(ipAddress, portValue, config: new(), 0, trustedCert, certValidator);
+                    baseTransport = new TTlsSocketTransport(ipAddress, portValue, config: thriftConfig, 0, trustedCert, certValidator);
                 }
                 else
                 {
-                    baseTransport = new TTlsSocketTransport(hostName!, portValue, config: new(), 0, trustedCert, certValidator);
+                    baseTransport = new TTlsSocketTransport(hostName!, portValue, config: thriftConfig, 0, trustedCert, certValidator);
                 }
             }
             else
             {
-                baseTransport = new TSocketTransport(hostName!, portValue, connectClient, config: new());
+                baseTransport = new TSocketTransport(hostName!, portValue, connectClient, config: thriftConfig);
             }
 
             TBufferedTransport bufferedTransport = new TBufferedTransport(baseTransport);
@@ -148,7 +151,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     }
 
                     PlainSaslMechanism saslMechanism = new(username, password);
-                    TSaslTransport saslTransport = new(bufferedTransport, saslMechanism, config: new());
+                    TSaslTransport saslTransport = new(bufferedTransport, saslMechanism, config: thriftConfig);
                     return new TFramedTransport(saslTransport);
 
                 default:

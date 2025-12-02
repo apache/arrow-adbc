@@ -63,6 +63,7 @@ but can also be passed in the call to `AdbcDatabase.Connect`. Options beginning 
 | `adbc.standard_options.tls.allow_hostname_mismatch` | If hostname mismatch is allowed for ssl. One of `True`, `False` | `False` |
 | `adbc.standard_options.tls.trusted_certificate_path` | The full path of the tls/ssl certificate .pem file containing custom CA certificates for verifying the server when connecting over TLS | |
 | `adbc.telemetry.trace_parent` | The [trace parent](https://www.w3.org/TR/trace-context/#traceparent-header) identifier for an existing [trace context](https://www.w3.org/TR/trace-context/) \(span/activity\) in a tracing system. This option is most likely to be set using `Statement.SetOption` to set the trace parent for driver interaction with a specific `Statement`. However, it can also be set using `Driver.Open`, `Database.Connect` or `Connection.SetOption` to set the trace parent for all interactions with the driver on that specific `Connection`. |  |
+| `adbc.apache.statement.batch_size_stop_condition` | Flag to enable/disable stopping reading based on batch size condition | `False` |
 
 ## Timeout Configuration
 

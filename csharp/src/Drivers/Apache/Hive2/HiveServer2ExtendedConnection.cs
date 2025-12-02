@@ -66,8 +66,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 statement,
                 schema,
                 response,
-                dataTypeConversion: statement.Connection.DataTypeConversion,
-                enableBatchSizeStopCondition: false);
+                dataTypeConversion: statement.Connection.DataTypeConversion);
 
         internal override void SetPrecisionScaleAndTypeName(
             short colType,

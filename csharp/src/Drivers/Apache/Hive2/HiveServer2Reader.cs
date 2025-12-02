@@ -60,8 +60,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private bool _disposed;
         private bool _hasNoMoreData = false;
         private readonly DataTypeConversion _dataTypeConversion;
-        // Flag to enable/disable stopping reading based on batch size condition
-        private readonly bool _enableBatchSizeStopCondition;
         private static readonly IReadOnlyDictionary<ArrowTypeId, Func<StringArray, IArrowType, IArrowArray>> s_arrowStringConverters =
             new Dictionary<ArrowTypeId, Func<StringArray, IArrowType, IArrowArray>>()
             {
@@ -79,14 +77,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             IHiveServer2Statement statement,
             Schema schema,
             IResponse response,
-            DataTypeConversion dataTypeConversion,
-            bool enableBatchSizeStopCondition = true) : base(statement)
+            DataTypeConversion dataTypeConversion) : base(statement)
         {
             _statement = statement;
             Schema = schema;
             _response = response;
             _dataTypeConversion = dataTypeConversion;
-            _enableBatchSizeStopCondition = enableBatchSizeStopCondition;
         }
 
         public override Schema Schema { get; }
@@ -114,7 +110,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     int rowCount = GetRowCount(response.Results, columnCount);
                     activity?.AddEvent(SemanticConventions.Messaging.Batch.Response, [new(SemanticConventions.Db.Response.ReturnedRows, rowCount)]);
 
-                    if ((_enableBatchSizeStopCondition && _statement.BatchSize > 0 && rowCount < _statement.BatchSize) || rowCount == 0)
+                    if ((_statement.EnableBatchSizeStopCondition && _statement.BatchSize > 0 && rowCount < _statement.BatchSize) || rowCount == 0)
                     {
                         // This is the last batch
                         _hasNoMoreData = true;
