@@ -521,7 +521,7 @@ class ConnectionTest < Test::Unit::TestCase
     open_connection do |connection|
       connection.isolation_level = :serializable
       execute_sql(connection, "SELECT current_setting('transaction_isolation')") do |table,|
-        assert_equal("serializable", table["current_setting"][0].as_s)
+        assert_equal("serializable", table["current_setting"][0])
       end
     end
   end
