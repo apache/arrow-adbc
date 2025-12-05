@@ -783,7 +783,7 @@ impl Connection for DummyConnection {
         Ok(reader)
     }
 
-    fn read_partition(&self, _partition: impl AsRef<[u8]>) -> Result<impl RecordBatchReader> {
+    fn read_partition(&self, _partition: &[u8]) -> Result<impl RecordBatchReader> {
         let batch = get_table_data();
         let reader = SingleBatchReader::new(batch);
         Ok(reader)

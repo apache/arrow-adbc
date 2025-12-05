@@ -50,7 +50,7 @@
 //! # use arrow_select::concat::concat_batches;
 //! # use adbc_core::{
 //! #     options::{AdbcVersion, OptionDatabase, OptionStatement},
-//! #     Connection, Database, Driver, Statement, Optionable
+//! #     sync::{Connection, Database, Driver, Statement, Optionable}
 //! # };
 //! # use adbc_driver_manager::ManagedDriver;
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -1473,13 +1473,12 @@ impl Connection for ManagedConnection {
         Ok(reader)
     }
 
-    fn read_partition(&self, partition: impl AsRef<[u8]>) -> Result<impl RecordBatchReader> {
+    fn read_partition(&self, partition: &[u8]) -> Result<impl RecordBatchReader> {
         let mut stream = FFI_ArrowArrayStream::empty();
         let driver = self.ffi_driver();
         let mut connection = self.inner.connection.lock().unwrap();
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionReadPartition);
-        let partition = partition.as_ref();
         let status = unsafe {
             method(
                 connection.deref_mut(),

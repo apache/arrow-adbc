@@ -24,7 +24,7 @@ use std::fmt;
 use adbc_core::{
     error::Result,
     options::{OptionConnection, OptionValue},
-    Database as _,
+    sync::Database as _,
 };
 
 #[cfg(feature = "env")]
