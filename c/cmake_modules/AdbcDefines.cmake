@@ -84,6 +84,8 @@ if(MSVC)
   # Nanoarrow emits a lot of conversion warnings
   add_compile_options(/wd4365)
   add_compile_options(/wd4242)
+  # Don't warn about hidden virtual functions (see DriverQuirks)
+  add_compile_options(/wd4266)
   add_compile_options(/wd4458)
   add_compile_options(/wd4514)
   add_compile_options(/wd4582)
@@ -97,6 +99,18 @@ if(MSVC)
   add_compile_options(/wd4820)
   # Don't warn about enforcing left-to-right evaluation order for operator[]
   add_compile_options(/wd4866)
+  # Don't warn about unary minus applied to unsigned type
+  add_compile_options(/wd4146)
+  # Don't warn about type conversions that may lose data
+  add_compile_options(/wd4244)
+  # Don't warn about size_t to int conversions
+  add_compile_options(/wd4267)
+  # Don't warn about double to float truncation
+  add_compile_options(/wd4305)
+  # Don't warn about signed integral constant overflow
+  add_compile_options(/wd4307)
+  # Don't warn about implicitly deleted move constructors in GoogleTest fixtures
+  add_compile_options(/wd5026)
   add_compile_options(/wd5027)
   add_compile_options(/wd5039)
   add_compile_options(/wd5045)

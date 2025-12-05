@@ -39,6 +39,8 @@ using SqlInfoValue = std::variant<std::string, int64_t>;
 /// \brief Configuration for driver-specific behavior.
 class DriverQuirks {
  public:
+  virtual ~DriverQuirks() = default;
+
   /// \brief Do any initialization between New and Init.
   virtual AdbcStatusCode SetupDatabase(struct AdbcDatabase* database,
                                        struct AdbcError* error) const {
@@ -253,6 +255,8 @@ class DriverQuirks {
 
 class DatabaseTest {
  public:
+  virtual ~DatabaseTest() = default;
+
   virtual const DriverQuirks* quirks() const = 0;
 
   void SetUpTest();
@@ -275,6 +279,8 @@ class DatabaseTest {
 
 class ConnectionTest {
  public:
+  virtual ~ConnectionTest() = default;
+
   virtual const DriverQuirks* quirks() const = 0;
 
   void SetUpTest();
@@ -355,6 +361,8 @@ class ConnectionTest {
 
 class StatementTest {
  public:
+  virtual ~StatementTest() = default;
+
   virtual const DriverQuirks* quirks() const = 0;
 
   void SetUpTest();
