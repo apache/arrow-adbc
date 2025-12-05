@@ -218,7 +218,7 @@ impl TryFrom<u32> for InfoCode {
     }
 }
 
-/// Depth parameter for [get_objects][crate::AsyncConnection::get_objects] method.
+/// Depth parameter for [get_objects][crate::Connection::get_objects] method.
 #[derive(Debug)]
 pub enum ObjectDepth {
     /// Catalogs, schemas, tables, and columns.
@@ -374,19 +374,19 @@ pub enum OptionStatement {
     Temporary,
     /// Whether query execution is nonblocking. By default, execution is blocking.
     ///
-    /// When enabled, [execute_partitions][crate::AsyncStatement::execute_partitions]
+    /// When enabled, [execute_partitions][crate::Statement::execute_partitions]
     /// will return partitions as soon as they are available, instead of returning
     /// them all at the end. When there are no more to return, it will return an
-    /// empty set of partitions. The methods [execute][crate::AsyncStatement::execute],
-    /// [execute_schema][crate::AsyncStatement::execute_schema] and
-    /// [execute_update][crate::AsyncStatement::execute_update] are not affected.
+    /// empty set of partitions. The methods [execute][crate::Statement::execute],
+    /// [execute_schema][crate::Statement::execute_schema] and
+    /// [execute_update][crate::Statement::execute_update] are not affected.
     ///
     /// # Since
     ///
     /// ADBC API revision 1.1.0
     Incremental,
     /// Get the progress of a query. It's a read-only option that should be
-    /// read with [get_option_double][crate::AsyncOptionable::get_option_double].
+    /// read with [get_option_double][crate::Optionable::get_option_double].
     ///
     /// The value is not necessarily in any particular range or have any
     /// particular units. For example, it might be a percentage, bytes of data,
@@ -400,7 +400,7 @@ pub enum OptionStatement {
     /// ADBC API revision 1.1.0
     Progress,
     /// Get the maximum progress of a query. It's a read-only option that should be
-    /// read with [get_option_double][crate::AsyncOptionable::get_option_double].
+    /// read with [get_option_double][crate::Optionable::get_option_double].
     ///
     /// This is the value of [OptionStatement::Progress] for a completed query.
     /// If not supported, or if the value is nonpositive, then the maximum is not

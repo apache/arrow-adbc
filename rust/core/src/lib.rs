@@ -31,10 +31,25 @@
 //! # Native Rust drivers
 //!
 //! Native Rust drivers will implement the abstract API consisting of the traits:
-//! - [AsyncDriver]
-//! - [AsyncDatabase]
-//! - [AsyncConnection]
-//! - [AsyncStatement]
+//!
+//! - [Driver]
+//! - [Database]
+//! - [Connection]
+//! - [Statement]
+//!
+//! or async traits:
+//!
+//! - [crate::non_blocking::AsyncDriver]
+//! - [crate::non_blocking::AsyncDatabase]
+//! - [crate::non_blocking::AsyncConnection]
+//! - [crate::non_blocking::AsyncStatement]
+//!
+//! or async traits that doesn't require Send bound:
+//!
+//! - [crate::non_blocking::LocalAsyncDriver]
+//! - [crate::non_blocking::LocalAsyncDatabase]
+//! - [crate::non_blocking::LocalAsyncConnection]
+//! - [crate::non_blocking::LocalAsyncStatement]
 //!
 //! For drivers implemented in Rust, using these will be more efficient and
 //! safe, since it avoids the overhead of going through C FFI.
@@ -61,10 +76,10 @@ pub const LOAD_FLAG_DEFAULT: LoadFlags = LOAD_FLAG_SEARCH_ENV
     | LOAD_FLAG_ALLOW_RELATIVE_PATHS;
 
 /// Each data partition is described by an opaque byte array and can be
-/// retrieved with [AsyncConnection::read_partition].
+/// retrieved with [crate::Connection::read_partition].
 pub type Partitions = Vec<Vec<u8>>;
 
-/// A partitioned result set as returned by [AsyncStatement::execute_partitions].
+/// A partitioned result set as returned by [crate::Statement::execute_partitions].
 #[derive(Debug, PartialEq, Eq)]
 pub struct PartitionedResult {
     /// The result partitions.

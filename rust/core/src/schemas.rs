@@ -21,7 +21,7 @@ use std::sync::{Arc, LazyLock};
 
 use arrow_schema::{DataType, Field, Schema, SchemaRef, UnionFields, UnionMode};
 
-/// Schema of the data returned by [get_table_types][crate::AsyncConnection::get_table_types].
+/// Schema of the data returned by [get_table_types][crate::Connection::get_table_types].
 pub static GET_TABLE_TYPES_SCHEMA: LazyLock<SchemaRef> = LazyLock::new(|| {
     Arc::new(Schema::new(vec![Field::new(
         "table_type",
@@ -30,7 +30,7 @@ pub static GET_TABLE_TYPES_SCHEMA: LazyLock<SchemaRef> = LazyLock::new(|| {
     )]))
 });
 
-/// Schema of the data returned by [get_info][crate::AsyncConnection::get_info].
+/// Schema of the data returned by [get_info][crate::Connection::get_info].
 pub static GET_INFO_SCHEMA: LazyLock<SchemaRef> = LazyLock::new(|| {
     let info_schema = DataType::Union(
         UnionFields::new(
@@ -64,7 +64,7 @@ pub static GET_INFO_SCHEMA: LazyLock<SchemaRef> = LazyLock::new(|| {
     ]))
 });
 
-/// Schema of data returned by [get_statistic_names][crate::AsyncConnection::get_statistic_names].
+/// Schema of data returned by [get_statistic_names][crate::Connection::get_statistic_names].
 pub static GET_STATISTIC_NAMES_SCHEMA: LazyLock<SchemaRef> = LazyLock::new(|| {
     Arc::new(Schema::new(vec![
         Field::new("statistic_name", DataType::Utf8, false),
@@ -114,7 +114,7 @@ pub static STATISTICS_DB_SCHEMA_SCHEMA: LazyLock<DataType> = LazyLock::new(|| {
     )
 });
 
-/// Schema of data returned by [get_statistics][crate::AsyncConnection::get_statistics].
+/// Schema of data returned by [get_statistics][crate::Connection::get_statistics].
 pub static GET_STATISTICS_SCHEMA: LazyLock<SchemaRef> = LazyLock::new(|| {
     Arc::new(Schema::new(vec![
         Field::new("catalog_name", DataType::Utf8, true),
@@ -219,7 +219,7 @@ pub static OBJECTS_DB_SCHEMA_SCHEMA: LazyLock<DataType> = LazyLock::new(|| {
     )
 });
 
-/// Schema of data returned by [get_objects][crate::AsyncConnection::get_objects].
+/// Schema of data returned by [get_objects][crate::Connection::get_objects].
 pub static GET_OBJECTS_SCHEMA: LazyLock<SchemaRef> = LazyLock::new(|| {
     Arc::new(Schema::new(vec![
         Field::new("catalog_name", DataType::Utf8, true),
