@@ -16,8 +16,8 @@
 // under the License.
 #![allow(refining_impl_trait)]
 
-use adbc_core::executor::AsyncExecutor;
 use adbc_core::non_blocking::{AsyncConnection, AsyncDatabase, AsyncDriver, AsyncStatement};
+use adbc_core::syncify::AsyncExecutor;
 use adbc_core::{
     constants,
     non_blocking::{AsyncOptionable, RecordBatchStream},
@@ -986,5 +986,5 @@ impl AsyncExecutor for TokioRuntime {
 #[cfg(feature = "ffi")]
 adbc_ffi::export_driver!(
     DataFusionDriverInit,
-    adbc_core::SyncDriverWrapper::<TokioRuntime, DataFusionDriver>
+    adbc_core::syncify::SyncDriverWrapper::<TokioRuntime, DataFusionDriver>
 );

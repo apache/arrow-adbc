@@ -56,11 +56,11 @@
 
 pub mod constants;
 pub mod error;
-pub mod executor;
 pub mod non_blocking;
 pub mod options;
 pub mod schemas;
 pub mod sync;
+pub mod syncify;
 
 pub use sync::*;
 
