@@ -137,7 +137,7 @@ func (d *databaseImpl) resolveConnectionOptions() ([]dbsql.ConnOption, error) {
 		if timeout == 0 {
 			timeout = DefaultExternalBrowserTimeout
 		}
-		authenticator, err := u2m.NewAuthenticator(d.serverHostname, timeout)
+		authenticator, err := u2m.NewAuthenticator(d.serverHostname, timeout, 8020) // App Connection default
 		if err != nil {
 			return nil, adbc.Error{
 				Code: adbc.StatusInvalidState,
