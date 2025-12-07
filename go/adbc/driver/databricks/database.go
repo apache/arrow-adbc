@@ -50,7 +50,7 @@ type databaseImpl struct {
 	needsRefresh bool // Whether we need to re-initialize
 
 	// Connection parameters
-	uri            string // URI connection string (alternative to individual parameters)
+	uri            string // URI connection string
 	serverHostname string
 	httpPath       string
 	accessToken    string
@@ -157,17 +157,15 @@ func (d *databaseImpl) resolveConnectionOptions() ([]dbsql.ConnOption, error) {
 
 func (d *databaseImpl) initializeConnectionPool(ctx context.Context) (*sql.DB, error) {
 	var db *sql.DB
-	var err error
 
-	// Use URI if provided, otherwise use individual options
+	// Use URI if provided
 	if d.uri != "" {
-		// Use databricks-sql-go's built-in DSN parsing
+		var err error
 		db, err = sql.Open("databricks", d.uri)
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		// Use individual connection options (existing behavior)
 		opts, err := d.resolveConnectionOptions()
 		if err != nil {
 			return nil, err
