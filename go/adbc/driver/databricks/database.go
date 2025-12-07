@@ -50,7 +50,7 @@ type databaseImpl struct {
 	needsRefresh bool // Whether we need to re-initialize
 
 	// Connection parameters
-	uri            string // URI connection string
+	uri            string
 	serverHostname string
 	httpPath       string
 	accessToken    string
