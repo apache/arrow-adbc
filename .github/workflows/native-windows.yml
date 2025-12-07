@@ -356,13 +356,32 @@ jobs:
           New-Item -ItemType Directory -Force -Path build | Out-Null
           Push-Location build
 
+          # Needed for gendef tool in GoUtils.cmake
+          # msys64 is pre-installed on windows-latest but not added to path. C:\msys64\mingw64\bin is where gendef lives
+          $env:PATH = "C:\msys64\mingw64\bin;C:\msys64\usr\bin\;C:\msys64\ucrt64\bin;$env:PATH"
+          pacman --noconfirm -S mingw-w64-i686-tools mingw-w64-x86_64-tools          
+
           # XXX(apache/arrow-adbc#616): must use Release build to line up with gtest
           # Use the desired Visual Studio version as the generator, so that cmake generates the required vcxproj files in order to use msbuild for building and installing.
-          cmake ../c -G "Visual Studio 17 2022" --preset multi-config-windows -DCMAKE_INSTALL_PREFIX="../local" -DCMAKE_VERBOSE_MAKEFILE=ON
-          if (-not $?) { exit 1 }
+          cmake ../c --preset multi-config-windows -DCMAKE_INSTALL_PREFIX="../local" -DCMAKE_VERBOSE_MAKEFILE=ON
 
-          msbuild ALL_BUILD.vcxproj /p:Configuration=Release /p:Platform=x64 /m
-          if (-not $?) { exit 1 }
+          cmake --build . --target install --config Release --parallel
 
-          msbuild INSTALL.vcxproj /p:Configuration=Release /p:Platform=x64 /m
-          if (-not $?) { exit 1 }
+          Pop-Location
+
+          # Copy vcpkg runtime dependencies. Required for test execution.
+          Copy-Item "$env:VCPKG_ROOT\installed\x64-windows\bin\*.dll" -Destination local\bin -Force
+          Copy-Item "$env:VCPKG_ROOT\installed\x64-windows\lib\*.lib" -Destination local\lib -Force
+
+      - name: Test Driver Manager
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_MANAGER: "1"
+          BUILD_DRIVER_MANAGER_USER_CONFIG_TEST: "1"
+        run: .\ci\scripts\cpp_test.ps1 $pwd\build $pwd\local
+
+      - name: Test Driver SQLite
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_SQLITE: "1"
+        run: .\ci\scripts\cpp_test.ps1 $pwd\build $pwd\local
