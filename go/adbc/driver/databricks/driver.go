@@ -40,6 +40,7 @@ import (
 
 const (
 	// Connection options
+	OptionURI            = "uri"
 	OptionServerHostname = "databricks.server_hostname"
 	OptionHTTPPath       = "databricks.http_path"
 	OptionAccessToken    = "databricks.access_token"

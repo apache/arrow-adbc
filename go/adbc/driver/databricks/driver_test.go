@@ -42,6 +42,7 @@ type DatabricksQuirks struct {
 	httpPath    string
 	token       string
 	port        string
+	uri         string // The URI to use if set (takes precedence over individual options)
 }
 
 func (d *DatabricksQuirks) SetupDriver(t *testing.T) adbc.Driver {
@@ -54,6 +55,14 @@ func (d *DatabricksQuirks) TearDownDriver(t *testing.T, _ adbc.Driver) {
 }
 
 func (d *DatabricksQuirks) DatabaseOptions() map[string]string {
+	if d.uri != "" {
+		// Use URI (takes precedence over individual options)
+		return map[string]string{
+			databricks.OptionURI: d.uri,
+		}
+	}
+
+	// Use individual options (existing approach)
 	opts := map[string]string{
 		databricks.OptionServerHostname: d.hostname,
 		databricks.OptionHTTPPath:       d.httpPath,
@@ -322,6 +331,20 @@ func withQuirks(t *testing.T, fn func(*DatabricksQuirks)) {
 	fn(q)
 }
 
+func withQuirksURI(t *testing.T, fn func(*DatabricksQuirks)) {
+	// Check if DATABRICKS_URI is available
+	uri := os.Getenv("DATABRICKS_URI")
+	if uri == "" {
+		t.Skip("DATABRICKS_URI not defined, skipping URI tests")
+	}
+
+	// Test with URI
+	q := &DatabricksQuirks{
+		uri: uri,
+	}
+	fn(q)
+}
+
 func TestValidation(t *testing.T) {
 	withQuirks(t, func(q *DatabricksQuirks) {
 		suite.Run(t, &validation.DatabaseTests{Quirks: q})
@@ -332,6 +355,12 @@ func TestValidation(t *testing.T) {
 
 func TestDatabricks(t *testing.T) {
 	withQuirks(t, func(q *DatabricksQuirks) {
+		suite.Run(t, &DatabricksTests{Quirks: q})
+	})
+}
+
+func TestDatabricksWithURI(t *testing.T) {
+	withQuirksURI(t, func(q *DatabricksQuirks) {
 		suite.Run(t, &DatabricksTests{Quirks: q})
 	})
 }

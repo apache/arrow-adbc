@@ -50,6 +50,7 @@ type databaseImpl struct {
 	needsRefresh bool // Whether we need to re-initialize
 
 	// Connection parameters
+	uri            string // URI connection string (alternative to individual parameters)
 	serverHostname string
 	httpPath       string
 	accessToken    string
@@ -155,19 +156,30 @@ func (d *databaseImpl) resolveConnectionOptions() ([]dbsql.ConnOption, error) {
 }
 
 func (d *databaseImpl) initializeConnectionPool(ctx context.Context) (*sql.DB, error) {
-	opts, err := d.resolveConnectionOptions()
+	var db *sql.DB
+	var err error
 
-	if err != nil {
-		return nil, err
+	// Use URI if provided, otherwise use individual options
+	if d.uri != "" {
+		// Use databricks-sql-go's built-in DSN parsing
+		db, err = sql.Open("databricks", d.uri)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		// Use individual connection options (existing behavior)
+		opts, err := d.resolveConnectionOptions()
+		if err != nil {
+			return nil, err
+		}
+
+		connector, err := dbsql.NewConnector(opts...)
+		if err != nil {
+			return nil, err
+		}
+
+		db = sql.OpenDB(connector)
 	}
-
-	connector, err := dbsql.NewConnector(opts...)
-
-	if err != nil {
-		return nil, err
-	}
-
-	db := sql.OpenDB(connector)
 
 	// Test the connection
 	if err := db.PingContext(ctx); err != nil {
@@ -233,6 +245,8 @@ func (d *databaseImpl) Close() error {
 
 func (d *databaseImpl) GetOption(key string) (string, error) {
 	switch key {
+	case OptionURI:
+		return d.uri, nil
 	case OptionServerHostname:
 		return d.serverHostname, nil
 	case OptionHTTPPath:
@@ -296,6 +310,16 @@ func (d *databaseImpl) SetOption(key, value string) error {
 	// We need to re-initialize the db/connection pool if options change
 	d.needsRefresh = true
 	switch key {
+	case OptionURI:
+		// Strip the databricks:// scheme since databricks-sql-go expects raw DSN format
+		if strings.HasPrefix(value, "databricks://") {
+			d.uri = strings.TrimPrefix(value, "databricks://")
+		} else {
+			return adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("invalid URI scheme: expected 'databricks://', got '%s'", value),
+			}
+		}
 	case OptionServerHostname:
 		d.serverHostname = value
 	case OptionHTTPPath:
