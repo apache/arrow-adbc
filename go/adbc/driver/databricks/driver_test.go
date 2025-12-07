@@ -57,7 +57,7 @@ func (d *DatabricksQuirks) TearDownDriver(t *testing.T, _ adbc.Driver) {
 func (d *DatabricksQuirks) DatabaseOptions() map[string]string {
 	if d.uri != "" {
 		return map[string]string{
-			databricks.OptionURI: d.uri,
+			adbc.OptionKeyURI: d.uri,
 		}
 	}
 

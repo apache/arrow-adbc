@@ -243,7 +243,7 @@ func (d *databaseImpl) Close() error {
 
 func (d *databaseImpl) GetOption(key string) (string, error) {
 	switch key {
-	case OptionURI:
+	case adbc.OptionKeyURI:
 		return d.uri, nil
 	case OptionServerHostname:
 		return d.serverHostname, nil
@@ -308,7 +308,7 @@ func (d *databaseImpl) SetOption(key, value string) error {
 	// We need to re-initialize the db/connection pool if options change
 	d.needsRefresh = true
 	switch key {
-	case OptionURI:
+	case adbc.OptionKeyURI:
 		// Strip the databricks:// scheme since databricks-sql-go expects raw DSN format
 		if strings.HasPrefix(value, "databricks://") {
 			d.uri = strings.TrimPrefix(value, "databricks://")
