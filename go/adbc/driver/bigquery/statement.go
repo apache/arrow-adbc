@@ -28,16 +28,20 @@ import (
 	"runtime"
 	"slices"
 	"strconv"
+	"strings"
 	"time"
 
+	"cloud.google.com/go/aiplatform/apiv1/aiplatformpb"
 	"cloud.google.com/go/bigquery"
 	dataprocPB "cloud.google.com/go/dataproc/v2/apiv1/dataprocpb"
+	"cloud.google.com/go/storage"
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/ipc"
 	"github.com/apache/arrow-go/v18/arrow/memory"
 	"github.com/stretchr/testify/assert/yaml"
+	"google.golang.org/api/iterator"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -86,6 +90,16 @@ type statement struct {
 	writeGCSBucket     string
 	writeGCSObjectName string
 	writeGCSContent    string
+
+	//Notebook Execute Job
+	createNotebookExecuteJobGscPath       string
+	createNotebookExecuteJobModelFileName string
+	createNotebookExecuteJobModelName     string
+	createNotebookExecuteJobGCSBucket     string
+	createNotebookExecuteJobTemplateId    string
+	createNotebookExecuteJobParent        string
+	createNotebookExecuteJobProject       string
+	createNotebookExecuteJobRegion        string
 
 	// Field that contains Table.update columns descriptions
 	updateTableColumnsDescription string
@@ -215,6 +229,22 @@ func (st *statement) GetOption(key string) (string, error) {
 		return st.writeGCSObjectName, nil
 	case OptionStringWriteGCSContent:
 		return st.writeGCSContent, nil
+	case OptionStringNotebookExecuteJobGscPath:
+		return st.createNotebookExecuteJobGscPath, nil
+	case OptionStringNotebookExecuteJobModelFileName:
+		return st.createNotebookExecuteJobModelFileName, nil
+	case OptionStringNotebookExecuteJobModelName:
+		return st.createNotebookExecuteJobModelName, nil
+	case OptionStringNotebookExecuteJobGscBucket:
+		return st.createNotebookExecuteJobGCSBucket, nil
+	case OptionStringNotebookExecuteJobTemplateId:
+		return st.createNotebookExecuteJobTemplateId, nil
+	case OptionStringNotebookExecuteJobParent:
+		return st.createNotebookExecuteJobParent, nil
+	case OptionStringNotebookExecuteJobProject:
+		return st.createNotebookExecuteJobProject, nil
+	case OptionStringNotebookExecuteJobRegion:
+		return st.createNotebookExecuteJobRegion, nil
 
 	default:
 		val, err := st.cnxn.GetOption(key)
@@ -385,6 +415,22 @@ func (st *statement) SetOption(key string, v string) error {
 		} else {
 			return err
 		}
+	case OptionStringNotebookExecuteJobGscPath:
+		st.createNotebookExecuteJobGscPath = v
+	case OptionStringNotebookExecuteJobModelFileName:
+		st.createNotebookExecuteJobModelFileName = v
+	case OptionStringNotebookExecuteJobModelName:
+		st.createNotebookExecuteJobModelName = v
+	case OptionStringNotebookExecuteJobGscBucket:
+		st.createNotebookExecuteJobGCSBucket = v
+	case OptionStringNotebookExecuteJobTemplateId:
+		st.createNotebookExecuteJobTemplateId = v
+	case OptionStringNotebookExecuteJobParent:
+		st.createNotebookExecuteJobParent = v
+	case OptionStringNotebookExecuteJobProject:
+		st.createNotebookExecuteJobProject = v
+	case OptionStringNotebookExecuteJobRegion:
+		st.createNotebookExecuteJobRegion = v
 	default:
 		return adbc.Error{
 			Code: adbc.StatusInvalidArgument,
@@ -446,6 +492,10 @@ func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int6
 
 	if st.submitJobReqClusterName != "" {
 		return st.executeSubmitJobAsOperation(ctx)
+	}
+
+	if st.createNotebookExecuteJobParent != "" {
+		return st.executeCreateNotebookExecutionJob(ctx)
 	}
 
 	if st.writeGCSBucket != "" {
@@ -1320,6 +1370,189 @@ func (st *statement) writeToGCS(ctx context.Context) (array.RecordReader, int64,
 	return emptyResult()
 }
 
+func (st *statement) getNotebookTemplateName(ctx context.Context) (string, error) {
+	client, err := st.cnxn.newNotebookClient(ctx, st.createNotebookExecuteJobRegion)
+	if err != nil {
+		return "", fmt.Errorf("failed to create Dataproc client: %w", err)
+	}
+	defer client.Close()
+
+	req := &aiplatformpb.ListNotebookRuntimeTemplatesRequest{
+		Parent: st.createNotebookExecuteJobParent,
+		Filter: "notebookRuntimeType = ONE_CLICK",
+	}
+
+	it := client.ListNotebookRuntimeTemplates(ctx, req)
+	tmpl, err := it.Next()
+	if err == iterator.Done {
+		fmt.Println(`No default template found, a new one will be created but with
+			disabled internet access. If your models do require internet access,
+			please go to the GCP console and do either:
+				1. Recreate the default template yourself with enabled internet access. OR
+				2. Specify your own template ID which has enabled internet access.`)
+
+		template := &aiplatformpb.NotebookRuntimeTemplate{
+			DisplayName:         "default-one-click-notebook",
+			NotebookRuntimeType: aiplatformpb.NotebookRuntimeType_ONE_CLICK,
+			MachineSpec: &aiplatformpb.MachineSpec{
+				MachineType: "e2-standard-4",
+			},
+			NetworkSpec: &aiplatformpb.NetworkSpec{
+				EnableInternetAccess: false,
+				Network:              fmt.Sprintf("projects/%s/global/networks/default", st.createNotebookExecuteJobProject),
+				Subnetwork:           fmt.Sprintf("projects/%s/regions/%s/subnetworks/default", st.createNotebookExecuteJobProject, st.createNotebookExecuteJobRegion),
+			},
+		}
+
+		createTemplateReq := &aiplatformpb.CreateNotebookRuntimeTemplateRequest{
+			Parent:                  st.createNotebookExecuteJobParent,
+			NotebookRuntimeTemplate: template,
+		}
+
+		op, err := client.CreateNotebookRuntimeTemplate(ctx, createTemplateReq)
+		if err != nil {
+			return "", fmt.Errorf("failed to create notebook runtime template: %w", err)
+		}
+
+		resp, err := op.Wait(ctx)
+		if err != nil {
+			return "", fmt.Errorf("operation failed: %w", err)
+		}
+
+		return resp.GetName(), nil
+
+	}
+
+	if err != nil {
+		return "", fmt.Errorf("failed to list runtime templates: %w", err)
+	}
+	return tmpl.GetName(), nil
+}
+
+func (st *statement) executeCreateNotebookExecutionJob(ctx context.Context) (array.RecordReader, int64, error) {
+	client, err := st.cnxn.newNotebookClient(ctx, st.createNotebookExecuteJobRegion)
+	if err != nil {
+		return nil, -1, fmt.Errorf("failed to create notebook client: %w", err)
+	}
+	defer client.Close()
+
+	templateName := ""
+	if st.createNotebookExecuteJobTemplateId != "" {
+		templateName = fmt.Sprintf(
+			"projects/%s/locations/%s/notebookRuntimeTemplates/%s",
+			st.createNotebookExecuteJobProject, st.createNotebookExecuteJobRegion, st.createNotebookExecuteJobTemplateId,
+		)
+	} else {
+		templateName, err = st.getNotebookTemplateName(ctx)
+		if err != nil {
+			return nil, -1, err
+		}
+	}
+
+	job := &aiplatformpb.NotebookExecutionJob{
+		NotebookSource: &aiplatformpb.NotebookExecutionJob_GcsNotebookSource_{
+			GcsNotebookSource: &aiplatformpb.NotebookExecutionJob_GcsNotebookSource{
+				Uri: st.createNotebookExecuteJobGscPath,
+			},
+		},
+		ExecutionSink: &aiplatformpb.NotebookExecutionJob_GcsOutputUri{
+			GcsOutputUri: fmt.Sprintf(
+				"gs://%s/%s/logs",
+				st.createNotebookExecuteJobGCSBucket, st.createNotebookExecuteJobModelFileName,
+			),
+		},
+		DisplayName: st.createBatchReqBatchId,
+		EnvironmentSpec: &aiplatformpb.NotebookExecutionJob_NotebookRuntimeTemplateResourceName{
+			NotebookRuntimeTemplateResourceName: templateName,
+		},
+	}
+
+	job, err = st.cnxn.addExecutionIdentitiyDetails(ctx, job)
+	if err != nil {
+		return nil, -1, fmt.Errorf("failed to add execution identity: %w", err)
+	}
+
+	req := &aiplatformpb.CreateNotebookExecutionJobRequest{
+		Parent:               st.createNotebookExecuteJobParent,
+		NotebookExecutionJob: job,
+	}
+
+	op, err := client.CreateNotebookExecutionJob(ctx, req)
+	if err != nil {
+		return nil, -1, fmt.Errorf("failed to create notebook runtime execution job: %w", err)
+	}
+
+	lro_name := op.Name()
+	parts := strings.Split(lro_name, "/operations/")
+	jobName := parts[0]
+
+	waitCtx, cancel := context.WithTimeout(ctx, time.Duration(st.dataprocPoolingTimeout)*time.Second)
+	defer cancel()
+
+	retrievedJob, err := op.Wait(waitCtx)
+	if err != nil {
+		return nil, -1, fmt.Errorf("operation failed: %w", err)
+	}
+
+	elapsed := time.Duration(0)
+
+	for {
+		var err error
+		retrievedJob, err = client.GetNotebookExecutionJob(ctx, &aiplatformpb.GetNotebookExecutionJobRequest{
+			Name: jobName,
+		})
+
+		jobState := retrievedJob.JobState
+		if jobState == aiplatformpb.JobState_JOB_STATE_SUCCEEDED ||
+			jobState == aiplatformpb.JobState_JOB_STATE_PARTIALLY_SUCCEEDED ||
+			jobState == aiplatformpb.JobState_JOB_STATE_FAILED ||
+			jobState == aiplatformpb.JobState_JOB_STATE_CANCELLED ||
+			jobState == aiplatformpb.JobState_JOB_STATE_EXPIRED {
+
+			break
+		}
+
+		if err != nil {
+			return nil, -1, fmt.Errorf("failed to get notebook execution job: %w", err)
+		}
+
+		if elapsed >= time.Duration(st.dataprocPoolingTimeout)*time.Second {
+			return nil, -1, fmt.Errorf("operation did not complete within %v; please cancel the job manually via GCP console", st.dataprocPoolingTimeout)
+		}
+
+		time.Sleep(30 * time.Second)
+		elapsed += 30 * time.Second
+	}
+
+	parts = strings.Split(jobName, "/")
+	jobID := parts[len(parts)-1]
+	gcsLogURI := fmt.Sprintf("%s/%s/%s.py", retrievedJob.GetGcsOutputUri(), jobID, st.createNotebookExecuteJobModelName)
+
+	gscClient, err := st.cnxn.newGCSClient(ctx)
+	if err != nil {
+		return nil, -1, fmt.Errorf("failed to create GCS client: %w", err)
+	}
+	defer client.Close()
+
+	data, err := readJSONFromGCS(ctx, gcsLogURI, gscClient)
+	if err != nil {
+		log.Printf("failed to read JSON from GCS: %v", err)
+	} else {
+		processGCSNotebookLog(data)
+	}
+
+	if retrievedJob.GetJobState() == aiplatformpb.JobState_JOB_STATE_SUCCEEDED {
+		log.Printf("Colab notebook execution job '%s' finished successfully.", retrievedJob.GetName())
+	} else if retrievedJob.GetJobState() == aiplatformpb.JobState_JOB_STATE_FAILED {
+		return nil, -1, fmt.Errorf("the colab notebook execution job '%s' failed", retrievedJob.GetName())
+	} else {
+		return nil, -1, fmt.Errorf("the colab notebook execution job '%s' finished with unexpected state: %s", retrievedJob.GetName(), retrievedJob.GetJobState().String())
+	}
+
+	return emptyResult()
+
+}
+
 // executeUpdateTableColumnsDescription updates the table columns descriptions
 // based on the JSON string in st.updateTableColumnsDescription
 //
@@ -1459,6 +1692,121 @@ func getFunctionName() string {
 		return "unknown"
 	}
 	return f.Name()
+}
+
+func readJSONFromGCS(ctx context.Context, gcsURI string, storageClient *storage.Client) (interface{}, error) {
+	parts := strings.SplitN(gcsURI[len("gs://"):], "/", 2)
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid GCS URI: %s", gcsURI)
+	}
+	bucketName := parts[0]
+	objectName := parts[1]
+
+	bucket := storageClient.Bucket(bucketName)
+	obj := bucket.Object(objectName)
+
+	reader, err := obj.NewReader(ctx)
+	if err != nil {
+		log.Printf("Error reading file from GCS: %v", err)
+		return nil, err
+	}
+	defer reader.Close()
+
+	content, err := io.ReadAll(reader)
+	if err != nil {
+		log.Printf("Error reading file content: %v", err)
+		return nil, err
+	}
+
+	var data any
+	if err := json.Unmarshal(content, &data); err != nil {
+		log.Printf("Error: File '%s' content is not valid JSON: %v", gcsURI, err)
+		return nil, nil
+	}
+
+	return data, nil
+}
+
+func processGCSNotebookLog(gcsLog any) {
+	logMap, ok := gcsLog.(map[string]any)
+	if !ok {
+		log.Printf("Invalid GCS log format: expected map[string]interface{}, got %T", gcsLog)
+		return
+	}
+
+	cellsRaw, ok := logMap["cells"]
+	if !ok {
+		log.Printf("No 'cells' found. Full content from GCS log: %+v", gcsLog)
+		return
+	}
+
+	cells, ok := cellsRaw.([]any)
+	if !ok || len(cells) == 0 {
+		log.Printf("No 'cells' found. Full content from GCS log: %+v", gcsLog)
+		return
+	}
+
+	firstCell, ok := cells[0].(map[string]any)
+	if !ok {
+		log.Printf("First cell has unexpected format: %+v", cells[0])
+		return
+	}
+
+	outputsRaw, ok := firstCell["outputs"]
+	if !ok {
+		log.Printf("No 'outputs' found. Full content from GCS log: %+v", gcsLog)
+		return
+	}
+
+	outputs, ok := outputsRaw.([]any)
+	if !ok || len(outputs) == 0 {
+		log.Printf("No 'outputs' found. Full content from GCS log: %+v", gcsLog)
+		return
+	}
+
+	formattedOutput, err := formatOutputs(outputs)
+	if err != nil {
+		log.Printf("Failed to format the outputs from GCS: %+v, error: %v", outputs, err)
+		return
+	}
+
+	log.Printf("Colab notebook runtime outputs from GCS: %s", formattedOutput)
+}
+
+func formatOutputs(outputList []any) (string, error) {
+	var formattedOutput strings.Builder
+	formattedOutput.WriteString("\n")
+
+	for _, item := range outputList {
+		switch v := item.(type) {
+		case map[string]any:
+			for key, value := range v {
+				formattedOutput.WriteString(fmt.Sprintf("%s:\n", key))
+
+				switch val := value.(type) {
+				case map[string]any:
+					for innerKey, innerValue := range val {
+						formattedOutput.WriteString(fmt.Sprintf("    %s: %v\n", innerKey, innerValue))
+					}
+				case string:
+					formattedOutput.WriteString(fmt.Sprintf("    %s\n", val))
+					if strings.TrimSpace(strings.ToLower(val)) == "error" {
+						return formattedOutput.String(), nil
+					}
+				default:
+					formattedOutput.WriteString(fmt.Sprintf("    %v\n", val))
+				}
+			}
+
+		default:
+			log.Printf("Unexpected output format of the Colab notebook: %T", item)
+			formattedOutput.WriteString(fmt.Sprintf("%v\n", item))
+		}
+
+		formattedOutput.WriteString("\n")
+	}
+
+	return formattedOutput.String(), nil
 }
 
 var _ adbc.GetSetOptions = (*statement)(nil)

@@ -22,16 +22,20 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
+	aiplatform "cloud.google.com/go/aiplatform/apiv1"
+	"cloud.google.com/go/aiplatform/apiv1/aiplatformpb"
 	"cloud.google.com/go/bigquery"
 	dataproc "cloud.google.com/go/dataproc/v2/apiv1"
 	"cloud.google.com/go/storage"
@@ -43,6 +47,7 @@ import (
 	"google.golang.org/api/impersonate"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
+	"google.golang.org/api/transport"
 )
 
 type connectionImpl struct {
@@ -758,6 +763,123 @@ func (c *connectionImpl) newGCSClient(ctx context.Context) (*storage.Client, err
 	}
 
 	return client, nil
+}
+
+func (c *connectionImpl) newNotebookClient(ctx context.Context, computeRegion string) (*aiplatform.NotebookClient, error) {
+	authOptions, err := c.authOptions(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	authOptions = append(authOptions, option.WithEndpoint(fmt.Sprintf("%s-aiplatform.googleapis.com:443", computeRegion)))
+
+	client, err := aiplatform.NewNotebookClient(ctx, authOptions...)
+	if err != nil {
+		return nil, err
+	}
+
+	return client, nil
+}
+
+func (c *connectionImpl) addExecutionIdentitiyDetails(ctx context.Context, job *aiplatformpb.NotebookExecutionJob) (*aiplatformpb.NotebookExecutionJob, error) {
+	switch c.authType {
+	case OptionValueAuthTypeJSONCredentialFile:
+		data, err := os.ReadFile(c.credentials)
+		if err != nil {
+			panic(fmt.Errorf("failed to read JSON file: %v", err))
+		}
+
+		var sa struct {
+			ClientEmail string `json:"client_email"`
+		}
+		if err := json.Unmarshal(data, &sa); err != nil {
+			panic(fmt.Errorf("failed to parse JSON: %v", err))
+		}
+		job.ExecutionIdentity = &aiplatformpb.NotebookExecutionJob_ServiceAccount{
+			ServiceAccount: sa.ClientEmail,
+		}
+		return job, nil
+	case OptionValueAuthTypeJSONCredentialString:
+		data := []byte(c.credentials)
+		var sa struct {
+			ClientEmail string `json:"client_email"`
+		}
+		if err := json.Unmarshal(data, &sa); err != nil {
+			panic(fmt.Errorf("failed to parse JSON string: %v", err))
+		}
+
+		job.ExecutionIdentity = &aiplatformpb.NotebookExecutionJob_ServiceAccount{
+			ServiceAccount: sa.ClientEmail,
+		}
+		return job, nil
+	case OptionValueAuthTypeDefault,
+		OptionValueAuthTypeUserAuthentication,
+		OptionValueAuthTypeTemporaryAccessToken:
+		if c.impersonateTargetPrincipal != "" {
+			job.ExecutionIdentity = &aiplatformpb.NotebookExecutionJob_ServiceAccount{
+				ServiceAccount: c.impersonateTargetPrincipal,
+			}
+		} else {
+			authOptions, err := c.authOptions(ctx)
+			if err != nil {
+				return nil, err
+			}
+			ts, _, err := transport.NewHTTPClient(ctx, append(authOptions, option.WithScopes("https://www.googleapis.com/auth/userinfo.email"))...)
+			if err != nil {
+				panic(err)
+			}
+			tokenSource := oauth2.StaticTokenSource(&oauth2.Token{}) // placeholder
+			if t, ok := ts.Transport.(*oauth2.Transport); ok {
+				tokenSource = t.Source
+			}
+			token, err := tokenSource.Token()
+			if err != nil {
+				panic(err)
+			}
+			url := "https://www.googleapis.com/oauth2/v2/userinfo"
+			req, err := http.NewRequest("GET", url, nil)
+			if err != nil {
+				panic(err)
+			}
+			req.Header.Add("Authorization", "Bearer "+token.AccessToken)
+			client := &http.Client{}
+			resp, err := client.Do(req)
+			if err != nil {
+				panic(err)
+			}
+			defer resp.Body.Close()
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				panic(err)
+			}
+			if resp.StatusCode != http.StatusOK {
+				panic(fmt.Errorf("failed to retrieve user info. Status: %d, Body: %s", resp.StatusCode, string(body)))
+			}
+			var data map[string]interface{}
+			if err := json.Unmarshal(body, &data); err != nil {
+				panic(err)
+			}
+			email, ok := data["email"].(string)
+			if !ok || email == "" {
+				panic(errors.New("authorization request to get user failed to return an email"))
+			}
+			if strings.HasSuffix(email, "iam.gserviceaccount.com") {
+				job.ExecutionIdentity = &aiplatformpb.NotebookExecutionJob_ServiceAccount{
+					ServiceAccount: email,
+				}
+			} else {
+				job.ExecutionIdentity = &aiplatformpb.NotebookExecutionJob_ExecutionUser{
+					ExecutionUser: email,
+				}
+			}
+		}
+		return job, nil
+	default:
+		return nil, adbc.Error{
+			Code: adbc.StatusInvalidArgument,
+			Msg:  "Unsupported credential method in BigFrames",
+		}
+	}
 }
 
 func (c *connectionImpl) hasImpersonationOptions() bool {
