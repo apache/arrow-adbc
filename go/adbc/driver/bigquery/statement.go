@@ -45,6 +45,10 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
+const (
+	ContextKeyUseStorageApiDisabledClient = "USE_STORAGE_API_DISABLED_CLIENT"
+)
+
 // todos for bigqueryConfig
 // - TableDefinitions
 // - Parameters
@@ -60,12 +64,13 @@ type statement struct {
 	alloc memory.Allocator
 	cnxn  *connectionImpl
 
-	queryConfig            bigquery.QueryConfig
-	parameterMode          string
-	paramBinding           arrow.RecordBatch
-	streamBinding          array.RecordReader
-	resultRecordBufferSize int
-	prefetchConcurrency    int
+	queryConfig                 bigquery.QueryConfig
+	parameterMode               string
+	paramBinding                arrow.RecordBatch
+	streamBinding               array.RecordReader
+	resultRecordBufferSize      int
+	prefetchConcurrency         int
+	useStorageApiDisabledClient bool
 
 	// Ingest related fields
 	ingestPath          string
@@ -106,6 +111,11 @@ type statement struct {
 
 	// Field that contains the JSON string to authorize a view to source datasets
 	authorizeViewToDatasets string
+
+	// Copy table fields
+	copyTableSource           string
+	copyTableDestination      string
+	copyTableWriteDisposition string
 
 	// Wrap errors with a link to failed job
 	linkFailedJob bool
@@ -201,6 +211,8 @@ func (st *statement) GetOption(key string) (string, error) {
 		return strconv.FormatBool(st.queryConfig.CreateSession), nil
 	case OptionBoolQueryLinkFailedJob:
 		return strconv.FormatBool(st.linkFailedJob), nil
+	case OptionBoolUseStorageApiDisabledClient:
+		return strconv.FormatBool(st.useStorageApiDisabledClient), nil
 	case OptionStringIngestFileDelimiter:
 		return st.ingestFileDelimiter, nil
 	case OptionStringIngestPath:
@@ -245,7 +257,12 @@ func (st *statement) GetOption(key string) (string, error) {
 		return st.createNotebookExecuteJobProject, nil
 	case OptionStringNotebookExecuteJobRegion:
 		return st.createNotebookExecuteJobRegion, nil
-
+	case OptionStringCopyTableSource:
+		return st.copyTableSource, nil
+	case OptionStringCopyTableDestination:
+		return st.copyTableDestination, nil
+	case OptionStringCopyTableWriteDisposition:
+		return st.copyTableWriteDisposition, nil
 	default:
 		val, err := st.cnxn.GetOption(key)
 		if err == nil {
@@ -269,6 +286,11 @@ func (st *statement) GetOptionInt(key string) (int64, error) {
 		return int64(st.prefetchConcurrency), nil
 	case OptionIntDataprocReqPoolingTimeout:
 		return int64(st.dataprocPoolingTimeout), nil
+	case OptionBoolUseStorageApiDisabledClient:
+		if st.useStorageApiDisabledClient {
+			return 1, nil
+		}
+		return 0, nil
 	default:
 		val, err := st.cnxn.GetOptionInt(key)
 		if err == nil {
@@ -396,6 +418,12 @@ func (st *statement) SetOption(key string, v string) error {
 		st.writeGCSObjectName = v
 	case OptionStringWriteGCSContent:
 		st.writeGCSContent = v
+	case OptionStringCopyTableSource:
+		st.copyTableSource = v
+	case OptionStringCopyTableDestination:
+		st.copyTableDestination = v
+	case OptionStringCopyTableWriteDisposition:
+		st.copyTableWriteDisposition = v
 	case OptionJsonUpdateTableColumnsDescription:
 		st.updateTableColumnsDescription = v
 	case OptionIntDataprocReqPoolingTimeout:
@@ -431,6 +459,14 @@ func (st *statement) SetOption(key string, v string) error {
 		st.createNotebookExecuteJobProject = v
 	case OptionStringNotebookExecuteJobRegion:
 		st.createNotebookExecuteJobRegion = v
+	case OptionBoolUseStorageApiDisabledClient:
+		val, err := strconv.ParseBool(v)
+		if err == nil {
+			st.useStorageApiDisabledClient = val
+		} else {
+			return err
+		}
+		return nil
 	default:
 		return adbc.Error{
 			Code: adbc.StatusInvalidArgument,
@@ -502,6 +538,10 @@ func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int6
 		return st.writeToGCS(ctx)
 	}
 
+	if st.copyTableSource != "" {
+		return st.executeCopyTable(ctx)
+	}
+
 	if st.updateTableColumnsDescription != "" {
 		return st.executeUpdateTableColumnsDescription(ctx)
 	}
@@ -522,6 +562,7 @@ func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int6
 		return nil, -1, err
 	}
 
+	ctx = context.WithValue(ctx, ContextKeyUseStorageApiDisabledClient, st.useStorageApiDisabledClient)
 	return newRecordReader(ctx, st.query(), rdr, st.parameterMode, st.cnxn.Alloc, st.resultRecordBufferSize, st.prefetchConcurrency, st.linkFailedJob)
 }
 
@@ -534,7 +575,7 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 	}
 
 	if boundParameters == nil {
-		_, totalRows, err := runQuery(ctx, st.query(), true, st.linkFailedJob)
+		_, totalRows, err := runQuery(ctx, st.query(), true, st.linkFailedJob, st.alloc)
 		if err != nil {
 			return -1, err
 		}
@@ -552,7 +593,7 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (int64, error) {
 					st.queryConfig.Parameters = parameters
 				}
 
-				_, currentRows, err := runQuery(ctx, st.query(), true, st.linkFailedJob)
+				_, currentRows, err := runQuery(ctx, st.query(), true, st.linkFailedJob, st.alloc)
 				if err != nil {
 					return -1, err
 				}
@@ -601,7 +642,12 @@ func (st *statement) SetSubstraitPlan(plan []byte) error {
 }
 
 func (st *statement) query() *bigquery.Query {
-	query := st.cnxn.client.Query("")
+	var query *bigquery.Query
+	if st.useStorageApiDisabledClient && st.cnxn.clientStorageApiDisabled != nil {
+		query = st.cnxn.clientStorageApiDisabled.Query("")
+	} else {
+		query = st.cnxn.client.Query("")
+	}
 	query.QueryConfig = st.queryConfig
 	return query
 }
@@ -1249,14 +1295,49 @@ func (st *statement) executeIngest(ctx context.Context) (array.RecordReader, int
 	}
 
 	// For ingest operations, we return an empty record reader since there's no result set
-	emptySchema := arrow.NewSchema([]arrow.Field{}, nil)
-	emptyRecord := array.NewRecord(emptySchema, []arrow.Array{}, 0)
-	reader, err := array.NewRecordReader(emptySchema, []arrow.Record{emptyRecord})
-	if err != nil {
-		return nil, -1, err
+	return emptyResult()
+}
+
+func (st *statement) executeCopyTable(ctx context.Context) (array.RecordReader, int64, error) {
+	thisFunction := getFunctionName()
+
+	if st.copyTableSource == "" || st.copyTableDestination == "" {
+		return nil, -1, adbcError(adbc.StatusInvalidState, thisFunction, "copy_table requires both source and destination to be set")
 	}
 
-	return reader, 0, nil
+	source, err := stringToTable(st, st.copyTableSource)
+	if err != nil {
+		return nil, -1, adbcError(adbc.StatusInvalidArgument, thisFunction, fmt.Sprintf("invalid source table: %v", err))
+	}
+	dest, err := stringToTable(st, st.copyTableDestination)
+	if err != nil {
+		return nil, -1, adbcError(adbc.StatusInvalidArgument, thisFunction, fmt.Sprintf("invalid destination table: %v", err))
+	}
+
+	copier := st.cnxn.client.DatasetInProject(dest.ProjectID, dest.DatasetID).Table(dest.TableID).CopierFrom(source)
+	if st.copyTableWriteDisposition != "" {
+		writeDisposition, err := stringToTableWriteDisposition(st.copyTableWriteDisposition)
+		if err != nil {
+			return nil, -1, adbcError(adbc.StatusInvalidArgument, thisFunction, fmt.Sprintf("invalid write disposition: %v", err))
+		}
+		copier.WriteDisposition = writeDisposition
+	}
+
+	job, err := copier.Run(ctx)
+	if err != nil {
+		return nil, -1, adbcError(adbc.StatusInternal, thisFunction, fmt.Sprintf("failed to start copy job: %v", err))
+	}
+
+	status, err := job.Wait(ctx)
+	if err != nil {
+		return nil, -1, adbcError(adbc.StatusInternal, thisFunction, fmt.Sprintf("copy job failed or timed out: %v", err))
+	}
+
+	if status.Err() != nil {
+		return nil, -1, adbcError(adbc.StatusInternal, thisFunction, fmt.Sprintf("copy job execution failed: %v", status.Err()))
+	}
+
+	return emptyResult()
 }
 
 func (st *statement) executeDataprocCreateBatch(ctx context.Context) (array.RecordReader, int64, error) {
@@ -1665,8 +1746,7 @@ func tableEqual(self *bigquery.Table, other *bigquery.Table) bool {
 // emptyResult returns an empty record reader when the caller doesn't return any data
 func emptyResult() (array.RecordReader, int64, error) {
 	emptySchema := arrow.NewSchema([]arrow.Field{}, nil)
-	emptyRecord := array.NewRecord(emptySchema, []arrow.Array{}, 0)
-	reader, err := array.NewRecordReader(emptySchema, []arrow.Record{emptyRecord})
+	reader, err := array.NewRecordReader(emptySchema, []arrow.RecordBatch{})
 	if err != nil {
 		return nil, -1, err
 	}

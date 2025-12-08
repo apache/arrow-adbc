@@ -24,8 +24,11 @@ import (
 	"fmt"
 	"log"
 	"sync/atomic"
+	"time"
 
 	"cloud.google.com/go/bigquery"
+	"cloud.google.com/go/civil"
+
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
@@ -61,7 +64,7 @@ func checkContext(ctx context.Context, maybeErr error) error {
 	return ctx.Err()
 }
 
-func runQuery(ctx context.Context, query *bigquery.Query, executeUpdate bool, linkFailedJob bool) (bigquery.ArrowIterator, int64, error) {
+func runQuery(ctx context.Context, query *bigquery.Query, executeUpdate bool, linkFailedJob bool, alloc memory.Allocator) (bigquery.ArrowIterator, int64, error) {
 	job, err := query.Run(ctx)
 	if err != nil {
 		return nil, -1, err
@@ -83,24 +86,21 @@ func runQuery(ctx context.Context, query *bigquery.Query, executeUpdate bool, li
 	}
 
 	var arrowIterator bigquery.ArrowIterator
+	useLegacyAPI := ctx.Value(ContextKeyUseStorageApiDisabledClient).(bool)
 	if iter.TotalRows > 0 {
-		// !IsAccelerated() -> failed to get Arrow stream -> we are
-		// probably lacking permissions.  readSessionUser may sound
-		// unrelated but creating a "read session" is the first step
-		// of using the Storage API.  Note that Google swallows the
-		// real error, so this is the best we can do.
-		// https://cloud.google.com/bigquery/docs/reference/storage#create_a_session
-		if !iter.IsAccelerated() {
-			return nil, -1, adbc.Error{
-				Code: adbc.StatusUnauthorized,
-				Msg:  "[bigquery] Arrow reader requires roles/bigquery.readSessionUser, see https://github.com/apache/arrow-adbc/issues/3282",
+		if !useLegacyAPI {
+			if !iter.IsAccelerated() {
+				return nil, -1, fmt.Errorf("Storage API is not available for query: %s", jobLink)
 			}
-		}
-		if arrowIterator, err = iter.ArrowIterator(); err != nil {
-			if linkFailedJob {
-				return nil, -1, fmt.Errorf("%w (Query: %s)", err, jobLink)
+			// Storage API is available, use it
+			if arrowIterator, err = iter.ArrowIterator(); err != nil {
+				if linkFailedJob {
+					return nil, -1, fmt.Errorf("%w (Query: %s)", err, jobLink)
+				}
+				return nil, -1, err
 			}
-			return nil, -1, err
+		} else {
+			arrowIterator = newRowBasedArrowIterator(iter, alloc)
 		}
 	} else {
 		arrowIterator = emptyArrowIterator{iter.Schema}
@@ -135,7 +135,7 @@ func getQueryParameter(values arrow.RecordBatch, row int, parameterMode string) 
 }
 
 func runPlainQuery(ctx context.Context, query *bigquery.Query, alloc memory.Allocator, resultRecordBufferSize int, linkFailedJob bool) (bigqueryRdr *reader, totalRows int64, err error) {
-	arrowIterator, totalRows, err := runQuery(ctx, query, false, linkFailedJob)
+	arrowIterator, totalRows, err := runQuery(ctx, query, false, linkFailedJob, alloc)
 	if err != nil {
 		return nil, -1, err
 	}
@@ -192,7 +192,7 @@ func queryRecordWithSchemaCallback(ctx context.Context, group *errgroup.Group, q
 			query.Parameters = parameters
 		}
 
-		arrowIterator, rows, err := runQuery(ctx, query, false, linkFailedJob)
+		arrowIterator, rows, err := runQuery(ctx, query, false, linkFailedJob, alloc)
 		if err != nil {
 			return -1, err
 		}
@@ -364,6 +364,159 @@ func (e emptyArrowIterator) SerializedArrowSchema() []byte {
 	}
 
 	return buf.Bytes()
+}
+
+// RowBasedArrowIterator wraps a bigquery.RowIterator and implements the ArrowIterator interface
+// This is used when the Storage Read API cannot be used (e.g. to read data for pseudo-columns like _PARTITIONTIME)
+type RowBasedArrowIterator struct {
+	iter   *bigquery.RowIterator
+	schema bigquery.Schema
+	alloc  memory.Allocator
+	done   bool
+}
+
+func newRowBasedArrowIterator(iter *bigquery.RowIterator, alloc memory.Allocator) bigquery.ArrowIterator {
+	return &RowBasedArrowIterator{
+		iter:   iter,
+		schema: iter.Schema,
+		alloc:  alloc,
+		done:   false,
+	}
+}
+
+func (l *RowBasedArrowIterator) Next() (*bigquery.ArrowRecordBatch, error) {
+	if l.done {
+		return nil, iterator.Done
+	}
+
+	const batchSize = 1000
+	rows := make([][]bigquery.Value, 0, batchSize)
+
+	for i := 0; i < batchSize; i++ {
+		var row []bigquery.Value
+		err := l.iter.Next(&row)
+		if err == iterator.Done {
+			l.done = true
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		rows = append(rows, row)
+	}
+
+	if len(rows) == 0 {
+		return nil, iterator.Done
+	}
+
+	batch, err := rowsToArrowRecordBatch(l.schema, rows, l.alloc)
+	if err != nil {
+		log.Fatalf("Error converting rows to arrow record batch: %v", err)
+		return nil, err
+	}
+	defer batch.Release()
+
+	var buf bytes.Buffer
+	writer := ipc.NewWriter(&buf, ipc.WithSchema(batch.Schema()), ipc.WithAllocator(l.alloc))
+	if err := writer.Write(batch); err != nil {
+		return nil, err
+	}
+	if err := writer.Close(); err != nil {
+		return nil, err
+	}
+
+	return &bigquery.ArrowRecordBatch{
+		Data: buf.Bytes(),
+	}, nil
+}
+
+func (l *RowBasedArrowIterator) Schema() bigquery.Schema {
+	return l.schema
+}
+
+func (l *RowBasedArrowIterator) SerializedArrowSchema() []byte {
+	fields := make([]arrow.Field, len(l.schema))
+	for i, field := range l.schema {
+		f, err := buildField(field, 0)
+		if err != nil {
+			log.Fatalf("Error building field %s: %v", field.Name, err)
+		}
+		fields[i] = f
+	}
+
+	arrowSchema := arrow.NewSchema(fields, nil)
+
+	var buf bytes.Buffer
+	_ = ipc.NewWriter(&buf, ipc.WithSchema(arrowSchema))
+
+	return buf.Bytes()
+}
+
+func rowsToArrowRecordBatch(schema bigquery.Schema, rows [][]bigquery.Value, alloc memory.Allocator) (arrow.Record, error) {
+	if len(rows) == 0 {
+		return nil, fmt.Errorf("no rows to convert")
+	}
+
+	// Build a schema
+	fields := make([]arrow.Field, len(schema))
+	for i, field := range schema {
+		f, err := buildField(field, 0)
+		if err != nil {
+			return nil, err
+		}
+		fields[i] = f
+	}
+	arrowSchema := arrow.NewSchema(fields, nil)
+
+	// Build arrays for columns
+	builders := make([]array.Builder, len(schema))
+	for i, field := range fields {
+		builders[i] = array.NewBuilder(alloc, field.Type)
+	}
+	defer func() {
+		for _, b := range builders {
+			b.Release()
+		}
+	}()
+
+	// Populate data
+	for _, row := range rows {
+		for colIdx, val := range row {
+			if val == nil {
+				builders[colIdx].AppendNull()
+				continue
+			}
+
+			switch builder := builders[colIdx].(type) {
+			case *array.Date32Builder:
+				// BigQuery returns civil.Date for DATE columns
+				if d, ok := val.(civil.Date); ok {
+					t := time.Date(d.Year, time.Month(d.Month), d.Day, 0, 0, 0, 0, time.UTC)
+					builder.Append(arrow.Date32FromTime(t))
+				} else if t, ok := val.(time.Time); ok {
+					builder.Append(arrow.Date32FromTime(t))
+				} else {
+					builder.AppendNull()
+				}
+			case *array.TimestampBuilder:
+				if ts, ok := val.(time.Time); ok {
+					builder.Append(arrow.Timestamp(ts.UnixMicro()))
+				} else {
+					builder.AppendNull()
+				}
+			// TODO: Add support for other types as needed
+			default:
+				return nil, fmt.Errorf("USE_STORAGE_API_DISABLED_CLIENT is enabled, unsupported type conversion for column type %s of value %v", builder.Type().String(), val)
+			}
+		}
+	}
+
+	arrays := make([]arrow.Array, len(builders))
+	for i, b := range builders {
+		arrays[i] = b.NewArray()
+	}
+
+	return array.NewRecordBatch(arrowSchema, arrays, int64(len(rows))), nil
 }
 
 var _ array.RecordReader = (*reader)(nil)

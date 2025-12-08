@@ -80,6 +80,11 @@ const (
 	OptionIntQueryResultBufferSize    = "adbc.bigquery.sql.query.result_buffer_size"
 	OptionIntQueryPrefetchConcurrency = "adbc.bigquery.sql.query.prefetch_concurrency"
 
+	// OptionBoolUseStorageApiDisabledClient instructs the driver to use the legacy RowIterator API
+	// instead of the Storage Read API. This is required for queries that reference
+	// pseudo-columns like _PARTITIONDATE and _PARTITIONTIME.
+	OptionBoolUseStorageApiDisabledClient = "adbc.bigquery.sql.query.use_storage_api_disabled_client"
+
 	defaultQueryResultBufferSize    = 200
 	defaultQueryPrefetchConcurrency = 10
 
@@ -152,6 +157,10 @@ const (
 	// OptionBoolQueryLinkFailedJob instructs the driver to construct a link to the
 	// query job if it fails to run.
 	OptionBoolQueryLinkFailedJob = "adbc.bigquery.sql.query.link_failed_job"
+
+	OptionStringCopyTableSource           = "adbc.bigquery.copy_table.source"
+	OptionStringCopyTableDestination      = "adbc.bigquery.copy_table.destination"
+	OptionStringCopyTableWriteDisposition = "adbc.bigquery.copy_table.write_disposition"
 )
 
 var (

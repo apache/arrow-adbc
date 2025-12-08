@@ -81,7 +81,8 @@ type connectionImpl struct {
 	resultRecordBufferSize int
 	prefetchConcurrency    int
 
-	client *bigquery.Client
+	client                   *bigquery.Client
+	clientStorageApiDisabled *bigquery.Client // Client without Storage API for queries that use pseudo-columns like _PARTITIONDATE and _PARTITIONTIME
 }
 
 func (c *connectionImpl) datasetInProject(projectID, datasetID string) *bigquery.Dataset {
@@ -701,6 +702,24 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 		return err
 	}
 
+	storageReadClient, err := bigquery.NewClient(ctx, c.catalog, authOptions...)
+	if err != nil {
+		return err
+	}
+
+	if c.location != "" {
+		storageReadClient.Location = c.location
+	}
+
+	err = storageReadClient.EnableStorageReadClient(ctx, authOptions...)
+	if err != nil {
+		return err
+	}
+	c.client = storageReadClient
+
+	// Create a second client without the Storage API enabled
+	// since the Storage API returns null values for pseudo columns, for example _PARTITIONDATE
+	// EnableStorageReadClient should not be invoked for this client
 	client, err := bigquery.NewClient(ctx, c.catalog, authOptions...)
 	if err != nil {
 		return err
@@ -709,13 +728,8 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 	if c.location != "" {
 		client.Location = c.location
 	}
+	c.clientStorageApiDisabled = client
 
-	err = client.EnableStorageReadClient(ctx, authOptions...)
-	if err != nil {
-		return err
-	}
-
-	c.client = client
 	return nil
 }
 
