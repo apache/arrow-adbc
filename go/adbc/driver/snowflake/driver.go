@@ -92,7 +92,8 @@ const (
 	OptionAuthToken = "adbc.snowflake.sql.client_option.auth_token"
 	// specify the OKTAUrl to use for OKTA Authentication
 	OptionAuthOktaUrl = "adbc.snowflake.sql.client_option.okta_url"
-	// enable the session to persist even after the connection is closed
+	// Enable a heartbeat in the background to keep the connection session alive.
+	// Uses the client_session_keep_alive DSN parameter internally.
 	OptionKeepSessionAlive = "adbc.snowflake.sql.client_option.keep_session_alive"
 	// specify the RSA private key to use to sign the JWT
 	// this should point to a file containing a PKCS1 private key to be
