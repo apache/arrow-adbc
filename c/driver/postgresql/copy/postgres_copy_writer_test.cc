@@ -500,6 +500,180 @@ TEST_F(PostgresCopyTest, PostgresCopyWriteNumeric) {
   }
 }
 
+// Regression test for bug where 44.123456 with Decimal(10,6) became 4412.345500
+// COPY (SELECT CAST(col AS NUMERIC) AS col FROM (  VALUES (44.123456),
+// (0.123456), (123.456789)) AS drvd(col)) TO STDOUT WITH (FORMAT binary);
+static uint8_t kTestPgCopyNumericScale6[] = {
+    0x50, 0x47, 0x43, 0x4f, 0x50, 0x59, 0x0a, 0xff, 0x0d, 0x0a, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0e, 0x00, 0x03, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x06, 0x00, 0x2c, 0x04, 0xd2, 0x15, 0xe0, 0x00, 0x01, 0x00,
+    0x00, 0x00, 0x0c, 0x00, 0x02, 0xff, 0xff, 0x00, 0x00, 0x00, 0x06, 0x04, 0xd2, 0x15,
+    0xe0, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0e, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x06, 0x00, 0x7b, 0x11, 0xd7, 0x22, 0xc4, 0xff, 0xff};
+
+TEST_F(PostgresCopyTest, PostgresCopyWriteNumericScale6) {
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+  constexpr enum ArrowType type = NANOARROW_TYPE_DECIMAL128;
+  constexpr int32_t size = 128;
+  constexpr int32_t precision = 38;
+  constexpr int32_t scale = 6;
+
+  struct ArrowDecimal decimal1;
+  struct ArrowDecimal decimal2;
+  struct ArrowDecimal decimal3;
+
+  ArrowDecimalInit(&decimal1, size, precision, scale);
+  ArrowDecimalSetInt(&decimal1, 44123456);
+
+  ArrowDecimalInit(&decimal2, size, precision, scale);
+  ArrowDecimalSetInt(&decimal2, 123456);
+
+  ArrowDecimalInit(&decimal3, size, precision, scale);
+  ArrowDecimalSetInt(&decimal3, 123456789);
+
+  const std::vector<std::optional<ArrowDecimal*>> values = {&decimal1, &decimal2,
+                                                            &decimal3};
+
+  ArrowSchemaInit(&schema.value);
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema.value, 1), 0);
+  ASSERT_EQ(ArrowSchemaSetTypeDecimal(schema.value.children[0], type, precision, scale),
+            0);
+  ASSERT_EQ(ArrowSchemaSetName(schema.value.children[0], "col"), 0);
+  ASSERT_EQ(adbc_validation::MakeBatch<ArrowDecimal*>(&schema.value, &array.value,
+                                                      &na_error, values),
+            ADBC_STATUS_OK);
+
+  PostgresCopyStreamWriteTester tester;
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
+  ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
+
+  const struct ArrowBuffer buf = tester.WriteBuffer();
+
+  constexpr size_t buf_size = sizeof(kTestPgCopyNumericScale6) - 2;
+  ASSERT_EQ(buf.size_bytes, static_cast<int64_t>(buf_size));
+  for (size_t i = 0; i < buf_size; i++) {
+    ASSERT_EQ(buf.data[i], kTestPgCopyNumericScale6[i]) << " at position " << i;
+  }
+}
+
+// Test for scale=5 (remainder 1 when divided by 4)
+// COPY (SELECT CAST(col AS NUMERIC) AS col FROM (  VALUES (12.34567),
+// (-9.87654), (0.00123)) AS drvd(col)) TO STDOUT WITH (FORMAT binary);
+static uint8_t kTestPgCopyNumericScale5[] = {
+    0x50, 0x47, 0x43, 0x4f, 0x50, 0x59, 0x0a, 0xff, 0x0d, 0x0a, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0e, 0x00, 0x03, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x05, 0x00, 0x0c, 0x0d, 0x80, 0x1b, 0x58, 0x00, 0x01, 0x00,
+    0x00, 0x00, 0x0e, 0x00, 0x03, 0x00, 0x00, 0x40, 0x00, 0x00, 0x05, 0x00, 0x09, 0x22,
+    0x3d, 0x0f, 0xa0, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0c, 0x00, 0x02, 0xff, 0xff, 0x00,
+    0x00, 0x00, 0x05, 0x00, 0x0c, 0x0b, 0xb8, 0xff, 0xff};
+
+TEST_F(PostgresCopyTest, PostgresCopyWriteNumericScale5) {
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+  constexpr enum ArrowType type = NANOARROW_TYPE_DECIMAL128;
+  constexpr int32_t size = 128;
+  constexpr int32_t precision = 38;
+  constexpr int32_t scale = 5;
+
+  struct ArrowDecimal decimal1;
+  struct ArrowDecimal decimal2;
+  struct ArrowDecimal decimal3;
+
+  ArrowDecimalInit(&decimal1, size, precision, scale);
+  ArrowDecimalSetInt(&decimal1, 1234567);
+
+  ArrowDecimalInit(&decimal2, size, precision, scale);
+  ArrowDecimalSetInt(&decimal2, -987654);
+
+  ArrowDecimalInit(&decimal3, size, precision, scale);
+  ArrowDecimalSetInt(&decimal3, 123);
+
+  const std::vector<std::optional<ArrowDecimal*>> values = {&decimal1, &decimal2,
+                                                            &decimal3};
+
+  ArrowSchemaInit(&schema.value);
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema.value, 1), 0);
+  ASSERT_EQ(ArrowSchemaSetTypeDecimal(schema.value.children[0], type, precision, scale),
+            0);
+  ASSERT_EQ(ArrowSchemaSetName(schema.value.children[0], "col"), 0);
+  ASSERT_EQ(adbc_validation::MakeBatch<ArrowDecimal*>(&schema.value, &array.value,
+                                                      &na_error, values),
+            ADBC_STATUS_OK);
+
+  PostgresCopyStreamWriteTester tester;
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
+  ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
+
+  const struct ArrowBuffer buf = tester.WriteBuffer();
+  constexpr size_t buf_size = sizeof(kTestPgCopyNumericScale5) - 2;
+  ASSERT_EQ(buf.size_bytes, static_cast<int64_t>(buf_size));
+  for (size_t i = 0; i < buf_size; i++) {
+    ASSERT_EQ(buf.data[i], kTestPgCopyNumericScale5[i]) << " at position " << i;
+  }
+}
+
+// Test for scale=7 (remainder 3 when divided by 4)
+// COPY (SELECT CAST(col AS NUMERIC) AS col FROM (  VALUES (5.1234567),
+// (-123.456789), (0.0000001)) AS drvd(col)) TO STDOUT WITH (FORMAT binary);
+static uint8_t kTestPgCopyNumericScale7[] = {
+    0x50, 0x47, 0x43, 0x4f, 0x50, 0x59, 0x0a, 0xff, 0x0d, 0x0a, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0e, 0x00,
+    0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0x00, 0x05, 0x04, 0xd2, 0x16, 0x26,
+    0x00, 0x01, 0x00, 0x00, 0x00, 0x0e, 0x00, 0x03, 0x00, 0x00, 0x40, 0x00, 0x00,
+    0x06, 0x00, 0x7b, 0x11, 0xd7, 0x22, 0xc4, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0a,
+    0x00, 0x01, 0xff, 0xfe, 0x00, 0x00, 0x00, 0x07, 0x00, 0x0a, 0xff, 0xff};
+
+TEST_F(PostgresCopyTest, PostgresCopyWriteNumericScale7) {
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+  constexpr enum ArrowType type = NANOARROW_TYPE_DECIMAL128;
+  constexpr int32_t size = 128;
+  constexpr int32_t precision = 38;
+  constexpr int32_t scale = 7;
+
+  struct ArrowDecimal decimal1;
+  struct ArrowDecimal decimal2;
+  struct ArrowDecimal decimal3;
+
+  ArrowDecimalInit(&decimal1, size, precision, scale);
+  ArrowDecimalSetInt(&decimal1, 51234567);
+
+  // This represents -123.456789, but NUMERIC(10,7) will display it as -123.4567890
+  ArrowDecimalInit(&decimal2, size, precision, scale);
+  ArrowDecimalSetInt(&decimal2, -1234567890);
+
+  // 0.0000001 with scale=7 -> internal value: 1
+  ArrowDecimalInit(&decimal3, size, precision, scale);
+  ArrowDecimalSetInt(&decimal3, 1);
+
+  const std::vector<std::optional<ArrowDecimal*>> values = {&decimal1, &decimal2,
+                                                            &decimal3};
+
+  ArrowSchemaInit(&schema.value);
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema.value, 1), 0);
+  ASSERT_EQ(ArrowSchemaSetTypeDecimal(schema.value.children[0], type, precision, scale),
+            0);
+  ASSERT_EQ(ArrowSchemaSetName(schema.value.children[0], "col"), 0);
+  ASSERT_EQ(adbc_validation::MakeBatch<ArrowDecimal*>(&schema.value, &array.value,
+                                                      &na_error, values),
+            ADBC_STATUS_OK);
+
+  PostgresCopyStreamWriteTester tester;
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
+  ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
+
+  const struct ArrowBuffer buf = tester.WriteBuffer();
+  constexpr size_t buf_size = sizeof(kTestPgCopyNumericScale7) - 2;
+  ASSERT_EQ(buf.size_bytes, static_cast<int64_t>(buf_size));
+  for (size_t i = 0; i < buf_size; i++) {
+    ASSERT_EQ(buf.data[i], kTestPgCopyNumericScale7[i]) << " at position " << i;
+  }
+}
+
 using TimestampTestParamType =
     std::tuple<enum ArrowTimeUnit, const char*, std::vector<std::optional<int64_t>>>;
 
