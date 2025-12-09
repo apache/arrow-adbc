@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <charconv>
 #include <cinttypes>
 #include <limits>
