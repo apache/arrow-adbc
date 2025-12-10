@@ -134,7 +134,6 @@ test_that("write_adbc() supports mode replace/create_append", {
 
   df <- data.frame(x = as.double(1:10))
 
-  adbcdrivermanager::write_adbc(mtcars, con, "df")
   adbcdrivermanager::write_adbc(df, con, "df", mode = "replace")
 
   stream <- adbcdrivermanager::read_adbc(con, "SELECT * from df")
