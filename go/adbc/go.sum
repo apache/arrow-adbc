@@ -122,8 +122,8 @@ github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
-github.com/dbt-labs/databricks-sql-go v1.19.0 h1:KxFZuLS5vhWuFoEjhljs1Uxxo2fX25x3lTc3AYcdQzs=
-github.com/dbt-labs/databricks-sql-go v1.19.0/go.mod h1:TGAVzvXadeKI8me3nKBa/2phLNnyWR6OolYq6iYbN3E=
+github.com/dbt-labs/databricks-sql-go v1.19.1 h1:kQWYSmDv1piGsUTpctyILYMRgZXNsFedZo/1QmWzxcA=
+github.com/dbt-labs/databricks-sql-go v1.19.1/go.mod h1:TGAVzvXadeKI8me3nKBa/2phLNnyWR6OolYq6iYbN3E=
 github.com/dbt-labs/gosnowflake v1.17.2 h1:Wtiqe7rOeYmDdjENK4iWRSg844Mxm9jQJfcksG5BGBc=
 github.com/dbt-labs/gosnowflake v1.17.2/go.mod h1:SMriL8PawuF5upWoxyUFoTMy/KrMWrYKKyJFcS7wMyo=
 github.com/dnephin/pflag v1.0.7 h1:oxONGlWxhmUct0YzKTgrpQv9AUA1wtPBn7zuSjJqptk=
