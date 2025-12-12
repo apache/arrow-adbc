@@ -319,3 +319,69 @@ jobs:
           BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
         run: .\ci\scripts\python_test.ps1 $pwd $pwd\build
+
+  # ------------------------------------------------------------
+  # MSVC/vcpkg build (no Conda)
+  # ------------------------------------------------------------
+  drivers-vcpkg:
+    name: "C/C++ (vcpkg/${{ matrix.os }})"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ["windows-latest"]
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup vcpkg
+        run: |
+          git clone --shallow-since=2021-04-01 https://github.com/microsoft/vcpkg
+
+          Push-Location vcpkg
+          git checkout ef7dbf94b9198bc58f45951adcf1f041fcbc5ea0
+          ./bootstrap-vcpkg.bat -disableMetrics
+
+          Pop-Location
+
+          ./vcpkg/vcpkg install libpq sqlite3
+
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build and Install (No ASan)
+        run: |
+          $env:VCPKG_ROOT = $(Join-Path $pwd "vcpkg")
+          New-Item -ItemType Directory -Force -Path build | Out-Null
+          Push-Location build
+
+          # Needed for gendef tool in GoUtils.cmake
+          # msys64 is pre-installed on windows-latest but not added to path. C:\msys64\mingw64\bin is where gendef lives
+          $env:PATH = "C:\msys64\mingw64\bin;C:\msys64\usr\bin\;C:\msys64\ucrt64\bin;$env:PATH"
+          pacman --noconfirm -S mingw-w64-i686-tools mingw-w64-x86_64-tools          
+
+          # XXX(apache/arrow-adbc#616): must use Release build to line up with gtest
+          # Use the desired Visual Studio version as the generator, so that cmake generates the required vcxproj files in order to use msbuild for building and installing.
+          cmake ../c --preset multi-config-windows -DCMAKE_INSTALL_PREFIX="../local" -DCMAKE_VERBOSE_MAKEFILE=ON
+
+          cmake --build . --target install --config Release --parallel
+
+          Pop-Location
+
+          # Copy vcpkg runtime dependencies. Required for test execution.
+          Copy-Item "$env:VCPKG_ROOT\installed\x64-windows\bin\*.dll" -Destination local\bin -Force
+          Copy-Item "$env:VCPKG_ROOT\installed\x64-windows\lib\*.lib" -Destination local\lib -Force
+
+      - name: Test Driver Manager
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_MANAGER: "1"
+          BUILD_DRIVER_MANAGER_USER_CONFIG_TEST: "1"
+        run: .\ci\scripts\cpp_test.ps1 $pwd\build $pwd\local
+
+      - name: Test Driver SQLite
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_SQLITE: "1"
+        run: .\ci\scripts\cpp_test.ps1 $pwd\build $pwd\local
