@@ -42,6 +42,7 @@ type DatabricksQuirks struct {
 	httpPath    string
 	token       string
 	port        string
+	uri         string // The URI to use for the test if set
 }
 
 func (d *DatabricksQuirks) SetupDriver(t *testing.T) adbc.Driver {
@@ -54,6 +55,12 @@ func (d *DatabricksQuirks) TearDownDriver(t *testing.T, _ adbc.Driver) {
 }
 
 func (d *DatabricksQuirks) DatabaseOptions() map[string]string {
+	if d.uri != "" {
+		return map[string]string{
+			adbc.OptionKeyURI: d.uri,
+		}
+	}
+
 	opts := map[string]string{
 		databricks.OptionServerHostname: d.hostname,
 		databricks.OptionHTTPPath:       d.httpPath,
@@ -322,6 +329,18 @@ func withQuirks(t *testing.T, fn func(*DatabricksQuirks)) {
 	fn(q)
 }
 
+func withQuirksURI(t *testing.T, fn func(*DatabricksQuirks)) {
+	uri := os.Getenv("DATABRICKS_URI")
+	if uri == "" {
+		t.Skip("DATABRICKS_URI not defined, skipping URI tests")
+	}
+
+	q := &DatabricksQuirks{
+		uri: uri,
+	}
+	fn(q)
+}
+
 func TestValidation(t *testing.T) {
 	withQuirks(t, func(q *DatabricksQuirks) {
 		suite.Run(t, &validation.DatabaseTests{Quirks: q})
@@ -333,6 +352,39 @@ func TestValidation(t *testing.T) {
 func TestDatabricks(t *testing.T) {
 	withQuirks(t, func(q *DatabricksQuirks) {
 		suite.Run(t, &DatabricksTests{Quirks: q})
+	})
+}
+
+func TestDatabricksWithURI(t *testing.T) {
+	withQuirksURI(t, func(q *DatabricksQuirks) {
+		drv := q.SetupDriver(t)
+		defer q.TearDownDriver(t, drv)
+
+		db, err := drv.NewDatabase(q.DatabaseOptions())
+		require.NoError(t, err)
+		defer validation.CheckedClose(t, db)
+
+		ctx := context.Background()
+		cnxn, err := db.Open(ctx)
+		require.NoError(t, err)
+		defer validation.CheckedClose(t, cnxn)
+
+		stmt, err := cnxn.NewStatement()
+		require.NoError(t, err)
+		defer validation.CheckedClose(t, stmt)
+
+		require.NoError(t, stmt.SetSqlQuery("SELECT 1 as test_col"))
+		rdr, _, err := stmt.ExecuteQuery(ctx)
+		require.NoError(t, err)
+		defer rdr.Release()
+
+		assert.True(t, rdr.Next())
+		rec := rdr.RecordBatch()
+		assert.Equal(t, int64(1), rec.NumRows())
+		assert.Equal(t, int64(1), rec.NumCols())
+		assert.Equal(t, "test_col", rec.ColumnName(0))
+		assert.False(t, rdr.Next())
+		require.NoError(t, rdr.Err())
 	})
 }
 
