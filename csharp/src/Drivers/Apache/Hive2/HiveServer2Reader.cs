@@ -55,6 +55,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         private const int SecondSubsecondSepIndex = 19;
         private const int SubsecondIndex = 20;
         private const int MillisecondDecimalPlaces = 3;
+        private const string ClassName = nameof(HiveServer2Reader);
         private readonly IHiveServer2Statement _statement;
         private readonly IResponse _response;
         private bool _disposed;
@@ -129,7 +130,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 {
                     throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
                 }
-            });
+            }, ClassName + "." + nameof(ReadNextRecordBatchAsync));
         }
 
         private RecordBatch CreateBatch(TFetchResultsResp response, int columnCount, int rowCount)
