@@ -32,6 +32,10 @@ import (
 	dbsqlrows "github.com/databricks/databricks-sql-go/rows"
 )
 
+const (
+	MetadataKeyDatabricksQueryID = "DATABRICKS_QUERY_ID"
+)
+
 // Check if the rows interface supports IPC streams
 type rowsWithIPCStream interface {
 	GetArrowIPCStreams(context.Context) (dbsqlrows.ArrowIPCStreamIterator, error)
@@ -49,7 +53,7 @@ type ipcReaderAdapter struct {
 }
 
 // newIPCReaderAdapter creates a RecordReader using direct IPC stream access
-func newIPCReaderAdapter(ctx context.Context, rows dbsqlrows.Rows) (array.RecordReader, error) {
+func newIPCReaderAdapter(ctx context.Context, rows dbsqlrows.Rows, queryID string) (array.RecordReader, error) {
 	ipcRows := rows.(rowsWithIPCStream)
 
 	// Get IPC stream iterator
@@ -85,6 +89,14 @@ func newIPCReaderAdapter(ctx context.Context, rows dbsqlrows.Rows) (array.Record
 			Code: adbc.StatusInternal,
 			Msg:  "schema is nil",
 		}
+	}
+
+	if queryID != "" {
+		meta := schema.Metadata().ToMap()
+		meta[MetadataKeyDatabricksQueryID] = queryID
+
+		finalMeta := arrow.MetadataFrom(meta)
+		schema = arrow.NewSchema(schema.Fields(), &finalMeta)
 	}
 
 	adapter := &ipcReaderAdapter{

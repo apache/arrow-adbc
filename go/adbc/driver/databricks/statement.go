@@ -22,11 +22,13 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+	"sync/atomic"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 
+	dbsqlctx "github.com/databricks/databricks-sql-go/driverctx"
 	dbsqlrows "github.com/databricks/databricks-sql-go/rows"
 )
 
@@ -112,6 +114,12 @@ func (s *statementImpl) ExecuteQuery(ctx context.Context) (array.RecordReader, i
 		}
 	}
 
+	var qidAtomic atomic.Value
+	qidCallback := func(id string) {
+		qidAtomic.Store(id)
+	}
+	ctxWithQid := dbsqlctx.NewContextWithQueryIdCallback(ctx, qidCallback)
+
 	// Execute query using raw driver interface to get Arrow batches
 	var driverRows driver.Rows
 	var err error
@@ -120,7 +128,7 @@ func (s *statementImpl) ExecuteQuery(ctx context.Context) (array.RecordReader, i
 		// Convert parameters to driver.NamedValue slice
 		queryerCtx := driverConn.(driver.QueryerContext)
 		var driverArgs []driver.NamedValue
-		driverRows, err = queryerCtx.QueryContext(ctx, s.query, driverArgs)
+		driverRows, err = queryerCtx.QueryContext(ctxWithQid, s.query, driverArgs)
 		return err
 	})
 
@@ -140,8 +148,10 @@ func (s *statementImpl) ExecuteQuery(ctx context.Context) (array.RecordReader, i
 		}
 	}
 
+	qid, _ := qidAtomic.Load().(string)
+
 	// Use the IPC stream interface (zero-copy)
-	reader, err := newIPCReaderAdapter(ctx, databricksRows)
+	reader, err := newIPCReaderAdapter(ctx, databricksRows, qid)
 	if err != nil {
 		return nil, -1, adbc.Error{
 			Code: adbc.StatusInternal,
