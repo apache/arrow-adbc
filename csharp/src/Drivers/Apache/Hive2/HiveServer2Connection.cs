@@ -35,6 +35,7 @@ using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Apache.Hive.Service.Rpc.Thrift;
+using Thrift;
 using Thrift.Protocol;
 using Thrift.Transport;
 
@@ -44,6 +45,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     {
         internal const bool InfoVendorSql = true;
         internal const long BatchSizeDefault = 50000;
+        internal const bool EnableBatchSizeStopConditionDefault = false;
         internal const int PollTimeMillisecondsDefault = 500;
         internal static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(HiveServer2Connection));
         internal static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(HiveServer2Connection));
@@ -1717,5 +1719,23 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             throw new HiveServer2Exception(status.ErrorMessage, adbcStatusCode)
                 .SetSqlState(status.SqlState)
                 .SetNativeError(status.ErrorCode);
+
+        protected TConfiguration GetTconfiguration()
+        {
+            var thriftConfig = new TConfiguration();
+
+            Properties.TryGetValue(ThriftTransportSizeConstants.MaxMessageSize, out string? maxMessageSize);
+            if (int.TryParse(maxMessageSize, out int maxMessageSizeValue) && maxMessageSizeValue > 0)
+            {
+                thriftConfig.MaxMessageSize = maxMessageSizeValue;
+            }
+
+            Properties.TryGetValue(ThriftTransportSizeConstants.MaxFrameSize, out string? maxFrameSize);
+            if (int.TryParse(maxFrameSize, out int maxFrameSizeValue) && maxFrameSizeValue > 0)
+            {
+                thriftConfig.MaxFrameSize = maxFrameSizeValue;
+            }
+            return thriftConfig;
+        }
     }
 }

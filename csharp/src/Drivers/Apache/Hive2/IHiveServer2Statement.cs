@@ -55,6 +55,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         long BatchSize { get; }
 
         /// <summary>
+        /// Flag to enable/disable stopping reading based on batch size condition
+        /// </summary>
+        bool EnableBatchSizeStopCondition { get; }
+
+        /// <summary>
         /// Gets the connection associated with this statement.
         /// </summary>
         HiveServer2Connection Connection { get; }

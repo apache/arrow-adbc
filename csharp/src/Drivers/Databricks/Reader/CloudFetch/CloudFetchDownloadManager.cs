@@ -34,7 +34,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         // Default values
         private const int DefaultParallelDownloads = 3;
         private const int DefaultPrefetchCount = 2;
-        private const int DefaultMemoryBufferSizeMB = 100;
+        private const int DefaultMemoryBufferSizeMB = 200;
         private const bool DefaultPrefetchEnabled = true;
         private const int DefaultTimeoutMinutes = 5;
         private const int DefaultMaxUrlRefreshAttempts = 3;
