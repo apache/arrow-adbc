@@ -737,7 +737,6 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         {
             await this.TraceActivityAsync(async activity =>
             {
-
                 activity?.AddEvent("hive2.thrift.poll_start");
                 TGetOperationStatusResp? statusResponse = null;
                 int attempts = 0;
@@ -1757,6 +1756,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             }
             return thriftConfig;
         }
+
         protected static class ActivityKeys
         {
             private const string Prefix = "hive2.";
