@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using System.Net.Http;
@@ -38,6 +39,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     {
         private const string BasicAuthenticationScheme = "Basic";
         private const string BearerAuthenticationScheme = "Bearer";
+        private const string AnonymousAuthenticationScheme = "Anonymous";
 
         protected readonly HiveServer2ProxyConfigurator _proxyConfigurator;
 
@@ -160,6 +162,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override TTransport CreateTransport()
         {
+            Activity? activity = Activity.Current;
+
             // Assumption: parameters have already been validated.
             Properties.TryGetValue(SparkParameters.HostName, out string? hostName);
             Properties.TryGetValue(SparkParameters.Path, out string? path);
@@ -177,10 +181,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             HttpClient httpClient = new(CreateHttpHandler());
             httpClient.BaseAddress = baseAddress;
             httpClient.DefaultRequestHeaders.Authorization = authenticationHeaderValue;
-            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(GetUserAgent());
+            string userAgent = GetUserAgent();
+            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
             httpClient.DefaultRequestHeaders.AcceptEncoding.Clear();
             httpClient.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("identity"));
             httpClient.DefaultRequestHeaders.ExpectContinue = false;
+
+            activity?.AddTag(ActivityKeys.Encrypted, baseAddress.Scheme == Uri.UriSchemeHttps);
+            activity?.AddTag(ActivityKeys.TransportType, baseAddress.Scheme);
+            activity?.AddTag(ActivityKeys.AuthType, authTypeValue.ToString());
+            activity?.AddTag(ActivityKeys.Http.UserAgent, userAgent);
+            activity?.AddTag(ActivityKeys.Http.Uri, baseAddress.ToString());
 
             TConfiguration config = GetTconfiguration();
             THttpTransport transport = new(httpClient, config)
@@ -195,28 +206,35 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected virtual AuthenticationHeaderValue? GetAuthenticationHeaderValue(SparkAuthType authType)
         {
+            Activity? activity = Activity.Current;
+
             Properties.TryGetValue(SparkParameters.Token, out string? token);
             Properties.TryGetValue(SparkParameters.AccessToken, out string? access_token);
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
             if (!string.IsNullOrEmpty(token) && (authType == SparkAuthType.Empty || authType == SparkAuthType.Token))
             {
+                activity?.AddTag(ActivityKeys.Http.AuthScheme, BearerAuthenticationScheme);
                 return new AuthenticationHeaderValue(BearerAuthenticationScheme, token);
             }
             else if (!string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password) && (authType == SparkAuthType.Empty || authType == SparkAuthType.Basic))
             {
+                activity?.AddTag(ActivityKeys.Http.AuthScheme, BasicAuthenticationScheme);
                 return new AuthenticationHeaderValue(BasicAuthenticationScheme, Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}")));
             }
             else if (!string.IsNullOrEmpty(username) && (authType == SparkAuthType.Empty || authType == SparkAuthType.UsernameOnly))
             {
+                activity?.AddTag(ActivityKeys.Http.AuthScheme, BasicAuthenticationScheme);
                 return new AuthenticationHeaderValue(BasicAuthenticationScheme, Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:")));
             }
             else if (!string.IsNullOrEmpty(access_token) && authType == SparkAuthType.OAuth)
             {
+                activity?.AddTag(ActivityKeys.Http.AuthScheme, BearerAuthenticationScheme);
                 return new AuthenticationHeaderValue(BearerAuthenticationScheme, access_token);
             }
             else if (authType == SparkAuthType.None)
             {
+                activity?.AddTag(ActivityKeys.Http.AuthScheme, AnonymousAuthenticationScheme);
                 return null;
             }
             else

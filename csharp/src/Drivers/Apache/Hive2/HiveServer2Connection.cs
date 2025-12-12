@@ -50,6 +50,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         internal static readonly string s_assemblyName = ApacheUtility.GetAssemblyName(typeof(HiveServer2Connection));
         internal static readonly string s_assemblyVersion = ApacheUtility.GetAssemblyVersion(typeof(HiveServer2Connection));
         private const int ConnectTimeoutMillisecondsDefault = 30000;
+        private const string ClassName = nameof(HiveServer2Connection);
         private TTransport? _transport;
         private TCLIService.IAsync? _client;
         private readonly Lazy<string> _vendorVersion;
@@ -387,7 +388,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     // Handle other exceptions if necessary
                     throw new HiveServer2Exception($"An unexpected error occurred while opening the session. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
                 }
-            });
+            }, ClassName + "." + nameof(OpenAsync));
         }
 
         private static bool IsUnauthorized(HttpRequestException httpEx)
@@ -687,7 +688,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 {
                     throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
                 }
-            });
+            }, ClassName + "." + nameof(GetObjects));
         }
 
         public override IArrowArrayStream GetTableTypes()
@@ -729,28 +730,40 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 {
                     throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
                 }
-            });
+            }, ClassName + "." + nameof(GetTableTypes));
         }
 
-        internal static async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds, CancellationToken cancellationToken = default)
+        internal async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds, CancellationToken cancellationToken = default)
         {
-            TGetOperationStatusResp? statusResponse = null;
-            do
+            await this.TraceActivityAsync(async activity =>
             {
-                if (statusResponse != null) { await Task.Delay(pollTimeMilliseconds, cancellationToken); }
-                TGetOperationStatusReq request = new(operationHandle);
-                statusResponse = await client.GetOperationStatus(request, cancellationToken);
-            } while (statusResponse.OperationState == TOperationState.PENDING_STATE || statusResponse.OperationState == TOperationState.RUNNING_STATE);
 
-            // Must be in the finished state to be valid. If not, typically a server error or timeout has occurred.
-            if (statusResponse.OperationState != TOperationState.FINISHED_STATE)
-            {
+                activity?.AddEvent("hive2.thrift.poll_start");
+                TGetOperationStatusResp? statusResponse = null;
+                int attempts = 0;
+                do
+                {
+                    if (statusResponse != null) { await Task.Delay(pollTimeMilliseconds, cancellationToken); }
+                    TGetOperationStatusReq request = new(operationHandle);
+                    attempts++;
+                    statusResponse = await client.GetOperationStatus(request, cancellationToken);
+                } while (statusResponse.OperationState == TOperationState.PENDING_STATE || statusResponse.OperationState == TOperationState.RUNNING_STATE);
+                activity?.AddEvent("hive2.thrift.poll_end",
+                [
+                    new("hive2.thrift.poll_attempts", attempts),
+                    new("hive2.thrift.operation_state", statusResponse.OperationState.ToString()),
+                ]);
+
+                // Must be in the finished state to be valid. If not, typically a server error or timeout has occurred.
+                if (statusResponse.OperationState != TOperationState.FINISHED_STATE)
+                {
 #pragma warning disable CS0618 // Type or member is obsolete
-                throw new HiveServer2Exception(statusResponse.ErrorMessage, AdbcStatusCode.InvalidState)
-                    .SetSqlState(statusResponse.SqlState)
-                    .SetNativeError(statusResponse.ErrorCode);
+                    throw new HiveServer2Exception(statusResponse.ErrorMessage, AdbcStatusCode.InvalidState)
+                        .SetSqlState(statusResponse.SqlState)
+                        .SetNativeError(statusResponse.ErrorCode);
 #pragma warning restore CS0618 // Type or member is obsolete
-            }
+                }
+            }, ClassName + "." + nameof(PollForResponseAsync));
         }
 
         private string GetInfoTypeStringValue(TGetInfoType infoType)
@@ -779,7 +792,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 {
                     throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
                 }
-            });
+            }, nameof(HiveServer2Connection) + "." + nameof(GetInfoTypeStringValue));
         }
 
         protected override void Dispose(bool disposing)
@@ -813,10 +826,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     _transport = null;
                     _client = null;
                 }
-            });
+            }, ClassName + "." + nameof(DisposeClient));
         }
 
-        internal static async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
+        internal async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
         {
             TGetResultSetMetadataReq request = new(operationHandle);
             TGetResultSetMetadataResp response = await client.GetResultSetMetadata(request, cancellationToken);
@@ -1062,7 +1075,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 HandleThriftResponse(resp.Status, activity);
 
                 return resp;
-            });
+            }, ClassName + "." + nameof(GetCatalogsAsync));
         }
 
         internal async Task<TGetSchemasResp> GetSchemasAsync(
@@ -1092,7 +1105,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 HandleThriftResponse(resp.Status, activity);
 
                 return resp;
-            });
+            }, ClassName + "." + nameof(GetSchemasAsync));
         }
 
         internal async Task<TGetTablesResp> GetTablesAsync(
@@ -1132,7 +1145,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 HandleThriftResponse(resp.Status, activity);
 
                 return resp;
-            });
+            }, ClassName + "." + nameof(GetTablesAsync));
         }
 
         internal async Task<TGetColumnsResp> GetColumnsAsync(
@@ -1172,7 +1185,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 HandleThriftResponse(resp.Status, activity);
 
                 return resp;
-            });
+            }, ClassName + "." + nameof(GetColumnsAsync));
         }
 
         internal async Task<TGetPrimaryKeysResp> GetPrimaryKeysAsync(
@@ -1207,7 +1220,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 HandleThriftResponse(resp.Status, activity);
 
                 return resp;
-            });
+            }, ClassName + "." + nameof(GetPrimaryKeysAsync));
         }
 
         internal async Task<TGetCrossReferenceResp> GetCrossReferenceAsync(
@@ -1256,7 +1269,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 TGetCrossReferenceResp resp = await Client.GetCrossReference(req, cancellationToken);
                 HandleThriftResponse(resp.Status, activity);
                 return resp;
-            });
+            }, ClassName + "." + nameof(GetCrossReferenceAsync));
         }
 
         private static StructArray GetColumnSchema(TableInfo tableInfo)
@@ -1394,7 +1407,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 {
                     throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
                 }
-            });
+            }, ClassName + "." + nameof(GetTableSchema));
         }
 
         private static IArrowType GetArrowType(int columnTypeId, string typeName, bool isColumnSizeValid, int? columnSize, int? decimalDigits)
@@ -1459,16 +1472,20 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal async Task<TRowSet> FetchResultsAsync(TOperationHandle operationHandle, long batchSize = BatchSizeDefault, CancellationToken cancellationToken = default)
         {
-            await PollForResponseAsync(operationHandle, Client, PollTimeMillisecondsDefault, cancellationToken);
-
-            TFetchResultsResp fetchResp = await FetchNextAsync(operationHandle, Client, batchSize, cancellationToken);
-            if (fetchResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
+            return await this.TraceActivityAsync(async activity =>
             {
-                throw new HiveServer2Exception(fetchResp.Status.ErrorMessage)
-                    .SetNativeError(fetchResp.Status.ErrorCode)
-                    .SetSqlState(fetchResp.Status.SqlState);
-            }
-            return fetchResp.Results;
+                await PollForResponseAsync(operationHandle, Client, PollTimeMillisecondsDefault, cancellationToken);
+
+                TFetchResultsResp fetchResp = await FetchNextAsync(operationHandle, Client, batchSize, cancellationToken);
+                if (fetchResp.Status.StatusCode == TStatusCode.ERROR_STATUS)
+                {
+                    throw new HiveServer2Exception(fetchResp.Status.ErrorMessage)
+                        .SetNativeError(fetchResp.Status.ErrorCode)
+                        .SetSqlState(fetchResp.Status.SqlState);
+                }
+                activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, HiveServer2Reader.GetRowCount(fetchResp.Results, fetchResp.Results.Columns.Count));
+                return fetchResp.Results;
+            }, ClassName + "." + nameof(FetchResultsAsync));
         }
 
         private static async Task<TFetchResultsResp> FetchNextAsync(TOperationHandle operationHandle, TCLIService.IAsync client, long batchSize, CancellationToken cancellationToken = default)
@@ -1628,7 +1645,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 StandardSchemas.GetInfoSchema.Validate(dataArrays);
 
                 return new HiveInfoArrowStream(StandardSchemas.GetInfoSchema, dataArrays);
-            });
+            }, ClassName + "." + nameof(GetInfo));
         }
 
         internal struct TableInfo(string type)
@@ -1723,19 +1740,43 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected TConfiguration GetTconfiguration()
         {
             var thriftConfig = new TConfiguration();
+            Activity? activity = Activity.Current;
 
             Properties.TryGetValue(ThriftTransportSizeConstants.MaxMessageSize, out string? maxMessageSize);
             if (int.TryParse(maxMessageSize, out int maxMessageSizeValue) && maxMessageSizeValue > 0)
             {
+                activity?.AddTag(ActivityKeys.Thrift.MaxMessageSize, maxMessageSizeValue);
                 thriftConfig.MaxMessageSize = maxMessageSizeValue;
             }
 
             Properties.TryGetValue(ThriftTransportSizeConstants.MaxFrameSize, out string? maxFrameSize);
             if (int.TryParse(maxFrameSize, out int maxFrameSizeValue) && maxFrameSizeValue > 0)
             {
+                activity?.AddTag(ActivityKeys.Thrift.MaxFrameSize, maxFrameSizeValue);
                 thriftConfig.MaxFrameSize = maxFrameSizeValue;
             }
             return thriftConfig;
+        }
+        protected static class ActivityKeys
+        {
+            private const string Prefix = "hive2.";
+
+            public const string Encrypted = Prefix + Apache.ActivityKeys.Encrypted;
+            public const string TransportType = Prefix + Apache.ActivityKeys.TransportType;
+            public const string AuthType = Prefix + Apache.ActivityKeys.AuthType;
+
+            public static class Http
+            {
+                public const string AuthScheme = Prefix + Apache.ActivityKeys.Http.AuthScheme;
+                public const string UserAgent = Prefix + Apache.ActivityKeys.Http.UserAgent;
+                public const string Uri = Prefix + Apache.ActivityKeys.Http.Uri;
+            }
+
+            public static class Thrift
+            {
+                public const string MaxMessageSize = Prefix + Apache.ActivityKeys.Thrift.MaxMessageSize;
+                public const string MaxFrameSize = Prefix + Apache.ActivityKeys.Thrift.MaxFrameSize;
+            }
         }
     }
 }

@@ -120,5 +120,22 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
                 DecimalDigits = DecimalDigits,
             };
         }
+
+        protected static new class ActivityKeys
+        {
+            private const string Prefix = "impala.";
+
+            public const string AuthType = Prefix + Apache.ActivityKeys.AuthType;
+            public const string Encrypted = Prefix + Apache.ActivityKeys.Encrypted;
+            public const string TransportType = Prefix + Apache.ActivityKeys.TransportType;
+            public const string Host = Prefix + Apache.ActivityKeys.Host;
+            public const string Port = Prefix + Apache.ActivityKeys.Port;
+            public static class Http
+            {
+                public const string AuthScheme = Prefix + Apache.ActivityKeys.Http.AuthScheme;
+                public const string UserAgent = Prefix + Apache.ActivityKeys.Http.UserAgent;
+                public const string Uri = Prefix + Apache.ActivityKeys.Http.Uri;
+            }
+        }
     }
 }
