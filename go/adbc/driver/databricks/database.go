@@ -295,6 +295,25 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 func (d *databaseImpl) SetOptions(options map[string]string) error {
 	// We need to re-initialize the db/connection pool if options change
 	d.needsRefresh = true
+
+	hasURI := false
+	hasOtherOptions := false
+
+	if _, ok := options[adbc.OptionKeyURI]; ok {
+		hasURI = true
+	}
+
+	if len(options) > 1 || (len(options) == 1 && !hasURI) {
+		hasOtherOptions = true
+	}
+
+	if hasURI && hasOtherOptions {
+		return adbc.Error{
+			Code: adbc.StatusInvalidArgument,
+			Msg:  "cannot specify both URI and individual connection options",
+		}
+	}
+
 	for k, v := range options {
 		err := d.SetOption(k, v)
 		if err != nil {
@@ -307,6 +326,7 @@ func (d *databaseImpl) SetOptions(options map[string]string) error {
 func (d *databaseImpl) SetOption(key, value string) error {
 	// We need to re-initialize the db/connection pool if options change
 	d.needsRefresh = true
+
 	switch key {
 	case adbc.OptionKeyURI:
 		// Strip the databricks:// scheme since databricks-sql-go expects raw DSN format

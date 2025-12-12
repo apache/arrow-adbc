@@ -357,7 +357,34 @@ func TestDatabricks(t *testing.T) {
 
 func TestDatabricksWithURI(t *testing.T) {
 	withQuirksURI(t, func(q *DatabricksQuirks) {
-		suite.Run(t, &DatabricksTests{Quirks: q})
+		drv := q.SetupDriver(t)
+		defer q.TearDownDriver(t, drv)
+
+		db, err := drv.NewDatabase(q.DatabaseOptions())
+		require.NoError(t, err)
+		defer validation.CheckedClose(t, db)
+
+		ctx := context.Background()
+		cnxn, err := db.Open(ctx)
+		require.NoError(t, err)
+		defer validation.CheckedClose(t, cnxn)
+
+		stmt, err := cnxn.NewStatement()
+		require.NoError(t, err)
+		defer validation.CheckedClose(t, stmt)
+
+		require.NoError(t, stmt.SetSqlQuery("SELECT 1 as test_col"))
+		rdr, _, err := stmt.ExecuteQuery(ctx)
+		require.NoError(t, err)
+		defer rdr.Release()
+
+		assert.True(t, rdr.Next())
+		rec := rdr.RecordBatch()
+		assert.Equal(t, int64(1), rec.NumRows())
+		assert.Equal(t, int64(1), rec.NumCols())
+		assert.Equal(t, "test_col", rec.ColumnName(0))
+		assert.False(t, rdr.Next())
+		require.NoError(t, rdr.Err())
 	})
 }
 
