@@ -355,7 +355,7 @@ TEST(AdbcDriverManagerInternal, DatabaseGetOptionValueBufferSize) {
 
   ASSERT_THAT(AdbcDatabaseNew(&database, &error), IsOkStatus(&error));
 
-  // Set an option we'll later fetch witha n oversized buffer
+  // Set an option we'll later fetch with a n oversized buffer
   ASSERT_THAT(AdbcDatabaseSetOption(&database, "driver", "test_driver", &error),
               IsOkStatus(&error));
 
