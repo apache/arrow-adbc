@@ -324,7 +324,7 @@ jobs:
   # MSVC/vcpkg build (no Conda)
   # ------------------------------------------------------------
   drivers-vcpkg:
-    name: "C/C++ (vcpkg/${{ matrix.os }})"
+    name: "C/C++ (vcpkg/${{ matrix.os }}/${{ matrix.config }})"
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
