@@ -109,17 +109,24 @@ if(ADBC_BUILD_TESTS)
   add_dependencies(adbc-driver-manager-test adbc_driver_entrypoint
                    adbc_driver_no_entrypoint)
 
+  # On Windows binaries are created under config subfolder (debug/release). We must enusre the lib path contains that for tests to run.
+  if(CMAKE_CONFIGURATION_TYPES)
+    set(CONFIG_SUBDIR "$<CONFIG>/")
+  else()
+    set(CONFIG_SUBDIR "")
+  endif()
+
   target_compile_definitions(adbc-driver-manager-test
-                             PRIVATE ADBC_DRIVER_MANAGER_ENTRYPOINT_TEST_LIB="${CMAKE_BINARY_DIR}/driver_manager/${CMAKE_SHARED_LIBRARY_PREFIX}adbc_driver_entrypoint${CMAKE_SHARED_LIBRARY_SUFFIX}"
+                             PRIVATE ADBC_DRIVER_MANAGER_ENTRYPOINT_TEST_LIB="${CMAKE_BINARY_DIR}/driver_manager/${CONFIG_SUBDIR}${CMAKE_SHARED_LIBRARY_PREFIX}adbc_driver_entrypoint${CMAKE_SHARED_LIBRARY_SUFFIX}"
   )
 
   target_compile_definitions(adbc-driver-manager-test
-                             PRIVATE ADBC_DRIVER_MANAGER_NO_ENTRYPOINT_TEST_LIB="${CMAKE_BINARY_DIR}/driver_manager/${CMAKE_SHARED_LIBRARY_PREFIX}adbc_driver_no_entrypoint${CMAKE_SHARED_LIBRARY_SUFFIX}"
+                             PRIVATE ADBC_DRIVER_MANAGER_NO_ENTRYPOINT_TEST_LIB="${CMAKE_BINARY_DIR}/driver_manager/${CONFIG_SUBDIR}${CMAKE_SHARED_LIBRARY_PREFIX}adbc_driver_no_entrypoint${CMAKE_SHARED_LIBRARY_SUFFIX}"
   )
 
   if(ADBC_DRIVER_SQLITE)
     target_compile_definitions(adbc-driver-manager-test
-                               PRIVATE ADBC_DRIVER_MANAGER_TEST_LIB="${CMAKE_BINARY_DIR}/driver/sqlite/${CMAKE_SHARED_LIBRARY_PREFIX}adbc_driver_sqlite${CMAKE_SHARED_LIBRARY_SUFFIX}"
+                               PRIVATE ADBC_DRIVER_MANAGER_TEST_LIB="${CMAKE_BINARY_DIR}/driver/sqlite/${CONFIG_SUBDIR}${CMAKE_SHARED_LIBRARY_PREFIX}adbc_driver_sqlite${CMAKE_SHARED_LIBRARY_SUFFIX}"
     )
   endif()
   if(ADBC_DRIVER_MANAGER_TEST_MANIFEST_USER_LEVEL)
