@@ -65,8 +65,8 @@ if(ADBC_BUILD_TESTS)
                 ${TEST_LINK_LIBS})
 
   if(ADBC_TEST_LINKAGE STREQUAL "shared")
-    # The go build is not copying the DLL to the test location, causing the test to fail on Windows.
-    if(WIN32)
+    # The go build is not copying the DLL to the test location, causing the test to fail on Windows when building with vcpkg.
+    if(ADBC_BUILD_VCPKG)
       add_custom_command(TARGET adbc-driver-snowflake-test
                          POST_BUILD
                          COMMAND ${CMAKE_COMMAND} -E copy_if_different

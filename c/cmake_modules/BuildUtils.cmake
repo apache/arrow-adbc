@@ -301,8 +301,8 @@ function(ADD_ARROW_LIB LIB_NAME)
             INCLUDES
             DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
-    # Ensure for Windows we copy the runtime dependencies to the install folder, especially so that tests can load the drivers from install folder.
-    if(ADBC_INSTALL_RUNTIME_DEPENDENCIES)
+    # If we're building on Windows using vcpkg, ensure the runtime dependencies of binaries are copied to the install folder.
+    if(ADBC_BUILD_VCPKG)
       install(TARGETS ${LIB_NAME}_shared
                       RUNTIME_DEPENDENCIES
                       PRE_EXCLUDE_REGEXES
