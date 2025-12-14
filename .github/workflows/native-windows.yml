@@ -329,23 +329,13 @@ jobs:
     strategy:
       matrix:
         os: ["windows-latest"]
+        arch: ["x64"]
+        config: ["Debug"]
     steps:
       - uses: actions/checkout@v5
         with:
           fetch-depth: 0
           persist-credentials: false
-
-      - name: Setup vcpkg
-        run: |
-          git clone --shallow-since=2021-04-01 https://github.com/microsoft/vcpkg
-
-          Push-Location vcpkg
-          git checkout ef7dbf94b9198bc58f45951adcf1f041fcbc5ea0
-          ./bootstrap-vcpkg.bat -disableMetrics
-
-          Pop-Location
-
-          ./vcpkg/vcpkg install libpq sqlite3
 
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v2
@@ -359,31 +349,42 @@ jobs:
           # Needed for gendef tool in GoUtils.cmake
           pacman --noconfirm -S mingw-w64-i686-tools mingw-w64-x86_64-tools
 
-      - name: Build and Install Debug (No ASan)
+      - name: Clone vcpkg
         run: |
-          $env:VCPKG_ROOT = $(Join-Path $pwd "vcpkg")
+          git clone https://github.com/microsoft/vcpkg.git
+          cd vcpkg
+          git checkout ef7dbf94b9198bc58f45951adcf1f041fcbc5ea0
+          .\bootstrap-vcpkg.bat
 
-          cmake .\c\ --preset windows-debug -DCMAKE_VERBOSE_MAKEFILE=ON
+      - name: Cache vcpkg dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/vcpkg/packages
+            ${{ github.workspace }}/vcpkg/installed
+            ~\AppData\Local\vcpkg\archives
+          key: vcpkg-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('c/vcpkg.json', 'c/driver/*/vcpkg.json') }}
 
-          cmake --build .\build\debug --target install --config Debug --parallel
-
-      - name: Build and Install Release (No ASan)
+      - name: Install vcpkg dependencies
+        working-directory: c
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/vcpkg
         run: |
-          $env:VCPKG_ROOT = $(Join-Path $pwd "vcpkg")
+          ${{ github.workspace }}/vcpkg/vcpkg.exe install --triplet ${{ matrix.arch }}-windows
 
-          cmake .\c\ --preset windows-release -DCMAKE_VERBOSE_MAKEFILE=ON
+      - name: Build and Install (No ASan)
+        env:
+          CMAKE_BUILD_TYPE: ${{ matrix.config }}
+          VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+        run: |
+          cmake .\c\ --preset windows-${{ matrix.config }} -DCMAKE_VERBOSE_MAKEFILE=ON
 
-          cmake --build .\build\release --target install --config Release --parallel
+          cmake --build .\build\${{ matrix.config }} --target install --config ${{ matrix.config }} --parallel
 
-      - name: Test Driver Manager Release
+      - name: Test
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
           BUILD_DRIVER_MANAGER_USER_CONFIG_TEST: "1"
-        run: .\ci\scripts\cpp_test.ps1 $pwd\build\release $pwd\local\release
-
-      - name: Test Driver SQLite Release
-        env:
-          BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
-        run: .\ci\scripts\cpp_test.ps1 $pwd\build\release $pwd\local\release
+        run: .\ci\scripts\cpp_test.ps1 $pwd\build\${{ matrix.config }} $pwd\local\${{ matrix.config }}
