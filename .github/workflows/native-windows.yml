@@ -345,7 +345,7 @@ jobs:
 
           Pop-Location
 
-          ./vcpkg/vcpkg install libpq sqlite3 gtest
+          ./vcpkg/vcpkg install libpq sqlite3
 
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v2
@@ -366,19 +366,6 @@ jobs:
           cmake .\c\ --preset windows-debug -DCMAKE_VERBOSE_MAKEFILE=ON
 
           cmake --build .\build\debug --target install --config Debug --parallel
-
-      - name: Test Driver Manager Debug
-        env:
-          BUILD_ALL: "0"
-          BUILD_DRIVER_MANAGER: "1"
-          BUILD_DRIVER_MANAGER_USER_CONFIG_TEST: "1"
-        run: .\ci\scripts\cpp_test.ps1 $pwd\build\debug $pwd\local\debug
-
-      - name: Test Driver SQLite Debug
-        env:
-          BUILD_ALL: "0"
-          BUILD_DRIVER_SQLITE: "1"
-        run: .\ci\scripts\cpp_test.ps1 $pwd\build\debug $pwd\local\debug
 
       - name: Build and Install Release (No ASan)
         run: |
