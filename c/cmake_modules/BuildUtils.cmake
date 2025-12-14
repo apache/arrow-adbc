@@ -300,6 +300,18 @@ function(ADD_ARROW_LIB LIB_NAME)
             ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
             INCLUDES
             DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+    # Ensure for Windows we copy the runtime dependencies to the install folder, especially so that tests can load the drivers from install folder.
+    if(WIN32)
+      install(TARGETS ${LIB_NAME}_shared
+                      RUNTIME_DEPENDENCIES
+                      PRE_EXCLUDE_REGEXES
+                      "api-ms-win-.*"
+                      "ext-ms-.*"
+                      POST_EXCLUDE_REGEXES
+                      ".*system32.*"
+              RUNTIME DESTINATION ${RUNTIME_INSTALL_DIR})
+    endif()
   endif()
 
   if(BUILD_STATIC)
