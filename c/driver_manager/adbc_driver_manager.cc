@@ -462,18 +462,16 @@ AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
 
 SearchPaths GetEnvPaths(const char_type* env_var) {
 #ifdef _WIN32
-  size_t required_size;
-
-  _wgetenv_s(&required_size, NULL, 0, env_var);
+  DWORD required_size = GetEnvironmentVariableW(env_var, NULL, 0);
   if (required_size == 0) {
     return {};
   }
 
   std::wstring path_var;
   path_var.resize(required_size);
-  _wgetenv_s(&required_size, path_var.data(), required_size, env_var);
+  DWORD actual_size = GetEnvironmentVariableW(env_var, path_var.data(), required_size);
   // Remove null terminator
-  path_var.resize(required_size - 1);
+  path_var.resize(actual_size);
   auto path = Utf8Encode(path_var);
 #else
   const char* path_var = std::getenv(env_var);

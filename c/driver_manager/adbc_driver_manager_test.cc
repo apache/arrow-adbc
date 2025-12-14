@@ -522,7 +522,10 @@ class DriverManifest : public ::testing::Test {
  protected:
   void SetConfigPath(const char* path) {
 #ifdef _WIN32
-    ASSERT_TRUE(SetEnvironmentVariable("ADBC_DRIVER_PATH", path));
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, path, -1, NULL, 0);
+    std::wstring wpath(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, path, -1, &wpath[0], size_needed);
+    ASSERT_TRUE(SetEnvironmentVariableW(L"ADBC_DRIVER_PATH", wpath.c_str()));
 #else
     setenv("ADBC_DRIVER_PATH", path, 1);
 #endif
