@@ -370,7 +370,7 @@ jobs:
         env:
           VCPKG_ROOT: ${{ github.workspace }}/vcpkg
         run: |
-          ${{ github.workspace }}/vcpkg/vcpkg.exe install --triplet ${{ matrix.arch }}-windows
+          ${{ github.workspace }}/vcpkg/vcpkg.exe install libpq sqlite3 --triplet ${{ matrix.arch }}-windows
 
       - name: Build and Install (No ASan)
         env:
