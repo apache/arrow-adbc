@@ -345,43 +345,58 @@ jobs:
 
           Pop-Location
 
-          ./vcpkg/vcpkg install libpq sqlite3
+          ./vcpkg/vcpkg install libpq sqlite3 gtest
 
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v2
 
-      - name: Build and Install (No ASan)
+      - name: Setup MSYS2 tools
         run: |
-          $env:VCPKG_ROOT = $(Join-Path $pwd "vcpkg")
-          New-Item -ItemType Directory -Force -Path build | Out-Null
-          Push-Location build
+          # msys64 is pre-installed on windows-latest but not added to path
+          $env:PATH = "C:\msys64\mingw64\bin;C:\msys64\usr\bin\;C:\msys64\ucrt64\bin;$env:PATH"
+          echo "PATH=$env:PATH" >> $env:GITHUB_ENV
 
           # Needed for gendef tool in GoUtils.cmake
-          # msys64 is pre-installed on windows-latest but not added to path. C:\msys64\mingw64\bin is where gendef lives
-          $env:PATH = "C:\msys64\mingw64\bin;C:\msys64\usr\bin\;C:\msys64\ucrt64\bin;$env:PATH"
-          pacman --noconfirm -S mingw-w64-i686-tools mingw-w64-x86_64-tools          
+          pacman --noconfirm -S mingw-w64-i686-tools mingw-w64-x86_64-tools
 
-          # XXX(apache/arrow-adbc#616): must use Release build to line up with gtest
-          # Use the desired Visual Studio version as the generator, so that cmake generates the required vcxproj files in order to use msbuild for building and installing.
-          cmake ../c --preset multi-config-windows -DCMAKE_INSTALL_PREFIX="../local" -DCMAKE_VERBOSE_MAKEFILE=ON
+      - name: Build and Install Debug (No ASan)
+        run: |
+          $env:VCPKG_ROOT = $(Join-Path $pwd "vcpkg")
 
-          cmake --build . --target install --config Release --parallel
+          cmake .\c\ --preset windows-debug -DCMAKE_VERBOSE_MAKEFILE=ON
 
-          Pop-Location
+          cmake --build .\build\debug --target install --config Debug --parallel
 
-          # Copy vcpkg runtime dependencies. Required for test execution.
-          Copy-Item "$env:VCPKG_ROOT\installed\x64-windows\bin\*.dll" -Destination local\bin -Force
-          Copy-Item "$env:VCPKG_ROOT\installed\x64-windows\lib\*.lib" -Destination local\lib -Force
-
-      - name: Test Driver Manager
+      - name: Test Driver Manager Debug
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
           BUILD_DRIVER_MANAGER_USER_CONFIG_TEST: "1"
-        run: .\ci\scripts\cpp_test.ps1 $pwd\build $pwd\local
+        run: .\ci\scripts\cpp_test.ps1 $pwd\build\debug $pwd\local\debug
 
-      - name: Test Driver SQLite
+      - name: Test Driver SQLite Debug
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
-        run: .\ci\scripts\cpp_test.ps1 $pwd\build $pwd\local
+        run: .\ci\scripts\cpp_test.ps1 $pwd\build\debug $pwd\local\debug
+
+      - name: Build and Install Release (No ASan)
+        run: |
+          $env:VCPKG_ROOT = $(Join-Path $pwd "vcpkg")
+
+          cmake .\c\ --preset windows-release -DCMAKE_VERBOSE_MAKEFILE=ON
+
+          cmake --build .\build\release --target install --config Release --parallel
+
+      - name: Test Driver Manager Release
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_MANAGER: "1"
+          BUILD_DRIVER_MANAGER_USER_CONFIG_TEST: "1"
+        run: .\ci\scripts\cpp_test.ps1 $pwd\build\release $pwd\local\release
+
+      - name: Test Driver SQLite Release
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_SQLITE: "1"
+        run: .\ci\scripts\cpp_test.ps1 $pwd\build\release $pwd\local\release
