@@ -356,15 +356,6 @@ jobs:
           git checkout ef7dbf94b9198bc58f45951adcf1f041fcbc5ea0
           .\bootstrap-vcpkg.bat
 
-      - name: Cache vcpkg dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ${{ github.workspace }}/vcpkg/packages
-            ${{ github.workspace }}/vcpkg/installed
-            ${{ env.LOCALAPPDATA }}/vcpkg/archives
-          key: vcpkg-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('**/vcpkg.json') }}
-
       - name: Install vcpkg dependencies
         working-directory: c
         env:
