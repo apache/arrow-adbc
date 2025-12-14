@@ -1094,12 +1094,20 @@ TEST_F(DriverManifest, AllDisabled) {
   EXPECT_THAT(error.message,
               ::testing::HasSubstr("not enabled at run time: ADBC_DRIVER_PATH (enable "
                                    "ADBC_LOAD_FLAG_SEARCH_ENV)"));
+
+#ifdef _WIN32
+  EXPECT_THAT(error.message,
+              ::testing::HasSubstr("not enabled at run time: HKEY_CURRENT_USER"));
+  EXPECT_THAT(error.message,
+              ::testing::HasSubstr("not enabled at run time: HKEY_LOCAL_MACHINE"));
+#else
   EXPECT_THAT(error.message,
               ::testing::HasSubstr("not enabled at run time: user config dir /"));
   EXPECT_THAT(error.message,
-              ::testing::HasSubstr(" (enable ADBC_LOAD_FLAG_SEARCH_USER)"));
-  EXPECT_THAT(error.message,
               ::testing::HasSubstr("not enabled at run time: system config dir /"));
+#endif  // _WIN32
+  EXPECT_THAT(error.message,
+              ::testing::HasSubstr(" (enable ADBC_LOAD_FLAG_SEARCH_USER)"));
   EXPECT_THAT(error.message,
               ::testing::HasSubstr(" (enable ADBC_LOAD_FLAG_SEARCH_SYSTEM)"));
 }
