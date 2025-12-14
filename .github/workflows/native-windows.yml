@@ -362,8 +362,8 @@ jobs:
           path: |
             ${{ github.workspace }}/vcpkg/packages
             ${{ github.workspace }}/vcpkg/installed
-            ~\AppData\Local\vcpkg\archives
-          key: vcpkg-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('c/vcpkg.json', 'c/driver/*/vcpkg.json') }}
+            ${{ env.LOCALAPPDATA }}/vcpkg/archives
+          key: vcpkg-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('**/vcpkg.json') }}
 
       - name: Install vcpkg dependencies
         working-directory: c
