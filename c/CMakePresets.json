@@ -24,8 +24,9 @@
             }
         },
         {
-            "name": "multi-config-windows",
-            "displayName": "Multi config for Windows without ASAN/UBSAN",
+            "name": "multi-config-windows-base",
+            "displayName": "Base config for Windows without ASAN/UBSAN",
+            "hidden": true,
             "generator": "Visual Studio 17 2022",
             "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
             "cacheVariables": {
@@ -43,6 +44,24 @@
                 "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
                 "CMAKE_C_COMPILER": "cl.exe",
                 "CMAKE_CXX_COMPILER": "cl.exe"
+            }
+        },
+        {
+            "name": "windows-debug",
+            "displayName": "Windows Debug",
+            "inherits": "multi-config-windows-base",
+            "binaryDir": "${sourceDir}/../build/debug",
+            "cacheVariables": {
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/../local/debug"
+            }
+        },
+        {
+            "name": "windows-release",
+            "displayName": "Windows Release",
+            "inherits": "multi-config-windows-base",
+            "binaryDir": "${sourceDir}/../build/release",
+            "cacheVariables": {
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/../local/release"
             }
         },
         {
@@ -66,12 +85,12 @@
     "buildPresets": [
         {
           "name": "debug-windows",
-          "configurePreset": "multi-config-windows",
+          "configurePreset": "windows-debug",
           "configuration": "Debug"
         },
         {
           "name": "release-windows",
-          "configurePreset": "multi-config-windows",
+          "configurePreset": "windows-release",
           "configuration": "Release"
         }
     ],
