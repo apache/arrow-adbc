@@ -232,6 +232,8 @@ if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
   define_option(ADBC_DRIVER_BIGQUERY "Build the BigQuery driver" OFF)
 
   define_option(ADBC_INTEGRATION_DUCKDB "Build the test suite for DuckDB" OFF)
+
+  define_option(ADBC_INSTALL_RUNTIME_DEPENDENCIES "Copy runtime dependencies during install" OFF)
 endif()
 
 macro(validate_config)

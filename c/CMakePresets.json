@@ -41,6 +41,7 @@
                 "ADBC_BUILD_STATIC": "OFF",
                 "ADBC_USE_ASAN": "OFF",
                 "ADBC_USE_UBSAN": "OFF",
+                "ADBC_INSTALL_RUNTIME_DEPENDENCIES": "ON",
                 "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
                 "CMAKE_C_COMPILER": "cl.exe",
                 "CMAKE_CXX_COMPILER": "cl.exe"
