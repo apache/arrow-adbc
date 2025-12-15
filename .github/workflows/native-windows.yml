@@ -74,7 +74,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         env:
           # Increment this to reset cache manually
           CACHE_NUMBER: 0
@@ -130,7 +130,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         env:
           # Increment this to reset cache manually
           CACHE_NUMBER: 0
@@ -202,7 +202,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         env:
           # Increment this to reset cache manually
           CACHE_NUMBER: 0
@@ -266,7 +266,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         env:
           # Increment this to reset cache manually
           CACHE_NUMBER: 0
