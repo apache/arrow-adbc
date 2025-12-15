@@ -374,7 +374,6 @@ jobs:
           cmake --build .\build\${{ matrix.config }} --target install --config ${{ matrix.config }} --parallel
 
       - name: Test
-        if: false
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
