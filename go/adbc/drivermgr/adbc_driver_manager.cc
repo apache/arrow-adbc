@@ -1652,7 +1652,7 @@ AdbcStatusCode AdbcDatabaseGetOption(struct AdbcDatabase* database, const char* 
     result = &it->second;
   }
 
-  if (*length <= result->size() + 1) {
+  if (*length >= result->size() + 1) {
     // Enough space
     std::memcpy(value, result->c_str(), result->size() + 1);
   }
@@ -1676,7 +1676,7 @@ AdbcStatusCode AdbcDatabaseGetOptionBytes(struct AdbcDatabase* database, const c
   }
   const std::string& result = it->second;
 
-  if (*length <= result.size()) {
+  if (*length >= result.size()) {
     // Enough space
     std::memcpy(value, result.c_str(), result.size());
   }
