@@ -235,8 +235,13 @@ func (s *FlightSQLQuirks) DropTable(cnxn adbc.Connection, tblname string) (err e
 	return err
 }
 
-func (s *FlightSQLQuirks) Alloc() memory.Allocator            { return s.mem }
-func (s *FlightSQLQuirks) BindParameter(_ int) string         { return "?" }
+func (s *FlightSQLQuirks) Alloc() memory.Allocator    { return s.mem }
+func (s *FlightSQLQuirks) BindParameter(_ int) string { return "?" }
+
+// SupportsBulkIngest returns false because the example SQLite test server does
+// not implement DoPutCommandStatementIngest. The driver itself supports bulk
+// ingest via FlightSQL's ExecuteIngest when connected to a server that supports
+// it - see BulkIngestTestServer and TestBulkIngest for those tests.
 func (s *FlightSQLQuirks) SupportsBulkIngest(string) bool     { return false }
 func (s *FlightSQLQuirks) SupportsConcurrentStatements() bool { return true }
 func (s *FlightSQLQuirks) SupportsCurrentCatalogSchema() bool { return false }

@@ -16,12 +16,31 @@
 # under the License.
 
 import os
+import time
 
+import docker
 import pytest
 
 import adbc_driver_flightsql
 import adbc_driver_flightsql.dbapi
 import adbc_driver_manager
+
+# Constants
+GIZMOSQL_PORT = 31337
+GIZMOSQL_USERNAME = "adbc_test_user"
+GIZMOSQL_PASSWORD = "adbc_test_password"
+
+
+def wait_for_container_log(container, timeout=30, poll_interval=1, ready_message="GizmoSQL server - started"):
+    """Wait for a specific log message indicating the container is ready."""
+    start_time = time.time()
+    while time.time() - start_time < timeout:
+        logs = container.logs().decode("utf-8")
+        if ready_message in logs:
+            return True
+        time.sleep(poll_interval)
+
+    raise TimeoutError(f"Container did not show '{ready_message}' in logs within {timeout} seconds.")
 
 
 @pytest.fixture(scope="session")
@@ -85,3 +104,64 @@ def test_dbapi():
         autocommit=True,
     ) as conn:
         yield conn
+
+
+@pytest.fixture(scope="session")
+def gizmosql_server(request):
+    """Start a GizmoSQL Docker container for testing."""
+    client = docker.from_env()
+    container = client.containers.run(
+        image="gizmodata/gizmosql:latest-slim",
+        name="adbc-gizmosql-test",
+        detach=True,
+        remove=True,
+        tty=True,
+        init=True,
+        ports={f"{GIZMOSQL_PORT}/tcp": GIZMOSQL_PORT},
+        environment={
+            "GIZMOSQL_USERNAME": GIZMOSQL_USERNAME,
+            "GIZMOSQL_PASSWORD": GIZMOSQL_PASSWORD,
+            "TLS_ENABLED": "0",
+            "PRINT_QUERIES": "1",
+            "DATABASE_FILENAME": "adbc_test.db",
+            "GIZMOSQL_LOG_LEVEL": "DEBUG",
+        },
+        stdout=True,
+        stderr=True,
+    )
+
+    def print_logs_and_stop():
+        """Print container logs and stop the container."""
+        try:
+            logs = container.logs().decode("utf-8")
+            print("\n" + "=" * 60)
+            print("GizmoSQL Container Logs:")
+            print("=" * 60)
+            print(logs)
+            print("=" * 60 + "\n")
+        except Exception as e:
+            print(f"Failed to retrieve container logs: {e}")
+        finally:
+            try:
+                container.stop()
+            except Exception as e:
+                print(f"Failed to stop container: {e}")
+
+    # Register finalizer to print logs on teardown (success or failure)
+    request.addfinalizer(print_logs_and_stop)
+
+    # Wait for the container to be ready
+    try:
+        wait_for_container_log(container)
+    except TimeoutError:
+        # Print logs if container failed to start
+        logs = container.logs().decode("utf-8")
+        print("\n" + "=" * 60)
+        print("GizmoSQL Container Logs (startup failed):")
+        print("=" * 60)
+        print(logs)
+        print("=" * 60 + "\n")
+        raise
+
+    yield container
+

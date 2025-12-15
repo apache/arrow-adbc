@@ -31,7 +31,7 @@ dependencies = [
 
 [project.optional-dependencies]
 dbapi = ["pandas", "pyarrow>=14.0.1"]
-test = ["pandas", "protobuf", "pyarrow>=14.0.1", "pytest"]
+test = ["docker", "pandas", "protobuf", "pyarrow>=14.0.1", "pytest"]
 
 [project.urls]
 homepage = "https://arrow.apache.org/adbc/"
