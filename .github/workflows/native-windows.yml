@@ -289,6 +289,26 @@ jobs:
           name: driver-manager-${{ matrix.os }}
           path: ${{ github.workspace }}/build
 
+      - name: Install MSYS2 and mingw-w64 toolchain
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >
+            pacman -S --noconfirm
+            mingw-w64-x86_64-toolchain
+
+      - name: Add mingw64 to PATH
+        shell: pwsh
+        run: |
+          echo "C:\msys64\mingw64\bin" | Out-File -Encoding ASCII -FilePath $env:GITHUB_PATH -Append
+
+      - name: Set CGO and CC for Go
+        shell: bash
+        run: |
+          echo "CGO_ENABLED=1" >> $GITHUB_ENV
+          echo "CC=gcc" >> $GITHUB_ENV
+
       - name: Build Python Driver Manager
         env:
           BUILD_ALL: "0"
