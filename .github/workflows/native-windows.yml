@@ -253,7 +253,7 @@ jobs:
       - drivers-build-conda
     strategy:
       matrix:
-        os: ["windows-latest"]
+        os: ["windows-2022"]
         python: ["3.10", "3.14"]
     steps:
       - uses: actions/checkout@v5
@@ -329,7 +329,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["windows-latest"]
+        os: ["windows-2022"]
         arch: ["x64"]
         config: ["debug", "release"]
     steps:
