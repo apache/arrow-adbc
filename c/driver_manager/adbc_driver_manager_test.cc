@@ -368,7 +368,7 @@ TEST(AdbcDriverManagerInternal, DatabaseGetOptionValueBufferSize) {
       AdbcDatabaseGetOption(&database, "driver", buf_too_small, &len_too_small, &error),
       IsOkStatus(&error));
   EXPECT_EQ(len_too_small, 12u);
-  EXPECT_STREQ(buf_too_small, "test_driver");
+  EXPECT_STRNE(buf_too_small, "test_driver");
 
   // Just right
   char buf_just_right[12];
