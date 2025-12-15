@@ -85,7 +85,7 @@ jobs:
             apache-arrow-adbc-${VERSION} \
             $(git log -n 1 --format=%h)
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: source
           retention-days: 7
@@ -136,7 +136,7 @@ jobs:
           popd
 
       - name: Upload Go binaries
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: go-${{ matrix.os }}
           retention-days: 7
@@ -193,7 +193,7 @@ jobs:
           popd
 
       - name: Archive nupkg
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: csharp
           retention-days: 7
@@ -242,7 +242,7 @@ jobs:
           popd
 
       - name: Archive docs
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: docs
           retention-days: 2
@@ -296,7 +296,7 @@ jobs:
           ls -laR artifacts
           mv artifacts artifacts-${{ matrix.os }}-${{ matrix.arch }}
           tar czf artifacts-${{ matrix.os }}-${{ matrix.arch }}.tgz artifacts-${{ matrix.os }}-${{ matrix.arch }}
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: jni-artifacts-${{ matrix.os }}-${{ matrix.arch }}
           retention-days: 7
@@ -352,7 +352,7 @@ jobs:
           cp -a adbc/dist/ ./
 
       - name: Archive JARs
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: java
           retention-days: 7
@@ -453,7 +453,7 @@ jobs:
           tar czf ${{ matrix.target }}.tar.gz ${DISTRIBUTION}
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.target }}
           retention-days: 7
@@ -539,7 +539,7 @@ jobs:
           popd
 
       - name: Archive Conda packages
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: python-${{ matrix.arch }}-conda
           retention-days: 7
@@ -613,7 +613,7 @@ jobs:
           ./adbc/ci/scripts/python_conda_build.sh $(pwd)/adbc ${ARCH_CONDA_FORGE}.yaml $(pwd)/adbc/build
 
       - name: Archive Conda packages
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: python-${{ matrix.arch }}-conda
           retention-days: 7
@@ -683,7 +683,7 @@ jobs:
           popd
 
       - name: Archive wheels
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: python-${{ matrix.arch }}-manylinux${{ matrix.manylinux_version }}
           retention-days: 7
@@ -843,7 +843,7 @@ jobs:
           popd
 
       - name: Archive wheels
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: python-${{ matrix.arch }}-macos
           retention-days: 7
@@ -918,7 +918,7 @@ jobs:
 
       - name: Upload failure logs
         if: failure()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: vcpkg-logs-${{ matrix.os }}-${{ matrix.arch }}
           retention-days: 7
@@ -1011,7 +1011,7 @@ jobs:
           popd
 
       - name: Archive wheels
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: python${{ matrix.python_version }}-windows
           retention-days: 7
@@ -1071,7 +1071,7 @@ jobs:
           popd
 
       - name: Archive sdist
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: python-sdist
           retention-days: 7

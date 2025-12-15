@@ -141,7 +141,7 @@ jobs:
           cd
           tar czf ~/local.tgz local
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: driver-manager-${{ matrix.os }}
           retention-days: 3
@@ -705,7 +705,7 @@ jobs:
         run: |
           ./ci/scripts/docs_build.sh "$(pwd)"
       - name: Archive docs
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: docs
           retention-days: 2
