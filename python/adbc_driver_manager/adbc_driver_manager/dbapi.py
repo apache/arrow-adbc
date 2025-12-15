@@ -46,6 +46,7 @@ import threading
 import time
 import typing
 import warnings
+import weakref
 from typing import Any, Dict, List, Literal, Optional, Tuple, Union
 
 try:
@@ -341,6 +342,7 @@ class Connection(_Closeable):
             self._db = _SharedDatabase(db)
         self._conn = conn
         self._conn_kwargs = conn_kwargs
+        self._cursors: "weakref.WeakSet[Cursor]" = weakref.WeakSet()
 
         if autocommit:
             self._autocommit = True
@@ -364,6 +366,8 @@ class Connection(_Closeable):
         """
         Close the connection.
 
+        This will also close any open cursors associated with this connection.
+
         Warnings
         --------
         Failure to close a connection may leak memory or database
@@ -371,6 +375,11 @@ class Connection(_Closeable):
         """
         if self._closed:
             return
+
+        # Close all open cursors first to avoid RuntimeError from
+        # AdbcConnection about open children
+        for cursor in list(self._cursors):
+            cursor.close()
 
         self._conn.close()
         self._db.close()
@@ -394,7 +403,9 @@ class Connection(_Closeable):
         adbc_stmt_kwargs : dict, optional
           ADBC-specific options to pass to the underlying ADBC statement.
         """
-        return Cursor(self, adbc_stmt_kwargs, dbapi_backend=self._backend)
+        cursor = Cursor(self, adbc_stmt_kwargs, dbapi_backend=self._backend)
+        self._cursors.add(cursor)
+        return cursor
 
     def rollback(self) -> None:
         """Explicitly rollback."""
