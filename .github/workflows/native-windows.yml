@@ -273,6 +273,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
+
       - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
         with:
           miniforge-version: latest
@@ -284,28 +285,30 @@ jobs:
             --file ci\conda_env_cpp.txt `
             --file ci\conda_env_python.txt
 
+      - name: Install TDM-GCC
+        shell: powershell
+        run: |
+          # Download TDM-GCC
+          $url = "https://github.com/jmeubank/tdm-gcc/releases/download/v10.3.0-tdm64-2/tdm64-gcc-10.3.0-2.exe"
+          $installer = "$env:TEMP\tdm-gcc-installer.exe"
+          Invoke-WebRequest -Uri $url -OutFile $installer
+
+          # Install silently
+          Start-Process -FilePath $installer -ArgumentList "/S" -Wait
+
+          # Add to PATH (TDM-GCC typically installs to C:\TDM-GCC-64)
+          echo "C:\TDM-GCC-64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Verify GCC
+        shell: powershell
+        run: |
+          gcc --version
+          where.exe gcc
+
       - uses: actions/download-artifact@v6
         with:
           name: driver-manager-${{ matrix.os }}
           path: ${{ github.workspace }}/build
-
-      - name: Install MSYS2 and mingw-w64 toolchain
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW64
-          update: true
-          install: mingw-w64-x86_64-toolchain
-
-      - name: Add mingw64 to PATH
-        shell: pwsh
-        run: |
-          echo "C:\msys64\mingw64\bin" | Out-File -Encoding ASCII -FilePath $env:GITHUB_PATH -Append
-
-      - name: Set CGO and CC for Go
-        shell: bash
-        run: |
-          echo "CGO_ENABLED=1" >> $GITHUB_ENV
-          echo "CC=gcc" >> $GITHUB_ENV
 
       - name: Build Python Driver Manager
         env:
