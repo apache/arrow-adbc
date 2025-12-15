@@ -62,7 +62,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["windows-latest"]
+        os: ["windows-2022"]
     steps:
       - uses: actions/checkout@v5
         with:
@@ -118,7 +118,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["windows-latest"]
+        os: ["windows-2022"]
     steps:
       - uses: actions/checkout@v5
         with:
@@ -186,7 +186,7 @@ jobs:
       - drivers-build-conda
     strategy:
       matrix:
-        os: ["windows-latest"]
+        os: ["windows-2022"]
     steps:
       - uses: actions/checkout@v5
         with:
@@ -343,7 +343,7 @@ jobs:
 
       - name: Setup MSYS2 tools
         run: |
-          # msys64 is pre-installed on windows-latest but not added to path
+          # msys64 is pre-installed on windows but not added to path
           $env:PATH = "C:\msys64\mingw64\bin;C:\msys64\usr\bin\;C:\msys64\ucrt64\bin;$env:PATH"
           echo "PATH=$env:PATH" >> $env:GITHUB_ENV
 
