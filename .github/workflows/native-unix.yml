@@ -93,7 +93,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
@@ -171,7 +171,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
@@ -291,7 +291,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
@@ -337,7 +337,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
@@ -470,7 +470,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
@@ -546,7 +546,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
@@ -663,7 +663,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
