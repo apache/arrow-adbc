@@ -294,9 +294,7 @@ jobs:
         with:
           msystem: MINGW64
           update: true
-          install: >
-            pacman -S --noconfirm
-            mingw-w64-x86_64-toolchain
+          install: mingw-w64-x86_64-toolchain
 
       - name: Add mingw64 to PATH
         shell: pwsh
