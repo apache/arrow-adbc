@@ -285,26 +285,6 @@ jobs:
             --file ci\conda_env_cpp.txt `
             --file ci\conda_env_python.txt
 
-      - name: Install TDM-GCC
-        shell: powershell
-        run: |
-          # Download TDM-GCC
-          $url = "https://github.com/jmeubank/tdm-gcc/releases/download/v10.3.0-tdm64-2/tdm64-gcc-10.3.0-2.exe"
-          $installer = "$env:TEMP\tdm-gcc-installer.exe"
-          Invoke-WebRequest -Uri $url -OutFile $installer
-
-          # Install silently
-          Start-Process -FilePath $installer -ArgumentList "/S" -Wait
-
-          # Add to PATH (TDM-GCC typically installs to C:\TDM-GCC-64)
-          echo "C:\TDM-GCC-64\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-      - name: Verify GCC
-        shell: powershell
-        run: |
-          gcc --version
-          where.exe gcc
-
       - uses: actions/download-artifact@v6
         with:
           name: driver-manager-${{ matrix.os }}
