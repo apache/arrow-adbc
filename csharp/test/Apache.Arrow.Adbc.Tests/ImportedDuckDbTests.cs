@@ -221,14 +221,7 @@ namespace Apache.Arrow.Adbc.Tests
             statement.Prepare();
             var schema = statement.GetParameterSchema();
             Assert.Equal(2, schema.FieldsList.Count);
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                Assert.Equal(string.Empty, schema.FieldsList[0].Name);
-            }
-            else
-            {
-                Assert.Equal("0", schema.FieldsList[0].Name);
-            }
+            Assert.Equal("0", schema.FieldsList[0].Name);
             Assert.Equal(ArrowTypeId.Null, schema.FieldsList[0].DataType.TypeId);
             Assert.Equal("1", schema.FieldsList[1].Name);
             Assert.Equal(ArrowTypeId.Null, schema.FieldsList[1].DataType.TypeId);
