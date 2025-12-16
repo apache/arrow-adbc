@@ -63,7 +63,7 @@ jobs:
       CARGO_INCREMENTAL: 0
       RUSTFLAGS: "-Adead_code" # TODO(alexandreyc): remove this line when implementation is complete
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
