@@ -366,6 +366,8 @@ class Connection(_Closeable):
         """
         Close the connection.
 
+        Notes
+        -----
         This will also close any open cursors associated with this connection.
 
         Warnings
