@@ -31,7 +31,7 @@
     <PackageVersion Include="Azure.Identity" Version="1.17.1" />
     <PackageVersion Include="BenchmarkDotNet" Version="0.15.8" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
-    <PackageVersion Include="DuckDB.NET.Bindings.Full" Version="1.4.1" />
+    <PackageVersion Include="DuckDB.NET.Bindings.Full" Version="1.4.3" />
     <PackageVersion Include="K4os.Compression.LZ4" Version="1.3.8" />
     <PackageVersion Include="K4os.Compression.LZ4.Streams" Version="1.3.8" />
     <PackageVersion Include="Google.Cloud.BigQuery.Storage.V1" Version="3.17.0" />
