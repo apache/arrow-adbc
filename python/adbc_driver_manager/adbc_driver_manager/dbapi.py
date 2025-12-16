@@ -378,10 +378,13 @@ class Connection(_Closeable):
         if self._closed:
             return
 
-        # Close all open cursors first to avoid RuntimeError from
+        # Try to close all open cursors first to avoid RuntimeError from
         # AdbcConnection about open children
         for cursor in self._cursors:
-            cursor.close()
+            try:
+                cursor.close()
+            except Exception:
+                pass
 
         self._conn.close()
         self._db.close()

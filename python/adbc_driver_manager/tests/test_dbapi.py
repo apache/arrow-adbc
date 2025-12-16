@@ -670,6 +670,41 @@ def test_close_connection_via_context_manager_with_open_cursors():
 
 
 @pytest.mark.sqlite
+def test_close_connection_suppresses_cursor_close_error():
+    """
+    Test that closing a connection suppresses exceptions from cursor.close().
+
+    When a cursor's close() method raises an exception, the connection should
+    still close successfully without propagating the error.
+    """
+    from unittest.mock import MagicMock
+
+    conn = dbapi.connect(driver="adbc_driver_sqlite")
+    # Create a real cursor so we have something legitimate in _cursors
+    real_cursor = conn.cursor()
+    real_cursor.execute("SELECT 1")
+
+    # Create a mock cursor that raises on close
+    mock_cursor = MagicMock()
+    mock_cursor.close.side_effect = RuntimeError("Simulated cursor close failure")
+
+    # Add the mock cursor to the connection's cursor set
+    conn._cursors.add(mock_cursor)
+
+    # This should NOT raise despite the mock cursor raising on close
+    conn.close()
+
+    # Verify the connection is closed
+    assert conn._closed
+
+    # Verify the mock cursor's close was called
+    mock_cursor.close.assert_called_once()
+
+    # Verify the real cursor is also closed
+    assert real_cursor._closed
+
+
+@pytest.mark.sqlite
 def test_connect(tmp_path: pathlib.Path, monkeypatch) -> None:
     with dbapi.connect(driver="adbc_driver_sqlite") as conn:
         with conn.cursor() as cur:
