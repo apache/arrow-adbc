@@ -383,8 +383,8 @@ class Connection(_Closeable):
         for cursor in self._cursors:
             try:
                 cursor.close()
-            except Exception:
-                pass
+            except Exception as e:
+                warnings.warn(f"Failed to close cursor: {e}", ResourceWarning, stacklevel=2)
 
         self._conn.close()
         self._db.close()

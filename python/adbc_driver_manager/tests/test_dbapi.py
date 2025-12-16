@@ -675,7 +675,8 @@ def test_close_connection_suppresses_cursor_close_error():
     Test that closing a connection suppresses exceptions from cursor.close().
 
     When a cursor's close() method raises an exception, the connection should
-    still close successfully without propagating the error.
+    still close successfully without propagating the error, but should emit
+    a ResourceWarning.
     """
     from unittest.mock import MagicMock
 
@@ -691,8 +692,10 @@ def test_close_connection_suppresses_cursor_close_error():
     # Add the mock cursor to the connection's cursor set
     conn._cursors.add(mock_cursor)
 
-    # This should NOT raise despite the mock cursor raising on close
-    conn.close()
+    # This should NOT raise despite the mock cursor raising on close,
+    # but should emit a ResourceWarning
+    with pytest.warns(ResourceWarning, match="Failed to close cursor"):
+        conn.close()
 
     # Verify the connection is closed
     assert conn._closed
