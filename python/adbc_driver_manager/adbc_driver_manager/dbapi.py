@@ -380,7 +380,7 @@ class Connection(_Closeable):
 
         # Close all open cursors first to avoid RuntimeError from
         # AdbcConnection about open children
-        for cursor in list(self._cursors):
+        for cursor in self._cursors:
             cursor.close()
 
         self._conn.close()
