@@ -39,6 +39,10 @@ on:
       SNOWFLAKE_URI:
         required: false
 
+defaults:
+  run:
+    shell: bash
+
 jobs:
   r-check:
     runs-on: ${{ inputs.os }}-latest
@@ -74,7 +78,6 @@ jobs:
           pushd "r/${{ inputs.pkg }}"
           Rscript bootstrap.R
           popd
-        shell: bash
 
       - uses: r-lib/actions/setup-r-dependencies@6f6e5bc62fba3a704f74e7ad7ef7676c5c6a2590
         with:
