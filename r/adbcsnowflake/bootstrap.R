@@ -20,4 +20,3 @@ BOOTSTRAP_SCRIPT <- file.path("..", "tools", "bootstrap-go.R")
 if (file.exists(BOOTSTRAP_SCRIPT)) {
   source(BOOTSTRAP_SCRIPT)
 }
-
