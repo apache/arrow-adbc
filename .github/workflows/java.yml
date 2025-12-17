@@ -50,7 +50,7 @@ jobs:
       matrix:
         java: ['11', '17', '21', '25']
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -76,7 +76,7 @@ jobs:
       matrix:
         java: ['21', '25']
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -116,7 +116,7 @@ jobs:
     env:
       VCPKG_ROOT: "${{ github.workspace }}/vcpkg"
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -172,7 +172,7 @@ jobs:
           ls -laR artifacts
           mv artifacts artifacts-${{ matrix.os }}-${{ matrix.arch }}
           tar czf artifacts-${{ matrix.os }}-${{ matrix.arch }}.tgz artifacts-${{ matrix.os }}-${{ matrix.arch }}
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: jni-artifacts-${{ matrix.os }}-${{ matrix.arch }}
           retention-days: 7
@@ -185,7 +185,7 @@ jobs:
           find "$VCPKG_ROOT" -name 'build-*.log' -exec cp '{}' ~/logs ';'
       - name: Upload failure logs
         if: failure()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: jni-artifacts-${{ matrix.os }}-${{ matrix.arch }}
           retention-days: 7
@@ -204,12 +204,12 @@ jobs:
           - { java: '11', os: macOS, arch: arm64v8, vcpkg_arch: arm64, runner: macos-latest }
           - { java: '25', os: macOS, arch: arm64v8, vcpkg_arch: arm64, runner: macos-latest }
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
           submodules: recursive
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         with:
           path: artifacts
           pattern: jni-artifacts-*
