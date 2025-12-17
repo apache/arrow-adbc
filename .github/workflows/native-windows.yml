@@ -31,7 +31,7 @@ on:
       - ".github/workflows/native-windows.yml"
   push:
     branches-ignore:
-      - 'dependabot/**'
+      - "dependabot/**"
     paths:
       - "c/**"
       - "ci/**"
@@ -62,7 +62,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["windows-2022"]
+        os: ["windows-latest"]
     steps:
       - uses: actions/checkout@v6
         with:
@@ -81,7 +81,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f # v3.2.0
         with:
           miniforge-version: latest
           use-mamba: true
@@ -118,7 +118,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["windows-2022"]
+        os: ["windows-latest"]
     steps:
       - uses: actions/checkout@v6
         with:
@@ -137,7 +137,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f # v3.2.0
         with:
           miniforge-version: latest
           use-mamba: true
@@ -186,7 +186,7 @@ jobs:
       - drivers-build-conda
     strategy:
       matrix:
-        os: ["windows-2022"]
+        os: ["windows-latest"]
     steps:
       - uses: actions/checkout@v6
         with:
@@ -209,7 +209,7 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f # v3.2.0
         with:
           miniforge-version: latest
           use-mamba: true
@@ -253,7 +253,7 @@ jobs:
       - drivers-build-conda
     strategy:
       matrix:
-        os: ["windows-2022"]
+        os: ["windows-latest"]
         python: ["3.10", "3.14"]
     steps:
       - uses: actions/checkout@v6
@@ -274,7 +274,7 @@ jobs:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
 
-      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
+      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f # v3.2.0
         with:
           miniforge-version: latest
           use-mamba: true
@@ -329,7 +329,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: ["windows-2022"]
+        os: ["windows-latest"]
         arch: ["x64"]
         config: ["debug", "release"]
     steps:
