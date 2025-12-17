@@ -598,12 +598,18 @@ jobs:
           else
             make -C ./go/adbc/pkg libadbc_driver_panicdummy.so
           fi
+      - name: Build Panic Dummy (Rust)
+        working-directory: rust
+        run: |
+          cargo build -padbc_dummy
       - name: Test Python Driver Manager
         run: |
           if [[ $(uname) = "Darwin" ]]; then
             export PANICDUMMY_LIBRARY_PATH=$(pwd)/go/adbc/pkg/libadbc_driver_panicdummy.dylib
+            export PANICDUMMY_RUST_LIBRARY_PATH=$(pwd)/rust/target/debug/libadbc_dummy.dylib
           else
             export PANICDUMMY_LIBRARY_PATH=$(pwd)/go/adbc/pkg/libadbc_driver_panicdummy.so
+            export PANICDUMMY_RUST_LIBRARY_PATH=$(pwd)/rust/target/debug/libadbc_dummy.so
           fi
           export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/x64/bin:$PATH
           env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"

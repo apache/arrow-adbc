@@ -180,6 +180,7 @@ impl<DriverType: Driver + Default + 'static> FFIDriver for DriverType {
 #[macro_export]
 macro_rules! export_driver {
     ($func_name:ident, $driver_type:ty) => {
+        #[allow(non_snake_case)]
         #[no_mangle]
         pub unsafe extern "C" fn $func_name(
             version: std::os::raw::c_int,
@@ -207,6 +208,16 @@ macro_rules! export_driver {
             }
             adbc_core::constants::ADBC_STATUS_OK
         }
+
+        #[allow(non_snake_case)]
+        #[no_mangle]
+        pub unsafe extern "C" fn AdbcDriverInit(
+            version: std::os::raw::c_int,
+            driver: *mut std::os::raw::c_void,
+            error: *mut adbc_ffi::FFI_AdbcError,
+        ) -> adbc_core::error::AdbcStatusCode {
+            unsafe { $func_name(version, driver, error) }
+        }
     };
 }
 
@@ -229,7 +240,7 @@ macro_rules! check_err {
                 if !$err_out.is_null() {
                     let mut ffi_error =
                         $crate::FFI_AdbcError::try_from(error).unwrap_or_else(Into::into);
-                    ffi_error.private_driver = (*$err_out).private_driver;
+                    ffi_error.private_driver = unsafe { (*$err_out).private_driver };
                     unsafe { std::ptr::write_unaligned($err_out, ffi_error) };
                 }
                 return status;
@@ -255,6 +266,32 @@ macro_rules! check_not_null {
             Ok(())
         };
         $crate::check_err!(res, $err_out);
+    };
+}
+
+/// Check that the given raw pointer is not null, then return it as a mutable reference.
+///
+/// If null, an error is returned from the enclosing function.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! pointer_as_mut {
+    ($ptr:ident, $err_out:expr) => {
+        match unsafe { $ptr.as_mut() } {
+            Some(p) => p,
+            None => {
+                if !$err_out.is_null() {
+                    let error = adbc_core::error::Error::with_message_and_status(
+                        format!("Passed null pointer for argument {:?}", stringify!($ptr)),
+                        adbc_core::error::Status::InvalidArguments,
+                    );
+                    let mut ffi_error =
+                        $crate::FFI_AdbcError::try_from(error).unwrap_or_else(Into::into);
+                    ffi_error.private_driver = unsafe { (*$err_out).private_driver };
+                    unsafe { std::ptr::write_unaligned($err_out, ffi_error) };
+                }
+                return adbc_core::error::Status::InvalidArguments.into();
+            }
+        }
     };
 }
 
@@ -456,14 +493,57 @@ where
     }
 }
 
+static POISON: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+fn catch_panic<F: FnOnce() -> AdbcStatusCode + std::panic::UnwindSafe>(
+    error: *mut FFI_AdbcError,
+    f: F,
+) -> AdbcStatusCode {
+    check_err!(check_poison(), error);
+
+    match std::panic::catch_unwind(f) {
+        Ok(status) => status,
+        Err(panic) => {
+            POISON.store(true, std::sync::atomic::Ordering::Release);
+
+            if !error.is_null() {
+                let message = if let Some(s) = panic.downcast_ref::<&str>() {
+                    s.to_string()
+                } else if let Some(s) = panic.downcast_ref::<String>() {
+                    s.clone()
+                } else {
+                    "Unknown panic".to_string()
+                };
+                let err = Error::with_message_and_status(
+                    format!("Uncaught panic in driver: {message}"),
+                    Status::Internal,
+                );
+                let mut ffi_error = FFI_AdbcError::try_from(err).unwrap_or_else(Into::into);
+                ffi_error.private_driver = unsafe { (*error).private_driver };
+                unsafe { std::ptr::write_unaligned(error, ffi_error) };
+            }
+            Status::Internal.into()
+        }
+    }
+}
+
+fn check_poison() -> Result<()> {
+    if POISON.load(std::sync::atomic::Ordering::Acquire) {
+        Err(Error::with_message_and_status(
+            "Driver panicked and is in unknown state",
+            Status::Internal,
+        ))
+    } else {
+        Ok(())
+    }
+}
+
 // Database
 
-// SAFETY: Will panic if `database` is null.
 unsafe fn database_private_data<'a, DriverType: Driver>(
-    database: *mut FFI_AdbcDatabase,
+    database: &mut FFI_AdbcDatabase,
 ) -> Result<&'a mut ExportedDatabase<DriverType>> {
-    assert!(!database.is_null());
-    let exported = (*database).private_data as *mut ExportedDatabase<DriverType>;
+    let exported = database.private_data as *mut ExportedDatabase<DriverType>;
     let exported = exported.as_mut().ok_or(Error::with_message_and_status(
         "Uninitialized database",
         Status::InvalidState,
@@ -471,14 +551,13 @@ unsafe fn database_private_data<'a, DriverType: Driver>(
     exported
 }
 
-// SAFETY: Will panic if `database` or `key` is null.
+// SAFETY: Will panic if `key` is null.
 unsafe fn database_set_option_impl<DriverType: Driver, Value: Into<OptionValue>>(
-    database: *mut FFI_AdbcDatabase,
+    database: &mut FFI_AdbcDatabase,
     key: *const c_char,
     value: Value,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    assert!(!database.is_null());
     assert!(!key.is_null());
 
     let exported = check_err!(database_private_data::<DriverType>(database), error);
@@ -496,200 +575,234 @@ unsafe fn database_set_option_impl<DriverType: Driver, Value: Into<OptionValue>>
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn database_new<DriverType: Driver>(
+extern "C" fn database_new<DriverType: Driver>(
     database: *mut FFI_AdbcDatabase,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(database, error);
+    catch_panic(error, || {
+        let database = pointer_as_mut!(database, error);
+        let exported = Box::new(ExportedDatabase::<DriverType>::Options(HashMap::new()));
+        database.private_data = Box::into_raw(exported) as *mut c_void;
 
-    let database = database.as_mut().unwrap();
-    let exported = Box::new(ExportedDatabase::<DriverType>::Options(HashMap::new()));
-    database.private_data = Box::into_raw(exported) as *mut c_void;
-
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn database_init<DriverType: Driver + Default>(
+extern "C" fn database_init<DriverType: Driver + Default>(
     database: *mut FFI_AdbcDatabase,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(database, error);
+    catch_panic(error, || {
+        let database = pointer_as_mut!(database, error);
 
-    let exported = check_err!(database_private_data::<DriverType>(database), error);
-
-    if let ExportedDatabase::Options(options) = exported {
-        let mut driver = DriverType::default();
-        let database = check_err!(driver.new_database_with_opts(options.clone()), error);
-        *exported = ExportedDatabase::Database(database);
-    } else {
-        check_err!(
-            Err(Error::with_message_and_status(
-                "Database already initialized",
-                Status::InvalidState
-            )),
+        let exported = check_err!(
+            unsafe { database_private_data::<DriverType>(database) },
             error
         );
-    }
 
-    ADBC_STATUS_OK
+        if let ExportedDatabase::Options(options) = exported {
+            let mut driver = DriverType::default();
+            let database = check_err!(driver.new_database_with_opts(options.clone()), error);
+            *exported = ExportedDatabase::Database(database);
+        } else {
+            check_err!(
+                Err(Error::with_message_and_status(
+                    "Database already initialized",
+                    Status::InvalidState
+                )),
+                error
+            );
+        }
+
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn database_release<DriverType: Driver>(
+extern "C" fn database_release<DriverType: Driver>(
     database: *mut FFI_AdbcDatabase,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(database, error);
+    catch_panic(error, || {
+        let database = pointer_as_mut!(database, error);
+        if database.private_data.is_null() {
+            check_err!(
+                Err(Error::with_message_and_status(
+                    "Database already released",
+                    Status::InvalidState
+                )),
+                error
+            );
+        }
+        let exported =
+            unsafe { Box::from_raw(database.private_data as *mut ExportedDatabase<DriverType>) };
+        drop(exported);
+        database.private_data = std::ptr::null_mut();
 
-    let database = database.as_mut().unwrap();
-    if database.private_data.is_null() {
-        check_err!(
-            Err(Error::with_message_and_status(
-                "Database already released",
-                Status::InvalidState
-            )),
-            error
-        );
-    }
-    let exported = Box::from_raw(database.private_data as *mut ExportedDatabase<DriverType>);
-    drop(exported);
-    database.private_data = std::ptr::null_mut();
-
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn database_set_option<DriverType: Driver>(
+extern "C" fn database_set_option<DriverType: Driver>(
     database: *mut FFI_AdbcDatabase,
     key: *const c_char,
     value: *const c_char,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(database, error);
-    check_not_null!(key, error);
-    check_not_null!(value, error);
+    catch_panic(error, || {
+        let database = pointer_as_mut!(database, error);
+        check_not_null!(key, error);
+        check_not_null!(value, error);
 
-    let value = check_err!(CStr::from_ptr(value).to_str(), error);
-    database_set_option_impl::<DriverType, &str>(database, key, value, error)
+        let value = check_err!(unsafe { CStr::from_ptr(value).to_str() }, error);
+        unsafe { database_set_option_impl::<DriverType, &str>(database, key, value, error) }
+    })
 }
 
-unsafe extern "C" fn database_set_option_int<DriverType: Driver>(
+extern "C" fn database_set_option_int<DriverType: Driver>(
     database: *mut FFI_AdbcDatabase,
     key: *const c_char,
     value: i64,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(database, error);
-    check_not_null!(key, error);
+    catch_panic(error, || {
+        let database = pointer_as_mut!(database, error);
+        check_not_null!(key, error);
 
-    database_set_option_impl::<DriverType, i64>(database, key, value, error)
+        unsafe { database_set_option_impl::<DriverType, i64>(database, key, value, error) }
+    })
 }
 
-unsafe extern "C" fn database_set_option_double<DriverType: Driver>(
+extern "C" fn database_set_option_double<DriverType: Driver>(
     database: *mut FFI_AdbcDatabase,
     key: *const c_char,
     value: f64,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(database, error);
-    check_not_null!(key, error);
+    catch_panic(error, || {
+        let database = pointer_as_mut!(database, error);
+        check_not_null!(key, error);
 
-    database_set_option_impl::<DriverType, f64>(database, key, value, error)
+        unsafe { database_set_option_impl::<DriverType, f64>(database, key, value, error) }
+    })
 }
 
-unsafe extern "C" fn database_set_option_bytes<DriverType: Driver>(
+extern "C" fn database_set_option_bytes<DriverType: Driver>(
     database: *mut FFI_AdbcDatabase,
     key: *const c_char,
     value: *const u8,
     length: usize,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(database, error);
-    check_not_null!(key, error);
-    check_not_null!(value, error);
+    catch_panic(error, || {
+        let database = pointer_as_mut!(database, error);
+        check_not_null!(key, error);
+        check_not_null!(value, error);
 
-    let value = std::slice::from_raw_parts(value, length);
-    database_set_option_impl::<DriverType, &[u8]>(database, key, value, error)
+        let value = unsafe { std::slice::from_raw_parts(value, length) };
+        unsafe { database_set_option_impl::<DriverType, &[u8]>(database, key, value, error) }
+    })
 }
 
-unsafe extern "C" fn database_get_option<DriverType: Driver>(
+extern "C" fn database_get_option<DriverType: Driver>(
     database: *mut FFI_AdbcDatabase,
     key: *const c_char,
     value: *mut c_char,
     length: *mut usize,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(database, error);
-    check_not_null!(key, error);
-    check_not_null!(value, error);
-    check_not_null!(length, error);
+    catch_panic(error, || {
+        let database = pointer_as_mut!(database, error);
+        check_not_null!(key, error);
+        check_not_null!(value, error);
+        check_not_null!(length, error);
 
-    let exported = check_err!(database_private_data::<DriverType>(database), error);
-    let (options, database) = exported.tuple();
+        let exported = check_err!(
+            unsafe { database_private_data::<DriverType>(database) },
+            error
+        );
+        let (options, database) = exported.tuple();
 
-    let optvalue = get_option(database, options, key);
-    let optvalue = check_err!(optvalue, error);
-    check_err!(copy_string(&optvalue, value, length), error);
+        let optvalue = unsafe { get_option(database, options, key) };
+        let optvalue = check_err!(optvalue, error);
+        check_err!(unsafe { copy_string(&optvalue, value, length) }, error);
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn database_get_option_int<DriverType: Driver>(
+extern "C" fn database_get_option_int<DriverType: Driver>(
     database: *mut FFI_AdbcDatabase,
     key: *const c_char,
     value: *mut i64,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(database, error);
-    check_not_null!(key, error);
-    check_not_null!(value, error);
+    catch_panic(error, || {
+        let database = pointer_as_mut!(database, error);
+        check_not_null!(key, error);
+        check_not_null!(value, error);
 
-    let exported = check_err!(database_private_data::<DriverType>(database), error);
-    let (options, database) = exported.tuple();
+        let exported = check_err!(
+            unsafe { database_private_data::<DriverType>(database) },
+            error
+        );
+        let (options, database) = exported.tuple();
 
-    let optvalue = check_err!(get_option_int(database, options, key), error);
-    std::ptr::write_unaligned(value, optvalue);
+        let optvalue = check_err!(unsafe { get_option_int(database, options, key) }, error);
+        unsafe { std::ptr::write_unaligned(value, optvalue) };
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn database_get_option_double<DriverType: Driver>(
+extern "C" fn database_get_option_double<DriverType: Driver>(
     database: *mut FFI_AdbcDatabase,
     key: *const c_char,
     value: *mut f64,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(database, error);
-    check_not_null!(key, error);
-    check_not_null!(value, error);
+    catch_panic(error, || {
+        let database = pointer_as_mut!(database, error);
+        check_not_null!(key, error);
+        check_not_null!(value, error);
 
-    let exported = check_err!(database_private_data::<DriverType>(database), error);
-    let (options, database) = exported.tuple();
+        let exported = check_err!(
+            unsafe { database_private_data::<DriverType>(database) },
+            error
+        );
+        let (options, database) = exported.tuple();
 
-    let optvalue = check_err!(get_option_double(database, options, key), error);
-    std::ptr::write_unaligned(value, optvalue);
+        let optvalue = check_err!(unsafe { get_option_double(database, options, key) }, error);
+        unsafe { std::ptr::write_unaligned(value, optvalue) };
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn database_get_option_bytes<DriverType: Driver>(
+extern "C" fn database_get_option_bytes<DriverType: Driver>(
     database: *mut FFI_AdbcDatabase,
     key: *const c_char,
     value: *mut u8,
     length: *mut usize,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(database, error);
-    check_not_null!(key, error);
-    check_not_null!(value, error);
-    check_not_null!(length, error);
+    catch_panic(error, || {
+        let database = pointer_as_mut!(database, error);
+        check_not_null!(key, error);
+        check_not_null!(value, error);
+        check_not_null!(length, error);
 
-    let exported = check_err!(database_private_data::<DriverType>(database), error);
-    let (options, database) = exported.tuple();
+        let exported = check_err!(
+            unsafe { database_private_data::<DriverType>(database) },
+            error
+        );
+        let (options, database) = exported.tuple();
 
-    let optvalue = get_option_bytes(database, options, key);
-    let optvalue = check_err!(optvalue, error);
-    copy_bytes(&optvalue, value, length);
+        let optvalue = unsafe { get_option_bytes(database, options, key) };
+        let optvalue = check_err!(optvalue, error);
+        unsafe { copy_bytes(&optvalue, value, length) };
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
 unsafe fn maybe_str<'a>(str: *const c_char) -> Result<Option<&'a str>> {
@@ -701,12 +814,10 @@ unsafe fn maybe_str<'a>(str: *const c_char) -> Result<Option<&'a str>> {
 
 // Connection
 
-// SAFETY: Will panic if `connection` is null.
 unsafe fn connection_private_data<'a, DriverType: Driver>(
-    connection: *mut FFI_AdbcConnection,
+    connection: &mut FFI_AdbcConnection,
 ) -> Result<&'a mut ExportedConnection<DriverType>> {
-    assert!(!connection.is_null());
-    let exported = (*connection).private_data as *mut ExportedConnection<DriverType>;
+    let exported = connection.private_data as *mut ExportedConnection<DriverType>;
     let exported = exported.as_mut().ok_or(Error::with_message_and_status(
         "Uninitialized connection",
         Status::InvalidState,
@@ -721,7 +832,7 @@ unsafe fn connection_set_option_impl<DriverType: Driver, Value: Into<OptionValue
     value: Value,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    assert!(!connection.is_null());
+    let connection = pointer_as_mut!(connection, error);
     assert!(!key.is_null());
 
     let exported = check_err!(connection_private_data::<DriverType>(connection), error);
@@ -739,233 +850,282 @@ unsafe fn connection_set_option_impl<DriverType: Driver, Value: Into<OptionValue
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn connection_new<DriverType: Driver>(
+extern "C" fn connection_new<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(connection, error);
+    catch_panic(error, || {
+        let connection = pointer_as_mut!(connection, error);
 
-    let connection = connection.as_mut().unwrap();
-    let exported = Box::new(ExportedConnection::<DriverType>::Options(HashMap::new()));
-    connection.private_data = Box::into_raw(exported) as *mut c_void;
+        let exported = Box::new(ExportedConnection::<DriverType>::Options(HashMap::new()));
+        connection.private_data = Box::into_raw(exported) as *mut c_void;
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn connection_init<DriverType: Driver>(
+extern "C" fn connection_init<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     database: *mut FFI_AdbcDatabase,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(connection, error);
-    check_not_null!(database, error);
+    catch_panic(error, || {
+        let connection = pointer_as_mut!(connection, error);
+        let database = pointer_as_mut!(database, error);
 
-    let exported_connection = check_err!(connection_private_data::<DriverType>(connection), error);
-    let exported_database = check_err!(database_private_data::<DriverType>(database), error);
-
-    if let ExportedConnection::Options(options) = exported_connection {
-        let connection = match exported_database {
-            ExportedDatabase::Database(database) => {
-                database.new_connection_with_opts(options.clone())
-            }
-            _ => Err(Error::with_message_and_status(
-                "You must call DatabaseInit before ConnectionInit",
-                Status::InvalidState,
-            )),
-        };
-        let connection = check_err!(connection, error);
-        *exported_connection = ExportedConnection::Connection(connection);
-    } else {
-        check_err!(
-            Err(Error::with_message_and_status(
-                "Connection already initialized",
-                Status::InvalidState
-            )),
+        let exported_connection = check_err!(
+            unsafe { connection_private_data::<DriverType>(connection) },
             error
         );
-    }
+        let exported_database = check_err!(
+            unsafe { database_private_data::<DriverType>(database) },
+            error
+        );
 
-    ADBC_STATUS_OK
+        if let ExportedConnection::Options(options) = exported_connection {
+            let connection = match exported_database {
+                ExportedDatabase::Database(database) => {
+                    database.new_connection_with_opts(options.clone())
+                }
+                _ => Err(Error::with_message_and_status(
+                    "You must call DatabaseInit before ConnectionInit",
+                    Status::InvalidState,
+                )),
+            };
+            let connection = check_err!(connection, error);
+            *exported_connection = ExportedConnection::Connection(connection);
+        } else {
+            check_err!(
+                Err(Error::with_message_and_status(
+                    "Connection already initialized",
+                    Status::InvalidState
+                )),
+                error
+            );
+        }
+
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn connection_release<DriverType: Driver>(
+extern "C" fn connection_release<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(connection, error);
+    catch_panic(error, || {
+        let connection = pointer_as_mut!(connection, error);
 
-    let connection = connection.as_mut().unwrap();
-    if connection.private_data.is_null() {
-        check_err!(
-            Err(Error::with_message_and_status(
-                "Connection already released",
-                Status::InvalidState
-            )),
-            error
-        );
-    }
-    let exported = Box::from_raw(connection.private_data as *mut ExportedConnection<DriverType>);
-    drop(exported);
-    connection.private_data = std::ptr::null_mut();
+        if connection.private_data.is_null() {
+            check_err!(
+                Err(Error::with_message_and_status(
+                    "Connection already released",
+                    Status::InvalidState
+                )),
+                error
+            );
+        }
 
-    ADBC_STATUS_OK
+        let exported = unsafe {
+            Box::from_raw(connection.private_data as *mut ExportedConnection<DriverType>)
+        };
+        drop(exported);
+        connection.private_data = std::ptr::null_mut();
+
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn connection_set_option<DriverType: Driver>(
+extern "C" fn connection_set_option<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     key: *const c_char,
     value: *const c_char,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(connection, error);
-    check_not_null!(key, error);
-    check_not_null!(value, error);
+    catch_panic(error, || {
+        check_not_null!(connection, error);
+        check_not_null!(key, error);
+        check_not_null!(value, error);
 
-    let value = check_err!(CStr::from_ptr(value).to_str(), error);
-    connection_set_option_impl::<DriverType, &str>(connection, key, value, error)
+        let value = check_err!(unsafe { CStr::from_ptr(value).to_str() }, error);
+        unsafe { connection_set_option_impl::<DriverType, &str>(connection, key, value, error) }
+    })
 }
 
-unsafe extern "C" fn connection_set_option_int<DriverType: Driver>(
+extern "C" fn connection_set_option_int<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     key: *const c_char,
     value: i64,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(connection, error);
-    check_not_null!(key, error);
+    catch_panic(error, || {
+        check_not_null!(connection, error);
+        check_not_null!(key, error);
 
-    connection_set_option_impl::<DriverType, i64>(connection, key, value, error)
+        unsafe { connection_set_option_impl::<DriverType, i64>(connection, key, value, error) }
+    })
 }
 
-unsafe extern "C" fn connection_set_option_double<DriverType: Driver>(
+extern "C" fn connection_set_option_double<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     key: *const c_char,
     value: f64,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(connection, error);
-    check_not_null!(key, error);
+    catch_panic(error, || {
+        check_not_null!(connection, error);
+        check_not_null!(key, error);
 
-    connection_set_option_impl::<DriverType, f64>(connection, key, value, error)
+        unsafe { connection_set_option_impl::<DriverType, f64>(connection, key, value, error) }
+    })
 }
 
-unsafe extern "C" fn connection_set_option_bytes<DriverType: Driver>(
+extern "C" fn connection_set_option_bytes<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     key: *const c_char,
     value: *const u8,
     length: usize,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(connection, error);
-    check_not_null!(key, error);
-    check_not_null!(value, error);
+    catch_panic(error, || {
+        check_not_null!(connection, error);
+        check_not_null!(key, error);
+        check_not_null!(value, error);
 
-    let value = std::slice::from_raw_parts(value, length);
-    connection_set_option_impl::<DriverType, &[u8]>(connection, key, value, error)
+        let value = unsafe { std::slice::from_raw_parts(value, length) };
+        unsafe { connection_set_option_impl::<DriverType, &[u8]>(connection, key, value, error) }
+    })
 }
 
-unsafe extern "C" fn connection_get_option<DriverType: Driver>(
+extern "C" fn connection_get_option<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     key: *const c_char,
     value: *mut c_char,
     length: *mut usize,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(connection, error);
-    check_not_null!(key, error);
-    check_not_null!(value, error);
-    check_not_null!(length, error);
+    catch_panic(error, || {
+        let connection = pointer_as_mut!(connection, error);
+        check_not_null!(key, error);
+        check_not_null!(value, error);
+        check_not_null!(length, error);
 
-    let exported = check_err!(connection_private_data::<DriverType>(connection), error);
-    let (options, connection) = exported.tuple();
+        let exported = check_err!(
+            unsafe { connection_private_data::<DriverType>(connection) },
+            error
+        );
+        let (options, connection) = exported.tuple();
 
-    let optvalue = get_option(connection, options, key);
-    let optvalue = check_err!(optvalue, error);
-    check_err!(copy_string(&optvalue, value, length), error);
+        let optvalue = unsafe { get_option(connection, options, key) };
+        let optvalue = check_err!(optvalue, error);
+        check_err!(unsafe { copy_string(&optvalue, value, length) }, error);
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn connection_get_option_int<DriverType: Driver>(
+extern "C" fn connection_get_option_int<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     key: *const c_char,
     value: *mut i64,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(connection, error);
-    check_not_null!(key, error);
-    check_not_null!(value, error);
+    catch_panic(error, || {
+        let connection = pointer_as_mut!(connection, error);
+        check_not_null!(key, error);
+        check_not_null!(value, error);
 
-    let exported = check_err!(connection_private_data::<DriverType>(connection), error);
-    let (options, connection) = exported.tuple();
+        let exported = check_err!(
+            unsafe { connection_private_data::<DriverType>(connection) },
+            error
+        );
+        let (options, connection) = exported.tuple();
 
-    let optvalue = check_err!(get_option_int(connection, options, key), error);
-    std::ptr::write_unaligned(value, optvalue);
+        let optvalue = check_err!(unsafe { get_option_int(connection, options, key) }, error);
+        unsafe { std::ptr::write_unaligned(value, optvalue) };
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn connection_get_option_double<DriverType: Driver>(
+extern "C" fn connection_get_option_double<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     key: *const c_char,
     value: *mut f64,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(connection, error);
-    check_not_null!(key, error);
-    check_not_null!(value, error);
+    catch_panic(error, || {
+        let connection = pointer_as_mut!(connection, error);
+        check_not_null!(key, error);
+        check_not_null!(value, error);
 
-    let exported = check_err!(connection_private_data::<DriverType>(connection), error);
-    let (options, connection) = exported.tuple();
+        let exported = check_err!(
+            unsafe { connection_private_data::<DriverType>(connection) },
+            error
+        );
+        let (options, connection) = exported.tuple();
 
-    let optvalue = check_err!(get_option_double(connection, options, key), error);
-    std::ptr::write_unaligned(value, optvalue);
+        let optvalue = check_err!(
+            unsafe { get_option_double(connection, options, key) },
+            error
+        );
+        unsafe { std::ptr::write_unaligned(value, optvalue) };
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn connection_get_option_bytes<DriverType: Driver>(
+extern "C" fn connection_get_option_bytes<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     key: *const c_char,
     value: *mut u8,
     length: *mut usize,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(connection, error);
-    check_not_null!(key, error);
-    check_not_null!(value, error);
-    check_not_null!(length, error);
+    catch_panic(error, || {
+        let connection = pointer_as_mut!(connection, error);
+        check_not_null!(key, error);
+        check_not_null!(value, error);
+        check_not_null!(length, error);
 
-    let exported = check_err!(connection_private_data::<DriverType>(connection), error);
-    let (options, connection) = exported.tuple();
+        let exported = check_err!(
+            unsafe { connection_private_data::<DriverType>(connection) },
+            error
+        );
+        let (options, connection) = exported.tuple();
 
-    let optvalue = get_option_bytes(connection, options, key);
-    let optvalue = check_err!(optvalue, error);
-    copy_bytes(&optvalue, value, length);
+        let optvalue = unsafe { get_option_bytes(connection, options, key) };
+        let optvalue = check_err!(optvalue, error);
+        unsafe { copy_bytes(&optvalue, value, length) };
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn connection_get_table_types<DriverType: Driver + 'static>(
+extern "C" fn connection_get_table_types<DriverType: Driver + 'static>(
     connection: *mut FFI_AdbcConnection,
     out: *mut FFI_ArrowArrayStream,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(connection, error);
-    check_not_null!(out, error);
+    catch_panic(error, || {
+        let connection = pointer_as_mut!(connection, error);
+        check_not_null!(out, error);
 
-    let exported = check_err!(connection_private_data::<DriverType>(connection), error);
-    let connection = check_err!(exported.try_connection(), error);
+        let exported = check_err!(
+            unsafe { connection_private_data::<DriverType>(connection) },
+            error
+        );
+        let connection = check_err!(exported.try_connection(), error);
 
-    let reader = check_err!(connection.get_table_types(), error);
-    let reader = Box::new(reader);
-    let reader = FFI_ArrowArrayStream::new(reader);
-    std::ptr::write_unaligned(out, reader);
+        let reader = check_err!(connection.get_table_types(), error);
+        let reader = Box::new(reader);
+        let reader = FFI_ArrowArrayStream::new(reader);
+        unsafe { std::ptr::write_unaligned(out, reader) };
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn connection_get_table_schema<DriverType: Driver>(
+extern "C" fn connection_get_table_schema<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     catalog: *const c_char,
     db_schema: *const c_char,
@@ -973,138 +1133,174 @@ unsafe extern "C" fn connection_get_table_schema<DriverType: Driver>(
     schema: *mut FFI_ArrowSchema,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(connection, error);
-    check_not_null!(table_name, error);
-    check_not_null!(schema, error);
+    catch_panic(error, || {
+        let connection = pointer_as_mut!(connection, error);
+        check_not_null!(table_name, error);
+        check_not_null!(schema, error);
 
-    let exported = check_err!(connection_private_data::<DriverType>(connection), error);
-    let connection = check_err!(exported.try_connection(), error);
+        let exported = check_err!(
+            unsafe { connection_private_data::<DriverType>(connection) },
+            error
+        );
+        let connection = check_err!(exported.try_connection(), error);
 
-    let catalog = check_err!(maybe_str(catalog), error);
-    let db_schema = check_err!(maybe_str(db_schema), error);
-    let table_name = check_err!(maybe_str(table_name), error);
+        let catalog = check_err!(unsafe { maybe_str(catalog) }, error);
+        let db_schema = check_err!(unsafe { maybe_str(db_schema) }, error);
+        let table_name = check_err!(unsafe { maybe_str(table_name) }, error);
 
-    let schema_value = connection.get_table_schema(catalog, db_schema, table_name.unwrap());
-    let schema_value = check_err!(schema_value, error);
-    let schema_value: FFI_ArrowSchema = check_err!(schema_value.try_into(), error);
-    std::ptr::write_unaligned(schema, schema_value);
+        let schema_value = connection.get_table_schema(catalog, db_schema, table_name.unwrap());
+        let schema_value = check_err!(schema_value, error);
+        let schema_value: FFI_ArrowSchema = check_err!(schema_value.try_into(), error);
+        unsafe { std::ptr::write_unaligned(schema, schema_value) };
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn connection_get_info<DriverType: Driver + 'static>(
+extern "C" fn connection_get_info<DriverType: Driver + 'static>(
     connection: *mut FFI_AdbcConnection,
     info_codes: *const u32,
     info_codes_length: usize,
     out: *mut FFI_ArrowArrayStream,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(connection, error);
-    check_not_null!(out, error);
+    catch_panic(error, || {
+        let connection = pointer_as_mut!(connection, error);
+        check_not_null!(out, error);
 
-    let exported = check_err!(connection_private_data::<DriverType>(connection), error);
-    let connection = check_err!(exported.try_connection(), error);
+        let exported = check_err!(
+            unsafe { connection_private_data::<DriverType>(connection) },
+            error
+        );
+        let connection = check_err!(exported.try_connection(), error);
 
-    let info_codes = if info_codes.is_null() {
-        None
-    } else {
-        let info_codes = std::slice::from_raw_parts(info_codes, info_codes_length);
-        let info_codes: Result<HashSet<InfoCode>> =
-            info_codes.iter().map(|c| InfoCode::try_from(*c)).collect();
-        let info_codes = check_err!(info_codes, error);
-        Some(info_codes)
-    };
+        let info_codes = if info_codes.is_null() {
+            None
+        } else {
+            let info_codes = unsafe { std::slice::from_raw_parts(info_codes, info_codes_length) };
+            let info_codes: Result<HashSet<InfoCode>> =
+                info_codes.iter().map(|c| InfoCode::try_from(*c)).collect();
+            let info_codes = check_err!(info_codes, error);
+            Some(info_codes)
+        };
 
-    let reader = check_err!(connection.get_info(info_codes), error);
-    let reader = Box::new(reader);
-    let reader = FFI_ArrowArrayStream::new(reader);
-    std::ptr::write_unaligned(out, reader);
+        let reader = check_err!(connection.get_info(info_codes), error);
+        let reader = Box::new(reader);
+        let reader = FFI_ArrowArrayStream::new(reader);
+        unsafe { std::ptr::write_unaligned(out, reader) };
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn connection_commit<DriverType: Driver>(
+extern "C" fn connection_commit<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(connection, error);
+    catch_panic(error, || {
+        let connection = pointer_as_mut!(connection, error);
 
-    let exported = check_err!(connection_private_data::<DriverType>(connection), error);
-    let connection = check_err!(exported.try_connection(), error);
-    check_err!(connection.commit(), error);
+        let exported = check_err!(
+            unsafe { connection_private_data::<DriverType>(connection) },
+            error
+        );
+        let connection = check_err!(exported.try_connection(), error);
+        check_err!(connection.commit(), error);
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn connection_rollback<DriverType: Driver>(
+extern "C" fn connection_rollback<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(connection, error);
+    catch_panic(error, || {
+        let connection = pointer_as_mut!(connection, error);
 
-    let exported = check_err!(connection_private_data::<DriverType>(connection), error);
-    let connection = check_err!(exported.try_connection(), error);
-    check_err!(connection.rollback(), error);
+        let exported = check_err!(
+            unsafe { connection_private_data::<DriverType>(connection) },
+            error
+        );
+        let connection = check_err!(exported.try_connection(), error);
+        check_err!(connection.rollback(), error);
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn connection_cancel<DriverType: Driver>(
+extern "C" fn connection_cancel<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(connection, error);
+    catch_panic(error, || {
+        let connection = pointer_as_mut!(connection, error);
 
-    let exported = check_err!(connection_private_data::<DriverType>(connection), error);
-    let connection = check_err!(exported.try_connection(), error);
-    check_err!(connection.cancel(), error);
+        let exported = check_err!(
+            unsafe { connection_private_data::<DriverType>(connection) },
+            error
+        );
+        let connection = check_err!(exported.try_connection(), error);
+        check_err!(connection.cancel(), error);
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn connection_get_statistic_names<DriverType: Driver + 'static>(
+extern "C" fn connection_get_statistic_names<DriverType: Driver + 'static>(
     connection: *mut FFI_AdbcConnection,
     out: *mut FFI_ArrowArrayStream,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(connection, error);
-    check_not_null!(out, error);
+    catch_panic(error, || {
+        let connection = pointer_as_mut!(connection, error);
+        check_not_null!(out, error);
 
-    let exported = check_err!(connection_private_data::<DriverType>(connection), error);
-    let connection = check_err!(exported.try_connection(), error);
+        let exported = check_err!(
+            unsafe { connection_private_data::<DriverType>(connection) },
+            error
+        );
+        let connection = check_err!(exported.try_connection(), error);
 
-    let reader = check_err!(connection.get_statistic_names(), error);
-    let reader = Box::new(reader);
-    let reader = FFI_ArrowArrayStream::new(reader);
-    std::ptr::write_unaligned(out, reader);
+        let reader = check_err!(connection.get_statistic_names(), error);
+        let reader = Box::new(reader);
+        let reader = FFI_ArrowArrayStream::new(reader);
+        unsafe { std::ptr::write_unaligned(out, reader) };
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn connection_read_partition<DriverType: Driver + 'static>(
+extern "C" fn connection_read_partition<DriverType: Driver + 'static>(
     connection: *mut FFI_AdbcConnection,
     serialized_partition: *const u8,
     serialized_length: usize,
     out: *mut FFI_ArrowArrayStream,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(connection, error);
-    check_not_null!(serialized_partition, error);
-    check_not_null!(out, error);
+    catch_panic(error, || {
+        let connection = pointer_as_mut!(connection, error);
+        check_not_null!(serialized_partition, error);
+        check_not_null!(out, error);
 
-    let exported = check_err!(connection_private_data::<DriverType>(connection), error);
-    let connection = check_err!(exported.try_connection(), error);
+        let exported = check_err!(
+            unsafe { connection_private_data::<DriverType>(connection) },
+            error
+        );
+        let connection = check_err!(exported.try_connection(), error);
 
-    let partition = std::slice::from_raw_parts(serialized_partition, serialized_length);
-    let reader = check_err!(connection.read_partition(partition), error);
-    let reader = Box::new(reader);
-    let reader = FFI_ArrowArrayStream::new(reader);
-    std::ptr::write_unaligned(out, reader);
+        let partition =
+            unsafe { std::slice::from_raw_parts(serialized_partition, serialized_length) };
+        let reader = check_err!(connection.read_partition(partition), error);
+        let reader = Box::new(reader);
+        let reader = FFI_ArrowArrayStream::new(reader);
+        unsafe { std::ptr::write_unaligned(out, reader) };
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn connection_get_statistics<DriverType: Driver + 'static>(
+extern "C" fn connection_get_statistics<DriverType: Driver + 'static>(
     connection: *mut FFI_AdbcConnection,
     catalog: *const c_char,
     db_schema: *const c_char,
@@ -1113,27 +1309,32 @@ unsafe extern "C" fn connection_get_statistics<DriverType: Driver + 'static>(
     out: *mut FFI_ArrowArrayStream,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(connection, error);
-    check_not_null!(out, error);
+    catch_panic(error, || {
+        let connection = pointer_as_mut!(connection, error);
+        check_not_null!(out, error);
 
-    let catalog = check_err!(maybe_str(catalog), error);
-    let db_schema = check_err!(maybe_str(db_schema), error);
-    let table_name = check_err!(maybe_str(table_name), error);
-    let approximate = approximate != 0;
+        let catalog = check_err!(unsafe { maybe_str(catalog) }, error);
+        let db_schema = check_err!(unsafe { maybe_str(db_schema) }, error);
+        let table_name = check_err!(unsafe { maybe_str(table_name) }, error);
+        let approximate = approximate != 0;
 
-    let exported = check_err!(connection_private_data::<DriverType>(connection), error);
-    let connection = check_err!(exported.try_connection(), error);
+        let exported = check_err!(
+            unsafe { connection_private_data::<DriverType>(connection) },
+            error
+        );
+        let connection = check_err!(exported.try_connection(), error);
 
-    let reader = connection.get_statistics(catalog, db_schema, table_name, approximate);
-    let reader = check_err!(reader, error);
-    let reader = Box::new(reader);
-    let reader = FFI_ArrowArrayStream::new(reader);
-    std::ptr::write_unaligned(out, reader);
+        let reader = connection.get_statistics(catalog, db_schema, table_name, approximate);
+        let reader = check_err!(reader, error);
+        let reader = Box::new(reader);
+        let reader = FFI_ArrowArrayStream::new(reader);
+        unsafe { std::ptr::write_unaligned(out, reader) };
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn connection_get_objects<DriverType: Driver + 'static>(
+extern "C" fn connection_get_objects<DriverType: Driver + 'static>(
     connection: *mut FFI_AdbcConnection,
     depth: c_int,
     catalog: *const c_char,
@@ -1144,45 +1345,50 @@ unsafe extern "C" fn connection_get_objects<DriverType: Driver + 'static>(
     out: *mut FFI_ArrowArrayStream,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(connection, error);
-    check_not_null!(out, error);
+    catch_panic(error, || {
+        let connection = pointer_as_mut!(connection, error);
+        check_not_null!(out, error);
 
-    let depth = check_err!(ObjectDepth::try_from(depth), error);
-    let catalog = check_err!(maybe_str(catalog), error);
-    let db_schema = check_err!(maybe_str(db_schema), error);
-    let table_name = check_err!(maybe_str(table_name), error);
-    let column_name = check_err!(maybe_str(column_name), error);
-    let table_type = if !table_type.is_null() {
-        let mut strs = Vec::new();
-        let mut ptr = table_type;
-        // Iteration over an array of C-strings that ends with a null pointer.
-        while !(*ptr).is_null() {
-            let str = check_err!(CStr::from_ptr(*ptr).to_str(), error);
-            strs.push(str);
-            ptr = ptr.add(1);
-        }
-        Some(strs)
-    } else {
-        None
-    };
+        let depth = check_err!(ObjectDepth::try_from(depth), error);
+        let catalog = check_err!(unsafe { maybe_str(catalog) }, error);
+        let db_schema = check_err!(unsafe { maybe_str(db_schema) }, error);
+        let table_name = check_err!(unsafe { maybe_str(table_name) }, error);
+        let column_name = check_err!(unsafe { maybe_str(column_name) }, error);
+        let table_type = if !table_type.is_null() {
+            let mut strs = Vec::new();
+            let mut ptr = table_type;
+            // Iteration over an array of C-strings that ends with a null pointer.
+            while !unsafe { *ptr }.is_null() {
+                let str = check_err!(unsafe { CStr::from_ptr(*ptr) }.to_str(), error);
+                strs.push(str);
+                ptr = unsafe { ptr.add(1) };
+            }
+            Some(strs)
+        } else {
+            None
+        };
 
-    let exported = check_err!(connection_private_data::<DriverType>(connection), error);
-    let connection = check_err!(exported.try_connection(), error);
+        let exported = check_err!(
+            unsafe { connection_private_data::<DriverType>(connection) },
+            error
+        );
+        let connection = check_err!(exported.try_connection(), error);
 
-    let reader = connection.get_objects(
-        depth,
-        catalog,
-        db_schema,
-        table_name,
-        table_type,
-        column_name,
-    );
-    let reader = check_err!(reader, error);
-    let reader = Box::new(reader);
-    let reader = FFI_ArrowArrayStream::new(reader);
-    std::ptr::write_unaligned(out, reader);
+        let reader = connection.get_objects(
+            depth,
+            catalog,
+            db_schema,
+            table_name,
+            table_type,
+            column_name,
+        );
+        let reader = check_err!(reader, error);
+        let reader = Box::new(reader);
+        let reader = FFI_ArrowArrayStream::new(reader);
+        unsafe { std::ptr::write_unaligned(out, reader) };
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
 // Statement
@@ -1216,376 +1422,465 @@ unsafe fn statement_set_option_impl<DriverType: Driver, Value: Into<OptionValue>
     ADBC_STATUS_OK
 }
 
-unsafe extern "C" fn statement_new<DriverType: Driver>(
+extern "C" fn statement_new<DriverType: Driver>(
     connection: *mut FFI_AdbcConnection,
     statement: *mut FFI_AdbcStatement,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(connection, error);
-    check_not_null!(statement, error);
+    catch_panic(error, || {
+        let connection = pointer_as_mut!(connection, error);
+        let statement = pointer_as_mut!(statement, error);
 
-    let exported_connection = check_err!(connection_private_data::<DriverType>(connection), error);
-    let inner_connection = check_err!(exported_connection.try_connection(), error);
+        let exported_connection = check_err!(
+            unsafe { connection_private_data::<DriverType>(connection) },
+            error
+        );
+        let inner_connection = check_err!(exported_connection.try_connection(), error);
 
-    let statement = statement.as_mut().unwrap();
-    let inner_statement = check_err!(inner_connection.new_statement(), error);
+        let inner_statement = check_err!(inner_connection.new_statement(), error);
 
-    let exported = Box::new(ExportedStatement::<DriverType>(inner_statement));
-    statement.private_data = Box::into_raw(exported) as *mut c_void;
+        let exported = Box::new(ExportedStatement::<DriverType>(inner_statement));
+        statement.private_data = Box::into_raw(exported) as *mut c_void;
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn statement_release<DriverType: Driver>(
+extern "C" fn statement_release<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(statement, error);
+    catch_panic(error, || {
+        let statement = pointer_as_mut!(statement, error);
+        if statement.private_data.is_null() {
+            check_err!(
+                Err(Error::with_message_and_status(
+                    "Statement already released",
+                    Status::InvalidState
+                )),
+                error
+            );
+        }
+        let exported =
+            unsafe { Box::from_raw(statement.private_data as *mut ExportedStatement<DriverType>) };
+        drop(exported);
+        statement.private_data = std::ptr::null_mut();
 
-    let statement = statement.as_mut().unwrap();
-    if statement.private_data.is_null() {
-        check_err!(
-            Err(Error::with_message_and_status(
-                "Statement already released",
-                Status::InvalidState
-            )),
-            error
-        );
-    }
-    let exported = Box::from_raw(statement.private_data as *mut ExportedStatement<DriverType>);
-    drop(exported);
-    statement.private_data = std::ptr::null_mut();
-
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn statement_set_option<DriverType: Driver>(
+extern "C" fn statement_set_option<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     key: *const c_char,
     value: *const c_char,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(statement, error);
-    check_not_null!(key, error);
-    check_not_null!(value, error);
+    catch_panic(error, || {
+        check_not_null!(statement, error);
+        check_not_null!(key, error);
+        check_not_null!(value, error);
 
-    let value = check_err!(CStr::from_ptr(value).to_str(), error);
-    statement_set_option_impl::<DriverType, &str>(statement, key, value, error)
+        let value = check_err!(unsafe { CStr::from_ptr(value).to_str() }, error);
+        unsafe { statement_set_option_impl::<DriverType, &str>(statement, key, value, error) }
+    })
 }
 
-unsafe extern "C" fn statement_set_option_int<DriverType: Driver>(
+extern "C" fn statement_set_option_int<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     key: *const c_char,
     value: i64,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(statement, error);
-    check_not_null!(key, error);
+    catch_panic(error, || {
+        check_not_null!(statement, error);
+        check_not_null!(key, error);
 
-    statement_set_option_impl::<DriverType, i64>(statement, key, value, error)
+        unsafe { statement_set_option_impl::<DriverType, i64>(statement, key, value, error) }
+    })
 }
 
-unsafe extern "C" fn statement_set_option_double<DriverType: Driver>(
+extern "C" fn statement_set_option_double<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     key: *const c_char,
     value: f64,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(statement, error);
-    check_not_null!(key, error);
+    catch_panic(error, || {
+        check_not_null!(statement, error);
+        check_not_null!(key, error);
 
-    statement_set_option_impl::<DriverType, f64>(statement, key, value, error)
+        unsafe { statement_set_option_impl::<DriverType, f64>(statement, key, value, error) }
+    })
 }
 
-unsafe extern "C" fn statement_set_option_bytes<DriverType: Driver>(
+extern "C" fn statement_set_option_bytes<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     key: *const c_char,
     value: *const u8,
     length: usize,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(statement, error);
-    check_not_null!(key, error);
-    check_not_null!(value, error);
+    catch_panic(error, || {
+        check_not_null!(statement, error);
+        check_not_null!(key, error);
+        check_not_null!(value, error);
 
-    let value = std::slice::from_raw_parts(value, length);
-    statement_set_option_impl::<DriverType, &[u8]>(statement, key, value, error)
+        let value = unsafe { std::slice::from_raw_parts(value, length) };
+        unsafe { statement_set_option_impl::<DriverType, &[u8]>(statement, key, value, error) }
+    })
 }
 
-unsafe extern "C" fn statement_get_option<DriverType: Driver>(
+extern "C" fn statement_get_option<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     key: *const c_char,
     value: *mut c_char,
     length: *mut usize,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(statement, error);
-    check_not_null!(key, error);
-    check_not_null!(value, error);
-    check_not_null!(length, error);
+    catch_panic(error, || {
+        check_not_null!(statement, error);
+        check_not_null!(key, error);
+        check_not_null!(value, error);
+        check_not_null!(length, error);
 
-    let exported = check_err!(statement_private_data::<DriverType>(statement), error);
-    let optvalue = get_option(Some(&mut exported.0), None, key);
-    let optvalue = check_err!(optvalue, error);
-    check_err!(copy_string(&optvalue, value, length), error);
+        let exported = check_err!(
+            unsafe { statement_private_data::<DriverType>(statement) },
+            error
+        );
+        let optvalue = unsafe { get_option(Some(&mut exported.0), None, key) };
+        let optvalue = check_err!(optvalue, error);
+        check_err!(unsafe { copy_string(&optvalue, value, length) }, error);
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn statement_get_option_int<DriverType: Driver>(
+extern "C" fn statement_get_option_int<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     key: *const c_char,
     value: *mut i64,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(statement, error);
-    check_not_null!(key, error);
-    check_not_null!(value, error);
+    catch_panic(error, || {
+        check_not_null!(statement, error);
+        check_not_null!(key, error);
+        check_not_null!(value, error);
 
-    let exported = check_err!(statement_private_data::<DriverType>(statement), error);
-    let optvalue = check_err!(get_option_int(Some(&mut exported.0), None, key), error);
-    std::ptr::write_unaligned(value, optvalue);
+        let exported = check_err!(
+            unsafe { statement_private_data::<DriverType>(statement) },
+            error
+        );
+        let optvalue = check_err!(
+            unsafe { get_option_int(Some(&mut exported.0), None, key) },
+            error
+        );
+        unsafe { std::ptr::write_unaligned(value, optvalue) };
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn statement_get_option_double<DriverType: Driver>(
+extern "C" fn statement_get_option_double<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     key: *const c_char,
     value: *mut f64,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(statement, error);
-    check_not_null!(key, error);
-    check_not_null!(value, error);
+    catch_panic(error, || {
+        check_not_null!(statement, error);
+        check_not_null!(key, error);
+        check_not_null!(value, error);
 
-    let exported = check_err!(statement_private_data::<DriverType>(statement), error);
-    let optvalue = check_err!(get_option_double(Some(&mut exported.0), None, key), error);
-    std::ptr::write_unaligned(value, optvalue);
+        let exported = check_err!(
+            unsafe { statement_private_data::<DriverType>(statement) },
+            error
+        );
+        let optvalue = check_err!(
+            unsafe { get_option_double(Some(&mut exported.0), None, key) },
+            error
+        );
+        unsafe { std::ptr::write_unaligned(value, optvalue) };
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn statement_get_option_bytes<DriverType: Driver>(
+extern "C" fn statement_get_option_bytes<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     key: *const c_char,
     value: *mut u8,
     length: *mut usize,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(statement, error);
-    check_not_null!(key, error);
-    check_not_null!(value, error);
-    check_not_null!(length, error);
+    catch_panic(error, || {
+        check_not_null!(statement, error);
+        check_not_null!(key, error);
+        check_not_null!(value, error);
+        check_not_null!(length, error);
 
-    let exported = check_err!(statement_private_data::<DriverType>(statement), error);
-    let optvalue = get_option_bytes(Some(&mut exported.0), None, key);
-    let optvalue = check_err!(optvalue, error);
-    copy_bytes(&optvalue, value, length);
-    ADBC_STATUS_OK
+        let exported = check_err!(
+            unsafe { statement_private_data::<DriverType>(statement) },
+            error
+        );
+        let optvalue = unsafe { get_option_bytes(Some(&mut exported.0), None, key) };
+        let optvalue = check_err!(optvalue, error);
+        unsafe { copy_bytes(&optvalue, value, length) };
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn statement_bind<DriverType: Driver>(
+extern "C" fn statement_bind<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     values: *mut FFI_ArrowArray,
     schema: *mut FFI_ArrowSchema,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(statement, error);
-    check_not_null!(values, error);
-    check_not_null!(schema, error);
+    catch_panic(error, || {
+        check_not_null!(statement, error);
+        check_not_null!(values, error);
+        check_not_null!(schema, error);
 
-    let exported = check_err!(statement_private_data::<DriverType>(statement), error);
-    let statement = &mut exported.0;
-
-    let schema = schema.as_ref().unwrap();
-    let data = FFI_ArrowArray::from_raw(values);
-    let array = check_err!(from_ffi(data, schema), error);
-
-    if !matches!(array.data_type(), DataType::Struct(_)) {
-        check_err!(
-            Err(Error::with_message_and_status(
-                "You must pass a struct array to StatementBind",
-                Status::InvalidArguments
-            )),
+        let exported = check_err!(
+            unsafe { statement_private_data::<DriverType>(statement) },
             error
         );
-    }
+        let statement = &mut exported.0;
 
-    let array: StructArray = array.into();
-    check_err!(statement.bind(array.into()), error);
+        let schema = unsafe { schema.as_ref().unwrap() };
+        let data = unsafe { FFI_ArrowArray::from_raw(values) };
+        let array = check_err!(unsafe { from_ffi(data, schema) }, error);
 
-    ADBC_STATUS_OK
+        if !matches!(array.data_type(), DataType::Struct(_)) {
+            check_err!(
+                Err(Error::with_message_and_status(
+                    "You must pass a struct array to StatementBind",
+                    Status::InvalidArguments
+                )),
+                error
+            );
+        }
+
+        let array: StructArray = array.into();
+        check_err!(statement.bind(array.into()), error);
+
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn statement_bind_stream<DriverType: Driver>(
+extern "C" fn statement_bind_stream<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     stream: *mut FFI_ArrowArrayStream,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(statement, error);
-    check_not_null!(stream, error);
+    catch_panic(error, || {
+        check_not_null!(statement, error);
+        check_not_null!(stream, error);
 
-    let exported = check_err!(statement_private_data::<DriverType>(statement), error);
-    let statement = &mut exported.0;
+        let exported = check_err!(
+            unsafe { statement_private_data::<DriverType>(statement) },
+            error
+        );
+        let statement = &mut exported.0;
 
-    let reader = check_err!(ArrowArrayStreamReader::from_raw(stream), error);
-    let reader = Box::new(reader);
-    check_err!(statement.bind_stream(reader), error);
+        let reader = check_err!(unsafe { ArrowArrayStreamReader::from_raw(stream) }, error);
+        let reader = Box::new(reader);
+        check_err!(statement.bind_stream(reader), error);
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn statement_cancel<DriverType: Driver>(
+extern "C" fn statement_cancel<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(statement, error);
+    catch_panic(error, || {
+        check_not_null!(statement, error);
 
-    let exported = check_err!(statement_private_data::<DriverType>(statement), error);
-    let statement = &mut exported.0;
+        let exported = check_err!(
+            unsafe { statement_private_data::<DriverType>(statement) },
+            error
+        );
+        let statement = &mut exported.0;
 
-    check_err!(statement.cancel(), error);
+        check_err!(statement.cancel(), error);
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn statement_execute_query<DriverType: Driver + 'static>(
+extern "C" fn statement_execute_query<DriverType: Driver + 'static>(
     statement: *mut FFI_AdbcStatement,
     out: *mut FFI_ArrowArrayStream,
     rows_affected: *mut i64,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(statement, error);
+    catch_panic(error, || {
+        check_not_null!(statement, error);
 
-    let exported = check_err!(statement_private_data::<DriverType>(statement), error);
-    let statement = &mut exported.0;
+        let exported = check_err!(
+            unsafe { statement_private_data::<DriverType>(statement) },
+            error
+        );
+        let statement = &mut exported.0;
 
-    if !out.is_null() {
-        let reader = check_err!(statement.execute(), error);
-        let reader = Box::new(reader);
-        let reader = FFI_ArrowArrayStream::new(reader);
-        std::ptr::write_unaligned(out, reader);
-    } else {
-        let rows_affected_value = check_err!(statement.execute_update(), error).unwrap_or(-1);
-        if !rows_affected.is_null() {
-            std::ptr::write_unaligned(rows_affected, rows_affected_value);
+        if !out.is_null() {
+            let reader = check_err!(statement.execute(), error);
+            let reader = Box::new(reader);
+            let reader = FFI_ArrowArrayStream::new(reader);
+            unsafe { std::ptr::write_unaligned(out, reader) };
+        } else {
+            let rows_affected_value = check_err!(statement.execute_update(), error).unwrap_or(-1);
+            if !rows_affected.is_null() {
+                unsafe { std::ptr::write_unaligned(rows_affected, rows_affected_value) };
+            }
         }
-    }
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn statement_execute_schema<DriverType: Driver>(
+extern "C" fn statement_execute_schema<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     schema: *mut FFI_ArrowSchema,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(statement, error);
-    check_not_null!(schema, error);
+    catch_panic(error, || {
+        check_not_null!(statement, error);
+        check_not_null!(schema, error);
 
-    let exported = check_err!(statement_private_data::<DriverType>(statement), error);
-    let statement = &mut exported.0;
+        let exported = check_err!(
+            unsafe { statement_private_data::<DriverType>(statement) },
+            error
+        );
+        let statement = &mut exported.0;
 
-    let schema_value = check_err!(statement.execute_schema(), error);
-    let schema_value: FFI_ArrowSchema = check_err!(schema_value.try_into(), error);
-    std::ptr::write_unaligned(schema, schema_value);
+        let schema_value = check_err!(statement.execute_schema(), error);
+        let schema_value: FFI_ArrowSchema = check_err!(schema_value.try_into(), error);
+        unsafe { std::ptr::write_unaligned(schema, schema_value) };
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn statement_execute_partitions<DriverType: Driver>(
+extern "C" fn statement_execute_partitions<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     schema: *mut FFI_ArrowSchema,
     partitions: *mut FFI_AdbcPartitions,
     rows_affected: *mut i64,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(statement, error);
-    check_not_null!(schema, error);
-    check_not_null!(partitions, error);
+    catch_panic(error, || {
+        check_not_null!(statement, error);
+        check_not_null!(schema, error);
+        check_not_null!(partitions, error);
 
-    let exported = check_err!(statement_private_data::<DriverType>(statement), error);
-    let statement = &mut exported.0;
+        let exported = check_err!(
+            unsafe { statement_private_data::<DriverType>(statement) },
+            error
+        );
+        let statement = &mut exported.0;
 
-    let result = check_err!(statement.execute_partitions(), error);
+        let result = check_err!(statement.execute_partitions(), error);
 
-    if !rows_affected.is_null() {
-        std::ptr::write_unaligned(rows_affected, result.rows_affected);
-    }
+        if !rows_affected.is_null() {
+            unsafe { std::ptr::write_unaligned(rows_affected, result.rows_affected) };
+        }
 
-    let schema_value: FFI_ArrowSchema = check_err!((&result.schema).try_into(), error);
-    std::ptr::write_unaligned(schema, schema_value);
+        let schema_value: FFI_ArrowSchema = check_err!((&result.schema).try_into(), error);
+        unsafe { std::ptr::write_unaligned(schema, schema_value) };
 
-    let partitions_value: FFI_AdbcPartitions = result.partitions.into();
-    std::ptr::write_unaligned(partitions, partitions_value);
+        let partitions_value: FFI_AdbcPartitions = result.partitions.into();
+        unsafe { std::ptr::write_unaligned(partitions, partitions_value) };
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn statement_prepare<DriverType: Driver>(
+extern "C" fn statement_prepare<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(statement, error);
+    catch_panic(error, || {
+        check_not_null!(statement, error);
 
-    let exported = check_err!(statement_private_data::<DriverType>(statement), error);
-    let statement = &mut exported.0;
-    check_err!(statement.prepare(), error);
-    ADBC_STATUS_OK
+        let exported = check_err!(
+            unsafe { statement_private_data::<DriverType>(statement) },
+            error
+        );
+        let statement = &mut exported.0;
+        check_err!(statement.prepare(), error);
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn statement_set_sql_query<DriverType: Driver>(
+extern "C" fn statement_set_sql_query<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     query: *const c_char,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(statement, error);
-    check_not_null!(query, error);
+    catch_panic(error, || {
+        check_not_null!(statement, error);
+        check_not_null!(query, error);
 
-    let exported = check_err!(statement_private_data::<DriverType>(statement), error);
-    let statement = &mut exported.0;
+        let exported = check_err!(
+            unsafe { statement_private_data::<DriverType>(statement) },
+            error
+        );
+        let statement = &mut exported.0;
 
-    let query = check_err!(CStr::from_ptr(query).to_str(), error);
-    check_err!(statement.set_sql_query(query), error);
+        let query = check_err!(unsafe { CStr::from_ptr(query).to_str() }, error);
+        check_err!(statement.set_sql_query(query), error);
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn statement_set_substrait_plan<DriverType: Driver>(
+extern "C" fn statement_set_substrait_plan<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     plan: *const u8,
     length: usize,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(statement, error);
-    check_not_null!(plan, error);
+    catch_panic(error, || {
+        check_not_null!(statement, error);
+        check_not_null!(plan, error);
 
-    let exported = check_err!(statement_private_data::<DriverType>(statement), error);
-    let statement = &mut exported.0;
+        let exported = check_err!(
+            unsafe { statement_private_data::<DriverType>(statement) },
+            error
+        );
+        let statement = &mut exported.0;
 
-    let plan = std::slice::from_raw_parts(plan, length);
-    check_err!(statement.set_substrait_plan(plan), error);
+        let plan = unsafe { std::slice::from_raw_parts(plan, length) };
+        check_err!(statement.set_substrait_plan(plan), error);
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
-unsafe extern "C" fn statement_get_parameter_schema<DriverType: Driver>(
+extern "C" fn statement_get_parameter_schema<DriverType: Driver>(
     statement: *mut FFI_AdbcStatement,
     schema: *mut FFI_ArrowSchema,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    check_not_null!(statement, error);
-    check_not_null!(schema, error);
+    catch_panic(error, || {
+        check_not_null!(statement, error);
+        check_not_null!(schema, error);
 
-    let exported = check_err!(statement_private_data::<DriverType>(statement), error);
-    let statement = &exported.0;
+        let exported = check_err!(
+            unsafe { statement_private_data::<DriverType>(statement) },
+            error
+        );
+        let statement = &exported.0;
 
-    let schema_value = check_err!(statement.get_parameter_schema(), error);
-    let schema_value: FFI_ArrowSchema = check_err!(schema_value.try_into(), error);
-    std::ptr::write_unaligned(schema, schema_value);
+        let schema_value = check_err!(statement.get_parameter_schema(), error);
+        let schema_value: FFI_ArrowSchema = check_err!(schema_value.try_into(), error);
+        unsafe { std::ptr::write_unaligned(schema, schema_value) };
 
-    ADBC_STATUS_OK
+        ADBC_STATUS_OK
+    })
 }
 
 // Error

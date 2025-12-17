@@ -175,6 +175,18 @@ where
     }
 }
 
+fn maybe_panic(fnname: impl AsRef<str>) {
+    if let Some(func) = std::env::var_os("PANICDUMMY_FUNC").map(|x| x.to_string_lossy().to_string())
+    {
+        if fnname.as_ref() == func {
+            let message = std::env::var_os("PANICDUMMY_MESSAGE")
+                .map(|x| x.to_string_lossy().to_string())
+                .unwrap_or_else(|| format!("We panicked in {}!", fnname.as_ref()));
+            panic!("{}", message);
+        }
+    }
+}
+
 /// A dummy driver used for testing purposes.
 #[derive(Default)]
 pub struct DummyDriver {}
@@ -837,6 +849,7 @@ impl Statement for DummyStatement {
     }
 
     fn execute(&mut self) -> Result<impl RecordBatchReader> {
+        maybe_panic("StatementExecuteQuery");
         let batch = get_table_data();
         let reader = SingleBatchReader::new(batch);
         Ok(reader)
@@ -875,4 +888,10 @@ impl Statement for DummyStatement {
     }
 }
 
-adbc_ffi::export_driver!(DummyDriverInit, DummyDriver);
+impl Drop for DummyStatement {
+    fn drop(&mut self) {
+        maybe_panic("StatementClose");
+    }
+}
+
+adbc_ffi::export_driver!(AdbcDummyInit, DummyDriver);
