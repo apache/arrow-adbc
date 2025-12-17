@@ -373,14 +373,6 @@ jobs:
 
           cmake --build .\build\${{ matrix.config }} --target install --config ${{ matrix.config }} --parallel
 
-      - name: Configure Windows Error Reporting
-        run: |
-          # Configure WER to create local dumps
-          reg add "HKLM\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps" /f
-          reg add "HKLM\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps" /v DumpFolder /t REG_EXPAND_SZ /d "${{ github.workspace }}\CrashDumps" /f
-          reg add "HKLM\Software\Microsoft\Windows\Windows Error Reporting\LocalDumps" /v DumpType /t REG_DWORD /d 2 /f
-          New-Item -ItemType Directory -Force -Path "${{ github.workspace }}\CrashDumps"
-
       - name: Test
         env:
           BUILD_ALL: "0"
@@ -388,10 +380,3 @@ jobs:
           BUILD_DRIVER_MANAGER_USER_CONFIG_TEST: "1"
           BUILD_DRIVER_SQLITE: "1"
         run: .\ci\scripts\cpp_test.ps1 $pwd\build\${{ matrix.config }} $pwd\local\${{ matrix.config }}
-
-      - name: Upload crash dumps
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: crash-dumps-${{ matrix.os }}-${{ matrix.config }}
-          path: ${{ github.workspace }}\CrashDumps\

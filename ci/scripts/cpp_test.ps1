@@ -32,9 +32,9 @@ $BuildDriverSqlite = ($BuildAll -and (-not ($env:BUILD_DRIVER_SQLITE -eq "0"))) 
 $env:LD_LIBRARY_PATH += ":$($InstallDir)"
 $env:LD_LIBRARY_PATH += ":$($InstallDir)/bin"
 $env:LD_LIBRARY_PATH += ":$($InstallDir)/lib"
-$env:PATH += ";$($InstallDir)"
-$env:PATH += ";$($InstallDir)\bin"
-$env:PATH += ";$($InstallDir)\lib"
+$env:PATH = "$($InstallDir);$env:PATH"
+$env:PATH = "$($InstallDir)\bin;$env:PATH"
+$env:PATH = "$($InstallDir)\lib;$env:PATH"
 
 function Test-Project {
     Push-Location $BuildDir
