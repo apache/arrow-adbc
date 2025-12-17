@@ -117,11 +117,11 @@ if(ADBC_BUILD_TESTS)
   endif()
 
   target_compile_definitions(adbc-driver-manager-test
-                             PRIVATE ADBC_DRIVER_MANAGER_ENTRYPOINT_TEST_LIB="${CMAKE_BINARY_DIR}/driver_manager/${CONFIG_SUBDIR}${CMAKE_SHARED_LIBRARY_PREFIX}adbc_driver_entrypoint${CMAKE_SHARED_LIBRARY_SUFFIX}"
+                             PRIVATE ADBC_DRIVER_MANAGER_ENTRYPOINT_TEST_LIB="$<TARGET_FILE:adbc_driver_entrypoint>"
   )
 
   target_compile_definitions(adbc-driver-manager-test
-                             PRIVATE ADBC_DRIVER_MANAGER_NO_ENTRYPOINT_TEST_LIB="${CMAKE_BINARY_DIR}/driver_manager/${CONFIG_SUBDIR}${CMAKE_SHARED_LIBRARY_PREFIX}adbc_driver_no_entrypoint${CMAKE_SHARED_LIBRARY_SUFFIX}"
+                             PRIVATE ADBC_DRIVER_MANAGER_NO_ENTRYPOINT_TEST_LIB="$<TARGET_FILE:adbc_driver_no_entrypoint>"
   )
 
   if(ADBC_DRIVER_SQLITE)

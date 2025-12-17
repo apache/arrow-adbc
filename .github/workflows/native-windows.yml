@@ -64,7 +64,7 @@ jobs:
       matrix:
         os: ["windows-2022"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -74,7 +74,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         env:
           # Increment this to reset cache manually
           CACHE_NUMBER: 0
@@ -103,7 +103,7 @@ jobs:
         run: |
           .\ci\scripts\cpp_build.ps1 $pwd ${{ github.workspace }}\build
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: driver-manager-${{ matrix.os }}
           retention-days: 3
@@ -120,7 +120,7 @@ jobs:
       matrix:
         os: ["windows-2022"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -130,7 +130,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         env:
           # Increment this to reset cache manually
           CACHE_NUMBER: 0
@@ -188,7 +188,7 @@ jobs:
       matrix:
         os: ["windows-2022"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -202,7 +202,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         env:
           # Increment this to reset cache manually
           CACHE_NUMBER: 0
@@ -224,7 +224,7 @@ jobs:
           cache: true
           cache-dependency-path: go/adbc/go.sum
 
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         with:
           name: driver-manager-${{ matrix.os }}
           path: ${{ github.workspace }}/build
@@ -256,7 +256,7 @@ jobs:
         os: ["windows-2022"]
         python: ["3.10", "3.14"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -266,7 +266,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         env:
           # Increment this to reset cache manually
           CACHE_NUMBER: 0
@@ -285,7 +285,7 @@ jobs:
             --file ci\conda_env_cpp.txt `
             --file ci\conda_env_python.txt
 
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         with:
           name: driver-manager-${{ matrix.os }}
           path: ${{ github.workspace }}/build

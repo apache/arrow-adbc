@@ -49,7 +49,7 @@ jobs:
     if: github.event_name != 'schedule' || github.repository == 'apache/arrow-adbc'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -98,7 +98,7 @@ jobs:
           shasum --algorithm 512 \
             apache-arrow-adbc-${VERSION}.tar.gz > apache-arrow-adbc-${VERSION}.tar.gz.sha512
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: source
           retention-days: 7
@@ -118,7 +118,7 @@ jobs:
       matrix:
         os: ["macos-15-intel", "macos-latest", "ubuntu-latest", "windows-latest"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           path: arrow-adbc
@@ -130,7 +130,7 @@ jobs:
                       grep -E -o '[0-9]+\.[0-9]+\.[0-9]+')
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         with:
           name: source
           path: ${{ github.workspace }}/apache-arrow-adbc-${{ env.VERSION }}-rc0/
@@ -151,6 +151,25 @@ jobs:
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
 
+      - name: Clean up disk space
+        if: runner.os == 'Linux'
+        run: |
+          # These tools use a lot of disk space, free up some space
+          # https://github.com/actions/runner-images/issues/2840
+          sudo rm -rf \
+            "$AGENT_TOOLSDIRECTORY" \
+            /opt/google/chrome \
+            /opt/microsoft/msedge \
+            /opt/microsoft/powershell \
+            /opt/pipx \
+            /usr/local/julia* \
+            /usr/local/lib/android \
+            /usr/local/lib/node_modules \
+            /usr/local/share/chromium \
+            /usr/local/share/powershell \
+            /usr/share/swift
+          df -h /
+
       - name: Verify
         if: matrix.os != 'windows-latest'
         env:
@@ -162,9 +181,6 @@ jobs:
           VERBOSE: "1"
           VERIFICATION_MOCK_DIST_DIR: ${{ github.workspace }}
         run: |
-          # Rust uses a lot of disk space, free up some space
-          # https://github.com/actions/runner-images/issues/2840
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
           # Required for macOS
           export CXXFLAGS="${CXXFLAGS} -D_LIBCPP_DISABLE_AVAILABILITY"
           echo "CXXFLAGS=${CXXFLAGS}"
@@ -188,7 +204,7 @@ jobs:
     name: "Run Docker Tests"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           path: arrow-adbc
@@ -234,7 +250,7 @@ jobs:
           - os: ubuntu
             version: "24.04"
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           path: arrow-adbc
@@ -243,9 +259,23 @@ jobs:
 
       - name: Clean up disk space
         run: |
-          # Rust uses a lot of disk space, free up some space
+          # These tools use a lot of disk space, free up some space
           # https://github.com/actions/runner-images/issues/2840
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+          sudo rm -rf \
+            "$AGENT_TOOLSDIRECTORY" \
+            /opt/google/chrome \
+            /opt/microsoft/msedge \
+            /opt/microsoft/powershell \
+            /opt/pipx \
+            /usr/lib/mono \
+            /usr/local/julia* \
+            /usr/local/lib/android \
+            /usr/local/lib/node_modules \
+            /usr/local/share/chromium \
+            /usr/local/share/powershell \
+            /usr/share/dotnet \
+            /usr/share/swift
+          df -h /
 
       - name: Verify
         env:
