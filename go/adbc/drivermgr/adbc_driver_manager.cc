@@ -68,7 +68,7 @@ struct ParseDriverUriResult {
 };
 
 ADBC_EXPORT
-std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view str);
+std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view& str);
 
 namespace {
 
@@ -1549,7 +1549,7 @@ std::string InternalAdbcDriverManagerDefaultEntrypoint(const std::string& driver
 }
 
 ADBC_EXPORT
-std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view str) {
+std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view& str) {
   std::string::size_type pos = str.find(":");
   if (pos == std::string::npos) {
     return std::nullopt;
@@ -1725,9 +1725,36 @@ AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* 
 
   TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
   if (std::strcmp(key, "driver") == 0) {
-    args->driver = value;
+    std::string_view v{value};
+    auto result = InternalAdbcParseDriverUri(v);
+    if (!result) {
+      args->driver = std::string{v};
+    } else {
+      args->driver = std::string{result->driver};
+      if (result->uri) {
+        args->options["uri"] = std::string{*result->uri};
+      }
+    }
   } else if (std::strcmp(key, "entrypoint") == 0) {
     args->entrypoint = value;
+  } else if (std::strcmp(key, "uri") == 0) {
+    if (!args->driver.empty()) {  // if driver is already set, just set uri
+      args->options[key] = value;
+    } else {
+      std::string_view v{value};
+      auto result = InternalAdbcParseDriverUri(v);
+      if (!result) {
+        SetError(error, "Invalid URI: missing scheme");
+        return ADBC_STATUS_INVALID_ARGUMENT;
+      }
+
+      args->driver = std::string{result->driver};
+      if (!result->uri) {
+        SetError(error, "Invalid URI: " + std::string{value});
+        return ADBC_STATUS_INVALID_ARGUMENT;
+      }
+      args->options["uri"] = std::string{*result->uri};
+    }
   } else {
     args->options[key] = value;
   }
@@ -1820,31 +1847,11 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
     return ADBC_STATUS_INVALID_STATE;
   }
   TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
-  if (!args->init_func) {
-    const auto uri = args->options.find("uri");
-    if (args->driver.empty() && uri != args->options.end()) {
-      std::string owned_uri = uri->second;
-      auto result = InternalAdbcParseDriverUri(owned_uri);
-      if (result && result->uri) {
-        args->driver = std::string{result->driver};
-        args->options["uri"] = std::string{*result->uri};
-      }
-    } else if (!args->driver.empty() && uri == args->options.end()) {
-      std::string owned_driver = args->driver;
-      auto result = InternalAdbcParseDriverUri(owned_driver);
-      if (result) {
-        args->driver = std::string{result->driver};
-        if (result->uri) {
-          args->options["uri"] = std::string{*result->uri};
-        }
-      }
-    }
-
-    if (args->driver.empty()) {
-      SetError(error,
-               "Must provide 'driver' parameter (or encode driver in 'uri' parameter)");
-      return ADBC_STATUS_INVALID_ARGUMENT;
-    }
+  if (args->init_func) {
+    // Do nothing
+  } else if (args->driver.empty()) {
+    SetError(error, "Must provide 'driver' parameter");
+    return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
   database->private_driver = new AdbcDriver;
