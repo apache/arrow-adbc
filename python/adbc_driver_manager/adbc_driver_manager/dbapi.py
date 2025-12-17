@@ -384,7 +384,10 @@ class Connection(_Closeable):
             try:
                 cursor.close()
             except Exception as e:
-                warnings.warn(f"Failed to close cursor: {e}", ResourceWarning, stacklevel=2)
+                warnings.warn(
+                    f"Failed to close cursor: {e}", ResourceWarning, stacklevel=2
+                )
+
 
         self._conn.close()
         self._db.close()
