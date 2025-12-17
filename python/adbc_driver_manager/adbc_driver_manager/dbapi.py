@@ -388,7 +388,6 @@ class Connection(_Closeable):
                     f"Failed to close cursor: {e}", ResourceWarning, stacklevel=2
                 )
 
-
         self._conn.close()
         self._db.close()
         self._closed = True
