@@ -15,4 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
-source("../tools/bootstrap-go.R")
+BOOTSTRAP_SCRIPT <- file.path("..", "tools", "bootstrap-go.R")
+
+if (file.exists(BOOTSTRAP_SCRIPT)) {
+  source(BOOTSTRAP_SCRIPT)
+}
+

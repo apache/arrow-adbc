@@ -68,8 +68,7 @@ jobs:
       - name: Bootstrap R Package
         run: |
           pushd r/adbcdrivermanager
-          R -e 'if (!requireNamespace("nanoarrow", quietly = TRUE)) install.packages("nanoarrow", repos = "https://cloud.r-project.org/")'
-          R CMD INSTALL . --preclean
+          Rscript bootstrap.R
           popd
           pushd "r/${{ inputs.pkg }}"
           Rscript bootstrap.R
@@ -78,7 +77,8 @@ jobs:
 
       - uses: r-lib/actions/setup-r-dependencies@6f6e5bc62fba3a704f74e7ad7ef7676c5c6a2590
         with:
-          extra-packages: any::rcmdcheck
+          # The development version of adbcdrivermanager from the local path is needed for tests
+          extra-packages: any::rcmdcheck, local::../adbcdrivermanager
           needs: check
           working-directory: r/${{ inputs.pkg }}
 
