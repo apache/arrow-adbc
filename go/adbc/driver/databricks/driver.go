@@ -31,12 +31,14 @@ package databricks
 
 import (
 	"context"
+	"os"
 	"runtime/debug"
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/apache/arrow-go/v18/arrow/memory"
+	dbsqllog "github.com/databricks/databricks-sql-go/logger"
 )
 
 const (
@@ -84,6 +86,10 @@ var (
 )
 
 func init() {
+	if os.Getenv("DATABRICKS_LOG_LEVEL") == "" {
+		_ = dbsqllog.SetLogLevel("disabled")
+	}
+
 	if info, ok := debug.ReadBuildInfo(); ok {
 		for _, dep := range info.Deps {
 			switch dep.Path {
