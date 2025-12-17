@@ -45,7 +45,7 @@ struct ParseDriverUriResult {
   std::optional<std::string_view> uri;
 };
 
-std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view& str);
+std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view str);
 
 // Tests of the SQLite example driver, except using the driver manager
 
@@ -1226,6 +1226,42 @@ shared = "adbc_driver_sqlite")";
     ASSERT_THAT(
         AdbcDatabaseSetOption(&database.value, driver_option, uri.c_str(), &error),
         IsOkStatus(&error));
+    std::string search_path = temp_dir.string();
+    ASSERT_THAT(AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
+                    &database.value, search_path.data(), &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+                IsStatus(ADBC_STATUS_OK, &error));
+  }
+
+  ASSERT_TRUE(std::filesystem::remove(filepath));
+}
+
+TEST_F(DriverManifest, DriverFromDriverAndUri) {
+  // Regression test: if we set both driver and URI, then we shouldn't try to
+  // extract driver from URI or vice versa.
+
+  auto filepath = temp_dir / "sqlite.toml";
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << R"([Driver]
+shared = "adbc_driver_sqlite")";
+  test_manifest_file.close();
+
+  const std::string uri = "foo.db";
+  std::vector<std::vector<std::pair<std::string, std::string>>> options_cases = {
+      {{"driver", "sqlite"}, {"uri", uri}},
+      {{"uri", uri}, {"driver", "sqlite"}},
+  };
+  for (const auto& options : options_cases) {
+    adbc_validation::Handle<struct AdbcDatabase> database;
+    ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+    for (const auto& option : options) {
+      ASSERT_THAT(AdbcDatabaseSetOption(&database.value, option.first.c_str(),
+                                        option.second.c_str(), &error),
+                  IsOkStatus(&error));
+    }
+
     std::string search_path = temp_dir.string();
     ASSERT_THAT(AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
                     &database.value, search_path.data(), &error),
