@@ -27,7 +27,6 @@
             "name": "multi-config-windows-base",
             "displayName": "Base config for Windows without ASAN/UBSAN",
             "hidden": true,
-            "generator": "Visual Studio 17 2022",
             "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
             "cacheVariables": {
                 "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
