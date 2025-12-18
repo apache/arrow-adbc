@@ -386,7 +386,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Add msbuild to PATH
-        uses: microsoft/setup-msbuild@v2
+        uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # v2
       - name: Setup MSYS2 tools
         run: |
           # msys64 is pre-installed on windows but not added to path
