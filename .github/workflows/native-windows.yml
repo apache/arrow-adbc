@@ -68,6 +68,11 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Setup MSYS2
+        run: |
+          $env:PATH = "C:\msys64\usr\bin\;C:\msys64\ucrt64\bin;$env:PATH"
+          echo "PATH=$env:PATH" >> $env:GITHUB_ENV
+          pacman --noconfirm -S mingw-w64-i686-tools mingw-w64-x86_64-tools mingw-w64-ucrt-x86_64-gcc
       - name: Get Date
         id: get-date
         shell: bash
@@ -124,6 +129,11 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Setup MSYS2
+        run: |
+          $env:PATH = "C:\msys64\usr\bin\;C:\msys64\ucrt64\bin;$env:PATH"
+          echo "PATH=$env:PATH" >> $env:GITHUB_ENV
+          pacman --noconfirm -S mingw-w64-i686-tools mingw-w64-x86_64-tools mingw-w64-ucrt-x86_64-gcc
       - name: Get Date
         id: get-date
         shell: bash
@@ -192,6 +202,11 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Setup MSYS2
+        run: |
+          $env:PATH = "C:\msys64\usr\bin\;C:\msys64\ucrt64\bin;$env:PATH"
+          echo "PATH=$env:PATH" >> $env:GITHUB_ENV
+          pacman --noconfirm -S mingw-w64-i686-tools mingw-w64-x86_64-tools mingw-w64-ucrt-x86_64-gcc
       - name: Get required Go version
         shell: bash
         run: |
@@ -260,6 +275,11 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Setup MSYS2
+        run: |
+          $env:PATH = "C:\msys64\usr\bin\;C:\msys64\ucrt64\bin;$env:PATH"
+          echo "PATH=$env:PATH" >> $env:GITHUB_ENV
+          pacman --noconfirm -S mingw-w64-i686-tools mingw-w64-x86_64-tools mingw-w64-ucrt-x86_64-gcc
       - name: Get Date
         id: get-date
         shell: bash
