@@ -71,11 +71,12 @@ jobs:
       - uses: bwoodsend/setup-winlibs-action@v1
         id: winlibs-64
         with:
-          tag: "12.4.0posix-12.0.0-msvcrt-r1"
-      - name: Update PATH
+          runtime: msvcrt
+          add_to_path: true
+      - name: Remove default mingw from PATH
         shell: pwsh
         run: |
-          $env:PATH = "${{ steps.winlibs-64.outputs.bin }};$env:PATH"
+          # Remove mingw64 bin from PATH to avoid conflicts with winlibs
           $env:PATH = $env:PATH -replace [regex]::Escape("C:\mingw64\bin;"), "" -replace [regex]::Escape(";C:\mingw64\bin"), ""
           echo "PATH=$env:PATH" >> $env:GITHUB_ENV
           which gcc
@@ -138,11 +139,12 @@ jobs:
       - uses: bwoodsend/setup-winlibs-action@v1
         id: winlibs-64
         with:
-          tag: "12.4.0posix-12.0.0-msvcrt-r1"
-      - name: Update PATH
+          runtime: msvcrt
+          add_to_path: true
+      - name: Remove default mingw from PATH
         shell: pwsh
         run: |
-          $env:PATH = "${{ steps.winlibs-64.outputs.bin }};$env:PATH"
+          # Remove mingw64 bin from PATH to avoid conflicts with winlibs
           $env:PATH = $env:PATH -replace [regex]::Escape("C:\mingw64\bin;"), "" -replace [regex]::Escape(";C:\mingw64\bin"), ""
           echo "PATH=$env:PATH" >> $env:GITHUB_ENV
           which gcc
@@ -217,11 +219,12 @@ jobs:
       - uses: bwoodsend/setup-winlibs-action@v1
         id: winlibs-64
         with:
-          tag: "12.4.0posix-12.0.0-msvcrt-r1"
-      - name: Update PATH
+          runtime: msvcrt
+          add_to_path: true
+      - name: Remove default mingw from PATH
         shell: pwsh
         run: |
-          $env:PATH = "${{ steps.winlibs-64.outputs.bin }};$env:PATH"
+          # Remove mingw64 bin from PATH to avoid conflicts with winlibs
           $env:PATH = $env:PATH -replace [regex]::Escape("C:\mingw64\bin;"), "" -replace [regex]::Escape(";C:\mingw64\bin"), ""
           echo "PATH=$env:PATH" >> $env:GITHUB_ENV
           which gcc
@@ -296,11 +299,12 @@ jobs:
       - uses: bwoodsend/setup-winlibs-action@v1
         id: winlibs-64
         with:
-          tag: "12.4.0posix-12.0.0-msvcrt-r1"
-      - name: Update PATH
+          runtime: msvcrt
+          add_to_path: true
+      - name: Remove default mingw from PATH
         shell: pwsh
         run: |
-          $env:PATH = "${{ steps.winlibs-64.outputs.bin }};$env:PATH"
+          # Remove mingw64 bin from PATH to avoid conflicts with winlibs
           $env:PATH = $env:PATH -replace [regex]::Escape("C:\mingw64\bin;"), "" -replace [regex]::Escape(";C:\mingw64\bin"), ""
           echo "PATH=$env:PATH" >> $env:GITHUB_ENV
           which gcc
@@ -381,10 +385,8 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-
       - name: Add msbuild to PATH
         uses: microsoft/setup-msbuild@v2
-
       - name: Setup MSYS2 tools
         run: |
           # msys64 is pre-installed on windows but not added to path
@@ -393,21 +395,30 @@ jobs:
 
           # Needed for gendef tool in GoUtils.cmake
           pacman --noconfirm -S mingw-w64-i686-tools mingw-w64-x86_64-tools
-
+      - uses: bwoodsend/setup-winlibs-action@v1
+        id: winlibs-64
+        with:
+          runtime: msvcrt
+          add_to_path: true
+      - name: Remove default mingw from PATH
+        shell: pwsh
+        run: |
+          # Remove mingw64 bin from PATH to avoid conflicts with winlibs
+          $env:PATH = $env:PATH -replace [regex]::Escape("C:\mingw64\bin;"), "" -replace [regex]::Escape(";C:\mingw64\bin"), ""
+          echo "PATH=$env:PATH" >> $env:GITHUB_ENV
+          which gcc
       - name: Clone vcpkg
         run: |
           git clone https://github.com/microsoft/vcpkg.git
           cd vcpkg
           git checkout ef7dbf94b9198bc58f45951adcf1f041fcbc5ea0
           .\bootstrap-vcpkg.bat
-
       - name: Install vcpkg dependencies
         working-directory: c
         env:
           VCPKG_ROOT: ${{ github.workspace }}/vcpkg
         run: |
           ${{ github.workspace }}/vcpkg/vcpkg.exe install libpq sqlite3 --triplet ${{ matrix.arch }}-windows
-
       - name: Build and Install (No ASan)
         env:
           CMAKE_BUILD_TYPE: ${{ matrix.config }}
@@ -416,7 +427,6 @@ jobs:
           cmake .\c\ --preset windows-${{ matrix.config }} -DCMAKE_VERBOSE_MAKEFILE=ON
 
           cmake --build .\build\${{ matrix.config }} --target install --config ${{ matrix.config }} --parallel
-
       - name: Test
         env:
           BUILD_ALL: "0"
