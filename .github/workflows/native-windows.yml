@@ -68,11 +68,17 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Setup MSYS2
+      - uses: bwoodsend/setup-winlibs-action@v1
+        id: winlibs-64
+        with:
+          tag: "12.4.0posix-12.0.0-msvcrt-r1"
+      - name: Update PATH
+        shell: pwsh
         run: |
-          $env:PATH = "C:\msys64\usr\bin\;C:\msys64\ucrt64\bin;$env:PATH"
+          $env:PATH = "${{ steps.winlibs-64.outputs.bin }};$env:PATH"
+          $env:PATH = $env:PATH -replace [regex]::Escape("C:\mingw64\bin;"), "" -replace [regex]::Escape(";C:\mingw64\bin"), ""
           echo "PATH=$env:PATH" >> $env:GITHUB_ENV
-          pacman --noconfirm -S mingw-w64-i686-tools mingw-w64-x86_64-tools mingw-w64-ucrt-x86_64-gcc
+          which gcc
       - name: Get Date
         id: get-date
         shell: bash
@@ -129,11 +135,17 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Setup MSYS2
+      - uses: bwoodsend/setup-winlibs-action@v1
+        id: winlibs-64
+        with:
+          tag: "12.4.0posix-12.0.0-msvcrt-r1"
+      - name: Update PATH
+        shell: pwsh
         run: |
-          $env:PATH = "C:\msys64\usr\bin\;C:\msys64\ucrt64\bin;$env:PATH"
+          $env:PATH = "${{ steps.winlibs-64.outputs.bin }};$env:PATH"
+          $env:PATH = $env:PATH -replace [regex]::Escape("C:\mingw64\bin;"), "" -replace [regex]::Escape(";C:\mingw64\bin"), ""
           echo "PATH=$env:PATH" >> $env:GITHUB_ENV
-          pacman --noconfirm -S mingw-w64-i686-tools mingw-w64-x86_64-tools mingw-w64-ucrt-x86_64-gcc
+          which gcc
       - name: Get Date
         id: get-date
         shell: bash
@@ -202,11 +214,17 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Setup MSYS2
+      - uses: bwoodsend/setup-winlibs-action@v1
+        id: winlibs-64
+        with:
+          tag: "12.4.0posix-12.0.0-msvcrt-r1"
+      - name: Update PATH
+        shell: pwsh
         run: |
-          $env:PATH = "C:\msys64\usr\bin\;C:\msys64\ucrt64\bin;$env:PATH"
+          $env:PATH = "${{ steps.winlibs-64.outputs.bin }};$env:PATH"
+          $env:PATH = $env:PATH -replace [regex]::Escape("C:\mingw64\bin;"), "" -replace [regex]::Escape(";C:\mingw64\bin"), ""
           echo "PATH=$env:PATH" >> $env:GITHUB_ENV
-          pacman --noconfirm -S mingw-w64-i686-tools mingw-w64-x86_64-tools mingw-w64-ucrt-x86_64-gcc
+          which gcc
       - name: Get required Go version
         shell: bash
         run: |
@@ -275,11 +293,17 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Setup MSYS2
+      - uses: bwoodsend/setup-winlibs-action@v1
+        id: winlibs-64
+        with:
+          tag: "12.4.0posix-12.0.0-msvcrt-r1"
+      - name: Update PATH
+        shell: pwsh
         run: |
-          $env:PATH = "C:\msys64\usr\bin\;C:\msys64\ucrt64\bin;$env:PATH"
+          $env:PATH = "${{ steps.winlibs-64.outputs.bin }};$env:PATH"
+          $env:PATH = $env:PATH -replace [regex]::Escape("C:\mingw64\bin;"), "" -replace [regex]::Escape(";C:\mingw64\bin"), ""
           echo "PATH=$env:PATH" >> $env:GITHUB_ENV
-          pacman --noconfirm -S mingw-w64-i686-tools mingw-w64-x86_64-tools mingw-w64-ucrt-x86_64-gcc
+          which gcc
       - name: Get Date
         id: get-date
         shell: bash
