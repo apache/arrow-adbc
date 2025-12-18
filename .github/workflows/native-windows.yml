@@ -68,18 +68,6 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: bwoodsend/setup-winlibs-action@v1
-        id: winlibs-64
-        with:
-          runtime: ucrt
-          add_to_path: true
-      - name: Remove default mingw from PATH
-        shell: pwsh
-        run: |
-          # Remove mingw64 bin from PATH to avoid conflicts with winlibs
-          $env:PATH = $env:PATH -replace [regex]::Escape("C:\mingw64\bin;"), "" -replace [regex]::Escape(";C:\mingw64\bin"), ""
-          echo "PATH=$env:PATH" >> $env:GITHUB_ENV
-          which gcc
       - name: Get Date
         id: get-date
         shell: bash
@@ -136,18 +124,6 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: bwoodsend/setup-winlibs-action@v1
-        id: winlibs-64
-        with:
-          runtime: ucrt
-          add_to_path: true
-      - name: Remove default mingw from PATH
-        shell: pwsh
-        run: |
-          # Remove mingw64 bin from PATH to avoid conflicts with winlibs
-          $env:PATH = $env:PATH -replace [regex]::Escape("C:\mingw64\bin;"), "" -replace [regex]::Escape(";C:\mingw64\bin"), ""
-          echo "PATH=$env:PATH" >> $env:GITHUB_ENV
-          which gcc
       - name: Get Date
         id: get-date
         shell: bash
@@ -216,18 +192,6 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: bwoodsend/setup-winlibs-action@v1
-        id: winlibs-64
-        with:
-          runtime: ucrt
-          add_to_path: true
-      - name: Remove default mingw from PATH
-        shell: pwsh
-        run: |
-          # Remove mingw64 bin from PATH to avoid conflicts with winlibs
-          $env:PATH = $env:PATH -replace [regex]::Escape("C:\mingw64\bin;"), "" -replace [regex]::Escape(";C:\mingw64\bin"), ""
-          echo "PATH=$env:PATH" >> $env:GITHUB_ENV
-          which gcc
       - name: Get required Go version
         shell: bash
         run: |
@@ -395,18 +359,6 @@ jobs:
 
           # Needed for gendef tool in GoUtils.cmake
           pacman --noconfirm -S mingw-w64-i686-tools mingw-w64-x86_64-tools
-      - uses: bwoodsend/setup-winlibs-action@v1
-        id: winlibs-64
-        with:
-          runtime: ucrt
-          add_to_path: true
-      - name: Remove default mingw from PATH
-        shell: pwsh
-        run: |
-          # Remove mingw64 bin from PATH to avoid conflicts with winlibs
-          $env:PATH = $env:PATH -replace [regex]::Escape("C:\mingw64\bin;"), "" -replace [regex]::Escape(";C:\mingw64\bin"), ""
-          echo "PATH=$env:PATH" >> $env:GITHUB_ENV
-          which gcc
       - name: Clone vcpkg
         run: |
           git clone https://github.com/microsoft/vcpkg.git
