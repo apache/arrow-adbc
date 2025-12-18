@@ -71,7 +71,7 @@ jobs:
       - uses: bwoodsend/setup-winlibs-action@v1
         id: winlibs-64
         with:
-          runtime: msvcrt
+          runtime: ucrt
           add_to_path: true
       - name: Remove default mingw from PATH
         shell: pwsh
@@ -139,7 +139,7 @@ jobs:
       - uses: bwoodsend/setup-winlibs-action@v1
         id: winlibs-64
         with:
-          runtime: msvcrt
+          runtime: ucrt
           add_to_path: true
       - name: Remove default mingw from PATH
         shell: pwsh
@@ -219,7 +219,7 @@ jobs:
       - uses: bwoodsend/setup-winlibs-action@v1
         id: winlibs-64
         with:
-          runtime: msvcrt
+          runtime: ucrt
           add_to_path: true
       - name: Remove default mingw from PATH
         shell: pwsh
@@ -299,7 +299,7 @@ jobs:
       - uses: bwoodsend/setup-winlibs-action@v1
         id: winlibs-64
         with:
-          runtime: msvcrt
+          runtime: ucrt
           add_to_path: true
       - name: Remove default mingw from PATH
         shell: pwsh
@@ -398,7 +398,7 @@ jobs:
       - uses: bwoodsend/setup-winlibs-action@v1
         id: winlibs-64
         with:
-          runtime: msvcrt
+          runtime: ucrt
           add_to_path: true
       - name: Remove default mingw from PATH
         shell: pwsh
