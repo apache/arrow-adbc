@@ -260,16 +260,19 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: bwoodsend/setup-winlibs-action@ceefd070f6288838003797de3b06d7bc01e52842  # v1.16
-        id: winlibs-64
-        with:
-          runtime: ucrt
-          add_to_path: true
-      - name: Remove default mingw from PATH
+      - name: Setup Winlibs posix UCRT
         shell: pwsh
         run: |
-          # Remove mingw64 bin from PATH to avoid conflicts with winlibs
-          $env:PATH = $env:PATH -replace [regex]::Escape("C:\mingw64\bin;"), "" -replace [regex]::Escape(";C:\mingw64\bin"), ""
+          $winlibsTags = Invoke-RestMethod "https://api.github.com/repos/brechtsanders/winlibs_mingw/tags"
+          $latestWinlibsTag = ($winlibsTags | Where-Object { $_.name -match "posix.*ucrt" -and $_.name -notmatch "snapshot" })[0].name
+          $latestWinlibsRelease = Invoke-RestMethod "https://api.github.com/repos/brechtsanders/winlibs_mingw/releases/tags/$latestWinlibsTag"
+          $latestWinlibsAsset = $latestWinlibsRelease.assets | Where-Object { $_.name -like "winlibs-x86_64-posix-seh-gcc-*-mingw-w64ucrt-*.7z" } | Select-Object -First 1
+          $latestWinlibsArchive = "$env:TEMP\latestWinlibs.7z"
+          Invoke-WebRequest $latestWinlibsAsset.browser_download_url -OutFile $latestWinlibsArchive
+          7z x $latestWinlibsArchive -o"$env:LOCALAPPDATA" -y
+          $winlibsMingwBin = Join-Path $env:LOCALAPPDATA "mingw64\bin"
+          $env:PATH="$winlibsMingwBin;${env:PATH}"
+
           echo "PATH=$env:PATH" >> $env:GITHUB_ENV
           which gcc
       - name: Get Date
