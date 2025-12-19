@@ -86,17 +86,15 @@ jobs:
           working-directory: r/${{ inputs.pkg }}
 
       - name: Start postgres test database
-        if: inputs.pkg == 'adbcpostgresql' && runner.os == 'Linux'
+        if: inputs.pkg == 'adbcpostgresql' && (runner.os == 'Linux' || runner.os == 'Windows')
         run: |
-          cd r/adbcpostgresql
           docker compose up --detach postgres-test
           ADBC_POSTGRESQL_TEST_URI="postgresql://localhost:5432/postgres?user=postgres&password=password"
           echo "ADBC_POSTGRESQL_TEST_URI=${ADBC_POSTGRESQL_TEST_URI}" >> $GITHUB_ENV
 
       - name: Start FlightSQL test database
-        if: inputs.pkg == 'adbcflightsql' && runner.os == 'Linux'
+        if: inputs.pkg == 'adbcflightsql' && (runner.os == 'Linux' || runner.os == 'Windows')
         run: |
-          cd r/adbcpostgresql
           docker compose up --detach flightsql-sqlite-test
           ADBC_FLIGHTSQL_TEST_URI="grpc://localhost:8080"
           echo "ADBC_FLIGHTSQL_TEST_URI=${ADBC_FLIGHTSQL_TEST_URI}" >> $GITHUB_ENV
@@ -110,6 +108,6 @@ jobs:
           error-on: '"${{ inputs.error-on }}"'
 
       - name: Shutdown docker compose services
-        if: runner.os == 'Linux'
+        if: runner.os == 'Linux' || runner.os == 'Windows'
         run: |
           docker compose down
