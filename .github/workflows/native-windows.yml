@@ -260,7 +260,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: bwoodsend/setup-winlibs-action@v1
+      - uses: bwoodsend/setup-winlibs-action@ceefd070f6288838003797de3b06d7bc01e52842  # v1.16
         id: winlibs-64
         with:
           runtime: ucrt
