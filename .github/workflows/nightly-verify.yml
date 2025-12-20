@@ -25,6 +25,7 @@ on:
       - ".github/workflows/nightly-verify.yml"
       - "ci/docker/cpp-clang-latest.dockerfile"
       - "ci/docker/cpp-gcc-latest.dockerfile"
+      - "ci/docker/cpp-musl.alpine.dockerfile"
       - "dev/release/verify-release-candidate.sh"
       - "dev/release/verify-release-candidate.ps1"
   schedule:
@@ -229,6 +230,11 @@ jobs:
         run: |
           pushd arrow-adbc
           docker compose run --rm cpp-static-test
+
+      - name: cpp-musl
+        run: |
+          pushd arrow-adbc
+          docker compose run --rm cpp-musl
 
       - name: python-debug
         run: |
