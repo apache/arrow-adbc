@@ -15,13 +15,13 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import adbc_driver_manager
-
 from adbc_drivers_validation import model
+from adbc_drivers_validation.tests.statement import TestStatement as BaseTestStatement
 from adbc_drivers_validation.tests.statement import (
-    TestStatement as BaseTestStatement,
     generate_tests,
 )
+
+import adbc_driver_manager
 
 from . import postgresql
 

@@ -51,9 +51,11 @@ def driver_path(driver: adbc_drivers_validation.model.DriverQuirks) -> str:
 
     possible_paths = [
         # 1. c/build/driver/postgresql/ (CMake build from c/ directory)
-        base.parent.parent / f"build/driver/{driver.name}/libadbc_driver_{driver.name}.{ext}",
+        base.parent.parent
+        / f"build/driver/{driver.name}/libadbc_driver_{driver.name}.{ext}",
         # 2. <repo-root>/build/driver/postgresql/ (CI build location)
-        base.parent.parent.parent / f"build/driver/{driver.name}/libadbc_driver_{driver.name}.{ext}",
+        base.parent.parent.parent
+        / f"build/driver/{driver.name}/libadbc_driver_{driver.name}.{ext}",
         # 3. c/driver/postgresql/build/ (local CMake build from driver dir)
         base / f"build/libadbc_driver_{driver.name}.{ext}",
         # 4. c/driver/postgresql/ (direct build output in driver dir)

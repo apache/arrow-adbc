@@ -18,13 +18,15 @@
 import re
 import typing
 
-import adbc_driver_manager.dbapi
-
 from adbc_drivers_validation import model
 from adbc_drivers_validation.tests.connection import (
     TestConnection as BaseTestConnection,
+)
+from adbc_drivers_validation.tests.connection import (
     generate_tests,
 )
+
+import adbc_driver_manager.dbapi
 
 from . import postgresql
 
@@ -53,9 +55,9 @@ class TestConnection(BaseTestConnection):
         assert info.get("vendor_name") == driver.vendor_name
         vendor_version = info.get("vendor_version", "")
         if isinstance(driver.vendor_version, re.Pattern):
-            assert driver.vendor_version.match(vendor_version), (
-                f"{vendor_version!r} does not match {driver.vendor_version!r}"
-            )
+            assert driver.vendor_version.match(
+                vendor_version
+            ), f"{vendor_version!r} does not match {driver.vendor_version!r}"
         else:
             assert vendor_version == driver.vendor_version
 

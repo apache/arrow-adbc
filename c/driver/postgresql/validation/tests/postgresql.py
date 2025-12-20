@@ -25,11 +25,11 @@ class PostgreSQLQuirks(model.DriverQuirks):
     driver = "adbc_driver_postgresql"
     driver_name = "ADBC PostgreSQL Driver"
     vendor_name = "PostgreSQL"
-    vendor_version = "180000" 
+    vendor_version = "180000"
     short_version = "15+"
     features = model.DriverFeatures(
         connection_get_table_schema=True,
-        connection_transactions=True, 
+        connection_transactions=True,
         get_objects_constraints_foreign=False,
         get_objects_constraints_primary=False,
         get_objects_constraints_unique=False,
@@ -40,8 +40,8 @@ class PostgreSQLQuirks(model.DriverQuirks):
         statement_execute_schema=True,
         statement_get_parameter_schema=True,
         statement_rows_affected=True,
-        current_catalog="postgres", 
-        current_schema="public", 
+        current_catalog="postgres",
+        current_schema="public",
         supported_xdbc_fields=[],
     )
     setup = model.DriverSetup(
