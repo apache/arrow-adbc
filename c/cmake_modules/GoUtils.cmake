@@ -206,7 +206,7 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
     endif()
 
     if(WIN32)
-      # On Windows with MSVC, generate a lib from the DLL file created by go. Binaries generated on Windows have their version
+      # On Windows with MSVC, generate a lib from the DLL file created by Go. Binaries generated on Windows have their version
       # as part of the DLL/file details, therefore the generated DLL file name does not need to have the version info.
       set(LIBOUT_IMPORT_LIB
           "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_IMPORT_LIBRARY_PREFIX}${GO_LIBNAME}${CMAKE_IMPORT_LIBRARY_SUFFIX}"
