@@ -385,11 +385,10 @@ jobs:
       - name: Setup MSYS2 tools
         run: |
           # msys64 is pre-installed on windows but not added to path
-          $env:PATH = "C:\msys64\mingw64\bin;C:\msys64\usr\bin\;C:\msys64\ucrt64\bin;$env:PATH"
-          echo "PATH=$env:PATH" >> $env:GITHUB_ENV
+          echo "C:\msys64\mingw64\bin;C:\msys64\usr\bin\;C:\msys64\ucrt64\bin" >> "$GITHUB_PATH"
 
           # Needed for gendef tool in GoUtils.cmake
-          pacman --noconfirm -S mingw-w64-i686-tools mingw-w64-x86_64-tools
+          pacman --noconfirm -S mingw-w64-x86_64-tools
       - name: Clone vcpkg
         run: |
           git clone https://github.com/microsoft/vcpkg.git
