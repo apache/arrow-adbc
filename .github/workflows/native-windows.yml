@@ -299,9 +299,9 @@ jobs:
       - name: Add Winlibs to PATH
         shell: pwsh
         run: |
-          $winlibsMingwBin = Join-Path "${{ runner.temp }}" "winlibs\mingw64\bin"
-          $env:PATH="$winlibsMingwBin;${env:PATH}"
-          echo "PATH=$env:PATH" >> $env:GITHUB_ENV
+          $winlibs_bin = Join-Path "${{ runner.temp }}" "winlibs\mingw64\bin"
+          echo "$winlibs_bin" >> "$GITHUB_PATH"
+          which gcc
 
       - name: Get Date
         id: get-date
