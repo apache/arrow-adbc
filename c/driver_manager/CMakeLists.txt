@@ -126,7 +126,7 @@ if(ADBC_BUILD_TESTS)
 
   if(ADBC_DRIVER_SQLITE)
     target_compile_definitions(adbc-driver-manager-test
-                               PRIVATE ADBC_DRIVER_MANAGER_TEST_LIB="${CMAKE_BINARY_DIR}/driver/sqlite/${CONFIG_SUBDIR}${CMAKE_SHARED_LIBRARY_PREFIX}adbc_driver_sqlite${CMAKE_SHARED_LIBRARY_SUFFIX}"
+                               PRIVATE ADBC_DRIVER_MANAGER_TEST_LIB="$<TARGET_FILE:adbc_driver_sqlite_shared>"
     )
   endif()
   if(ADBC_DRIVER_MANAGER_TEST_MANIFEST_USER_LEVEL)
