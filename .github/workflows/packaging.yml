@@ -815,16 +815,6 @@ jobs:
           cache: true
           cache-dependency-path: adbc/go/adbc/go.sum
 
-      - name: Install Python
-        run: |
-          pushd adbc
-          sudo ci/scripts/install_python.sh macos 3.10
-          sudo ci/scripts/install_python.sh macos 3.11
-          sudo ci/scripts/install_python.sh macos 3.12
-          sudo ci/scripts/install_python.sh macos 3.13
-          sudo ci/scripts/install_python.sh macos 3.14
-          popd
-
       - name: Downgrade XCode
         if: matrix.os == 'macos-latest'
         run: |
@@ -854,6 +844,10 @@ jobs:
             adbc/python/adbc_driver_postgresql/repaired_wheels/*.whl
             adbc/python/adbc_driver_sqlite/repaired_wheels/*.whl
             adbc/python/adbc_driver_snowflake/repaired_wheels/*.whl
+
+      # N.B. delocate (called above) will install these Python versions for
+      # us. You can get the interpreter path by inspecting CI output (search
+      # for "Building cp314-macos"...)
 
       - name: Test wheel 3.10
         run: |
@@ -905,6 +899,17 @@ jobs:
           ./ci/scripts/python_wheel_unix_test.sh $(pwd)
           deactivate
 
+      - name: Test wheel 3.14t
+        run: |
+          pushd adbc
+
+          /Library/Frameworks/PythonT.framework/Versions/3.14/bin/python3.14t -m venv test-env-314t
+          source test-env-314t/bin/activate
+          export PYTHON_GIL=0
+          export PYTHON_VERSION=3.14t
+          ./ci/scripts/python_wheel_unix_test.sh $(pwd)
+          deactivate
+
       - name: Assemble logs
         if: failure()
         run: |
@@ -932,7 +937,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python_version: ["3.10", "3.11", "3.12", "3.13", "3.14"]
+        python_version: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.14t"]
     env:
       PYTHON_VERSION: "${{ matrix.python_version }}"
       # Where to install vcpkg
@@ -1026,6 +1031,8 @@ jobs:
 
       - name: Test wheel
         shell: cmd
+        env:
+          PYTHON_VERSION: ${{ matrix.python_version }}
         run: |
           pushd adbc
           where python.exe
