@@ -65,7 +65,7 @@ if(ADBC_BUILD_TESTS)
                 ${TEST_LINK_LIBS})
 
   if(ADBC_TEST_LINKAGE STREQUAL "shared")
-    # The go build is not copying the DLL to the test location, causing the test to fail on Windows when building with vcpkg.
+    # The Go build is not copying the DLL to the test location, causing the test to fail on Windows when building with vcpkg.
     if(WIN32)
       add_custom_command(TARGET adbc-driver-flightsql-test
                          POST_BUILD
