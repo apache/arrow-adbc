@@ -462,7 +462,7 @@ AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
 
 SearchPaths GetEnvPaths(const char_type* env_var) {
 #ifdef _WIN32
-  DWORD required_size = GetEnvironmentVariableW(env_var, nullptr, 0);
+  DWORD required_size = GetEnvironmentVariableW(env_var, NULL, 0);
   if (required_size == 0) {
     return {};
   }
@@ -481,8 +481,8 @@ SearchPaths GetEnvPaths(const char_type* env_var) {
   std::string path(path_var);
 #endif  // _WIN32
   SearchPaths paths;
-  for (auto parsedPath : InternalAdbcParsePath(path)) {
-    paths.emplace_back(SearchPathSource::kEnv, parsedPath);
+  for (auto parsed_path : InternalAdbcParsePath(path)) {
+    paths.emplace_back(SearchPathSource::kEnv, parsed_path);
   }
   return paths;
 }
