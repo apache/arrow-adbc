@@ -32,6 +32,7 @@ $BuildDriverSqlite = ($BuildAll -and (-not ($env:BUILD_DRIVER_SQLITE -eq "0"))) 
 $env:LD_LIBRARY_PATH += ":$($InstallDir)"
 $env:LD_LIBRARY_PATH += ":$($InstallDir)/bin"
 $env:LD_LIBRARY_PATH += ":$($InstallDir)/lib"
+# InstallDir must come first, else on CI we may pick up system sqlite and crash
 $env:PATH = "$($InstallDir);$env:PATH"
 $env:PATH = "$($InstallDir)\bin;$env:PATH"
 $env:PATH = "$($InstallDir)\lib;$env:PATH"
