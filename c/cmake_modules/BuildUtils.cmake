@@ -302,6 +302,7 @@ function(ADD_ARROW_LIB LIB_NAME)
             DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
     # If we're building on Windows using vcpkg, ensure the runtime dependencies of binaries are copied to the install folder.
+    # TODO(https://github.com/apache/arrow-adbc/issues/3826): auto-detect this
     if(ADBC_BUILD_VCPKG)
       install(TARGETS ${LIB_NAME}_shared
                       RUNTIME_DEPENDENCIES
