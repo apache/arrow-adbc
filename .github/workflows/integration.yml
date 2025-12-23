@@ -101,7 +101,7 @@ jobs:
           ./ci/scripts/cpp_test.sh "$(pwd)/build"
 
   flightsql:
-    name: "FlightSQL Integration Tests (Dremio and SQLite)"
+    name: "FlightSQL Integration Tests (Dremio, SQLite, and GizmoSQL)"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -140,9 +140,9 @@ jobs:
       - name: Work around ASAN issue (GH-1617)
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
-      - name: Start SQLite server and Dremio
+      - name: Start SQLite server, Dremio, and GizmoSQL
         run: |
-          docker compose up --detach flightsql-test flightsql-sqlite-test dremio dremio-init
+          docker compose up --detach flightsql-test flightsql-sqlite-test dremio dremio-init gizmosql-test
           pip install python-dotenv[cli]
           python -m dotenv -f .env list --format simple | tee -a $GITHUB_ENV
 
