@@ -109,13 +109,6 @@ if(ADBC_BUILD_TESTS)
   add_dependencies(adbc-driver-manager-test adbc_driver_entrypoint
                    adbc_driver_no_entrypoint)
 
-  # On Windows binaries are created under config subfolder (debug/release). We must ensure the lib path contains that for tests to run.
-  if(CMAKE_CONFIGURATION_TYPES)
-    set(CONFIG_SUBDIR "$<CONFIG>/")
-  else()
-    set(CONFIG_SUBDIR "")
-  endif()
-
   target_compile_definitions(adbc-driver-manager-test
                              PRIVATE ADBC_DRIVER_MANAGER_ENTRYPOINT_TEST_LIB="$<TARGET_FILE:adbc_driver_entrypoint>"
   )
