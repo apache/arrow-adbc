@@ -348,6 +348,53 @@ class SqliteStatementTest : public ::testing::Test,
 };
 ADBCV_TEST_STATEMENT(SqliteStatementTest)
 
+// Exercise AdbcDatabaseGetOption with different value buffer lengths
+TEST(AdbcDriverManagerInternal, DatabaseGetOptionValueBufferSize) {
+  struct AdbcDatabase database = {};
+  struct AdbcError error = {};
+
+  ASSERT_THAT(AdbcDatabaseNew(&database, &error), IsOkStatus(&error));
+
+  // Set an option we'll later fetch with a n oversized buffer
+  ASSERT_THAT(AdbcDatabaseSetOption(&database, "driver", "test_driver", &error),
+              IsOkStatus(&error));
+
+  // Too small
+  char buf_too_small[11];
+  std::memset(buf_too_small, '*',
+              sizeof(buf_too_small));  // Pre-fill with "*" just for debugging
+  size_t len_too_small = sizeof(buf_too_small);
+  ASSERT_THAT(
+      AdbcDatabaseGetOption(&database, "driver", buf_too_small, &len_too_small, &error),
+      IsOkStatus(&error));
+  EXPECT_EQ(len_too_small, 12u);
+  EXPECT_STRNE(buf_too_small, "test_driver");
+
+  // Just right
+  char buf_just_right[12];
+  std::memset(buf_just_right, '*',
+              sizeof(buf_just_right));  // Pre-fill with "*" just for debugging
+  size_t len_just_right = sizeof(buf_just_right);
+  ASSERT_THAT(
+      AdbcDatabaseGetOption(&database, "driver", buf_just_right, &len_just_right, &error),
+      IsOkStatus(&error));
+  EXPECT_EQ(len_just_right, 12u);
+  EXPECT_STREQ(buf_just_right, "test_driver");
+
+  // Too large
+  char buf_too_large[13];
+  std::memset(buf_too_large, '*',
+              sizeof(buf_too_large));  // Pre-fill with "*" just for debugging
+  size_t len_too_large = sizeof(buf_too_large);
+  ASSERT_THAT(
+      AdbcDatabaseGetOption(&database, "driver", buf_too_large, &len_too_large, &error),
+      IsOkStatus(&error));
+  EXPECT_EQ(len_too_large, 12u);
+  EXPECT_STREQ(buf_too_large, "test_driver");
+
+  ASSERT_THAT(AdbcDatabaseRelease(&database, &error), IsOkStatus(&error));
+}
+
 TEST(AdbcDriverManagerInternal, InternalAdbcDriverManagerDefaultEntrypoint) {
   for (const auto& driver : {
            "adbc_driver_sqlite",

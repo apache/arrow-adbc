@@ -15,8 +15,16 @@
 # specific language governing permissions and limitations
 # under the License.
 
-BOOTSTRAP_SCRIPT <- file.path("..", "tools", "bootstrap-c.R")
+FROM alpine:3
 
-if (file.exists(BOOTSTRAP_SCRIPT)) {
-  source(BOOTSTRAP_SCRIPT)
-}
+RUN apk add --no-cache \
+    build-base \
+    cmake \
+    ninja \
+    bash \
+    git \
+    ca-certificates \
+    musl-dev \
+    libstdc++ \
+    linux-headers \
+    sqlite-dev
