@@ -161,14 +161,14 @@ jobs:
         run: |
           ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
           ./ci/scripts/cpp_test.sh "$(pwd)/build"
-      - name: Test Python Flight SQL driver against Dremio
+      - name: Test Python Flight SQL driver against Dremio and GizmoSQL
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_FLIGHTSQL: "1"
           PYTEST_ADDOPTS: "--error-for-skips"
         run: |
           ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
-      - name: Stop SQLite server and Dremio
+      - name: Stop SQLite server, Dremio, and GizmoSQL
         run: |
           docker compose down
 
