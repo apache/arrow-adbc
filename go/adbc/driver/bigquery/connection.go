@@ -46,12 +46,13 @@ import (
 type connectionImpl struct {
 	driverbase.ConnectionImplBase
 
-	authType     string
-	credentials  string
-	clientID     string
-	clientSecret string
-	refreshToken string
-	quotaProject string
+	authType        string
+	credentialsType option.CredentialsType
+	credentials     string
+	clientID        string
+	clientSecret    string
+	refreshToken    string
+	quotaProject    string
 
 	impersonateTargetPrincipal string
 	impersonateDelegates       []string
@@ -461,6 +462,8 @@ func (c *connectionImpl) GetOption(key string) (string, error) {
 	switch key {
 	case OptionStringAuthType:
 		return c.authType, nil
+	case OptionAuthCredentialsType:
+		return string(c.credentialsType), nil
 	case OptionStringAuthCredentials:
 		return c.credentials, nil
 	case OptionStringAuthClientID:
@@ -495,6 +498,23 @@ func (c *connectionImpl) SetOption(key string, value string) error {
 	switch key {
 	case OptionStringAuthType:
 		c.authType = value
+	case OptionAuthCredentialsType:
+		// N.B. ExternalAccountAuthorizedUser, GDCHServiceAccount aren't re-exported by google.golang.org/api/option
+		switch value {
+		case string(option.ServiceAccount):
+			c.credentialsType = option.ServiceAccount
+		case string(option.AuthorizedUser):
+			c.credentialsType = option.AuthorizedUser
+		case string(option.ImpersonatedServiceAccount):
+			c.credentialsType = option.ImpersonatedServiceAccount
+		case string(option.ExternalAccount):
+			c.credentialsType = option.ExternalAccount
+		default:
+			return adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("[bq] unknown %s=%s", key, value),
+			}
+		}
 	case OptionStringAuthCredentials:
 		c.credentials = value
 	case OptionStringAuthClientID:
@@ -563,9 +583,9 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 	// First, establish base authentication
 	switch c.authType {
 	case OptionValueAuthTypeJSONCredentialFile:
-		authOptions = append(authOptions, option.WithCredentialsFile(c.credentials))
+		authOptions = append(authOptions, option.WithAuthCredentialsFile(c.credentialsType, c.credentials))
 	case OptionValueAuthTypeJSONCredentialString:
-		authOptions = append(authOptions, option.WithCredentialsJSON([]byte(c.credentials)))
+		authOptions = append(authOptions, option.WithAuthCredentialsJSON(c.credentialsType, []byte(c.credentials)))
 	case OptionValueAuthTypeUserAuthentication:
 		if c.clientID == "" {
 			return adbc.Error{
