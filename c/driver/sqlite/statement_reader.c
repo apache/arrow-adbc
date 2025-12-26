@@ -451,8 +451,15 @@ AdbcStatusCode InternalAdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder,
         }
         case NANOARROW_TYPE_TIMESTAMP: {
           struct ArrowSchemaView bind_schema_view;
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4244)  // ArrowErrorCode to AdbcStatusCode conversion
+#endif
           RAISE_NA(ArrowSchemaViewInit(&bind_schema_view, binder->schema.children[col],
                                        &arrow_error));
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
           enum ArrowTimeUnit unit = bind_schema_view.time_unit;
           int64_t value =
               ArrowArrayViewGetIntUnsafe(binder->batch.children[col], binder->next_row);

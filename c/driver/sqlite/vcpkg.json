@@ -1,0 +1,7 @@
+{
+    "name": "adbc-driver-sqlite",
+    "version-string": "1.0.0a0",
+    "dependencies": [
+        "sqlite3"
+    ]
+}

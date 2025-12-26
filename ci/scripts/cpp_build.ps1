@@ -31,30 +31,44 @@ $BuildDriverSnowflake = ($BuildAll -and (-not ($env:BUILD_DRIVER_SNOWFLAKE -eq "
 $BuildDriverSqlite = ($BuildAll -and (-not ($env:BUILD_DRIVER_SQLITE -eq "0"))) -or ($env:BUILD_DRIVER_SQLITE -eq "1")
 
 $BuildDriverManagerUserConfigTest = ($env:BUILD_DRIVER_MANAGER_USER_CONFIG_TEST -eq "1")
+$BuildType = if ($env:CMAKE_BUILD_TYPE) { $env:CMAKE_BUILD_TYPE } else { "Release" }
 
 function Build-Subproject {
     New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
     Push-Location $BuildDir
 
+    # Note: Args are factored out to make it simple to override
+    # DCMAKE_TOOLCHAIN_FILE for VCPKG
     # XXX(apache/arrow-adbc#616): must use Release build to line up with gtest
-    cmake `
-      $(Join-Path $SourceDir "c\") `
-      -DADBC_BUILD_SHARED=ON `
-      -DADBC_BUILD_STATIC=OFF `
-      -DADBC_BUILD_TESTS=ON `
-      -DADBC_DRIVER_MANAGER="$($BuildDriverManager)" `
-      -DADBC_DRIVER_BIGQUERY="$($BuildDriverBigQuery)" `
-      -DADBC_DRIVER_FLIGHTSQL="$($BuildDriverFlightSql)" `
-      -DADBC_DRIVER_POSTGRESQL="$($BuildDriverPostgreSQL)" `
-      -DADBC_DRIVER_SNOWFLAKE="$($BuildDriverSnowflake)" `
-      -DADBC_DRIVER_SQLITE="$($BuildDriverSqlite)" `
-      -DCMAKE_BUILD_TYPE=Release `
-      -DCMAKE_INSTALL_PREFIX="$($InstallDir)" `
-      -DCMAKE_VERBOSE_MAKEFILE=ON `
-      -DADBC_DRIVER_MANAGER_TEST_MANIFEST_USER_LEVEL="$($BuildDriverManagerUserConfigTest)"
+    $cmakeArgs = @(
+      $(Join-Path $SourceDir "c\"),
+      "-DADBC_BUILD_SHARED=ON",
+      "-DADBC_BUILD_STATIC=OFF",
+      "-DADBC_BUILD_TESTS=ON",
+      "-DADBC_DRIVER_MANAGER=$($BuildDriverManager)",
+      "-DADBC_DRIVER_BIGQUERY=$($BuildDriverBigQuery)",
+      "-DADBC_DRIVER_FLIGHTSQL=$($BuildDriverFlightSql)",
+      "-DADBC_DRIVER_POSTGRESQL=$($BuildDriverPostgreSQL)",
+      "-DADBC_DRIVER_SNOWFLAKE=$($BuildDriverSnowflake)",
+      "-DADBC_DRIVER_SQLITE=$($BuildDriverSqlite)",
+      "-DCMAKE_BUILD_TYPE=$BuildType",
+      "-DCMAKE_INSTALL_PREFIX=$($InstallDir)",
+      "-DCMAKE_VERBOSE_MAKEFILE=ON",
+      "-DADBC_DRIVER_MANAGER_TEST_MANIFEST_USER_LEVEL=$($BuildDriverManagerUserConfigTest)"
+    )
+
+    # If VCPKG_ROOT is set, set DCMAKE_TOOLCHAIN_FILE to it
+    if ($env:VCPKG_ROOT) {
+      $vcpkgToolchain = "$env:VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake"
+      $cmakeArgs += "-DCMAKE_TOOLCHAIN_FILE=$vcpkgToolchain"
+    }
+
+    & cmake $cmakeArgs
     if (-not $?) { exit 1 }
 
-    cmake --build . --target install -j
+    # Build with configuration for multi-config generators (like MSVC)
+    # For single-config generators (like Ninja), --config is ignored
+    cmake --build . --target install --config $BuildType -j
     if (-not $?) { exit 1 }
 
     Pop-Location
