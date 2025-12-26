@@ -451,6 +451,7 @@ AdbcStatusCode InternalAdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder,
         }
         case NANOARROW_TYPE_TIMESTAMP: {
           struct ArrowSchemaView bind_schema_view;
+// TODO(https://github.com/apache/arrow-adbc/issues/1675)
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable : 4244)  // RAISE_NA returns ArrowErrorCode, but this function

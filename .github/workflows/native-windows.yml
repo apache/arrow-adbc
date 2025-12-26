@@ -390,6 +390,7 @@ jobs:
 
           # Needed for gendef tool in GoUtils.cmake
           pacman --noconfirm -S mingw-w64-x86_64-tools
+      # TODO(https://github.com/apache/arrow-adbc/issues/3825)
       - name: Clone vcpkg
         run: |
           git clone https://github.com/microsoft/vcpkg.git
