@@ -67,7 +67,7 @@ fn get_exported() -> (
 ) {
     let mut driver = ManagedDriver::load_dynamic_from_name(
         "adbc_dummy",
-        Some(b"DummyDriverInit"),
+        Some(b"AdbcDummyInit"),
         AdbcVersion::V110,
     )
     .unwrap();
