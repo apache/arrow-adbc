@@ -168,6 +168,17 @@ type statement struct {
 	progress         float64
 	// may seem redundant, but incrementalState isn't locked
 	lastInfo atomic.Pointer[flight.FlightInfo]
+
+	// Bulk ingest fields
+	targetTable string
+	ingestMode  string
+	catalog     *string
+	dbSchema    *string
+	temporary   bool
+
+	// Bound data for bulk ingest
+	bound      arrow.RecordBatch
+	streamBind array.RecordReader
 }
 
 func (s *statement) closePreparedStatement() error {
@@ -213,6 +224,15 @@ func (s *statement) Close() (err error) {
 			Msg:  "[Flight SQL Statement] cannot close already closed statement",
 			Code: adbc.StatusInvalidState,
 		}
+	}
+
+	if s.bound != nil {
+		s.bound.Release()
+		s.bound = nil
+	}
+	if s.streamBind != nil {
+		s.streamBind.Release()
+		s.streamBind = nil
 	}
 
 	s.clientCache = nil
@@ -360,6 +380,47 @@ func (s *statement) SetOption(key string, val string) error {
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
+	case adbc.OptionKeyIngestTargetTable:
+		s.query.sqlQuery = ""
+		s.query.substraitPlan = nil
+		s.targetTable = val
+	case adbc.OptionKeyIngestMode:
+		switch val {
+		case adbc.OptionValueIngestModeCreate,
+			adbc.OptionValueIngestModeAppend,
+			adbc.OptionValueIngestModeReplace,
+			adbc.OptionValueIngestModeCreateAppend:
+			s.ingestMode = val
+		default:
+			return adbc.Error{
+				Msg:  fmt.Sprintf("[Flight SQL] Invalid ingest mode '%s'", val),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+	case adbc.OptionValueIngestTargetCatalog:
+		if val == "" {
+			s.catalog = nil
+		} else {
+			s.catalog = &val
+		}
+	case adbc.OptionValueIngestTargetDBSchema:
+		if val == "" {
+			s.dbSchema = nil
+		} else {
+			s.dbSchema = &val
+		}
+	case adbc.OptionValueIngestTemporary:
+		switch val {
+		case adbc.OptionValueEnabled:
+			s.temporary = true
+		case adbc.OptionValueDisabled:
+			s.temporary = false
+		default:
+			return adbc.Error{
+				Msg:  fmt.Sprintf("[Flight SQL] Invalid statement option value %s=%s", key, val),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
 	default:
 		return adbc.Error{
 			Msg:  "[Flight SQL] Unknown statement option '" + key + "'",
@@ -435,6 +496,12 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 		return nil, -1, err
 	}
 
+	// Handle bulk ingest
+	if s.targetTable != "" {
+		nrec, err = s.executeIngest(ctx)
+		return nil, nrec, err
+	}
+
 	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
 	var info *flight.FlightInfo
 	var header, trailer metadata.MD
@@ -459,6 +526,11 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 	if err := s.clearIncrementalQuery(); err != nil {
 		return -1, err
+	}
+
+	// Handle bulk ingest
+	if s.targetTable != "" {
+		return s.executeIngest(ctx)
 	}
 
 	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
@@ -521,7 +593,21 @@ func (s *statement) SetSubstraitPlan(plan []byte) error {
 // but it may not do this until the statement is closed or another
 // record is bound.
 func (s *statement) Bind(_ context.Context, values arrow.RecordBatch) error {
-	// TODO: handle bulk insert situation
+	// For bulk ingest, bind to the statement
+	if s.targetTable != "" {
+		if s.streamBind != nil {
+			s.streamBind.Release()
+			s.streamBind = nil
+		}
+		if s.bound != nil {
+			s.bound.Release()
+		}
+		s.bound = values
+		if s.bound != nil {
+			s.bound.Retain()
+		}
+		return nil
+	}
 
 	if s.prepared == nil {
 		return adbc.Error{
@@ -540,6 +626,22 @@ func (s *statement) Bind(_ context.Context, values arrow.RecordBatch) error {
 // The driver will call Release on the record reader, but may not do this
 // until Close is called.
 func (s *statement) BindStream(_ context.Context, stream array.RecordReader) error {
+	// For bulk ingest, bind to the statement
+	if s.targetTable != "" {
+		if s.bound != nil {
+			s.bound.Release()
+			s.bound = nil
+		}
+		if s.streamBind != nil {
+			s.streamBind.Release()
+		}
+		s.streamBind = stream
+		if s.streamBind != nil {
+			s.streamBind.Retain()
+		}
+		return nil
+	}
+
 	if s.prepared == nil {
 		return adbc.Error{
 			Msg:  "[Flight SQL Statement] must call Prepare before calling Bind",

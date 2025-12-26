@@ -728,7 +728,7 @@ jobs:
             docs/source/python/recipe/*.py
       - name: Test Recipes (Python)
         run: |
-          docker compose up --detach --wait dremio flightsql-sqlite-test postgres-test
+          docker compose up --detach --wait dremio flightsql-sqlite-test postgres-test gizmosql-test
           docker compose run --rm dremio-init
           export ADBC_CPP_RECIPE_BIN=~/local/bin
           # Needed for the combined C++/Python driver example
