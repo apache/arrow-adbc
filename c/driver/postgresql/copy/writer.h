@@ -241,17 +241,28 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
     char decimal_string[max_decimal_digits_ + 1];
     int total_digits = DecimalToString<bitwidth_>(&decimal, decimal_string);
 
-    const int n_int_digits = total_digits > scale_ ? total_digits - scale_ : 0;
+    // Handle negative scale by appending zeros
+    int effective_scale = scale_;
+    if (scale_ < 0) {
+      int zeros_to_append = -scale_;
+      memset(decimal_string + total_digits, '0', zeros_to_append);
+      total_digits += zeros_to_append;
+      decimal_string[total_digits] = '\0';
+      effective_scale = 0;
+    }
+
+    const int n_int_digits =
+        total_digits > effective_scale ? total_digits - effective_scale : 0;
     int n_frac_digits = total_digits > n_int_digits ? total_digits - n_int_digits : 0;
 
     std::string_view decimal_string_view(decimal_string, total_digits);
     std::string_view int_part = decimal_string_view.substr(0, n_int_digits);
 
     std::string frac_part_str;
-    if (n_int_digits == 0 && total_digits < scale_) {
-      frac_part_str.assign(scale_ - total_digits, '0');
+    if (n_int_digits == 0 && total_digits < effective_scale) {
+      frac_part_str.assign(effective_scale - total_digits, '0');
       frac_part_str.append(decimal_string, total_digits);
-      n_frac_digits = scale_;
+      n_frac_digits = effective_scale;
     } else {
       frac_part_str.assign(decimal_string_view.substr(n_int_digits, n_frac_digits));
     }
@@ -295,8 +306,8 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
     i = 0;
     bool skip_leading_zeros = (n_int_digits == 0);
 
-    while (i < (int)frac_part.length()) {
-      int chunk_size = std::min((int)frac_part.length() - i, kDecDigits);
+    while (i < static_cast<int>(frac_part.length())) {
+      int chunk_size = std::min(static_cast<int>(frac_part.length()) - i, kDecDigits);
       std::string chunk_str(frac_part.substr(i, chunk_size));
 
       // Pad the last group on the RIGHT if it's less than 4 digits
@@ -315,7 +326,7 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
     }
 
     // Calculate dscale by removing trailing zeros
-    dscale = scale_ - actual_trailing_zeros;
+    dscale = effective_scale - actual_trailing_zeros;
 
     // Trim trailing full zero digit groups from fractional part
     // (these zeros are already accounted for in actual_trailing_zeros)
@@ -327,6 +338,10 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
     // If all fractional digits were removed, dscale should be 0
     if (static_cast<int64_t>(pg_digits.size()) <= n_int_digit_groups) {
       dscale = 0;
+      // For zero (no digits at all), use canonical weight=0
+      if (pg_digits.empty()) {
+        weight = 0;
+      }
     }
 
     if (dscale < 0) dscale = 0;
@@ -376,10 +391,9 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
     for (size_t i = 0; i < DEC_WIDTH; i++) {
       int carry;
 
-      carry = (buf[nwords - 1] >= 0x7FFFFFFFFFFFFFFF);
+      carry = (buf[nwords - 1] > 0x7FFFFFFFFFFFFFFF);
       for (size_t j = nwords - 1; j > 0; j--) {
-        buf[j] =
-            ((buf[j] << 1) & 0xFFFFFFFFFFFFFFFF) + (buf[j - 1] >= 0x7FFFFFFFFFFFFFFF);
+        buf[j] = ((buf[j] << 1) & 0xFFFFFFFFFFFFFFFF) + (buf[j - 1] > 0x7FFFFFFFFFFFFFFF);
       }
       buf[0] = ((buf[0] << 1) & 0xFFFFFFFFFFFFFFFF);
 
