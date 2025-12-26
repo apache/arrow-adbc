@@ -843,7 +843,7 @@ func (suite *HeaderTests) TestPrepared() {
 	stmt, err := suite.Cnxn.NewStatement()
 	suite.Require().NoError(err)
 
-	suite.Require().NoError(stmt.SetSqlQuery("timeout"))
+	suite.Require().NoError(stmt.SetSqlQuery("select 1"))
 
 	suite.Require().NoError(suite.Cnxn.(adbc.PostInitOptions).
 		SetOption("adbc.flight.sql.rpc.call_header.x-header-one", "value 1"))
