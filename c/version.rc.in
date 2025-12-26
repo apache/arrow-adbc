@@ -1,0 +1,49 @@
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
+#include <windows.h>
+
+#define LANG_CODE_US_ENGLISH 0x0409
+#define CHARSET_UNICODE 0x04b0
+#define US_ENGLISH_UNICODE "040904b0"
+
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION @ADBC_VERSION_MAJOR@,@ADBC_VERSION_MINOR@,@ADBC_VERSION_PATCH@,0
+PRODUCTVERSION @ADBC_VERSION_MAJOR@,@ADBC_VERSION_MINOR@,@ADBC_VERSION_PATCH@,0
+FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
+FILEFLAGS 0x0L
+FILEOS VOS__WINDOWS32
+FILETYPE VFT_DLL
+FILESUBTYPE VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK US_ENGLISH_UNICODE
+        BEGIN
+            VALUE "FileDescription", "ADBC: Arrow Database Connectivity"
+            VALUE "FileVersion", "@ADBC_VERSION@"
+            VALUE "ProductVersion", "@ADBC_VERSION@"
+            VALUE "CompanyName", "Apache Software Foundation"
+            VALUE "ProductName", "@LIB_NAME@"
+            VALUE "InternalName", "@LIB_NAME@"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", LANG_CODE_US_ENGLISH, CHARSET_UNICODE
+    END
+END

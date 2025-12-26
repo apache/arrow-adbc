@@ -446,7 +446,7 @@ class SqliteReaderTest : public ::testing::Test {
 
   void Exec(const std::string& query) {
     SCOPED_TRACE(query);
-    int rc = sqlite3_prepare_v2(db, query.c_str(), query.size(), &stmt,
+    int rc = sqlite3_prepare_v2(db, query.c_str(), static_cast<int>(query.size()), &stmt,
                                 /*pzTail=*/nullptr);
     ASSERT_EQ(SQLITE_OK, rc) << "Failed to prepare query: " << sqlite3_errmsg(db);
     ASSERT_EQ(SQLITE_DONE, sqlite3_step(stmt));
@@ -480,8 +480,9 @@ class SqliteReaderTest : public ::testing::Test {
 
   void Exec(const std::string& query, size_t infer_rows,
             adbc_validation::StreamReader* reader) {
-    ASSERT_EQ(SQLITE_OK, sqlite3_prepare_v2(db, query.c_str(), query.size(), &stmt,
-                                            /*pzTail=*/nullptr));
+    ASSERT_EQ(SQLITE_OK,
+              sqlite3_prepare_v2(db, query.c_str(), static_cast<int>(query.size()), &stmt,
+                                 /*pzTail=*/nullptr));
     struct AdbcSqliteBinder* binder =
         this->binder.schema.release ? &this->binder : nullptr;
     ASSERT_THAT(InternalAdbcSqliteExportReader(db, stmt, binder, infer_rows,

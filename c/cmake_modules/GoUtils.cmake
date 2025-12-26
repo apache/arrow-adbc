@@ -18,6 +18,13 @@
 find_program(GO_BIN "go" REQUIRED)
 message(STATUS "Detecting Go executable: Found ${GO_BIN}")
 
+# Find tools for generating import libraries on Windows when building with vcpkg
+if(WIN32)
+  # msys64 is needed for dlltool and gendef
+  find_program(DLLTOOL_BIN "dlltool")
+  find_program(GENDEF_BIN "gendef")
+endif()
+
 set(ADBC_GO_PACKAGE_INIT
     [=[
 get_filename_component(_IMPORT_PREFIX "${CMAKE_CURRENT_LIST_FILE}" PATH)
@@ -64,6 +71,20 @@ function(adbc_add_static_library target_name base_name)
   endif()
 endfunction()
 ]=])
+
+# Function to generate import library from DLL on Windows
+function(generate_import_library DLL_PATH LIB_PATH DEF_PATH)
+  add_custom_command(OUTPUT "${DEF_PATH}"
+                     COMMAND ${GENDEF_BIN} - "${DLL_PATH}" > "${DEF_PATH}"
+                     DEPENDS "${DLL_PATH}"
+                     COMMENT "Generating .def file from ${DLL_PATH}")
+
+  add_custom_command(OUTPUT "${LIB_PATH}"
+                     COMMAND ${DLLTOOL_BIN} -d "${DEF_PATH}" -l "${LIB_PATH}" -D
+                             "${DLL_PATH}"
+                     DEPENDS "${DEF_PATH}"
+                     COMMENT "Generating import library ${LIB_PATH}")
+endfunction()
 
 function(add_go_lib GO_MOD_DIR GO_LIBNAME)
   set(options)
@@ -184,36 +205,79 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
       list(APPEND GO_ENV_VARS "GOARCH=arm64")
     endif()
 
-    add_custom_command(OUTPUT "${LIBOUT_SHARED}.${ADBC_FULL_SO_VERSION}"
-                       WORKING_DIRECTORY ${GO_MOD_DIR}
-                       DEPENDS ${ARG_SOURCES}
-                       COMMAND ${CMAKE_COMMAND} -E env ${GO_ENV_VARS} ${GO_BIN} build
-                               ${GO_BUILD_TAGS} "${GO_BUILD_FLAGS}" -o
-                               ${LIBOUT_SHARED}.${ADBC_FULL_SO_VERSION}
-                               -buildmode=c-shared ${GO_LDFLAGS} .
-                       COMMAND ${CMAKE_COMMAND} -E remove -f
-                               "${LIBOUT_SHARED}.${ADBC_SO_VERSION}.0.h"
-                       COMMENT "Building Go Shared lib ${GO_LIBNAME}"
-                       COMMAND_EXPAND_LISTS)
+    if(WIN32)
+      # On Windows with MSVC, generate a lib from the DLL file created by Go. Binaries generated on Windows have their version
+      # as part of the DLL/file details, therefore the generated DLL file name does not need to have the version info.
+      set(LIBOUT_IMPORT_LIB
+          "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_IMPORT_LIBRARY_PREFIX}${GO_LIBNAME}${CMAKE_IMPORT_LIBRARY_SUFFIX}"
+      )
+      set(LIBOUT_DEF_FILE "${CMAKE_CURRENT_BINARY_DIR}/${GO_LIBNAME}.def")
 
-    add_custom_command(OUTPUT "${LIBOUT_SHARED}.${ADBC_SO_VERSION}" "${LIBOUT_SHARED}"
-                       DEPENDS "${LIBOUT_SHARED}.${ADBC_FULL_SO_VERSION}"
-                       WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
-                       COMMAND ${CMAKE_COMMAND} -E create_symlink
-                               "${LIB_NAME_SHARED}.${ADBC_FULL_SO_VERSION}"
-                               "${LIB_NAME_SHARED}.${ADBC_SO_VERSION}"
-                       COMMAND ${CMAKE_COMMAND} -E create_symlink
-                               "${LIB_NAME_SHARED}.${ADBC_SO_VERSION}"
-                               "${LIB_NAME_SHARED}")
+      add_custom_command(OUTPUT "${LIBOUT_SHARED}"
+                         WORKING_DIRECTORY ${GO_MOD_DIR}
+                         DEPENDS ${ARG_SOURCES}
+                         COMMAND ${CMAKE_COMMAND} -E env ${GO_ENV_VARS} ${GO_BIN} build
+                                 ${GO_BUILD_TAGS} "${GO_BUILD_FLAGS}" -o ${LIBOUT_SHARED}
+                                 -buildmode=c-shared ${GO_LDFLAGS} .
+                         COMMAND ${CMAKE_COMMAND} -E remove -f "${LIBOUT_SHARED}.h"
+                         COMMENT "Building Go Shared lib ${GO_LIBNAME}"
+                         COMMAND_EXPAND_LISTS)
 
-    add_custom_target(${GO_LIBNAME}_target ALL
-                      DEPENDS "${LIBOUT_SHARED}.${ADBC_FULL_SO_VERSION}"
-                              "${LIBOUT_SHARED}.${ADBC_SO_VERSION}" "${LIBOUT_SHARED}")
-    add_library(${GO_LIBNAME}_shared SHARED IMPORTED GLOBAL)
-    set_target_properties(${GO_LIBNAME}_shared
-                          PROPERTIES IMPORTED_LOCATION
-                                     "${LIBOUT_SHARED}.${ADBC_FULL_SO_VERSION}"
-                                     IMPORTED_SONAME "${LIB_NAME_SHARED}")
+      # Generate import library if tools are available
+      if(GENDEF_BIN AND DLLTOOL_BIN)
+        generate_import_library("${LIBOUT_SHARED}" "${LIBOUT_IMPORT_LIB}"
+                                "${LIBOUT_DEF_FILE}")
+        set(IMPORT_LIB_OUTPUTS "${LIBOUT_IMPORT_LIB}" "${LIBOUT_DEF_FILE}")
+      else()
+        set(IMPORT_LIB_OUTPUTS)
+        message(WARNING "Import library generation tools not found. You may need to link directly to the DLL or use delay-loading."
+        )
+      endif()
+
+      add_custom_target(${GO_LIBNAME}_target ALL DEPENDS "${LIBOUT_SHARED}"
+                                                         ${IMPORT_LIB_OUTPUTS})
+
+      add_library(${GO_LIBNAME}_shared SHARED IMPORTED GLOBAL)
+      set_target_properties(${GO_LIBNAME}_shared PROPERTIES IMPORTED_LOCATION
+                                                            "${LIBOUT_SHARED}")
+
+      # Set import library if it was generated
+      if(IMPORT_LIB_OUTPUTS)
+        set_target_properties(${GO_LIBNAME}_shared PROPERTIES IMPORTED_IMPLIB
+                                                              "${LIBOUT_IMPORT_LIB}")
+      endif()
+    else()
+      add_custom_command(OUTPUT "${LIBOUT_SHARED}.${ADBC_FULL_SO_VERSION}"
+                         WORKING_DIRECTORY ${GO_MOD_DIR}
+                         DEPENDS ${ARG_SOURCES}
+                         COMMAND ${CMAKE_COMMAND} -E env ${GO_ENV_VARS} ${GO_BIN} build
+                                 ${GO_BUILD_TAGS} "${GO_BUILD_FLAGS}" -o
+                                 ${LIBOUT_SHARED}.${ADBC_FULL_SO_VERSION}
+                                 -buildmode=c-shared ${GO_LDFLAGS} .
+                         COMMAND ${CMAKE_COMMAND} -E remove -f
+                                 "${LIBOUT_SHARED}.${ADBC_SO_VERSION}.0.h"
+                         COMMENT "Building Go Shared lib ${GO_LIBNAME}"
+                         COMMAND_EXPAND_LISTS)
+
+      add_custom_command(OUTPUT "${LIBOUT_SHARED}.${ADBC_SO_VERSION}" "${LIBOUT_SHARED}"
+                         DEPENDS "${LIBOUT_SHARED}.${ADBC_FULL_SO_VERSION}"
+                         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+                         COMMAND ${CMAKE_COMMAND} -E create_symlink
+                                 "${LIB_NAME_SHARED}.${ADBC_FULL_SO_VERSION}"
+                                 "${LIB_NAME_SHARED}.${ADBC_SO_VERSION}"
+                         COMMAND ${CMAKE_COMMAND} -E create_symlink
+                                 "${LIB_NAME_SHARED}.${ADBC_SO_VERSION}"
+                                 "${LIB_NAME_SHARED}")
+
+      add_custom_target(${GO_LIBNAME}_target ALL
+                        DEPENDS "${LIBOUT_SHARED}.${ADBC_FULL_SO_VERSION}"
+                                "${LIBOUT_SHARED}.${ADBC_SO_VERSION}" "${LIBOUT_SHARED}")
+      add_library(${GO_LIBNAME}_shared SHARED IMPORTED GLOBAL)
+      set_target_properties(${GO_LIBNAME}_shared
+                            PROPERTIES IMPORTED_LOCATION
+                                       "${LIBOUT_SHARED}.${ADBC_FULL_SO_VERSION}"
+                                       IMPORTED_SONAME "${LIB_NAME_SHARED}")
+    endif()
     add_dependencies(${GO_LIBNAME}_shared ${GO_LIBNAME}_target)
     if(ARG_OUTPUTS)
       list(APPEND ${ARG_OUTPUTS} ${GO_LIBNAME}_shared)
@@ -243,6 +307,9 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
       if(WIN32)
         install(PROGRAMS $<TARGET_FILE:${GO_LIBNAME}_shared> ${INSTALL_IS_OPTIONAL}
                 DESTINATION ${RUNTIME_INSTALL_DIR})
+        if(IMPORT_LIB_OUTPUTS)
+          install(FILES "${LIBOUT_IMPORT_LIB}" TYPE LIB)
+        endif()
       else()
         install(PROGRAMS $<TARGET_FILE:${GO_LIBNAME}_shared> ${INSTALL_IS_OPTIONAL}
                 TYPE LIB)
@@ -259,8 +326,10 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
               ${CMAKE_INSTALL_LIBDIR})
     endif()
     if(WIN32)
-      # This symlink doesn't get installed
-      install(FILES "${LIBOUT_SHARED}.${ADBC_SO_VERSION}" TYPE BIN)
+      install(FILES "${LIBOUT_SHARED}" TYPE BIN)
+      if(IMPORT_LIB_OUTPUTS)
+        install(FILES "${LIBOUT_IMPORT_LIB}" TYPE LIB)
+      endif()
     else()
       install(FILES "${LIBOUT_SHARED}" "${LIBOUT_SHARED}.${ADBC_SO_VERSION}" TYPE LIB)
     endif()

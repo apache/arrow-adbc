@@ -241,6 +241,17 @@ function(ADD_ARROW_LIB LIB_NAME)
                                      VERSION "${ADBC_FULL_SO_VERSION}"
                                      SOVERSION "${ADBC_SO_VERSION}")
 
+    if(WIN32)
+      # Binaries generated on Windows need file version information, otherwise when the binary is part of a Windows installer
+      # the installer won't know to update a previously installed version.
+      set(VERSION_RC_TEMPLATE "${CMAKE_SOURCE_DIR}/version.rc.in")
+      configure_file("${VERSION_RC_TEMPLATE}"
+                     "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}_version.rc" @ONLY)
+
+      target_sources(${LIB_NAME}_shared
+                     PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME}_version.rc")
+    endif()
+
     # https://github.com/apache/arrow-adbc/issues/81
     target_compile_features(${LIB_NAME}_shared PRIVATE cxx_std_11)
 
@@ -289,6 +300,19 @@ function(ADD_ARROW_LIB LIB_NAME)
             ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
             INCLUDES
             DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+    # If we're building on Windows using vcpkg, ensure the runtime dependencies of binaries are copied to the install folder.
+    # TODO(https://github.com/apache/arrow-adbc/issues/3826): auto-detect this
+    if(ADBC_BUILD_VCPKG)
+      install(TARGETS ${LIB_NAME}_shared
+                      RUNTIME_DEPENDENCIES
+                      PRE_EXCLUDE_REGEXES
+                      "api-ms-win-.*"
+                      "ext-ms-.*"
+                      POST_EXCLUDE_REGEXES
+                      ".*system32.*"
+              RUNTIME DESTINATION ${RUNTIME_INSTALL_DIR})
+    endif()
   endif()
 
   if(BUILD_STATIC)

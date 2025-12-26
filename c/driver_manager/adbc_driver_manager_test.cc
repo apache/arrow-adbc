@@ -569,7 +569,10 @@ class DriverManifest : public ::testing::Test {
  protected:
   void SetConfigPath(const char* path) {
 #ifdef _WIN32
-    ASSERT_TRUE(SetEnvironmentVariable("ADBC_DRIVER_PATH", path));
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, path, -1, nullptr, 0);
+    std::wstring wpath(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, path, -1, &wpath[0], size_needed);
+    ASSERT_TRUE(SetEnvironmentVariableW(L"ADBC_DRIVER_PATH", wpath.c_str()));
 #else
     setenv("ADBC_DRIVER_PATH", path, 1);
 #endif
@@ -1138,12 +1141,20 @@ TEST_F(DriverManifest, AllDisabled) {
   EXPECT_THAT(error.message,
               ::testing::HasSubstr("not enabled at run time: ADBC_DRIVER_PATH (enable "
                                    "ADBC_LOAD_FLAG_SEARCH_ENV)"));
+
+#ifdef _WIN32
+  EXPECT_THAT(error.message,
+              ::testing::HasSubstr("not enabled at run time: HKEY_CURRENT_USER"));
+  EXPECT_THAT(error.message,
+              ::testing::HasSubstr("not enabled at run time: HKEY_LOCAL_MACHINE"));
+#else
   EXPECT_THAT(error.message,
               ::testing::HasSubstr("not enabled at run time: user config dir /"));
   EXPECT_THAT(error.message,
-              ::testing::HasSubstr(" (enable ADBC_LOAD_FLAG_SEARCH_USER)"));
-  EXPECT_THAT(error.message,
               ::testing::HasSubstr("not enabled at run time: system config dir /"));
+#endif  // _WIN32
+  EXPECT_THAT(error.message,
+              ::testing::HasSubstr(" (enable ADBC_LOAD_FLAG_SEARCH_USER)"));
   EXPECT_THAT(error.message,
               ::testing::HasSubstr(" (enable ADBC_LOAD_FLAG_SEARCH_SYSTEM)"));
 }

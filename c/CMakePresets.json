@@ -24,6 +24,47 @@
             }
         },
         {
+            "name": "multi-config-windows-base",
+            "displayName": "Base config for Windows without ASAN/UBSAN",
+            "hidden": true,
+            "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+            "cacheVariables": {
+                "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+                "ADBC_BUILD_TESTS": "ON",
+                "ADBC_DRIVER_FLIGHTSQL": "ON",
+                "ADBC_DRIVER_MANAGER": "ON",
+                "ADBC_DRIVER_POSTGRESQL": "ON",
+                "ADBC_DRIVER_SNOWFLAKE": "ON",
+                "ADBC_DRIVER_SQLITE": "ON",
+                "ADBC_BUILD_SHARED": "ON",
+                "ADBC_BUILD_STATIC": "OFF",
+                "ADBC_USE_ASAN": "OFF",
+                "ADBC_USE_UBSAN": "OFF",
+                "ADBC_BUILD_VCPKG": "ON",
+                "CMAKE_TOOLCHAIN_FILE": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake",
+                "CMAKE_C_COMPILER": "cl.exe",
+                "CMAKE_CXX_COMPILER": "cl.exe"
+            }
+        },
+        {
+            "name": "windows-debug",
+            "displayName": "Windows Debug",
+            "inherits": "multi-config-windows-base",
+            "binaryDir": "${sourceDir}/../build/debug",
+            "cacheVariables": {
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/../local/debug"
+            }
+        },
+        {
+            "name": "windows-release",
+            "displayName": "Windows Release",
+            "inherits": "multi-config-windows-base",
+            "binaryDir": "${sourceDir}/../build/release",
+            "cacheVariables": {
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/../local/release"
+            }
+        },
+        {
             "name": "debug-python",
             "displayName": "debug, all drivers, with tests, without ASan/UBSan (usable from Python)",
             "generator": "Ninja",
@@ -39,6 +80,18 @@
                 "ADBC_USE_ASAN": "OFF",
                 "ADBC_USE_UBSAN": "OFF"
             }
+        }
+    ],
+    "buildPresets": [
+        {
+          "name": "debug-windows",
+          "configurePreset": "windows-debug",
+          "configuration": "Debug"
+        },
+        {
+          "name": "release-windows",
+          "configurePreset": "windows-release",
+          "configuration": "Release"
         }
     ],
     "testPresets": [
