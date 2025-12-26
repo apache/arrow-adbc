@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <charconv>
 #include <cinttypes>
 #include <limits>
@@ -234,48 +235,116 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
     // Number of decimal digits per Postgres digit
     constexpr int kDecDigits = 4;
     std::vector<int16_t> pg_digits;
-    int16_t weight = -(scale_ / kDecDigits);
-    int16_t dscale = scale_;
-    bool seen_decimal = scale_ == 0;
-    bool truncating_trailing_zeros = true;
+    int16_t weight;
+    int16_t dscale;
 
     char decimal_string[max_decimal_digits_ + 1];
-    int digits_remaining = DecimalToString<bitwidth_>(&decimal, decimal_string);
-    do {
-      const int start_pos =
-          digits_remaining < kDecDigits ? 0 : digits_remaining - kDecDigits;
-      const size_t len = digits_remaining < 4 ? digits_remaining : kDecDigits;
-      const std::string_view substr{decimal_string + start_pos, len};
+    int total_digits = DecimalToString<bitwidth_>(&decimal, decimal_string);
+
+    // Handle negative scale by appending zeros
+    int effective_scale = scale_;
+    if (scale_ < 0) {
+      int zeros_to_append = -scale_;
+      memset(decimal_string + total_digits, '0', zeros_to_append);
+      total_digits += zeros_to_append;
+      decimal_string[total_digits] = '\0';
+      effective_scale = 0;
+    }
+
+    const int n_int_digits =
+        total_digits > effective_scale ? total_digits - effective_scale : 0;
+    int n_frac_digits = total_digits > n_int_digits ? total_digits - n_int_digits : 0;
+
+    std::string_view decimal_string_view(decimal_string, total_digits);
+    std::string_view int_part = decimal_string_view.substr(0, n_int_digits);
+
+    std::string frac_part_str;
+    if (n_int_digits == 0 && total_digits < effective_scale) {
+      frac_part_str.assign(effective_scale - total_digits, '0');
+      frac_part_str.append(decimal_string, total_digits);
+      n_frac_digits = effective_scale;
+    } else {
+      frac_part_str.assign(decimal_string_view.substr(n_int_digits, n_frac_digits));
+    }
+    std::string_view frac_part(frac_part_str);
+
+    // Count trailing zeros in the fractional part to minimize dscale
+    int actual_trailing_zeros = 0;
+    for (int j = frac_part.length() - 1; j >= 0 && frac_part[j] == '0'; j--) {
+      actual_trailing_zeros++;
+    }
+
+    // Group integer part
+    int i = int_part.length();
+    std::vector<int16_t> int_digits;
+    int n_int_digit_groups = 0;
+    if (i > 0) {
+      // Calculate weight based on original integer length
+      weight = (i + kDecDigits - 1) / kDecDigits - 1;
+
+      while (i > 0) {
+        int chunk_size = std::min(i, kDecDigits);
+        std::string_view chunk = int_part.substr(i - chunk_size, chunk_size);
+        int16_t val{};
+        std::from_chars(chunk.data(), chunk.data() + chunk.size(), val);
+        // Skip trailing zeros in integer part (which appear first when processing
+        // right-to-left)
+        if (val != 0 || !int_digits.empty()) {
+          int_digits.insert(int_digits.begin(), val);
+        }
+        i -= chunk_size;
+      }
+      n_int_digit_groups = int_digits.size();
+      pg_digits.insert(pg_digits.end(), int_digits.begin(), int_digits.end());
+    } else {
+      weight = -1;
+      n_int_digit_groups = 0;
+    }
+
+    // Group fractional part
+    // Chunk in 4-digit groups, padding the LAST group on the right if needed
+    i = 0;
+    bool skip_leading_zeros = (n_int_digits == 0);
+
+    while (i < static_cast<int>(frac_part.length())) {
+      int chunk_size = std::min(static_cast<int>(frac_part.length()) - i, kDecDigits);
+      std::string chunk_str(frac_part.substr(i, chunk_size));
+
+      // Pad the last group on the RIGHT if it's less than 4 digits
+      chunk_str.resize(kDecDigits, '0');
+
       int16_t val{};
-      std::from_chars(substr.data(), substr.data() + substr.size(), val);
+      std::from_chars(chunk_str.data(), chunk_str.data() + chunk_str.size(), val);
 
-      if (val == 0) {
-        if (!seen_decimal && truncating_trailing_zeros) {
-          dscale -= kDecDigits;
-        }
+      if (skip_leading_zeros && val == 0) {
+        weight--;
       } else {
-        pg_digits.insert(pg_digits.begin(), val);
-        if (!seen_decimal && truncating_trailing_zeros) {
-          if (val % 1000 == 0) {
-            dscale -= 3;
-          } else if (val % 100 == 0) {
-            dscale -= 2;
-          } else if (val % 10 == 0) {
-            dscale -= 1;
-          }
-        }
-        truncating_trailing_zeros = false;
+        pg_digits.push_back(val);
+        skip_leading_zeros = false;
       }
-      digits_remaining -= kDecDigits;
-      if (digits_remaining <= 0) {
-        break;
-      }
-      weight++;
+      i += chunk_size;
+    }
 
-      if (start_pos <= static_cast<int>(std::strlen(decimal_string)) - scale_) {
-        seen_decimal = true;
+    // Calculate dscale by removing trailing zeros
+    dscale = effective_scale - actual_trailing_zeros;
+
+    // Trim trailing full zero digit groups from fractional part
+    // (these zeros are already accounted for in actual_trailing_zeros)
+    while (static_cast<int64_t>(pg_digits.size()) > n_int_digit_groups &&
+           pg_digits.back() == 0) {
+      pg_digits.pop_back();
+    }
+
+    // If all fractional digits were removed, dscale should be 0
+    if (static_cast<int64_t>(pg_digits.size()) <= n_int_digit_groups) {
+      dscale = 0;
+      // For zero (no digits at all), use canonical weight=0
+      if (pg_digits.empty()) {
+        weight = 0;
       }
-    } while (true);
+    }
+
+    if (dscale < 0) dscale = 0;
 
     int16_t ndigits = pg_digits.size();
     int32_t field_size_bytes = sizeof(ndigits) + sizeof(weight) + sizeof(sign) +
@@ -322,10 +391,9 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
     for (size_t i = 0; i < DEC_WIDTH; i++) {
       int carry;
 
-      carry = (buf[nwords - 1] >= 0x7FFFFFFFFFFFFFFF);
+      carry = (buf[nwords - 1] > 0x7FFFFFFFFFFFFFFF);
       for (size_t j = nwords - 1; j > 0; j--) {
-        buf[j] =
-            ((buf[j] << 1) & 0xFFFFFFFFFFFFFFFF) + (buf[j - 1] >= 0x7FFFFFFFFFFFFFFF);
+        buf[j] = ((buf[j] << 1) & 0xFFFFFFFFFFFFFFFF) + (buf[j - 1] > 0x7FFFFFFFFFFFFFFF);
       }
       buf[0] = ((buf[0] << 1) & 0xFFFFFFFFFFFFFFFF);
 
