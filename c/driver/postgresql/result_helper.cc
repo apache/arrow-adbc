@@ -143,14 +143,16 @@ Status PqResultHelper::ResolveParamTypes(PostgresTypeResolver& type_resolver,
     const Oid pg_oid = PQparamtype(result_, i);
     PostgresType pg_type;
     if (type_resolver.Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
-      Status status = Status::NotImplemented("[libpq] Parameter #", i + 1, " (\"",
-                                             PQfname(result_, i),
-                                             "\") has unknown type code ", pg_oid);
+      std::string param_name = "$" + std::to_string(i + 1);
+      Status status =
+          Status::NotImplemented("[libpq] Parameter #", i + 1, " (\"", param_name,
+                                 "\") has unknown type code ", pg_oid);
       ClearResult();
       return status;
     }
 
-    root_type.AppendChild(PQfname(result_, i), pg_type);
+    std::string param_name = "$" + std::to_string(i + 1);
+    root_type.AppendChild(param_name.c_str(), pg_type);
   }
 
   *param_types = root_type;
