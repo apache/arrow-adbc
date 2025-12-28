@@ -29,6 +29,10 @@ from . import postgresql
 class TestStatement(BaseTestStatement):
     """PostgreSQL-specific statement tests with overrides."""
 
+    # TODO(https://github.com/adbc-drivers/validation/issues/140):
+    # Remove this override once validation framework supports separate
+    # statement_ddl_rows_affected flag. PostgreSQL returns -1 for DDL
+    # but exact counts for DML, which doesn't fit the current binary flag.
     def test_rows_affected(
         self,
         driver: model.DriverQuirks,

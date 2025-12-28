@@ -541,10 +541,10 @@ AdbcStatusCode PostgresConnection::GetInfo(struct AdbcConnection* connection,
         break;
       case ADBC_INFO_DRIVER_VERSION:
         // TODO(lidavidm): fill in driver version
-        infos.push_back({info_codes[i], "(unknown)"});
+        infos.push_back({info_codes[i], "unknown"});
         break;
       case ADBC_INFO_DRIVER_ARROW_VERSION:
-        infos.push_back({info_codes[i], NANOARROW_VERSION});
+        infos.push_back({info_codes[i], "v" NANOARROW_VERSION});
         break;
       case ADBC_INFO_DRIVER_ADBC_VERSION:
         infos.push_back({info_codes[i], ADBC_VERSION_1_1_0});
