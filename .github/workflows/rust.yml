@@ -22,10 +22,12 @@ on:
     branches:
       - main
     paths:
+      - "c/**"
       - "rust/**"
       - ".github/workflows/rust.yml"
   push:
     paths:
+      - "c/**"
       - "rust/**"
       - ".github/workflows/rust.yml"
 
