@@ -509,7 +509,7 @@ fn catch_panic<F: FnOnce() -> AdbcStatusCode + std::panic::UnwindSafe>(
             if !error.is_null() {
                 let message = if let Some(s) = cause.downcast_ref::<&str>() {
                     s.to_string()
-                } else if let Some(s) = panic.downcast_ref::<String>() {
+                } else if let Some(s) = cause.downcast_ref::<String>() {
                     s.clone()
                 } else {
                     "Unknown panic".to_string()
