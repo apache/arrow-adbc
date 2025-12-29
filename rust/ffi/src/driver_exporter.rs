@@ -214,7 +214,7 @@ macro_rules! export_driver {
         pub unsafe extern "C" fn AdbcDriverInit(
             version: std::os::raw::c_int,
             driver: *mut std::os::raw::c_void,
-            error: *mut adbc_ffi::FFI_AdbcError,
+            error: *mut $crate::FFI_AdbcError,
         ) -> adbc_core::error::AdbcStatusCode {
             unsafe { $func_name(version, driver, error) }
         }
