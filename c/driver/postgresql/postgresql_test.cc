@@ -203,7 +203,7 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
       case ADBC_INFO_DRIVER_NAME:
         return "ADBC PostgreSQL Driver";
       case ADBC_INFO_DRIVER_VERSION:
-        return "(unknown)";
+        return "unknown";
       case ADBC_INFO_VENDOR_NAME:
         return "PostgreSQL";
       default:
@@ -291,7 +291,7 @@ TEST_F(PostgresConnectionTest, GetInfoMetadata) {
         }
         case ADBC_INFO_DRIVER_VERSION: {
           ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, offset);
-          EXPECT_EQ("(unknown)", std::string(val.data, val.size_bytes));
+          EXPECT_EQ("unknown", std::string(val.data, val.size_bytes));
           break;
         }
         case ADBC_INFO_VENDOR_NAME: {
