@@ -336,8 +336,16 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
   endif()
 
   if(BUILD_STATIC)
-    set(LIBNAME_STATIC
-        "${CMAKE_STATIC_LIBRARY_PREFIX}${GO_LIBNAME}${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    if(WIN32)
+      # Windows uses .lib for both static libraries and import libraries, so
+      # add another suffix to differentiate them
+      set(LIBNAME_STATIC
+          "${CMAKE_STATIC_LIBRARY_PREFIX}${GO_LIBNAME}_static${CMAKE_STATIC_LIBRARY_SUFFIX}"
+      )
+    else()
+      set(LIBNAME_STATIC
+          "${CMAKE_STATIC_LIBRARY_PREFIX}${GO_LIBNAME}${CMAKE_STATIC_LIBRARY_SUFFIX}")
+    endif()
     set(LIBOUT_STATIC "${CMAKE_CURRENT_BINARY_DIR}/${LIBNAME_STATIC}")
     if(CMAKE_VERSION VERSION_LESS "3.20")
       string(REGEX REPLACE "\\..+$" ".h" LIBOUT_HEADER "${LIBOUT_STATIC}")
