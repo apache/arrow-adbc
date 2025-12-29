@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import re
 from pathlib import Path
 
 from adbc_drivers_validation import model, quirks
@@ -25,8 +26,8 @@ class PostgreSQLQuirks(model.DriverQuirks):
     driver = "adbc_driver_postgresql"
     driver_name = "ADBC PostgreSQL Driver"
     vendor_name = "PostgreSQL"
-    vendor_version = "180000"
-    short_version = "15+"
+    vendor_version = re.compile(r"18[0-9]{4}")
+    short_version = "18"
     features = model.DriverFeatures(
         connection_get_table_schema=True,
         connection_transactions=True,
