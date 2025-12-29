@@ -381,6 +381,7 @@ func (s *statement) SetOption(key string, val string) error {
 			}
 		}
 	case adbc.OptionKeyIngestTargetTable:
+		s.prepared = nil
 		s.query.sqlQuery = ""
 		s.query.substraitPlan = nil
 		s.targetTable = val
@@ -482,6 +483,7 @@ func (s *statement) SetSqlQuery(query string) error {
 	if err := s.clearIncrementalQuery(); err != nil {
 		return err
 	}
+	s.targetTable = ""
 	s.query.setSqlQuery(query)
 	return nil
 }

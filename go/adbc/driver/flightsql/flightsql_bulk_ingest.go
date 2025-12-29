@@ -89,23 +89,12 @@ func buildExecuteIngestOpts(opts ingestOptions) *flightsql.ExecuteIngestOpts {
 	return ingestOpts
 }
 
-// executeIngestWithReader performs the bulk ingest operation with the given record reader.
-func executeIngestWithReader(
-	ctx context.Context,
-	client *flightsql.Client,
-	rdr array.RecordReader,
-	opts *flightsql.ExecuteIngestOpts,
-	callOpts ...grpc.CallOption,
-) (int64, error) {
-	return client.ExecuteIngest(ctx, rdr, opts, callOpts...)
-}
-
 // createRecordReaderFromBatch converts a single record batch to a RecordReader.
 func createRecordReaderFromBatch(batch arrow.RecordBatch) (array.RecordReader, error) {
 	rdr, err := array.NewRecordReader(batch.Schema(), []arrow.RecordBatch{batch})
 	if err != nil {
 		return nil, adbc.Error{
-			Msg:  fmt.Sprintf("[Flight SQL Statement] failed to create record reader: %s", err.Error()),
+			Msg:  fmt.Sprintf("[Flight SQL Statement] failed to create record reader: %s", err),
 			Code: adbc.StatusInternal,
 		}
 	}
@@ -148,7 +137,7 @@ func (s *statement) executeIngest(ctx context.Context) (int64, error) {
 	var header, trailer metadata.MD
 	callOpts := append([]grpc.CallOption{}, grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
 
-	nRows, err := executeIngestWithReader(ctx, s.cnxn.cl, rdr, ingestOpts, callOpts...)
+	nRows, err := s.cnxn.cl.ExecuteIngest(ctx, rdr, ingestOpts, callOpts...)
 	if err != nil {
 		return -1, adbcFromFlightStatusWithDetails(err, header, trailer, "ExecuteIngest")
 	}
