@@ -49,8 +49,8 @@ class ConnectionTest < Test::Unit::TestCase
                        [ADBC::Info::VENDOR_NAME, "PostgreSQL"],
                        [ADBC::Info::VENDOR_VERSION, "X.Y.Z"],
                        [ADBC::Info::DRIVER_NAME, "ADBC PostgreSQL Driver"],
-                       [ADBC::Info::DRIVER_VERSION, "(unknown)"],
-                       [ADBC::Info::DRIVER_ARROW_VERSION, "X.Y.Z"],
+                       [ADBC::Info::DRIVER_VERSION, "unknown"],
+                       [ADBC::Info::DRIVER_ARROW_VERSION, "vX.Y.Z"],
                        [ADBC::Info::DRIVER_ADBC_VERSION, ADBC::VERSION_1_1_0],
                      ],
                      normalize_info(table.raw_records))

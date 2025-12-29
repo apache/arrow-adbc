@@ -248,6 +248,16 @@ jobs:
           ./ci/scripts/cpp_test.sh "$(pwd)/build"
           ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
           docker compose down
+      - name: Install pixi
+        uses: prefix-dev/setup-pixi@ba3bb36eb2066252b2363392b7739741bb777659  # v0.8.1
+        with:
+          pixi-version: v0.62.1
+      - name: Run PostgreSQL Validation Suite
+        run: |
+          env POSTGRES_VERSION=15 docker compose up --wait --detach postgres-test
+          cd c/driver/postgresql/validation
+          pixi run validate
+          docker compose down
       - name: Test PostgreSQL Driver - postgres 16
         env:
           BUILD_ALL: "0"
