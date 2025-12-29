@@ -503,11 +503,11 @@ fn catch_panic<F: FnOnce() -> AdbcStatusCode + std::panic::UnwindSafe>(
 
     match std::panic::catch_unwind(f) {
         Ok(status) => status,
-        Err(panic) => {
+        Err(cause) => {
             POISON.store(true, std::sync::atomic::Ordering::Release);
 
             if !error.is_null() {
-                let message = if let Some(s) = panic.downcast_ref::<&str>() {
+                let message = if let Some(s) = cause.downcast_ref::<&str>() {
                     s.to_string()
                 } else if let Some(s) = panic.downcast_ref::<String>() {
                     s.clone()
