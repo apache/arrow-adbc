@@ -167,11 +167,11 @@ impl<DriverType: Driver + Default + 'static> FFIDriver for DriverType {
 ///
 /// # Parameters
 ///
-/// - `$func_name` - Driver's initialization function name. The recommended name
-///   is `AdbcDriverInit`, or a name derived from the name of the driver's shared
-///   library as follows: remove the `lib` prefix (on Unix systems) and all file
-///   extensions, then `PascalCase` the driver name, append `Init`, and prepend
-///   `Adbc` (if not already there). For example:
+/// - `$func_name` - Driver's initialization function name. The recommended
+///   name should be derived from the name of the driver's shared library as
+///   follows: remove the `lib` prefix (on Unix systems) and all file
+///   extensions, then `PascalCase` the driver name, append `Init`, and
+///   prepend `Adbc` (if not already there). For example:
 ///     - `libadbc_driver_sqlite.so.2.0.0` -> `AdbcDriverSqliteInit`
 ///     - `adbc_driver_sqlite.dll` -> `AdbcDriverSqliteInit`
 ///     - `proprietary_driver.dll` -> `AdbcProprietaryDriverInit`
@@ -209,6 +209,7 @@ macro_rules! export_driver {
             adbc_core::constants::ADBC_STATUS_OK
         }
 
+        // Fallback symbol, if the driver manager does not find the init above
         #[allow(non_snake_case)]
         #[no_mangle]
         pub unsafe extern "C" fn AdbcDriverInit(
