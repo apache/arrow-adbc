@@ -158,6 +158,8 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
         return "SQLite";
       case ADBC_INFO_VENDOR_VERSION:
         return "3.";
+      case ADBC_INFO_DRIVER_ADBC_VERSION:
+        return ADBC_VERSION_1_1_0;
       default:
         return std::nullopt;
     }
@@ -264,10 +266,8 @@ TEST_F(SqliteConnectionTest, GetInfoMetadata) {
 
   adbc_validation::StreamReader reader;
   std::vector<uint32_t> info = {
-      ADBC_INFO_DRIVER_NAME,
-      ADBC_INFO_DRIVER_VERSION,
-      ADBC_INFO_VENDOR_NAME,
-      ADBC_INFO_VENDOR_VERSION,
+      ADBC_INFO_DRIVER_NAME, ADBC_INFO_DRIVER_VERSION, ADBC_INFO_DRIVER_ADBC_VERSION,
+      ADBC_INFO_VENDOR_NAME, ADBC_INFO_VENDOR_VERSION,
   };
   ASSERT_THAT(AdbcConnectionGetInfo(&connection, info.data(), info.size(),
                                     &reader.stream.value, &error),
@@ -283,31 +283,37 @@ TEST_F(SqliteConnectionTest, GetInfoMetadata) {
       ASSERT_FALSE(ArrowArrayViewIsNull(reader.array_view->children[0], row));
       const uint32_t code =
           reader.array_view->children[0]->buffer_views[1].data.as_uint32[row];
+      const uint32_t offset =
+          reader.array_view->children[1]->buffer_views[1].data.as_int32[row];
       seen.push_back(code);
 
-      int str_child_index = 0;
-      struct ArrowArrayView* str_child =
-          reader.array_view->children[1]->children[str_child_index];
+      struct ArrowArrayView* str_child = reader.array_view->children[1]->children[0];
+      struct ArrowArrayView* int_child = reader.array_view->children[1]->children[2];
       switch (code) {
         case ADBC_INFO_DRIVER_NAME: {
-          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, 0);
+          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, offset);
           EXPECT_EQ("ADBC SQLite Driver", std::string(val.data, val.size_bytes));
           break;
         }
         case ADBC_INFO_DRIVER_VERSION: {
-          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, 1);
+          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, offset);
           EXPECT_EQ("(unknown)", std::string(val.data, val.size_bytes));
           break;
         }
         case ADBC_INFO_VENDOR_NAME: {
-          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, 2);
+          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, offset);
           EXPECT_EQ("SQLite", std::string(val.data, val.size_bytes));
           break;
         }
         case ADBC_INFO_VENDOR_VERSION: {
-          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, 3);
+          ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, offset);
           EXPECT_THAT(std::string(val.data, val.size_bytes),
                       ::testing::MatchesRegex("3\\..*"));
+          break;
+        }
+        case ADBC_INFO_DRIVER_ADBC_VERSION: {
+          EXPECT_EQ(ADBC_VERSION_1_1_0, ArrowArrayViewGetIntUnsafe(int_child, offset));
+          break;
         }
         default:
           // Ignored
