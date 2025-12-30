@@ -163,7 +163,7 @@ fn test_connection_get_info() {
     let mut driver = get_driver();
     let database = get_database(&mut driver);
     let connection = database.new_connection().unwrap();
-    common::test_connection_get_info(&connection, 5);
+    common::test_connection_get_info(&connection, 6);
 }
 
 #[test]
