@@ -381,6 +381,21 @@ impl ManagedDriver {
         let default_entrypoint = get_default_entrypoint(filename.as_ref());
 
         let entrypoint = entrypoint.unwrap_or(default_entrypoint.as_bytes());
+        // By default, go builds the libraries with '-Wl -z nodelete' which does not
+        // unload the go runtime. This isn't respected on mac ( https://github.com/golang/go/issues/11100#issuecomment-932638093 )
+        // so we need to explicitly load the library with RTLD_NODELETE( which prevents unloading )
+        #[cfg(unix)]
+        let library: libloading::Library = unsafe {
+            const RTLD_NODELETE: i32 = 0x80;
+
+            libloading::os::unix::Library::open(
+                Some(filename.as_ref()),
+                libloading::os::unix::RTLD_LAZY | libloading::os::unix::RTLD_LOCAL | RTLD_NODELETE,
+            )
+            .map(Into::into)
+            .map_err(libloading_error_to_adbc_error)?
+        };
+        #[cfg(not(unix))]
         let library = unsafe {
             libloading::Library::new(filename.as_ref()).map_err(libloading_error_to_adbc_error)?
         };
