@@ -2733,13 +2733,17 @@ func (srv *BulkIngestTestServer) DoPutCommandStatementIngest(ctx context.Context
 func (srv *BulkIngestTestServer) GetIngestedData() []arrow.RecordBatch {
 	srv.mu.Lock()
 	defer srv.mu.Unlock()
-	return srv.ingestedData
+	result := make([]arrow.RecordBatch, len(srv.ingestedData))
+	copy(result, srv.ingestedData)
+	return result
 }
 
 func (srv *BulkIngestTestServer) GetIngestRequests() []flightsql.StatementIngest {
 	srv.mu.Lock()
 	defer srv.mu.Unlock()
-	return srv.ingestRequests
+	result := make([]flightsql.StatementIngest, len(srv.ingestRequests))
+	copy(result, srv.ingestRequests)
+	return result
 }
 
 func (srv *BulkIngestTestServer) Clear() {

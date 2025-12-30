@@ -381,7 +381,12 @@ func (s *statement) SetOption(key string, val string) error {
 			}
 		}
 	case adbc.OptionKeyIngestTargetTable:
-		s.prepared = nil
+		if s.prepared != nil {
+			if err := s.closePreparedStatement(); err != nil {
+				return err
+			}
+			s.prepared = nil
+		}
 		s.query.sqlQuery = ""
 		s.query.substraitPlan = nil
 		s.targetTable = val
