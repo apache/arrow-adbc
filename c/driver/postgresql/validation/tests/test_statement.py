@@ -15,82 +15,12 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from adbc_drivers_validation import model
-from adbc_drivers_validation.tests.statement import TestStatement as BaseTestStatement
+from adbc_drivers_validation.tests.statement import TestStatement  # noqa: F401
 from adbc_drivers_validation.tests.statement import (
     generate_tests,
 )
 
-import adbc_driver_manager
-
 from . import postgresql
-
-
-class TestStatement(BaseTestStatement):
-    """PostgreSQL-specific statement tests with overrides."""
-
-    # TODO(https://github.com/adbc-drivers/validation/issues/140):
-    # Remove this override once validation framework supports separate
-    # statement_ddl_rows_affected flag. PostgreSQL returns -1 for DDL
-    # but exact counts for DML, which doesn't fit the current binary flag.
-    def test_rows_affected(
-        self,
-        driver: model.DriverQuirks,
-        conn: adbc_driver_manager.dbapi.Connection,
-    ) -> None:
-        """Override to accept -1 for CREATE TABLE"""
-        table_name = "test_rows_affected"
-        with conn.cursor() as cursor:
-            cursor.adbc_statement.set_sql_query(
-                driver.drop_table(table_name="test_rows_affected")
-            )
-            try:
-                cursor.adbc_statement.execute_update()
-            except adbc_driver_manager.Error as e:
-                if not driver.is_table_not_found(table_name=table_name, error=e):
-                    raise
-
-            cursor.adbc_statement.set_sql_query(f"CREATE TABLE {table_name} (id INT)")
-            rows_affected = cursor.adbc_statement.execute_update()
-
-            # PostgreSQL returns -1 for CREATE TABLE
-            assert rows_affected == -1
-
-            cursor.adbc_statement.set_sql_query(
-                f"INSERT INTO {table_name} (id) VALUES (1)"
-            )
-            rows_affected = cursor.adbc_statement.execute_update()
-            if driver.features.statement_rows_affected:
-                assert rows_affected == 1
-            else:
-                assert rows_affected == -1
-
-            cursor.adbc_statement.set_sql_query(
-                f"UPDATE {table_name} SET id = id + 1 WHERE id = 1"
-            )
-            rows_affected = cursor.adbc_statement.execute_update()
-            if driver.features.statement_rows_affected:
-                assert rows_affected == 1
-            else:
-                assert rows_affected == -1
-
-            cursor.adbc_statement.set_sql_query(
-                f"DELETE FROM {table_name} WHERE id = 2"
-            )
-            rows_affected = cursor.adbc_statement.execute_update()
-            if driver.features.statement_rows_affected:
-                assert rows_affected == 1
-            else:
-                assert rows_affected == -1
-
-            cursor.adbc_statement.set_sql_query(
-                driver.drop_table(table_name="test_rows_affected")
-            )
-            try:
-                cursor.adbc_statement.execute_update()
-            except adbc_driver_manager.Error as e:
-                if not driver.is_table_not_found(table_name=table_name, error=e):
-                    raise
 
 
 def pytest_generate_tests(metafunc) -> None:

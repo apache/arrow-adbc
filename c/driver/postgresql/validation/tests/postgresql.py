@@ -41,6 +41,7 @@ class PostgreSQLQuirks(model.DriverQuirks):
         statement_execute_schema=True,
         statement_get_parameter_schema=True,
         statement_rows_affected=True,
+        statement_rows_affected_ddl=False,
         current_catalog="postgres",
         current_schema="public",
         supported_xdbc_fields=[],

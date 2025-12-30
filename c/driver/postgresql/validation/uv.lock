@@ -34,7 +34,7 @@ wheels = [
 [[package]]
 name = "adbc-drivers-validation"
 version = "0.1"
-source = { git = "https://github.com/adbc-drivers/validation#32a647736227f3b020776dd493153aa6eb3bff19" }
+source = { git = "https://github.com/adbc-drivers/validation?rev=551046350f8225c5e115ecefec27f86f71e3a4aa#551046350f8225c5e115ecefec27f86f71e3a4aa" }
 dependencies = [
     { name = "adbc-driver-manager" },
     { name = "bidict" },
@@ -185,7 +185,7 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "adbc-drivers-validation", git = "https://github.com/adbc-drivers/validation" }]
+requires-dist = [{ name = "adbc-drivers-validation", git = "https://github.com/adbc-drivers/validation?rev=551046350f8225c5e115ecefec27f86f71e3a4aa" }]
 
 [[package]]
 name = "pyarrow"
