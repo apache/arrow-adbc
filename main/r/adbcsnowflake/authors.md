@@ -14,14 +14,14 @@
 Source:
 [`DESCRIPTION`](https://github.com/apache/arrow-adbc/blob/main/r/adbcsnowflake/DESCRIPTION)
 
-Dunnington D, Apache Arrow (2025). *adbcsnowflake: Arrow Database
+Dunnington D, Apache Arrow (2026). *adbcsnowflake: Arrow Database
 Connectivity ('ADBC') 'Snowflake' Driver*. R package version
 0.21.0.9000, <https://arrow.apache.org/adbc/current/r/adbcsnowflake/>.
 
     @Manual{,
       title = {adbcsnowflake: Arrow Database Connectivity ('ADBC') 'Snowflake' Driver},
       author = {Dewey Dunnington and {Apache Arrow}},
-      year = {2025},
+      year = {2026},
       note = {R package version 0.21.0.9000},
       url = {https://arrow.apache.org/adbc/current/r/adbcsnowflake/},
     }
