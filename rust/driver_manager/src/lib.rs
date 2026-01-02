@@ -425,9 +425,15 @@ impl ManagedDriver {
             .map(Into::into)
             .map_err(libloading_error_to_adbc_error)?
         };
-        #[cfg(not(unix))]
-        let library = unsafe {
-            libloading::Library::new(filename.as_ref()).map_err(libloading_error_to_adbc_error)?
+        // on windows, we emulate the same behaviour by using the GET_MODULE_HANDLE_EX_FLAG_PIN. The `.pin()`
+        // function implements this.
+        #[cfg(windows)]
+        let library: libloading::Library = unsafe {
+            let library: libloading::os::windows::Library =
+                libloading::os::windows::Library::new(filename.as_ref())
+                    .map_err(libloading_error_to_adbc_error)?;
+            library.pin().map_err(libloading_error_to_adbc_error)?;
+            library.into()
         };
         let init: libloading::Symbol<adbc_ffi::FFI_AdbcDriverInitFunc> = unsafe {
             library
