@@ -435,18 +435,32 @@ TEST_F(PostgresCopyTest, PostgresCopyWriteTime) {
 
 // This buffer is similar to the read variant above but removes special values
 // nan, ±inf as they are not supported via the Arrow Decimal types
-// COPY (SELECT CAST(col AS NUMERIC) AS col FROM (  VALUES (NULL), (-123.456),
-// ('0.00001234'), (1.0000), (123.456), (1000000)) AS drvd(col))
+// COPY (SELECT CAST(col AS NUMERIC) AS col FROM (VALUES
+// (NULL), (999999999999999999999999999999.99999999),
+// (-999999999999999999999999999999.99999999),
+// (0), (1234), (92233720368.54775807), (-92233720368.54775808),
+// (-123.456), ('0.00001234'), (1), (123.456), (1000000)) AS drvd(col))
 // TO STDOUT WITH (FORMAT binary);
 static uint8_t kTestPgCopyNumericWrite[] = {
     0x50, 0x47, 0x43, 0x4f, 0x50, 0x59, 0x0a, 0xff, 0x0d, 0x0a, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xff, 0xff, 0xff, 0xff, 0x00, 0x01, 0x00,
-    0x00, 0x00, 0x0c, 0x00, 0x02, 0x00, 0x00, 0x40, 0x00, 0x00, 0x03, 0x00, 0x7b, 0x11,
-    0xd0, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x01, 0xff, 0xfe, 0x00, 0x00, 0x00,
-    0x08, 0x04, 0xd2, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x01, 0x00, 0x00, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0c, 0x00, 0x02, 0x00,
-    0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x7b, 0x11, 0xd0, 0x00, 0x01, 0x00, 0x00, 0x00,
-    0x0a, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x64, 0xff, 0xff};
+    0x00, 0x00, 0x1c, 0x00, 0x0a, 0x00, 0x07, 0x00, 0x00, 0x00, 0x08, 0x00, 0x63, 0x27,
+    0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27,
+    0x0f, 0x27, 0x0f, 0x00, 0x01, 0x00, 0x00, 0x00, 0x1c, 0x00, 0x0a, 0x00, 0x07, 0x40,
+    0x00, 0x00, 0x08, 0x00, 0x63, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27,
+    0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x00, 0x01, 0x00, 0x00, 0x00,
+    0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00,
+    0x0a, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x04, 0xd2, 0x00, 0x01, 0x00,
+    0x00, 0x00, 0x12, 0x00, 0x05, 0x00, 0x02, 0x00, 0x00, 0x00, 0x08, 0x03, 0x9a, 0x0d,
+    0x2c, 0x01, 0x70, 0x15, 0x65, 0x16, 0xaf, 0x00, 0x01, 0x00, 0x00, 0x00, 0x12, 0x00,
+    0x05, 0x00, 0x02, 0x40, 0x00, 0x00, 0x08, 0x03, 0x9a, 0x0d, 0x2c, 0x01, 0x70, 0x15,
+    0x65, 0x16, 0xb0, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0c, 0x00, 0x02, 0x00, 0x00, 0x40,
+    0x00, 0x00, 0x03, 0x00, 0x7b, 0x11, 0xd0, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0a, 0x00,
+    0x01, 0xff, 0xfe, 0x00, 0x00, 0x00, 0x08, 0x04, 0xd2, 0x00, 0x01, 0x00, 0x00, 0x00,
+    0x0a, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00,
+    0x00, 0x00, 0x0c, 0x00, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x03, 0x00, 0x7b, 0x11,
+    0xd0, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x64, 0xff, 0xff};
 
 TEST_F(PostgresCopyTest, PostgresCopyWriteNumeric) {
   adbc_validation::Handle<struct ArrowSchema> schema;
@@ -462,20 +476,52 @@ TEST_F(PostgresCopyTest, PostgresCopyWriteNumeric) {
   struct ArrowDecimal decimal3;
   struct ArrowDecimal decimal4;
   struct ArrowDecimal decimal5;
+  struct ArrowDecimal decimal_max_64;
+  struct ArrowDecimal decimal_min_64;
+  struct ArrowDecimal decimal_zero;
+  struct ArrowDecimal decimal_no_frac;
+  struct ArrowDecimal decimal_max_128;
+  struct ArrowDecimal decimal_min_128;
 
-  ArrowDecimalInit(&decimal1, size, 19, 8);
+  ArrowDecimalInit(&decimal1, size, precision, scale);
   ArrowDecimalSetInt(&decimal1, -12345600000);
-  ArrowDecimalInit(&decimal2, size, 19, 8);
+  ArrowDecimalInit(&decimal2, size, precision, scale);
   ArrowDecimalSetInt(&decimal2, 1234);
-  ArrowDecimalInit(&decimal3, size, 19, 8);
+  ArrowDecimalInit(&decimal3, size, precision, scale);
   ArrowDecimalSetInt(&decimal3, 100000000);
-  ArrowDecimalInit(&decimal4, size, 19, 8);
+  ArrowDecimalInit(&decimal4, size, precision, scale);
   ArrowDecimalSetInt(&decimal4, 12345600000);
-  ArrowDecimalInit(&decimal5, size, 19, 8);
+  ArrowDecimalInit(&decimal5, size, precision, scale);
   ArrowDecimalSetInt(&decimal5, 100000000000000);
 
+  ArrowDecimalInit(&decimal_max_64, size, precision, scale);
+  ArrowDecimalSetInt(&decimal_max_64, 9223372036854775807LL);
+
+  ArrowDecimalInit(&decimal_min_64, size, precision, scale);
+  ArrowDecimalSetInt(&decimal_min_64, -9223372036854775807LL - 1);
+
+  ArrowDecimalInit(&decimal_zero, size, precision, scale);
+  ArrowDecimalSetInt(&decimal_zero, 0);
+
+  ArrowDecimalInit(&decimal_no_frac, size, precision, scale);
+  ArrowDecimalSetInt(&decimal_no_frac, 123400000000LL);  // 1234 * 10^8
+
+  ArrowDecimalInit(&decimal_max_128, size, precision, scale);
+  struct ArrowStringView max_digits_8;
+  max_digits_8.data = "99999999999999999999999999999999999999";
+  max_digits_8.size_bytes = 38;
+  ArrowDecimalSetDigits(&decimal_max_128, max_digits_8);
+
+  ArrowDecimalInit(&decimal_min_128, size, precision, scale);
+  struct ArrowStringView min_digits_8;
+  min_digits_8.data = "-99999999999999999999999999999999999999";
+  min_digits_8.size_bytes = 39;
+  ArrowDecimalSetDigits(&decimal_min_128, min_digits_8);
+
   const std::vector<std::optional<ArrowDecimal*>> values = {
-      std::nullopt, &decimal1, &decimal2, &decimal3, &decimal4, &decimal5};
+      std::nullopt,     &decimal_max_128, &decimal_min_128, &decimal_zero,
+      &decimal_no_frac, &decimal_max_64,  &decimal_min_64,  &decimal1,
+      &decimal2,        &decimal3,        &decimal4,        &decimal5};
 
   ArrowSchemaInit(&schema.value);
   ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema.value, 1), 0);
@@ -497,6 +543,514 @@ TEST_F(PostgresCopyTest, PostgresCopyWriteNumeric) {
   ASSERT_EQ(buf.size_bytes, buf_size);
   for (size_t i = 0; i < buf_size; i++) {
     ASSERT_EQ(buf.data[i], kTestPgCopyNumericWrite[i]) << " at position " << i;
+  }
+}
+
+// Regression test for bug where 44.123456 with Decimal(10,6) became 4412.345500
+// COPY (SELECT CAST(col AS NUMERIC) AS col FROM (VALUES
+// (99999999999999999999999999999999.999999),
+// (-99999999999999999999999999999999.999999),
+// (0), (1000000000000), (9223372036854.775807), (-9223372036854.775808),
+// (44.123456), (0.123456), (123.456789)) AS drvd(col)) TO STDOUT WITH (FORMAT binary);
+static uint8_t kTestPgCopyNumericScale6[] = {
+    0x50, 0x47, 0x43, 0x4f, 0x50, 0x59, 0x0a, 0xff, 0x0d, 0x0a, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x1c, 0x00, 0x0a, 0x00,
+    0x07, 0x00, 0x00, 0x00, 0x06, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27,
+    0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x26, 0xac, 0x00, 0x01, 0x00,
+    0x00, 0x00, 0x1c, 0x00, 0x0a, 0x00, 0x07, 0x40, 0x00, 0x00, 0x06, 0x27, 0x0f, 0x27,
+    0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27,
+    0x0f, 0x26, 0xac, 0x00, 0x01, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x01, 0x00, 0x03, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x14, 0x00, 0x06, 0x00,
+    0x03, 0x00, 0x00, 0x00, 0x06, 0x00, 0x09, 0x08, 0xb9, 0x1c, 0x23, 0x1a, 0xc6, 0x1e,
+    0x4e, 0x02, 0xbc, 0x00, 0x01, 0x00, 0x00, 0x00, 0x14, 0x00, 0x06, 0x00, 0x03, 0x40,
+    0x00, 0x00, 0x06, 0x00, 0x09, 0x08, 0xb9, 0x1c, 0x23, 0x1a, 0xc6, 0x1e, 0x4e, 0x03,
+    0x20, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0e, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x06, 0x00, 0x2c, 0x04, 0xd2, 0x15, 0xe0, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0c, 0x00,
+    0x02, 0xff, 0xff, 0x00, 0x00, 0x00, 0x06, 0x04, 0xd2, 0x15, 0xe0, 0x00, 0x01, 0x00,
+    0x00, 0x00, 0x0e, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x06, 0x00, 0x7b, 0x11,
+    0xd7, 0x22, 0xc4, 0xff, 0xff};
+
+TEST_F(PostgresCopyTest, PostgresCopyWriteNumericScale6) {
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+  constexpr enum ArrowType type = NANOARROW_TYPE_DECIMAL128;
+  constexpr int32_t size = 128;
+  constexpr int32_t precision = 38;
+  constexpr int32_t scale = 6;
+
+  struct ArrowDecimal decimal1;
+  struct ArrowDecimal decimal2;
+  struct ArrowDecimal decimal3;
+  struct ArrowDecimal decimal_max_64;
+  struct ArrowDecimal decimal_min_64;
+  struct ArrowDecimal decimal_zero;
+  struct ArrowDecimal decimal_no_frac;
+  struct ArrowDecimal decimal_max_128;
+  struct ArrowDecimal decimal_min_128;
+
+  ArrowDecimalInit(&decimal1, size, precision, scale);
+  ArrowDecimalSetInt(&decimal1, 44123456);
+
+  ArrowDecimalInit(&decimal2, size, precision, scale);
+  ArrowDecimalSetInt(&decimal2, 123456);
+
+  ArrowDecimalInit(&decimal3, size, precision, scale);
+  ArrowDecimalSetInt(&decimal3, 123456789);
+
+  ArrowDecimalInit(&decimal_max_64, size, precision, scale);
+  ArrowDecimalSetInt(&decimal_max_64, 9223372036854775807LL);
+
+  ArrowDecimalInit(&decimal_min_64, size, precision, scale);
+  ArrowDecimalSetInt(&decimal_min_64, -9223372036854775807LL - 1);
+
+  ArrowDecimalInit(&decimal_zero, size, precision, scale);
+  ArrowDecimalSetInt(&decimal_zero, 0);
+
+  ArrowDecimalInit(&decimal_no_frac, size, precision, scale);
+  ArrowDecimalSetInt(&decimal_no_frac, 1000000000000000000LL);
+
+  ArrowDecimalInit(&decimal_max_128, size, precision, scale);
+  struct ArrowStringView max_digits;
+  max_digits.data = "99999999999999999999999999999999999999";
+  max_digits.size_bytes = 38;
+  ArrowDecimalSetDigits(&decimal_max_128, max_digits);
+
+  ArrowDecimalInit(&decimal_min_128, size, precision, scale);
+  struct ArrowStringView min_digits;
+  min_digits.data = "-99999999999999999999999999999999999999";
+  min_digits.size_bytes = 39;  // 38 digits + 1 for '-' sign
+  ArrowDecimalSetDigits(&decimal_min_128, min_digits);
+
+  const std::vector<std::optional<ArrowDecimal*>> values = {
+      &decimal_max_128, &decimal_min_128, &decimal_zero,
+      &decimal_no_frac, &decimal_max_64,  &decimal_min_64,
+      &decimal1,        &decimal2,        &decimal3};
+
+  ArrowSchemaInit(&schema.value);
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema.value, 1), 0);
+  ASSERT_EQ(ArrowSchemaSetTypeDecimal(schema.value.children[0], type, precision, scale),
+            0);
+  ASSERT_EQ(ArrowSchemaSetName(schema.value.children[0], "col"), 0);
+  ASSERT_EQ(adbc_validation::MakeBatch<ArrowDecimal*>(&schema.value, &array.value,
+                                                      &na_error, values),
+            ADBC_STATUS_OK);
+
+  PostgresCopyStreamWriteTester tester;
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
+  ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
+
+  const struct ArrowBuffer buf = tester.WriteBuffer();
+
+  constexpr size_t buf_size = sizeof(kTestPgCopyNumericScale6) - 2;
+  ASSERT_EQ(buf.size_bytes, static_cast<int64_t>(buf_size));
+
+  for (size_t i = 0; i < buf_size; i++) {
+    ASSERT_EQ(buf.data[i], kTestPgCopyNumericScale6[i]) << " at position " << i;
+  }
+}
+
+// Test for scale=5 (remainder 1 when divided by 4)
+// COPY (SELECT CAST(col AS NUMERIC) AS col FROM (VALUES
+// (999999999999999999999999999999999.99999),
+// (-999999999999999999999999999999999.99999),
+// (0), (10000000000000), (92233720368547.75807), (-92233720368547.75808),
+// (12.34567), (-9.87654), (0.00123)) AS drvd(col)) TO STDOUT WITH (FORMAT binary);
+static uint8_t kTestPgCopyNumericScale5[] = {
+    0x50, 0x47, 0x43, 0x4f, 0x50, 0x59, 0x0a, 0xff, 0x0d, 0x0a, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x1e, 0x00, 0x0b, 0x00,
+    0x08, 0x00, 0x00, 0x00, 0x05, 0x00, 0x09, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27,
+    0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x23, 0x28, 0x00,
+    0x01, 0x00, 0x00, 0x00, 0x1e, 0x00, 0x0b, 0x00, 0x08, 0x40, 0x00, 0x00, 0x05, 0x00,
+    0x09, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27,
+    0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x23, 0x28, 0x00, 0x01, 0x00, 0x00, 0x00, 0x08, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0a, 0x00,
+    0x01, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x01, 0x00, 0x00, 0x00,
+    0x14, 0x00, 0x06, 0x00, 0x03, 0x00, 0x00, 0x00, 0x05, 0x00, 0x5c, 0x09, 0x21, 0x07,
+    0xf4, 0x21, 0x63, 0x1d, 0x9c, 0x1b, 0x58, 0x00, 0x01, 0x00, 0x00, 0x00, 0x14, 0x00,
+    0x06, 0x00, 0x03, 0x40, 0x00, 0x00, 0x05, 0x00, 0x5c, 0x09, 0x21, 0x07, 0xf4, 0x21,
+    0x63, 0x1d, 0x9c, 0x1f, 0x40, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0e, 0x00, 0x03, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x05, 0x00, 0x0c, 0x0d, 0x80, 0x1b, 0x58, 0x00, 0x01, 0x00,
+    0x00, 0x00, 0x0e, 0x00, 0x03, 0x00, 0x00, 0x40, 0x00, 0x00, 0x05, 0x00, 0x09, 0x22,
+    0x3d, 0x0f, 0xa0, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0c, 0x00, 0x02, 0xff, 0xff, 0x00,
+    0x00, 0x00, 0x05, 0x00, 0x0c, 0x0b, 0xb8, 0xff, 0xff};
+
+TEST_F(PostgresCopyTest, PostgresCopyWriteNumericScale5) {
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+  constexpr enum ArrowType type = NANOARROW_TYPE_DECIMAL128;
+  constexpr int32_t size = 128;
+  constexpr int32_t precision = 38;
+  constexpr int32_t scale = 5;
+
+  struct ArrowDecimal decimal1;
+  struct ArrowDecimal decimal2;
+  struct ArrowDecimal decimal3;
+  struct ArrowDecimal decimal_max_64;
+  struct ArrowDecimal decimal_min_64;
+  struct ArrowDecimal decimal_zero;
+  struct ArrowDecimal decimal_no_frac;
+  struct ArrowDecimal decimal_max_128;
+  struct ArrowDecimal decimal_min_128;
+
+  ArrowDecimalInit(&decimal1, size, precision, scale);
+  ArrowDecimalSetInt(&decimal1, 1234567);
+
+  ArrowDecimalInit(&decimal2, size, precision, scale);
+  ArrowDecimalSetInt(&decimal2, -987654);
+
+  ArrowDecimalInit(&decimal3, size, precision, scale);
+  ArrowDecimalSetInt(&decimal3, 123);
+
+  ArrowDecimalInit(&decimal_max_64, size, precision, scale);
+  ArrowDecimalSetInt(&decimal_max_64, 9223372036854775807LL);
+
+  ArrowDecimalInit(&decimal_min_64, size, precision, scale);
+  ArrowDecimalSetInt(&decimal_min_64, -9223372036854775807LL - 1);
+
+  ArrowDecimalInit(&decimal_zero, size, precision, scale);
+  ArrowDecimalSetInt(&decimal_zero, 0);
+
+  ArrowDecimalInit(&decimal_no_frac, size, precision, scale);
+  ArrowDecimalSetInt(&decimal_no_frac, 1000000000000000000LL);
+
+  ArrowDecimalInit(&decimal_max_128, size, precision, scale);
+  struct ArrowStringView max_digits_5;
+  max_digits_5.data = "99999999999999999999999999999999999999";
+  max_digits_5.size_bytes = 38;
+  ArrowDecimalSetDigits(&decimal_max_128, max_digits_5);
+
+  ArrowDecimalInit(&decimal_min_128, size, precision, scale);
+  struct ArrowStringView min_digits_5;
+  min_digits_5.data = "-99999999999999999999999999999999999999";
+  min_digits_5.size_bytes = 39;
+  ArrowDecimalSetDigits(&decimal_min_128, min_digits_5);
+
+  const std::vector<std::optional<ArrowDecimal*>> values = {
+      &decimal_max_128, &decimal_min_128, &decimal_zero,
+      &decimal_no_frac, &decimal_max_64,  &decimal_min_64,
+      &decimal1,        &decimal2,        &decimal3};
+
+  ArrowSchemaInit(&schema.value);
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema.value, 1), 0);
+  ASSERT_EQ(ArrowSchemaSetTypeDecimal(schema.value.children[0], type, precision, scale),
+            0);
+  ASSERT_EQ(ArrowSchemaSetName(schema.value.children[0], "col"), 0);
+  ASSERT_EQ(adbc_validation::MakeBatch<ArrowDecimal*>(&schema.value, &array.value,
+                                                      &na_error, values),
+            ADBC_STATUS_OK);
+
+  PostgresCopyStreamWriteTester tester;
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
+  ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
+
+  const struct ArrowBuffer buf = tester.WriteBuffer();
+  constexpr size_t buf_size = sizeof(kTestPgCopyNumericScale5) - 2;
+  ASSERT_EQ(buf.size_bytes, static_cast<int64_t>(buf_size));
+  for (size_t i = 0; i < buf_size; i++) {
+    ASSERT_EQ(buf.data[i], kTestPgCopyNumericScale5[i]) << " at position " << i;
+  }
+}
+
+// Test for scale=7 (remainder 3 when divided by 4)
+// COPY (SELECT CAST(col AS NUMERIC) AS col FROM (VALUES
+// (9999999999999999999999999999999.9999999),
+// (-9999999999999999999999999999999.9999999),
+// (0), (1000), (922337203685.4775807), (-922337203685.4775808),
+// (5.1234567), (-123.456789), (0.0000001)) AS drvd(col)) TO STDOUT WITH (FORMAT binary);
+static uint8_t kTestPgCopyNumericScale7[] = {
+    0x50, 0x47, 0x43, 0x4f, 0x50, 0x59, 0x0a, 0xff, 0x0d, 0x0a, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x1c, 0x00, 0x0a, 0x00,
+    0x07, 0x00, 0x00, 0x00, 0x07, 0x03, 0xe7, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27,
+    0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x06, 0x00, 0x01, 0x00,
+    0x00, 0x00, 0x1c, 0x00, 0x0a, 0x00, 0x07, 0x40, 0x00, 0x00, 0x07, 0x03, 0xe7, 0x27,
+    0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27,
+    0x0f, 0x27, 0x06, 0x00, 0x01, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x01, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x03, 0xe8, 0x00, 0x01, 0x00, 0x00, 0x00, 0x12, 0x00, 0x05, 0x00,
+    0x02, 0x00, 0x00, 0x00, 0x07, 0x24, 0x07, 0x0e, 0x88, 0x0e, 0x65, 0x12, 0xa7, 0x1f,
+    0x86, 0x00, 0x01, 0x00, 0x00, 0x00, 0x12, 0x00, 0x05, 0x00, 0x02, 0x40, 0x00, 0x00,
+    0x07, 0x24, 0x07, 0x0e, 0x88, 0x0e, 0x65, 0x12, 0xa7, 0x1f, 0x90, 0x00, 0x01, 0x00,
+    0x00, 0x00, 0x0e, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x07, 0x00, 0x05, 0x04,
+    0xd2, 0x16, 0x26, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0e, 0x00, 0x03, 0x00, 0x00, 0x40,
+    0x00, 0x00, 0x06, 0x00, 0x7b, 0x11, 0xd7, 0x22, 0xc4, 0x00, 0x01, 0x00, 0x00, 0x00,
+    0x0a, 0x00, 0x01, 0xff, 0xfe, 0x00, 0x00, 0x00, 0x07, 0x00, 0x0a, 0xff, 0xff};
+
+TEST_F(PostgresCopyTest, PostgresCopyWriteNumericScale7) {
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+  constexpr enum ArrowType type = NANOARROW_TYPE_DECIMAL128;
+  constexpr int32_t size = 128;
+  constexpr int32_t precision = 38;
+  constexpr int32_t scale = 7;
+
+  struct ArrowDecimal decimal1;
+  struct ArrowDecimal decimal2;
+  struct ArrowDecimal decimal3;
+  struct ArrowDecimal decimal_max_64;
+  struct ArrowDecimal decimal_min_64;
+  struct ArrowDecimal decimal_zero;
+  struct ArrowDecimal decimal_no_frac;
+  struct ArrowDecimal decimal_max_128;
+  struct ArrowDecimal decimal_min_128;
+
+  ArrowDecimalInit(&decimal1, size, precision, scale);
+  ArrowDecimalSetInt(&decimal1, 51234567);
+
+  // This represents -123.456789, but NUMERIC(10,7) will display it as -123.4567890
+  ArrowDecimalInit(&decimal2, size, precision, scale);
+  ArrowDecimalSetInt(&decimal2, -1234567890);
+
+  // 0.0000001 with scale=7 -> internal value: 1
+  ArrowDecimalInit(&decimal3, size, precision, scale);
+  ArrowDecimalSetInt(&decimal3, 1);
+
+  ArrowDecimalInit(&decimal_max_64, size, precision, scale);
+  ArrowDecimalSetInt(&decimal_max_64, 9223372036854775807LL);
+
+  ArrowDecimalInit(&decimal_min_64, size, precision, scale);
+  ArrowDecimalSetInt(&decimal_min_64, -9223372036854775807LL - 1);
+
+  ArrowDecimalInit(&decimal_zero, size, precision, scale);
+  ArrowDecimalSetInt(&decimal_zero, 0);
+
+  ArrowDecimalInit(&decimal_no_frac, size, precision, scale);
+  ArrowDecimalSetInt(&decimal_no_frac, 10000000000LL);  // 1000 * 10^7 (1000.0000000)
+
+  ArrowDecimalInit(&decimal_max_128, size, precision, scale);
+  struct ArrowStringView max_digits_7;
+  max_digits_7.data = "99999999999999999999999999999999999999";
+  max_digits_7.size_bytes = 38;
+  ArrowDecimalSetDigits(&decimal_max_128, max_digits_7);
+
+  ArrowDecimalInit(&decimal_min_128, size, precision, scale);
+  struct ArrowStringView min_digits_7;
+  min_digits_7.data = "-99999999999999999999999999999999999999";
+  min_digits_7.size_bytes = 39;
+  ArrowDecimalSetDigits(&decimal_min_128, min_digits_7);
+
+  const std::vector<std::optional<ArrowDecimal*>> values = {
+      &decimal_max_128, &decimal_min_128, &decimal_zero,
+      &decimal_no_frac, &decimal_max_64,  &decimal_min_64,
+      &decimal1,        &decimal2,        &decimal3};
+
+  ArrowSchemaInit(&schema.value);
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema.value, 1), 0);
+  ASSERT_EQ(ArrowSchemaSetTypeDecimal(schema.value.children[0], type, precision, scale),
+            0);
+  ASSERT_EQ(ArrowSchemaSetName(schema.value.children[0], "col"), 0);
+  ASSERT_EQ(adbc_validation::MakeBatch<ArrowDecimal*>(&schema.value, &array.value,
+                                                      &na_error, values),
+            ADBC_STATUS_OK);
+
+  PostgresCopyStreamWriteTester tester;
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
+  ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
+
+  const struct ArrowBuffer buf = tester.WriteBuffer();
+  constexpr size_t buf_size = sizeof(kTestPgCopyNumericScale7) - 2;
+
+  ASSERT_EQ(buf.size_bytes, static_cast<int64_t>(buf_size));
+  for (size_t i = 0; i < buf_size; i++) {
+    ASSERT_EQ(buf.data[i], kTestPgCopyNumericScale7[i]) << " at position " << i;
+  }
+}
+
+// Test for scale=0 (integers)
+// COPY (SELECT CAST(col AS NUMERIC) AS col FROM (VALUES
+// (99999999999999999999999999999999999999),
+// (-99999999999999999999999999999999999999),
+// (0), (1000000000000000000000000000000000), (9223372036854775807),
+// (-9223372036854775808), (1), (100), (1000), (-100000)) AS drvd(col))
+// TO STDOUT WITH (FORMAT binary);
+static uint8_t kTestPgCopyNumericScale0[] = {
+    0x50, 0x47, 0x43, 0x4f, 0x50, 0x59, 0x0a, 0xff, 0x0d, 0x0a, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x1c, 0x00, 0x0a, 0x00,
+    0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x63, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27,
+    0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x00, 0x01, 0x00,
+    0x00, 0x00, 0x1c, 0x00, 0x0a, 0x00, 0x09, 0x40, 0x00, 0x00, 0x00, 0x00, 0x63, 0x27,
+    0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27,
+    0x0f, 0x27, 0x0f, 0x00, 0x01, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x01, 0x00, 0x08, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x01, 0x00, 0x00, 0x00, 0x12, 0x00, 0x05, 0x00,
+    0x04, 0x00, 0x00, 0x00, 0x00, 0x03, 0x9a, 0x0d, 0x2c, 0x01, 0x70, 0x15, 0x65, 0x16,
+    0xaf, 0x00, 0x01, 0x00, 0x00, 0x00, 0x12, 0x00, 0x05, 0x00, 0x04, 0x40, 0x00, 0x00,
+    0x00, 0x03, 0x9a, 0x0d, 0x2c, 0x01, 0x70, 0x15, 0x65, 0x16, 0xb0, 0x00, 0x01, 0x00,
+    0x00, 0x00, 0x0a, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00,
+    0x01, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x64, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x03, 0xe8, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0a, 0x00, 0x01, 0x00, 0x01, 0x40,
+    0x00, 0x00, 0x00, 0x00, 0x0a, 0xff, 0xff};
+
+TEST_F(PostgresCopyTest, PostgresCopyWriteNumericScale0) {
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+  constexpr enum ArrowType type = NANOARROW_TYPE_DECIMAL128;
+  constexpr int32_t size = 128;
+  constexpr int32_t precision = 38;
+  constexpr int32_t scale = 0;
+
+  struct ArrowDecimal decimal0;
+  struct ArrowDecimal decimal1;
+  struct ArrowDecimal decimal2;
+  struct ArrowDecimal decimal3;
+  struct ArrowDecimal decimal4;
+  struct ArrowDecimal decimal_max_64;
+  struct ArrowDecimal decimal_min_64;
+  struct ArrowDecimal decimal_max_128;
+  struct ArrowDecimal decimal_min_128;
+  struct ArrowDecimal decimal_no_frac;
+
+  ArrowDecimalInit(&decimal0, size, precision, scale);
+  ArrowDecimalSetInt(&decimal0, 0);
+
+  ArrowDecimalInit(&decimal1, size, precision, scale);
+  ArrowDecimalSetInt(&decimal1, 1);
+
+  ArrowDecimalInit(&decimal2, size, precision, scale);
+  ArrowDecimalSetInt(&decimal2, 100);
+
+  ArrowDecimalInit(&decimal3, size, precision, scale);
+  ArrowDecimalSetInt(&decimal3, 1000);
+
+  ArrowDecimalInit(&decimal4, size, precision, scale);
+  ArrowDecimalSetInt(&decimal4, -100000);
+
+  ArrowDecimalInit(&decimal_max_64, size, precision, scale);
+  ArrowDecimalSetInt(&decimal_max_64, 9223372036854775807LL);
+
+  ArrowDecimalInit(&decimal_min_64, size, precision, scale);
+  ArrowDecimalSetInt(&decimal_min_64, -9223372036854775807LL - 1);
+
+  ArrowDecimalInit(&decimal_max_128, size, precision, scale);
+  struct ArrowStringView max_digits_0;
+  max_digits_0.data = "99999999999999999999999999999999999999";
+  max_digits_0.size_bytes = 38;
+  ArrowDecimalSetDigits(&decimal_max_128, max_digits_0);
+
+  ArrowDecimalInit(&decimal_min_128, size, precision, scale);
+  struct ArrowStringView min_digits_0;
+  min_digits_0.data = "-99999999999999999999999999999999999999";
+  min_digits_0.size_bytes = 39;
+  ArrowDecimalSetDigits(&decimal_min_128, min_digits_0);
+
+  ArrowDecimalInit(&decimal_no_frac, size, precision, scale);
+  struct ArrowStringView no_frac_digits_0;
+  no_frac_digits_0.data = "1000000000000000000000000000000000";
+  no_frac_digits_0.size_bytes = 34;
+  ArrowDecimalSetDigits(&decimal_no_frac, no_frac_digits_0);
+
+  const std::vector<std::optional<ArrowDecimal*>> values = {
+      &decimal_max_128, &decimal_min_128, &decimal0, &decimal_no_frac, &decimal_max_64,
+      &decimal_min_64,  &decimal1,        &decimal2, &decimal3,        &decimal4};
+
+  ArrowSchemaInit(&schema.value);
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema.value, 1), 0);
+  ASSERT_EQ(ArrowSchemaSetTypeDecimal(schema.value.children[0], type, precision, scale),
+            0);
+  ASSERT_EQ(ArrowSchemaSetName(schema.value.children[0], "col"), 0);
+  ASSERT_EQ(adbc_validation::MakeBatch<ArrowDecimal*>(&schema.value, &array.value,
+                                                      &na_error, values),
+            ADBC_STATUS_OK);
+
+  PostgresCopyStreamWriteTester tester;
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
+  ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
+
+  const struct ArrowBuffer buf = tester.WriteBuffer();
+  constexpr size_t buf_size = sizeof(kTestPgCopyNumericScale0) - 2;
+  ASSERT_EQ(buf.size_bytes, static_cast<int64_t>(buf_size));
+  for (size_t i = 0; i < buf_size; i++) {
+    ASSERT_EQ(buf.data[i], kTestPgCopyNumericScale0[i]) << " at position " << i;
+  }
+}
+
+// Test negative scale
+// COPY (SELECT CAST(col AS NUMERIC) AS col FROM (VALUES
+//   (12300), (-12300), (0), (922337203685477580700),
+//   (99999999999999999999999999999999999900),
+//   (-99999999999999999999999999999999999900))
+// AS drvd(col)) TO STDOUT WITH (FORMAT binary);
+static uint8_t kTestPgCopyNumericNegScale2[] = {
+    0x50, 0x47, 0x43, 0x4f, 0x50, 0x59, 0x0a, 0xff, 0x0d, 0x0a, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0c, 0x00, 0x02, 0x00,
+    0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x08, 0xfc, 0x00, 0x01, 0x00, 0x00, 0x00,
+    0x0c, 0x00, 0x02, 0x00, 0x01, 0x40, 0x00, 0x00, 0x00, 0x00, 0x01, 0x08, 0xfc, 0x00,
+    0x01, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x01, 0x00, 0x00, 0x00, 0x14, 0x00, 0x06, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x09, 0x08, 0xb9, 0x1c, 0x23, 0x1a, 0xc6, 0x1e, 0x4e, 0x02, 0xbc, 0x00, 0x01, 0x00,
+    0x00, 0x00, 0x1c, 0x00, 0x0a, 0x00, 0x09, 0x00, 0x00, 0x00, 0x00, 0x00, 0x63, 0x27,
+    0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27,
+    0x0f, 0x26, 0xac, 0x00, 0x01, 0x00, 0x00, 0x00, 0x1c, 0x00, 0x0a, 0x00, 0x09, 0x40,
+    0x00, 0x00, 0x00, 0x00, 0x63, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27,
+    0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x27, 0x0f, 0x26, 0xac, 0xff, 0xff};
+
+TEST_F(PostgresCopyTest, PostgresCopyWriteNumericNegativeScale) {
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+  constexpr enum ArrowType type = NANOARROW_TYPE_DECIMAL128;
+  constexpr int32_t size = 128;
+  constexpr int32_t precision = 38;
+  constexpr int32_t scale = -2;
+
+  struct ArrowDecimal decimal1;
+  struct ArrowDecimal decimal2;
+  struct ArrowDecimal decimal_zero;
+  struct ArrowDecimal decimal_large;
+  struct ArrowDecimal decimal_max_128;
+  struct ArrowDecimal decimal_min_128;
+
+  ArrowDecimalInit(&decimal1, size, precision, scale);
+  ArrowDecimalSetInt(&decimal1, 123);
+
+  ArrowDecimalInit(&decimal2, size, precision, scale);
+  ArrowDecimalSetInt(&decimal2, -123);
+
+  ArrowDecimalInit(&decimal_zero, size, precision, scale);
+  ArrowDecimalSetInt(&decimal_zero, 0);
+
+  ArrowDecimalInit(&decimal_large, size, precision, scale);
+  ArrowDecimalSetInt(&decimal_large, 9223372036854775807LL);
+
+  ArrowDecimalInit(&decimal_max_128, size, precision, scale);
+  struct ArrowStringView max_digits;
+  max_digits.data = "999999999999999999999999999999999999";
+  max_digits.size_bytes = 36;
+  ArrowDecimalSetDigits(&decimal_max_128, max_digits);
+
+  ArrowDecimalInit(&decimal_min_128, size, precision, scale);
+  struct ArrowStringView min_digits;
+  min_digits.data = "-999999999999999999999999999999999999";
+  min_digits.size_bytes = 37;  // 36 digits + 1 for '-' sign
+  ArrowDecimalSetDigits(&decimal_min_128, min_digits);
+
+  const std::vector<std::optional<ArrowDecimal*>> values = {
+      &decimal1,      &decimal2,        &decimal_zero,
+      &decimal_large, &decimal_max_128, &decimal_min_128};
+
+  ArrowSchemaInit(&schema.value);
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema.value, 1), 0);
+  ASSERT_EQ(ArrowSchemaSetTypeDecimal(schema.value.children[0], type, precision, scale),
+            0);
+  ASSERT_EQ(ArrowSchemaSetName(schema.value.children[0], "col"), 0);
+  ASSERT_EQ(adbc_validation::MakeBatch<ArrowDecimal*>(&schema.value, &array.value,
+                                                      &na_error, values),
+            ADBC_STATUS_OK);
+
+  PostgresCopyStreamWriteTester tester;
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
+  ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
+
+  const struct ArrowBuffer buf = tester.WriteBuffer();
+  constexpr size_t buf_size = sizeof(kTestPgCopyNumericNegScale2) - 2;
+  ASSERT_EQ(buf.size_bytes, static_cast<int64_t>(buf_size));
+  for (size_t i = 0; i < buf_size; i++) {
+    ASSERT_EQ(buf.data[i], kTestPgCopyNumericNegScale2[i]) << " at position " << i;
   }
 }
 
