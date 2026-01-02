@@ -621,8 +621,9 @@ class SqliteConnection : public driver::Connection<SqliteConnection> {
 
   Result<std::vector<driver::InfoValue>> InfoImpl(const std::vector<uint32_t>& codes) {
     static std::vector<uint32_t> kDefaultCodes{
-        ADBC_INFO_VENDOR_NAME,    ADBC_INFO_VENDOR_VERSION,       ADBC_INFO_DRIVER_NAME,
-        ADBC_INFO_DRIVER_VERSION, ADBC_INFO_DRIVER_ARROW_VERSION,
+        ADBC_INFO_VENDOR_NAME,          ADBC_INFO_VENDOR_VERSION,
+        ADBC_INFO_DRIVER_NAME,          ADBC_INFO_DRIVER_VERSION,
+        ADBC_INFO_DRIVER_ARROW_VERSION, ADBC_INFO_DRIVER_ADBC_VERSION,
     };
     std::reference_wrapper<const std::vector<uint32_t>> codes_ref(codes);
     if (codes.empty()) {
@@ -647,6 +648,9 @@ class SqliteConnection : public driver::Connection<SqliteConnection> {
           break;
         case ADBC_INFO_DRIVER_ARROW_VERSION:
           result.emplace_back(code, NANOARROW_VERSION);
+          break;
+        case ADBC_INFO_DRIVER_ADBC_VERSION:
+          result.emplace_back(code, static_cast<int64_t>(ADBC_VERSION_1_1_0));
           break;
         default:
           // Ignore

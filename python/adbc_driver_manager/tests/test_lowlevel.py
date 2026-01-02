@@ -118,11 +118,12 @@ def test_database_set_options(sqlite_raw):
 def test_connection_get_info(sqlite_raw):
     _, conn = sqlite_raw
     codes = [
-        adbc_driver_manager.AdbcInfoCode.VENDOR_NAME,
+        adbc_driver_manager.AdbcInfoCode.VENDOR_NAME.value,
         adbc_driver_manager.AdbcInfoCode.VENDOR_VERSION.value,
-        adbc_driver_manager.AdbcInfoCode.DRIVER_NAME,
+        adbc_driver_manager.AdbcInfoCode.DRIVER_NAME.value,
         adbc_driver_manager.AdbcInfoCode.DRIVER_VERSION.value,
         adbc_driver_manager.AdbcInfoCode.DRIVER_ARROW_VERSION.value,
+        103,  # ADBC_INFO_DRIVER_ADBC_VERSION (not yet in AdbcInfoCode enum)
     ]
     handle = conn.get_info()
     table = _import(handle).read_all()

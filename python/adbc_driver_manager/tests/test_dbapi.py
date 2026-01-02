@@ -62,6 +62,7 @@ def test_attrs(sqlite):
 def test_info(sqlite):
     info = sqlite.adbc_get_info()
     assert set(info.keys()) == {
+        "driver_adbc_version",
         "driver_arrow_version",
         "driver_name",
         "driver_version",
