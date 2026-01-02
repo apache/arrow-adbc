@@ -52,6 +52,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         protected static readonly string[] ForeignKeyFields = new[] { "PKCOLUMN_NAME", "PKTABLE_CAT", "PKTABLE_SCHEM", "PKTABLE_NAME", "FKCOLUMN_NAME", "FK_NAME", "KEQ_SEQ" };
         protected const string PrimaryKeyPrefix = "PK_";
         protected const string ForeignKeyPrefix = "FK_";
+        private const string ClassName = nameof(HiveServer2Statement);
 
         // Lock to ensure consistent access to TokenSource
         private readonly object _tokenSourceLock = new();
@@ -147,8 +148,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 {
                     try
                     {
-                        await HiveServer2Connection.PollForResponseAsync(response.OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken); // + poll, up to QueryTimeout
-                        metadata = await HiveServer2Connection.GetResultSetMetadataAsync(response.OperationHandle!, Connection.Client, cancellationToken);
+                        await Connection.PollForResponseAsync(response.OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken); // + poll, up to QueryTimeout
+                        metadata = await Connection.GetResultSetMetadataAsync(response.OperationHandle!, Connection.Client, cancellationToken);
                     }
                     catch (Exception ex) when (IsCancellation(ex, cancellationToken))
                     {
@@ -159,7 +160,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
                 Schema schema = GetSchemaFromMetadata(metadata);
                 return new QueryResult(-1, Connection.NewReader(this, schema, response, metadata));
-            });
+            }, ClassName + "." + nameof(ExecuteQueryAsyncInternal));
         }
 
         public override async ValueTask<QueryResult> ExecuteQueryAsync()
@@ -234,7 +235,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 {
                     activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, affectedRows ?? -1);
                 }
-            });
+            }, ClassName + "." + nameof(ExecuteUpdateAsyncInternal));
         }
 
         public override async Task<UpdateResult> ExecuteUpdateAsync()
@@ -258,7 +259,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 {
                     DisposeTokenSource();
                 }
-            });
+            }, ClassName + "." + nameof(ExecuteUpdateAsync));
         }
 
         public override void SetOption(string key, string value)
@@ -351,7 +352,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     }
                 }
                 return response;
-            });
+            }, ClassName + "." + nameof(ExecuteStatementAsync));
         }
 
         protected internal int PollTimeMilliseconds { get; private set; } = HiveServer2Connection.PollTimeMillisecondsDefault;
@@ -422,18 +423,22 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private async Task<QueryResult> ExecuteMetadataCommandQuery(CancellationToken cancellationToken)
         {
-            return SqlQuery?.ToLowerInvariant() switch
+            return await this.TraceActivityAsync(async activity =>
             {
-                GetCatalogsCommandName => await GetCatalogsAsync(cancellationToken),
-                GetSchemasCommandName => await GetSchemasAsync(cancellationToken),
-                GetTablesCommandName => await GetTablesAsync(cancellationToken),
-                GetColumnsCommandName => await GetColumnsAsync(cancellationToken),
-                GetPrimaryKeysCommandName => await GetPrimaryKeysAsync(cancellationToken),
-                GetCrossReferenceCommandName => await GetCrossReferenceAsync(cancellationToken),
-                GetColumnsExtendedCommandName => await GetColumnsExtendedAsync(cancellationToken),
-                null or "" => throw new ArgumentNullException(nameof(SqlQuery), $"Metadata command for property 'SqlQuery' must not be empty or null. Supported metadata commands: {SupportedMetadataCommands}"),
-                _ => throw new NotSupportedException($"Metadata command '{SqlQuery}' is not supported. Supported metadata commands: {SupportedMetadataCommands}"),
-            };
+                activity?.AddTag(SemanticConventions.Db.Query.Text, SqlQuery ?? "<null>");
+                return SqlQuery?.ToLowerInvariant() switch
+                {
+                    GetCatalogsCommandName => await GetCatalogsAsync(cancellationToken),
+                    GetSchemasCommandName => await GetSchemasAsync(cancellationToken),
+                    GetTablesCommandName => await GetTablesAsync(cancellationToken),
+                    GetColumnsCommandName => await GetColumnsAsync(cancellationToken),
+                    GetPrimaryKeysCommandName => await GetPrimaryKeysAsync(cancellationToken),
+                    GetCrossReferenceCommandName => await GetCrossReferenceAsync(cancellationToken),
+                    GetColumnsExtendedCommandName => await GetColumnsExtendedAsync(cancellationToken),
+                    null or "" => throw new ArgumentNullException(nameof(SqlQuery), $"Metadata command for property 'SqlQuery' must not be empty or null. Supported metadata commands: {SupportedMetadataCommands}"),
+                    _ => throw new NotSupportedException($"Metadata command '{SqlQuery}' is not supported. Supported metadata commands: {SupportedMetadataCommands}"),
+                };
+            }, ClassName + "." + nameof(ExecuteMetadataCommandQuery));
         }
         // This method is for internal use only and is not available for external use.
         // It retrieves cross-reference data where the current table is treated as a foreign table.
@@ -532,10 +537,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             if (!Connection.TryGetDirectResults(response.DirectResults, out TGetResultSetMetadataResp? metadata, out TRowSet? rowSet))
             {
                 // Poll and fetch results
-                await HiveServer2Connection.PollForResponseAsync(response.OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken);
+                await Connection.PollForResponseAsync(response.OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken);
 
                 // Get metadata
-                metadata = await HiveServer2Connection.GetResultSetMetadataAsync(response.OperationHandle!, Connection.Client, cancellationToken);
+                metadata = await Connection.GetResultSetMetadataAsync(response.OperationHandle!, Connection.Client, cancellationToken);
 
                 // Fetch the results
                 rowSet = await Connection.FetchResultsAsync(response.OperationHandle!, BatchSize, cancellationToken);
@@ -553,21 +558,25 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private async Task<Schema> GetResultSetSchemaAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
         {
-            TGetResultSetMetadataResp response = await HiveServer2Connection.GetResultSetMetadataAsync(operationHandle, client, cancellationToken);
+            TGetResultSetMetadataResp response = await Connection.GetResultSetMetadataAsync(operationHandle, client, cancellationToken);
             return GetSchemaFromMetadata(response);
         }
 
         private async Task<QueryResult> GetQueryResult(IResponse response, CancellationToken cancellationToken)
         {
-            if (Connection.TryGetDirectResults(response.DirectResults, out QueryResult? result))
+            return await this.TraceActivityAsync(async activity =>
             {
-                return result!;
-            }
+                HiveServer2Connection.HandleThriftResponse(response.Status!, activity);
+                if (Connection.TryGetDirectResults(response.DirectResults, out QueryResult? result))
+                {
+                    return result!;
+                }
 
-            await HiveServer2Connection.PollForResponseAsync(response.OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken);
-            Schema schema = await GetResultSetSchemaAsync(response.OperationHandle!, Connection.Client, cancellationToken);
+                await Connection.PollForResponseAsync(response.OperationHandle!, Connection.Client, PollTimeMilliseconds, cancellationToken);
+                Schema schema = await GetResultSetSchemaAsync(response.OperationHandle!, Connection.Client, cancellationToken);
 
-            return new QueryResult(-1, Connection.NewReader(this, schema, response));
+                return new QueryResult(-1, Connection.NewReader(this, schema, response));
+            }, ClassName + "." + nameof(GetQueryResult));
         }
 
         protected internal QueryResult EnhanceGetColumnsResult(Schema originalSchema, IReadOnlyList<IArrowArray> originalData,
@@ -1044,7 +1053,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 // This will cancel any operation using the current token source
                 CancelTokenSource();
-            });
+            }, ClassName + "." + nameof(Cancel));
         }
 
         private async Task CancelOperationAsync(Activity? activity, TOperationHandle? operationHandle)
