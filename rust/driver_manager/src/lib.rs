@@ -381,8 +381,29 @@ impl ManagedDriver {
         let default_entrypoint = get_default_entrypoint(filename.as_ref());
 
         let entrypoint = entrypoint.unwrap_or(default_entrypoint.as_bytes());
-        let library = unsafe {
-            libloading::Library::new(filename.as_ref()).map_err(libloading_error_to_adbc_error)?
+        // By default, go builds the libraries with '-Wl -z nodelete' which does not
+        // unload the go runtime. This isn't respected on mac ( https://github.com/golang/go/issues/11100#issuecomment-932638093 )
+        // so we need to explicitly load the library with RTLD_NODELETE( which prevents unloading )
+        #[cfg(unix)]
+        let library: libloading::Library = unsafe {
+            const RTLD_NODELETE: i32 = 0x80;
+
+            libloading::os::unix::Library::open(
+                Some(filename.as_ref()),
+                libloading::os::unix::RTLD_LAZY | libloading::os::unix::RTLD_LOCAL | RTLD_NODELETE,
+            )
+            .map(Into::into)
+            .map_err(libloading_error_to_adbc_error)?
+        };
+        // on windows, we emulate the same behaviour by using the GET_MODULE_HANDLE_EX_FLAG_PIN. The `.pin()`
+        // function implements this.
+        #[cfg(windows)]
+        let library: libloading::Library = unsafe {
+            let library: libloading::os::windows::Library =
+                libloading::os::windows::Library::new(filename.as_ref())
+                    .map_err(libloading_error_to_adbc_error)?;
+            library.pin().map_err(libloading_error_to_adbc_error)?;
+            library.into()
         };
         let init: libloading::Symbol<adbc_ffi::FFI_AdbcDriverInitFunc> = unsafe {
             library
