@@ -17,6 +17,7 @@ adbcsqlite()
   connection,
   ...,
   adbc.ingest.target_table = NULL,
+  adbc.ingest.target_catalog = NULL,
   adbc.ingest.mode = NULL,
   adbc.sqlite.query.batch_rows = NULL
 )
@@ -37,6 +38,9 @@ autocommit behaviour.}
 \item{connection}{An \link[adbcdrivermanager:adbc_connection_init]{adbc_connection}}
 
 \item{adbc.ingest.target_table}{The name of the target table for a bulk insert.}
+
+\item{adbc.ingest.target_catalog}{The catalog of the table for a bulk insert.
+\strong{This API is EXPERIMENTAL.}}
 
 \item{adbc.ingest.mode}{Whether to create (the default) or append.}
 
