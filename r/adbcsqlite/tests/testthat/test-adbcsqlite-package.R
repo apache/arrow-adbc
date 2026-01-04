@@ -115,7 +115,6 @@ test_that("write_adbc() supports catalog_name", {
 
   stream <- adbcdrivermanager::read_adbc(con, "SELECT * from main.df_catalog")
   expect_identical(as.data.frame(stream), df)
-  stream$release()
 })
 
 test_that("write_adbc() with temporary = TRUE works with sqlite databases", {

@@ -111,5 +111,4 @@ test_that("write_adbc() supports db_schema_name", {
 
   stream <- adbcdrivermanager::read_adbc(con, "SELECT * FROM testschema.df_schema ORDER BY x")
   expect_identical(as.data.frame(stream), df)
-  stream$release()
 })
