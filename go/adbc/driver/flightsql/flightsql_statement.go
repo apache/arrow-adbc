@@ -618,7 +618,7 @@ func (s *statement) Bind(_ context.Context, values arrow.RecordBatch) error {
 
 	if s.prepared == nil {
 		return adbc.Error{
-			Msg:  "[Flight SQL Statement] must call Prepare before calling Bind",
+			Msg:  "[Flight SQL Statement] must call Prepare or set IngestTargetTable before calling Bind",
 			Code: adbc.StatusInvalidState}
 	}
 
@@ -651,7 +651,7 @@ func (s *statement) BindStream(_ context.Context, stream array.RecordReader) err
 
 	if s.prepared == nil {
 		return adbc.Error{
-			Msg:  "[Flight SQL Statement] must call Prepare before calling Bind",
+			Msg:  "[Flight SQL Statement] must call Prepare or set IngestTargetTable before calling Bind",
 			Code: adbc.StatusInvalidState}
 	}
 
