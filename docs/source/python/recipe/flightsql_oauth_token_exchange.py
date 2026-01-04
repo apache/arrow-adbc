@@ -31,12 +31,17 @@ token_uri = os.environ["ADBC_OAUTH_TOKEN_URI"]
 #: This is typically a JWT or other token from your identity provider
 subject_token = os.environ["ADBC_OAUTH_SUBJECT_TOKEN"]
 
+#: For testing with self-signed certificates, skip TLS verification.
+#: In production, you should provide proper TLS certificates.
+db_kwargs = {}
+if os.environ.get("ADBC_OAUTH_SKIP_VERIFY", "true").lower() in ("1", "true"):
+    db_kwargs[DatabaseOptions.TLS_SKIP_VERIFY.value] = "true"
+
 #: Connect using OAuth 2.0 Token Exchange flow.
 #: The driver will exchange the subject token for an access token.
 
-conn = adbc_driver_flightsql.dbapi.connect(
-    uri,
-    db_kwargs={
+db_kwargs.update(
+    {
         DatabaseOptions.OAUTH_FLOW.value: OAuthFlowType.TOKEN_EXCHANGE.value,
         DatabaseOptions.OAUTH_TOKEN_URI.value: token_uri,
         DatabaseOptions.OAUTH_EXCHANGE_SUBJECT_TOKEN.value: subject_token,
@@ -49,8 +54,10 @@ conn = adbc_driver_flightsql.dbapi.connect(
         #   OAuthTokenType.ACCESS_TOKEN.value,
         #: Optionally, specify the intended audience
         # DatabaseOptions.OAUTH_EXCHANGE_AUD.value: "my-service",
-    },
+    }
 )
+
+conn = adbc_driver_flightsql.dbapi.connect(uri, db_kwargs=db_kwargs)
 
 #: We can then execute queries as usual.
 

@@ -34,17 +34,21 @@ client_secret = os.environ["ADBC_OAUTH_CLIENT_SECRET"]
 #: Connect using OAuth 2.0 Client Credentials flow.
 #: The driver will automatically obtain and refresh access tokens.
 
-conn = adbc_driver_flightsql.dbapi.connect(
-    uri,
-    db_kwargs={
-        DatabaseOptions.OAUTH_FLOW.value: OAuthFlowType.CLIENT_CREDENTIALS.value,
-        DatabaseOptions.OAUTH_TOKEN_URI.value: token_uri,
-        DatabaseOptions.OAUTH_CLIENT_ID.value: client_id,
-        DatabaseOptions.OAUTH_CLIENT_SECRET.value: client_secret,
-        #: Optionally, request specific scopes
-        # DatabaseOptions.OAUTH_SCOPE.value: "read.all",
-    },
-)
+db_kwargs = {
+    DatabaseOptions.OAUTH_FLOW.value: OAuthFlowType.CLIENT_CREDENTIALS.value,
+    DatabaseOptions.OAUTH_TOKEN_URI.value: token_uri,
+    DatabaseOptions.OAUTH_CLIENT_ID.value: client_id,
+    DatabaseOptions.OAUTH_CLIENT_SECRET.value: client_secret,
+    #: Optionally, request specific scopes
+    # DatabaseOptions.OAUTH_SCOPE.value: "dremio.all",
+}
+
+#: For testing with self-signed certificates, skip TLS verification.
+#: In production, you should provide proper TLS certificates.
+if os.environ.get("ADBC_OAUTH_SKIP_VERIFY", "true").lower() in ("1", "true"):
+    db_kwargs[DatabaseOptions.TLS_SKIP_VERIFY.value] = "true"
+
+conn = adbc_driver_flightsql.dbapi.connect(uri, db_kwargs=db_kwargs)
 
 #: We can then execute queries as usual.
 
