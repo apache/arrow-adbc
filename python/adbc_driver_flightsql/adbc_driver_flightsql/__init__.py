@@ -28,9 +28,55 @@ from ._version import __version__  # noqa:F401
 __all__ = [
     "ConnectionOptions",
     "DatabaseOptions",
+    "OAuthFlowType",
+    "OAuthTokenType",
     "StatementOptions",
     "connect",
 ]
+
+
+class OAuthFlowType(enum.Enum):
+    """
+    OAuth 2.0 flow types supported by the Flight SQL driver.
+
+    Use these values with :attr:`DatabaseOptions.OAUTH_FLOW`.
+    """
+
+    #: OAuth 2.0 Client Credentials flow (RFC 6749 Section 4.4).
+    #:
+    #: Use when the client application needs to authenticate itself
+    #: to the authorization server using its own credentials.
+    CLIENT_CREDENTIALS = "client_credentials"
+
+    #: OAuth 2.0 Token Exchange flow (RFC 8693).
+    #:
+    #: Use when the client application wants to exchange one
+    #: security token for another.
+    TOKEN_EXCHANGE = "token_exchange"
+
+
+class OAuthTokenType(enum.Enum):
+    """
+    OAuth 2.0 token types supported for token exchange (RFC 8693).
+
+    Use these values with token type options like
+    :attr:`DatabaseOptions.OAUTH_EXCHANGE_SUBJECT_TOKEN_TYPE`,
+    :attr:`DatabaseOptions.OAUTH_EXCHANGE_ACTOR_TOKEN_TYPE`, and
+    :attr:`DatabaseOptions.OAUTH_EXCHANGE_REQUESTED_TOKEN_TYPE`.
+    """
+
+    #: An OAuth 2.0 access token.
+    ACCESS_TOKEN = "urn:ietf:params:oauth:token-type:access_token"
+    #: An OAuth 2.0 refresh token.
+    REFRESH_TOKEN = "urn:ietf:params:oauth:token-type:refresh_token"
+    #: An OpenID Connect ID token.
+    ID_TOKEN = "urn:ietf:params:oauth:token-type:id_token"
+    #: A SAML 1.1 assertion.
+    SAML1 = "urn:ietf:params:oauth:token-type:saml1"
+    #: A SAML 2.0 assertion.
+    SAML2 = "urn:ietf:params:oauth:token-type:saml2"
+    #: A JSON Web Token (JWT).
+    JWT = "urn:ietf:params:oauth:token-type:jwt"
 
 
 class DatabaseOptions(enum.Enum):
@@ -74,6 +120,59 @@ class DatabaseOptions(enum.Enum):
     WITH_COOKIE_MIDDLEWARE = "adbc.flight.sql.rpc.with_cookie_middleware"
     #: Set the maximum gRPC message size (in bytes). The default is 16 MiB.
     WITH_MAX_MSG_SIZE = "adbc.flight.sql.client_option.with_max_msg_size"
+
+    # OAuth 2.0 options
+
+    #: Specifies the OAuth 2.0 flow type to use.
+    #:
+    #: See :class:`OAuthFlowType` for possible values.
+    OAUTH_FLOW = "adbc.flight.sql.oauth.flow"
+    #: The authorization endpoint URL for OAuth 2.0.
+    OAUTH_AUTH_URI = "adbc.flight.sql.oauth.auth_uri"
+    #: The endpoint URL where the client application requests tokens
+    #: from the authorization server.
+    OAUTH_TOKEN_URI = "adbc.flight.sql.oauth.token_uri"
+    #: The redirect URI for OAuth 2.0 flows.
+    OAUTH_REDIRECT_URI = "adbc.flight.sql.oauth.redirect_uri"
+    #: Space-separated list of permissions that the client is requesting
+    #: access to (e.g., ``"read.all offline_access"``).
+    OAUTH_SCOPE = "adbc.flight.sql.oauth.scope"
+    #: Unique identifier issued to the client application by the
+    #: authorization server.
+    OAUTH_CLIENT_ID = "adbc.flight.sql.oauth.client_id"
+    #: Secret associated with the client_id. Used to authenticate the
+    #: client application to the authorization server.
+    OAUTH_CLIENT_SECRET = "adbc.flight.sql.oauth.client_secret"
+
+    # OAuth 2.0 Token Exchange options (RFC 8693)
+
+    #: The security token that the client application wants to exchange.
+    OAUTH_EXCHANGE_SUBJECT_TOKEN = "adbc.flight.sql.oauth.exchange.subject_token"
+    #: Identifier for the type of the subject token.
+    #:
+    #: See :class:`OAuthTokenType` for supported token types.
+    OAUTH_EXCHANGE_SUBJECT_TOKEN_TYPE = (
+        "adbc.flight.sql.oauth.exchange.subject_token_type"
+    )
+    #: A security token that represents the identity of the acting party.
+    OAUTH_EXCHANGE_ACTOR_TOKEN = "adbc.flight.sql.oauth.exchange.actor_token"
+    #: Identifier for the type of the actor token.
+    #:
+    #: See :class:`OAuthTokenType` for supported token types.
+    OAUTH_EXCHANGE_ACTOR_TOKEN_TYPE = "adbc.flight.sql.oauth.exchange.actor_token_type"
+    #: The type of token the client wants to receive in exchange.
+    #:
+    #: See :class:`OAuthTokenType` for supported token types.
+    OAUTH_EXCHANGE_REQUESTED_TOKEN_TYPE = (
+        "adbc.flight.sql.oauth.exchange.requested_token_type"
+    )
+    #: Specific permissions requested for the new token in token exchange.
+    OAUTH_EXCHANGE_SCOPE = "adbc.flight.sql.oauth.exchange.scope"
+    #: The intended audience for the requested security token in token exchange.
+    OAUTH_EXCHANGE_AUD = "adbc.flight.sql.oauth.exchange.aud"
+    #: The resource server where the client intends to use the requested
+    #: security token in token exchange.
+    OAUTH_EXCHANGE_RESOURCE = "adbc.flight.sql.oauth.exchange.resource"
 
 
 class ConnectionOptions(enum.Enum):

@@ -215,46 +215,76 @@ OAuth 2.0 Options
 Supported configurations to obtain tokens using OAuth 2.0 authentication flows.
 
 ``adbc.flight.sql.oauth.flow``
-  Specifies the OAuth 2.0 flow type to use. Possible values: ``client_credentials``, ``token_exchange``
+    Specifies the OAuth 2.0 flow type to use. Possible values: ``client_credentials``, ``token_exchange``
+
+    Python: :attr:`adbc_driver_flightsql.DatabaseOptions.OAUTH_FLOW`,
+    :class:`adbc_driver_flightsql.OAuthFlowType`
 
 ``adbc.flight.sql.oauth.client_id``
-  Unique identifier issued to the client application by the authorization server
+    Unique identifier issued to the client application by the authorization server
+
+    Python: :attr:`adbc_driver_flightsql.DatabaseOptions.OAUTH_CLIENT_ID`
 
 ``adbc.flight.sql.oauth.client_secret``
-  Secret associated to the client_id. Used to authenticate the client application to the authorization server
+    Secret associated to the client_id. Used to authenticate the client application to the authorization server
+
+    Python: :attr:`adbc_driver_flightsql.DatabaseOptions.OAUTH_CLIENT_SECRET`
 
 ``adbc.flight.sql.oauth.token_uri``
-  The endpoint URL where the client application requests tokens from the authorization server
+    The endpoint URL where the client application requests tokens from the authorization server
+
+    Python: :attr:`adbc_driver_flightsql.DatabaseOptions.OAUTH_TOKEN_URI`
 
 ``adbc.flight.sql.oauth.scope``
-  Space-separated list of permissions that the client is requesting access to (e.g ``"read.all offline_access"``)
+    Space-separated list of permissions that the client is requesting access to (e.g ``"read.all offline_access"``)
+
+    Python: :attr:`adbc_driver_flightsql.DatabaseOptions.OAUTH_SCOPE`
 
 ``adbc.flight.sql.oauth.exchange.subject_token``
-  The security token that the client application wants to exchange
+    The security token that the client application wants to exchange
+
+    Python: :attr:`adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_SUBJECT_TOKEN`
 
 ``adbc.flight.sql.oauth.exchange.subject_token_type``
-  Identifier for the type of the subject token.
-  Check list below for supported token types.
+    Identifier for the type of the subject token.
+    Check list below for supported token types.
+
+    Python: :attr:`adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_SUBJECT_TOKEN_TYPE`,
+    :class:`adbc_driver_flightsql.OAuthTokenType`
 
 ``adbc.flight.sql.oauth.exchange.actor_token``
-  A security token that represents the identity of the acting party
+    A security token that represents the identity of the acting party
+
+    Python: :attr:`adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_ACTOR_TOKEN`
 
 ``adbc.flight.sql.oauth.exchange.actor_token_type``
-  Identifier for the type of the actor token.
-  Check list below for supported token types.
+    Identifier for the type of the actor token.
+    Check list below for supported token types.
+
+    Python: :attr:`adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_ACTOR_TOKEN_TYPE`,
+    :class:`adbc_driver_flightsql.OAuthTokenType`
+
 ``adbc.flight.sql.oauth.exchange.aud``
-  The intended audience for the requested security token
+    The intended audience for the requested security token
+
+    Python: :attr:`adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_AUD`
 
 ``adbc.flight.sql.oauth.exchange.resource``
-  The resource server where the client intends to use the requested security token
+    The resource server where the client intends to use the requested security token
+
+    Python: :attr:`adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_RESOURCE`
 
 ``adbc.flight.sql.oauth.exchange.scope``
-  Specific permissions requested for the new token
+    Specific permissions requested for the new token
+
+    Python: :attr:`adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_SCOPE`
 
 ``adbc.flight.sql.oauth.exchange.requested_token_type``
-  The type of token the client wants to receive in exchange.
-  Check list below for supported token types.
+    The type of token the client wants to receive in exchange.
+    Check list below for supported token types.
 
+    Python: :attr:`adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_REQUESTED_TOKEN_TYPE`,
+    :class:`adbc_driver_flightsql.OAuthTokenType`
 
 Supported token types:
   - ``urn:ietf:params:oauth:token-type:access_token``
@@ -263,6 +293,8 @@ Supported token types:
   - ``urn:ietf:params:oauth:token-type:saml1``
   - ``urn:ietf:params:oauth:token-type:saml2``
   - ``urn:ietf:params:oauth:token-type:jwt``
+
+    Python: :class:`adbc_driver_flightsql.OAuthTokenType`
 
 Distributed Result Sets
 -----------------------

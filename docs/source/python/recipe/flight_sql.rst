@@ -61,3 +61,13 @@ Set the max gRPC message size
 -----------------------------
 
 .. recipe:: flightsql_sqlite_max_msg_size.py
+
+Connect with OAuth 2.0 Client Credentials
+-----------------------------------------
+
+.. recipe:: flightsql_oauth_client_credentials.py
+
+Connect with OAuth 2.0 Token Exchange
+-------------------------------------
+
+.. recipe:: flightsql_oauth_token_exchange.py

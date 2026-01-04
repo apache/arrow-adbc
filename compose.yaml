@@ -279,7 +279,7 @@ services:
       args:
         GO: ${GO}
     healthcheck:
-      test: ["CMD", "curl", "--http2-prior-knowledge", "-XPOST", "-H", "content-type: application/grpc", "localhost:41414"]
+      test: ["CMD", "curl", "-k", "--http2", "-XPOST", "-H", "content-type: application/grpc", "https://localhost:41414"]
       interval: 5s
       timeout: 30s
       retries: 3
@@ -288,8 +288,35 @@ services:
       - "41414:41414"
     volumes:
       - .:/adbc:delegated
+    depends_on:
+      oauth-server:
+        condition: service_healthy
     command: >-
-      /bin/bash -c "cd /adbc/go/adbc && go run ./driver/flightsql/cmd/testserver -host 0.0.0.0 -port 41414"
+      /bin/bash -c "cd /adbc/go/adbc && go run ./driver/flightsql/cmd/testserver -host 0.0.0.0 -port 41414 -token-prefix oauth- -tls"
+
+  # OAuth test server for FlightSQL OAuth authentication testing
+  oauth-server:
+    container_name: adbc-oauth-server
+    image: ${REPO}:adbc-oauth-server
+    build:
+      context: .
+      cache_from:
+        - ${REPO}:adbc-oauth-server
+      dockerfile: ci/docker/oauth-server.dockerfile
+      args:
+        GO: ${GO}
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8181/health"]
+      interval: 5s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    ports:
+      - "8181:8181"
+    volumes:
+      - .:/adbc:delegated
+    command: >-
+      /bin/bash -c "cd /adbc/go/adbc && go run ./driver/flightsql/cmd/oauthserver -host 0.0.0.0 -port 8181 -client-id test-client -client-secret test-secret"
 
   flightsql-sqlite-test:
     image: ${REPO}:golang-${GO}-sqlite-flightsql

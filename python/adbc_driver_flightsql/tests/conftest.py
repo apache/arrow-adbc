@@ -80,8 +80,18 @@ def test_dbapi():
     if not uri:
         pytest.skip("Set ADBC_TEST_FLIGHTSQL_URI to run tests")
 
+    db_kwargs = {
+        # Skip TLS verification for self-signed certificates
+        adbc_driver_flightsql.DatabaseOptions.TLS_SKIP_VERIFY.value: "true",
+        # Use HTTP Basic authentication (user:password encoded as base64)
+        adbc_driver_flightsql.DatabaseOptions.AUTHORIZATION_HEADER.value: (
+            "Basic dXNlcjpwYXNzd29yZA=="
+        ),
+    }
+
     with adbc_driver_flightsql.dbapi.connect(
         uri,
+        db_kwargs=db_kwargs,
         autocommit=True,
     ) as conn:
         yield conn
