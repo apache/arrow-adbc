@@ -262,7 +262,7 @@ services:
       args:
         GO: ${GO}
     healthcheck:
-      test: ["CMD", "curl", "--http2-prior-knowledge", "-XPOST", "-H", "content-type: application/grpc", "localhost:41414"]
+      test: ["CMD", "curl", "-k", "--http2", "-XPOST", "-H", "content-type: application/grpc", "https://localhost:41414"]
       interval: 5s
       timeout: 30s
       retries: 3
