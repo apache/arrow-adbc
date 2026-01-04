@@ -37,6 +37,7 @@ import (
 	"net/http/httptest"
 	"net/textproto"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -2733,17 +2734,13 @@ func (srv *BulkIngestTestServer) DoPutCommandStatementIngest(ctx context.Context
 func (srv *BulkIngestTestServer) GetIngestedData() []arrow.RecordBatch {
 	srv.mu.Lock()
 	defer srv.mu.Unlock()
-	result := make([]arrow.RecordBatch, len(srv.ingestedData))
-	copy(result, srv.ingestedData)
-	return result
+	return slices.Clone(srv.ingestedData)
 }
 
 func (srv *BulkIngestTestServer) GetIngestRequests() []flightsql.StatementIngest {
 	srv.mu.Lock()
 	defer srv.mu.Unlock()
-	result := make([]flightsql.StatementIngest, len(srv.ingestRequests))
-	copy(result, srv.ingestRequests)
-	return result
+	return slices.Clone(srv.ingestRequests)
 }
 
 func (srv *BulkIngestTestServer) Clear() {
