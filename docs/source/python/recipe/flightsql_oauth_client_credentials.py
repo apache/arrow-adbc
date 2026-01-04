@@ -26,7 +26,7 @@ import os
 import adbc_driver_flightsql.dbapi
 from adbc_driver_flightsql import DatabaseOptions, OAuthFlowType
 
-uri = os.environ["ADBC_FLIGHTSQL_URI"]
+uri = os.environ["ADBC_TEST_FLIGHTSQL_URI"]
 token_uri = os.environ["ADBC_OAUTH_TOKEN_URI"]
 client_id = os.environ["ADBC_OAUTH_CLIENT_ID"]
 client_secret = os.environ["ADBC_OAUTH_CLIENT_SECRET"]
