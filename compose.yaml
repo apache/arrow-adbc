@@ -341,6 +341,27 @@ services:
       - "50051:50051"
       - "8090:8090"
 
+  gizmosql-test:
+    container_name: adbc_gizmosql_test
+    image: gizmodata/gizmosql:latest-slim
+    init: true
+    tty: true
+    environment:
+      GIZMOSQL_USERNAME: ${ADBC_GIZMOSQL_USER:-adbc_test_user}
+      GIZMOSQL_PASSWORD: ${ADBC_GIZMOSQL_PASSWORD:-adbc_test_password}
+      TLS_ENABLED: "0"
+      PRINT_QUERIES: "1"
+      DATABASE_FILENAME: "adbc_test.db"
+      GIZMOSQL_LOG_LEVEL: "DEBUG"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/31337'"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    ports:
+      - "31337:31337"
+
   ################################ Verification ################################
 
   verify-all-ubuntu:
