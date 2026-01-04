@@ -30,14 +30,12 @@
 #' @param mode One of `"create"`, `"append"`, `"replace"`, `"create_append"` (error if the schema
 #'   is not compatible or append otherwise), or `"default"` (use the `adbc.ingest.mode`
 #'   argument of [adbc_statement_init()]). The default is `"default"`.
-#' @param catalog_name If not `NULL`, the catalog to create/locate the table in.
-#'   **This API is EXPERIMENTAL.**
-#' @param db_schema_name If not `NULL`, the schema to create/locate the table in.
-#'   **This API is EXPERIMENTAL.**
 #' @param query An SQL query
 #' @param bind A data.frame, nanoarrow_array, or nanoarrow_array_stream of
 #'   bind parameters or NULL to skip the bind/prepare step.
 #' @param temporary Use TRUE to create a table as a temporary table.
+#' @param catalog_name If not `NULL`, the catalog to create/locate the table in.
+#' @param db_schema_name If not `NULL`, the schema to create/locate the table in.
 #' @param ... Passed to S3 methods.
 #'
 #' @return

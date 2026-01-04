@@ -34,7 +34,6 @@ NULL
 #'   autocommit behaviour.
 #' @param adbc.ingest.target_table The name of the target table for a bulk insert.
 #' @param adbc.ingest.target_catalog The catalog of the table for a bulk insert.
-#'   **This API is EXPERIMENTAL.**
 #' @param adbc.ingest.mode Whether to create (the default) or append.
 #' @param adbc.sqlite.query.batch_rows The number of rows per batch to return.
 #'

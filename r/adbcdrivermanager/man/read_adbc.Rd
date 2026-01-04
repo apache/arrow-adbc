@@ -44,11 +44,9 @@ argument of \code{\link[=adbc_statement_init]{adbc_statement_init()}}). The defa
 
 \item{temporary}{Use TRUE to create a table as a temporary table.}
 
-\item{catalog_name}{If not \code{NULL}, the catalog to create/locate the table in.
-\strong{This API is EXPERIMENTAL.}}
+\item{catalog_name}{If not \code{NULL}, the catalog to create/locate the table in.}
 
-\item{db_schema_name}{If not \code{NULL}, the schema to create/locate the table in.
-\strong{This API is EXPERIMENTAL.}}
+\item{db_schema_name}{If not \code{NULL}, the schema to create/locate the table in.}
 }
 \value{
 \itemize{

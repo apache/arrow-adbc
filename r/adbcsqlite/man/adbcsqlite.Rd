@@ -39,8 +39,7 @@ autocommit behaviour.}
 
 \item{adbc.ingest.target_table}{The name of the target table for a bulk insert.}
 
-\item{adbc.ingest.target_catalog}{The catalog of the table for a bulk insert.
-\strong{This API is EXPERIMENTAL.}}
+\item{adbc.ingest.target_catalog}{The catalog of the table for a bulk insert.}
 
 \item{adbc.ingest.mode}{Whether to create (the default) or append.}
 
