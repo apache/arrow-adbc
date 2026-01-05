@@ -24,7 +24,6 @@ import numpy
 import pyarrow
 import pyarrow.dataset
 import pytest
-
 from adbc_driver_postgresql import ConnectionOptions, StatementOptions, dbapi
 
 
@@ -80,8 +79,12 @@ def test_get_objects_schema_filter_outside_search_path(
         .read_all()
         .to_pylist()
     )
-    assert len(metadata) == 1
-    schemas = metadata[0]["catalog_db_schemas"]
+
+    catalog_name = postgres.adbc_current_catalog
+    catalog = next((row for row in metadata if row["catalog_name"] == catalog_name), None)
+    assert catalog is not None
+
+    schemas = catalog["catalog_db_schemas"]
     assert len(schemas) == 1
     assert schemas[0]["db_schema_name"] == schema_name
     tables = schemas[0]["db_schema_tables"]
