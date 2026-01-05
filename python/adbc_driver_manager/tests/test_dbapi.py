@@ -62,6 +62,7 @@ def test_attrs(sqlite):
 def test_info(sqlite):
     info = sqlite.adbc_get_info()
     assert set(info.keys()) == {
+        "driver_adbc_version",
         "driver_arrow_version",
         "driver_name",
         "driver_version",
@@ -567,6 +568,144 @@ def test_dbapi_extensions(sqlite):
     with sqlite.cursor() as cur:
         assert cur.execute("SELECT 1").fetchall() == [(1,)]
         assert cur.execute("SELECT 42").fetchall() == [(42,)]
+
+
+@pytest.mark.sqlite
+def test_close_connection_with_open_cursor():
+    """
+    Regression test for https://github.com/apache/arrow-adbc/issues/3713
+
+    Closing a connection should automatically close any open cursors
+    without raising RuntimeError about open AdbcStatement.
+
+    This test intentionally avoids context managers because the bug only
+    manifests when users manually call close() without first closing cursors.
+    """
+    conn = dbapi.connect(driver="adbc_driver_sqlite")
+    cursor = conn.cursor()
+    cursor.execute("SELECT 1")
+    # Fetch the result to ensure the cursor is "active"
+    cursor.fetch_arrow_table()
+
+    # This should NOT raise:
+    # RuntimeError: Cannot close AdbcConnection with open AdbcStatement
+    conn.close()
+
+    # Verify cursor is also closed
+    assert cursor._closed
+
+
+@pytest.mark.sqlite
+def test_close_connection_with_multiple_open_cursors():
+    """
+    Test that closing a connection closes all open cursors.
+
+    This test intentionally avoids context managers because the bug only
+    manifests when users manually call close() without first closing cursors.
+    """
+    conn = dbapi.connect(driver="adbc_driver_sqlite")
+    cursor1 = conn.cursor()
+    cursor2 = conn.cursor()
+    cursor3 = conn.cursor()
+
+    cursor1.execute("SELECT 1")
+    cursor2.execute("SELECT 2")
+    # cursor3 is not executed
+
+    # This should close all cursors
+    conn.close()
+
+    assert cursor1._closed
+    assert cursor2._closed
+    assert cursor3._closed
+
+
+@pytest.mark.sqlite
+def test_close_connection_cursor_already_closed():
+    """
+    Test that closing a connection works even if some cursors are already closed.
+
+    This test intentionally avoids context managers because the bug only
+    manifests when users manually call close() without first closing cursors.
+    """
+    conn = dbapi.connect(driver="adbc_driver_sqlite")
+    cursor1 = conn.cursor()
+    cursor2 = conn.cursor()
+
+    cursor1.execute("SELECT 1")
+    cursor1.close()  # Manually close cursor1
+
+    cursor2.execute("SELECT 2")
+    # cursor2 is still open
+
+    # This should work without issues
+    conn.close()
+
+    assert cursor1._closed
+    assert cursor2._closed
+
+
+@pytest.mark.sqlite
+def test_close_connection_via_context_manager_with_open_cursors():
+    """
+    Test that exiting a connection context manager closes open cursors.
+
+    This test uses a context manager for the connection but intentionally
+    avoids context managers for cursors to verify that Connection.__exit__
+    properly closes any open cursors.
+    """
+    with dbapi.connect(driver="adbc_driver_sqlite") as conn:
+        cursor1 = conn.cursor()
+        cursor2 = conn.cursor()
+
+        cursor1.execute("SELECT 1")
+        cursor2.execute("SELECT 2")
+
+        # Cursors are open at this point
+        assert not cursor1._closed
+        assert not cursor2._closed
+
+    # After exiting the context manager, cursors should be closed
+    assert cursor1._closed
+    assert cursor2._closed
+
+
+@pytest.mark.sqlite
+def test_close_connection_suppresses_cursor_close_error():
+    """
+    Test that closing a connection suppresses exceptions from cursor.close().
+
+    When a cursor's close() method raises an exception, the connection should
+    still close successfully without propagating the error, but should emit
+    a ResourceWarning.
+    """
+    from unittest.mock import MagicMock
+
+    conn = dbapi.connect(driver="adbc_driver_sqlite")
+    # Create a real cursor so we have something legitimate in _cursors
+    real_cursor = conn.cursor()
+    real_cursor.execute("SELECT 1")
+
+    # Create a mock cursor that raises on close
+    mock_cursor = MagicMock()
+    mock_cursor.close.side_effect = RuntimeError("Simulated cursor close failure")
+
+    # Add the mock cursor to the connection's cursor set
+    conn._cursors.add(mock_cursor)
+
+    # This should NOT raise despite the mock cursor raising on close,
+    # but should emit a ResourceWarning
+    with pytest.warns(ResourceWarning, match="Failed to close cursor"):
+        conn.close()
+
+    # Verify the connection is closed
+    assert conn._closed
+
+    # Verify the mock cursor's close was called
+    mock_cursor.close.assert_called_once()
+
+    # Verify the real cursor is also closed
+    assert real_cursor._closed
 
 
 @pytest.mark.sqlite

@@ -238,10 +238,10 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadReal) {
   ASSERT_TRUE(ArrowBitGet(validity, 3));
   ASSERT_FALSE(ArrowBitGet(validity, 4));
 
-  ASSERT_FLOAT_EQ(data_buffer[0], -123.456);
+  ASSERT_FLOAT_EQ(data_buffer[0], -123.456f);
   ASSERT_EQ(data_buffer[1], -1);
   ASSERT_EQ(data_buffer[2], 1);
-  ASSERT_FLOAT_EQ(data_buffer[3], 123.456);
+  ASSERT_FLOAT_EQ(data_buffer[3], 123.456f);
   ASSERT_EQ(data_buffer[4], 0);
 }
 

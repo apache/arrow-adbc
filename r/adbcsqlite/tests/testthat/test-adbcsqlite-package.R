@@ -99,6 +99,24 @@ test_that("read/write/execute SQL work with sqlite connections", {
   adbcdrivermanager::adbc_database_release(db)
 })
 
+test_that("write_adbc() supports catalog_name", {
+  db <- adbc_database_init(adbcsqlite())
+  con <- adbc_connection_init(db)
+  on.exit({
+    adbcdrivermanager::adbc_connection_release(con)
+    adbcdrivermanager::adbc_database_release(db)
+  })
+
+  df <- data.frame(x = as.double(1:3))
+  expect_identical(
+    adbcdrivermanager::write_adbc(df, con, "df_catalog", catalog_name = "main", mode = "replace"),
+    df
+  )
+
+  stream <- adbcdrivermanager::read_adbc(con, "SELECT * from main.df_catalog")
+  expect_identical(as.data.frame(stream), df)
+})
+
 test_that("write_adbc() with temporary = TRUE works with sqlite databases", {
   skip_if_not(packageVersion("adbcdrivermanager") >= "0.6.0.9000")
 

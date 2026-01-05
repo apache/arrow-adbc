@@ -17,6 +17,7 @@ adbcpostgresql()
   connection,
   ...,
   adbc.ingest.target_table = NULL,
+  adbc.ingest.target_db_schema = NULL,
   adbc.ingest.mode = NULL
 )
 }
@@ -37,6 +38,8 @@ autocommit behaviour.}
 \item{connection}{An \link[adbcdrivermanager:adbc_connection_init]{adbc_connection}}
 
 \item{adbc.ingest.target_table}{The name of the target table for a bulk insert.}
+
+\item{adbc.ingest.target_db_schema}{The schema of the table for a bulk insert.}
 
 \item{adbc.ingest.mode}{Whether to create (the default) or append.}
 }

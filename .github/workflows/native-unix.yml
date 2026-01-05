@@ -81,7 +81,7 @@ jobs:
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
       CXXFLAGS: "-D_LIBCPP_DISABLE_AVAILABILITY"
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -93,7 +93,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
@@ -141,7 +141,7 @@ jobs:
           cd
           tar czf ~/local.tgz local
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: driver-manager-${{ matrix.os }}
           retention-days: 3
@@ -162,7 +162,7 @@ jobs:
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
       CXXFLAGS: "-D_LIBCPP_DISABLE_AVAILABILITY"
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -171,7 +171,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
@@ -219,7 +219,7 @@ jobs:
       matrix:
         os: ["ubuntu-latest"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -282,7 +282,7 @@ jobs:
     name: "clang-tidy"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -291,7 +291,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
@@ -328,7 +328,7 @@ jobs:
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
       CXXFLAGS: "-D_LIBCPP_DISABLE_AVAILABILITY"
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -337,7 +337,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
@@ -357,7 +357,7 @@ jobs:
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
 
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         with:
           name: driver-manager-${{ matrix.os }}
           path: "~"
@@ -400,7 +400,7 @@ jobs:
       contents: 'read'
       id-token: 'write'
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -454,7 +454,7 @@ jobs:
       contents: 'read'
       id-token: 'write'
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -470,7 +470,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
@@ -495,7 +495,7 @@ jobs:
           cache: true
           cache-dependency-path: go/adbc/go.sum
 
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         with:
           name: driver-manager-${{ matrix.os }}
           path: "~"
@@ -534,7 +534,7 @@ jobs:
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
       CXXFLAGS: "-D_LIBCPP_DISABLE_AVAILABILITY"
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -546,7 +546,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
@@ -572,7 +572,7 @@ jobs:
           cache: true
           cache-dependency-path: go/adbc/go.sum
 
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         with:
           name: driver-manager-${{ matrix.os }}
           path: "~"
@@ -654,7 +654,7 @@ jobs:
         os: ["ubuntu-latest"]
         python: ["3.14"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -663,7 +663,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
@@ -683,7 +683,7 @@ jobs:
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
 
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         with:
           name: driver-manager-${{ matrix.os }}
           path: "~"
@@ -705,7 +705,7 @@ jobs:
         run: |
           ./ci/scripts/docs_build.sh "$(pwd)"
       - name: Archive docs
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: docs
           retention-days: 2
@@ -728,7 +728,7 @@ jobs:
             docs/source/python/recipe/*.py
       - name: Test Recipes (Python)
         run: |
-          docker compose up --detach --wait dremio flightsql-sqlite-test postgres-test oauth-server flightsql-test
+          docker compose up --detach --wait dremio flightsql-sqlite-test postgres-test gizmosql-test oauth-server flightsql-test
           docker compose run --rm dremio-init
           export ADBC_CPP_RECIPE_BIN=~/local/bin
           # Needed for the combined C++/Python driver example

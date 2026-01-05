@@ -73,6 +73,23 @@ services:
     command: "bash -c 'git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_static_test.sh /adbc /adbc/build/static-test/build /adbc/build/static-test/local'"
 
 
+  ############################### C/C++: musl (Alpine) ##########################
+
+  cpp-musl:
+    image: ${REPO}:${ARCH}-cpp-musl-adbc
+    build:
+      context: .
+      dockerfile: ci/docker/cpp-musl.alpine.dockerfile
+    volumes:
+      - .:/adbc:delegated
+    environment:
+      ADBC_CMAKE_ARGS: "-DADBC_BUILD_WARNING_LEVEL=CHECKIN -DSIZEOF_TIME_T=8"
+      ADBC_USE_ASAN: "0"
+      ADBC_USE_UBSAN: "0"
+    command: "bash -c 'git config --global --add safe.directory /adbc && \
+      env ADBC_USE_ASAN=0 ADBC_USE_UBSAN=0 BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 BUILD_DRIVER_POSTGRESQL=0 BUILD_DRIVER_SQLITE=1 BUILD_DRIVER_FLIGHTSQL=0 BUILD_DRIVER_SNOWFLAKE=0 BUILD_DRIVER_BIGQUERY=0 /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build/musl && \
+      env ADBC_USE_ASAN=0 ADBC_USE_UBSAN=0 BUILD_ALL=0 BUILD_DRIVER_MANAGER=0 BUILD_DRIVER_POSTGRESQL=0 BUILD_DRIVER_SQLITE=1 BUILD_DRIVER_FLIGHTSQL=0 BUILD_DRIVER_SNOWFLAKE=0 BUILD_DRIVER_BIGQUERY=0 /adbc/ci/scripts/cpp_test.sh /adbc/build/musl'"
+
   ############################ Documentation ###################################
 
   docs:
@@ -350,6 +367,27 @@ services:
     ports:
       - "50051:50051"
       - "8090:8090"
+
+  gizmosql-test:
+    container_name: adbc_gizmosql_test
+    image: gizmodata/gizmosql:latest-slim
+    init: true
+    tty: true
+    environment:
+      GIZMOSQL_USERNAME: ${ADBC_GIZMOSQL_USER:-adbc_test_user}
+      GIZMOSQL_PASSWORD: ${ADBC_GIZMOSQL_PASSWORD:-adbc_test_password}
+      TLS_ENABLED: "0"
+      PRINT_QUERIES: "1"
+      DATABASE_FILENAME: "adbc_test.db"
+      GIZMOSQL_LOG_LEVEL: "DEBUG"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/31337'"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    ports:
+      - "31337:31337"
 
   ################################ Verification ################################
 

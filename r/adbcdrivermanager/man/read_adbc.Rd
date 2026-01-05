@@ -16,7 +16,9 @@ write_adbc(
   target_table,
   ...,
   mode = c("default", "create", "append", "replace", "create_append"),
-  temporary = FALSE
+  temporary = FALSE,
+  catalog_name = NULL,
+  db_schema_name = NULL
 )
 }
 \arguments{
@@ -41,6 +43,10 @@ is not compatible or append otherwise), or \code{"default"} (use the \code{adbc.
 argument of \code{\link[=adbc_statement_init]{adbc_statement_init()}}). The default is \code{"default"}.}
 
 \item{temporary}{Use TRUE to create a table as a temporary table.}
+
+\item{catalog_name}{If not \code{NULL}, the catalog to create/locate the table in.}
+
+\item{db_schema_name}{If not \code{NULL}, the schema to create/locate the table in.}
 }
 \value{
 \itemize{

@@ -63,6 +63,18 @@ if(ADBC_BUILD_TESTS)
                 adbc_validation
                 nanoarrow
                 ${TEST_LINK_LIBS})
+
+  if(ADBC_TEST_LINKAGE STREQUAL "shared")
+    # The Go build is not copying the DLL to the test location, causing the test to fail on Windows when building with vcpkg.
+    if(WIN32)
+      add_custom_command(TARGET adbc-driver-snowflake-test
+                         POST_BUILD
+                         COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                                 "$<TARGET_FILE:adbc_driver_snowflake_shared>"
+                                 "$<TARGET_FILE_DIR:adbc-driver-snowflake-test>")
+    endif()
+  endif()
+
   target_compile_features(adbc-driver-snowflake-test PRIVATE cxx_std_17)
   target_include_directories(adbc-driver-snowflake-test SYSTEM
                              PRIVATE ${REPOSITORY_ROOT}/c/ ${REPOSITORY_ROOT}/c/include/

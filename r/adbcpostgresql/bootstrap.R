@@ -15,5 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
+BOOTSTRAP_SCRIPT <- file.path("..", "tools", "bootstrap-c.R")
+
 Sys.setenv("ADBC_R_BOOTSTRAP_EXCLUDE" = "vendor/sqlite3")
-source("../tools/bootstrap-c.R")
+if (file.exists(BOOTSTRAP_SCRIPT)) {
+  source(BOOTSTRAP_SCRIPT)
+}

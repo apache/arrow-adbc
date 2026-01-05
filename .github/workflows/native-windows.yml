@@ -64,7 +64,7 @@ jobs:
       matrix:
         os: ["windows-latest"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -74,7 +74,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         env:
           # Increment this to reset cache manually
           CACHE_NUMBER: 0
@@ -103,7 +103,7 @@ jobs:
         run: |
           .\ci\scripts\cpp_build.ps1 $pwd ${{ github.workspace }}\build
 
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: driver-manager-${{ matrix.os }}
           retention-days: 3
@@ -120,7 +120,7 @@ jobs:
       matrix:
         os: ["windows-latest"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -130,7 +130,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         env:
           # Increment this to reset cache manually
           CACHE_NUMBER: 0
@@ -188,7 +188,7 @@ jobs:
       matrix:
         os: ["windows-latest"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -202,7 +202,7 @@ jobs:
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         env:
           # Increment this to reset cache manually
           CACHE_NUMBER: 0
@@ -224,7 +224,7 @@ jobs:
           cache: true
           cache-dependency-path: go/adbc/go.sum
 
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         with:
           name: driver-manager-${{ matrix.os }}
           path: ${{ github.workspace }}/build
@@ -256,23 +256,67 @@ jobs:
         os: ["windows-latest"]
         python: ["3.10", "3.14"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Set Winlibs version
+        id: winlibs-version
+        shell: pwsh
+        run: |
+          $winlibs_asset_name = "winlibs-x86_64-posix-seh-gcc-15.2.0-mingw-w64ucrt-13.0.0-r4.7z"
+          echo "winlibs_asset_name=$winlibs_asset_name" >> $env:GITHUB_OUTPUT
+
+      - name: Cache Winlibs
+        id: cache-winlibs
+        uses: actions/cache@v5
+        with:
+          path: ${{ runner.temp }}/winlibs
+          key: winlibs-${{ steps.winlibs-version.outputs.winlibs_asset_name }}
+
+      - name: Download and setup Winlibs
+        if: steps.cache-winlibs.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          $base_url = "https://github.com/brechtsanders/winlibs_mingw/releases/download/15.2.0posix-13.0.0-ucrt-r4/"
+          $asset_name = "${{ steps.winlibs-version.outputs.winlibs_asset_name }}"
+          $hash_expected = "148175f2ba3c4ab0bfd93116b75f7ff172e9e0d06ca8680c8a98c375ec45abb5"
+          $url = $base_url + $asset_name
+
+          Write-Host "Downloading $asset_name..."
+          Invoke-WebRequest -Uri $url -OutFile $asset_name -UseBasicParsing
+
+          Write-Host "Verifying hash..."
+          $hash_actual = (Get-FileHash -Path $asset_name -Algorithm SHA256).Hash.ToLower()
+          if ($hash_actual -ne $hash_expected) {
+            throw "SHA256 mismatch! Expected: $hash_expected, Got: $hash_actual"
+          }
+
+          Write-Host "Extracting..."
+          7z x $asset_name -o"${{ runner.temp }}/winlibs" -y
+          Remove-Item $asset_name -Force
+
+      - name: Add Winlibs to PATH
+        shell: pwsh
+        run: |
+          $winlibs_bin = Join-Path "${{ runner.temp }}" "winlibs\mingw64\bin"
+          $env:PATH="$winlibs_bin;${env:PATH}"
+          echo "PATH=$env:PATH" >> $env:GITHUB_ENV
+
       - name: Get Date
         id: get-date
         shell: bash
         run: |
           echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
       - name: Cache Conda
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         env:
           # Increment this to reset cache manually
           CACHE_NUMBER: 0
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
+
       - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
         with:
           miniforge-version: latest
@@ -284,7 +328,7 @@ jobs:
             --file ci\conda_env_cpp.txt `
             --file ci\conda_env_python.txt
 
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         with:
           name: driver-manager-${{ matrix.os }}
           path: ${{ github.workspace }}/build
@@ -319,3 +363,58 @@ jobs:
           BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
         run: .\ci\scripts\python_test.ps1 $pwd $pwd\build
+
+  # ------------------------------------------------------------
+  # MSVC/vcpkg build (no Conda)
+  # ------------------------------------------------------------
+  drivers-vcpkg:
+    name: "C/C++ (vcpkg/${{ matrix.os }}/${{ matrix.config }})"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: ["windows-latest"]
+        arch: ["x64"]
+        config: ["debug", "release"]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Add msbuild to PATH
+        uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # v2
+      - name: Setup MSYS2 tools
+        run: |
+          # msys64 is pre-installed on windows but not added to path
+          $env:PATH = "C:\msys64\mingw64\bin;C:\msys64\usr\bin\;C:\msys64\ucrt64\bin;$env:PATH"
+          echo "PATH=$env:PATH" >> $env:GITHUB_ENV
+
+          # Needed for gendef tool in GoUtils.cmake
+          pacman --noconfirm -S mingw-w64-x86_64-tools
+      # TODO(https://github.com/apache/arrow-adbc/issues/3825)
+      - name: Clone vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg.git
+          cd vcpkg
+          git checkout ef7dbf94b9198bc58f45951adcf1f041fcbc5ea0
+          .\bootstrap-vcpkg.bat
+      - name: Install vcpkg dependencies
+        working-directory: c
+        env:
+          VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+        run: |
+          ${{ github.workspace }}/vcpkg/vcpkg.exe install libpq sqlite3 --triplet ${{ matrix.arch }}-windows
+      - name: Build and Install (No ASan)
+        env:
+          CMAKE_BUILD_TYPE: ${{ matrix.config }}
+          VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+        run: |
+          cmake .\c\ --preset windows-${{ matrix.config }} -DCMAKE_VERBOSE_MAKEFILE=ON
+
+          cmake --build .\build\${{ matrix.config }} --target install --config ${{ matrix.config }} --parallel
+      - name: Test
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_MANAGER: "1"
+          BUILD_DRIVER_MANAGER_USER_CONFIG_TEST: "1"
+          BUILD_DRIVER_SQLITE: "1"
+        run: .\ci\scripts\cpp_test.ps1 $pwd\build\${{ matrix.config }} $pwd\local\${{ matrix.config }}

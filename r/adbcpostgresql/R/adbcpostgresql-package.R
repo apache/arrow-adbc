@@ -34,6 +34,7 @@ NULL
 #' @param adbc.connection.autocommit Use FALSE to disable the default
 #'   autocommit behaviour.
 #' @param adbc.ingest.target_table The name of the target table for a bulk insert.
+#' @param adbc.ingest.target_db_schema The schema of the table for a bulk insert.
 #' @param adbc.ingest.mode Whether to create (the default) or append.
 #'
 #' @return An [adbcdrivermanager::adbc_driver()]
@@ -78,10 +79,12 @@ adbc_connection_init.adbcpostgresql_database <- function(database, ...,
 #' @export
 adbc_statement_init.adbcpostgresql_connection <- function(connection, ...,
                                                       adbc.ingest.target_table = NULL,
+                                                      adbc.ingest.target_db_schema = NULL,
                                                       adbc.ingest.mode = NULL) {
   options <- list(
     ...,
     adbc.ingest.target_table = adbc.ingest.target_table,
+    adbc.ingest.target_db_schema = adbc.ingest.target_db_schema,
     adbc.ingest.mode = adbc.ingest.mode
   )
 

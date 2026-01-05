@@ -52,7 +52,7 @@ jobs:
       matrix:
         os: ["macos-15-intel", "macos-latest", "ubuntu-latest"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -82,7 +82,7 @@ jobs:
       matrix:
         os: ["macos-15-intel", "macos-latest", "ubuntu-latest", "windows-latest"]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -97,6 +97,24 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
+      - name: Clean up disk space
+        if: runner.os == 'Linux'
+        run: |
+          # These tools use a lot of disk space, free up some space
+          # https://github.com/actions/runner-images/issues/2840
+          sudo rm -rf \
+            "$AGENT_TOOLSDIRECTORY" \
+            /opt/google/chrome \
+            /opt/microsoft/msedge \
+            /opt/microsoft/powershell \
+            /opt/pipx \
+            /usr/local/julia* \
+            /usr/local/lib/android \
+            /usr/local/lib/node_modules \
+            /usr/local/share/chromium \
+            /usr/local/share/powershell \
+            /usr/share/swift
+          df -h /
       - name: Verify
         if: matrix.os != 'windows-latest'
         env:
@@ -107,9 +125,6 @@ jobs:
           USE_CONDA: "1"
           VERBOSE: "1"
         run: |
-          # Rust uses a lot of disk space, free up some space
-          # https://github.com/actions/runner-images/issues/2840
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
           # Required for macOS
           export CXXFLAGS="${CXXFLAGS} -D_LIBCPP_DISABLE_AVAILABILITY"
           echo "CXXFLAGS=${CXXFLAGS}"

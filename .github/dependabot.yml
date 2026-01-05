@@ -23,6 +23,10 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: "chore: "
+    groups:
+      actions:
+        patterns:
+          - "*"
   - package-ecosystem: "gomod"
     directory: "/go/adbc/"
     schedule:
