@@ -1277,11 +1277,33 @@ shared = "adbc_driver_sqlite")";
     ASSERT_THAT(AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
                     &database.value, search_path.data(), &error),
                 IsOkStatus(&error));
-    ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
-                IsStatus(ADBC_STATUS_OK, &error));
+    ASSERT_THAT(AdbcDatabaseInit(&database.value, &error), IsOkStatus(&error));
   }
 
   ASSERT_TRUE(std::filesystem::remove(filepath));
+}
+
+TEST_F(DriverManifest, ControlCodes) {
+  const std::string uri = "\026sqlite:file::memory:";
+  for (const auto& driver_option : {"driver", "uri"}) {
+    SCOPED_TRACE(driver_option);
+    SCOPED_TRACE(uri);
+    adbc_validation::Handle<struct AdbcDatabase> database;
+    ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+    ASSERT_THAT(
+        AdbcDatabaseSetOption(&database.value, driver_option, uri.c_str(), &error),
+        IsOkStatus(&error));
+    std::string search_path = temp_dir.string();
+    ASSERT_THAT(AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
+                    &database.value, search_path.data(), &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+                IsStatus(ADBC_STATUS_NOT_FOUND, &error));
+    ASSERT_THAT(
+        error.message,
+        ::testing::HasSubstr(
+            "Note: driver name may have non-printable characters: `\\x16sqlite`"));
+  }
 }
 
 }  // namespace adbc
