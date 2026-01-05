@@ -85,3 +85,55 @@ def test_dbapi():
         autocommit=True,
     ) as conn:
         yield conn
+
+
+@pytest.fixture(scope="session")
+def gizmosql_uri() -> str:
+    uri = os.environ.get("ADBC_GIZMOSQL_URI")
+    if not uri:
+        pytest.skip("Set ADBC_GIZMOSQL_URI to run tests")
+    return uri
+
+
+@pytest.fixture(scope="session")
+def gizmosql_user() -> str:
+    username = os.environ.get("ADBC_GIZMOSQL_USER")
+    if not username:
+        pytest.skip("Set ADBC_GIZMOSQL_USER to run tests")
+    return username
+
+
+@pytest.fixture(scope="session")
+def gizmosql_pass() -> str:
+    password = os.environ.get("ADBC_GIZMOSQL_PASSWORD")
+    if not password:
+        pytest.skip("Set ADBC_GIZMOSQL_PASSWORD to run tests")
+    return password
+
+
+@pytest.fixture
+def gizmosql(gizmosql_uri, gizmosql_user, gizmosql_pass):
+    """Create a low-level ADBC connection to the GizmoSQL server."""
+    with adbc_driver_flightsql.connect(
+        gizmosql_uri,
+        db_kwargs={
+            adbc_driver_manager.DatabaseOptions.USERNAME.value: gizmosql_user,
+            adbc_driver_manager.DatabaseOptions.PASSWORD.value: gizmosql_pass,
+        },
+    ) as db:
+        with adbc_driver_manager.AdbcConnection(db) as conn:
+            yield conn
+
+
+@pytest.fixture
+def gizmosql_dbapi(gizmosql_uri, gizmosql_user, gizmosql_pass):
+    """Create a DBAPI (PEP 249) connection to the GizmoSQL server."""
+    with adbc_driver_flightsql.dbapi.connect(
+        gizmosql_uri,
+        db_kwargs={
+            adbc_driver_manager.DatabaseOptions.USERNAME.value: gizmosql_user,
+            adbc_driver_manager.DatabaseOptions.PASSWORD.value: gizmosql_pass,
+        },
+        autocommit=True,
+    ) as conn:
+        yield conn
