@@ -1668,7 +1668,7 @@ AdbcStatusCode AdbcDatabaseGetOptionBytes(struct AdbcDatabase* database, const c
   }
   const auto* args = reinterpret_cast<const TempDatabase*>(database->private_data);
   const auto it = args->bytes_options.find(key);
-  if (it == args->options.end()) {
+  if (it == args->bytes_options.end()) {
     SetError(error, std::string("Option not found: ") + key);
     return ADBC_STATUS_NOT_FOUND;
   }
@@ -2048,13 +2048,13 @@ AdbcStatusCode AdbcConnectionGetOptionBytes(struct AdbcConnection* connection,
     // Init not yet called, get the saved option
     const auto* args = reinterpret_cast<const TempConnection*>(connection->private_data);
     const auto it = args->bytes_options.find(key);
-    if (it == args->options.end()) {
+    if (it == args->bytes_options.end()) {
       return ADBC_STATUS_NOT_FOUND;
     }
-    if (*length >= it->second.size() + 1) {
-      std::memcpy(value, it->second.data(), it->second.size() + 1);
+    if (*length >= it->second.size()) {
+      std::memcpy(value, it->second.data(), it->second.size());
     }
-    *length = it->second.size() + 1;
+    *length = it->second.size();
     return ADBC_STATUS_OK;
   }
   INIT_ERROR(error, connection);
