@@ -72,13 +72,15 @@ static const char* kSchemaQueryAll =
 // Parameterized on schema_name, relkind
 // Note that when binding relkind as a string it must look like {"r", "v", ...}
 // (i.e., double quotes). Binding a binary list<string> element also works.
+// Don't use pg_table_is_visible(): it is search_path-dependent and would hide tables
+// in non-current schemas even when GetObjects is called with a schema filter.
 static const char* kTablesQueryAll =
     "SELECT c.relname, CASE c.relkind WHEN 'r' THEN 'table' WHEN 'v' THEN 'view' "
     "WHEN 'm' THEN 'materialized view' WHEN 't' THEN 'TOAST table' "
     "WHEN 'f' THEN 'foreign table' WHEN 'p' THEN 'partitioned table' END "
     "AS reltype FROM pg_catalog.pg_class c "
     "LEFT JOIN pg_catalog.pg_namespace n ON n.oid = c.relnamespace "
-    "WHERE pg_catalog.pg_table_is_visible(c.oid) AND n.nspname = $1 AND c.relkind = "
+    "WHERE n.nspname = $1 AND c.relkind = "
     "ANY($2)";
 
 // Parameterized on schema_name, table_name

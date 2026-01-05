@@ -53,6 +53,42 @@ def test_conn_change_db_schema(postgres: dbapi.Connection) -> None:
     assert postgres.adbc_current_db_schema == "dbapischema"
 
 
+def test_get_objects_schema_filter_outside_search_path(
+    postgres: dbapi.Connection,
+) -> None:
+    schema_name = "dbapi_get_objects_test"
+    table_name = "schema_filter_table"
+
+    # Regression test: adbc_get_objects(db_schema_filter=...) should not depend on the
+    # connection's current schema/search_path.
+    assert postgres.adbc_current_db_schema == "public"
+
+    with postgres.cursor() as cur:
+        cur.execute(f'CREATE SCHEMA IF NOT EXISTS "{schema_name}"')
+        cur.execute(f'DROP TABLE IF EXISTS "{schema_name}"."{table_name}"')
+        cur.execute(f'CREATE TABLE "{schema_name}"."{table_name}" (ints INT)')
+    postgres.commit()
+
+    assert postgres.adbc_current_db_schema == "public"
+
+    metadata = (
+        postgres.adbc_get_objects(
+            depth="tables",
+            db_schema_filter=schema_name,
+            table_name_filter=table_name,
+        )
+        .read_all()
+        .to_pylist()
+    )
+    assert len(metadata) == 1
+    schemas = metadata[0]["catalog_db_schemas"]
+    assert len(schemas) == 1
+    assert schemas[0]["db_schema_name"] == schema_name
+    tables = schemas[0]["db_schema_tables"]
+    assert len(tables) == 1
+    assert tables[0]["table_name"] == table_name
+
+
 def test_conn_get_info(postgres: dbapi.Connection) -> None:
     info = postgres.adbc_get_info()
     assert info["driver_name"] == "ADBC PostgreSQL Driver"
