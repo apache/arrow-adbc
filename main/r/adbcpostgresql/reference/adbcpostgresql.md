@@ -18,6 +18,7 @@ adbc_statement_init(
   connection,
   ...,
   adbc.ingest.target_table = NULL,
+  adbc.ingest.target_db_schema = NULL,
   adbc.ingest.mode = NULL
 )
 ```
@@ -56,6 +57,10 @@ adbc_statement_init(
 - adbc.ingest.target_table:
 
   The name of the target table for a bulk insert.
+
+- adbc.ingest.target_db_schema:
+
+  The schema of the table for a bulk insert.
 
 - adbc.ingest.mode:
 

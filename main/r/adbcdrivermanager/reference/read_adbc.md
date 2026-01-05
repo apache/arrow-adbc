@@ -17,7 +17,9 @@ write_adbc(
   target_table,
   ...,
   mode = c("default", "create", "append", "replace", "create_append"),
-  temporary = FALSE
+  temporary = FALSE,
+  catalog_name = NULL,
+  db_schema_name = NULL
 )
 ```
 
@@ -64,6 +66,14 @@ write_adbc(
 - temporary:
 
   Use TRUE to create a table as a temporary table.
+
+- catalog_name:
+
+  If not `NULL`, the catalog to create/locate the table in.
+
+- db_schema_name:
+
+  If not `NULL`, the schema to create/locate the table in.
 
 ## Value
 

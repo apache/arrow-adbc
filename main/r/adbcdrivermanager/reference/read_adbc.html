@@ -64,7 +64,9 @@ implementations).</p>
 <span>  <span class="va">target_table</span>,</span>
 <span>  <span class="va">...</span>,</span>
 <span>  mode <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"default"</span>, <span class="st">"create"</span>, <span class="st">"append"</span>, <span class="st">"replace"</span>, <span class="st">"create_append"</span><span class="op">)</span>,</span>
-<span>  temporary <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  temporary <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  catalog_name <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  db_schema_name <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -108,6 +110,14 @@ argument of <code><a href="adbc_statement_init.html">adbc_statement_init()</a></
 
 <dt id="arg-temporary">temporary<a class="anchor" aria-label="anchor" href="#arg-temporary"></a></dt>
 <dd><p>Use TRUE to create a table as a temporary table.</p></dd>
+
+
+<dt id="arg-catalog-name">catalog_name<a class="anchor" aria-label="anchor" href="#arg-catalog-name"></a></dt>
+<dd><p>If not <code>NULL</code>, the catalog to create/locate the table in.</p></dd>
+
+
+<dt id="arg-db-schema-name">db_schema_name<a class="anchor" aria-label="anchor" href="#arg-db-schema-name"></a></dt>
+<dd><p>If not <code>NULL</code>, the schema to create/locate the table in.</p></dd>
 
 </dl></div>
     <div class="section level2">

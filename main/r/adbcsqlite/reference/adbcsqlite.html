@@ -61,6 +61,7 @@
 <span>  <span class="va">connection</span>,</span>
 <span>  <span class="va">...</span>,</span>
 <span>  adbc.ingest.target_table <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  adbc.ingest.target_catalog <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  adbc.ingest.mode <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  adbc.sqlite.query.batch_rows <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -98,6 +99,10 @@ autocommit behaviour.</p></dd>
 
 <dt id="arg-adbc-ingest-target-table">adbc.ingest.target_table<a class="anchor" aria-label="anchor" href="#arg-adbc-ingest-target-table"></a></dt>
 <dd><p>The name of the target table for a bulk insert.</p></dd>
+
+
+<dt id="arg-adbc-ingest-target-catalog">adbc.ingest.target_catalog<a class="anchor" aria-label="anchor" href="#arg-adbc-ingest-target-catalog"></a></dt>
+<dd><p>The catalog of the table for a bulk insert.</p></dd>
 
 
 <dt id="arg-adbc-ingest-mode">adbc.ingest.mode<a class="anchor" aria-label="anchor" href="#arg-adbc-ingest-mode"></a></dt>
