@@ -746,43 +746,62 @@ value.</p>
 <section id="oauth-2-0-options">
 <h3>OAuth 2.0 Options<a class="headerlink" href="#oauth-2-0-options" title="Link to this heading">¶</a></h3>
 <p id="oauth-configurations">Supported configurations to obtain tokens using OAuth 2.0 authentication flows.</p>
-<dl class="simple">
+<dl>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.oauth.flow</span></code></dt><dd><p>Specifies the OAuth 2.0 flow type to use. Possible values: <code class="docutils literal notranslate"><span class="pre">client_credentials</span></code>, <code class="docutils literal notranslate"><span class="pre">token_exchange</span></code></p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.DatabaseOptions.OAUTH_FLOW" title="adbc_driver_flightsql.DatabaseOptions.OAUTH_FLOW"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.DatabaseOptions.OAUTH_FLOW</span></code></a>,
+<a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.OAuthFlowType" title="adbc_driver_flightsql.OAuthFlowType"><code class="xref py py-class docutils literal notranslate"><span class="pre">adbc_driver_flightsql.OAuthFlowType</span></code></a></p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.oauth.client_id</span></code></dt><dd><p>Unique identifier issued to the client application by the authorization server</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.DatabaseOptions.OAUTH_CLIENT_ID" title="adbc_driver_flightsql.DatabaseOptions.OAUTH_CLIENT_ID"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.DatabaseOptions.OAUTH_CLIENT_ID</span></code></a></p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.oauth.client_secret</span></code></dt><dd><p>Secret associated to the client_id. Used to authenticate the client application to the authorization server</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.DatabaseOptions.OAUTH_CLIENT_SECRET" title="adbc_driver_flightsql.DatabaseOptions.OAUTH_CLIENT_SECRET"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.DatabaseOptions.OAUTH_CLIENT_SECRET</span></code></a></p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.oauth.token_uri</span></code></dt><dd><p>The endpoint URL where the client application requests tokens from the authorization server</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.DatabaseOptions.OAUTH_TOKEN_URI" title="adbc_driver_flightsql.DatabaseOptions.OAUTH_TOKEN_URI"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.DatabaseOptions.OAUTH_TOKEN_URI</span></code></a></p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.oauth.scope</span></code></dt><dd><p>Space-separated list of permissions that the client is requesting access to (e.g <code class="docutils literal notranslate"><span class="pre">&quot;read.all</span> <span class="pre">offline_access&quot;</span></code>)</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.DatabaseOptions.OAUTH_SCOPE" title="adbc_driver_flightsql.DatabaseOptions.OAUTH_SCOPE"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.DatabaseOptions.OAUTH_SCOPE</span></code></a></p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.oauth.exchange.subject_token</span></code></dt><dd><p>The security token that the client application wants to exchange</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_SUBJECT_TOKEN" title="adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_SUBJECT_TOKEN"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_SUBJECT_TOKEN</span></code></a></p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.oauth.exchange.subject_token_type</span></code></dt><dd><p>Identifier for the type of the subject token.
 Check list below for supported token types.</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_SUBJECT_TOKEN_TYPE" title="adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_SUBJECT_TOKEN_TYPE"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_SUBJECT_TOKEN_TYPE</span></code></a>,
+<a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.OAuthTokenType" title="adbc_driver_flightsql.OAuthTokenType"><code class="xref py py-class docutils literal notranslate"><span class="pre">adbc_driver_flightsql.OAuthTokenType</span></code></a></p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.oauth.exchange.actor_token</span></code></dt><dd><p>A security token that represents the identity of the acting party</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_ACTOR_TOKEN" title="adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_ACTOR_TOKEN"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_ACTOR_TOKEN</span></code></a></p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.oauth.exchange.actor_token_type</span></code></dt><dd><p>Identifier for the type of the actor token.
 Check list below for supported token types.</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_ACTOR_TOKEN_TYPE" title="adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_ACTOR_TOKEN_TYPE"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_ACTOR_TOKEN_TYPE</span></code></a>,
+<a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.OAuthTokenType" title="adbc_driver_flightsql.OAuthTokenType"><code class="xref py py-class docutils literal notranslate"><span class="pre">adbc_driver_flightsql.OAuthTokenType</span></code></a></p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.oauth.exchange.aud</span></code></dt><dd><p>The intended audience for the requested security token</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_AUD" title="adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_AUD"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_AUD</span></code></a></p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.oauth.exchange.resource</span></code></dt><dd><p>The resource server where the client intends to use the requested security token</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_RESOURCE" title="adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_RESOURCE"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_RESOURCE</span></code></a></p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.oauth.exchange.scope</span></code></dt><dd><p>Specific permissions requested for the new token</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_SCOPE" title="adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_SCOPE"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_SCOPE</span></code></a></p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.flight.sql.oauth.exchange.requested_token_type</span></code></dt><dd><p>The type of token the client wants to receive in exchange.
 Check list below for supported token types.</p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_REQUESTED_TOKEN_TYPE" title="adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_REQUESTED_TOKEN_TYPE"><code class="xref py py-attr docutils literal notranslate"><span class="pre">adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_REQUESTED_TOKEN_TYPE</span></code></a>,
+<a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.OAuthTokenType" title="adbc_driver_flightsql.OAuthTokenType"><code class="xref py py-class docutils literal notranslate"><span class="pre">adbc_driver_flightsql.OAuthTokenType</span></code></a></p>
 </dd>
-<dt>Supported token types:</dt><dd><ul class="simple">
+<dt>Supported token types:</dt><dd><ul>
 <li><p><code class="docutils literal notranslate"><span class="pre">urn:ietf:params:oauth:token-type:access_token</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">urn:ietf:params:oauth:token-type:refresh_token</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">urn:ietf:params:oauth:token-type:id_token</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">urn:ietf:params:oauth:token-type:saml1</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">urn:ietf:params:oauth:token-type:saml2</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">urn:ietf:params:oauth:token-type:jwt</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">urn:ietf:params:oauth:token-type:jwt</span></code></p>
+<p>Python: <a class="reference internal" href="../python/api/adbc_driver_flightsql.html#adbc_driver_flightsql.OAuthTokenType" title="adbc_driver_flightsql.OAuthTokenType"><code class="xref py py-class docutils literal notranslate"><span class="pre">adbc_driver_flightsql.OAuthTokenType</span></code></a></p>
+</li>
 </ul>
 </dd>
 </dl>

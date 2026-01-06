@@ -572,6 +572,121 @@ limit.</p>
 </pre></div>
 </div>
 </section>
+<section id="connect-with-oauth-2-0-client-credentials">
+<h2>Connect with OAuth 2.0 Client Credentials<a class="headerlink" href="#connect-with-oauth-2-0-client-credentials" title="Link to this heading">¶</a></h2>
+<p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/flightsql_oauth_client_credentials.py">flightsql_oauth_client_credentials.py</a></p>
+<p>The Flight SQL driver supports OAuth 2.0 authentication. This example shows
+how to connect using the Client Credentials flow (RFC 6749), which is
+suitable for machine-to-machine authentication without user interaction.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">24</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="linenos">25</span>
+<span class="linenos">26</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_flightsql.dbapi</span>
+<span class="linenos">27</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_flightsql</span><span class="w"> </span><span class="kn">import</span> <span class="n">DatabaseOptions</span><span class="p">,</span> <span class="n">OAuthFlowType</span>
+<span class="linenos">28</span>
+<span class="linenos">29</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_TEST_FLIGHTSQL_URI&quot;</span><span class="p">]</span>
+<span class="linenos">30</span><span class="n">token_uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_OAUTH_TOKEN_URI&quot;</span><span class="p">]</span>
+<span class="linenos">31</span><span class="n">client_id</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_OAUTH_CLIENT_ID&quot;</span><span class="p">]</span>
+<span class="linenos">32</span><span class="n">client_secret</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_OAUTH_CLIENT_SECRET&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>Connect using OAuth 2.0 Client Credentials flow.
+The driver will automatically obtain and refresh access tokens.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">37</span><span class="n">db_kwargs</span> <span class="o">=</span> <span class="p">{</span>
+<span class="linenos">38</span>    <span class="n">DatabaseOptions</span><span class="o">.</span><span class="n">OAUTH_FLOW</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="n">OAuthFlowType</span><span class="o">.</span><span class="n">CLIENT_CREDENTIALS</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+<span class="linenos">39</span>    <span class="n">DatabaseOptions</span><span class="o">.</span><span class="n">OAUTH_TOKEN_URI</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="n">token_uri</span><span class="p">,</span>
+<span class="linenos">40</span>    <span class="n">DatabaseOptions</span><span class="o">.</span><span class="n">OAUTH_CLIENT_ID</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="n">client_id</span><span class="p">,</span>
+<span class="linenos">41</span>    <span class="n">DatabaseOptions</span><span class="o">.</span><span class="n">OAUTH_CLIENT_SECRET</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="n">client_secret</span><span class="p">,</span>
+</pre></div>
+</div>
+<p>Optionally, request specific scopes</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">43</span>    <span class="c1"># DatabaseOptions.OAUTH_SCOPE.value: &quot;dremio.all&quot;,</span>
+<span class="linenos">44</span><span class="p">}</span>
+</pre></div>
+</div>
+<p>For testing with self-signed certificates, skip TLS verification.
+In production, you should provide proper TLS certificates.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">48</span><span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ADBC_OAUTH_SKIP_VERIFY&quot;</span><span class="p">,</span> <span class="s2">&quot;true&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;true&quot;</span><span class="p">):</span>
+<span class="linenos">49</span>    <span class="n">db_kwargs</span><span class="p">[</span><span class="n">DatabaseOptions</span><span class="o">.</span><span class="n">TLS_SKIP_VERIFY</span><span class="o">.</span><span class="n">value</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;true&quot;</span>
+<span class="linenos">50</span>
+<span class="linenos">51</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_flightsql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">,</span> <span class="n">db_kwargs</span><span class="o">=</span><span class="n">db_kwargs</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can then execute queries as usual.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">55</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">56</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT 1&quot;</span><span class="p">)</span>
+<span class="linenos">57</span>
+<span class="linenos">58</span>    <span class="n">result</span> <span class="o">=</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span>
+<span class="linenos">59</span>    <span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+<span class="linenos">60</span>
+<span class="linenos">61</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="connect-with-oauth-2-0-token-exchange">
+<h2>Connect with OAuth 2.0 Token Exchange<a class="headerlink" href="#connect-with-oauth-2-0-token-exchange" title="Link to this heading">¶</a></h2>
+<p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/flightsql_oauth_token_exchange.py">flightsql_oauth_token_exchange.py</a></p>
+<p>The Flight SQL driver supports OAuth 2.0 Token Exchange (RFC 8693). This
+allows exchanging an existing token (e.g., a JWT from an identity provider)
+for a new token that can be used to access the Flight SQL service.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">24</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="linenos">25</span>
+<span class="linenos">26</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_flightsql.dbapi</span>
+<span class="linenos">27</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_flightsql</span><span class="w"> </span><span class="kn">import</span> <span class="n">DatabaseOptions</span><span class="p">,</span> <span class="n">OAuthFlowType</span><span class="p">,</span> <span class="n">OAuthTokenType</span>
+<span class="linenos">28</span>
+<span class="linenos">29</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_TEST_FLIGHTSQL_URI&quot;</span><span class="p">]</span>
+<span class="linenos">30</span><span class="n">token_uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_OAUTH_TOKEN_URI&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>This is typically a JWT or other token from your identity provider</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">32</span><span class="n">subject_token</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_OAUTH_SUBJECT_TOKEN&quot;</span><span class="p">]</span>
+</pre></div>
+</div>
+<p>For testing with self-signed certificates, skip TLS verification.
+In production, you should provide proper TLS certificates.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">36</span><span class="n">db_kwargs</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="linenos">37</span><span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ADBC_OAUTH_SKIP_VERIFY&quot;</span><span class="p">,</span> <span class="s2">&quot;true&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;true&quot;</span><span class="p">):</span>
+<span class="linenos">38</span>    <span class="n">db_kwargs</span><span class="p">[</span><span class="n">DatabaseOptions</span><span class="o">.</span><span class="n">TLS_SKIP_VERIFY</span><span class="o">.</span><span class="n">value</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;true&quot;</span>
+</pre></div>
+</div>
+<p>Connect using OAuth 2.0 Token Exchange flow.
+The driver will exchange the subject token for an access token.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">43</span><span class="n">db_kwargs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+<span class="linenos">44</span>    <span class="p">{</span>
+<span class="linenos">45</span>        <span class="n">DatabaseOptions</span><span class="o">.</span><span class="n">OAUTH_FLOW</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="n">OAuthFlowType</span><span class="o">.</span><span class="n">TOKEN_EXCHANGE</span><span class="o">.</span><span class="n">value</span><span class="p">,</span>
+<span class="linenos">46</span>        <span class="n">DatabaseOptions</span><span class="o">.</span><span class="n">OAUTH_TOKEN_URI</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="n">token_uri</span><span class="p">,</span>
+<span class="linenos">47</span>        <span class="n">DatabaseOptions</span><span class="o">.</span><span class="n">OAUTH_EXCHANGE_SUBJECT_TOKEN</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="n">subject_token</span><span class="p">,</span>
+</pre></div>
+</div>
+<p>Specify the type of the subject token being exchanged</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">49</span>        <span class="n">DatabaseOptions</span><span class="o">.</span><span class="n">OAUTH_EXCHANGE_SUBJECT_TOKEN_TYPE</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="p">(</span>
+<span class="linenos">50</span>            <span class="n">OAuthTokenType</span><span class="o">.</span><span class="n">JWT</span><span class="o">.</span><span class="n">value</span>
+<span class="linenos">51</span>        <span class="p">),</span>
+</pre></div>
+</div>
+<p>Optionally, specify the type of token you want to receive</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">53</span>        <span class="c1"># DatabaseOptions.OAUTH_EXCHANGE_REQUESTED_TOKEN_TYPE.value:</span>
+<span class="linenos">54</span>        <span class="c1">#   OAuthTokenType.ACCESS_TOKEN.value,</span>
+</pre></div>
+</div>
+<p>Optionally, specify the intended audience</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">56</span>        <span class="c1"># DatabaseOptions.OAUTH_EXCHANGE_AUD.value: &quot;my-service&quot;,</span>
+<span class="linenos">57</span>    <span class="p">}</span>
+<span class="linenos">58</span><span class="p">)</span>
+<span class="linenos">59</span>
+<span class="linenos">60</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_flightsql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">,</span> <span class="n">db_kwargs</span><span class="o">=</span><span class="n">db_kwargs</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>We can then execute queries as usual.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">64</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">65</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT 1&quot;</span><span class="p">)</span>
+<span class="linenos">66</span>
+<span class="linenos">67</span>    <span class="n">result</span> <span class="o">=</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span>
+<span class="linenos">68</span>    <span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
+<span class="linenos">69</span>
+<span class="linenos">70</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
 </section>
 
         </article>
@@ -637,6 +752,8 @@ United States and other countries.
 <li><a class="reference internal" href="#connect-to-a-flight-sql-service-with-username-and-password">Connect to a Flight SQL service with username and password</a></li>
 <li><a class="reference internal" href="#set-timeouts-and-other-options">Set timeouts and other options</a></li>
 <li><a class="reference internal" href="#set-the-max-grpc-message-size">Set the max gRPC message size</a></li>
+<li><a class="reference internal" href="#connect-with-oauth-2-0-client-credentials">Connect with OAuth 2.0 Client Credentials</a></li>
+<li><a class="reference internal" href="#connect-with-oauth-2-0-token-exchange">Connect with OAuth 2.0 Token Exchange</a></li>
 </ul>
 </li>
 </ul>

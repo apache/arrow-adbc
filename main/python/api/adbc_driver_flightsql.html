@@ -500,6 +500,105 @@ floating-point seconds).</p>
 </dd></dl>
 
 <dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.DatabaseOptions.OAUTH_AUTH_URI">
+<span class="sig-name descname"><span class="pre">OAUTH_AUTH_URI</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.flight.sql.oauth.auth_uri'</span></em><a class="headerlink" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_AUTH_URI" title="Link to this definition">¶</a></dt>
+<dd><p>The authorization endpoint URL for OAuth 2.0.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.DatabaseOptions.OAUTH_CLIENT_ID">
+<span class="sig-name descname"><span class="pre">OAUTH_CLIENT_ID</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.flight.sql.oauth.client_id'</span></em><a class="headerlink" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_CLIENT_ID" title="Link to this definition">¶</a></dt>
+<dd><p>Unique identifier issued to the client application by the
+authorization server.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.DatabaseOptions.OAUTH_CLIENT_SECRET">
+<span class="sig-name descname"><span class="pre">OAUTH_CLIENT_SECRET</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.flight.sql.oauth.client_secret'</span></em><a class="headerlink" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_CLIENT_SECRET" title="Link to this definition">¶</a></dt>
+<dd><p>Secret associated with the client_id. Used to authenticate the
+client application to the authorization server.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_ACTOR_TOKEN">
+<span class="sig-name descname"><span class="pre">OAUTH_EXCHANGE_ACTOR_TOKEN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.flight.sql.oauth.exchange.actor_token'</span></em><a class="headerlink" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_ACTOR_TOKEN" title="Link to this definition">¶</a></dt>
+<dd><p>A security token that represents the identity of the acting party.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_ACTOR_TOKEN_TYPE">
+<span class="sig-name descname"><span class="pre">OAUTH_EXCHANGE_ACTOR_TOKEN_TYPE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.flight.sql.oauth.exchange.actor_token_type'</span></em><a class="headerlink" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_ACTOR_TOKEN_TYPE" title="Link to this definition">¶</a></dt>
+<dd><p>Identifier for the type of the actor token.</p>
+<p>See <a class="reference internal" href="#adbc_driver_flightsql.OAuthTokenType" title="adbc_driver_flightsql.OAuthTokenType"><code class="xref py py-class docutils literal notranslate"><span class="pre">OAuthTokenType</span></code></a> for supported token types.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_AUD">
+<span class="sig-name descname"><span class="pre">OAUTH_EXCHANGE_AUD</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.flight.sql.oauth.exchange.aud'</span></em><a class="headerlink" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_AUD" title="Link to this definition">¶</a></dt>
+<dd><p>The intended audience for the requested security token in token exchange.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_REQUESTED_TOKEN_TYPE">
+<span class="sig-name descname"><span class="pre">OAUTH_EXCHANGE_REQUESTED_TOKEN_TYPE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.flight.sql.oauth.exchange.requested_token_type'</span></em><a class="headerlink" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_REQUESTED_TOKEN_TYPE" title="Link to this definition">¶</a></dt>
+<dd><p>The type of token the client wants to receive in exchange.</p>
+<p>See <a class="reference internal" href="#adbc_driver_flightsql.OAuthTokenType" title="adbc_driver_flightsql.OAuthTokenType"><code class="xref py py-class docutils literal notranslate"><span class="pre">OAuthTokenType</span></code></a> for supported token types.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_RESOURCE">
+<span class="sig-name descname"><span class="pre">OAUTH_EXCHANGE_RESOURCE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.flight.sql.oauth.exchange.resource'</span></em><a class="headerlink" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_RESOURCE" title="Link to this definition">¶</a></dt>
+<dd><p>The resource server where the client intends to use the requested
+security token in token exchange.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_SCOPE">
+<span class="sig-name descname"><span class="pre">OAUTH_EXCHANGE_SCOPE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.flight.sql.oauth.exchange.scope'</span></em><a class="headerlink" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_SCOPE" title="Link to this definition">¶</a></dt>
+<dd><p>Specific permissions requested for the new token in token exchange.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_SUBJECT_TOKEN">
+<span class="sig-name descname"><span class="pre">OAUTH_EXCHANGE_SUBJECT_TOKEN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.flight.sql.oauth.exchange.subject_token'</span></em><a class="headerlink" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_SUBJECT_TOKEN" title="Link to this definition">¶</a></dt>
+<dd><p>The security token that the client application wants to exchange.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_SUBJECT_TOKEN_TYPE">
+<span class="sig-name descname"><span class="pre">OAUTH_EXCHANGE_SUBJECT_TOKEN_TYPE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.flight.sql.oauth.exchange.subject_token_type'</span></em><a class="headerlink" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_SUBJECT_TOKEN_TYPE" title="Link to this definition">¶</a></dt>
+<dd><p>Identifier for the type of the subject token.</p>
+<p>See <a class="reference internal" href="#adbc_driver_flightsql.OAuthTokenType" title="adbc_driver_flightsql.OAuthTokenType"><code class="xref py py-class docutils literal notranslate"><span class="pre">OAuthTokenType</span></code></a> for supported token types.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.DatabaseOptions.OAUTH_FLOW">
+<span class="sig-name descname"><span class="pre">OAUTH_FLOW</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.flight.sql.oauth.flow'</span></em><a class="headerlink" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_FLOW" title="Link to this definition">¶</a></dt>
+<dd><p>Specifies the OAuth 2.0 flow type to use.</p>
+<p>See <a class="reference internal" href="#adbc_driver_flightsql.OAuthFlowType" title="adbc_driver_flightsql.OAuthFlowType"><code class="xref py py-class docutils literal notranslate"><span class="pre">OAuthFlowType</span></code></a> for possible values.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.DatabaseOptions.OAUTH_REDIRECT_URI">
+<span class="sig-name descname"><span class="pre">OAUTH_REDIRECT_URI</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.flight.sql.oauth.redirect_uri'</span></em><a class="headerlink" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_REDIRECT_URI" title="Link to this definition">¶</a></dt>
+<dd><p>The redirect URI for OAuth 2.0 flows.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.DatabaseOptions.OAUTH_SCOPE">
+<span class="sig-name descname"><span class="pre">OAUTH_SCOPE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.flight.sql.oauth.scope'</span></em><a class="headerlink" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_SCOPE" title="Link to this definition">¶</a></dt>
+<dd><p>Space-separated list of permissions that the client is requesting
+access to (e.g., <code class="docutils literal notranslate"><span class="pre">&quot;read.all</span> <span class="pre">offline_access&quot;</span></code>).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.DatabaseOptions.OAUTH_TOKEN_URI">
+<span class="sig-name descname"><span class="pre">OAUTH_TOKEN_URI</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.flight.sql.oauth.token_uri'</span></em><a class="headerlink" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_TOKEN_URI" title="Link to this definition">¶</a></dt>
+<dd><p>The endpoint URL where the client application requests tokens
+from the authorization server.</p>
+</dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="adbc_driver_flightsql.DatabaseOptions.RPC_CALL_HEADER_PREFIX">
 <span class="sig-name descname"><span class="pre">RPC_CALL_HEADER_PREFIX</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.flight.sql.rpc.call_header.'</span></em><a class="headerlink" href="#adbc_driver_flightsql.DatabaseOptions.RPC_CALL_HEADER_PREFIX" title="Link to this definition">¶</a></dt>
 <dd><p>Add an arbitrary header to all outgoing requests.</p>
@@ -564,6 +663,77 @@ floating-point seconds).</p>
 <dt class="sig sig-object py" id="adbc_driver_flightsql.DatabaseOptions.WITH_MAX_MSG_SIZE">
 <span class="sig-name descname"><span class="pre">WITH_MAX_MSG_SIZE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'adbc.flight.sql.client_option.with_max_msg_size'</span></em><a class="headerlink" href="#adbc_driver_flightsql.DatabaseOptions.WITH_MAX_MSG_SIZE" title="Link to this definition">¶</a></dt>
 <dd><p>Set the maximum gRPC message size (in bytes). The default is 16 MiB.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.OAuthFlowType">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">adbc_driver_flightsql.</span></span><span class="sig-name descname"><span class="pre">OAuthFlowType</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_flightsql.OAuthFlowType" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/enum.html#enum.Enum" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></a></p>
+<p>OAuth 2.0 flow types supported by the Flight SQL driver.</p>
+<p>Use these values with <a class="reference internal" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_FLOW" title="adbc_driver_flightsql.DatabaseOptions.OAUTH_FLOW"><code class="xref py py-attr docutils literal notranslate"><span class="pre">DatabaseOptions.OAUTH_FLOW</span></code></a>.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.OAuthFlowType.CLIENT_CREDENTIALS">
+<span class="sig-name descname"><span class="pre">CLIENT_CREDENTIALS</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'client_credentials'</span></em><a class="headerlink" href="#adbc_driver_flightsql.OAuthFlowType.CLIENT_CREDENTIALS" title="Link to this definition">¶</a></dt>
+<dd><p>OAuth 2.0 Client Credentials flow (RFC 6749 Section 4.4).</p>
+<p>Use when the client application needs to authenticate itself
+to the authorization server using its own credentials.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.OAuthFlowType.TOKEN_EXCHANGE">
+<span class="sig-name descname"><span class="pre">TOKEN_EXCHANGE</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'token_exchange'</span></em><a class="headerlink" href="#adbc_driver_flightsql.OAuthFlowType.TOKEN_EXCHANGE" title="Link to this definition">¶</a></dt>
+<dd><p>OAuth 2.0 Token Exchange flow (RFC 8693).</p>
+<p>Use when the client application wants to exchange one
+security token for another.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.OAuthTokenType">
+<em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">adbc_driver_flightsql.</span></span><span class="sig-name descname"><span class="pre">OAuthTokenType</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">values</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#adbc_driver_flightsql.OAuthTokenType" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/enum.html#enum.Enum" title="(in Python v3.14)"><code class="xref py py-class docutils literal notranslate"><span class="pre">Enum</span></code></a></p>
+<p>OAuth 2.0 token types supported for token exchange (RFC 8693).</p>
+<p>Use these values with token type options like
+<a class="reference internal" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_SUBJECT_TOKEN_TYPE" title="adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_SUBJECT_TOKEN_TYPE"><code class="xref py py-attr docutils literal notranslate"><span class="pre">DatabaseOptions.OAUTH_EXCHANGE_SUBJECT_TOKEN_TYPE</span></code></a>,
+<a class="reference internal" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_ACTOR_TOKEN_TYPE" title="adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_ACTOR_TOKEN_TYPE"><code class="xref py py-attr docutils literal notranslate"><span class="pre">DatabaseOptions.OAUTH_EXCHANGE_ACTOR_TOKEN_TYPE</span></code></a>, and
+<a class="reference internal" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_REQUESTED_TOKEN_TYPE" title="adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_REQUESTED_TOKEN_TYPE"><code class="xref py py-attr docutils literal notranslate"><span class="pre">DatabaseOptions.OAUTH_EXCHANGE_REQUESTED_TOKEN_TYPE</span></code></a>.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.OAuthTokenType.ACCESS_TOKEN">
+<span class="sig-name descname"><span class="pre">ACCESS_TOKEN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'urn:ietf:params:oauth:token-type:access_token'</span></em><a class="headerlink" href="#adbc_driver_flightsql.OAuthTokenType.ACCESS_TOKEN" title="Link to this definition">¶</a></dt>
+<dd><p>An OAuth 2.0 access token.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.OAuthTokenType.ID_TOKEN">
+<span class="sig-name descname"><span class="pre">ID_TOKEN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'urn:ietf:params:oauth:token-type:id_token'</span></em><a class="headerlink" href="#adbc_driver_flightsql.OAuthTokenType.ID_TOKEN" title="Link to this definition">¶</a></dt>
+<dd><p>An OpenID Connect ID token.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.OAuthTokenType.JWT">
+<span class="sig-name descname"><span class="pre">JWT</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'urn:ietf:params:oauth:token-type:jwt'</span></em><a class="headerlink" href="#adbc_driver_flightsql.OAuthTokenType.JWT" title="Link to this definition">¶</a></dt>
+<dd><p>A JSON Web Token (JWT).</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.OAuthTokenType.REFRESH_TOKEN">
+<span class="sig-name descname"><span class="pre">REFRESH_TOKEN</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'urn:ietf:params:oauth:token-type:refresh_token'</span></em><a class="headerlink" href="#adbc_driver_flightsql.OAuthTokenType.REFRESH_TOKEN" title="Link to this definition">¶</a></dt>
+<dd><p>An OAuth 2.0 refresh token.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.OAuthTokenType.SAML1">
+<span class="sig-name descname"><span class="pre">SAML1</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'urn:ietf:params:oauth:token-type:saml1'</span></em><a class="headerlink" href="#adbc_driver_flightsql.OAuthTokenType.SAML1" title="Link to this definition">¶</a></dt>
+<dd><p>A SAML 1.1 assertion.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="adbc_driver_flightsql.OAuthTokenType.SAML2">
+<span class="sig-name descname"><span class="pre">SAML2</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'urn:ietf:params:oauth:token-type:saml2'</span></em><a class="headerlink" href="#adbc_driver_flightsql.OAuthTokenType.SAML2" title="Link to this definition">¶</a></dt>
+<dd><p>A SAML 2.0 assertion.</p>
 </dd></dl>
 
 </dd></dl>
@@ -756,6 +926,21 @@ United States and other countries.
 <li><a class="reference internal" href="#adbc_driver_flightsql.DatabaseOptions.AUTHORIZATION_HEADER"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.AUTHORIZATION_HEADER</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_flightsql.DatabaseOptions.MTLS_CERT_CHAIN"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.MTLS_CERT_CHAIN</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_flightsql.DatabaseOptions.MTLS_PRIVATE_KEY"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.MTLS_PRIVATE_KEY</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_AUTH_URI"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.OAUTH_AUTH_URI</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_CLIENT_ID"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.OAUTH_CLIENT_ID</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_CLIENT_SECRET"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.OAUTH_CLIENT_SECRET</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_ACTOR_TOKEN"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.OAUTH_EXCHANGE_ACTOR_TOKEN</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_ACTOR_TOKEN_TYPE"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.OAUTH_EXCHANGE_ACTOR_TOKEN_TYPE</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_AUD"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.OAUTH_EXCHANGE_AUD</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_REQUESTED_TOKEN_TYPE"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.OAUTH_EXCHANGE_REQUESTED_TOKEN_TYPE</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_RESOURCE"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.OAUTH_EXCHANGE_RESOURCE</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_SCOPE"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.OAUTH_EXCHANGE_SCOPE</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_SUBJECT_TOKEN"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.OAUTH_EXCHANGE_SUBJECT_TOKEN</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_EXCHANGE_SUBJECT_TOKEN_TYPE"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.OAUTH_EXCHANGE_SUBJECT_TOKEN_TYPE</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_FLOW"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.OAUTH_FLOW</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_REDIRECT_URI"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.OAUTH_REDIRECT_URI</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_SCOPE"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.OAUTH_SCOPE</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_flightsql.DatabaseOptions.OAUTH_TOKEN_URI"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.OAUTH_TOKEN_URI</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_flightsql.DatabaseOptions.RPC_CALL_HEADER_PREFIX"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.RPC_CALL_HEADER_PREFIX</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_flightsql.DatabaseOptions.TIMEOUT_FETCH"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.TIMEOUT_FETCH</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_flightsql.DatabaseOptions.TIMEOUT_QUERY"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.TIMEOUT_QUERY</span></code></a></li>
@@ -766,6 +951,20 @@ United States and other countries.
 <li><a class="reference internal" href="#adbc_driver_flightsql.DatabaseOptions.WITH_BLOCK"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.WITH_BLOCK</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_flightsql.DatabaseOptions.WITH_COOKIE_MIDDLEWARE"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.WITH_COOKIE_MIDDLEWARE</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_flightsql.DatabaseOptions.WITH_MAX_MSG_SIZE"><code class="docutils literal notranslate"><span class="pre">DatabaseOptions.WITH_MAX_MSG_SIZE</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#adbc_driver_flightsql.OAuthFlowType"><code class="docutils literal notranslate"><span class="pre">OAuthFlowType</span></code></a><ul>
+<li><a class="reference internal" href="#adbc_driver_flightsql.OAuthFlowType.CLIENT_CREDENTIALS"><code class="docutils literal notranslate"><span class="pre">OAuthFlowType.CLIENT_CREDENTIALS</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_flightsql.OAuthFlowType.TOKEN_EXCHANGE"><code class="docutils literal notranslate"><span class="pre">OAuthFlowType.TOKEN_EXCHANGE</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#adbc_driver_flightsql.OAuthTokenType"><code class="docutils literal notranslate"><span class="pre">OAuthTokenType</span></code></a><ul>
+<li><a class="reference internal" href="#adbc_driver_flightsql.OAuthTokenType.ACCESS_TOKEN"><code class="docutils literal notranslate"><span class="pre">OAuthTokenType.ACCESS_TOKEN</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_flightsql.OAuthTokenType.ID_TOKEN"><code class="docutils literal notranslate"><span class="pre">OAuthTokenType.ID_TOKEN</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_flightsql.OAuthTokenType.JWT"><code class="docutils literal notranslate"><span class="pre">OAuthTokenType.JWT</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_flightsql.OAuthTokenType.REFRESH_TOKEN"><code class="docutils literal notranslate"><span class="pre">OAuthTokenType.REFRESH_TOKEN</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_flightsql.OAuthTokenType.SAML1"><code class="docutils literal notranslate"><span class="pre">OAuthTokenType.SAML1</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_flightsql.OAuthTokenType.SAML2"><code class="docutils literal notranslate"><span class="pre">OAuthTokenType.SAML2</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#adbc_driver_flightsql.StatementOptions"><code class="docutils literal notranslate"><span class="pre">StatementOptions</span></code></a><ul>
