@@ -34,7 +34,11 @@ main() {
 
         count=$((count + 1))
 
-        if echo $MAMBA_OUTPUT | grep "Found incorrect download" >/dev/null; then
+        if echo "$MAMBA_OUTPUT" | grep "Found incorrect download" >/dev/null; then
+            echo "Mamba flaked..."
+            continue
+        fi
+        if echo "$MAMBA_OUTPUT" | grep "Failed to download package" >/dev/null; then
             echo "Mamba flaked..."
             continue
         fi
