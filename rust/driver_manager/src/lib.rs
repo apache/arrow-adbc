@@ -381,8 +381,59 @@ impl ManagedDriver {
         let default_entrypoint = get_default_entrypoint(filename.as_ref());
 
         let entrypoint = entrypoint.unwrap_or(default_entrypoint.as_bytes());
-        let library = unsafe {
-            libloading::Library::new(filename.as_ref()).map_err(libloading_error_to_adbc_error)?
+        // By default, go builds the libraries with '-Wl -z nodelete' which does not
+        // unload the go runtime. This isn't respected on mac ( https://github.com/golang/go/issues/11100#issuecomment-932638093 )
+        // so we need to explicitly load the library with RTLD_NODELETE( which prevents unloading )
+        #[cfg(unix)]
+        let library: libloading::Library = unsafe {
+            use std::os::raw::c_int;
+
+            const RTLD_NODELETE: c_int = if cfg!(any(
+                target_os = "macos",
+                target_os = "ios",
+                target_os = "tvos",
+                target_os = "visionos",
+                target_os = "watchos",
+            )) {
+                0x80
+            } else if cfg!(any(
+                target_os = "linux",
+                target_os = "android",
+                target_os = "emscripten",
+                target_os = "freebsd",
+                target_os = "dragonfly",
+                target_os = "openbsd",
+                target_os = "haiku",
+                target_os = "solaris",
+                target_os = "illumos",
+                target_env = "uclibc",
+                target_env = "newlib",
+                target_os = "fuchsia",
+                target_os = "redox",
+                target_os = "hurd",
+                target_os = "cygwin",
+            )) {
+                0x1000
+            } else {
+                0x0
+            };
+
+            libloading::os::unix::Library::open(
+                Some(filename.as_ref()),
+                libloading::os::unix::RTLD_LAZY | libloading::os::unix::RTLD_LOCAL | RTLD_NODELETE,
+            )
+            .map(Into::into)
+            .map_err(libloading_error_to_adbc_error)?
+        };
+        // on windows, we emulate the same behaviour by using the GET_MODULE_HANDLE_EX_FLAG_PIN. The `.pin()`
+        // function implements this.
+        #[cfg(windows)]
+        let library: libloading::Library = unsafe {
+            let library: libloading::os::windows::Library =
+                libloading::os::windows::Library::new(filename.as_ref())
+                    .map_err(libloading_error_to_adbc_error)?;
+            library.pin().map_err(libloading_error_to_adbc_error)?;
+            library.into()
         };
         let init: libloading::Symbol<adbc_ffi::FFI_AdbcDriverInitFunc> = unsafe {
             library
