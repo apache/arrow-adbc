@@ -81,7 +81,9 @@ def test_get_objects_schema_filter_outside_search_path(
     )
 
     catalog_name = postgres.adbc_current_catalog
-    catalog = next((row for row in metadata if row["catalog_name"] == catalog_name), None)
+    catalog = next(
+        (row for row in metadata if row["catalog_name"] == catalog_name), None
+    )
     assert catalog is not None
 
     schemas = catalog["catalog_db_schemas"]
