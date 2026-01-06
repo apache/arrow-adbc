@@ -24,6 +24,7 @@ import numpy
 import pyarrow
 import pyarrow.dataset
 import pytest
+
 from adbc_driver_postgresql import ConnectionOptions, StatementOptions, dbapi
 
 
