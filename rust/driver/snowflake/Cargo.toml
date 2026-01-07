@@ -49,7 +49,7 @@ arrow-array.workspace = true
 arrow-schema.workspace = true
 dotenvy = { version = "0.15.7", default-features = false, optional = true }
 regex = { version = "1.12.2", default-features = false, optional = true }
-url = "2.5.7"
+url = "2.5.8"
 
 [dev-dependencies]
 test-with = { version = "0.15.6", default-features = false }
