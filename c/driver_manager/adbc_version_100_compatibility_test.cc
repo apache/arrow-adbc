@@ -57,9 +57,11 @@ class AdbcVersion : public ::testing::Test {
 TEST_F(AdbcVersion, StructSize) {
   ASSERT_EQ(sizeof(AdbcErrorVersion100), ADBC_ERROR_1_0_0_SIZE);
   ASSERT_EQ(sizeof(AdbcError), ADBC_ERROR_1_1_0_SIZE);
+  ASSERT_EQ(sizeof(AdbcError), ADBC_ERROR_1_2_0_SIZE);
 
   ASSERT_EQ(sizeof(AdbcDriverVersion100), ADBC_DRIVER_1_0_0_SIZE);
-  ASSERT_EQ(sizeof(AdbcDriver), ADBC_DRIVER_1_1_0_SIZE);
+  ASSERT_EQ(offsetof(struct AdbcDriver, StatementNextResultSet), ADBC_DRIVER_1_1_0_SIZE);
+  ASSERT_EQ(sizeof(AdbcDriver), ADBC_DRIVER_1_2_0_SIZE);
 }
 
 // Initialize a version 1.0.0 driver with the version 1.1.0 driver struct.
