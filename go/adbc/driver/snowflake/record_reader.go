@@ -659,7 +659,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 
 	rr, err := ipc.NewReader(r, ipc.WithAllocator(alloc))
 	if err != nil {
-		r.Close() // Clean up the stream
+		_ = r.Close() // Clean up the stream
 		return nil, adbc.Error{
 			Msg:  err.Error(),
 			Code: adbc.StatusInvalidState,
