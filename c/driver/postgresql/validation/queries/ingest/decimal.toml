@@ -16,4 +16,4 @@
 # under the License.
 
 
-skip = "decimal ingest code has a bug and fix has not been merged in yet. https://github.com/apache/arrow-adbc/pull/3787"
+skip = "AssertionError: Field types do not match: assert Decimal128Type(decimal128(10, 2)) == OpaqueType(extension<arrow.opaque[storage_type=string, type_name=numeric, vendor_name=PostgreSQL]>)"
