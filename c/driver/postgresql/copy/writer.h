@@ -236,6 +236,9 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
     constexpr int kDecDigits = 4;
     std::vector<int16_t> pg_digits;
     int16_t weight;
+    // "decimal scale". Number of digits after the decimal point (>=0)
+    // dscale may be more than the actual number of stored digits,
+    // implying there are significant zeroes that were not stored
     int16_t dscale;
 
     char decimal_string[max_decimal_digits_ + 1];
