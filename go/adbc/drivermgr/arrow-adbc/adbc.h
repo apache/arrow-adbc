@@ -355,6 +355,15 @@ struct ADBC_EXPORT AdbcError {
 /// \since ADBC API revision 1.1.0
 #define ADBC_ERROR_1_1_0_SIZE (sizeof(struct AdbcError))
 
+/// \brief The size of the AdbcError structure in ADBC 1.2.0.
+///
+/// Drivers written for ADBC 1.2.0 and later should never touch more than this
+/// portion of an AdbcDriver struct when vendor_code is
+/// ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA.
+///
+/// \since ADBC API revision 1.2.0
+#define ADBC_ERROR_1_2_0_SIZE (sizeof(struct AdbcError))
+
 /// \brief Extra key-value metadata for an error.
 ///
 /// The fields here are owned by the driver and should not be freed.  The
