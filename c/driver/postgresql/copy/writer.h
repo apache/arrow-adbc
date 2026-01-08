@@ -245,7 +245,7 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
     int effective_scale = scale_;
     if (scale_ < 0) {
       int zeros_to_append = -scale_;
-      memset(decimal_string + total_digits, '0', zeros_to_append);
+      std::memset(decimal_string + total_digits, '0', zeros_to_append);
       total_digits += zeros_to_append;
       decimal_string[total_digits] = '\0';
       effective_scale = 0;
