@@ -235,6 +235,8 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
     // Number of decimal digits per Postgres digit
     constexpr int kDecDigits = 4;
     std::vector<int16_t> pg_digits;
+    // There are `weight + 1` base 10000 digits before the decimal point
+    // (may be negative)
     int16_t weight;
     // "decimal scale". Number of digits after the decimal point (>=0)
     // dscale may be more than the actual number of stored digits,
