@@ -33,6 +33,7 @@ NULL
 #' @param adbc.connection.autocommit Use FALSE to disable the default
 #'   autocommit behaviour.
 #' @param adbc.ingest.target_table The name of the target table for a bulk insert.
+#' @param adbc.ingest.target_catalog The catalog of the table for a bulk insert.
 #' @param adbc.ingest.mode Whether to create (the default) or append.
 #' @param adbc.sqlite.query.batch_rows The number of rows per batch to return.
 #'
@@ -78,11 +79,13 @@ adbc_connection_init.adbcsqlite_database <- function(database, ...,
 #' @export
 adbc_statement_init.adbcsqlite_connection <- function(connection, ...,
                                                       adbc.ingest.target_table = NULL,
+                                                      adbc.ingest.target_catalog = NULL,
                                                       adbc.ingest.mode = NULL,
                                                       adbc.sqlite.query.batch_rows = NULL) {
   options <- list(
     ...,
     adbc.ingest.target_table = adbc.ingest.target_table,
+    adbc.ingest.target_catalog = adbc.ingest.target_catalog,
     adbc.ingest.mode = adbc.ingest.mode,
     adbc.sqlite.query.batch_rows = adbc.sqlite.query.batch_rows
   )

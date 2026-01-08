@@ -70,7 +70,7 @@ module Helper
 
   def normalize_arrow_version(version)
     return nil if version.nil?
-    version.gsub(/\A\d+\.\d+\.\d+(?:-SNAPSHOT)?\z/, "X.Y.Z")
+    version.gsub(/\Av?\d+\.\d+\.\d+(?:-SNAPSHOT)?\z/, "vX.Y.Z")
   end
 
   def normalize_info(info)

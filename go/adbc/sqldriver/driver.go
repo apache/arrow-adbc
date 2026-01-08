@@ -217,6 +217,20 @@ func (c *conn) Begin() (driver.Tx, error) {
 	return nil, &adbc.Error{Code: adbc.StatusNotImplemented}
 }
 
+// setOptionIgnoreNotImplemented sets an option, but ignores StatusNotImplemented errors
+// since not all drivers support all optional features
+func setOptionIgnoreNotImplemented(setter interface{ SetOption(string, string) error }, key, value string) error {
+	if err := setter.SetOption(key, value); err != nil {
+		var adbcErr adbc.Error
+		if errors.As(err, &adbcErr) && adbcErr.Code == adbc.StatusNotImplemented {
+			// Driver doesn't support this option - continue without it
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
 func (c *conn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, error) {
 	if postopt, ok := c.Conn.(adbc.PostInitOptions); ok {
 		if err := postopt.SetOption(adbc.OptionKeyAutoCommit, adbc.OptionValueDisabled); err != nil {
@@ -227,12 +241,12 @@ func (c *conn) BeginTx(ctx context.Context, opts driver.TxOptions) (driver.Tx, e
 			return nil, &adbc.Error{Code: adbc.StatusNotImplemented}
 		}
 
-		if err := postopt.SetOption(adbc.OptionKeyIsolationLevel, string(isolationLevel)); err != nil {
+		if err := setOptionIgnoreNotImplemented(postopt, adbc.OptionKeyIsolationLevel, string(isolationLevel)); err != nil {
 			return nil, err
 		}
 
 		if opts.ReadOnly {
-			if err := postopt.SetOption(adbc.OptionKeyReadOnly, adbc.OptionValueEnabled); err != nil {
+			if err := setOptionIgnoreNotImplemented(postopt, adbc.OptionKeyReadOnly, adbc.OptionValueEnabled); err != nil {
 				return nil, err
 			}
 		}

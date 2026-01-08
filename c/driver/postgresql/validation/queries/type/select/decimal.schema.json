@@ -1,0 +1,14 @@
+{
+    "format": "+s",
+    "children": [
+        {
+            "name": "res",
+            "format": "u",
+            "flags": ["nullable"],
+            "metadata": {
+                "ARROW:extension:name": "arrow.opaque",
+                "ARROW:extension:metadata": "{\"type_name\": \"numeric\", \"vendor_name\": \"PostgreSQL\"}"
+            }
+        }
+    ]
+}

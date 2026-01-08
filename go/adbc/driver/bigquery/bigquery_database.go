@@ -25,16 +25,18 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
+	"google.golang.org/api/option"
 )
 
 type databaseImpl struct {
 	driverbase.DatabaseImplBase
 
-	authType     string
-	credentials  string
-	clientID     string
-	clientSecret string
-	refreshToken string
+	authType        string
+	credentialsType option.CredentialsType
+	credentials     string
+	clientID        string
+	clientSecret    string
+	refreshToken    string
 
 	impersonateTargetPrincipal string
 	impersonateDelegates       []string
@@ -54,6 +56,7 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 	conn := &connectionImpl{
 		ConnectionImplBase:         driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
 		authType:                   d.authType,
+		credentialsType:            d.credentialsType,
 		credentials:                d.credentials,
 		clientID:                   d.clientID,
 		clientSecret:               d.clientSecret,
@@ -90,6 +93,8 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 	switch key {
 	case OptionStringAuthType:
 		return d.authType, nil
+	case OptionAuthCredentialsType:
+		return string(d.credentialsType), nil
 	case OptionStringAuthCredentials:
 		return d.credentials, nil
 	case OptionStringAuthClientID:
@@ -152,6 +157,23 @@ func (d *databaseImpl) SetOption(key string, value string) error {
 			return adbc.Error{
 				Code: adbc.StatusInvalidArgument,
 				Msg:  fmt.Sprintf("unknown database auth type value `%s`", value),
+			}
+		}
+	case OptionAuthCredentialsType:
+		// N.B. ExternalAccountAuthorizedUser, GDCHServiceAccount aren't re-exported by google.golang.org/api/option
+		switch value {
+		case string(option.ServiceAccount):
+			d.credentialsType = option.ServiceAccount
+		case string(option.AuthorizedUser):
+			d.credentialsType = option.AuthorizedUser
+		case string(option.ImpersonatedServiceAccount):
+			d.credentialsType = option.ImpersonatedServiceAccount
+		case string(option.ExternalAccount):
+			d.credentialsType = option.ExternalAccount
+		default:
+			return adbc.Error{
+				Code: adbc.StatusInvalidArgument,
+				Msg:  fmt.Sprintf("[bq] unknown %s=%s", key, value),
 			}
 		}
 	case OptionStringAuthCredentials:

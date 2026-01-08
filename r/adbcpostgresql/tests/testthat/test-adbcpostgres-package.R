@@ -88,3 +88,27 @@ test_that("default options can open a database and execute a query", {
 
   adbcdrivermanager::adbc_statement_release(stmt)
 })
+
+test_that("write_adbc() supports db_schema_name", {
+  test_db_uri <- Sys.getenv("ADBC_POSTGRESQL_TEST_URI", "")
+  skip_if(identical(test_db_uri, ""))
+
+  db <- adbc_database_init(adbcpostgresql(), uri = test_db_uri)
+  con <- adbc_connection_init(db)
+  on.exit({
+    adbcdrivermanager::adbc_connection_release(con)
+    adbcdrivermanager::adbc_database_release(db)
+  })
+
+  adbcdrivermanager::execute_adbc(con, "CREATE SCHEMA IF NOT EXISTS testschema")
+  adbcdrivermanager::execute_adbc(con, "DROP TABLE IF EXISTS testschema.df_schema")
+
+  df <- data.frame(x = as.double(1:3))
+  expect_identical(
+    adbcdrivermanager::write_adbc(df, con, "df_schema", db_schema_name = "testschema", mode = "create"),
+    df
+  )
+
+  stream <- adbcdrivermanager::read_adbc(con, "SELECT * FROM testschema.df_schema ORDER BY x")
+  expect_identical(as.data.frame(stream), df)
+})

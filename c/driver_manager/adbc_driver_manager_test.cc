@@ -45,7 +45,7 @@ struct ParseDriverUriResult {
   std::optional<std::string_view> uri;
 };
 
-std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view& str);
+std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view str);
 
 // Tests of the SQLite example driver, except using the driver manager
 
@@ -84,49 +84,203 @@ class DriverManager : public ::testing::Test {
 };
 
 TEST_F(DriverManager, DatabaseCustomInitFunc) {
-  struct AdbcDatabase database;
-  std::memset(&database, 0, sizeof(database));
+  adbc_validation::Handle<struct AdbcDatabase> database;
 
   // Explicitly set entrypoint
-  ASSERT_THAT(AdbcDatabaseNew(&database, &error), IsOkStatus(&error));
-  ASSERT_THAT(AdbcDatabaseSetOption(&database, "driver", "adbc_driver_sqlite", &error),
-              IsOkStatus(&error));
-  ASSERT_THAT(AdbcDatabaseSetOption(&database, "entrypoint", "AdbcDriverInit", &error),
-              IsOkStatus(&error));
-  ASSERT_THAT(AdbcDatabaseInit(&database, &error), IsOkStatus(&error));
-  ASSERT_THAT(AdbcDatabaseRelease(&database, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(
+      AdbcDatabaseSetOption(&database.value, "driver", "adbc_driver_sqlite", &error),
+      IsOkStatus(&error));
+  ASSERT_THAT(
+      AdbcDatabaseSetOption(&database.value, "entrypoint", "AdbcDriverInit", &error),
+      IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
 
   // Set invalid entrypoint
-  ASSERT_THAT(AdbcDatabaseNew(&database, &error), IsOkStatus(&error));
-  ASSERT_THAT(AdbcDatabaseSetOption(&database, "driver", "adbc_driver_sqlite", &error),
-              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(
-      AdbcDatabaseSetOption(&database, "entrypoint", "ThisSymbolDoesNotExist", &error),
+      AdbcDatabaseSetOption(&database.value, "driver", "adbc_driver_sqlite", &error),
       IsOkStatus(&error));
-  ASSERT_EQ(ADBC_STATUS_INTERNAL, AdbcDatabaseInit(&database, &error));
-  ASSERT_THAT(AdbcDatabaseRelease(&database, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "entrypoint",
+                                    "ThisSymbolDoesNotExist", &error),
+              IsOkStatus(&error));
+  ASSERT_EQ(ADBC_STATUS_INTERNAL, AdbcDatabaseInit(&database.value, &error));
+  ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
 }
 
 TEST_F(DriverManager, ConnectionOptions) {
-  struct AdbcDatabase database;
-  struct AdbcConnection connection;
-  std::memset(&database, 0, sizeof(database));
-  std::memset(&connection, 0, sizeof(connection));
+  adbc_validation::Handle<struct AdbcDatabase> database;
+  adbc_validation::Handle<struct AdbcConnection> connection;
 
-  ASSERT_THAT(AdbcDatabaseNew(&database, &error), IsOkStatus(&error));
-  ASSERT_THAT(AdbcDatabaseSetOption(&database, "driver", "adbc_driver_sqlite", &error),
-              IsOkStatus(&error));
-  ASSERT_THAT(AdbcDatabaseInit(&database, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(
+      AdbcDatabaseSetOption(&database.value, "driver", "adbc_driver_sqlite", &error),
+      IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error), IsOkStatus(&error));
 
-  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
-  ASSERT_THAT(AdbcConnectionSetOption(&connection, "foo", "bar", &error),
+  ASSERT_THAT(AdbcConnectionNew(&connection.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionSetOption(&connection.value, "foo", "bar", &error),
               IsOkStatus(&error));
   ASSERT_EQ(ADBC_STATUS_NOT_IMPLEMENTED,
-            AdbcConnectionInit(&connection, &database, &error));
+            AdbcConnectionInit(&connection.value, &database.value, &error));
   ASSERT_THAT(error.message, ::testing::HasSubstr("Unknown connection option foo='bar'"));
 
-  ASSERT_THAT(AdbcConnectionRelease(&connection, &error), IsOkStatus(&error));
-  ASSERT_THAT(AdbcDatabaseRelease(&database, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionRelease(&connection.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
+}
+
+TEST_F(DriverManager, GetOptionDatabase) {
+  adbc_validation::Handle<struct AdbcDatabase> database;
+
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(
+      AdbcDatabaseSetOption(&database.value, "driver", "adbc_driver_sqlite", &error),
+      IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "stringoption", "1", &error),
+              IsOkStatus(&error));
+  std::vector<uint8_t> bytes_value;
+  bytes_value.push_back(static_cast<uint8_t>(0));
+  bytes_value.push_back(static_cast<uint8_t>(1));
+  ASSERT_THAT(AdbcDatabaseSetOptionBytes(&database.value, "bytesoption",
+                                         bytes_value.data(), bytes_value.size(), &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOptionDouble(&database.value, "doubleoption", 42.0, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOptionInt(&database.value, "intoption", 42, &error),
+              IsOkStatus(&error));
+
+  {
+    double value = 0.0;
+    ASSERT_THAT(
+        AdbcDatabaseGetOptionDouble(&database.value, "doubleoption", &value, &error),
+        IsOkStatus(&error));
+    ASSERT_EQ(42.0, value);
+  }
+
+  {
+    int64_t value = 0;
+    ASSERT_THAT(AdbcDatabaseGetOptionInt(&database.value, "intoption", &value, &error),
+                IsOkStatus(&error));
+    ASSERT_EQ(42, value);
+  }
+
+  {
+    std::vector<uint8_t> value(32, 42);
+    size_t length = value.size();
+    ASSERT_THAT(
+        AdbcDatabaseGetOptionBytes(&database.value, "bytesoption",
+                                   const_cast<uint8_t*>(value.data()), &length, &error),
+        IsOkStatus(&error));
+    ASSERT_EQ(2, length);
+    ASSERT_EQ(0, value[0]);
+    ASSERT_EQ(1, value[1]);
+
+    ASSERT_THAT(
+        AdbcDatabaseGetOptionBytes(&database.value, "nonexistent",
+                                   const_cast<uint8_t*>(value.data()), &length, &error),
+        IsStatus(ADBC_STATUS_NOT_FOUND, &error));
+  }
+
+  {
+    std::vector<char> value(32, 'A');
+    size_t length = value.size();
+    ASSERT_THAT(AdbcDatabaseGetOption(&database.value, "driver",
+                                      const_cast<char*>(value.data()), &length, &error),
+                IsOkStatus(&error));
+    ASSERT_EQ(19, length);
+    std::string actual(value.data(), 18);
+    std::string expected = "adbc_driver_sqlite";
+    ASSERT_EQ(expected, actual);
+
+    ASSERT_THAT(AdbcDatabaseGetOption(&database.value, "stringoption",
+                                      const_cast<char*>(value.data()), &length, &error),
+                IsOkStatus(&error));
+    ASSERT_EQ(2, length);
+    actual = std::string(value.data(), 1);
+    expected = "1";
+    ASSERT_EQ(expected, actual);
+
+    ASSERT_THAT(AdbcDatabaseGetOption(&database.value, "nonexistent",
+                                      const_cast<char*>(value.data()), &length, &error),
+                IsStatus(ADBC_STATUS_NOT_FOUND, &error));
+  }
+}
+
+TEST_F(DriverManager, GetOptionConnection) {
+  adbc_validation::Handle<struct AdbcDatabase> database;
+  adbc_validation::Handle<struct AdbcConnection> connection;
+
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(
+      AdbcDatabaseSetOption(&database.value, "driver", "adbc_driver_sqlite", &error),
+      IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error), IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcConnectionNew(&connection.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionSetOption(&connection.value, "stringoption", "1", &error),
+              IsOkStatus(&error));
+  std::vector<uint8_t> bytes_value;
+  bytes_value.push_back(static_cast<uint8_t>(0));
+  bytes_value.push_back(static_cast<uint8_t>(1));
+  ASSERT_THAT(
+      AdbcConnectionSetOptionBytes(&connection.value, "bytesoption", bytes_value.data(),
+                                   bytes_value.size(), &error),
+      IsOkStatus(&error));
+  ASSERT_THAT(
+      AdbcConnectionSetOptionDouble(&connection.value, "doubleoption", 42.0, &error),
+      IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionSetOptionInt(&connection.value, "intoption", 42, &error),
+              IsOkStatus(&error));
+
+  {
+    double value = 0.0;
+    ASSERT_THAT(
+        AdbcConnectionGetOptionDouble(&connection.value, "doubleoption", &value, &error),
+        IsOkStatus(&error));
+    ASSERT_EQ(42.0, value);
+  }
+
+  {
+    int64_t value = 0;
+    ASSERT_THAT(
+        AdbcConnectionGetOptionInt(&connection.value, "intoption", &value, &error),
+        IsOkStatus(&error));
+    ASSERT_EQ(42, value);
+  }
+
+  {
+    std::vector<uint8_t> value(32, 42);
+    size_t length = value.size();
+    ASSERT_THAT(
+        AdbcConnectionGetOptionBytes(&connection.value, "bytesoption",
+                                     const_cast<uint8_t*>(value.data()), &length, &error),
+        IsOkStatus(&error));
+    ASSERT_EQ(2, length);
+    ASSERT_EQ(0, value[0]);
+    ASSERT_EQ(1, value[1]);
+
+    ASSERT_THAT(
+        AdbcConnectionGetOptionBytes(&connection.value, "nonexistent",
+                                     const_cast<uint8_t*>(value.data()), &length, &error),
+        IsStatus(ADBC_STATUS_NOT_FOUND, &error));
+  }
+
+  {
+    std::vector<char> value(32, 'A');
+    size_t length = value.size();
+    ASSERT_THAT(AdbcConnectionGetOption(&connection.value, "stringoption",
+                                        const_cast<char*>(value.data()), &length, &error),
+                IsOkStatus(&error));
+    ASSERT_EQ(2, length);
+    std::string actual(value.data(), 1);
+    std::string expected = "1";
+    ASSERT_EQ(expected, actual);
+
+    ASSERT_THAT(AdbcConnectionGetOption(&connection.value, "nonexistent",
+                                        const_cast<char*>(value.data()), &length, &error),
+                IsStatus(ADBC_STATUS_NOT_FOUND, &error));
+  }
 }
 
 TEST_F(DriverManager, MultiDriverTest) {
@@ -348,6 +502,53 @@ class SqliteStatementTest : public ::testing::Test,
 };
 ADBCV_TEST_STATEMENT(SqliteStatementTest)
 
+// Exercise AdbcDatabaseGetOption with different value buffer lengths
+TEST(AdbcDriverManagerInternal, DatabaseGetOptionValueBufferSize) {
+  struct AdbcDatabase database = {};
+  struct AdbcError error = {};
+
+  ASSERT_THAT(AdbcDatabaseNew(&database, &error), IsOkStatus(&error));
+
+  // Set an option we'll later fetch with a n oversized buffer
+  ASSERT_THAT(AdbcDatabaseSetOption(&database, "driver", "test_driver", &error),
+              IsOkStatus(&error));
+
+  // Too small
+  char buf_too_small[11];
+  std::memset(buf_too_small, '*',
+              sizeof(buf_too_small));  // Pre-fill with "*" just for debugging
+  size_t len_too_small = sizeof(buf_too_small);
+  ASSERT_THAT(
+      AdbcDatabaseGetOption(&database, "driver", buf_too_small, &len_too_small, &error),
+      IsOkStatus(&error));
+  EXPECT_EQ(len_too_small, 12u);
+  EXPECT_STRNE(buf_too_small, "test_driver");
+
+  // Just right
+  char buf_just_right[12];
+  std::memset(buf_just_right, '*',
+              sizeof(buf_just_right));  // Pre-fill with "*" just for debugging
+  size_t len_just_right = sizeof(buf_just_right);
+  ASSERT_THAT(
+      AdbcDatabaseGetOption(&database, "driver", buf_just_right, &len_just_right, &error),
+      IsOkStatus(&error));
+  EXPECT_EQ(len_just_right, 12u);
+  EXPECT_STREQ(buf_just_right, "test_driver");
+
+  // Too large
+  char buf_too_large[13];
+  std::memset(buf_too_large, '*',
+              sizeof(buf_too_large));  // Pre-fill with "*" just for debugging
+  size_t len_too_large = sizeof(buf_too_large);
+  ASSERT_THAT(
+      AdbcDatabaseGetOption(&database, "driver", buf_too_large, &len_too_large, &error),
+      IsOkStatus(&error));
+  EXPECT_EQ(len_too_large, 12u);
+  EXPECT_STREQ(buf_too_large, "test_driver");
+
+  ASSERT_THAT(AdbcDatabaseRelease(&database, &error), IsOkStatus(&error));
+}
+
 TEST(AdbcDriverManagerInternal, InternalAdbcDriverManagerDefaultEntrypoint) {
   for (const auto& driver : {
            "adbc_driver_sqlite",
@@ -522,7 +723,10 @@ class DriverManifest : public ::testing::Test {
  protected:
   void SetConfigPath(const char* path) {
 #ifdef _WIN32
-    ASSERT_TRUE(SetEnvironmentVariable("ADBC_DRIVER_PATH", path));
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, path, -1, nullptr, 0);
+    std::wstring wpath(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, path, -1, &wpath[0], size_needed);
+    ASSERT_TRUE(SetEnvironmentVariableW(L"ADBC_DRIVER_PATH", wpath.c_str()));
 #else
     setenv("ADBC_DRIVER_PATH", path, 1);
 #endif
@@ -1091,12 +1295,20 @@ TEST_F(DriverManifest, AllDisabled) {
   EXPECT_THAT(error.message,
               ::testing::HasSubstr("not enabled at run time: ADBC_DRIVER_PATH (enable "
                                    "ADBC_LOAD_FLAG_SEARCH_ENV)"));
+
+#ifdef _WIN32
+  EXPECT_THAT(error.message,
+              ::testing::HasSubstr("not enabled at run time: HKEY_CURRENT_USER"));
+  EXPECT_THAT(error.message,
+              ::testing::HasSubstr("not enabled at run time: HKEY_LOCAL_MACHINE"));
+#else
   EXPECT_THAT(error.message,
               ::testing::HasSubstr("not enabled at run time: user config dir /"));
   EXPECT_THAT(error.message,
-              ::testing::HasSubstr(" (enable ADBC_LOAD_FLAG_SEARCH_USER)"));
-  EXPECT_THAT(error.message,
               ::testing::HasSubstr("not enabled at run time: system config dir /"));
+#endif  // _WIN32
+  EXPECT_THAT(error.message,
+              ::testing::HasSubstr(" (enable ADBC_LOAD_FLAG_SEARCH_USER)"));
   EXPECT_THAT(error.message,
               ::testing::HasSubstr(" (enable ADBC_LOAD_FLAG_SEARCH_SYSTEM)"));
 }
@@ -1188,6 +1400,64 @@ shared = "adbc_driver_sqlite")";
   }
 
   ASSERT_TRUE(std::filesystem::remove(filepath));
+}
+
+TEST_F(DriverManifest, DriverFromDriverAndUri) {
+  // Regression test: if we set both driver and URI, then we shouldn't try to
+  // extract driver from URI or vice versa.
+
+  auto filepath = temp_dir / "sqlite.toml";
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << R"([Driver]
+shared = "adbc_driver_sqlite")";
+  test_manifest_file.close();
+
+  const std::string uri = "foo.db";
+  std::vector<std::vector<std::pair<std::string, std::string>>> options_cases = {
+      {{"driver", "sqlite"}, {"uri", uri}},
+      {{"uri", uri}, {"driver", "sqlite"}},
+  };
+  for (const auto& options : options_cases) {
+    adbc_validation::Handle<struct AdbcDatabase> database;
+    ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+    for (const auto& option : options) {
+      ASSERT_THAT(AdbcDatabaseSetOption(&database.value, option.first.c_str(),
+                                        option.second.c_str(), &error),
+                  IsOkStatus(&error));
+    }
+
+    std::string search_path = temp_dir.string();
+    ASSERT_THAT(AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
+                    &database.value, search_path.data(), &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcDatabaseInit(&database.value, &error), IsOkStatus(&error));
+  }
+
+  ASSERT_TRUE(std::filesystem::remove(filepath));
+}
+
+TEST_F(DriverManifest, ControlCodes) {
+  const std::string uri = "\026sqlite:file::memory:";
+  for (const auto& driver_option : {"driver", "uri"}) {
+    SCOPED_TRACE(driver_option);
+    SCOPED_TRACE(uri);
+    adbc_validation::Handle<struct AdbcDatabase> database;
+    ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+    ASSERT_THAT(
+        AdbcDatabaseSetOption(&database.value, driver_option, uri.c_str(), &error),
+        IsOkStatus(&error));
+    std::string search_path = temp_dir.string();
+    ASSERT_THAT(AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
+                    &database.value, search_path.data(), &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+                IsStatus(ADBC_STATUS_NOT_FOUND, &error));
+    ASSERT_THAT(
+        error.message,
+        ::testing::HasSubstr(
+            "Note: driver name may have non-printable characters: `\\x16sqlite`"));
+  }
 }
 
 }  // namespace adbc

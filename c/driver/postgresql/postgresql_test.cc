@@ -203,7 +203,7 @@ class PostgresQuirks : public adbc_validation::DriverQuirks {
       case ADBC_INFO_DRIVER_NAME:
         return "ADBC PostgreSQL Driver";
       case ADBC_INFO_DRIVER_VERSION:
-        return "(unknown)";
+        return "unknown";
       case ADBC_INFO_VENDOR_NAME:
         return "PostgreSQL";
       default:
@@ -291,7 +291,7 @@ TEST_F(PostgresConnectionTest, GetInfoMetadata) {
         }
         case ADBC_INFO_DRIVER_VERSION: {
           ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, offset);
-          EXPECT_EQ("(unknown)", std::string(val.data, val.size_bytes));
+          EXPECT_EQ("unknown", std::string(val.data, val.size_bytes));
           break;
         }
         case ADBC_INFO_VENDOR_NAME: {
@@ -370,6 +370,61 @@ TEST_F(PostgresConnectionTest, GetObjectsGetDbSchemas) {
   struct AdbcGetObjectsSchema* schema =
       InternalAdbcGetObjectsDataGetSchemaByName(*get_objects_data, "postgres", "public");
   ASSERT_NE(schema, nullptr) << "schema public not found";
+}
+
+TEST_F(PostgresConnectionTest, GetObjectsSchemaFilterFindsTablesOutsideSearchPath) {
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+
+  const std::string schema_name = "adbc_get_objects_test";
+  const std::string table_name = "schema_filter_table";
+
+  // Ensure the schema is not part of the current search_path.
+  ASSERT_THAT(
+      AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA,
+                              "public", &error),
+      IsOkStatus(&error));
+
+  ASSERT_THAT(quirks()->EnsureDbSchema(&connection, schema_name, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(quirks()->DropTable(&connection, table_name, schema_name, &error),
+              IsOkStatus(&error));
+
+  {
+    adbc_validation::Handle<struct AdbcStatement> statement;
+    ASSERT_THAT(AdbcStatementNew(&connection, &statement.value, &error),
+                IsOkStatus(&error));
+
+    std::string create =
+        "CREATE TABLE \"" + schema_name + "\".\"" + table_name + "\" (ints INT)";
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement.value, create.c_str(), &error),
+                IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+                IsOkStatus(&error));
+  }
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_TABLES, nullptr,
+                                       schema_name.c_str(), nullptr, nullptr, nullptr,
+                                       &reader.stream.value, &error),
+              IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NE(nullptr, reader.array->release);
+  ASSERT_GT(reader.array->length, 0);
+
+  auto get_objects_data = adbc_validation::GetObjectsReader{&reader.array_view.value};
+  ASSERT_NE(*get_objects_data, nullptr)
+      << "could not initialize the AdbcGetObjectsData object";
+
+  const auto catalog = adbc_validation::ConnectionGetOption(
+      &connection, ADBC_CONNECTION_OPTION_CURRENT_CATALOG, &error);
+  ASSERT_TRUE(catalog.has_value());
+
+  struct AdbcGetObjectsTable* table = InternalAdbcGetObjectsDataGetTableByName(
+      *get_objects_data, catalog->c_str(), schema_name.c_str(), table_name.c_str());
+  ASSERT_NE(table, nullptr) << "could not find " << schema_name << "." << table_name
+                            << " via GetObjects";
 }
 
 TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsPrimaryKey) {

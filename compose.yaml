@@ -73,6 +73,23 @@ services:
     command: "bash -c 'git config --global --add safe.directory /adbc && /adbc/ci/scripts/cpp_static_test.sh /adbc /adbc/build/static-test/build /adbc/build/static-test/local'"
 
 
+  ############################### C/C++: musl (Alpine) ##########################
+
+  cpp-musl:
+    image: ${REPO}:${ARCH}-cpp-musl-adbc
+    build:
+      context: .
+      dockerfile: ci/docker/cpp-musl.alpine.dockerfile
+    volumes:
+      - .:/adbc:delegated
+    environment:
+      ADBC_CMAKE_ARGS: "-DADBC_BUILD_WARNING_LEVEL=CHECKIN -DSIZEOF_TIME_T=8"
+      ADBC_USE_ASAN: "0"
+      ADBC_USE_UBSAN: "0"
+    command: "bash -c 'git config --global --add safe.directory /adbc && \
+      env ADBC_USE_ASAN=0 ADBC_USE_UBSAN=0 BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 BUILD_DRIVER_POSTGRESQL=0 BUILD_DRIVER_SQLITE=1 BUILD_DRIVER_FLIGHTSQL=0 BUILD_DRIVER_SNOWFLAKE=0 BUILD_DRIVER_BIGQUERY=0 /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build/musl && \
+      env ADBC_USE_ASAN=0 ADBC_USE_UBSAN=0 BUILD_ALL=0 BUILD_DRIVER_MANAGER=0 BUILD_DRIVER_POSTGRESQL=0 BUILD_DRIVER_SQLITE=1 BUILD_DRIVER_FLIGHTSQL=0 BUILD_DRIVER_SNOWFLAKE=0 BUILD_DRIVER_BIGQUERY=0 /adbc/ci/scripts/cpp_test.sh /adbc/build/musl'"
+
   ############################ Documentation ###################################
 
   docs:
@@ -262,7 +279,7 @@ services:
       args:
         GO: ${GO}
     healthcheck:
-      test: ["CMD", "curl", "--http2-prior-knowledge", "-XPOST", "-H", "content-type: application/grpc", "localhost:41414"]
+      test: ["CMD", "curl", "-k", "--http2", "-XPOST", "-H", "content-type: application/grpc", "https://localhost:41414"]
       interval: 5s
       timeout: 30s
       retries: 3
@@ -271,8 +288,35 @@ services:
       - "41414:41414"
     volumes:
       - .:/adbc:delegated
+    depends_on:
+      oauth-server:
+        condition: service_healthy
     command: >-
-      /bin/bash -c "cd /adbc/go/adbc && go run ./driver/flightsql/cmd/testserver -host 0.0.0.0 -port 41414"
+      /bin/bash -c "cd /adbc/go/adbc && go run ./driver/flightsql/cmd/testserver -host 0.0.0.0 -port 41414 -token-prefix oauth- -tls"
+
+  # OAuth test server for FlightSQL OAuth authentication testing
+  oauth-server:
+    container_name: adbc-oauth-server
+    image: ${REPO}:adbc-oauth-server
+    build:
+      context: .
+      cache_from:
+        - ${REPO}:adbc-oauth-server
+      dockerfile: ci/docker/oauth-server.dockerfile
+      args:
+        GO: ${GO}
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8181/health"]
+      interval: 5s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    ports:
+      - "8181:8181"
+    volumes:
+      - .:/adbc:delegated
+    command: >-
+      /bin/bash -c "cd /adbc/go/adbc && go run ./driver/flightsql/cmd/oauthserver -host 0.0.0.0 -port 8181 -client-id test-client -client-secret test-secret"
 
   flightsql-sqlite-test:
     image: ${REPO}:golang-${GO}-sqlite-flightsql
@@ -323,6 +367,27 @@ services:
     ports:
       - "50051:50051"
       - "8090:8090"
+
+  gizmosql-test:
+    container_name: adbc_gizmosql_test
+    image: gizmodata/gizmosql:latest-slim
+    init: true
+    tty: true
+    environment:
+      GIZMOSQL_USERNAME: ${ADBC_GIZMOSQL_USER:-adbc_test_user}
+      GIZMOSQL_PASSWORD: ${ADBC_GIZMOSQL_PASSWORD:-adbc_test_password}
+      TLS_ENABLED: "0"
+      PRINT_QUERIES: "1"
+      DATABASE_FILENAME: "adbc_test.db"
+      GIZMOSQL_LOG_LEVEL: "DEBUG"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/localhost/31337'"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    ports:
+      - "31337:31337"
 
   ################################ Verification ################################
 

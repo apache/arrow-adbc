@@ -34,6 +34,8 @@
 #' @param bind A data.frame, nanoarrow_array, or nanoarrow_array_stream of
 #'   bind parameters or NULL to skip the bind/prepare step.
 #' @param temporary Use TRUE to create a table as a temporary table.
+#' @param catalog_name If not `NULL`, the catalog to create/locate the table in.
+#' @param db_schema_name If not `NULL`, the schema to create/locate the table in.
 #' @param ... Passed to S3 methods.
 #'
 #' @return
@@ -69,7 +71,9 @@ execute_adbc <- function(db_or_con, query, ..., bind = NULL) {
 #' @export
 write_adbc <- function(tbl, db_or_con, target_table, ...,
                        mode = c("default", "create", "append", "replace", "create_append"),
-                       temporary = FALSE) {
+                       temporary = FALSE,
+                       catalog_name = NULL,
+                       db_schema_name = NULL) {
   UseMethod("write_adbc", db_or_con)
 }
 
@@ -113,7 +117,9 @@ execute_adbc.default <- function(db_or_con, query, ..., bind = NULL, stream = NU
 #' @export
 write_adbc.default <- function(tbl, db_or_con, target_table, ...,
                                mode = c("default", "create", "append", "replace", "create_append"),
-                               temporary = FALSE) {
+                               temporary = FALSE,
+                               catalog_name = NULL,
+                               db_schema_name = NULL) {
   assert_adbc(db_or_con, c("adbc_database", "adbc_connection"))
   mode <- match.arg(mode)
 
@@ -127,6 +133,8 @@ write_adbc.default <- function(tbl, db_or_con, target_table, ...,
   stmt <- adbc_statement_init(
     con,
     adbc.ingest.target_table = target_table,
+    adbc.ingest.target_catalog = catalog_name,
+    adbc.ingest.target_db_schema = db_schema_name,
     adbc.ingest.mode = if (!identical(mode, "default")) paste0("adbc.ingest.mode.", mode),
     adbc.ingest.temporary = if (temporary) "true"
   )

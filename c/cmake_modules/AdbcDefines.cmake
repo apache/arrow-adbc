@@ -148,6 +148,26 @@ endmacro()
 # Common testing setup
 add_custom_target(all-tests)
 if(ADBC_BUILD_TESTS)
+  if(MSVC)
+    # MSVC emitted warnings for testing code
+    # Unary minus operator applied to unsigned type, result still unsigned
+    add_compile_options(/wd4146)
+    # An integer type is converted to a smaller integer type.
+    add_compile_options(/wd4244)
+    # Class has virtual functions, but its non-trivial destructor is not virtual; instances of this class may not be destructed correctly
+    add_compile_options(/wd4265)
+    # No override available for virtual member function from base
+    add_compile_options(/wd4266)
+    # Signed integral constant overflow
+    add_compile_options(/wd4307)
+    # Move constructor was implicitly defined as deleted
+    add_compile_options(/wd5026)
+    # Class has virtual functions, but its trivial destructor is not virtual
+    add_compile_options(/wd5204)
+    # Implicit fall-through occurs here
+    add_compile_options(/wd5262)
+  endif()
+
   find_package(GTest)
   if(NOT GTest_FOUND)
     message(STATUS "Building googletest from source")

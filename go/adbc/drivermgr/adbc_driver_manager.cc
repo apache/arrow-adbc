@@ -68,7 +68,7 @@ struct ParseDriverUriResult {
 };
 
 ADBC_EXPORT
-std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view& str);
+std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view str);
 
 namespace {
 
@@ -132,6 +132,35 @@ void AddSearchPathsToError(const SearchPaths& search_paths, std::string& error_m
       error_message += path.string();
     }
   }
+}
+
+// Generate a note for the error message if the library name has potentially
+// non-printable (or really non-ASCII-printable-range) characters.  Oblivious
+// to Unicode and locales.
+std::string CheckNonPrintableLibraryName(const std::string& name) {
+  // We could use std::isprint, but that requires locales; prefer a
+  // simpler check for out-of-ASCII-range.
+  bool has_non_printable = std::any_of(name.begin(), name.end(), [](char c) {
+    int v = static_cast<int>(c);
+    return v < 32 || v > 127;
+  });
+  if (!has_non_printable) return "";
+
+  std::string error_message = "Note: driver name may have non-printable characters: `";
+  // TODO(lidavidm): we can simplify with C++20 <format>
+  for (char c : name) {
+    int v = static_cast<int>(c);
+    if (v < 32 || v > 127) {
+      error_message += "\\x";
+      char buf[3];
+      std::snprintf(buf, sizeof(buf), "%02x", v & 0xFF);
+      error_message += buf;
+    } else {
+      error_message += c;
+    }
+  }
+  error_message += "`";
+  return error_message;
 }
 
 // Platform-specific helpers
@@ -230,6 +259,7 @@ struct OwnedError {
 
 #ifdef _WIN32
 using char_type = wchar_t;
+using string_type = std::wstring;
 
 std::string Utf8Encode(const std::wstring& wstr) {
   if (wstr.empty()) return std::string();
@@ -253,6 +283,7 @@ std::wstring Utf8Decode(const std::string& str) {
 
 #else
 using char_type = char;
+using string_type = std::string;
 #endif  // _WIN32
 
 /// \brief The location and entrypoint of a resolved driver.
@@ -462,18 +493,16 @@ AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
 
 SearchPaths GetEnvPaths(const char_type* env_var) {
 #ifdef _WIN32
-  size_t required_size;
-
-  _wgetenv_s(&required_size, NULL, 0, env_var);
+  DWORD required_size = GetEnvironmentVariableW(env_var, NULL, 0);
   if (required_size == 0) {
     return {};
   }
 
   std::wstring path_var;
   path_var.resize(required_size);
-  _wgetenv_s(&required_size, path_var.data(), required_size, env_var);
+  DWORD actual_size = GetEnvironmentVariableW(env_var, path_var.data(), required_size);
   // Remove null terminator
-  path_var.resize(required_size - 1);
+  path_var.resize(actual_size);
   auto path = Utf8Encode(path_var);
 #else
   const char* path_var = std::getenv(env_var);
@@ -483,8 +512,8 @@ SearchPaths GetEnvPaths(const char_type* env_var) {
   std::string path(path_var);
 #endif  // _WIN32
   SearchPaths paths;
-  for (auto path : InternalAdbcParsePath(path)) {
-    paths.emplace_back(SearchPathSource::kEnv, path);
+  for (auto parsed_path : InternalAdbcParsePath(path)) {
+    paths.emplace_back(SearchPathSource::kEnv, parsed_path);
   }
   return paths;
 }
@@ -588,7 +617,7 @@ struct ManagedLibrary {
 
         auto status = LoadDriverManifest(driver_path, info, error);
         if (status == ADBC_STATUS_OK) {
-          return Load(info.lib_path.c_str(), {}, error);
+          return Load(info.lib_path.native(), {}, error);
         }
         return status;
       }
@@ -596,7 +625,7 @@ struct ManagedLibrary {
       // if the extension is not .toml, then just try to load the provided
       // path as if it was an absolute path to a driver library
       info.lib_path = driver_path;
-      return Load(driver_path.c_str(), {}, error);
+      return Load(driver_path.native(), {}, error);
     }
 
     if (driver_path.is_absolute()) {
@@ -606,14 +635,14 @@ struct ManagedLibrary {
       if (std::filesystem::exists(driver_path)) {
         auto status = LoadDriverManifest(driver_path, info, error);
         if (status == ADBC_STATUS_OK) {
-          return Load(info.lib_path.c_str(), {}, error);
+          return Load(info.lib_path.native(), {}, error);
         }
       }
 
       driver_path.replace_extension("");
       // otherwise just try to load the provided path as if it was an absolute path
       info.lib_path = driver_path;
-      return Load(driver_path.c_str(), {}, error);
+      return Load(driver_path.native(), {}, error);
     }
 
     if (driver_path.has_extension()) {
@@ -631,7 +660,7 @@ struct ManagedLibrary {
 #endif  // defined(_WIN32)
       if (HasExtension(driver_path, kPlatformLibrarySuffix)) {
         info.lib_path = driver_path;
-        return Load(driver_path.c_str(), {}, error);
+        return Load(driver_path.native(), {}, error);
       }
 
       SetError(error, "Driver name has unrecognized extension: " +
@@ -676,7 +705,7 @@ struct ManagedLibrary {
         auto status = LoadDriverManifest(full_path, info, &intermediate_error.error);
         if (status == ADBC_STATUS_OK) {
           // Don't pass attempted_paths here; we'll generate the error at a higher level
-          status = Load(info.lib_path.c_str(), {}, &intermediate_error.error);
+          status = Load(info.lib_path.native(), {}, &intermediate_error.error);
           if (status == ADBC_STATUS_OK) {
             return status;
           }
@@ -720,7 +749,7 @@ struct ManagedLibrary {
       // remove the .toml extension; Load will add the DLL/SO/DYLIB suffix
       full_path.replace_extension("");
       // Don't pass error here - it'll be suppressed anyways
-      auto status = Load(full_path.c_str(), {}, nullptr);
+      auto status = Load(full_path.native(), {}, nullptr);
       if (status == ADBC_STATUS_OK) {
         info.lib_path = full_path;
         return status;
@@ -799,7 +828,7 @@ struct ManagedLibrary {
       auto status =
           LoadDriverFromRegistry(HKEY_CURRENT_USER, driver_path.native(), info, error);
       if (status == ADBC_STATUS_OK) {
-        return Load(info.lib_path.c_str(), {}, error);
+        return Load(info.lib_path.native(), {}, error);
       }
       if (error && error->message) {
         std::string message = "HKEY_CURRENT_USER\\"s;
@@ -826,7 +855,7 @@ struct ManagedLibrary {
       auto status =
           LoadDriverFromRegistry(HKEY_LOCAL_MACHINE, driver_path.native(), info, error);
       if (status == ADBC_STATUS_OK) {
-        return Load(info.lib_path.c_str(), {}, error);
+        return Load(info.lib_path.native(), {}, error);
       }
       if (error && error->message) {
         std::string message = "HKEY_LOCAL_MACHINE\\"s;
@@ -850,7 +879,7 @@ struct ManagedLibrary {
     }
 
     info.lib_path = driver_path;
-    return Load(driver_path.c_str(), search_paths, error);
+    return Load(driver_path.native(), search_paths, error);
 #else
     // Otherwise, search the configured paths.
     SearchPaths more_search_paths =
@@ -882,7 +911,7 @@ struct ManagedLibrary {
       search_paths.insert(search_paths.end(), more_search_paths.begin(),
                           more_search_paths.end());
       info.lib_path = driver_path;
-      return Load(driver_path.c_str(), search_paths, error);
+      return Load(driver_path.native(), search_paths, error);
     }
     return status;
 #endif  // _WIN32
@@ -890,14 +919,15 @@ struct ManagedLibrary {
 
   /// \return ADBC_STATUS_NOT_FOUND if the driver shared library could not be
   ///   found, ADBC_STATUS_OK otherwise
-  AdbcStatusCode Load(const char_type* library, const SearchPaths& attempted_paths,
+  AdbcStatusCode Load(const string_type& library, const SearchPaths& attempted_paths,
                       struct AdbcError* error) {
     std::string error_message;
 #if defined(_WIN32)
-    HMODULE handle = LoadLibraryExW(library, NULL, 0);
+    HMODULE handle = LoadLibraryExW(library.c_str(), NULL, 0);
     if (!handle) {
+      error_message = "Could not load `";
       error_message += Utf8Encode(library);
-      error_message += ": LoadLibraryExW() failed: ";
+      error_message += "`: LoadLibraryExW() failed: ";
       GetWinError(&error_message);
 
       std::wstring full_driver_name = library;
@@ -911,6 +941,12 @@ struct ManagedLibrary {
       }
     }
     if (!handle) {
+      std::string name = Utf8Encode(library);
+      std::string message = CheckNonPrintableLibraryName(name);
+      if (!message.empty()) {
+        error_message += "\n";
+        error_message += message;
+      }
       AddSearchPathsToError(attempted_paths, error_message);
       SetError(error, error_message);
       return ADBC_STATUS_NOT_FOUND;
@@ -925,9 +961,11 @@ struct ManagedLibrary {
     static const std::string kPlatformLibrarySuffix = ".so";
 #endif  // defined(__APPLE__)
 
-    void* handle = dlopen(library, RTLD_NOW | RTLD_LOCAL);
+    void* handle = dlopen(library.c_str(), RTLD_NOW | RTLD_LOCAL);
     if (!handle) {
-      error_message = "dlopen() failed: ";
+      error_message = "Could not load `";
+      error_message += library;
+      error_message += "`: dlopen() failed: ";
       error_message += dlerror();
 
       // If applicable, append the shared library prefix/extension and
@@ -957,6 +995,11 @@ struct ManagedLibrary {
     if (handle) {
       this->handle = handle;
     } else {
+      std::string message = CheckNonPrintableLibraryName(library);
+      if (!message.empty()) {
+        error_message += "\n";
+        error_message += message;
+      }
       AddSearchPathsToError(attempted_paths, error_message);
       SetError(error, error_message);
       return ADBC_STATUS_NOT_FOUND;
@@ -1531,7 +1574,7 @@ std::string InternalAdbcDriverManagerDefaultEntrypoint(const std::string& driver
     // if pos == npos this is the entire filename
     std::string token = filename.substr(prev, pos - prev);
     // capitalize first letter
-    token[0] = std::toupper(static_cast<unsigned char>(token[0]));
+    token[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(token[0])));
 
     entrypoint += token;
 
@@ -1549,7 +1592,7 @@ std::string InternalAdbcDriverManagerDefaultEntrypoint(const std::string& driver
 }
 
 ADBC_EXPORT
-std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view& str) {
+std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view str) {
   std::string::size_type pos = str.find(":");
   if (pos == std::string::npos) {
     return std::nullopt;
@@ -1652,7 +1695,7 @@ AdbcStatusCode AdbcDatabaseGetOption(struct AdbcDatabase* database, const char* 
     result = &it->second;
   }
 
-  if (*length <= result->size() + 1) {
+  if (*length >= result->size() + 1) {
     // Enough space
     std::memcpy(value, result->c_str(), result->size() + 1);
   }
@@ -1670,13 +1713,13 @@ AdbcStatusCode AdbcDatabaseGetOptionBytes(struct AdbcDatabase* database, const c
   }
   const auto* args = reinterpret_cast<const TempDatabase*>(database->private_data);
   const auto it = args->bytes_options.find(key);
-  if (it == args->options.end()) {
+  if (it == args->bytes_options.end()) {
     SetError(error, std::string("Option not found: ") + key);
     return ADBC_STATUS_NOT_FOUND;
   }
   const std::string& result = it->second;
 
-  if (*length <= result.size()) {
+  if (*length >= result.size()) {
     // Enough space
     std::memcpy(value, result.c_str(), result.size());
   }
@@ -1725,36 +1768,9 @@ AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* 
 
   TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
   if (std::strcmp(key, "driver") == 0) {
-    std::string_view v{value};
-    auto result = InternalAdbcParseDriverUri(v);
-    if (!result) {
-      args->driver = std::string{v};
-    } else {
-      args->driver = std::string{result->driver};
-      if (result->uri) {
-        args->options["uri"] = std::string{*result->uri};
-      }
-    }
+    args->driver = value;
   } else if (std::strcmp(key, "entrypoint") == 0) {
     args->entrypoint = value;
-  } else if (std::strcmp(key, "uri") == 0) {
-    if (!args->driver.empty()) {  // if driver is already set, just set uri
-      args->options[key] = value;
-    } else {
-      std::string_view v{value};
-      auto result = InternalAdbcParseDriverUri(v);
-      if (!result) {
-        SetError(error, "Invalid URI: missing scheme");
-        return ADBC_STATUS_INVALID_ARGUMENT;
-      }
-
-      args->driver = std::string{result->driver};
-      if (!result->uri) {
-        SetError(error, "Invalid URI: " + std::string{value});
-        return ADBC_STATUS_INVALID_ARGUMENT;
-      }
-      args->options["uri"] = std::string{*result->uri};
-    }
   } else {
     args->options[key] = value;
   }
@@ -1847,11 +1863,31 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
     return ADBC_STATUS_INVALID_STATE;
   }
   TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
-  if (args->init_func) {
-    // Do nothing
-  } else if (args->driver.empty()) {
-    SetError(error, "Must provide 'driver' parameter");
-    return ADBC_STATUS_INVALID_ARGUMENT;
+  if (!args->init_func) {
+    const auto uri = args->options.find("uri");
+    if (args->driver.empty() && uri != args->options.end()) {
+      std::string owned_uri = uri->second;
+      auto result = InternalAdbcParseDriverUri(owned_uri);
+      if (result && result->uri) {
+        args->driver = std::string{result->driver};
+        args->options["uri"] = std::string{*result->uri};
+      }
+    } else if (!args->driver.empty() && uri == args->options.end()) {
+      std::string owned_driver = args->driver;
+      auto result = InternalAdbcParseDriverUri(owned_driver);
+      if (result) {
+        args->driver = std::string{result->driver};
+        if (result->uri) {
+          args->options["uri"] = std::string{*result->uri};
+        }
+      }
+    }
+
+    if (args->driver.empty()) {
+      SetError(error,
+               "Must provide 'driver' parameter (or encode driver in 'uri' parameter)");
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
   }
 
   database->private_driver = new AdbcDriver;
@@ -2057,13 +2093,13 @@ AdbcStatusCode AdbcConnectionGetOptionBytes(struct AdbcConnection* connection,
     // Init not yet called, get the saved option
     const auto* args = reinterpret_cast<const TempConnection*>(connection->private_data);
     const auto it = args->bytes_options.find(key);
-    if (it == args->options.end()) {
+    if (it == args->bytes_options.end()) {
       return ADBC_STATUS_NOT_FOUND;
     }
-    if (*length >= it->second.size() + 1) {
-      std::memcpy(value, it->second.data(), it->second.size() + 1);
+    if (*length >= it->second.size()) {
+      std::memcpy(value, it->second.data(), it->second.size());
     }
-    *length = it->second.size() + 1;
+    *length = it->second.size();
     return ADBC_STATUS_OK;
   }
   INIT_ERROR(error, connection);

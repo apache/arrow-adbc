@@ -36,6 +36,10 @@ const (
 	OptionStringDatasetID = "adbc.bigquery.sql.dataset_id"
 	OptionStringTableID   = "adbc.bigquery.sql.table_id"
 
+	// https://pkg.go.dev/google.golang.org/api@v0.258.0/option#WithAuthCredentialsJSON
+	// https://pkg.go.dev/google.golang.org/api@v0.258.0/internal/credentialstype#CredType
+	OptionAuthCredentialsType = "bigquery.auth.credentials_type"
+
 	OptionValueAuthTypeDefault = "adbc.bigquery.sql.auth_type.auth_bigquery"
 
 	OptionValueAuthTypeJSONCredentialFile   = "adbc.bigquery.sql.auth_type.json_credential_file"

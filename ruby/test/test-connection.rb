@@ -68,7 +68,8 @@ class ConnectionTest < Test::Unit::TestCase
                      vendor_version: "X.Y.Z",
                      driver_name: "ADBC SQLite Driver",
                      driver_version: "(unknown)",
-                     driver_arrow_version: "X.Y.Z"
+                     driver_arrow_version: "X.Y.Z",
+                     driver_adbc_version: ADBC::VERSION_1_1_0,
                    },
                    info)
     end

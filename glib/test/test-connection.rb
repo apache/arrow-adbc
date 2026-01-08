@@ -49,8 +49,8 @@ class ConnectionTest < Test::Unit::TestCase
                        [ADBC::Info::VENDOR_NAME, "PostgreSQL"],
                        [ADBC::Info::VENDOR_VERSION, "X.Y.Z"],
                        [ADBC::Info::DRIVER_NAME, "ADBC PostgreSQL Driver"],
-                       [ADBC::Info::DRIVER_VERSION, "(unknown)"],
-                       [ADBC::Info::DRIVER_ARROW_VERSION, "X.Y.Z"],
+                       [ADBC::Info::DRIVER_VERSION, "unknown"],
+                       [ADBC::Info::DRIVER_ARROW_VERSION, "vX.Y.Z"],
                        [ADBC::Info::DRIVER_ADBC_VERSION, ADBC::VERSION_1_1_0],
                      ],
                      normalize_info(table.raw_records))
@@ -519,13 +519,9 @@ class ConnectionTest < Test::Unit::TestCase
 
   def test_isolation_level
     open_connection do |connection|
-      message =
-        "[adbc][connection][set-option]" +
-        "[NOT_IMPLEMENTED][0] " +
-        "[libpq] Unknown option " +
-        "adbc.connection.transaction.isolation_level"
-      assert_raise(ADBC::Error::NotImplemented.new(message)) do
-        connection.isolation_level = :linearizable
+      connection.isolation_level = :serializable
+      execute_sql(connection, "SELECT current_setting('transaction_isolation')") do |table,|
+        assert_equal("serializable", table["current_setting"][0])
       end
     end
   end

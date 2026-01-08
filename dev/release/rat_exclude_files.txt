@@ -1,8 +1,10 @@
 *.json
+*.lock
 *.Rproj
 *.Rd
 .codespell-dictionary
 .codespell-ignore
+c/driver/postgresql/validation/queries/**/*.sql
 c/subprojects/fmt.wrap
 c/subprojects/gtest.wrap
 c/subprojects/nanoarrow.wrap

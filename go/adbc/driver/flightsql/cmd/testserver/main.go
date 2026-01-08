@@ -18,19 +18,30 @@
 // A server intended specifically for testing the Flight SQL driver.  Unlike
 // the upstream SQLite example, which tries to be functional, this server
 // tries to be useful.
+//
+// Supports optional OAuth authentication and TLS for testing OAuth flows.
 
 package main
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/base64"
+	"encoding/pem"
 	"flag"
 	"fmt"
 	"log"
+	"math/big"
 	"net"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
@@ -38,7 +49,9 @@ import (
 	"github.com/apache/arrow-go/v18/arrow/flight/flightsql"
 	"github.com/apache/arrow-go/v18/arrow/flight/flightsql/schema_ref"
 	"github.com/apache/arrow-go/v18/arrow/memory"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -301,7 +314,7 @@ func (srv *ExampleServer) DoGetPreparedStatement(ctx context.Context, cmd flight
 		ch := make(chan flight.StreamChunk)
 		schema = arrow.NewSchema([]arrow.Field{{Name: "ints", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
 		var rec arrow.RecordBatch
-		rec, _, err = array.RecordFromJSON(memory.DefaultAllocator, schema, strings.NewReader(`[{"a": 5}]`))
+		rec, _, err = array.RecordFromJSON(memory.DefaultAllocator, schema, strings.NewReader(`[{"ints": 5}]`))
 		go func() {
 			// wait for client cancel
 			<-ctx.Done()
@@ -361,7 +374,7 @@ func (srv *ExampleServer) DoGetPreparedStatement(ctx context.Context, cmd flight
 	}
 
 	schema = arrow.NewSchema([]arrow.Field{{Name: "ints", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
-	rec, _, err := array.RecordFromJSON(memory.DefaultAllocator, schema, strings.NewReader(`[{"a": 5}]`))
+	rec, _, err := array.RecordFromJSON(memory.DefaultAllocator, schema, strings.NewReader(`[{"ints": 5}]`))
 
 	ch := make(chan flight.StreamChunk)
 	go func() {
@@ -538,10 +551,136 @@ func (srv *ExampleServer) CloseSession(ctx context.Context, req *flight.CloseSes
 	return &flight.CloseSessionResult{}, nil
 }
 
+// Hardcoded test credentials for Basic authentication
+const (
+	testBasicUsername = "user"
+	testBasicPassword = "password"
+)
+
+// createAuthMiddleware creates gRPC interceptors that validate Bearer tokens or Basic auth.
+// If tokenPrefix is empty, no validation is performed (authentication disabled).
+// Supports both:
+//   - Bearer tokens: validated against the tokenPrefix
+//   - Basic auth: validated against hardcoded test credentials (user:password)
+func createAuthMiddleware(tokenPrefix string) (grpc.UnaryServerInterceptor, grpc.StreamServerInterceptor) {
+	validateAuth := func(ctx context.Context) error {
+		if tokenPrefix == "" {
+			return nil // No authentication required
+		}
+
+		md, ok := metadata.FromIncomingContext(ctx)
+		if !ok {
+			return status.Error(codes.InvalidArgument, "missing metadata")
+		}
+
+		auth := md.Get("authorization")
+		if len(auth) == 0 {
+			return status.Error(codes.Unauthenticated, "missing authorization header")
+		}
+
+		authHeader := auth[0]
+
+		// Check for Basic authentication
+		if strings.HasPrefix(authHeader, "Basic ") {
+			encoded := strings.TrimPrefix(authHeader, "Basic ")
+			decoded, err := base64.StdEncoding.DecodeString(encoded)
+			if err != nil {
+				log.Printf("Basic auth decode failed: %v", err)
+				return status.Error(codes.Unauthenticated, "invalid basic auth encoding")
+			}
+
+			credentials := string(decoded)
+			parts := strings.SplitN(credentials, ":", 2)
+			if len(parts) != 2 {
+				return status.Error(codes.Unauthenticated, "invalid basic auth format")
+			}
+
+			username, password := parts[0], parts[1]
+			if username == testBasicUsername && password == testBasicPassword {
+				log.Printf("Basic auth validated for user: %s", username)
+				return nil
+			}
+			log.Printf("Basic auth failed: invalid credentials for user: %s", username)
+			return status.Error(codes.Unauthenticated, "invalid credentials")
+		}
+
+		// Check for Bearer token authentication
+		if strings.HasPrefix(authHeader, "Bearer ") {
+			bearerToken := strings.TrimPrefix(authHeader, "Bearer ")
+			if !strings.HasPrefix(bearerToken, tokenPrefix) {
+				log.Printf("Token validation failed: token=%s, expected prefix=%s", bearerToken, tokenPrefix)
+				return status.Error(codes.Unauthenticated, "invalid token")
+			}
+
+			log.Printf("Token validated: %s", bearerToken[:min(len(bearerToken), 20)]+"...")
+			return nil
+		}
+
+		return status.Error(codes.Unauthenticated, "invalid authorization format, expected 'Bearer <token>' or 'Basic <credentials>'")
+	}
+
+	unary := func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
+		if err := validateAuth(ctx); err != nil {
+			return nil, err
+		}
+		return handler(ctx, req)
+	}
+
+	stream := func(srv interface{}, ss grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		if err := validateAuth(ss.Context()); err != nil {
+			return err
+		}
+		return handler(srv, ss)
+	}
+
+	return unary, stream
+}
+
+// generateSelfSignedCert generates a self-signed TLS certificate for testing
+func generateSelfSignedCert() (tls.Certificate, []byte, error) {
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return tls.Certificate{}, nil, fmt.Errorf("failed to generate private key: %w", err)
+	}
+
+	template := x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject: pkix.Name{
+			Organization: []string{"ADBC Test Server"},
+			CommonName:   "localhost",
+		},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().Add(24 * time.Hour),
+		KeyUsage:              x509.KeyUsageKeyEncipherment | x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+		BasicConstraintsValid: true,
+		IPAddresses:           []net.IP{net.ParseIP("127.0.0.1"), net.ParseIP("0.0.0.0")},
+		DNSNames:              []string{"localhost"},
+	}
+
+	certDER, err := x509.CreateCertificate(rand.Reader, &template, &template, &priv.PublicKey, priv)
+	if err != nil {
+		return tls.Certificate{}, nil, fmt.Errorf("failed to create certificate: %w", err)
+	}
+
+	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certDER})
+	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "RSA PRIVATE KEY", Bytes: x509.MarshalPKCS1PrivateKey(priv)})
+
+	cert, err := tls.X509KeyPair(certPEM, keyPEM)
+	if err != nil {
+		return tls.Certificate{}, nil, fmt.Errorf("failed to create key pair: %w", err)
+	}
+
+	return cert, certPEM, nil
+}
+
 func main() {
 	var (
-		host = flag.String("host", "localhost", "hostname to bind to")
-		port = flag.Int("port", 0, "port to bind to")
+		host        = flag.String("host", "localhost", "hostname to bind to")
+		port        = flag.Int("port", 0, "port to bind to")
+		useTLS      = flag.Bool("tls", false, "Enable TLS with self-signed certificate")
+		tokenPrefix = flag.String("token-prefix", "", "Required prefix for valid Bearer tokens (empty = no auth)")
+		certFile    = flag.String("cert-file", "", "Path to write the PEM certificate (for client verification)")
 	)
 
 	flag.Parse()
@@ -552,14 +691,54 @@ func main() {
 		log.Fatal(err)
 	}
 
-	server := flight.NewServerWithMiddleware(nil)
+	// Create middleware (OAuth validation if token-prefix is set)
+	var middleware []flight.ServerMiddleware
+	if *tokenPrefix != "" {
+		unary, stream := createAuthMiddleware(*tokenPrefix)
+		middleware = append(middleware, flight.ServerMiddleware{Unary: unary, Stream: stream})
+	}
+
+	addr := net.JoinHostPort(*host, strconv.Itoa(*port))
+	var server flight.Server
+
+	if *useTLS {
+		cert, certPEM, err := generateSelfSignedCert()
+		if err != nil {
+			log.Fatalf("Failed to generate TLS certificate: %v", err)
+		}
+
+		if *certFile != "" {
+			if err := os.WriteFile(*certFile, certPEM, 0644); err != nil {
+				log.Fatalf("Failed to write certificate file: %v", err)
+			}
+			log.Printf("Certificate written to %s", *certFile)
+		}
+
+		tlsConfig := &tls.Config{Certificates: []tls.Certificate{cert}}
+		server = flight.NewServerWithMiddleware(middleware, grpc.Creds(credentials.NewTLS(tlsConfig)))
+	} else {
+		server = flight.NewServerWithMiddleware(middleware)
+	}
+
 	server.RegisterFlightService(flightsql.NewFlightServer(srv))
-	if err := server.Init(net.JoinHostPort(*host, strconv.Itoa(*port))); err != nil {
+	if err := server.Init(addr); err != nil {
 		log.Fatal(err)
 	}
 	server.SetShutdownOnSignals(os.Interrupt, os.Kill)
 
-	fmt.Println("Starting testing Flight SQL Server on", server.Addr(), "...")
+	// Build descriptive startup message
+	features := []string{}
+	if *useTLS {
+		features = append(features, "TLS")
+	}
+	if *tokenPrefix != "" {
+		features = append(features, fmt.Sprintf("OAuth(prefix=%s)", *tokenPrefix))
+	}
+	if len(features) > 0 {
+		fmt.Printf("Starting testing Flight SQL Server on %s with %s...\n", server.Addr(), strings.Join(features, ", "))
+	} else {
+		fmt.Println("Starting testing Flight SQL Server on", server.Addr(), "...")
+	}
 
 	if err := server.Serve(); err != nil {
 		log.Fatal(err)
