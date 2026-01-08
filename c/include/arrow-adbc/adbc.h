@@ -1071,7 +1071,7 @@ struct ADBC_EXPORT AdbcDriver {
   /// When a driver implementing an older spec is loaded by a newer
   /// driver manager, the newer manager will allocate the new, expanded
   /// AdbcDriver struct and attempt to have the driver initialize it with
-  /// the newer verison. This must return an error, after which the driver
+  /// the newer version. This must return an error, after which the driver
   /// will try again with successively older versions all the way back to
   /// ADBC_VERSION_1_0_0. The driver must not access the new fields,
   /// which will carry undefined values.
@@ -1156,7 +1156,7 @@ struct ADBC_EXPORT AdbcDriver {
   /// When a driver implementing an older spec is loaded by a newer
   /// driver manager, the newer manager will allocate the new, expanded
   /// AdbcDriver struct and attempt to have the driver initialize it with
-  /// the newer verison. This must return an error, after which the driver
+  /// the newer version. This must return an error, after which the driver
   /// will try again with successively older versions all the way back to
   /// ADBC_VERSION_1_0_0. The driver must not access the new fields,
   /// which will carry undefined values.

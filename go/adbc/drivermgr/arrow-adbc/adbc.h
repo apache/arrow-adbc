@@ -423,6 +423,14 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// \since ADBC API revision 1.1.0
 #define ADBC_VERSION_1_1_0 1001000
 
+/// \brief ADBC revision 1.2.0
+///
+/// When passed to an AdbcDriverInitFunc(), the driver parameter must
+/// point to an AdbcDriver.
+///
+/// \since ADBC API revision 1.2.0
+#define ADBC_VERSION_1_2_0 1002000
+
 /// \brief Canonical option value for enabling an option.
 ///
 /// For use as the value in SetOption calls.
@@ -525,6 +533,7 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// \see AdbcConnectionGetInfo
 /// \see ADBC_VERSION_1_0_0
 /// \see ADBC_VERSION_1_1_0
+/// \see ADBC_VERSION_1_2_0
 #define ADBC_INFO_DRIVER_ADBC_VERSION 103
 
 /// \brief Return metadata on catalogs, schemas, tables, and columns.
@@ -1059,17 +1068,18 @@ struct ADBC_EXPORT AdbcDriver {
   /// the AdbcDriverInitFunc is greater than or equal to
   /// ADBC_VERSION_1_1_0.
   ///
-  /// For a 1.0.0 driver being loaded by a 1.1.0 driver manager: the
-  /// 1.1.0 manager will allocate the new, expanded AdbcDriver struct
-  /// and attempt to have the driver initialize it with
-  /// ADBC_VERSION_1_1_0.  This must return an error, after which the
-  /// driver will try again with ADBC_VERSION_1_0_0.  The driver must
-  /// not access the new fields, which will carry undefined values.
+  /// When a driver implementing an older spec is loaded by a newer
+  /// driver manager, the newer manager will allocate the new, expanded
+  /// AdbcDriver struct and attempt to have the driver initialize it with
+  /// the newer version. This must return an error, after which the driver
+  /// will try again with successively older versions all the way back to
+  /// ADBC_VERSION_1_0_0. The driver must not access the new fields,
+  /// which will carry undefined values.
   ///
-  /// For a 1.1.0 driver being loaded by a 1.0.0 driver manager: the
-  /// 1.0.0 manager will allocate the old AdbcDriver struct and
-  /// attempt to have the driver initialize it with
-  /// ADBC_VERSION_1_0_0.  The driver must not access the new fields,
+  /// When a driver implementing a newer spec is loaded by an older
+  /// driver manager, the older manager will allocate the old AdbcDriver
+  /// struct and attempt to have the driver initialize it with the
+  /// older version.  The driver must not access the new fields,
   /// and should initialize the old fields.
   ///
   /// @{
@@ -1135,6 +1145,36 @@ struct ADBC_EXPORT AdbcDriver {
                                           struct AdbcError*);
 
   /// @}
+
+  /// \defgroup adbc-1.2.0 ADBC API Revision 1.2.0
+  ///
+  /// Functions added in ADBC 1.2.0.  For backwards compatibility,
+  /// these members must not be accessed unless the version passed to
+  /// the AdbcDriverInitFunc is greater than or equal to
+  /// ADBC_VERSION_1_2_0.
+  ///
+  /// When a driver implementing an older spec is loaded by a newer
+  /// driver manager, the newer manager will allocate the new, expanded
+  /// AdbcDriver struct and attempt to have the driver initialize it with
+  /// the newer version. This must return an error, after which the driver
+  /// will try again with successively older versions all the way back to
+  /// ADBC_VERSION_1_0_0. The driver must not access the new fields,
+  /// which will carry undefined values.
+  ///
+  /// When a driver implementing a newer spec is loaded by an older
+  /// driver manager, the older manager will allocate the old AdbcDriver
+  /// struct and attempt to have the driver initialize it with the
+  /// older version.  The driver must not access the new fields,
+  /// and should initialize the old fields.
+  ///
+  /// @{
+
+  AdbcStatusCode (*StatementNextResultSet)(struct AdbcStatement*,
+                                           struct ArrowArrayStream*,
+                                           struct AdbcPartitions*, int64_t*,
+                                           struct AdbcError*);
+
+  /// @}
 };
 
 /// \brief The size of the AdbcDriver structure in ADBC 1.0.0.
@@ -1151,7 +1191,15 @@ struct ADBC_EXPORT AdbcDriver {
 /// ADBC_VERSION_1_1_0.
 ///
 /// \since ADBC API revision 1.1.0
-#define ADBC_DRIVER_1_1_0_SIZE (sizeof(struct AdbcDriver))
+#define ADBC_DRIVER_1_1_0_SIZE (offsetof(struct AdbcDriver, StatementNextResultSet))
+
+/// \brief The size of the AdbcDriver structure in ADBC 1.2.0.
+/// Drivers written for ADBC 1.2.0 and later should never touch more
+/// than this portion of an AdbcDriver struct when given
+/// ADBC_VERSION_1_2_0.
+///
+/// \since ADBC API revision 1.2.0
+#define ADBC_DRIVER_1_2_0_SIZE (sizeof(struct AdbcDriver))
 
 /// @}
 
@@ -2012,6 +2060,57 @@ ADBC_EXPORT
 AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
                                          struct ArrowArrayStream* out,
                                          int64_t* rows_affected, struct AdbcError* error);
+
+/// \brief Retrieve the next result set from a multi-result-set execution.
+///
+/// This AdbcStatement must outlive the returned ArrowArrayStream.
+///
+/// \since ADBC API revision 1.2.0
+///
+/// For an execution that returns multiple result sets, this can be called after
+/// iterating the first result set to get the next and subsequent result sets.  A
+/// driver MAY support calling AdbcStatementNextResultSet while the previous result is
+/// still being consumed (i.e. before the previous ArrowArrayStream is released),
+/// but this is not required.  If the driver does not support this, it should return
+/// ADBC_STATUS_INVALID_STATE if the previous result set is still active.  Otherwise
+/// a driver should return ADBC_STATUS_OK to indicate successful execution of this
+/// function regardless of whether or not an additional result set is available.
+///
+/// If the original execution was via AdbcStatementExecuteSchema, then the
+/// ArrowArrayStream populated by this function should only contain the schema of the
+/// result set and not any data.
+///
+/// Either partitions or out must be NULL to indicate which style of output is desired
+/// by the caller.  Supplying non-NULL values to both must result in
+/// ADBC_STATUS_INVALID_ARGUMENT. If the original execution was via
+/// AdbcStatementExecuteQuery and the call to AdbcStatementNextResultSet has a non-NULL
+/// partitions, or the original was via AdbcStatementExecutePartitions and this call has a
+/// non-NULL out, then the driver may choose to return the data in a different style than
+/// the original result set.  If it does not (or cannot) then it should return
+/// ADBC_STATUS_INVALID_ARGUMENT.
+///
+/// The driver indicates that no additional result sets are available by setting the
+/// release callback on out (or partitions, whichever was not-NULL) to NULL and returning
+/// ADBC_STATUS_OK.
+///
+/// \param[in] statement The statement to fetch a subsequent result for
+/// \param[out] out The result stream to populate, or NULL if using partitions
+/// \param[out] partitions The partitions to populate, or NULL if using out
+/// \param[out] rows_affected The number of rows affected if known, else -1. Pass NULL if
+///   the client does not want this information.
+/// \param[out] error An optional location to return an error message if necessary.
+///
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the driver does not support multi-result set
+///   execution, ADBC_STATUS_INVALID_STATE if called at an inappropriate time but the
+///   driver does support multi-result set execution, ADBC_STATUS_INVALID_ARGUMENT if both
+///   out and partitions are non-NULL, or if the output style is incompatible with the
+///   original execution, and ADBC_STATUS_OK (or an appropriate error code) otherwise.
+ADBC_EXPORT
+AdbcStatusCode AdbcStatementNextResultSet(struct AdbcStatement* statement,
+                                          struct ArrowArrayStream* out,
+                                          struct AdbcPartitions* partitions,
+                                          int64_t* rows_affected,
+                                          struct AdbcError* error);
 
 /// \brief Get the schema of the result set of a query without
 ///   executing it.
