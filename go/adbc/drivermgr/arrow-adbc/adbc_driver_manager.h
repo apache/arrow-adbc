@@ -187,7 +187,7 @@ const char* AdbcStatusCodeMessage(AdbcStatusCode code);
 /// options specified by the profile will be applied but will not override options
 /// that have already been set using DatabaseSetOption.
 ///
-/// To faciliate customization, we define an interface for implementing a Connection
+/// To facilitate customization, we define an interface for implementing a Connection
 /// Profile object along with a provider function definition which can be set into
 /// the driver manager to allow for customized profile loading.
 ///
@@ -213,7 +213,7 @@ struct ADBC_EXPORT AdbcConnectionProfile {
   /// \brief Get the driver to use as specified by this profile.
   ///
   /// It is not required that a profile specify a driver. If the options
-  // can be re-usable across drivers, then the profile does not need to specify
+  // can be reusable across drivers, then the profile does not need to specify
   /// a driver (if this provides an empty string or nullptr then the driver
   /// must be defined by other means, e.g. by the driver / uri options).
   ///
