@@ -65,6 +65,7 @@ std::filesystem::path InternalAdbcSystemConfigDir();
 struct ParseDriverUriResult {
   std::string_view driver;
   std::optional<std::string_view> uri;
+  std::optional<std::string_view> profile;
 };
 
 ADBC_EXPORT
@@ -87,16 +88,32 @@ enum class SearchPathSource {
   kOtherError,
 };
 
+enum class SearchPathType {
+  kManifest,
+  kProfile,
+};
+
 using SearchPaths = std::vector<std::pair<SearchPathSource, std::filesystem::path>>;
 
-void AddSearchPathsToError(const SearchPaths& search_paths, std::string& error_message) {
+void AddSearchPathsToError(const SearchPaths& search_paths, const SearchPathType& type,
+                           std::string& error_message) {
   if (!search_paths.empty()) {
-    error_message += "\nAlso searched these paths for manifests:";
+    error_message += "\nAlso searched these paths for";
+    if (type == SearchPathType::kManifest) {
+      error_message += " manifests:";
+    } else if (type == SearchPathType::kProfile) {
+      error_message += " profiles:";
+    }
+
     for (const auto& [source, path] : search_paths) {
       error_message += "\n\t";
       switch (source) {
         case SearchPathSource::kEnv:
-          error_message += "ADBC_DRIVER_PATH: ";
+          if (type == SearchPathType::kManifest) {
+            error_message += "ADBC_DRIVER_PATH: ";
+          } else if (type == SearchPathType::kProfile) {
+            error_message += "ADBC_PROFILE_PATH: ";
+          }
           break;
         case SearchPathSource::kUser:
           error_message += "user config dir: ";
@@ -398,6 +415,59 @@ AdbcStatusCode LoadDriverFromRegistry(HKEY root, const std::wstring& driver_name
 }
 #endif  // _WIN32
 
+#define CHECK_STATUS(EXPR)                                \
+  if (auto _status = (EXPR); _status != ADBC_STATUS_OK) { \
+    return _status;                                       \
+  }
+
+AdbcStatusCode ProcessProfileValue(std::string_view value, std::string& out,
+                                   struct AdbcError* error) {
+  if (value.empty()) {
+    SetError(error, "Profile value is null");
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+
+  const auto pos = value.find("env_var(");
+  if (pos == std::string_view::npos || pos != 0) {
+    out = std::string(value);
+    return ADBC_STATUS_OK;
+  }
+
+  if (value[value.size() - 1] != ')') {
+    SetError(error, "Malformed env_var() profile value: missing closing parenthesis");
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+
+  // Extract the environment variable name from the value
+  // which should be formatted as env_var(VAR_NAME) as we confirmed
+  // above.
+  const auto env_var_name = value.substr(8, value.size() - 9);
+#ifdef _WIN32
+  auto local_env_var = Utf8Decode(env_var_name);
+  DWORD required_size = GetEnvironmentVariableW(local_env_var.c_str(), NULL, 0);
+  if (required_size == 0) {
+    out = "";
+    return ADBC_STATUS_OK;
+  }
+
+  std::wstring wvalue;
+  wvalue.resize(required_size);
+  DWORD actual_size =
+      GetEnvironmentVariableW(local_env_var.c_str(), wvalue.data(), required_size);
+  // remove null terminator
+  wvalue.resize(actual_size);
+  out = Utf8Encode(wvalue);
+#else
+  const char* env_value = std::getenv(std::string(env_var_name).c_str());
+  if (!env_value) {
+    out = "";
+    return ADBC_STATUS_OK;
+  }
+  out = std::string(env_value);
+#endif
+  return ADBC_STATUS_OK;
+}
+
 /// \return ADBC_STATUS_NOT_FOUND if the manifest does not contain a driver
 ///   path for this platform, ADBC_STATUS_INVALID_ARGUMENT if the manifest
 ///   could not be parsed, ADBC_STATUS_OK otherwise (`info` will be populated)
@@ -520,8 +590,10 @@ SearchPaths GetEnvPaths(const char_type* env_var) {
 
 #ifdef _WIN32
 static const wchar_t* kAdbcDriverPath = L"ADBC_DRIVER_PATH";
+static const wchar_t* kAdbcProfilePath = L"ADBC_PROFILE_PATH";
 #else
 static const char* kAdbcDriverPath = "ADBC_DRIVER_PATH";
+static const char* kAdbcProfilePath = "ADBC_PROFILE_PATH";
 #endif  // _WIN32
 
 SearchPaths GetSearchPaths(const AdbcLoadFlags levels) {
@@ -728,7 +800,7 @@ struct ManagedLibrary {
                               extra_debug_info.end());
           if (intermediate_error.error.message) {
             std::string error_message = intermediate_error.error.message;
-            AddSearchPathsToError(search_paths, error_message);
+            AddSearchPathsToError(search_paths, SearchPathType::kManifest, error_message);
             SetError(error, std::move(error_message));
           }
           return status;
@@ -1000,7 +1072,7 @@ struct ManagedLibrary {
         error_message += "\n";
         error_message += message;
       }
-      AddSearchPathsToError(attempted_paths, error_message);
+      AddSearchPathsToError(attempted_paths, SearchPathType::kManifest, error_message);
       SetError(error, error_message);
       return ADBC_STATUS_NOT_FOUND;
     }
@@ -1041,6 +1113,337 @@ struct ManagedLibrary {
   void* handle;
 #endif  // defined(_WIN32)
 };
+
+struct FilesystemProfile {
+  std::filesystem::path path;
+  std::string driver;
+  std::unordered_map<std::string, std::string> options;
+  std::unordered_map<std::string, int64_t> int_options;
+  std::unordered_map<std::string, double> double_options;
+
+  std::vector<const char*> options_keys;
+  std::vector<const char*> options_values;
+
+  std::vector<const char*> int_option_keys;
+  std::vector<int64_t> int_option_values;
+
+  std::vector<const char*> double_option_keys;
+  std::vector<double> double_option_values;
+
+  static void populate_connection_profile(FilesystemProfile&& profile,
+                                          struct AdbcConnectionProfile* out) {
+    profile.options_keys.reserve(profile.options.size());
+    profile.options_values.reserve(profile.options.size());
+    for (const auto& [key, value] : profile.options) {
+      profile.options_keys.push_back(key.c_str());
+      profile.options_values.push_back(value.c_str());
+    }
+
+    profile.int_option_keys.reserve(profile.int_options.size());
+    profile.int_option_values.reserve(profile.int_options.size());
+    for (const auto& [key, value] : profile.int_options) {
+      profile.int_option_keys.push_back(key.c_str());
+      profile.int_option_values.push_back(value);
+    }
+
+    profile.double_option_keys.reserve(profile.double_options.size());
+    profile.double_option_values.reserve(profile.double_options.size());
+    for (const auto& [key, value] : profile.double_options) {
+      profile.double_option_keys.push_back(key.c_str());
+      profile.double_option_values.push_back(value);
+    }
+
+    out->private_data = new FilesystemProfile(std::move(profile));
+    out->release = [](AdbcConnectionProfile* profile) {
+      if (!profile || !profile->private_data) {
+        return;
+      }
+
+      delete static_cast<FilesystemProfile*>(profile->private_data);
+      profile->private_data = nullptr;
+      profile->release = nullptr;
+    };
+
+    out->GetDriverName = [](AdbcConnectionProfile* profile, const char** out,
+                            struct AdbcError* error) -> AdbcStatusCode {
+      if (!profile || !profile->private_data) {
+        SetError(error, "Invalid connection profile");
+        return ADBC_STATUS_INVALID_ARGUMENT;
+      }
+
+      auto* fs_profile = static_cast<FilesystemProfile*>(profile->private_data);
+      *out = fs_profile->driver.c_str();
+      return ADBC_STATUS_OK;
+    };
+
+    out->GetOptions = [](AdbcConnectionProfile* profile, const char*** keys,
+                         const char*** values, size_t* num_options,
+                         struct AdbcError* error) -> AdbcStatusCode {
+      if (!profile || !profile->private_data) {
+        SetError(error, "Invalid connection profile");
+        return ADBC_STATUS_INVALID_ARGUMENT;
+      }
+
+      if (!keys || !values || !num_options) {
+        SetError(error, "Output parameters cannot be null");
+        return ADBC_STATUS_INVALID_ARGUMENT;
+      }
+
+      auto* fs_profile = static_cast<FilesystemProfile*>(profile->private_data);
+      *num_options = fs_profile->options.size();
+      *keys = fs_profile->options_keys.data();
+      *values = fs_profile->options_values.data();
+      return ADBC_STATUS_OK;
+    };
+
+    out->GetIntOptions = [](AdbcConnectionProfile* profile, const char*** keys,
+                            const int64_t** values, size_t* num_options,
+                            struct AdbcError* error) -> AdbcStatusCode {
+      if (!profile || !profile->private_data) {
+        SetError(error, "Invalid connection profile");
+        return ADBC_STATUS_INVALID_ARGUMENT;
+      }
+
+      if (!keys || !values || !num_options) {
+        SetError(error, "Output parameters cannot be null");
+        return ADBC_STATUS_INVALID_ARGUMENT;
+      }
+
+      auto* fs_profile = static_cast<FilesystemProfile*>(profile->private_data);
+      *num_options = fs_profile->int_options.size();
+      *keys = fs_profile->int_option_keys.data();
+      *values = fs_profile->int_option_values.data();
+      return ADBC_STATUS_OK;
+    };
+
+    out->GetDoubleOptions = [](AdbcConnectionProfile* profile, const char*** keys,
+                               const double** values, size_t* num_options,
+                               struct AdbcError* error) -> AdbcStatusCode {
+      if (!profile || !profile->private_data) {
+        SetError(error, "Invalid connection profile");
+        return ADBC_STATUS_INVALID_ARGUMENT;
+      }
+
+      if (!keys || !values || !num_options) {
+        SetError(error, "Output parameters cannot be null");
+        return ADBC_STATUS_INVALID_ARGUMENT;
+      }
+
+      auto* fs_profile = static_cast<FilesystemProfile*>(profile->private_data);
+      *num_options = fs_profile->double_options.size();
+      *keys = fs_profile->double_option_keys.data();
+      *values = fs_profile->double_option_values.data();
+      return ADBC_STATUS_OK;
+    };
+  }
+};
+
+AdbcStatusCode LoadProfileFile(const std::filesystem::path& profile_path,
+                               FilesystemProfile& profile, struct AdbcError* error) {
+  toml::table config;
+  try {
+    config = toml::parse_file(profile_path.native());
+  } catch (const toml::parse_error& err) {
+    std::string message = "Could not open profile. ";
+    message += err.what();
+    message += ". Profile: ";
+    message += profile_path.string();
+    SetError(error, std::move(message));
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+
+  profile.path = profile_path;
+  if (!config["version"].is_integer()) {
+    std::string message =
+        "Profile version is not an integer in profile '" + profile_path.string() + "'";
+    SetError(error, std::move(message));
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+
+  const auto version = config["version"].value_or(int64_t(1));
+  switch (version) {
+    case 1:
+      break;
+    default: {
+      std::string message =
+          "Profile version '" + std::to_string(version) +
+          "' is not supported by this driver manager. Profile: " + profile_path.string();
+      SetError(error, std::move(message));
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+  }
+
+  profile.driver = config["driver"].value_or(""s);
+
+  auto options = config.at_path("options");
+  if (!options.is_table()) {
+    std::string message =
+        "Profile options is not a table in profile '" + profile_path.string() + "'";
+    SetError(error, std::move(message));
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+
+  auto* options_table = options.as_table();
+  for (const auto& [key, value] : *options_table) {
+    if (auto* str_val = value.as_string()) {
+      profile.options[key.data()] = str_val->get();
+    } else if (auto* int_val = value.as_integer()) {
+      profile.int_options[key.data()] = int_val->get();
+    } else if (auto* bool_val = value.as_boolean()) {
+      profile.options[key.data()] = bool_val->get() ? "true" : "false";
+    } else if (auto* dbl_val = value.as_floating_point()) {
+      profile.double_options[key.data()] = dbl_val->get();
+    } else {
+      std::string message = "Unsupported value type for key '";
+      message += key;
+      message += "' in profile '";
+      message += profile_path.string();
+      message += "'";
+      SetError(error, std::move(message));
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+  }
+
+  return ADBC_STATUS_OK;
+}
+
+SearchPaths GetProfileSearchPaths(const char* additional_search_path_list) {
+  SearchPaths search_paths;
+  {
+    std::vector<std::filesystem::path> additional_paths;
+    if (additional_search_path_list) {
+      additional_paths = InternalAdbcParsePath(additional_search_path_list);
+    }
+
+    for (const auto& path : additional_paths) {
+      search_paths.emplace_back(SearchPathSource::kAdditional, path);
+    }
+  }
+
+  {
+    auto env_paths = GetEnvPaths(kAdbcProfilePath);
+    search_paths.insert(search_paths.end(), env_paths.begin(), env_paths.end());
+  }
+
+#if ADBC_CONDA_BUILD
+#ifdef _WIN32
+  const wchar_t* conda_name = L"CONDA_PREFIX";
+#else
+  const char* conda_name = "CONDA_PREFIX";
+#endif  // _WIN32
+
+  auto venv = GetEnvPaths(conda_name);
+  for (const auto& [_, venv_path] : venv) {
+    search_paths.emplace_back(SearchPathSource::kConda,
+                              venv_path / "etc" / "adbc" / "profiles");
+  }
+#else
+  search_paths.emplace_back(SearchPathSource::kDisabledAtCompileTime, "Conda prefix");
+#endif  // ADBC_CONDA_BUILD
+
+#ifdef _WIN32
+  const string_type profiles_dir = "Profiles";
+#elif defined(__APPLE__)
+  const string_type profiles_dir = "Profiles";
+#else
+  const string_type profiles_dir = "profiles";
+#endif  // defined(_WIN32)
+
+  auto user_dir = InternalAdbcUserConfigDir().parent_path() / profiles_dir;
+  search_paths.emplace_back(SearchPathSource::kUser, user_dir);
+  return search_paths;
+}
+
+AdbcStatusCode FilesystemProfileProvider(const char* profile_name,
+                                         const char* additional_search_path_list,
+                                         struct AdbcConnectionProfile* out,
+                                         struct AdbcError* error) {
+  if (profile_name == nullptr || strlen(profile_name) == 0) {
+    SetError(error, "Profile name is empty");
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+
+  if (!out) {
+    SetError(error, "Output profile is null");
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+
+  std::memset(out, 0, sizeof(*out));
+  std::filesystem::path profile_path(profile_name);
+  if (profile_path.has_extension()) {
+    if (HasExtension(profile_path, ".toml")) {
+      if (!std::filesystem::exists(profile_path)) {
+        SetError(error, "Profile file does not exist: " + profile_path.string());
+        return ADBC_STATUS_NOT_FOUND;
+      }
+
+      FilesystemProfile profile;
+      CHECK_STATUS(LoadProfileFile(profile_path, profile, error));
+      FilesystemProfile::populate_connection_profile(std::move(profile), out);
+      return ADBC_STATUS_OK;
+    }
+  }
+
+  if (profile_path.is_absolute()) {
+    profile_path.replace_extension(".toml");
+
+    FilesystemProfile profile;
+    CHECK_STATUS(LoadProfileFile(profile_path, profile, error));
+    FilesystemProfile::populate_connection_profile(std::move(profile), out);
+    return ADBC_STATUS_OK;
+  }
+
+  SearchPaths search_paths = GetProfileSearchPaths(additional_search_path_list);
+  SearchPaths extra_debug_info;
+  for (const auto& [source, search_path] : search_paths) {
+    if (source == SearchPathSource::kRegistry || source == SearchPathSource::kUnset ||
+        source == SearchPathSource::kDoesNotExist ||
+        source == SearchPathSource::kDisabledAtCompileTime ||
+        source == SearchPathSource::kDisabledAtRunTime ||
+        source == SearchPathSource::kOtherError) {
+      continue;
+    }
+
+    std::filesystem::path full_path = search_path / profile_path;
+    full_path.replace_extension(".toml");
+    if (std::filesystem::exists(full_path)) {
+      OwnedError intermediate_error;
+
+      FilesystemProfile profile;
+      auto status = LoadProfileFile(full_path, profile, &intermediate_error.error);
+      if (status == ADBC_STATUS_OK) {
+        FilesystemProfile::populate_connection_profile(std::move(profile), out);
+        return ADBC_STATUS_OK;
+      } else if (status == ADBC_STATUS_INVALID_ARGUMENT) {
+        search_paths.insert(search_paths.end(), extra_debug_info.begin(),
+                            extra_debug_info.end());
+        if (intermediate_error.error.message) {
+          std::string error_message = intermediate_error.error.message;
+          AddSearchPathsToError(search_paths, SearchPathType::kProfile, error_message);
+          SetError(error, std::move(error_message));
+        }
+        return status;
+      }
+
+      std::string message = "found ";
+      message += full_path.string();
+      message += " but: ";
+      if (intermediate_error.error.message) {
+        message += intermediate_error.error.message;
+      } else {
+        message += "could not load the profile";
+      }
+      extra_debug_info.emplace_back(SearchPathSource::kOtherError, std::move(message));
+    }
+  }
+
+  search_paths.insert(search_paths.end(), extra_debug_info.begin(),
+                      extra_debug_info.end());
+  std::string error_message = "Profile not found: " + std::string(profile_name);
+  AddSearchPathsToError(search_paths, SearchPathType::kProfile, error_message);
+  SetError(error, std::move(error_message));
+  return ADBC_STATUS_NOT_FOUND;
+}
 
 /// Hold the driver DLL and the driver release callback in the driver struct.
 struct ManagerDriverState {
@@ -1417,6 +1820,7 @@ struct TempDatabase {
   AdbcDriverInitFunc init_func = nullptr;
   AdbcLoadFlags load_flags = ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS;
   std::string additional_search_path_list;
+  AdbcConnectionProfileProvider profile_provider = nullptr;
 };
 
 /// Temporary state while the database is being configured.
@@ -1425,14 +1829,14 @@ struct TempConnection {
   std::unordered_map<std::string, std::string> bytes_options;
   std::unordered_map<std::string, int64_t> int_options;
   std::unordered_map<std::string, double> double_options;
+  AdbcConnectionProfile* connection_profile = nullptr;
 };
 
 static const char kDefaultEntrypoint[] = "AdbcDriverInit";
 }  // namespace
 
 // Other helpers (intentionally not in an anonymous namespace so they can be tested)
-ADBC_EXPORT
-std::filesystem::path InternalAdbcUserConfigDir() {
+ADBC_EXPORT std::filesystem::path InternalAdbcUserConfigDir() {
   std::filesystem::path config_dir;
 #if defined(_WIN32)
   // SHGetFolderPath is just an alias to SHGetKnownFolderPath since Vista
@@ -1600,22 +2004,26 @@ std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view 
 
   std::string_view d = str.substr(0, pos);
   if (str.size() <= pos + 1) {
-    return ParseDriverUriResult{d, std::nullopt};
+    return ParseDriverUriResult{d, std::nullopt, std::nullopt};
   }
 
 #ifdef _WIN32
   if (std::filesystem::exists(std::filesystem::path(str))) {
     // No scheme, just a path
-    return ParseDriverUriResult{str, std::nullopt};
+    return ParseDriverUriResult{str, std::nullopt, std::nullopt};
   }
 #endif
 
   if (str[pos + 1] == '/') {  // scheme is also driver
-    return ParseDriverUriResult{d, str};
+    if (d == "profile" && str.size() > pos + 2) {
+      // found a profile URI "profile://"
+      return ParseDriverUriResult{"", std::nullopt, str.substr(pos + 3)};
+    }
+    return ParseDriverUriResult{d, str, std::nullopt};
   }
 
   // driver:scheme:.....
-  return ParseDriverUriResult{d, str.substr(pos + 1)};
+  return ParseDriverUriResult{d, str.substr(pos + 1), std::nullopt};
 }
 
 // Direct implementations of API methods
@@ -1669,6 +2077,19 @@ AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* 
   // Allocate a temporary structure to store options pre-Init
   database->private_data = new TempDatabase();
   database->private_driver = nullptr;
+  return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode AdbcDriverManagerDatabaseSetProfileProvider(
+    struct AdbcDatabase* database, AdbcConnectionProfileProvider provider,
+    struct AdbcError* error) {
+  if (database->private_driver) {
+    SetError(error, "Cannot SetProfileProvider after AdbcDatabaseInit");
+    return ADBC_STATUS_INVALID_STATE;
+  }
+
+  TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
+  args->profile_provider = provider;
   return ADBC_STATUS_OK;
 }
 
@@ -1857,6 +2278,70 @@ AdbcStatusCode AdbcDriverManagerDatabaseSetInitFunc(struct AdbcDatabase* databas
   return ADBC_STATUS_OK;
 }
 
+struct ProfileGuard {
+  AdbcConnectionProfile* profile;
+  ~ProfileGuard() {
+    if (profile) {
+      profile->release(profile);
+    }
+  }
+};
+
+AdbcStatusCode InternalInitializeProfile(TempDatabase* args,
+                                         const std::string_view profile,
+                                         struct AdbcError* error) {
+  if (!args->profile_provider) {
+    args->profile_provider = FilesystemProfileProvider;
+  }
+
+  AdbcConnectionProfile connection_profile;
+  CHECK_STATUS(args->profile_provider(profile.data(),
+                                      args->additional_search_path_list.c_str(),
+                                      &connection_profile, error));
+
+  ProfileGuard guard{&connection_profile};
+  const char* driver_name = nullptr;
+  CHECK_STATUS(
+      connection_profile.GetDriverName(&connection_profile, &driver_name, error));
+  if (driver_name != nullptr && strlen(driver_name) > 0) {
+    args->driver = driver_name;
+  }
+
+  const char** keys = nullptr;
+  const char** values = nullptr;
+  size_t num_options = 0;
+  const int64_t* int_values = nullptr;
+  const double* double_values = nullptr;
+
+  CHECK_STATUS(connection_profile.GetOptions(&connection_profile, &keys, &values,
+                                             &num_options, error));
+  for (size_t i = 0; i < num_options; ++i) {
+    // use try_emplace so we only add the option if there isn't
+    // already an option with the same name
+    std::string processed;
+    CHECK_STATUS(ProcessProfileValue(values[i], processed, error));
+    args->options.try_emplace(keys[i], processed);
+  }
+
+  CHECK_STATUS(connection_profile.GetIntOptions(&connection_profile, &keys, &int_values,
+                                                &num_options, error));
+  for (size_t i = 0; i < num_options; ++i) {
+    // use try_emplace so we only add the option if there isn't
+    // already an option with the same name
+    args->int_options.try_emplace(keys[i], int_values[i]);
+  }
+
+  CHECK_STATUS(connection_profile.GetDoubleOptions(&connection_profile, &keys,
+                                                   &double_values, &num_options, error));
+  for (size_t i = 0; i < num_options; ++i) {
+    // use try_emplace so we only add the option if there isn't already an option with the
+    // same name
+    args->double_options.try_emplace(keys[i], double_values[i]);
+  }
+
+  return ADBC_STATUS_OK;
+}
+
 AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError* error) {
   if (!database->private_data) {
     SetError(error, "Must call AdbcDatabaseNew before AdbcDatabaseInit");
@@ -1864,13 +2349,25 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
   }
   TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
   if (!args->init_func) {
+    const auto profile_in_use = args->options.find("profile");
+    if (profile_in_use != args->options.end()) {
+      std::string_view profile = profile_in_use->second;
+      CHECK_STATUS(InternalInitializeProfile(args, profile, error));
+      args->options.erase("profile");
+    }
+
     const auto uri = args->options.find("uri");
     if (args->driver.empty() && uri != args->options.end()) {
       std::string owned_uri = uri->second;
       auto result = InternalAdbcParseDriverUri(owned_uri);
-      if (result && result->uri) {
-        args->driver = std::string{result->driver};
-        args->options["uri"] = std::string{*result->uri};
+      if (result) {
+        if (result->uri) {
+          args->driver = std::string{result->driver};
+          args->options["uri"] = std::string{*result->uri};
+        } else if (result->profile) {
+          args->options.erase("uri");
+          CHECK_STATUS(InternalInitializeProfile(args, *result->profile, error));
+        }
       }
     } else if (!args->driver.empty() && uri == args->options.end()) {
       std::string owned_driver = args->driver;
@@ -1879,6 +2376,8 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
         args->driver = std::string{result->driver};
         if (result->uri) {
           args->options["uri"] = std::string{*result->uri};
+        } else if (result->profile) {
+          CHECK_STATUS(InternalInitializeProfile(args, *result->profile, error));
         }
       }
     }
@@ -2217,6 +2716,7 @@ AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
     SetError(error, "Database is not initialized");
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
+
   TempConnection* args = reinterpret_cast<TempConnection*>(connection->private_data);
   connection->private_data = nullptr;
   std::unordered_map<std::string, std::string> options = std::move(args->options);

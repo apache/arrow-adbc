@@ -95,7 +95,8 @@ enum class SearchPathType {
 
 using SearchPaths = std::vector<std::pair<SearchPathSource, std::filesystem::path>>;
 
-void AddSearchPathsToError(const SearchPaths& search_paths, const SearchPathType& type, std::string& error_message) {
+void AddSearchPathsToError(const SearchPaths& search_paths, const SearchPathType& type,
+                           std::string& error_message) {
   if (!search_paths.empty()) {
     error_message += "\nAlso searched these paths for";
     if (type == SearchPathType::kManifest) {
@@ -112,7 +113,7 @@ void AddSearchPathsToError(const SearchPaths& search_paths, const SearchPathType
             error_message += "ADBC_DRIVER_PATH: ";
           } else if (type == SearchPathType::kProfile) {
             error_message += "ADBC_PROFILE_PATH: ";
-          }          
+          }
           break;
         case SearchPathSource::kUser:
           error_message += "user config dir: ";
@@ -2300,11 +2301,12 @@ AdbcStatusCode InternalInitializeProfile(TempDatabase* args,
 
   ProfileGuard guard{&connection_profile};
   const char* driver_name = nullptr;
-  CHECK_STATUS(connection_profile.GetDriverName(&connection_profile, &driver_name, error));
+  CHECK_STATUS(
+      connection_profile.GetDriverName(&connection_profile, &driver_name, error));
   if (driver_name != nullptr && strlen(driver_name) > 0) {
     args->driver = driver_name;
   }
-  
+
   const char** keys = nullptr;
   const char** values = nullptr;
   size_t num_options = 0;
@@ -2312,7 +2314,7 @@ AdbcStatusCode InternalInitializeProfile(TempDatabase* args,
   const double* double_values = nullptr;
 
   CHECK_STATUS(connection_profile.GetOptions(&connection_profile, &keys, &values,
-                                              &num_options, error));
+                                             &num_options, error));
   for (size_t i = 0; i < num_options; ++i) {
     // use try_emplace so we only add the option if there isn't
     // already an option with the same name
@@ -2322,7 +2324,7 @@ AdbcStatusCode InternalInitializeProfile(TempDatabase* args,
   }
 
   CHECK_STATUS(connection_profile.GetIntOptions(&connection_profile, &keys, &int_values,
-                                                 &num_options, error));
+                                                &num_options, error));
   for (size_t i = 0; i < num_options; ++i) {
     // use try_emplace so we only add the option if there isn't
     // already an option with the same name
@@ -2330,7 +2332,7 @@ AdbcStatusCode InternalInitializeProfile(TempDatabase* args,
   }
 
   CHECK_STATUS(connection_profile.GetDoubleOptions(&connection_profile, &keys,
-                                                    &double_values, &num_options, error));
+                                                   &double_values, &num_options, error));
   for (size_t i = 0; i < num_options; ++i) {
     // use try_emplace so we only add the option if there isn't already an option with the
     // same name
