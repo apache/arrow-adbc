@@ -1657,6 +1657,7 @@ TEST_F(ConnectionProfiles, ExtraStringOption) {
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
               IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
   ASSERT_THAT(error.message, ::testing::HasSubstr("Unknown database option foo='bar'"));
+  ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
   UnsetConfigPath();
 }
 
@@ -1679,6 +1680,7 @@ TEST_F(ConnectionProfiles, ExtraIntOption) {
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
               IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
   ASSERT_THAT(error.message, ::testing::HasSubstr("Unknown database option foo=42"));
+  ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
   UnsetConfigPath();
 }
 
@@ -1701,6 +1703,7 @@ TEST_F(ConnectionProfiles, ExtraDoubleOption) {
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
               IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
   ASSERT_THAT(error.message, ::testing::HasSubstr("Unknown database option foo=42"));
+  ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
   UnsetConfigPath();
 }
 
@@ -1728,6 +1731,7 @@ TEST_F(ConnectionProfiles, ProfileNotFound) {
               ::testing::HasSubstr(std::string("Profile not found: profile\n") +
                                    "Also searched these paths for profiles:\n\t" +
                                    "ADBC_PROFILE_PATH: " + temp_dir.string() + "\n\t"));
+  ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
   UnsetConfigPath();
 }
 
@@ -1760,6 +1764,7 @@ TEST_F(ConnectionProfiles, CustomProfileProvider) {
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
               IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
   ASSERT_THAT(error.message, ::testing::HasSubstr("custom profile provider error"));
+  ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
 }
 
 }  // namespace adbc

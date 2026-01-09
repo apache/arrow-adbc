@@ -443,7 +443,7 @@ AdbcStatusCode ProcessProfileValue(std::string_view value, std::string& out,
   // above.
   const auto env_var_name = value.substr(8, value.size() - 9);
 #ifdef _WIN32
-  auto local_env_var = Utf8Decode(env_var_name.c_str());
+  auto local_env_var = Utf8Decode(env_var_name.data());
   DWORD required_size = GetEnvironmentVariableW(local_env_var.c_str(), NULL, 0);
   if (required_size == 0) {
     out = "";
