@@ -338,6 +338,18 @@ AdbcStatusCode AdbcDriverManagerDatabaseSetProfileProvider(
     struct AdbcDatabase* database, AdbcConnectionProfileProvider provider,
     struct AdbcError* error);
 
+/// \brief Default Filesystem-based profile provider for the driver manager.
+///
+/// We expose this so that consumers would be able to write a provider that falls back on
+/// the default filesystem-based provider if their custom provider fails to find a
+/// profile. This allows for more flexible provider implementations that can still
+/// leverage the default behavior when needed.
+ADBC_EXPORT
+AdbcStatusCode AdbcFilesystemProfileProvider(const char* profile_name,
+                                             const char* additional_search_path_list,
+                                             struct AdbcConnectionProfile* out,
+                                             struct AdbcError* error);
+
 /// @}
 
 #endif  // ADBC_DRIVER_MANAGER_H
