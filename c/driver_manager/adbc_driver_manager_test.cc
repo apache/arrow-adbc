@@ -1733,7 +1733,6 @@ TEST_F(ConnectionProfiles, DotSeparatedKey) {
   UnsetConfigPath();
 }
 
-
 TEST_F(ConnectionProfiles, UseEnvVar) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = toml::parse(R"|(
@@ -1757,8 +1756,8 @@ TEST_F(ConnectionProfiles, UseEnvVar) {
               IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
               IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
-  ASSERT_THAT(error.message,
-              ::testing::HasSubstr("Unknown database option foo='" + temp_dir.string() + "'"));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("Unknown database option foo='" +
+                                                  temp_dir.string() + "'"));
   UnsetConfigPath();
 }
 
