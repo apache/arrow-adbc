@@ -380,6 +380,13 @@ struct ADBC_EXPORT AdbcErrorDetail {
   size_t value_length;
 };
 
+/// \brief Get the vendor code for an error (since the vendor code field was
+///   repurposed), or 0 if not available/not set.
+///
+/// \since ADBC API revision 1.2.0
+ADBC_EXPORT
+int AdbcErrorGetVendorCode(const struct AdbcError* error);
+
 /// \brief Get the number of metadata values available in an error.
 ///
 /// \since ADBC API revision 1.1.0
@@ -1255,6 +1262,8 @@ struct ADBC_EXPORT AdbcDriver {
   /// in the spec after that version.
   ///
   /// @{
+
+  int (*AdbcErrorGetVendorCode)(const struct AdbcError*);
 
   AdbcStatusCode (*MultiResultSetNext)(struct AdbcMultiResultSet*,
                                        struct ArrowArrayStream*, int64_t*,
