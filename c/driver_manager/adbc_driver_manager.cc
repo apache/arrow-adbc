@@ -443,7 +443,7 @@ AdbcStatusCode ProcessProfileValue(std::string_view value, std::string& out,
   // above.
   const auto env_var_name = value.substr(8, value.size() - 9);
 #ifdef _WIN32
-  auto local_env_var = Utf8Decode(env_var_name);
+  auto local_env_var = Utf8Decode(env_var_name.c_str());
   DWORD required_size = GetEnvironmentVariableW(local_env_var.c_str(), NULL, 0);
   if (required_size == 0) {
     out = "";
@@ -1019,7 +1019,7 @@ struct ManagedLibrary {
         error_message += "\n";
         error_message += message;
       }
-      AddSearchPathsToError(attempted_paths, error_message);
+      AddSearchPathsToError(attempted_paths, SearchPathType::kManifest, error_message);
       SetError(error, error_message);
       return ADBC_STATUS_NOT_FOUND;
     } else {
