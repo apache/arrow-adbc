@@ -1284,24 +1284,55 @@ AdbcStatusCode LoadProfileFile(const std::filesystem::path& profile_path,
   }
 
   auto* options_table = options.as_table();
-  for (const auto& [key, value] : *options_table) {
-    if (auto* str_val = value.as_string()) {
-      profile.options[key.data()] = str_val->get();
-    } else if (auto* int_val = value.as_integer()) {
-      profile.int_options[key.data()] = int_val->get();
-    } else if (auto* bool_val = value.as_boolean()) {
-      profile.options[key.data()] = bool_val->get() ? "true" : "false";
-    } else if (auto* dbl_val = value.as_floating_point()) {
-      profile.double_options[key.data()] = dbl_val->get();
-    } else {
-      std::string message = "Unsupported value type for key '";
-      message += key;
-      message += "' in profile '";
-      message += profile_path.string();
-      message += "'";
-      SetError(error, std::move(message));
-      return ADBC_STATUS_INVALID_ARGUMENT;
-    }
+  // recursive lambdas are weird, but fun!
+  auto visitor = [&profile, &profile_path, &error](const std::string& prefix) {
+    auto visit_impl = [&profile, &profile_path, &error](const std::string& prefix,
+                                                        auto& visit_ref) mutable {
+      return [&profile, &profile_path, &error, prefix, &visit_ref](const toml::key& key,
+                                                                   auto&& val) -> bool {
+        if constexpr (toml::is_integer<decltype(val)>) {
+          profile.int_options[prefix + key.data()] = val.get();
+        } else if constexpr (toml::is_floating_point<decltype(val)>) {
+          profile.double_options[prefix + key.data()] = val.get();
+        } else if constexpr (toml::is_boolean<decltype(val)>) {
+          profile.options[prefix + key.data()] = val.get() ? "true" : "false";
+        } else if constexpr (toml::is_string<decltype(val)>) {
+          profile.options[prefix + key.data()] = val.get();
+        } else if constexpr (toml::is_table<decltype(val)>) {
+          // Recursively visit the table with the new prefix
+          // so that if we have a table like:
+          // [options]
+          // foo.bar.baz = "qux"
+          //
+          // then we will properly get the option "foo.bar.baz" with value "qux"
+          //
+          // This allows us to avoid forcing users to do "foo.bar.baz" = "qux" manually in
+          // the TOML file. while also allowing users to organize their options in a more
+          // hierarchical way if they choose to. Such as this:
+          //
+          // [options]
+          // [options.foo]
+          // bar = "qux"
+          // baz = "qux"
+          //
+          // which would result in the options "foo.bar" = "qux" and "foo.baz" = "qux"
+          val.for_each(visit_ref(prefix + key.data() + ".", visit_ref));
+        } else {
+          std::string message = "Unsupported value type for key '" + prefix + key.data() +
+                                "' in profile '" + profile_path.string() + "'";
+          SetError(error, std::move(message));
+          return false;
+        }
+        return true;
+      };
+    };
+    return visit_impl(prefix, visit_impl);
+  };
+
+  options_table->for_each(visitor(""));
+
+  if (error->message) {
+    return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
   return ADBC_STATUS_OK;
@@ -1352,97 +1383,6 @@ SearchPaths GetProfileSearchPaths(const char* additional_search_path_list) {
   auto user_dir = InternalAdbcUserConfigDir().parent_path() / profiles_dir;
   search_paths.emplace_back(SearchPathSource::kUser, user_dir);
   return search_paths;
-}
-
-AdbcStatusCode FilesystemProfileProvider(const char* profile_name,
-                                         const char* additional_search_path_list,
-                                         struct AdbcConnectionProfile* out,
-                                         struct AdbcError* error) {
-  if (profile_name == nullptr || strlen(profile_name) == 0) {
-    SetError(error, "Profile name is empty");
-    return ADBC_STATUS_INVALID_ARGUMENT;
-  }
-
-  if (!out) {
-    SetError(error, "Output profile is null");
-    return ADBC_STATUS_INVALID_ARGUMENT;
-  }
-
-  std::memset(out, 0, sizeof(*out));
-  std::filesystem::path profile_path(profile_name);
-  if (profile_path.has_extension()) {
-    if (HasExtension(profile_path, ".toml")) {
-      if (!std::filesystem::exists(profile_path)) {
-        SetError(error, "Profile file does not exist: " + profile_path.string());
-        return ADBC_STATUS_NOT_FOUND;
-      }
-
-      FilesystemProfile profile;
-      CHECK_STATUS(LoadProfileFile(profile_path, profile, error));
-      FilesystemProfile::populate_connection_profile(std::move(profile), out);
-      return ADBC_STATUS_OK;
-    }
-  }
-
-  if (profile_path.is_absolute()) {
-    profile_path.replace_extension(".toml");
-
-    FilesystemProfile profile;
-    CHECK_STATUS(LoadProfileFile(profile_path, profile, error));
-    FilesystemProfile::populate_connection_profile(std::move(profile), out);
-    return ADBC_STATUS_OK;
-  }
-
-  SearchPaths search_paths = GetProfileSearchPaths(additional_search_path_list);
-  SearchPaths extra_debug_info;
-  for (const auto& [source, search_path] : search_paths) {
-    if (source == SearchPathSource::kRegistry || source == SearchPathSource::kUnset ||
-        source == SearchPathSource::kDoesNotExist ||
-        source == SearchPathSource::kDisabledAtCompileTime ||
-        source == SearchPathSource::kDisabledAtRunTime ||
-        source == SearchPathSource::kOtherError) {
-      continue;
-    }
-
-    std::filesystem::path full_path = search_path / profile_path;
-    full_path.replace_extension(".toml");
-    if (std::filesystem::exists(full_path)) {
-      OwnedError intermediate_error;
-
-      FilesystemProfile profile;
-      auto status = LoadProfileFile(full_path, profile, &intermediate_error.error);
-      if (status == ADBC_STATUS_OK) {
-        FilesystemProfile::populate_connection_profile(std::move(profile), out);
-        return ADBC_STATUS_OK;
-      } else if (status == ADBC_STATUS_INVALID_ARGUMENT) {
-        search_paths.insert(search_paths.end(), extra_debug_info.begin(),
-                            extra_debug_info.end());
-        if (intermediate_error.error.message) {
-          std::string error_message = intermediate_error.error.message;
-          AddSearchPathsToError(search_paths, SearchPathType::kProfile, error_message);
-          SetError(error, std::move(error_message));
-        }
-        return status;
-      }
-
-      std::string message = "found ";
-      message += full_path.string();
-      message += " but: ";
-      if (intermediate_error.error.message) {
-        message += intermediate_error.error.message;
-      } else {
-        message += "could not load the profile";
-      }
-      extra_debug_info.emplace_back(SearchPathSource::kOtherError, std::move(message));
-    }
-  }
-
-  search_paths.insert(search_paths.end(), extra_debug_info.begin(),
-                      extra_debug_info.end());
-  std::string error_message = "Profile not found: " + std::string(profile_name);
-  AddSearchPathsToError(search_paths, SearchPathType::kProfile, error_message);
-  SetError(error, std::move(error_message));
-  return ADBC_STATUS_NOT_FOUND;
 }
 
 /// Hold the driver DLL and the driver release callback in the driver struct.
@@ -2278,11 +2218,103 @@ AdbcStatusCode AdbcDriverManagerDatabaseSetInitFunc(struct AdbcDatabase* databas
   return ADBC_STATUS_OK;
 }
 
+AdbcStatusCode AdbcFilesystemProfileProvider(const char* profile_name,
+                                             const char* additional_search_path_list,
+                                             struct AdbcConnectionProfile* out,
+                                             struct AdbcError* error) {
+  if (profile_name == nullptr || strlen(profile_name) == 0) {
+    SetError(error, "Profile name is empty");
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+
+  if (!out) {
+    SetError(error, "Output profile is null");
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+
+  std::memset(out, 0, sizeof(*out));
+  std::filesystem::path profile_path(profile_name);
+  if (profile_path.has_extension()) {
+    if (HasExtension(profile_path, ".toml")) {
+      if (!std::filesystem::exists(profile_path)) {
+        SetError(error, "Profile file does not exist: " + profile_path.string());
+        return ADBC_STATUS_NOT_FOUND;
+      }
+
+      FilesystemProfile profile;
+      CHECK_STATUS(LoadProfileFile(profile_path, profile, error));
+      FilesystemProfile::populate_connection_profile(std::move(profile), out);
+      return ADBC_STATUS_OK;
+    }
+  }
+
+  if (profile_path.is_absolute()) {
+    profile_path.replace_extension(".toml");
+
+    FilesystemProfile profile;
+    CHECK_STATUS(LoadProfileFile(profile_path, profile, error));
+    FilesystemProfile::populate_connection_profile(std::move(profile), out);
+    return ADBC_STATUS_OK;
+  }
+
+  SearchPaths search_paths = GetProfileSearchPaths(additional_search_path_list);
+  SearchPaths extra_debug_info;
+  for (const auto& [source, search_path] : search_paths) {
+    if (source == SearchPathSource::kRegistry || source == SearchPathSource::kUnset ||
+        source == SearchPathSource::kDoesNotExist ||
+        source == SearchPathSource::kDisabledAtCompileTime ||
+        source == SearchPathSource::kDisabledAtRunTime ||
+        source == SearchPathSource::kOtherError) {
+      continue;
+    }
+
+    std::filesystem::path full_path = search_path / profile_path;
+    full_path.replace_extension(".toml");
+    if (std::filesystem::exists(full_path)) {
+      OwnedError intermediate_error;
+
+      FilesystemProfile profile;
+      auto status = LoadProfileFile(full_path, profile, &intermediate_error.error);
+      if (status == ADBC_STATUS_OK) {
+        FilesystemProfile::populate_connection_profile(std::move(profile), out);
+        return ADBC_STATUS_OK;
+      } else if (status == ADBC_STATUS_INVALID_ARGUMENT) {
+        search_paths.insert(search_paths.end(), extra_debug_info.begin(),
+                            extra_debug_info.end());
+        if (intermediate_error.error.message) {
+          std::string error_message = intermediate_error.error.message;
+          AddSearchPathsToError(search_paths, SearchPathType::kProfile, error_message);
+          SetError(error, std::move(error_message));
+        }
+        return status;
+      }
+
+      std::string message = "found ";
+      message += full_path.string();
+      message += " but: ";
+      if (intermediate_error.error.message) {
+        message += intermediate_error.error.message;
+      } else {
+        message += "could not load the profile";
+      }
+      extra_debug_info.emplace_back(SearchPathSource::kOtherError, std::move(message));
+    }
+  }
+
+  search_paths.insert(search_paths.end(), extra_debug_info.begin(),
+                      extra_debug_info.end());
+  std::string error_message = "Profile not found: " + std::string(profile_name);
+  AddSearchPathsToError(search_paths, SearchPathType::kProfile, error_message);
+  SetError(error, std::move(error_message));
+  return ADBC_STATUS_NOT_FOUND;
+}
+
 struct ProfileGuard {
-  AdbcConnectionProfile* profile;
+  AdbcConnectionProfile& profile;
+  ProfileGuard(AdbcConnectionProfile& profile) : profile(profile) {}
   ~ProfileGuard() {
-    if (profile) {
-      profile->release(profile);
+    if (profile.release) {
+      profile.release(&profile);
     }
   }
 };
@@ -2291,7 +2323,7 @@ AdbcStatusCode InternalInitializeProfile(TempDatabase* args,
                                          const std::string_view profile,
                                          struct AdbcError* error) {
   if (!args->profile_provider) {
-    args->profile_provider = FilesystemProfileProvider;
+    args->profile_provider = AdbcFilesystemProfileProvider;
   }
 
   AdbcConnectionProfile connection_profile;
@@ -2299,7 +2331,7 @@ AdbcStatusCode InternalInitializeProfile(TempDatabase* args,
                                       args->additional_search_path_list.c_str(),
                                       &connection_profile, error));
 
-  ProfileGuard guard{&connection_profile};
+  ProfileGuard guard{connection_profile};
   const char* driver_name = nullptr;
   CHECK_STATUS(
       connection_profile.GetDriverName(&connection_profile, &driver_name, error));
