@@ -1243,23 +1243,24 @@ struct profileVisitor {
   const std::filesystem::path& profile_path;
   struct AdbcError* error;
 
-  auto visit_prefix(const std::string& prefix) {
-    return [this, prefix](const toml::key& key, auto&& val) -> bool {
+  template <typename T>
+  static const auto visit_prefix(const std::string& prefix, T& visitor) {
+    return [&visitor, prefix](const toml::key& key, auto&& val) -> bool {
       if constexpr (toml::is_integer<decltype(val)>) {
-        profile.int_options[prefix + key.data()] = val.get();
+        visitor.profile.int_options[prefix + key.data()] = val.get();
       } else if constexpr (toml::is_floating_point<decltype(val)>) {
-        profile.double_options[prefix + key.data()] = val.get();
+        visitor.profile.double_options[prefix + key.data()] = val.get();
       } else if constexpr (toml::is_boolean<decltype(val)>) {
-        profile.options[prefix + key.data()] = val.get() ? "true" : "false";
+        visitor.profile.options[prefix + key.data()] = val.get() ? "true" : "false";
       } else if constexpr (toml::is_string<decltype(val)>) {
-        profile.options[prefix + key.data()] = val.get();
+        visitor.profile.options[prefix + key.data()] = val.get();
       } else if constexpr (toml::is_table<decltype(val)>) {
         // Recursively visit the table with the new prefix
-        val.for_each(visit_prefix(prefix + key.data() + "."));
+        val.for_each(visit_prefix<T>(prefix + key.data() + ".", visitor));
       } else {
         std::string message = "Unsupported value type for key '" + prefix + key.data() +
-                              "' in profile '" + profile_path.string() + "'";
-        SetError(error, std::move(message));
+                              "' in profile '" + visitor.profile_path.string() + "'";
+        SetError(visitor.error, std::move(message));
         return false;
       }
       return true;
@@ -1314,7 +1315,7 @@ AdbcStatusCode LoadProfileFile(const std::filesystem::path& profile_path,
 
   auto* options_table = options.as_table();
   profileVisitor v{profile, profile_path, error};
-  options_table->for_each(v.visit_prefix(""));
+  options_table->for_each(profileVisitor::visit_prefix("", v));
 
   if (error->message) {
     return ADBC_STATUS_INVALID_ARGUMENT;
@@ -2296,7 +2297,7 @@ AdbcStatusCode AdbcFilesystemProfileProvider(const char* profile_name,
 
 struct ProfileGuard {
   AdbcConnectionProfile& profile;
-  ProfileGuard(AdbcConnectionProfile& profile) : profile(profile) {}
+  explicit ProfileGuard(AdbcConnectionProfile& profile) : profile(profile) {}
   ~ProfileGuard() {
     if (profile.release) {
       profile.release(&profile);
