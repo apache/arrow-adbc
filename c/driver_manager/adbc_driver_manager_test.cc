@@ -1536,7 +1536,7 @@ TEST_F(ConnectionProfiles, SetProfileOption) {
 
   // absolute path to the profile
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
-  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", filepath.c_str(), &error),
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", filepath.string().c_str(), &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
@@ -1552,7 +1552,7 @@ TEST_F(ConnectionProfiles, SetProfileOption) {
   ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
 
   // find profile by name using ADBC_PROFILE_PATH
-  SetConfigPath(temp_dir.c_str());
+  SetConfigPath(temp_dir.string().c_str());
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
               IsOkStatus(&error));
@@ -1572,7 +1572,7 @@ TEST_F(ConnectionProfiles, HierarchicalProfile) {
 
   adbc_validation::Handle<struct AdbcDatabase> database;
 
-  SetConfigPath(temp_dir.c_str());
+  SetConfigPath(temp_dir.string().c_str());
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "dev/profile", &error),
               IsOkStatus(&error));
@@ -1600,7 +1600,7 @@ TEST_F(ConnectionProfiles, UriProfileOption) {
   ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
 
   // find profile by name using ADBC_PROFILE_PATH
-  SetConfigPath(temp_dir.c_str());
+  SetConfigPath(temp_dir.string().c_str());
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "uri", "profile://profile", &error),
               IsOkStatus(&error));
@@ -1628,7 +1628,7 @@ TEST_F(ConnectionProfiles, DriverProfileOption) {
   ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
 
   // find profile by name using ADBC_PROFILE_PATH
-  SetConfigPath(temp_dir.c_str());
+  SetConfigPath(temp_dir.string().c_str());
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(
       AdbcDatabaseSetOption(&database.value, "driver", "profile://profile", &error),
@@ -1650,7 +1650,7 @@ TEST_F(ConnectionProfiles, ExtraStringOption) {
   adbc_validation::Handle<struct AdbcDatabase> database;
 
   // find profile by name using ADBC_PROFILE_PATH
-  SetConfigPath(temp_dir.c_str());
+  SetConfigPath(temp_dir.string().c_str());
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
               IsOkStatus(&error));
@@ -1672,7 +1672,7 @@ TEST_F(ConnectionProfiles, ExtraIntOption) {
   adbc_validation::Handle<struct AdbcDatabase> database;
 
   // find profile by name using ADBC_PROFILE_PATH
-  SetConfigPath(temp_dir.c_str());
+  SetConfigPath(temp_dir.string().c_str());
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
               IsOkStatus(&error));
@@ -1694,7 +1694,7 @@ TEST_F(ConnectionProfiles, ExtraDoubleOption) {
   adbc_validation::Handle<struct AdbcDatabase> database;
 
   // find profile by name using ADBC_PROFILE_PATH
-  SetConfigPath(temp_dir.c_str());
+  SetConfigPath(temp_dir.string().c_str());
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
               IsOkStatus(&error));
@@ -1710,16 +1710,16 @@ TEST_F(ConnectionProfiles, ProfileNotFound) {
   // absolute path to the profile
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile",
-                                    (temp_dir / "profile.toml").c_str(), &error),
+                                    (temp_dir / "profile.toml").string().c_str(), &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
               IsStatus(ADBC_STATUS_NOT_FOUND, &error));
   ASSERT_THAT(error.message, ::testing::HasSubstr("Profile file does not exist: " +
                                                   (temp_dir / "profile.toml").string()));
   ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
-  
+
   // find profile by name using ADBC_PROFILE_PATH
-  SetConfigPath(temp_dir.c_str());
+  SetConfigPath(temp_dir.string().c_str());
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
               IsOkStatus(&error));
