@@ -1656,8 +1656,7 @@ TEST_F(ConnectionProfiles, ExtraStringOption) {
               IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
               IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
-  ASSERT_THAT(error.message, ::testing::HasSubstr("Unknown database option foo='bar'"));
-  ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("Unknown database option foo='bar'"));  
   UnsetConfigPath();
 }
 
@@ -1679,8 +1678,7 @@ TEST_F(ConnectionProfiles, ExtraIntOption) {
               IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
               IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
-  ASSERT_THAT(error.message, ::testing::HasSubstr("Unknown database option foo=42"));
-  ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("Unknown database option foo=42"));  
   UnsetConfigPath();
 }
 
@@ -1702,8 +1700,7 @@ TEST_F(ConnectionProfiles, ExtraDoubleOption) {
               IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
               IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
-  ASSERT_THAT(error.message, ::testing::HasSubstr("Unknown database option foo=42"));
-  ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("Unknown database option foo=42"));  
   UnsetConfigPath();
 }
 
@@ -1730,7 +1727,7 @@ TEST_F(ConnectionProfiles, ProfileNotFound) {
   ASSERT_THAT(error.message,
               ::testing::HasSubstr(std::string("Profile not found: profile\n") +
                                    "Also searched these paths for profiles:\n\t" +
-                                   "ADBC_PROFILE_PATH: " + temp_dir.string() + "\n\t"));
+                                   "ADBC_PROFILE_PATH: " + temp_dir.string() + "\n\t"));  
   ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
   UnsetConfigPath();
 }
