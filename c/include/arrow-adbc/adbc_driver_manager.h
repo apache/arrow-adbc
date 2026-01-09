@@ -175,6 +175,171 @@ AdbcStatusCode AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
 ADBC_EXPORT
 const char* AdbcStatusCodeMessage(AdbcStatusCode code);
 
+/// \defgroup adbc-driver-manager-connection-profile Connection Profiles
+/// Similar to odbc.ini, the ADBC driver manager can support "connection profiles"
+/// that specify a driver and options to use when connecting. This allows users to
+/// specify connection information in a file or environment variable, and have the
+/// driver manager load the appropriate driver and set options accordingly.
+///
+/// This allows creating reusable connection configurations for sharing and distribution
+/// without needing to hardcode driver names and options in application code. Profiles
+/// will be loaded during DatabaseInit before attempting to initialize the driver. Any
+/// options specified by the profile will be applied but will not override options
+/// that have already been set using DatabaseSetOption.
+///
+/// To faciliate customization, we define an interface for implementing a Connection
+/// Profile object along with a provider function definition which can be set into
+/// the driver manager to allow for customized profile loading.
+///
+/// A profile can be specified to the Driver Manager in one of two ways,
+/// which will invoke the profile provider during the call to DatabaseInit:
+///
+/// 1. The "profile" option can be set using DatabaseSetOption with the name of the
+/// profile to load.
+/// 2. The "uri" being used can have the form "profile://<profile>"
+///
+/// @{
+
+/// \brief Abstract interface for connection profile providers
+struct ADBC_EXPORT AdbcConnectionProfile {
+  /// \brief Opaque implementation-defined state.
+  /// This field is NULL if the profile is uninitialized/freed (but
+  /// it need not have a value even if the profile is initialized).
+  void* private_data;
+
+  /// \brief Release the profile and perform any cleanup.
+  void (*release)(struct AdbcConnectionProfile* profile);
+
+  /// \brief Get the driver to use as specified by this profile.
+  ///
+  /// It is not required that a profile specify a driver. If the options
+  // can be re-usable across drivers, then the profile does not need to specify
+  /// a driver (if this provides an empty string or nullptr then the driver
+  /// must be defined by other means, e.g. by the driver / uri options).
+  ///
+  /// \param[in] profile The profile to query.
+  /// \param[out] driver_name The name of the driver to use, or NULL if not specified.
+  /// \param[out] error An optional location to return an error message
+  AdbcStatusCode (*GetDriverName)(struct AdbcConnectionProfile* profile,
+                                  const char** driver_name, struct AdbcError* error);
+
+  /// \brief Get the string options specified by the profile
+  ///
+  /// The keys and values returned by this function are owned by the profile
+  /// object itself and do not need to be freed or managed by the caller.
+  /// They must not be accessed after calling release on the profile.
+  ///
+  /// The profile can also indicate that a value should be pulled from the environment
+  /// by having a value in the form `env_var(ENV_VAR_NAME)`. If the driver
+  /// manager encounters a value of this form, it will replace it with the actual value
+  /// of the environment variable `ENV_VAR_NAME` before setting the option. This
+  /// is only valid for option *values* not *keys*.
+  ///
+  /// \param[in] profile The profile to query.
+  /// \param[out] keys The keys of the options specified by the profile.
+  /// \param[out] values The values of the options specified by the profile.
+  /// \param[out] num_options The number of options specified by the profile,
+  ///   consumers must not access keys or values beyond this count.
+  /// \param[out] error An optional location to return an error message
+  AdbcStatusCode (*GetOptions)(struct AdbcConnectionProfile* profile, const char*** keys,
+                               const char*** values, size_t* num_options,
+                               struct AdbcError* error);
+
+  /// \brief Get the integer options specified by the profile
+  ///
+  /// The keys and values returned by this function are owned by the profile
+  /// object itself and do not need to be freed or managed by the caller. They must not be
+  /// accessed after calling release on the profile.
+  ///
+  /// Values returned by this function will be set using the DatabaseSetOptionInt function
+  /// on the database object being initialized. If the driver does not support the
+  /// DatabaseSetOptionInt function, then options should only be returned as strings.
+  ///
+  /// \param[in] profile The profile to query.
+  /// \param[out] keys The keys of the options specified by the profile.
+  /// \param[out] values The values of the options specified by the profile.
+  /// \param[out] num_options The number of options specified by the profile,
+  ///   consumers must not access keys or values beyond this count.
+  /// \param[out] error An optional location to return an error message
+  AdbcStatusCode (*GetIntOptions)(struct AdbcConnectionProfile* profile,
+                                  const char*** keys, const int64_t** values,
+                                  size_t* num_options, struct AdbcError* error);
+
+  /// \brief Get the double options specified by the profile
+  ///
+  /// The keys and values returned by this function are owned by the profile
+  /// object itself and do not need to be freed or managed by the caller. They must not be
+  /// accessed after calling release on the profile.
+  ///
+  /// Values returned by this function will be set using the DatabaseSetOptionDouble
+  /// function on the database object being initialized. If the driver does not support
+  /// the DatabaseSetOptionDouble function, then options should only be returned as
+  /// strings.
+  ///
+  /// \param[in] profile The profile to query.
+  /// \param[out] keys The keys of the options specified by the profile.
+  /// \param[out] values The values of the options specified by the profile.
+  /// \param[out] num_options The number of options specified by the profile,
+  ///   consumers must not access keys or values beyond this count.
+  /// \param[out] error An optional location to return an error message
+  AdbcStatusCode (*GetDoubleOptions)(struct AdbcConnectionProfile* profile,
+                                     const char*** keys, const double** values,
+                                     size_t* num_options, struct AdbcError* error);
+};
+
+/// \brief Common definition for a connection profile provider
+///
+/// \param[in] profile_name The name of the profile to load. This is the value of the
+///   "profile" option or the profile specified in the URI.
+/// \param[in] additional_search_path_list A list of additional paths to search for
+///   profiles, delimited by the OS specific path list separator.
+/// \param[out] out The profile to return. The caller will take ownership of the profile
+///   and is responsible for calling release on it when finished.
+/// \param[out] error An optional location to return an error message if necessary.
+typedef AdbcStatusCode (*AdbcConnectionProfileProvider)(
+    const char* profile_name, const char* additional_search_path_list,
+    struct AdbcConnectionProfile* out, struct AdbcError* error);
+
+/// \brief Set a custom connection profile provider for the driver manager.
+///
+/// If no provider is set, the driver manager will use a default, filesystem-based
+/// provider which will look for profiles in the following locations if not given an
+/// absolute path to a file:
+///
+/// 1. The environment variable ADBC_PROFILE_PATH, which is a list of paths to search for
+/// profiles.
+/// 2. The user-level configuration directory (e.g. ~/.config/adbc/profiles on Linux).
+///
+/// The filesystem-based profile looks for a file named <profile_name>.toml if there is
+/// no extension provided, attempting to parse the toml file for the profile information.
+/// If the file is found and parsed successfully, the options specified in the profile
+/// which have not already been set will be set as if by DatabaseSetOption just before
+/// initialization as part of DatabaseInit.
+///
+/// For file-based profiles the expected format is as follows:
+/// ```toml
+/// version = 1
+/// driver = "driver_name"
+///
+/// [options]
+/// option1 = "value1"
+/// option2 = 42
+/// option3 = 3.14
+/// ```
+///
+/// Boolean options will be converted to string equivalents of "true" or "false".
+///
+/// \param[in] database The database to set the profile provider for.
+/// \param[in] provider The profile provider to use. If NULL, the default filesystem-based
+///   provider will be used if a profile is needed.
+/// \param[out] error An optional location to return an error message if necessary
+ADBC_EXPORT
+AdbcStatusCode AdbcDriverManagerDatabaseSetProfileProvider(
+    struct AdbcDatabase* database, AdbcConnectionProfileProvider provider,
+    struct AdbcError* error);
+
+/// @}
+
 #endif  // ADBC_DRIVER_MANAGER_H
 
 #ifdef __cplusplus
