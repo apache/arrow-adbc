@@ -1716,7 +1716,8 @@ TEST_F(ConnectionProfiles, ProfileNotFound) {
               IsStatus(ADBC_STATUS_NOT_FOUND, &error));
   ASSERT_THAT(error.message, ::testing::HasSubstr("Profile file does not exist: " +
                                                   (temp_dir / "profile.toml").string()));
-
+  ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
+  
   // find profile by name using ADBC_PROFILE_PATH
   SetConfigPath(temp_dir.c_str());
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
