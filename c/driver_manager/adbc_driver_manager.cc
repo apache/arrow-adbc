@@ -1238,6 +1238,35 @@ struct FilesystemProfile {
   }
 };
 
+struct profileVisitor {
+  FilesystemProfile& profile;
+  const std::filesystem::path& profile_path;
+  struct AdbcError* error;
+
+  auto visit_prefix(const std::string& prefix) {
+    return [this, prefix](const toml::key& key, auto&& val) -> bool {
+      if constexpr (toml::is_integer<decltype(val)>) {
+        profile.int_options[prefix + key.data()] = val.get();
+      } else if constexpr (toml::is_floating_point<decltype(val)>) {
+        profile.double_options[prefix + key.data()] = val.get();
+      } else if constexpr (toml::is_boolean<decltype(val)>) {
+        profile.options[prefix + key.data()] = val.get() ? "true" : "false";
+      } else if constexpr (toml::is_string<decltype(val)>) {
+        profile.options[prefix + key.data()] = val.get();
+      } else if constexpr (toml::is_table<decltype(val)>) {
+        // Recursively visit the table with the new prefix
+        val.for_each(visit_prefix(prefix + key.data() + "."));
+      } else {
+        std::string message = "Unsupported value type for key '" + prefix + key.data() +
+                              "' in profile '" + profile_path.string() + "'";
+        SetError(error, std::move(message));
+        return false;
+      }
+      return true;
+    };
+  }
+};
+
 AdbcStatusCode LoadProfileFile(const std::filesystem::path& profile_path,
                                FilesystemProfile& profile, struct AdbcError* error) {
   toml::table config;
@@ -1284,52 +1313,8 @@ AdbcStatusCode LoadProfileFile(const std::filesystem::path& profile_path,
   }
 
   auto* options_table = options.as_table();
-  // recursive lambdas are weird, but fun!
-  auto visitor = [&profile, &profile_path, &error](const std::string& prefix) {
-    auto visit_impl = [&profile, &profile_path, &error](const std::string& prefix,
-                                                        auto&& visit_ref) mutable {
-      return [&profile, &profile_path, &error, prefix, &visit_ref](const toml::key& key,
-                                                                   auto&& val) -> bool {
-        if constexpr (toml::is_integer<decltype(val)>) {
-          profile.int_options[prefix + key.data()] = val.get();
-        } else if constexpr (toml::is_floating_point<decltype(val)>) {
-          profile.double_options[prefix + key.data()] = val.get();
-        } else if constexpr (toml::is_boolean<decltype(val)>) {
-          profile.options[prefix + key.data()] = val.get() ? "true" : "false";
-        } else if constexpr (toml::is_string<decltype(val)>) {
-          profile.options[prefix + key.data()] = val.get();
-        } else if constexpr (toml::is_table<decltype(val)>) {
-          // Recursively visit the table with the new prefix
-          // so that if we have a table like:
-          // [options]
-          // foo.bar.baz = "qux"
-          //
-          // then we will properly get the option "foo.bar.baz" with value "qux"
-          //
-          // This allows us to avoid forcing users to do "foo.bar.baz" = "qux" manually in
-          // the TOML file. while also allowing users to organize their options in a more
-          // hierarchical way if they choose to. Such as this:
-          //
-          // [options]
-          // [options.foo]
-          // bar = "qux"
-          // baz = "qux"
-          //
-          // which would result in the options "foo.bar" = "qux" and "foo.baz" = "qux"
-          val.for_each(visit_ref(prefix + key.data() + ".", visit_ref));
-        } else {
-          std::string message = "Unsupported value type for key '" + prefix + key.data() +
-                                "' in profile '" + profile_path.string() + "'";
-          SetError(error, std::move(message));
-          return false;
-        }
-        return true;
-      };
-    };
-    return visit_impl(prefix, visit_impl);
-  };
-
-  options_table->for_each(visitor(""));
+  profileVisitor v{profile, profile_path, error};
+  options_table->for_each(v.visit_prefix(""));
 
   if (error->message) {
     return ADBC_STATUS_INVALID_ARGUMENT;
@@ -2326,7 +2311,7 @@ AdbcStatusCode InternalInitializeProfile(TempDatabase* args,
     args->profile_provider = AdbcFilesystemProfileProvider;
   }
 
-  AdbcConnectionProfile connection_profile;
+  AdbcConnectionProfile connection_profile{};
   CHECK_STATUS(args->profile_provider(profile.data(),
                                       args->additional_search_path_list.c_str(),
                                       &connection_profile, error));
