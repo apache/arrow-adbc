@@ -43,6 +43,7 @@ std::filesystem::path InternalAdbcUserConfigDir();
 struct ParseDriverUriResult {
   std::string_view driver;
   std::optional<std::string_view> uri;
+  std::optional<std::string_view> profile;
 };
 
 std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view str);
@@ -624,11 +625,15 @@ TEST(AdbcDriverManagerInternal, InternalAdbcParsePath) {
 TEST(AdbcDriverManagerInternal, InternalAdbcParseDriverUri) {
   std::vector<std::pair<std::string, std::optional<ParseDriverUriResult>>> uris = {
       {"sqlite", std::nullopt},
-      {"sqlite:", {{"sqlite", std::nullopt}}},
-      {"sqlite:file::memory:", {{"sqlite", "file::memory:"}}},
-      {"sqlite:file::memory:?cache=shared", {{"sqlite", "file::memory:?cache=shared"}}},
+      {"sqlite:", {{"sqlite", std::nullopt, std::nullopt}}},
+      {"sqlite:file::memory:", {{"sqlite", "file::memory:", std::nullopt}}},
+      {"sqlite:file::memory:?cache=shared",
+       {{"sqlite", "file::memory:?cache=shared", std::nullopt}}},
       {"postgresql://a:b@localhost:9999/nonexistent",
-       {{"postgresql", "postgresql://a:b@localhost:9999/nonexistent"}}}};
+       {{"postgresql", "postgresql://a:b@localhost:9999/nonexistent", std::nullopt}}},
+      {"profile://foo_prof", {{"", std::nullopt, "foo_prof"}}},
+      {"profile:///foo/bar/profile.toml", {{"", std::nullopt, "/foo/bar/profile.toml"}}},
+  };
 
 #ifdef _WIN32
   auto temp_dir = std::filesystem::temp_directory_path() / "adbc_driver_manager_tests";
