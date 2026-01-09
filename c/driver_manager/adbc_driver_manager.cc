@@ -1287,7 +1287,7 @@ AdbcStatusCode LoadProfileFile(const std::filesystem::path& profile_path,
   // recursive lambdas are weird, but fun!
   auto visitor = [&profile, &profile_path, &error](const std::string& prefix) {
     auto visit_impl = [&profile, &profile_path, &error](const std::string& prefix,
-                                                        auto& visit_ref) mutable {
+                                                        auto&& visit_ref) mutable {
       return [&profile, &profile_path, &error, prefix, &visit_ref](const toml::key& key,
                                                                    auto&& val) -> bool {
         if constexpr (toml::is_integer<decltype(val)>) {
