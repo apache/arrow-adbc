@@ -251,7 +251,7 @@ void SetError(struct AdbcError* error, struct AdbcError* src_error) {
 
   if (src_error->message) {
     size_t message_size = strlen(src_error->message);
-    error->message = new char[message_size];
+    error->message = new char[message_size + 1];  // +1 to include null
     std::memcpy(error->message, src_error->message, message_size);
     error->message[message_size] = '\0';
   } else {
