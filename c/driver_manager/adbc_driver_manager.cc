@@ -1342,11 +1342,11 @@ SearchPaths GetProfileSearchPaths(const char* additional_search_path_list) {
 #endif  // ADBC_CONDA_BUILD
 
 #ifdef _WIN32
-  const string_type profiles_dir = "Profiles";
+  const wchar_t* profiles_dir = L"Profiles";
 #elif defined(__APPLE__)
-  const string_type profiles_dir = "Profiles";
+  const char* profiles_dir = "Profiles";
 #else
-  const string_type profiles_dir = "profiles";
+  const char* profiles_dir = "profiles";
 #endif  // defined(_WIN32)
 
   auto user_dir = InternalAdbcUserConfigDir().parent_path() / profiles_dir;
