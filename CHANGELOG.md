@@ -1239,3 +1239,61 @@
 - update docs site footer for new ASF logo (#3546)
 - **csharp/src/Drivers/Databricks**: add mitm proxy instruction (#3486)
 - **r/adbcdrivermanager**: Fix roxygen comments (#3477)
+
+## ADBC Libraries 22 (2026-01-06)
+
+### Versions
+
+- C/C++/GLib/Go/Python/Ruby: 1.10.0
+- C#: 0.22.0
+- Java: 0.22.0
+- R: 0.22.0
+- Rust: 0.22.0
+
+### Breaking Changes
+
+- ⚠️ **rust/ffi**: catch panics at FFI boundary (#3819)
+
+### New Features
+
+- load driver from uri (#3694)
+- **c/driver/postgresql**: add transaction isolation level support (#3760)
+- **c/driver/postgresql**: add validation suite and override tests (#3821)
+- **c/driver/sqlite**: support the `ADBC_INFO_DRIVER_ADBC_VERSION` info key added in ADBC spec 1.1.0 (#3843)
+- **c/driver_manager**: warn about potential non-printable driver (#3856)
+- **csharp**: rename .Tests to .Testing; add NuGet for other packages (#3729)
+- **csharp/Benchmarks**: Add .NET Framework 4.7.2 support with TLS co… (#3682)
+- **csharp/Benchmarks**: Add CloudFetch E2E performance benchmark (#3660)
+- **csharp/Benchmarks**: Add custom columns for CloudFetch benchmark metrics (#3688)
+- **csharp/src/Drivers**: Enable setting BatchSizeStopCondition, MaxMessageSize & MaxFrameSize (#3684)
+- **csharp/src/Drivers/BigQuery**: Add support for overriding adbc.bigquery.large_decimals_as_string (#3648)
+- **csharp/src/Drivers/Databricks**: Added connection params of rateLimitRetry and rateLimitRetryTimeout (#3612)
+- **csharp/src/Drivers/Databricks**: CloudFetch Use RecyclableMemoryStream for LZ4 decompression to reduce memory pressure (#3683)
+- **go/adbc/driver/flightsql**: support bulk ingest (#3808)
+- **python/adbc_driver_flightsql**: add constants for OAuth options (#3849)
+- **r**: support target catalog/schema for ingestion (#3852)
+- ⚠️ **rust/ffi**: catch panics at FFI boundary (#3819)
+
+### Bugfixes
+
+- **c**: Generate versioned DLLs and import LIBs when building with MSVC (#2858)
+- **c/driver/postgresql**: honor GetObjects schema filter (#3855)
+- **c/driver_manager**: compare with correct iterator in SetOption (#3858)
+- **c/driver_manager**: do not parse driver/URI if both are set (#3790)
+- **c/driver_manager**: incorrect buffer length check in AdbcDatabaseGetOption (#3797)
+- **c/driver_manager**: look for correct init symbol name (#3681)
+- **csharp**: Expose internals for AdbcDrivers.Databricks (#3788)
+- **csharp/src/Drivers/Databricks**: Implement FIFO memory acquisition to prevent starvation in CloudFetch (#3756)
+- **csharp/src/Drivers/Databricks**: Make mandatory token exchange blocking and fix concurrent handling (#3715)
+- **csharp/src/Drivers/Databricks**: Reduce LZ4 decompression memory by using Custom Array Pool (#3654)
+- **dev/release**: fix wheel verification failure on macOS due to SIP (#3686)
+- **go/adbc/sqldriver**: ignore NotImplemented errors for optional transaction options (#3759)
+- **go/adbc/sqldriver**: properly close resources (#3731)
+- **python/adbc_driver_manager**: close Cursors when closing Connection (#3810)
+- **rust/driver/datafusion**: using datafusion driver in async runtime (#3712)
+- **rust/driver_manager**: don't dlclose drivers (#3844)
+- **rust/driver_manager**: remove optional property for windows deps (#3693)
+
+### Documentation Improvements
+
+- **rust**: add note about cargo update fix in Rust quickstart (#3689)
