@@ -46,6 +46,7 @@
 #include <cstdio>
 #include <cstring>
 #include <filesystem>
+#include <functional>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -1243,28 +1244,28 @@ struct profileVisitor {
   const std::filesystem::path& profile_path;
   struct AdbcError* error;
 
-  template <typename T>
-  static const auto visit_prefix(const std::string& prefix, T& visitor) {
-    return [&visitor, prefix](const toml::key& key, auto&& val) -> bool {
+  bool visit_table(const std::string& prefix, toml::table& table) {
+    table.for_each([this, prefix](const toml::key& key, auto&& val) -> bool {
       if constexpr (toml::is_integer<decltype(val)>) {
-        visitor.profile.int_options[prefix + key.data()] = val.get();
+        profile.int_options[prefix + key.data()] = val.get();
       } else if constexpr (toml::is_floating_point<decltype(val)>) {
-        visitor.profile.double_options[prefix + key.data()] = val.get();
+        profile.double_options[prefix + key.data()] = val.get();
       } else if constexpr (toml::is_boolean<decltype(val)>) {
-        visitor.profile.options[prefix + key.data()] = val.get() ? "true" : "false";
+        profile.options[prefix + key.data()] = val.get() ? "true" : "false";
       } else if constexpr (toml::is_string<decltype(val)>) {
-        visitor.profile.options[prefix + key.data()] = val.get();
+        profile.options[prefix + key.data()] = val.get();
       } else if constexpr (toml::is_table<decltype(val)>) {
         // Recursively visit the table with the new prefix
-        val.for_each(visit_prefix<T>(prefix + key.data() + ".", visitor));
+        return visit_table(prefix + key.data() + ".", *val.as_table());
       } else {
         std::string message = "Unsupported value type for key '" + prefix + key.data() +
-                              "' in profile '" + visitor.profile_path.string() + "'";
-        SetError(visitor.error, std::move(message));
+                              "' in profile '" + profile_path.string() + "'";
+        SetError(error, std::move(message));
         return false;
       }
       return true;
-    };
+    });
+    return !error->message;
   }
 };
 
@@ -1315,9 +1316,7 @@ AdbcStatusCode LoadProfileFile(const std::filesystem::path& profile_path,
 
   auto* options_table = options.as_table();
   profileVisitor v{profile, profile_path, error};
-  options_table->for_each(profileVisitor::visit_prefix("", v));
-
-  if (error->message) {
+  if (!v.visit_table("", *options_table)) {
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
