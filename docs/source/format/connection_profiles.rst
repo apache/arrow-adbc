@@ -563,6 +563,6 @@ Adds additional directories to search for profiles. Must be called before ``Adbc
 See Also
 ========
 
-- :doc:`driver_manager` - Driver Manager overview
-- :doc:`../driver/specification` - Driver specification and options
-- ADBC C API Reference
+- :doc:`how_manager` - Driver Manager overview
+- :doc:`specification` - Driver specification and options
+- :doc:`../cpp/driver_manager` - CPP Driver Manager Reference

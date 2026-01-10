@@ -1245,26 +1245,27 @@ struct profileVisitor {
   struct AdbcError* error;
 
   bool visit_table(const std::string& prefix, toml::table& table) {
-    table.for_each([this, prefix](const toml::key& key, auto&& val) -> bool {
-      if constexpr (toml::is_integer<decltype(val)>) {
-        profile.int_options[prefix + key.data()] = val.get();
-      } else if constexpr (toml::is_floating_point<decltype(val)>) {
-        profile.double_options[prefix + key.data()] = val.get();
-      } else if constexpr (toml::is_boolean<decltype(val)>) {
-        profile.options[prefix + key.data()] = val.get() ? "true" : "false";
-      } else if constexpr (toml::is_string<decltype(val)>) {
-        profile.options[prefix + key.data()] = val.get();
-      } else if constexpr (toml::is_table<decltype(val)>) {
-        // Recursively visit the table with the new prefix
-        return visit_table(prefix + key.data() + ".", *val.as_table());
+    for (const auto& [key, value] : table) {
+      if (auto* str = value.as_string()) {
+        profile.options[prefix + key.data()] = str->get();
+      } else if (auto* int_val = value.as_integer()) {
+        profile.int_options[prefix + key.data()] = int_val->get();
+      } else if (auto* double_val = value.as_floating_point()) {
+        profile.double_options[prefix + key.data()] = double_val->get();
+      } else if (auto* bool_val = value.as_boolean()) {
+        profile.options[prefix + key.data()] = bool_val->get() ? "true" : "false";
+      } else if (value.is_table()) {
+        if (!visit_table(prefix + key.data() + ".", *value.as_table())) {
+          return false;
+        }
       } else {
-        std::string message = "Unsupported value type for key '" + prefix + key.data() +
-                              "' in profile '" + profile_path.string() + "'";
+        std::string message = "Unsupported value type for key '" +
+                              std::string(key.str()) + "' in profile '" +
+                              profile_path.string() + "'";
         SetError(error, std::move(message));
         return false;
       }
-      return true;
-    });
+    }
     return !error->message;
   }
 };
