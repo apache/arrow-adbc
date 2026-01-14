@@ -4,7 +4,7 @@ version = 3
 
 [[package]]
 name = "adbc_core"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "arrow-array",
  "arrow-schema",
@@ -12,7 +12,7 @@ dependencies = [
 
 [[package]]
 name = "adbc_datafusion"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "adbc_core",
  "adbc_ffi",
@@ -28,7 +28,7 @@ dependencies = [
 
 [[package]]
 name = "adbc_driver_manager"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "adbc_core",
  "adbc_ffi",
@@ -40,12 +40,12 @@ dependencies = [
  "tempfile",
  "toml",
  "windows-registry",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
 name = "adbc_dummy"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "adbc_core",
  "adbc_driver_manager",
@@ -58,7 +58,7 @@ dependencies = [
 
 [[package]]
 name = "adbc_ffi"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "adbc_core",
  "arrow-array",
@@ -67,7 +67,7 @@ dependencies = [
 
 [[package]]
 name = "adbc_snowflake"
-version = "0.22.0"
+version = "0.23.0"
 dependencies = [
  "adbc_core",
  "adbc_driver_manager",
