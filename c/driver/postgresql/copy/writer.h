@@ -299,7 +299,7 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
          j >= 0 && parts.fractional_part[j] == '0'; j--) {
       trailing_zeros++;
     }
-    int16_t dscale = std::max<int16_t>(0, parts.effective_scale - trailing_zeros);
+    int16_t dscale = (std::max)<int16_t>(0, parts.effective_scale - trailing_zeros);
 
     // Optimize: remove trailing zero digit groups from fractional part
     int n_int_digit_groups = int_digits.size();
@@ -467,7 +467,7 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
     // Group right-to-left in chunks of 4
     int i = int_part.length();
     while (i > 0) {
-      int chunk_size = std::min(i, kDecDigits);
+      int chunk_size = (std::min)(i, kDecDigits);
       std::string_view chunk =
           std::string_view(int_part).substr(i - chunk_size, chunk_size);
 
@@ -498,7 +498,7 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
 
     // Group left-to-right in chunks of 4, right-padding last chunk
     for (size_t i = 0; i < frac_part.length(); i += kDecDigits) {
-      int chunk_size = std::min(kDecDigits, static_cast<int>(frac_part.length() - i));
+      int chunk_size = (std::min)(kDecDigits, static_cast<int>(frac_part.length() - i));
       std::string chunk_str = frac_part.substr(i, chunk_size);
 
       // Right-pad to 4 digits (e.g., "45" → "4500")
