@@ -219,7 +219,7 @@ func (d *databaseImpl) initializeConnectionPool(ctx context.Context) (*sql.DB, e
 
 	// Test the connection
 	if err := db.PingContext(ctx); err != nil {
-		err = errors.Join(db.Close())
+		err = errors.Join(err, db.Close())
 		return nil, adbc.Error{
 			Code: adbc.StatusInternal,
 			Msg:  fmt.Sprintf("failed to ping database: %v", err),
