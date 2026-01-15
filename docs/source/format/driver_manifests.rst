@@ -438,6 +438,13 @@ to control which directories will be searched for manifests, with the behavior b
        * ``LOAD_FLAG_ALLOW_RELATIVE_PATHS`` - allow a relative path to be used
        * ``LOAD_FLAG_DEFAULT`` - default value with all flags set
 
+.. warning:: A driver manifest file must not be named ``profile.toml``.
+             The name ``profile`` is reserved for
+             :doc:`connection profiles <connection_profiles>`.
+             Using it as the basename of a driver manifest conflicts with how
+             driver managers interpret URIs beginning with the
+             ``profile://`` scheme.
+
 Unix-like Platforms
 ^^^^^^^^^^^^^^^^^^^
 
