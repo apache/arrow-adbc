@@ -369,6 +369,8 @@ impl Connection for DummyConnection {
             .collect::<ScalarBuffer<i32>>();
 
         let value_array = UnionArray::try_new(
+            #[allow(deprecated)]
+            // TODO: remove this once update the minimum arrow version to 57.2.0
             UnionFields::new(
                 [0, 1, 2, 3, 4, 5],
                 [
@@ -660,6 +662,8 @@ impl Connection for DummyConnection {
         let type_id_buffer = [1_i8].into_iter().collect::<ScalarBuffer<i8>>();
         let value_offsets_buffer = [0_i32].into_iter().collect::<ScalarBuffer<i32>>();
         let statistic_value_array = UnionArray::try_new(
+            #[allow(deprecated)]
+            // TODO: remove this once update the minimum arrow version to 57.2.0
             UnionFields::new(
                 [0, 1, 2, 3],
                 [
