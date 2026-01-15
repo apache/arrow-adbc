@@ -67,7 +67,7 @@ require (
 	go.opentelemetry.io/otel/sdk/metric v1.38.0 // indirect
 )
 
-replace github.com/snowflakedb/gosnowflake => github.com/dbt-labs/gosnowflake v0.0.0-20251206194734-f5e64868a3dc
+replace github.com/snowflakedb/gosnowflake => github.com/dbt-labs/gosnowflake v1.17.5
 
 replace github.com/databricks/databricks-sql-go => github.com/dbt-labs/databricks-sql-go v1.19.1
 
