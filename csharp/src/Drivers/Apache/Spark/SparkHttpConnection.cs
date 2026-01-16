@@ -191,7 +191,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
             activity?.AddTag(ActivityKeys.TransportType, baseAddress.Scheme);
             activity?.AddTag(ActivityKeys.AuthType, authTypeValue.ToString());
             activity?.AddTag(ActivityKeys.Http.UserAgent, userAgent);
-            activity?.AddTag(ActivityKeys.Http.Uri, baseAddress.ToString());
+            activity?.AddTag(ActivityKeys.Http.Uri, baseAddress);
 
             TConfiguration config = GetTconfiguration();
             THttpTransport transport = new(httpClient, config)

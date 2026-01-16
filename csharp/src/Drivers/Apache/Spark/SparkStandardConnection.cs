@@ -140,12 +140,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 {
                     baseTransport = new TTlsSocketTransport(hostName!, portValue, config: thriftConfig, 0, trustedCert, certValidator);
                 }
-                activity?.AddTag(ActivityKeys.Encrypted, (trustedCert != null).ToString());
+                activity?.AddTag(ActivityKeys.Encrypted, trustedCert != null);
             }
             else
             {
                 baseTransport = new TSocketTransport(hostName!, portValue, connectClient, config: thriftConfig);
-                activity?.AddTag(SparkConnection.ActivityKeys.Encrypted, false.ToString());
+                activity?.AddTag(ActivityKeys.Encrypted, false);
             }
             activity?.AddTag(ActivityKeys.Host, hostName);
             activity?.AddTag(ActivityKeys.Port, port);

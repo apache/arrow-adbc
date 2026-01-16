@@ -129,12 +129,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
                 {
                     transport = new TTlsSocketTransport(hostName!, int.Parse(port!), config: thriftConfig, 0, null, certValidator: certValidator);
                 }
-                activity?.AddTag(ActivityKeys.Encrypted, true.ToString());
+                activity?.AddTag(ActivityKeys.Encrypted, true);
             }
             else
             {
                 transport = new TSocketTransport(hostName!, int.Parse(port!), connectClient, config: thriftConfig);
-                activity?.AddTag(ActivityKeys.Encrypted, false.ToString());
+                activity?.AddTag(ActivityKeys.Encrypted, false);
             }
             activity?.AddTag(ActivityKeys.Host, hostName);
             activity?.AddTag(ActivityKeys.Port, port);

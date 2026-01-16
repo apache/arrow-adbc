@@ -137,7 +137,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 baseTransport = new TSocketTransport(hostName!, portValue, connectClient, config: thriftConfig);
             }
-            activity?.AddTag(ActivityKeys.Encrypted, TlsOptions.IsTlsEnabled.ToString());
+            activity?.AddTag(ActivityKeys.Encrypted, TlsOptions.IsTlsEnabled);
 
             TBufferedTransport bufferedTransport = new TBufferedTransport(baseTransport);
             switch (authTypeValue)

@@ -154,11 +154,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             httpClient.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("identity"));
             httpClient.DefaultRequestHeaders.ExpectContinue = false;
 
-            activity?.AddTag(ActivityKeys.Encrypted, TlsOptions.IsTlsEnabled.ToString());
+            activity?.AddTag(ActivityKeys.Encrypted, TlsOptions.IsTlsEnabled);
             activity?.AddTag(ActivityKeys.TransportType, baseAddress.Scheme);
             activity?.AddTag(ActivityKeys.AuthType, authTypeValue.ToString());
             activity?.AddTag(ActivityKeys.Http.UserAgent, s_userAgent);
-            activity?.AddTag(ActivityKeys.Http.Uri, baseAddress.ToString());
+            activity?.AddTag(ActivityKeys.Http.Uri, baseAddress);
 
             TConfiguration config = GetTconfiguration();
             THttpTransport transport = new(httpClient, config)
