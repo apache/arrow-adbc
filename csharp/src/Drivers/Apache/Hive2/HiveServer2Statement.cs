@@ -319,6 +319,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                         this.EscapePatternWildcards = escapePatternWildcards;
                     }
                     break;
+                case AdbcOptions.Telemetry.TraceParent:
+                    SetTraceParent(string.IsNullOrWhiteSpace(value) ? null : value);
+                    break;
                 default:
                     throw AdbcException.NotImplemented($"Option '{key}' is not implemented.");
             }
