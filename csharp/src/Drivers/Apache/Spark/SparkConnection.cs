@@ -190,5 +190,23 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 DecimalDigits = DecimalDigits,
             };
         }
+
+        protected static new class ActivityKeys
+        {
+            private const string Prefix = "spark.";
+
+            public const string Encrypted = Prefix + Apache.ActivityKeys.Encrypted;
+            public const string TransportType = Prefix + Apache.ActivityKeys.TransportType;
+            public const string Host = Prefix + Apache.ActivityKeys.Host;
+            public const string Port = Prefix + Apache.ActivityKeys.Port;
+            public const string AuthType = Prefix + Apache.ActivityKeys.AuthType;
+
+            public static class Http
+            {
+                public const string UserAgent = Prefix + Apache.ActivityKeys.Http.UserAgent;
+                public const string Uri = Prefix + Apache.ActivityKeys.Http.Uri;
+                public const string AuthScheme = Prefix + Apache.ActivityKeys.Http.AuthScheme;
+            }
+        }
     }
 }

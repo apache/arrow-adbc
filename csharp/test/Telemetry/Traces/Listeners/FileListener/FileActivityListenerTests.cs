@@ -124,7 +124,7 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Listeners.FileListener
             {
                 await this.TraceActivityAsync(async (activity) =>
                 {
-                    activity?.SetTag(key, value);
+                    activity?.AddTag(key, value);
                     // Simulate some work
                     await Task.Yield();
                 });

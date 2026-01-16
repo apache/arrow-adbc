@@ -17,9 +17,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net;
 using System.Net.Security;
-using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
@@ -103,6 +103,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 
         protected override TTransport CreateTransport()
         {
+            Activity? activity = Activity.Current;
+
             // Assumption: hostName and port have already been validated.
             Properties.TryGetValue(ImpalaParameters.HostName, out string? hostName);
             Properties.TryGetValue(ImpalaParameters.Port, out string? port);
@@ -127,16 +129,21 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
                 {
                     transport = new TTlsSocketTransport(hostName!, int.Parse(port!), config: thriftConfig, 0, null, certValidator: certValidator);
                 }
+                activity?.AddTag(ActivityKeys.Encrypted, true);
             }
             else
             {
                 transport = new TSocketTransport(hostName!, int.Parse(port!), connectClient, config: thriftConfig);
+                activity?.AddTag(ActivityKeys.Encrypted, false);
             }
+            activity?.AddTag(ActivityKeys.Host, hostName);
+            activity?.AddTag(ActivityKeys.Port, port);
 
             TBufferedTransport bufferedTransport = new(transport);
             switch (authTypeValue)
             {
                 case ImpalaAuthType.None:
+                    activity?.AddTag(ActivityKeys.TransportType, "buffered_socket");
                     return bufferedTransport;
 
                 case ImpalaAuthType.Basic:
@@ -149,6 +156,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 
                     PlainSaslMechanism saslMechanism = new(username, password);
                     TSaslTransport saslTransport = new(bufferedTransport, saslMechanism, config: thriftConfig);
+                    activity?.AddTag(ActivityKeys.TransportType, "sasl_buffered_socket");
                     return new TFramedTransport(saslTransport);
 
                 default:
@@ -164,6 +172,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
 
         protected override TOpenSessionReq CreateSessionRequest()
         {
+            Activity? activity = Activity.Current;
+
             // Assumption: user name and password have already been validated.
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
             Properties.TryGetValue(AdbcOptions.Password, out string? password);
@@ -192,6 +202,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Impala
                     request.Password = password!;
                     break;
             }
+
+            authTypeValue = authTypeValue == ImpalaAuthType.Empty && !string.IsNullOrEmpty(username)
+                ? !string.IsNullOrEmpty(password)
+                    ? ImpalaAuthType.Basic
+                    : ImpalaAuthType.UsernameOnly
+                : authTypeValue;
+            activity?.AddTag(ActivityKeys.AuthType, authTypeValue.ToString());
             return request;
         }
 
