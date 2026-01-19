@@ -105,7 +105,7 @@ extern "C" SEXP RAdbcAllocateDriver(void) {
   R_RegisterCFinalizer(driver_xptr, &finalize_driver_xptr);
 
   // Make sure we error when the ADBC spec is updated
-  static_assert(offsetof(struct AdbcDriver, StatementNextResultSet) ==
+  static_assert(offsetof(struct AdbcDriver, StatementExecuteMulti) ==
                 ADBC_DRIVER_1_1_0_SIZE);
   SEXP version_sexp = PROTECT(Rf_ScalarInteger(ADBC_VERSION_1_1_0));
 

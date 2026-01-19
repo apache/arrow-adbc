@@ -60,7 +60,7 @@ TEST_F(AdbcVersion, StructSize) {
   ASSERT_EQ(sizeof(AdbcError), ADBC_ERROR_1_2_0_SIZE);
 
   ASSERT_EQ(sizeof(AdbcDriverVersion100), ADBC_DRIVER_1_0_0_SIZE);
-  ASSERT_EQ(offsetof(struct AdbcDriver, StatementNextResultSet), ADBC_DRIVER_1_1_0_SIZE);
+  ASSERT_EQ(offsetof(struct AdbcDriver, StatementExecuteMulti), ADBC_DRIVER_1_1_0_SIZE);
   ASSERT_EQ(sizeof(AdbcDriver), ADBC_DRIVER_1_2_0_SIZE);
 }
 
