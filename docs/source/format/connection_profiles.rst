@@ -22,8 +22,15 @@ Driver Manager Connection Profiles
 Overview
 ========
 
-Similar to ODBC's ``odbc.ini``, the ADBC driver manager supports **connection profiles**
-that specify a driver and connection options in a reusable configuration. This allows users to:
+There are two ways to pass connection options to driver managers:
+
+1. Directly specifying all connection options as arguments to driver manager functions in your
+   application code. (see the `SetOption` family of functions in :doc:`specification` for details)
+2. Referring to a **connection profile** which contains connection options, and optionally overriding
+   some options in your application code.
+
+The ADBC driver manager supports **connection profiles** that specify a driver and connection options
+in a reusable configuration. This allows users to:
 
 - Define connection information in files or environment variables
 - Share connection configurations across applications
@@ -314,6 +321,7 @@ A profile provider must implement the ``AdbcConnectionProfile`` interface:
 
    struct AdbcConnectionProfile {
        void* private_data;
+       // this will be called by the driver manager after retrieving the necessary information from the profile.
        void (*release)(struct AdbcConnectionProfile* profile);
        AdbcStatusCode (*GetDriverName)(struct AdbcConnectionProfile* profile,
                                        const char** driver_name,
