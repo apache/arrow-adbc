@@ -28,7 +28,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
     internal abstract class SparkConnection : HiveServer2Connection
     {
         protected const string ProductVersionDefault = "1.0.0";
-        protected const string DriverName = "ADBC Spark Driver";
+        protected virtual string DriverName => "ADBC Spark Driver";
         private const string ArrowVersion = "1.0.0";
         private readonly Lazy<string> _productVersion;
 
@@ -189,6 +189,24 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 ColumnSize = ColumnSize,
                 DecimalDigits = DecimalDigits,
             };
+        }
+
+        protected static new class ActivityKeys
+        {
+            private const string Prefix = "spark.";
+
+            public const string Encrypted = Prefix + Apache.ActivityKeys.Encrypted;
+            public const string TransportType = Prefix + Apache.ActivityKeys.TransportType;
+            public const string Host = Prefix + Apache.ActivityKeys.Host;
+            public const string Port = Prefix + Apache.ActivityKeys.Port;
+            public const string AuthType = Prefix + Apache.ActivityKeys.AuthType;
+
+            public static class Http
+            {
+                public const string UserAgent = Prefix + Apache.ActivityKeys.Http.UserAgent;
+                public const string Uri = Prefix + Apache.ActivityKeys.Http.Uri;
+                public const string AuthScheme = Prefix + Apache.ActivityKeys.Http.AuthScheme;
+            }
         }
     }
 }

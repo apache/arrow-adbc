@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using System.Net.Http;
@@ -35,6 +36,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     internal class HiveServer2HttpConnection : HiveServer2ExtendedConnection
     {
         private const string BasicAuthenticationScheme = "Basic";
+        private const string AnonymousAuthenticationScheme = "Anonymous";
 
         private readonly HiveServer2ProxyConfigurator _proxyConfigurator;
 
@@ -125,6 +127,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected override TTransport CreateTransport()
         {
+            Activity? activity = Activity.Current;
+
             // Assumption: parameters have already been validated.
             Properties.TryGetValue(HiveServer2Parameters.HostName, out string? hostName);
             Properties.TryGetValue(HiveServer2Parameters.Path, out string? path);
@@ -150,6 +154,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             httpClient.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("identity"));
             httpClient.DefaultRequestHeaders.ExpectContinue = false;
 
+            activity?.AddTag(ActivityKeys.Encrypted, TlsOptions.IsTlsEnabled);
+            activity?.AddTag(ActivityKeys.TransportType, baseAddress.Scheme);
+            activity?.AddTag(ActivityKeys.AuthType, authTypeValue.ToString());
+            activity?.AddTag(ActivityKeys.Http.UserAgent, s_userAgent);
+            activity?.AddTag(ActivityKeys.Http.Uri, baseAddress);
+
             TConfiguration config = GetTconfiguration();
             THttpTransport transport = new(httpClient, config)
             {
@@ -163,16 +173,21 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private static AuthenticationHeaderValue? GetAuthenticationHeaderValue(HiveServer2AuthType authType, string? username, string? password)
         {
+            Activity? activity = Activity.Current;
+
             if (!string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password) && (authType == HiveServer2AuthType.Empty || authType == HiveServer2AuthType.Basic))
             {
+                activity?.AddTag(ActivityKeys.Http.AuthScheme, BasicAuthenticationScheme);
                 return new AuthenticationHeaderValue(BasicAuthenticationScheme, Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}")));
             }
             else if (!string.IsNullOrEmpty(username) && (authType == HiveServer2AuthType.Empty || authType == HiveServer2AuthType.UsernameOnly))
             {
+                activity?.AddTag(ActivityKeys.Http.AuthScheme, BasicAuthenticationScheme);
                 return new AuthenticationHeaderValue(BasicAuthenticationScheme, Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:")));
             }
             else if (authType == HiveServer2AuthType.None)
             {
+                activity?.AddTag(ActivityKeys.Http.AuthScheme, AnonymousAuthenticationScheme);
                 return null;
             }
             else

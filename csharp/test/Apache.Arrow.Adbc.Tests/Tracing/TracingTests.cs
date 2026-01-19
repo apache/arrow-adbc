@@ -255,6 +255,57 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             }
         }
 
+        [Fact]
+        internal void CanSetTraceParentOnStatement()
+        {
+            string activitySourceName = NewName();
+            Queue<Activity> exportedActivities = new();
+            using TracerProvider provider = Sdk.CreateTracerProviderBuilder()
+                .AddSource(activitySourceName)
+                .AddTestActivityQueueExporter(exportedActivities)
+                .Build();
+
+            // Create a connection with a connection-level trace parent
+            const string connectionTraceParent = "00-11111111111111111111111111111111-2222222222222222-01";
+            var connection = new MyTracingConnection(
+                new Dictionary<string, string> { { AdbcOptions.Telemetry.TraceParent, connectionTraceParent } },
+                activitySourceName);
+
+            // Create a statement and verify it uses the connection's trace parent
+            var statement = new MyTracingStatement(connection);
+            Assert.Equal(connectionTraceParent, ((IActivityTracer)statement).TraceParent);
+
+            // Test 1: Execute with connection's trace parent
+            string eventName1 = NewName();
+            statement.MethodWithActivity(eventName1);
+            Assert.Single(exportedActivities);
+            var activity1 = exportedActivities.First();
+            Assert.Equal(connectionTraceParent, activity1.ParentId);
+
+            // Test 2: Set statement-specific trace parent
+            exportedActivities.Clear();
+            const string statementTraceParent = "00-33333333333333333333333333333333-4444444444444444-01";
+            statement.SetOption(AdbcOptions.Telemetry.TraceParent, statementTraceParent);
+            Assert.Equal(statementTraceParent, ((IActivityTracer)statement).TraceParent);
+
+            string eventName2 = NewName();
+            statement.MethodWithActivity(eventName2);
+            Assert.Single(exportedActivities);
+            var activity2 = exportedActivities.First();
+            Assert.Equal(statementTraceParent, activity2.ParentId);
+
+            // Test 3: Set trace parent to null (should fall back to connection's trace parent)
+            exportedActivities.Clear();
+            statement.SetOption(AdbcOptions.Telemetry.TraceParent, null);
+            Assert.Equal(connectionTraceParent, ((IActivityTracer)statement).TraceParent);
+
+            string eventName3 = NewName();
+            statement.MethodWithActivity(eventName3);
+            Assert.Single(exportedActivities);
+            var activity3 = exportedActivities.First();
+            Assert.Equal(connectionTraceParent, activity3.ParentId);
+        }
+
         internal static string NewName() => Guid.NewGuid().ToString().Replace("-", "").ToLower();
 
         protected virtual void Dispose(bool disposing)
@@ -449,6 +500,33 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern) => throw new NotImplementedException();
             public override Schema GetTableSchema(string? catalog, string? dbSchema, string tableName) => throw new NotImplementedException();
             public override IArrowArrayStream GetTableTypes() => throw new NotImplementedException();
+        }
+
+        private class MyTracingStatement(TracingConnection connection) : TracingStatement(connection)
+        {
+            public override string AssemblyVersion => "1.0.0";
+            public override string AssemblyName => "TestStatement";
+
+            public void MethodWithActivity(string activityName)
+            {
+                this.TraceActivity(activity =>
+                {
+                    activity?.AddTag("testTag", "testValue");
+                }, activityName);
+            }
+
+            public override void SetOption(string key, string? value)
+            {
+                if (key == AdbcOptions.Telemetry.TraceParent)
+                {
+                    SetTraceParent(string.IsNullOrWhiteSpace(value) ? null : value);
+                    return;
+                }
+                throw AdbcException.NotImplemented($"Option '{key}' is not implemented.");
+            }
+
+            public override QueryResult ExecuteQuery() => throw new NotImplementedException();
+            public override UpdateResult ExecuteUpdate() => throw new NotImplementedException();
         }
 
         internal class ActivityQueueExporter(Queue<Activity> exportedActivities) : BaseExporter<Activity>

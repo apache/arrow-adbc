@@ -22,6 +22,7 @@ namespace Apache.Arrow.Adbc.Tracing
     public abstract class TracingStatement : AdbcStatement, ITracingStatement
     {
         private readonly ActivityTrace _trace;
+        private string? _statementTraceParent;
 
         public TracingStatement(TracingConnection connection)
         {
@@ -30,7 +31,12 @@ namespace Apache.Arrow.Adbc.Tracing
 
         ActivityTrace IActivityTracer.Trace => _trace;
 
-        string? IActivityTracer.TraceParent => _trace.TraceParent;
+        string? IActivityTracer.TraceParent => _statementTraceParent ?? _trace.TraceParent;
+
+        protected void SetTraceParent(string? traceParent)
+        {
+            _statementTraceParent = traceParent;
+        }
 
         public abstract string AssemblyVersion { get; }
 
