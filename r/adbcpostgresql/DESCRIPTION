@@ -1,6 +1,6 @@
 Package: adbcpostgresql
 Title: 'Arrow' Database Connectivity ('ADBC') 'PostgreSQL' Driver
-Version: 0.21.0.9000
+Version: 0.22.0.9000
 Authors@R: c(
       person("Dewey", "Dunnington", , "dewey@dunnington.ca", role = c("aut", "cre"),
              comment = c(ORCID = "0000-0002-9415-4582")),
