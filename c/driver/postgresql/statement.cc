@@ -18,6 +18,11 @@
 // Windows
 #define NOMINMAX
 
+// For #warning Please include winsock2.h before windows.h on RTools/msys2
+#ifdef _WIN32
+#include <winsock2.h>
+#endif
+
 #include "statement.h"
 
 #include <algorithm>
