@@ -17,6 +17,11 @@
 
 // A libpq-based PostgreSQL driver for ADBC.
 
+// For #warning Please include winsock2.h before windows.h on RTools/msys2
+#ifdef _WIN32
+#include <winsock2.h>
+#endif
+
 #include <cstring>
 #include <memory>
 
