@@ -294,16 +294,24 @@ impl Connection for DummyConnection {
         Ok(Self::StatementType::default())
     }
 
-    // This method is used to test that errors round-trip correctly.
-    fn cancel(&mut self) -> Result<()> {
-        let mut error = Error::with_message_and_status("message", Status::Cancelled);
-        error.vendor_code = constants::ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA;
-        error.sqlstate = [1, 2, 3, 4, 5];
-        error.details = Some(vec![
-            ("key1".into(), b"AAA".into()),
-            ("key2".into(), b"ZZZZZ".into()),
-        ]);
-        Err(error)
+    /// This method is used to test that errors round-trip correctly.
+    fn get_cancel_handle(&self) -> Box<dyn adbc_core::CancelHandle> {
+        struct CancelHandle;
+
+        impl adbc_core::CancelHandle for CancelHandle {
+            fn try_cancel(&self) -> Result<()> {
+                let mut error = Error::with_message_and_status("message", Status::Cancelled);
+                error.vendor_code = constants::ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA;
+                error.sqlstate = [1, 2, 3, 4, 5];
+                error.details = Some(vec![
+                    ("key1".into(), b"AAA".into()),
+                    ("key2".into(), b"ZZZZZ".into()),
+                ]);
+                Err(error)
+            }
+        }
+
+        Box::new(CancelHandle)
     }
 
     fn commit(&mut self) -> Result<()> {
@@ -851,10 +859,6 @@ impl Statement for DummyStatement {
     }
 
     fn bind_stream(&mut self, _reader: Box<dyn RecordBatchReader + Send>) -> Result<()> {
-        Ok(())
-    }
-
-    fn cancel(&mut self) -> Result<()> {
         Ok(())
     }
 

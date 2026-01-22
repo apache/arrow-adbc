@@ -96,7 +96,7 @@ impl adbc_core::Statement for Statement {
         self.0.set_substrait_plan(plan)
     }
 
-    fn cancel(&mut self) -> Result<()> {
-        self.0.cancel()
+    fn get_cancel_handle(&self) -> Box<dyn adbc_core::CancelHandle> {
+        self.0.get_cancel_handle()
     }
 }
