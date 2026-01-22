@@ -77,7 +77,7 @@ impl adbc_core::Connection for Connection {
     fn get_info(
         &self,
         codes: Option<HashSet<InfoCode>>,
-    ) -> Result<impl RecordBatchReader + Send + '_> {
+    ) -> Result<Box<dyn RecordBatchReader + Send + 'static>> {
         self.0.get_info(codes)
     }
 
@@ -89,7 +89,7 @@ impl adbc_core::Connection for Connection {
         table_name: Option<&str>,
         table_type: Option<Vec<&str>>,
         column_name: Option<&str>,
-    ) -> Result<impl RecordBatchReader + Send + '_> {
+    ) -> Result<Box<dyn RecordBatchReader + Send + 'static>> {
         self.0.get_objects(
             depth,
             catalog,
@@ -109,11 +109,11 @@ impl adbc_core::Connection for Connection {
         self.0.get_table_schema(catalog, db_schema, table_name)
     }
 
-    fn get_table_types(&self) -> Result<impl RecordBatchReader + Send + '_> {
+    fn get_table_types(&self) -> Result<Box<dyn RecordBatchReader + Send + 'static>> {
         self.0.get_table_types()
     }
 
-    fn get_statistic_names(&self) -> Result<impl RecordBatchReader + Send + '_> {
+    fn get_statistic_names(&self) -> Result<Box<dyn RecordBatchReader + Send + 'static>> {
         self.0.get_statistic_names()
     }
 
@@ -123,7 +123,7 @@ impl adbc_core::Connection for Connection {
         db_schema: Option<&str>,
         table_name: Option<&str>,
         approximate: bool,
-    ) -> Result<impl RecordBatchReader + Send + '_> {
+    ) -> Result<Box<dyn RecordBatchReader + Send + 'static>> {
         self.0
             .get_statistics(catalog, db_schema, table_name, approximate)
     }
@@ -139,7 +139,7 @@ impl adbc_core::Connection for Connection {
     fn read_partition(
         &self,
         partition: impl AsRef<[u8]>,
-    ) -> Result<impl RecordBatchReader + Send + '_> {
+    ) -> Result<Box<dyn RecordBatchReader + Send + 'static>> {
         self.0.read_partition(partition)
     }
 }
