@@ -164,7 +164,7 @@ pub trait Connection: Optionable<Option = OptionConnection> {
     fn get_info(
         &self,
         codes: Option<HashSet<options::InfoCode>>,
-    ) -> Result<impl RecordBatchReader + Send>;
+    ) -> Result<impl RecordBatchReader + Send + '_>;
 
     /// Get a hierarchical view of all catalogs, database schemas, tables, and
     /// columns.
@@ -272,7 +272,7 @@ pub trait Connection: Optionable<Option = OptionConnection> {
         table_name: Option<&str>,
         table_type: Option<Vec<&str>>,
         column_name: Option<&str>,
-    ) -> Result<impl RecordBatchReader + Send>;
+    ) -> Result<impl RecordBatchReader + Send + '_>;
 
     /// Get the Arrow schema of a table.
     ///
@@ -297,7 +297,7 @@ pub trait Connection: Optionable<Option = OptionConnection> {
     /// Field Name     | Field Type
     /// ---------------|--------------
     /// table_type     | utf8 not null
-    fn get_table_types(&self) -> Result<impl RecordBatchReader + Send>;
+    fn get_table_types(&self) -> Result<impl RecordBatchReader + Send + '_>;
 
     /// Get the names of statistics specific to this driver.
     ///
@@ -312,7 +312,7 @@ pub trait Connection: Optionable<Option = OptionConnection> {
     ///
     /// # Since
     /// ADBC API revision 1.1.0
-    fn get_statistic_names(&self) -> Result<impl RecordBatchReader + Send>;
+    fn get_statistic_names(&self) -> Result<impl RecordBatchReader + Send + '_>;
 
     /// Get statistics about the data distribution of table(s).
     ///
@@ -378,7 +378,7 @@ pub trait Connection: Optionable<Option = OptionConnection> {
         db_schema: Option<&str>,
         table_name: Option<&str>,
         approximate: bool,
-    ) -> Result<impl RecordBatchReader + Send>;
+    ) -> Result<impl RecordBatchReader + Send + '_>;
 
     /// Commit any pending transactions. Only used if autocommit is disabled.
     ///
@@ -397,7 +397,10 @@ pub trait Connection: Optionable<Option = OptionConnection> {
     /// # Arguments
     ///
     /// - `partition` - The partition descriptor.
-    fn read_partition(&self, partition: impl AsRef<[u8]>) -> Result<impl RecordBatchReader + Send>;
+    fn read_partition(
+        &self,
+        partition: impl AsRef<[u8]>,
+    ) -> Result<impl RecordBatchReader + Send + '_>;
 }
 
 /// A handle to an ADBC statement.
@@ -433,7 +436,7 @@ pub trait Statement: Optionable<Option = OptionStatement> {
     // TODO(alexandreyc): is the Send bound absolutely necessary? same question
     // for all methods that return an impl RecordBatchReader
     // See: https://github.com/apache/arrow-adbc/pull/1725#discussion_r1567748242
-    fn execute(&mut self) -> Result<impl RecordBatchReader + Send>;
+    fn execute(&mut self) -> Result<impl RecordBatchReader + Send + '_>;
 
     /// Execute a statement that doesn’t have a result set and get the number
     /// of affected rows.

@@ -418,7 +418,7 @@ impl Connection for DummyConnection {
         _table_name: Option<&str>,
         _table_type: Option<Vec<&str>>,
         _column_name: Option<&str>,
-    ) -> Result<impl RecordBatchReader> {
+    ) -> Result<impl RecordBatchReader + Send + '_> {
         let constraint_column_usage_array_inner = StructArray::from(vec![
             (
                 Arc::new(Field::new("fk_catalog", DataType::Utf8, true)),
@@ -654,7 +654,7 @@ impl Connection for DummyConnection {
         _db_schema: Option<&str>,
         _table_name: Option<&str>,
         _approximate: bool,
-    ) -> Result<impl RecordBatchReader> {
+    ) -> Result<impl RecordBatchReader + Send + '_> {
         let statistic_value_int64_array = Int64Array::from(Vec::<i64>::new());
         let statistic_value_uint64_array = UInt64Array::from(vec![42]);
         let statistic_value_float64_array = Float64Array::from(Vec::<f64>::new());
@@ -762,7 +762,7 @@ impl Connection for DummyConnection {
         Ok(reader)
     }
 
-    fn get_statistic_names(&self) -> Result<impl RecordBatchReader> {
+    fn get_statistic_names(&self) -> Result<impl RecordBatchReader + Send + '_> {
         let name_array = StringArray::from(vec!["sum", "min", "max"]);
         let key_array = Int16Array::from(vec![0, 1, 2]);
         let batch = RecordBatch::try_new(
@@ -792,14 +792,17 @@ impl Connection for DummyConnection {
         }
     }
 
-    fn get_table_types(&self) -> Result<impl RecordBatchReader> {
+    fn get_table_types(&self) -> Result<impl RecordBatchReader + Send + '_> {
         let array = Arc::new(StringArray::from(vec!["table", "view"]));
         let batch = RecordBatch::try_new(schemas::GET_TABLE_TYPES_SCHEMA.clone(), vec![array])?;
         let reader = SingleBatchReader::new(batch);
         Ok(reader)
     }
 
-    fn read_partition(&self, _partition: impl AsRef<[u8]>) -> Result<impl RecordBatchReader> {
+    fn read_partition(
+        &self,
+        _partition: impl AsRef<[u8]>,
+    ) -> Result<impl RecordBatchReader + Send + '_> {
         let batch = get_table_data();
         let reader = SingleBatchReader::new(batch);
         Ok(reader)
@@ -852,7 +855,7 @@ impl Statement for DummyStatement {
         Ok(())
     }
 
-    fn execute(&mut self) -> Result<impl RecordBatchReader> {
+    fn execute(&mut self) -> Result<impl RecordBatchReader + Send + '_> {
         maybe_panic("StatementExecuteQuery");
         let batch = get_table_data();
         let reader = SingleBatchReader::new(batch);

@@ -742,7 +742,7 @@ impl Connection for DataFusionConnection {
     fn get_info(
         &self,
         codes: Option<std::collections::HashSet<adbc_core::options::InfoCode>>,
-    ) -> Result<impl RecordBatchReader + Send> {
+    ) -> Result<impl RecordBatchReader + Send + '_> {
         let mut get_info_builder = GetInfoBuilder::new();
 
         codes.unwrap().into_iter().for_each(|f| match f {
@@ -766,7 +766,7 @@ impl Connection for DataFusionConnection {
         _table_name: Option<&str>,
         _table_type: Option<Vec<&str>>,
         _column_name: Option<&str>,
-    ) -> Result<impl RecordBatchReader + Send> {
+    ) -> Result<impl RecordBatchReader + Send + '_> {
         let batch = GetObjectsBuilder::new().build(&self.runtime, &self.ctx, &depth)?;
         let reader = SingleBatchReader::new(batch);
         Ok(reader)
@@ -901,7 +901,7 @@ impl Statement for DataFusionStatement {
         todo!()
     }
 
-    fn execute(&mut self) -> Result<impl RecordBatchReader + Send> {
+    fn execute(&mut self) -> Result<impl RecordBatchReader + Send + '_> {
         self.runtime.block_on(async {
             let df = if self.sql_query.is_some() {
                 self.ctx
