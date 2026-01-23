@@ -20,6 +20,7 @@
 
 #include <arrow-adbc/adbc.h>
 #include "driver/framework/base_driver.h"
+#include "driver/framework/client.h"
 #include "driver/framework/connection.h"
 #include "driver/framework/database.h"
 #include "driver/framework/statement.h"
@@ -234,4 +235,80 @@ TEST(TestDriverBase, TestVoidDriverMethods) {
   EXPECT_EQ(driver.StatementBindStream(&statement, nullptr, nullptr),
             ADBC_STATUS_INVALID_ARGUMENT);
   EXPECT_EQ(driver.StatementCancel(&statement, nullptr), ADBC_STATUS_NOT_IMPLEMENTED);
+}
+
+class TestContext : public adbc::client::Context {
+  void Log(LogLevel level, std::string_view message) override {
+    GTEST_FAIL() << "Unexpected TestContext log message: " << message;
+  }
+};
+
+TEST(TestDriverBase, TestVoidDriverMethodsClient) {
+  using adbc::client::Connection;
+  using adbc::client::Database;
+  using adbc::client::Driver;
+  using adbc::client::Statement;
+
+  Driver driver(std::make_shared<TestContext>());
+  ASSERT_TRUE(driver.Load(VoidDriverInitFunc).ok());
+
+  auto maybe_database = driver.NewDatabase();
+  ASSERT_TRUE(maybe_database.has_value());
+  Database database = std::move(maybe_database.value());
+
+  // TODO: Test database methods
+
+  auto maybe_connection = database.NewConnection();
+  ASSERT_TRUE(maybe_connection.has_value()) << maybe_connection.status().message();
+  Connection connection = std::move(maybe_connection.value());
+
+  // TODO: Test connection methods
+
+  // EXPECT_EQ(driver.ConnectionCommit(&connection, nullptr), ADBC_STATUS_INVALID_STATE);
+  // EXPECT_EQ(driver.ConnectionGetInfo(&connection, nullptr, 0, nullptr, nullptr),
+  //           ADBC_STATUS_INVALID_ARGUMENT);
+  // EXPECT_EQ(driver.ConnectionGetObjects(&connection, 0, nullptr, nullptr, 0, nullptr,
+  //                                       nullptr, nullptr, nullptr),
+  //           ADBC_STATUS_NOT_IMPLEMENTED);
+  // EXPECT_EQ(driver.ConnectionGetTableSchema(&connection, nullptr, nullptr, nullptr,
+  //                                           nullptr, nullptr),
+  //           ADBC_STATUS_INVALID_ARGUMENT);
+  // EXPECT_EQ(driver.ConnectionGetTableTypes(&connection, nullptr, nullptr),
+  //           ADBC_STATUS_INVALID_ARGUMENT);
+  // EXPECT_EQ(driver.ConnectionReadPartition(&connection, nullptr, 0, nullptr, nullptr),
+  //           ADBC_STATUS_NOT_IMPLEMENTED);
+  // EXPECT_EQ(driver.ConnectionRollback(&connection, nullptr),
+  // ADBC_STATUS_INVALID_STATE); EXPECT_EQ(driver.ConnectionCancel(&connection, nullptr),
+  // ADBC_STATUS_NOT_IMPLEMENTED); EXPECT_EQ(driver.ConnectionGetStatistics(&connection,
+  // nullptr, nullptr, nullptr, 0,
+  //                                          nullptr, nullptr),
+  //           ADBC_STATUS_NOT_IMPLEMENTED);
+  // EXPECT_EQ(driver.ConnectionGetStatisticNames(&connection, nullptr, nullptr),
+  //           ADBC_STATUS_NOT_IMPLEMENTED);
+
+  auto maybe_statement = connection.NewStatement();
+  ASSERT_TRUE(maybe_statement.has_value());
+  Statement statement = std::move(maybe_statement.value());
+
+  // TODO: Test statement methods
+  // EXPECT_EQ(driver.StatementExecuteQuery(&statement, nullptr, nullptr, nullptr),
+  //           ADBC_STATUS_INVALID_STATE);
+  // EXPECT_EQ(driver.StatementExecuteSchema(&statement, nullptr, nullptr),
+  //           ADBC_STATUS_NOT_IMPLEMENTED);
+  // EXPECT_EQ(driver.StatementPrepare(&statement, nullptr), ADBC_STATUS_INVALID_STATE);
+  // EXPECT_EQ(driver.StatementSetSqlQuery(&statement, "", nullptr), ADBC_STATUS_OK);
+  // EXPECT_EQ(driver.StatementSetSubstraitPlan(&statement, nullptr, 0, nullptr),
+  //           ADBC_STATUS_NOT_IMPLEMENTED);
+  // EXPECT_EQ(driver.StatementBind(&statement, nullptr, nullptr, nullptr),
+  //           ADBC_STATUS_INVALID_ARGUMENT);
+  // EXPECT_EQ(driver.StatementBindStream(&statement, nullptr, nullptr),
+  //           ADBC_STATUS_INVALID_ARGUMENT);
+  // EXPECT_EQ(driver.StatementCancel(&statement, nullptr), ADBC_STATUS_NOT_IMPLEMENTED);
+
+  ASSERT_EQ(statement.SetSqlQuery("").code(), ADBC_STATUS_OK);
+
+  ASSERT_EQ(statement.Release().code(), ADBC_STATUS_OK);
+  ASSERT_EQ(connection.Release().code(), ADBC_STATUS_OK);
+  ASSERT_EQ(database.Release().code(), ADBC_STATUS_OK);
+  ASSERT_EQ(driver.Unload().code(), ADBC_STATUS_OK);
 }
