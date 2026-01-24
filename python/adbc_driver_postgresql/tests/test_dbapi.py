@@ -571,7 +571,9 @@ def test_server_terminates_connection(postgres_uri: str) -> None:
             # Get the backend PID of conn2
             with conn2.cursor() as cur:
                 cur.execute("SELECT pg_backend_pid()")
-                backend_pid = cur.fetchone()[0]
+                row = cur.fetchone()
+                assert row is not None
+                backend_pid = row[0]
             conn2.commit()
 
             # simulate a server side termination of a connection2
