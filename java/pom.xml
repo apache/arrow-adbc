@@ -28,7 +28,7 @@
 
   <groupId>org.apache.arrow.adbc</groupId>
   <artifactId>arrow-adbc-java-root</artifactId>
-  <version>0.22.0-SNAPSHOT</version>
+  <version>0.23.0-SNAPSHOT</version>
   <packaging>pom</packaging>
 
   <name>Apache Arrow ADBC Java Root POM</name>
@@ -183,7 +183,7 @@
         <plugin>
           <groupId>org.codehaus.mojo.natives</groupId>
           <artifactId>maven-native-javah</artifactId>
-          <version>1.0-M1</version>
+          <version>1.0.0</version>
         </plugin>
       </plugins>
     </pluginManagement>
@@ -307,7 +307,7 @@
                 <path>
                   <groupId>com.uber.nullaway</groupId>
                   <artifactId>nullaway</artifactId>
-                  <version>0.12.15</version>
+                  <version>0.13.0</version>
                 </path>
                 <path>
                   <groupId>org.checkerframework</groupId>

@@ -11,3 +11,4 @@
 ^cran-comments\.md$
 ^compile_commands\.json$
 ^\.cache$
+^CRAN-SUBMISSION$

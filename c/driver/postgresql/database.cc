@@ -15,6 +15,11 @@
 // specific language governing permissions and limitations
 // under the License.
 
+// For #warning Please include winsock2.h before windows.h on RTools/msys2
+#ifdef _WIN32
+#include <winsock2.h>
+#endif
+
 #include "database.h"
 
 #include <array>
