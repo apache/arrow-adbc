@@ -581,9 +581,6 @@ def test_server_terminates_connection(postgres_uri: str) -> None:
 
             # Try to execute a query on the terminated connection
             # This should raise an exception, NOT crash with a segfault
-            with pytest.raises(Exception) as exc_info:
+            with pytest.raises(Exception):
                 with conn2.cursor() as cur:
                     cur.execute("SELECT 1")
-
-            # Verify we got an error (not a crash)
-            assert exc_info.value is not None
