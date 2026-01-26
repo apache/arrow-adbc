@@ -1028,11 +1028,9 @@ struct ADBC_EXPORT AdbcMultiResultSet {
 AdbcStatusCode AdbcResultSetRelease(struct AdbcMultiResultSet* result_set,
                                     struct AdbcError* error);
 
-/// \brief Get the next result set from a multi-result-set execution.
+/// \brief Get the next ArrowArrayStream from an AdbcMultiResultSet.
 ///
 /// \since ADBC API revision 1.2.0
-///
-/// The AdbcMultiResultSet must outlive the returned ArrowArrayStream.
 ///
 /// The driver can decide whether to allow fetching the next result set
 /// as a single stream or as a set of partitions.  If the driver does not
