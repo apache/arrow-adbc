@@ -417,7 +417,7 @@ jobs:
           mv apache-arrow-adbc-$VERSION.tar.gz adbc/ci/linux-packages/
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@4fc31e1c823882afd7ef55985266a526c589de90  # v1.282.0
+        uses: ruby/setup-ruby@e69dcf3ded5967f30d7ef595704928d91cdae930  # v1.285.0
         with:
           ruby-version: ruby
 
@@ -594,7 +594,7 @@ jobs:
           echo "schedule: ${{ github.event.schedule }}" >> $GITHUB_STEP_SUMMARY
           echo "ref: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
 
-      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
+      - uses: conda-incubator/setup-miniconda@fc2d68f6413eb2d87b895e92f8584b5b94a10167  # v3.3.0
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
@@ -1174,7 +1174,7 @@ jobs:
         uses: actions/download-artifact@v7
         with:
           path: conda-packages
-      - uses: conda-incubator/setup-miniconda@835234971496cad1653abb28a638a281cf32541f  # v3.2.0
+      - uses: conda-incubator/setup-miniconda@fc2d68f6413eb2d87b895e92f8584b5b94a10167  # v3.3.0
         with:
           miniforge-version: latest
           use-only-tar-bz2: false
