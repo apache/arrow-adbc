@@ -16,12 +16,12 @@ Source:
 
 Dunnington D, Apache Arrow (2026). *adbcpostgresql: 'Arrow' Database
 Connectivity ('ADBC') 'PostgreSQL' Driver*. R package version
-0.21.0.9000, <https://arrow.apache.org/adbc/current/r/adbcpostgresql/>.
+0.22.0.9000, <https://arrow.apache.org/adbc/current/r/adbcpostgresql/>.
 
     @Manual{,
       title = {adbcpostgresql: 'Arrow' Database Connectivity ('ADBC') 'PostgreSQL' Driver},
       author = {Dewey Dunnington and {Apache Arrow}},
       year = {2026},
-      note = {R package version 0.21.0.9000},
+      note = {R package version 0.22.0.9000},
       url = {https://arrow.apache.org/adbc/current/r/adbcpostgresql/},
     }

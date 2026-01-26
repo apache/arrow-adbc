@@ -16,12 +16,12 @@ Source:
 
 Dunnington D, Apache Arrow (2026). *adbcsnowflake: Arrow Database
 Connectivity ('ADBC') 'Snowflake' Driver*. R package version
-0.21.0.9000, <https://arrow.apache.org/adbc/current/r/adbcsnowflake/>.
+0.22.0.9000, <https://arrow.apache.org/adbc/current/r/adbcsnowflake/>.
 
     @Manual{,
       title = {adbcsnowflake: Arrow Database Connectivity ('ADBC') 'Snowflake' Driver},
       author = {Dewey Dunnington and {Apache Arrow}},
       year = {2026},
-      note = {R package version 0.21.0.9000},
+      note = {R package version 0.22.0.9000},
       url = {https://arrow.apache.org/adbc/current/r/adbcsnowflake/},
     }
