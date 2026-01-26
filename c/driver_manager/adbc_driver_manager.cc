@@ -428,44 +428,66 @@ AdbcStatusCode ProcessProfileValue(std::string_view value, std::string& out,
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
-  const auto pos = value.find("env_var(");
-  if (pos == std::string_view::npos || pos != 0) {
-    out = std::string(value);
-    return ADBC_STATUS_OK;
-  }
+  size_t pos = 0;
+  size_t prev_pos = 0;
+  out.resize(0);
+  while ((pos = value.find("env_var(", prev_pos)) != std::string_view::npos) {
+    const auto closing_paren = value.find_first_of(')', pos);
+    if (closing_paren == std::string_view::npos) {
+      SetError(error, "Malformed env_var() profile value: missing closing parenthesis");
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
 
-  if (value[value.size() - 1] != ')') {
-    SetError(error, "Malformed env_var() profile value: missing closing parenthesis");
-    return ADBC_STATUS_INVALID_ARGUMENT;
-  }
+    const auto env_var_start = pos + 8;
+    const auto env_var_len = closing_paren - env_var_start;
+    if (env_var_len == 0) {
+      SetError(error,
+               "Malformed env_var() profile value: missing environment variable name");
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
 
-  // Extract the environment variable name from the value
-  // which should be formatted as env_var(VAR_NAME) as we confirmed
-  // above.
-  const auto env_var_name = value.substr(8, value.size() - 9);
+    out.append(value.substr(prev_pos, pos - prev_pos));
+    prev_pos = closing_paren + 1;
+
+    // Extract the environment variable name from the value
+    // which should be formatted as env_var(VAR_NAME) as we confirmed
+    // above.
+    const auto env_var_name = value.substr(env_var_start, env_var_len);
 #ifdef _WIN32
-  auto local_env_var = Utf8Decode(std::string(env_var_name));
-  DWORD required_size = GetEnvironmentVariableW(local_env_var.c_str(), NULL, 0);
-  if (required_size == 0) {
-    out = "";
-    return ADBC_STATUS_OK;
+    auto local_env_var = Utf8Decode(std::string(env_var_name));
+    DWORD required_size = GetEnvironmentVariableW(local_env_var.c_str(), NULL, 0);
+    if (required_size == 0) {
+      out = "";
+      return ADBC_STATUS_OK;
+    }
+
+    std::wstring wvalue;
+    wvalue.resize(required_size);
+    DWORD actual_size =
+        GetEnvironmentVariableW(local_env_var.c_str(), wvalue.data(), required_size);
+    // remove null terminator
+    wvalue.resize(actual_size);
+    const auto env_var_value = Utf8Encode(wvalue);
+#else
+    const char* env_value = std::getenv(std::string(env_var_name).c_str());
+    if (!env_value) {
+      out = "";
+      return ADBC_STATUS_OK;
+    }
+    const auto env_var_value = std::string(env_value);
+#endif
+
+    const size_t new_total_len =
+        out.size() + env_var_value.size() + (value.size() - closing_paren - 1);
+    out.reserve(new_total_len);
+    out.append(env_var_value);
   }
 
-  std::wstring wvalue;
-  wvalue.resize(required_size);
-  DWORD actual_size =
-      GetEnvironmentVariableW(local_env_var.c_str(), wvalue.data(), required_size);
-  // remove null terminator
-  wvalue.resize(actual_size);
-  out = Utf8Encode(wvalue);
-#else
-  const char* env_value = std::getenv(std::string(env_var_name).c_str());
-  if (!env_value) {
-    out = "";
-    return ADBC_STATUS_OK;
+  if (out.size() == 0) {
+    out = std::string(value);
+  } else {  // append remainder
+    out.append(value.substr(prev_pos));
   }
-  out = std::string(env_value);
-#endif
   return ADBC_STATUS_OK;
 }
 
@@ -1131,30 +1153,29 @@ struct FilesystemProfile {
   std::vector<const char*> double_option_keys;
   std::vector<double> double_option_values;
 
-  static void populate_connection_profile(FilesystemProfile&& profile,
-                                          struct AdbcConnectionProfile* out) {
-    profile.options_keys.reserve(profile.options.size());
-    profile.options_values.reserve(profile.options.size());
-    for (const auto& [key, value] : profile.options) {
-      profile.options_keys.push_back(key.c_str());
-      profile.options_values.push_back(value.c_str());
+  void PopulateConnectionProfile(struct AdbcConnectionProfile* out) {
+    options_keys.reserve(options.size());
+    options_values.reserve(options.size());
+    for (const auto& [key, value] : options) {
+      options_keys.push_back(key.c_str());
+      options_values.push_back(value.c_str());
     }
 
-    profile.int_option_keys.reserve(profile.int_options.size());
-    profile.int_option_values.reserve(profile.int_options.size());
-    for (const auto& [key, value] : profile.int_options) {
-      profile.int_option_keys.push_back(key.c_str());
-      profile.int_option_values.push_back(value);
+    int_option_keys.reserve(int_options.size());
+    int_option_values.reserve(int_options.size());
+    for (const auto& [key, value] : int_options) {
+      int_option_keys.push_back(key.c_str());
+      int_option_values.push_back(value);
     }
 
-    profile.double_option_keys.reserve(profile.double_options.size());
-    profile.double_option_values.reserve(profile.double_options.size());
-    for (const auto& [key, value] : profile.double_options) {
-      profile.double_option_keys.push_back(key.c_str());
-      profile.double_option_values.push_back(value);
+    double_option_keys.reserve(double_options.size());
+    double_option_values.reserve(double_options.size());
+    for (const auto& [key, value] : double_options) {
+      double_option_keys.push_back(key.c_str());
+      double_option_values.push_back(value);
     }
 
-    out->private_data = new FilesystemProfile(std::move(profile));
+    out->private_data = new FilesystemProfile(std::move(*this));
     out->release = [](AdbcConnectionProfile* profile) {
       if (!profile || !profile->private_data) {
         return;
@@ -1239,12 +1260,12 @@ struct FilesystemProfile {
   }
 };
 
-struct profileVisitor {
+struct ProfileVisitor {
   FilesystemProfile& profile;
   const std::filesystem::path& profile_path;
   struct AdbcError* error;
 
-  bool visit_table(const std::string& prefix, toml::table& table) {
+  bool VisitTable(const std::string& prefix, toml::table& table) {
     for (const auto& [key, value] : table) {
       if (auto* str = value.as_string()) {
         profile.options[prefix + key.data()] = str->get();
@@ -1255,7 +1276,7 @@ struct profileVisitor {
       } else if (auto* bool_val = value.as_boolean()) {
         profile.options[prefix + key.data()] = bool_val->get() ? "true" : "false";
       } else if (value.is_table()) {
-        if (!visit_table(prefix + key.data() + ".", *value.as_table())) {
+        if (!VisitTable(prefix + key.data() + ".", *value.as_table())) {
           return false;
         }
       } else {
@@ -1316,8 +1337,8 @@ AdbcStatusCode LoadProfileFile(const std::filesystem::path& profile_path,
   }
 
   auto* options_table = options.as_table();
-  profileVisitor v{profile, profile_path, error};
-  if (!v.visit_table("", *options_table)) {
+  ProfileVisitor v{profile, profile_path, error};
+  if (!v.VisitTable("", *options_table)) {
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
@@ -2204,7 +2225,7 @@ AdbcStatusCode AdbcDriverManagerDatabaseSetInitFunc(struct AdbcDatabase* databas
   return ADBC_STATUS_OK;
 }
 
-AdbcStatusCode AdbcFilesystemProfileProvider(const char* profile_name,
+AdbcStatusCode AdbcProfileProviderFilesystem(const char* profile_name,
                                              const char* additional_search_path_list,
                                              struct AdbcConnectionProfile* out,
                                              struct AdbcError* error) {
@@ -2229,7 +2250,7 @@ AdbcStatusCode AdbcFilesystemProfileProvider(const char* profile_name,
 
       FilesystemProfile profile;
       CHECK_STATUS(LoadProfileFile(profile_path, profile, error));
-      FilesystemProfile::populate_connection_profile(std::move(profile), out);
+      profile.PopulateConnectionProfile(out);
       return ADBC_STATUS_OK;
     }
   }
@@ -2239,7 +2260,7 @@ AdbcStatusCode AdbcFilesystemProfileProvider(const char* profile_name,
 
     FilesystemProfile profile;
     CHECK_STATUS(LoadProfileFile(profile_path, profile, error));
-    FilesystemProfile::populate_connection_profile(std::move(profile), out);
+    profile.PopulateConnectionProfile(out);
     return ADBC_STATUS_OK;
   }
 
@@ -2262,7 +2283,7 @@ AdbcStatusCode AdbcFilesystemProfileProvider(const char* profile_name,
       FilesystemProfile profile;
       auto status = LoadProfileFile(full_path, profile, &intermediate_error.error);
       if (status == ADBC_STATUS_OK) {
-        FilesystemProfile::populate_connection_profile(std::move(profile), out);
+        profile.PopulateConnectionProfile(out);
         return ADBC_STATUS_OK;
       } else if (status == ADBC_STATUS_INVALID_ARGUMENT) {
         search_paths.insert(search_paths.end(), extra_debug_info.begin(),
@@ -2296,8 +2317,8 @@ AdbcStatusCode AdbcFilesystemProfileProvider(const char* profile_name,
 }
 
 struct ProfileGuard {
-  AdbcConnectionProfile& profile;
-  explicit ProfileGuard(AdbcConnectionProfile& profile) : profile(profile) {}
+  AdbcConnectionProfile profile;
+  explicit ProfileGuard() : profile{} {}
   ~ProfileGuard() {
     if (profile.release) {
       profile.release(&profile);
@@ -2309,18 +2330,15 @@ AdbcStatusCode InternalInitializeProfile(TempDatabase* args,
                                          const std::string_view profile,
                                          struct AdbcError* error) {
   if (!args->profile_provider) {
-    args->profile_provider = AdbcFilesystemProfileProvider;
+    args->profile_provider = AdbcProfileProviderFilesystem;
   }
 
-  AdbcConnectionProfile connection_profile{};
-  CHECK_STATUS(args->profile_provider(profile.data(),
-                                      args->additional_search_path_list.c_str(),
-                                      &connection_profile, error));
+  ProfileGuard guard{};
+  CHECK_STATUS(args->profile_provider(
+      profile.data(), args->additional_search_path_list.c_str(), &guard.profile, error));
 
-  ProfileGuard guard{connection_profile};
   const char* driver_name = nullptr;
-  CHECK_STATUS(
-      connection_profile.GetDriverName(&connection_profile, &driver_name, error));
+  CHECK_STATUS(guard.profile.GetDriverName(&guard.profile, &driver_name, error));
   if (driver_name != nullptr && strlen(driver_name) > 0) {
     args->driver = driver_name;
   }
@@ -2331,8 +2349,8 @@ AdbcStatusCode InternalInitializeProfile(TempDatabase* args,
   const int64_t* int_values = nullptr;
   const double* double_values = nullptr;
 
-  CHECK_STATUS(connection_profile.GetOptions(&connection_profile, &keys, &values,
-                                             &num_options, error));
+  CHECK_STATUS(
+      guard.profile.GetOptions(&guard.profile, &keys, &values, &num_options, error));
   for (size_t i = 0; i < num_options; ++i) {
     // use try_emplace so we only add the option if there isn't
     // already an option with the same name
@@ -2341,16 +2359,16 @@ AdbcStatusCode InternalInitializeProfile(TempDatabase* args,
     args->options.try_emplace(keys[i], processed);
   }
 
-  CHECK_STATUS(connection_profile.GetIntOptions(&connection_profile, &keys, &int_values,
-                                                &num_options, error));
+  CHECK_STATUS(guard.profile.GetIntOptions(&guard.profile, &keys, &int_values,
+                                           &num_options, error));
   for (size_t i = 0; i < num_options; ++i) {
     // use try_emplace so we only add the option if there isn't
     // already an option with the same name
     args->int_options.try_emplace(keys[i], int_values[i]);
   }
 
-  CHECK_STATUS(connection_profile.GetDoubleOptions(&connection_profile, &keys,
-                                                   &double_values, &num_options, error));
+  CHECK_STATUS(guard.profile.GetDoubleOptions(&guard.profile, &keys, &double_values,
+                                              &num_options, error));
   for (size_t i = 0; i < num_options; ++i) {
     // use try_emplace so we only add the option if there isn't already an option with the
     // same name

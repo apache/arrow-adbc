@@ -345,7 +345,7 @@ AdbcStatusCode AdbcDriverManagerDatabaseSetProfileProvider(
 /// profile. This allows for more flexible provider implementations that can still
 /// leverage the default behavior when needed.
 ADBC_EXPORT
-AdbcStatusCode AdbcFilesystemProfileProvider(const char* profile_name,
+AdbcStatusCode AdbcProfileProviderFilesystem(const char* profile_name,
                                              const char* additional_search_path_list,
                                              struct AdbcConnectionProfile* out,
                                              struct AdbcError* error);
