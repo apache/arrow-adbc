@@ -41,7 +41,7 @@
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="8.0.0" />
     <PackageVersion Include="Moq" Version="4.20.72" />
     <PackageVersion Include="OpenTelemetry" Version="1.12.0" />
-    <PackageVersion Include="OpenTelemetry.Exporter.Console" Version="1.12.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.Console" Version="1.15.0" />
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.12.0" />
     <PackageVersion Include="System.Diagnostics.DiagnosticSource" Version="9.0.6" />
     <PackageVersion Include="System.Net.Http" Version="4.3.4" />
