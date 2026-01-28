@@ -145,46 +145,50 @@ impl DriverInfo {
     }
 }
 
-// construct default entrypoint from the library name
-pub(crate) fn get_default_entrypoint(driver_path: impl AsRef<OsStr>) -> String {
-    // - libadbc_driver_sqlite.so.2.0.0 -> AdbcDriverSqliteInit
-    // - adbc_driver_sqlite.dll -> AdbcDriverSqliteInit
-    // - proprietary_driver.dll -> AdbcProprietaryDriverInit
+pub(crate) struct DriverLibrary {}
 
-    // potential path -> filename
-    let mut filename = driver_path.as_ref().to_str().unwrap_or_default();
-    if let Some(pos) = filename.rfind(['/', '\\']) {
-        filename = &filename[pos + 1..];
+impl DriverLibrary {
+    /// Construct default entrypoint from the library name.
+    pub(crate) fn get_default_entrypoint(driver_path: impl AsRef<OsStr>) -> String {
+        // - libadbc_driver_sqlite.so.2.0.0 -> AdbcDriverSqliteInit
+        // - adbc_driver_sqlite.dll -> AdbcDriverSqliteInit
+        // - proprietary_driver.dll -> AdbcProprietaryDriverInit
+
+        // potential path -> filename
+        let mut filename = driver_path.as_ref().to_str().unwrap_or_default();
+        if let Some(pos) = filename.rfind(['/', '\\']) {
+            filename = &filename[pos + 1..];
+        }
+
+        // remove all extensions
+        filename = filename
+            .find('.')
+            .map_or_else(|| filename, |pos| &filename[..pos]);
+
+        let mut entrypoint = filename
+            .to_string()
+            .strip_prefix(env::consts::DLL_PREFIX)
+            .unwrap_or(filename)
+            .split(&['-', '_'][..])
+            .map(|s| {
+                // uppercase first character of a string
+                // https://stackoverflow.com/questions/38406793/why-is-capitalizing-the-first-letter-of-a-string-so-convoluted-in-rust
+                let mut c = s.chars();
+                match c.next() {
+                    None => String::new(),
+                    Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("");
+
+        if !entrypoint.starts_with("Adbc") {
+            entrypoint = format!("Adbc{entrypoint}");
+        }
+
+        entrypoint.push_str("Init");
+        entrypoint
     }
-
-    // remove all extensions
-    filename = filename
-        .find('.')
-        .map_or_else(|| filename, |pos| &filename[..pos]);
-
-    let mut entrypoint = filename
-        .to_string()
-        .strip_prefix(env::consts::DLL_PREFIX)
-        .unwrap_or(filename)
-        .split(&['-', '_'][..])
-        .map(|s| {
-            // uppercase first character of a string
-            // https://stackoverflow.com/questions/38406793/why-is-capitalizing-the-first-letter-of-a-string-so-convoluted-in-rust
-            let mut c = s.chars();
-            match c.next() {
-                None => String::new(),
-                Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
-            }
-        })
-        .collect::<Vec<_>>()
-        .join("");
-
-    if !entrypoint.starts_with("Adbc") {
-        entrypoint = format!("Adbc{entrypoint}");
-    }
-
-    entrypoint.push_str("Init");
-    entrypoint
 }
 
 pub(crate) const fn arch_triplet() -> (&'static str, &'static str, &'static str) {
@@ -388,7 +392,10 @@ mod tests {
             "/usr/lib/libadbc_driver_sqlite.so.6.0.0",
             "C:\\System32\\adbc_driver_sqlite.dll",
         ] {
-            assert_eq!(get_default_entrypoint(driver), "AdbcDriverSqliteInit");
+            assert_eq!(
+                DriverLibrary::get_default_entrypoint(driver),
+                "AdbcDriverSqliteInit"
+            );
         }
 
         for driver in [
@@ -397,7 +404,10 @@ mod tests {
             "/usr/lib/sqlite.so",
             "C:\\System32\\sqlite.dll",
         ] {
-            assert_eq!(get_default_entrypoint(driver), "AdbcSqliteInit");
+            assert_eq!(
+                DriverLibrary::get_default_entrypoint(driver),
+                "AdbcSqliteInit"
+            );
         }
 
         for driver in [
@@ -406,11 +416,17 @@ mod tests {
             "/usr/lib/proprietary_engine.so",
             "C:\\System32\\proprietary_engine.dll",
         ] {
-            assert_eq!(get_default_entrypoint(driver), "AdbcProprietaryEngineInit");
+            assert_eq!(
+                DriverLibrary::get_default_entrypoint(driver),
+                "AdbcProprietaryEngineInit"
+            );
         }
 
         for driver in ["driver_example", "libdriver_example.so"] {
-            assert_eq!(get_default_entrypoint(driver), "AdbcDriverExampleInit");
+            assert_eq!(
+                DriverLibrary::get_default_entrypoint(driver),
+                "AdbcDriverExampleInit"
+            );
         }
     }
 

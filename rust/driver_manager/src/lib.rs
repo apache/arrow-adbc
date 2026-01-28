@@ -132,7 +132,7 @@ use crate::error::libloading_error_to_adbc_error;
 use crate::search::get_search_paths;
 use crate::search::DriverInfo;
 
-use self::search::{get_default_entrypoint, parse_driver_uri};
+use self::search::{parse_driver_uri, DriverLibrary};
 
 const ERR_CANCEL_UNSUPPORTED: &str =
     "Canceling connection or statement is not supported with ADBC 1.0.0";
@@ -252,7 +252,7 @@ impl ManagedDriver {
         entrypoint: Option<&[u8]>,
         version: AdbcVersion,
     ) -> Result<Self> {
-        let default_entrypoint = get_default_entrypoint(filename.as_ref());
+        let default_entrypoint = DriverLibrary::get_default_entrypoint(filename.as_ref());
 
         let entrypoint = entrypoint.unwrap_or(default_entrypoint.as_bytes());
         // By default, go builds the libraries with '-Wl -z nodelete' which does not
