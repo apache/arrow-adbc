@@ -21,7 +21,7 @@ use std::path::{Path, PathBuf};
 use std::{env, ops};
 
 use libloading::Symbol;
-use toml::de::DeTable;
+use toml::de::{DeTable, DeValue};
 
 use adbc_core::{
     error::{Error, Result, Status},
@@ -78,33 +78,30 @@ impl DriverInfo {
         // let source = get_optional_key(&manifest, "source");
         let (os, arch, extra) = arch_triplet();
 
+        // TODO(felipecrv): point to toml file line/column in error messages
         let driver_spanned = manifest.get_ref().get("Driver");
         let lib_path = match driver_spanned
             .and_then(|v| v.get_ref().get("shared"))
             .map(|v| v.get_ref())
         {
-            Some(driver) => {
-                if driver.is_str() {
-                    // If the value is a string, we assume it is the path to the shared library.
-                    Ok(PathBuf::from(driver.as_str().unwrap_or_default()))
-                } else if driver.is_table() {
-                    // If the value is a table, we look for the specific key for this OS and architecture.
-                    Ok(PathBuf::from(
-                        driver
-                            .get(format!("{os}_{arch}{extra}"))
-                            .and_then(|v| v.get_ref().as_str())
-                            .unwrap_or_default(),
-                    ))
-                } else {
-                    Err(Error::with_message_and_status(
-                        format!(
-                            "Driver.shared must be a string or a table, found '{}'",
-                            driver.type_str()
-                        ),
-                        Status::InvalidArguments,
-                    ))
-                }
+            // If the value is a string, we assume it is the path to the shared library.
+            Some(DeValue::String(path)) => Ok(PathBuf::from(path.as_ref())),
+            // If the value is a table, we look for the specific key for this OS and architecture.
+            Some(DeValue::Table(driver)) => {
+                let key = format!("{os}_{arch}{extra}");
+                let path = driver
+                    .get(key.as_str())
+                    .and_then(|v| v.get_ref().as_str())
+                    .unwrap_or_default();
+                Ok(PathBuf::from(path))
             }
+            Some(driver) => Err(Error::with_message_and_status(
+                format!(
+                    "Driver.shared must be a string or a table, found '{}'",
+                    driver.type_str()
+                ),
+                Status::InvalidArguments,
+            )),
             None => Err(Error::with_message_and_status(
                 format!(
                     "Manifest '{}' missing Driver.shared key",
@@ -132,7 +129,6 @@ impl DriverInfo {
                 match val.as_str() {
                     Some(s) => Ok(s.as_bytes().to_vec()),
                     None => Err(Error::with_message_and_status(
-                        // TODO(felipecrv): point to toml file line/column in the message
                         "Driver entrypoint must be a string".to_string(),
                         Status::InvalidArguments,
                     )),
