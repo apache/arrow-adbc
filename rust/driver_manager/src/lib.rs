@@ -328,8 +328,10 @@ impl ManagedDriver {
         entrypoint: Option<&[u8]>,
         version: AdbcVersion,
     ) -> Result<Self> {
-        let info = DriverInfo::load_driver_manifest(driver_path, entrypoint)?;
-        Self::load_dynamic_from_filename(info.lib_path, info.entrypoint.as_deref(), version)
+        let info = DriverInfo::load_driver_manifest(driver_path)?;
+        // Prioritize manifest entrypoint over the provided one
+        let entrypoint = info.entrypoint.as_deref().or(entrypoint);
+        Self::load_dynamic_from_filename(info.lib_path, entrypoint, version)
     }
 
     fn search_path_list(
