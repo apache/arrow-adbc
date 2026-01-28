@@ -106,7 +106,7 @@ pub(crate) mod search;
 use std::collections::HashSet;
 use std::ffi::{CString, OsStr};
 use std::ops::DerefMut;
-use std::os::raw::{c_char, c_void};
+use std::os::raw::c_char;
 use std::path::{Path, PathBuf};
 use std::pin::Pin;
 use std::ptr::{null, null_mut};
@@ -132,7 +132,7 @@ use crate::error::libloading_error_to_adbc_error;
 use crate::search::get_search_paths;
 use crate::search::DriverInfo;
 
-use self::search::{parse_driver_uri, DriverLibrary};
+use self::search::{parse_driver_uri, DriverInitFunc, DriverLibrary};
 
 const ERR_CANCEL_UNSUPPORTED: &str =
     "Canceling connection or statement is not supported with ADBC 1.0.0";
@@ -169,7 +169,7 @@ impl ManagedDriver {
         init: &adbc_ffi::FFI_AdbcDriverInitFunc,
         version: AdbcVersion,
     ) -> Result<Self> {
-        let driver = Self::load_impl(init, version)?;
+        let driver = DriverLibrary::new(DriverInitFunc::Static(init)).init_driver(version)?;
         let inner = Arc::pin(ManagedDriverInner {
             driver,
             version,
@@ -315,7 +315,7 @@ impl ManagedDriver {
                 .or_else(|_| library.get(b"AdbcDriverInit"))
                 .map_err(libloading_error_to_adbc_error)?
         };
-        let driver = Self::load_impl(&init, version)?;
+        let driver = DriverLibrary::new(DriverInitFunc::Shared(init)).init_driver(version)?;
         let inner = Arc::pin(ManagedDriverInner {
             driver,
             version,
@@ -339,23 +339,6 @@ impl ManagedDriver {
     ) -> Result<Self> {
         let filename = libloading::library_filename(name.as_ref());
         Self::load_dynamic_from_filename(filename, entrypoint, version)
-    }
-
-    fn load_impl(
-        init: &adbc_ffi::FFI_AdbcDriverInitFunc,
-        version: AdbcVersion,
-    ) -> Result<adbc_ffi::FFI_AdbcDriver> {
-        let mut error = adbc_ffi::FFI_AdbcError::default();
-        let mut driver = adbc_ffi::FFI_AdbcDriver::default();
-        let status = unsafe {
-            init(
-                version.into(),
-                &mut driver as *mut adbc_ffi::FFI_AdbcDriver as *mut c_void,
-                &mut error,
-            )
-        };
-        check_status(status, error)?;
-        Ok(driver)
     }
 
     fn inner_ffi_driver(&self) -> &adbc_ffi::FFI_AdbcDriver {

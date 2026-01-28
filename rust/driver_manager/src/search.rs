@@ -15,16 +15,22 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use std::env;
-use std::ffi::OsStr;
+use std::ffi::{c_void, OsStr};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::{env, ops};
 
+use libloading::Symbol;
 use toml::de::DeTable;
 
 use adbc_core::{
     error::{Error, Result, Status},
+    options::AdbcVersion,
     LoadFlags, LOAD_FLAG_SEARCH_ENV, LOAD_FLAG_SEARCH_SYSTEM, LOAD_FLAG_SEARCH_USER,
+};
+use adbc_ffi::{
+    options::check_status,
+    {FFI_AdbcDriver, FFI_AdbcDriverInitFunc, FFI_AdbcError},
 };
 
 #[derive(Debug, Default)]
@@ -145,9 +151,49 @@ impl DriverInfo {
     }
 }
 
-pub(crate) struct DriverLibrary {}
+pub(crate) enum DriverInitFunc<'a> {
+    /// The driver initialization function as a static function pointer.
+    Static(&'a FFI_AdbcDriverInitFunc),
+    /// The driver initialization function as a [Symbol] from a dynamically loaded library.
+    Shared(Symbol<'a, FFI_AdbcDriverInitFunc>),
+}
 
-impl DriverLibrary {
+/// Allow using [DriverInitFunc] as a function pointer.
+impl<'a> ops::Deref for DriverInitFunc<'a> {
+    type Target = FFI_AdbcDriverInitFunc;
+
+    fn deref(&self) -> &Self::Target {
+        match self {
+            DriverInitFunc::Static(init) => init,
+            DriverInitFunc::Shared(init) => init,
+        }
+    }
+}
+
+pub(crate) struct DriverLibrary<'a> {
+    init: DriverInitFunc<'a>,
+}
+
+impl<'a> DriverLibrary<'a> {
+    pub(crate) fn new(init: DriverInitFunc<'a>) -> Self {
+        Self { init }
+    }
+
+    /// Initialize the driver via the library's entrypoint.
+    pub(crate) fn init_driver(&self, version: AdbcVersion) -> Result<FFI_AdbcDriver> {
+        let mut error = FFI_AdbcError::default();
+        let mut driver = FFI_AdbcDriver::default();
+        let status = unsafe {
+            (self.init)(
+                version.into(),
+                &mut driver as *mut FFI_AdbcDriver as *mut c_void,
+                &mut error,
+            )
+        };
+        check_status(status, error)?;
+        Ok(driver)
+    }
+
     /// Construct default entrypoint from the library name.
     pub(crate) fn get_default_entrypoint(driver_path: impl AsRef<OsStr>) -> String {
         // - libadbc_driver_sqlite.so.2.0.0 -> AdbcDriverSqliteInit
