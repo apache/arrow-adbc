@@ -128,7 +128,6 @@ use adbc_core::{
 };
 use adbc_ffi::driver_method;
 
-use crate::error::libloading_error_to_adbc_error;
 use crate::search::get_search_paths;
 use crate::search::DriverInfo;
 
@@ -189,14 +188,14 @@ impl ManagedDriver {
     ///  - if `name` has an extension: it is treated as a filename. If the load_flags does not
     ///    contain `LOAD_FLAG_ALLOW_RELATIVE_PATHS`, then relative paths will be rejected.
     ///    - if the extension is `toml` then we attempt to load the Driver Manifest, otherwise
-    ///      we defer to the previous logic in [`Self::load_dynamic_from_filename`] which will attempt to
-    ///      load the library
+    ///      we defer to the previous logic in [`Self::load_dynamic_from_filename`] which will
+    ///      attempt to load the library
     ///  - if `name` does not have an extension but is an absolute path: we first check to see
     ///    if there is an existing file with the same name that *does* have a "toml" extension,
     ///    attempting to load that if it exists. Otherwise we just pass it to load_dynamic_from_filename.
     ///  - Finally, if there's no extension and it is not an absolute path, we will search through
-    ///    the relevant directories (based on the set load flags) for a manifest file with this name, and
-    ///    if one is not found we see if the name refers to a library on the LD_LIBRARY_PATH etc.
+    ///    the relevant directories (based on the set load flags) for a manifest file with this name,
+    ///    and if one is not found we see if the name refers to a library on the LD_LIBRARY_PATH etc.
     pub fn load_from_name(
         name: impl AsRef<OsStr>,
         entrypoint: Option<&[u8]>,
@@ -253,62 +252,16 @@ impl ManagedDriver {
         version: AdbcVersion,
     ) -> Result<Self> {
         let default_entrypoint = DriverLibrary::get_default_entrypoint(filename.as_ref());
-
         let entrypoint = entrypoint.unwrap_or(default_entrypoint.as_bytes());
-        // By default, go builds the libraries with '-Wl -z nodelete' which does not
-        // unload the go runtime. This isn't respected on mac ( https://github.com/golang/go/issues/11100#issuecomment-932638093 )
-        // so we need to explicitly load the library with RTLD_NODELETE( which prevents unloading )
-        #[cfg(unix)]
-        let library: libloading::Library = unsafe {
-            use std::os::raw::c_int;
+        let library = DriverLibrary::load_library(filename)?;
+        Self::load_from_library(library, entrypoint, version)
+    }
 
-            const RTLD_NODELETE: c_int = if cfg!(any(
-                target_os = "macos",
-                target_os = "ios",
-                target_os = "tvos",
-                target_os = "visionos",
-                target_os = "watchos",
-            )) {
-                0x80
-            } else if cfg!(any(
-                target_os = "linux",
-                target_os = "android",
-                target_os = "emscripten",
-                target_os = "freebsd",
-                target_os = "dragonfly",
-                target_os = "openbsd",
-                target_os = "haiku",
-                target_os = "solaris",
-                target_os = "illumos",
-                target_env = "uclibc",
-                target_env = "newlib",
-                target_os = "fuchsia",
-                target_os = "redox",
-                target_os = "hurd",
-                target_os = "cygwin",
-            )) {
-                0x1000
-            } else {
-                0x0
-            };
-
-            libloading::os::unix::Library::open(
-                Some(filename.as_ref()),
-                libloading::os::unix::RTLD_LAZY | libloading::os::unix::RTLD_LOCAL | RTLD_NODELETE,
-            )
-            .map(Into::into)
-            .map_err(libloading_error_to_adbc_error)?
-        };
-        // on windows, we emulate the same behaviour by using the GET_MODULE_HANDLE_EX_FLAG_PIN. The `.pin()`
-        // function implements this.
-        #[cfg(windows)]
-        let library: libloading::Library = unsafe {
-            let library: libloading::os::windows::Library =
-                libloading::os::windows::Library::new(filename.as_ref())
-                    .map_err(libloading_error_to_adbc_error)?;
-            library.pin().map_err(libloading_error_to_adbc_error)?;
-            library.into()
-        };
+    fn load_from_library(
+        library: libloading::Library,
+        entrypoint: &[u8],
+        version: AdbcVersion,
+    ) -> Result<ManagedDriver> {
         let driver =
             DriverLibrary::try_from_dynamic_library(&library, entrypoint)?.init_driver(version)?;
         let inner = Arc::pin(ManagedDriverInner {
