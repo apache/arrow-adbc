@@ -288,7 +288,6 @@ impl<'a> DriverLibrary<'a> {
             .map_or_else(|| filename, |pos| &filename[..pos]);
 
         let mut entrypoint = filename
-            .to_string()
             .strip_prefix(env::consts::DLL_PREFIX)
             .unwrap_or(filename)
             .split(&['-', '_'][..])
