@@ -275,7 +275,7 @@ impl<'a> DriverLibrary<'a> {
         Ok(library)
     }
 
-    /// Construct default entrypoint from the library name.
+    /// Construct default entrypoint from the library path.
     pub(crate) fn get_default_entrypoint(driver_path: impl AsRef<OsStr>) -> String {
         // - libadbc_driver_sqlite.so.2.0.0 -> AdbcDriverSqliteInit
         // - adbc_driver_sqlite.dll -> AdbcDriverSqliteInit
@@ -294,7 +294,11 @@ impl<'a> DriverLibrary<'a> {
         let name = basename
             .strip_prefix(env::consts::DLL_PREFIX)
             .unwrap_or(basename);
+        Self::get_default_entrypoint_from_name(name)
+    }
 
+    /// Construct default entrypoint from the library name.
+    pub(crate) fn get_default_entrypoint_from_name(name: &str) -> String {
         let entrypoint = name
             .split(&['-', '_'][..])
             .map(|s| {
@@ -552,6 +556,36 @@ mod tests {
             assert_eq!(
                 DriverLibrary::get_default_entrypoint(driver),
                 "AdbcDriverExampleInit"
+            );
+        }
+    }
+
+    #[cfg_attr(target_os = "windows", ignore)] // TODO: remove this line after fixing
+    #[test]
+    fn test_default_entrypoint_from_name() {
+        for name in ["adbc_driver_sqlite", "driver_sqlite"] {
+            assert_eq!(
+                DriverLibrary::get_default_entrypoint_from_name(name),
+                "AdbcDriverSqliteInit"
+            );
+
+            let filename = libloading::library_filename(name);
+            assert_eq!(
+                DriverLibrary::get_default_entrypoint(filename),
+                "AdbcDriverSqliteInit"
+            );
+        }
+
+        for name in ["adbc_sqlite", "sqlite"] {
+            assert_eq!(
+                DriverLibrary::get_default_entrypoint_from_name(name),
+                "AdbcSqliteInit"
+            );
+
+            let filename = libloading::library_filename(name);
+            assert_eq!(
+                DriverLibrary::get_default_entrypoint(filename),
+                "AdbcSqliteInit"
             );
         }
     }
