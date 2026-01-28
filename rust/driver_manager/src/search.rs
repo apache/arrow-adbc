@@ -47,7 +47,7 @@ pub(crate) struct DriverInfo {
 }
 
 impl DriverInfo {
-    pub fn load_driver_manifest(manifest_file: &Path, entrypoint: Option<&[u8]>) -> Result<Self> {
+    pub fn load_driver_manifest(manifest_file: &Path) -> Result<Self> {
         let contents = fs::read_to_string(manifest_file).map_err(|e| {
             Error::with_message_and_status(
                 format!("Could not read manifest '{}': {e}", manifest_file.display()),
@@ -78,9 +78,8 @@ impl DriverInfo {
         // let source = get_optional_key(&manifest, "source");
         let (os, arch, extra) = arch_triplet();
 
-        let lib_path = match manifest
-            .get_ref()
-            .get("Driver")
+        let driver_spanned = manifest.get_ref().get("Driver");
+        let lib_path = match driver_spanned
             .and_then(|v| v.get_ref().get("shared"))
             .map(|v| v.get_ref())
         {
@@ -125,26 +124,21 @@ impl DriverInfo {
             ));
         }
 
-        let entrypoint_val = manifest
-            .get_ref()
-            .get("Driver")
-            .and_then(|v| v.get_ref().as_table())
-            .and_then(|t| t.get("entrypoint"))
-            .map(|v| v.get_ref());
-
-        if let Some(entry) = entrypoint_val {
-            if !entry.is_str() {
-                return Err(Error::with_message_and_status(
-                    "Driver entrypoint must be a string".to_string(),
-                    Status::InvalidArguments,
-                ));
-            }
-        }
-
-        let entrypoint = match entrypoint_val.and_then(|v| v.as_str()) {
-            Some(s) => Some(s.as_bytes().to_vec()),
-            None => entrypoint.map(|s| s.to_vec()),
-        };
+        let entrypoint = driver_spanned
+            .and_then(|driver| driver.get_ref().as_table())
+            .and_then(|table| table.get("entrypoint"))
+            .map(|spanned| {
+                let val = spanned.get_ref();
+                match val.as_str() {
+                    Some(s) => Ok(s.as_bytes().to_vec()),
+                    None => Err(Error::with_message_and_status(
+                        // TODO(felipecrv): point to toml file line/column in the message
+                        "Driver entrypoint must be a string".to_string(),
+                        Status::InvalidArguments,
+                    )),
+                }
+            })
+            .transpose()?;
 
         Ok(DriverInfo {
             lib_path,
