@@ -132,7 +132,7 @@ use crate::error::libloading_error_to_adbc_error;
 use crate::search::get_search_paths;
 use crate::search::DriverInfo;
 
-use self::search::{parse_driver_uri, DriverInitFunc, DriverLibrary};
+use self::search::{parse_driver_uri, DriverLibrary};
 
 const ERR_CANCEL_UNSUPPORTED: &str =
     "Canceling connection or statement is not supported with ADBC 1.0.0";
@@ -169,7 +169,7 @@ impl ManagedDriver {
         init: &adbc_ffi::FFI_AdbcDriverInitFunc,
         version: AdbcVersion,
     ) -> Result<Self> {
-        let driver = DriverLibrary::new(DriverInitFunc::Static(init)).init_driver(version)?;
+        let driver = DriverLibrary::from_static_init(init).init_driver(version)?;
         let inner = Arc::pin(ManagedDriverInner {
             driver,
             version,
@@ -309,13 +309,8 @@ impl ManagedDriver {
             library.pin().map_err(libloading_error_to_adbc_error)?;
             library.into()
         };
-        let init: libloading::Symbol<adbc_ffi::FFI_AdbcDriverInitFunc> = unsafe {
-            library
-                .get(entrypoint)
-                .or_else(|_| library.get(b"AdbcDriverInit"))
-                .map_err(libloading_error_to_adbc_error)?
-        };
-        let driver = DriverLibrary::new(DriverInitFunc::Shared(init)).init_driver(version)?;
+        let driver =
+            DriverLibrary::try_from_dynamic_library(&library, entrypoint)?.init_driver(version)?;
         let inner = Arc::pin(ManagedDriverInner {
             driver,
             version,
