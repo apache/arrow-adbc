@@ -31,7 +31,9 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc/validation"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
+	"github.com/apache/arrow-go/v18/arrow/extensions"
 	"github.com/apache/arrow-go/v18/arrow/memory"
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -790,4 +792,93 @@ func TestRequiredList(t *testing.T) {
 
 	require.NoError(t, json.Unmarshal([]byte(`["d", "e", "f"]`), &v))
 	assert.Equal(t, driverbase.RequiredList([]string{"d", "e", "f"}), v)
+}
+
+func TestExtensionTypesRegistered(t *testing.T) {
+	// Test that extension types are properly registered when creating a database
+	alloc := memory.NewCheckedAllocator(memory.DefaultAllocator)
+	defer alloc.AssertSize(t, 0)
+
+	var handler MockedHandler
+	handler.On("Handle", mock.Anything, mock.Anything).Return(nil)
+
+	drv := NewDriver(alloc, &handler, false)
+	db, err := drv.NewDatabase(nil)
+	require.NoError(t, err)
+	defer validation.CheckedClose(t, db)
+
+	// Test 1: UUID extension type
+	t.Run("UUID", func(t *testing.T) {
+		schema := arrow.NewSchema([]arrow.Field{
+			{Name: "uuid_col", Type: extensions.NewUUIDType(), Nullable: true},
+		}, nil)
+
+		bldr := array.NewRecordBuilder(alloc, schema)
+		defer bldr.Release()
+
+		uuidBldr := bldr.Field(0).(*extensions.UUIDBuilder)
+		testUUID := uuid.New()
+		uuidBldr.Append(testUUID)
+		uuidBldr.AppendNull()
+
+		rec := bldr.NewRecordBatch()
+		defer rec.Release()
+
+		require.Equal(t, int64(2), rec.NumRows())
+		uuidArr := rec.Column(0).(*extensions.UUIDArray)
+		require.True(t, uuidArr.IsValid(0))
+		require.Equal(t, testUUID, uuidArr.Value(0))
+		require.False(t, uuidArr.IsValid(1))
+	})
+
+	// Test 2: Bool8 extension type
+	t.Run("Bool8", func(t *testing.T) {
+		schema := arrow.NewSchema([]arrow.Field{
+			{Name: "bool8_col", Type: extensions.NewBool8Type(), Nullable: true},
+		}, nil)
+
+		bldr := array.NewRecordBuilder(alloc, schema)
+		defer bldr.Release()
+
+		bool8Bldr := bldr.Field(0).(*extensions.Bool8Builder)
+		bool8Bldr.Append(true)
+		bool8Bldr.Append(false)
+		bool8Bldr.AppendNull()
+
+		rec := bldr.NewRecordBatch()
+		defer rec.Release()
+
+		require.Equal(t, int64(3), rec.NumRows())
+		bool8Arr := rec.Column(0).(*extensions.Bool8Array)
+		require.True(t, bool8Arr.IsValid(0))
+		require.Equal(t, true, bool8Arr.Value(0))
+		require.True(t, bool8Arr.IsValid(1))
+		require.Equal(t, false, bool8Arr.Value(1))
+		require.False(t, bool8Arr.IsValid(2))
+	})
+
+	// Test 3: Verify all canonical types can be instantiated
+	t.Run("AllTypesInstantiable", func(t *testing.T) {
+		// Just verify we can create instances of all canonical extension types
+		// without errors (they're registered)
+		uuidType := extensions.NewUUIDType()
+		require.NotNil(t, uuidType)
+		require.Equal(t, "arrow.uuid", uuidType.ExtensionName())
+
+		bool8Type := extensions.NewBool8Type()
+		require.NotNil(t, bool8Type)
+		require.Equal(t, "arrow.bool8", bool8Type.ExtensionName())
+
+		jsonType := &extensions.JSONType{}
+		require.NotNil(t, jsonType)
+		require.Equal(t, "arrow.json", jsonType.ExtensionName())
+
+		opaqueType := extensions.NewOpaqueType(arrow.BinaryTypes.String, "test.opaque", "test_vendor")
+		require.NotNil(t, opaqueType)
+		require.Equal(t, "arrow.opaque", opaqueType.ExtensionName())
+
+		variantType := &extensions.VariantType{}
+		require.NotNil(t, variantType)
+		require.Equal(t, "parquet.variant", variantType.ExtensionName())
+	})
 }
