@@ -282,19 +282,20 @@ impl<'a> DriverLibrary<'a> {
         // - proprietary_driver.dll -> AdbcProprietaryDriverInit
 
         // potential path -> filename
-        let mut filename = driver_path.as_ref().to_str().unwrap_or_default();
-        if let Some(pos) = filename.rfind(['/', '\\']) {
-            filename = &filename[pos + 1..];
-        }
-
+        let filename = driver_path.as_ref().to_str().unwrap_or_default();
+        let filename = filename
+            .rfind(['/', '\\'])
+            .map_or(filename, |pos| &filename[pos + 1..]);
         // remove all extensions
-        filename = filename
+        let basename = filename
             .find('.')
             .map_or_else(|| filename, |pos| &filename[..pos]);
-
-        let mut entrypoint = filename
+        // strip the lib prefix on unix-like systems
+        let name = basename
             .strip_prefix(env::consts::DLL_PREFIX)
-            .unwrap_or(filename)
+            .unwrap_or(basename);
+
+        let entrypoint = name
             .split(&['-', '_'][..])
             .map(|s| {
                 // uppercase first character of a string
@@ -308,12 +309,11 @@ impl<'a> DriverLibrary<'a> {
             .collect::<Vec<_>>()
             .join("");
 
-        if !entrypoint.starts_with("Adbc") {
-            entrypoint = format!("Adbc{entrypoint}");
+        if entrypoint.starts_with("Adbc") {
+            format!("{entrypoint}Init")
+        } else {
+            format!("Adbc{entrypoint}Init")
         }
-
-        entrypoint.push_str("Init");
-        entrypoint
     }
 }
 
