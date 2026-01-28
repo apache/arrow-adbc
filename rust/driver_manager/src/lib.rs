@@ -104,7 +104,7 @@ pub mod error;
 
 use std::collections::HashSet;
 use std::env;
-use std::ffi::{CStr, CString, OsStr};
+use std::ffi::{CString, OsStr};
 use std::fs;
 use std::ops::DerefMut;
 use std::os::raw::{c_char, c_void};
@@ -113,14 +113,17 @@ use std::pin::Pin;
 use std::ptr::{null, null_mut};
 use std::sync::{Arc, Mutex};
 
+use adbc_ffi::options::{
+    check_status, get_option_bytes, get_option_string, set_option_connection, set_option_database,
+    set_option_statement,
+};
 use arrow_array::ffi::{to_ffi, FFI_ArrowSchema};
 use arrow_array::ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream};
 use arrow_array::{Array, RecordBatch, RecordBatchReader, StructArray};
 use toml::de::DeTable;
 
 use adbc_core::{
-    constants,
-    error::{AdbcStatusCode, Error, Result, Status},
+    error::{Error, Result, Status},
     options::{self, AdbcVersion, InfoCode, OptionDatabase, OptionValue},
     Connection, Database, Driver, LoadFlags, Optionable, PartitionedResult, Statement,
     LOAD_FLAG_ALLOW_RELATIVE_PATHS, LOAD_FLAG_SEARCH_ENV, LOAD_FLAG_SEARCH_SYSTEM,
@@ -130,21 +133,9 @@ use adbc_ffi::driver_method;
 
 use crate::error::libloading_error_to_adbc_error;
 
-const ERR_ONLY_STRING_OPT: &str = "Only string option value are supported with ADBC 1.0.0";
 const ERR_CANCEL_UNSUPPORTED: &str =
     "Canceling connection or statement is not supported with ADBC 1.0.0";
 const ERR_STATISTICS_UNSUPPORTED: &str = "Statistics are not supported with ADBC 1.0.0";
-
-fn check_status(status: AdbcStatusCode, error: adbc_ffi::FFI_AdbcError) -> Result<()> {
-    match status {
-        constants::ADBC_STATUS_OK => Ok(()),
-        _ => {
-            let mut error: Error = error.try_into()?;
-            error.status = status.try_into()?;
-            Err(error)
-        }
-    }
-}
 
 #[derive(Debug)]
 struct ManagedDriverInner {
@@ -802,122 +793,6 @@ fn get_default_entrypoint(driver_path: impl AsRef<OsStr>) -> String {
     entrypoint
 }
 
-fn set_option_database(
-    driver: &adbc_ffi::FFI_AdbcDriver,
-    database: &mut adbc_ffi::FFI_AdbcDatabase,
-    version: AdbcVersion,
-    key: impl AsRef<str>,
-    value: OptionValue,
-) -> Result<()> {
-    let key = CString::new(key.as_ref())?;
-    let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
-    #[allow(unknown_lints)]
-    #[warn(non_exhaustive_omitted_patterns)]
-    let status = match (version, value) {
-        (_, OptionValue::String(value)) => {
-            let value = CString::new(value)?;
-            let method = driver_method!(driver, DatabaseSetOption);
-            unsafe { method(database, key.as_ptr(), value.as_ptr(), &mut error) }
-        }
-        (AdbcVersion::V110, OptionValue::Bytes(value)) => {
-            let method = driver_method!(driver, DatabaseSetOptionBytes);
-            unsafe {
-                method(
-                    database,
-                    key.as_ptr(),
-                    value.as_ptr(),
-                    value.len(),
-                    &mut error,
-                )
-            }
-        }
-        (AdbcVersion::V110, OptionValue::Int(value)) => {
-            let method = driver_method!(driver, DatabaseSetOptionInt);
-            unsafe { method(database, key.as_ptr(), value, &mut error) }
-        }
-        (AdbcVersion::V110, OptionValue::Double(value)) => {
-            let method = driver_method!(driver, DatabaseSetOptionDouble);
-            unsafe { method(database, key.as_ptr(), value, &mut error) }
-        }
-        (AdbcVersion::V100, _) => Err(Error::with_message_and_status(
-            ERR_ONLY_STRING_OPT,
-            Status::NotImplemented,
-        ))?,
-        (_, _) => unreachable!(),
-    };
-    check_status(status, error)
-}
-
-// Utility function to implement `*GetOption` and `*GetOptionBytes`. Basically,
-// it allocates a fixed-sized buffer to store the option's value, call the driver's
-// `*GetOption`/`*GetOptionBytes` method that will fill this buffer and finally
-// we return the option's value as a `Vec`. Note that if the fixed-size buffer
-// is too small, we retry the same operation with a bigger buffer (the size of
-// which is obtained via the out parameter `length` of `*GetOption`/`*GetOptionBytes`).
-fn get_option_buffer<F, T>(
-    key: impl AsRef<str>,
-    mut populate: F,
-    driver: &adbc_ffi::FFI_AdbcDriver,
-) -> Result<Vec<T>>
-where
-    F: FnMut(*const c_char, *mut T, *mut usize, *mut adbc_ffi::FFI_AdbcError) -> AdbcStatusCode,
-    T: Default + Clone,
-{
-    const DEFAULT_LENGTH: usize = 128;
-    let key = CString::new(key.as_ref())?;
-    let mut run = |length| {
-        let mut value = vec![T::default(); length];
-        let mut length: usize = core::mem::size_of::<T>() * value.len();
-        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
-        (
-            populate(key.as_ptr(), value.as_mut_ptr(), &mut length, &mut error),
-            length,
-            value,
-            error,
-        )
-    };
-
-    let (status, length, value, error) = run(DEFAULT_LENGTH);
-    check_status(status, error)?;
-
-    if length <= DEFAULT_LENGTH {
-        Ok(value[..length].to_vec())
-    } else {
-        let (status, _, value, error) = run(length);
-        check_status(status, error)?;
-        Ok(value)
-    }
-}
-
-fn get_option_bytes<F>(
-    key: impl AsRef<str>,
-    populate: F,
-    driver: &adbc_ffi::FFI_AdbcDriver,
-) -> Result<Vec<u8>>
-where
-    F: FnMut(*const c_char, *mut u8, *mut usize, *mut adbc_ffi::FFI_AdbcError) -> AdbcStatusCode,
-{
-    get_option_buffer(key, populate, driver)
-}
-
-fn get_option_string<F>(
-    key: impl AsRef<str>,
-    populate: F,
-    driver: &adbc_ffi::FFI_AdbcDriver,
-) -> Result<String>
-where
-    F: FnMut(
-        *const c_char,
-        *mut c_char,
-        *mut usize,
-        *mut adbc_ffi::FFI_AdbcError,
-    ) -> AdbcStatusCode,
-{
-    let value = get_option_buffer(key, populate, driver)?;
-    let value = unsafe { CStr::from_ptr(value.as_ptr()) };
-    Ok(value.to_string_lossy().to_string())
-}
-
 struct ManagedDatabaseInner {
     database: Mutex<adbc_ffi::FFI_AdbcDatabase>,
     driver: Pin<Arc<ManagedDriverInner>>,
@@ -1128,52 +1003,6 @@ impl Database for ManagedDatabase {
             inner: Arc::new(inner),
         })
     }
-}
-
-fn set_option_connection(
-    driver: &adbc_ffi::FFI_AdbcDriver,
-    connection: &mut adbc_ffi::FFI_AdbcConnection,
-    version: AdbcVersion,
-    key: impl AsRef<str>,
-    value: OptionValue,
-) -> Result<()> {
-    let key = CString::new(key.as_ref())?;
-    let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
-    #[allow(unknown_lints)]
-    #[warn(non_exhaustive_omitted_patterns)]
-    let status = match (version, value) {
-        (_, OptionValue::String(value)) => {
-            let value = CString::new(value)?;
-            let method = driver_method!(driver, ConnectionSetOption);
-            unsafe { method(connection, key.as_ptr(), value.as_ptr(), &mut error) }
-        }
-        (AdbcVersion::V110, OptionValue::Bytes(value)) => {
-            let method = driver_method!(driver, ConnectionSetOptionBytes);
-            unsafe {
-                method(
-                    connection,
-                    key.as_ptr(),
-                    value.as_ptr(),
-                    value.len(),
-                    &mut error,
-                )
-            }
-        }
-        (AdbcVersion::V110, OptionValue::Int(value)) => {
-            let method = driver_method!(driver, ConnectionSetOptionInt);
-            unsafe { method(connection, key.as_ptr(), value, &mut error) }
-        }
-        (AdbcVersion::V110, OptionValue::Double(value)) => {
-            let method = driver_method!(driver, ConnectionSetOptionDouble);
-            unsafe { method(connection, key.as_ptr(), value, &mut error) }
-        }
-        (AdbcVersion::V100, _) => Err(Error::with_message_and_status(
-            ERR_ONLY_STRING_OPT,
-            Status::NotImplemented,
-        ))?,
-        (_, _) => unreachable!(),
-    };
-    check_status(status, error)
 }
 
 struct ManagedConnectionInner {
@@ -1544,52 +1373,6 @@ impl Connection for ManagedConnection {
         let reader = ArrowArrayStreamReader::try_new(stream)?;
         Ok(reader)
     }
-}
-
-fn set_option_statement(
-    driver: &adbc_ffi::FFI_AdbcDriver,
-    statement: &mut adbc_ffi::FFI_AdbcStatement,
-    version: AdbcVersion,
-    key: impl AsRef<str>,
-    value: OptionValue,
-) -> Result<()> {
-    let key = CString::new(key.as_ref())?;
-    let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
-    #[allow(unknown_lints)]
-    #[warn(non_exhaustive_omitted_patterns)]
-    let status = match (version, value) {
-        (_, OptionValue::String(value)) => {
-            let value = CString::new(value)?;
-            let method = driver_method!(driver, StatementSetOption);
-            unsafe { method(statement, key.as_ptr(), value.as_ptr(), &mut error) }
-        }
-        (AdbcVersion::V110, OptionValue::Bytes(value)) => {
-            let method = driver_method!(driver, StatementSetOptionBytes);
-            unsafe {
-                method(
-                    statement,
-                    key.as_ptr(),
-                    value.as_ptr(),
-                    value.len(),
-                    &mut error,
-                )
-            }
-        }
-        (AdbcVersion::V110, OptionValue::Int(value)) => {
-            let method = driver_method!(driver, StatementSetOptionInt);
-            unsafe { method(statement, key.as_ptr(), value, &mut error) }
-        }
-        (AdbcVersion::V110, OptionValue::Double(value)) => {
-            let method = driver_method!(driver, StatementSetOptionDouble);
-            unsafe { method(statement, key.as_ptr(), value, &mut error) }
-        }
-        (AdbcVersion::V100, _) => Err(Error::with_message_and_status(
-            ERR_ONLY_STRING_OPT,
-            Status::NotImplemented,
-        ))?,
-        (_, _) => unreachable!(),
-    };
-    check_status(status, error)
 }
 
 struct ManagedStatementInner {

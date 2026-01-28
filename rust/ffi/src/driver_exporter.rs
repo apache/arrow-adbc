@@ -26,7 +26,7 @@ use arrow_array::StructArray;
 use arrow_schema::DataType;
 
 use super::{
-    types::ErrorPrivateData, utils::get_opt_name, FFI_AdbcConnection, FFI_AdbcDatabase,
+    options::get_opt_name, types::ErrorPrivateData, FFI_AdbcConnection, FFI_AdbcDatabase,
     FFI_AdbcDriver, FFI_AdbcError, FFI_AdbcErrorDetail, FFI_AdbcPartitions, FFI_AdbcStatement,
 };
 use adbc_core::constants::ADBC_STATUS_OK;
