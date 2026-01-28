@@ -33,6 +33,8 @@ use adbc_ffi::{
     {FFI_AdbcDriver, FFI_AdbcDriverInitFunc, FFI_AdbcError},
 };
 
+use crate::error::libloading_error_to_adbc_error;
+
 #[derive(Debug, Default)]
 pub(crate) struct DriverInfo {
     pub(crate) lib_path: PathBuf,
@@ -151,11 +153,11 @@ impl DriverInfo {
     }
 }
 
-pub(crate) enum DriverInitFunc<'a> {
+enum DriverInitFunc<'a> {
     /// The driver initialization function as a static function pointer.
     Static(&'a FFI_AdbcDriverInitFunc),
     /// The driver initialization function as a [Symbol] from a dynamically loaded library.
-    Shared(Symbol<'a, FFI_AdbcDriverInitFunc>),
+    Dynamic(Symbol<'a, FFI_AdbcDriverInitFunc>),
 }
 
 /// Allow using [DriverInitFunc] as a function pointer.
@@ -165,7 +167,7 @@ impl<'a> ops::Deref for DriverInitFunc<'a> {
     fn deref(&self) -> &Self::Target {
         match self {
             DriverInitFunc::Static(init) => init,
-            DriverInitFunc::Shared(init) => init,
+            DriverInitFunc::Dynamic(init) => init,
         }
     }
 }
@@ -175,8 +177,24 @@ pub(crate) struct DriverLibrary<'a> {
 }
 
 impl<'a> DriverLibrary<'a> {
-    pub(crate) fn new(init: DriverInitFunc<'a>) -> Self {
-        Self { init }
+    pub(crate) fn from_static_init(init: &'a FFI_AdbcDriverInitFunc) -> Self {
+        Self {
+            init: DriverInitFunc::Static(init),
+        }
+    }
+
+    pub(crate) fn try_from_dynamic_library(
+        library: &'a libloading::Library,
+        entrypoint: &[u8],
+    ) -> Result<Self> {
+        let init: libloading::Symbol<adbc_ffi::FFI_AdbcDriverInitFunc> = unsafe {
+            library
+                .get(entrypoint)
+                .or_else(|_| library.get(b"AdbcDriverInit"))
+                .map_err(libloading_error_to_adbc_error)?
+        };
+        let init = DriverInitFunc::Dynamic(init);
+        Ok(Self { init })
     }
 
     /// Initialize the driver via the library's entrypoint.
