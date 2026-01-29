@@ -428,7 +428,8 @@ impl ManagedDriver {
             }
         }
 
-        let library = DriverLibrary::load_library(driver_path)?;
+        let driver_name = driver_path.as_os_str().to_string_lossy().into_owned();
+        let library = DriverLibrary::load_library_from_name(driver_name)?;
         Ok((driver_path.to_path_buf(), library, None))
         // XXX: should we return NotFound like the non-Windows version?
     }
@@ -463,7 +464,9 @@ impl ManagedDriver {
             Err(e) => trace.push(e),
         }
 
-        match DriverLibrary::load_library(driver_path) {
+        // Convert OsStr to String before passing to load_dynamic_from_name
+        let driver_name = driver_path.as_os_str().to_string_lossy().into_owned();
+        match DriverLibrary::load_library_from_name(driver_name) {
             Ok(library) => return Ok((driver_path.to_path_buf(), library, None)),
             Err(e) => trace.push(e),
         }
