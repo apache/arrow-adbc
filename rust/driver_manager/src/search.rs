@@ -265,6 +265,19 @@ impl<'a> DriverLibrary<'a> {
         Ok(library)
     }
 
+    pub(crate) fn load_library_from_name(name: impl AsRef<str>) -> Result<libloading::Library> {
+        let filename = libloading::library_filename(name.as_ref());
+        Self::load_library(&filename)
+    }
+
+    pub(crate) fn load_library_from_manifest(
+        manifest_file: &Path,
+    ) -> Result<(DriverInfo, libloading::Library)> {
+        let info = DriverInfo::load_driver_manifest(manifest_file)?;
+        let library = Self::load_library(&info.lib_path)?;
+        Ok((info, library))
+    }
+
     /// Construct default entrypoint from the library path.
     pub(crate) fn get_default_entrypoint(driver_path: impl AsRef<OsStr>) -> String {
         // - libadbc_driver_sqlite.so.2.0.0 -> AdbcDriverSqliteInit
