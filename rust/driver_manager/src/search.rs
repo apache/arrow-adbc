@@ -186,7 +186,7 @@ pub(crate) struct SearchHit {
     pub library: libloading::Library,
     /// The entrypoint from the manifest file or registry if specified.
     ///
-    /// Must have priority over a specified entrypoint or the one derived   
+    /// Must have priority over a specified entrypoint or the one derived
     /// from the library name.
     pub entrypoint: Option<Vec<u8>>,
 }
@@ -342,10 +342,10 @@ impl<'a> DriverLibrary<'a> {
     pub(crate) fn load_library_from_registry(
         root: &windows_registry::Key,
         driver_name: &OsStr,
-    ) -> Result<(DriverInfo, libloading::Library)> {
+    ) -> Result<SearchHit> {
         let info = DriverInfo::load_from_registry(root, driver_name)?;
         let library = Self::load_library(&info.lib_path)?;
-        Ok((info, library))
+        Ok(SearchHit::new(info.lib_path, library, info.entrypoint))
     }
 
     #[cfg(target_os = "windows")]
