@@ -554,35 +554,9 @@ fn load_driver_from_registry(
     driver_name: &OsStr,
     entrypoint: Option<&[u8]>,
 ) -> Result<DriverInfo> {
-    const ADBC_DRIVER_REGISTRY: &str = "SOFTWARE\\ADBC\\Drivers";
-    let drivers_key = root
-        .open(ADBC_DRIVER_REGISTRY)
-        .and_then(|k| k.open(driver_name.to_str().unwrap_or_default()))
-        .map_err(|e| {
-            Error::with_message_and_status(
-                format!("Failed to open registry key: {e}"),
-                Status::NotFound,
-            )
-        })?;
-
-    let manifest_version = drivers_key.get_u32("manifest_version").unwrap_or(1);
-
-    if manifest_version != 1 {
-        return Err(Error::with_message_and_status(
-            format!("Unsupported manifest version: {manifest_version}"),
-            Status::InvalidArguments,
-        ));
-    }
-
-    let entrypoint_val = drivers_key
-        .get_string("entrypoint")
-        .ok()
-        .map(|s| s.into_bytes());
-
-    Ok(DriverInfo {
-        lib_path: PathBuf::from(drivers_key.get_string("driver").unwrap_or_default()),
-        entrypoint: entrypoint_val.or_else(|| entrypoint.map(|s| s.to_vec())),
-    })
+    let mut info = DriverLibrary::load_from_registry(root, driver_name)?;
+    info.entrypoint = info.entrypoint.or_else(|| entrypoint.map(|s| s.to_vec()));
+    Ok(info)
 }
 
 struct ManagedDatabaseInner {

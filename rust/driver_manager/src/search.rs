@@ -146,7 +146,6 @@ impl DriverInfo {
     pub(crate) fn load_from_registry(
         root: &windows_registry::Key,
         driver_name: &OsStr,
-        entrypoint: Option<&[u8]>,
     ) -> Result<DriverInfo> {
         const ADBC_DRIVER_REGISTRY: &str = "SOFTWARE\\ADBC\\Drivers";
         let drivers_key = root
@@ -168,14 +167,14 @@ impl DriverInfo {
             ));
         }
 
-        let entrypoint_val = drivers_key
+        let entrypoint = drivers_key
             .get_string("entrypoint")
             .ok()
             .map(|s| s.into_bytes());
 
         Ok(DriverInfo {
             lib_path: PathBuf::from(drivers_key.get_string("driver").unwrap_or_default()),
-            entrypoint: entrypoint_val.or_else(|| entrypoint.map(|s| s.to_vec())),
+            entrypoint,
         })
     }
 }
