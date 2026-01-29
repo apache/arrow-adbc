@@ -278,6 +278,52 @@ impl<'a> DriverLibrary<'a> {
         Ok((info, library))
     }
 
+    /// Search for the driver library in the given list of paths.
+    ///
+    /// `driver_path` can be a library name or a manifest file name. The search loop will also try
+    /// changing the extension to `.toml` and try to load it as a manifest before trying to load it
+    /// directly as a dynamic library.
+    ///
+    /// The first successful load will return the library path, the loaded library, and an optional
+    /// entrypoint defined in the manifest in case it was loaded from one that specified it.
+    pub(crate) fn search_path_list(
+        driver_path: &Path,
+        path_list: &[PathBuf],
+        trace: &mut Vec<Error>,
+    ) -> Result<(PathBuf, libloading::Library, Option<Vec<u8>>)> {
+        let (lib_path, library, entrypoint_from_manifest) = path_list
+            .iter()
+            .find_map(|path| {
+                let mut full_path = path.join(driver_path);
+                full_path.set_extension("toml");
+                if full_path.is_file() {
+                    let result = DriverLibrary::load_library_from_manifest(&full_path)
+                        .map(|(info, library)| (info.lib_path, library, info.entrypoint));
+                    match result {
+                        Ok(res) => return Some(Ok(res)),
+                        Err(err) => trace.push(err),
+                    }
+                }
+
+                full_path.set_extension(""); // Remove the extension to try loading as a dynamic library.
+                let result = DriverLibrary::load_library(&full_path)
+                    .map(|library| (full_path, library, None));
+                match result {
+                    Ok(res) => return Some(Ok(res)),
+                    Err(err) => trace.push(err),
+                }
+                None
+            })
+            .unwrap_or_else(|| {
+                Err(Error::with_message_and_status(
+                    format!("Driver not found: {}", driver_path.display()),
+                    Status::NotFound,
+                ))
+            })?;
+
+        Ok((lib_path, library, entrypoint_from_manifest))
+    }
+
     /// Construct default entrypoint from the library path.
     pub(crate) fn get_default_entrypoint(driver_path: impl AsRef<OsStr>) -> String {
         // - libadbc_driver_sqlite.so.2.0.0 -> AdbcDriverSqliteInit
