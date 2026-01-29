@@ -314,6 +314,16 @@ impl<'a> DriverLibrary<'a> {
         Ok((info, library))
     }
 
+    #[cfg(target_os = "windows")]
+    pub(crate) fn load_library_from_registry(
+        root: &windows_registry::Key,
+        driver_name: &OsStr,
+    ) -> Result<(DriverInfo, libloading::Library)> {
+        let info = DriverInfo::load_from_registry(root, driver_name)?;
+        let library = Self::load_library(&info.lib_path)?;
+        Ok((info, library))
+    }
+
     /// Search for the driver library in the given list of paths.
     ///
     /// `driver_path` can be a library name or a manifest file name. The search loop will also try
