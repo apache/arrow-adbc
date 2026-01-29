@@ -348,31 +348,15 @@ impl ManagedDriver {
         version: AdbcVersion,
         trace: &mut Vec<Error>,
     ) -> Result<Self> {
-        path_list
-            .into_iter()
-            .find_map(|path| {
-                let mut full_path = path.join(driver_path);
-                full_path.set_extension("toml");
-                if full_path.is_file() {
-                    match Self::load_from_manifest(&full_path, entrypoint, version) {
-                        Ok(driver) => return Some(Ok(driver)),
-                        Err(err) => trace.push(err),
-                    }
-                }
+        let (lib_path, library, entrypoint_from_manifest) =
+            DriverLibrary::search_path_list(driver_path, &path_list, trace)?;
 
-                full_path.set_extension(""); // Remove the extension to try loading as a dynamic library.
-                match Self::load_dynamic_from_filename(full_path, entrypoint, version) {
-                    Ok(driver) => return Some(Ok(driver)),
-                    Err(err) => trace.push(err),
-                }
-                None
-            })
-            .unwrap_or_else(|| {
-                Err(Error::with_message_and_status(
-                    format!("Driver not found: {}", driver_path.display()),
-                    Status::NotFound,
-                ))
-            })
+        let default_entrypoint = DriverLibrary::get_default_entrypoint(&lib_path);
+        let entrypoint = entrypoint_from_manifest // prioritize manifest entrypoint...
+            .as_deref()
+            .or(entrypoint) // ...over the provided one
+            .unwrap_or(default_entrypoint.as_bytes());
+        Self::load_from_library(library, entrypoint, version)
     }
 
     #[cfg(target_os = "windows")]
