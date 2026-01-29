@@ -226,14 +226,19 @@ impl ManagedDriver {
             Self::load_dynamic_from_filename(driver_path, entrypoint, version)
         } else {
             let mut trace = Vec::new();
-            Self::find_driver(
+            let res = Self::find_driver(
                 driver_path,
                 entrypoint,
                 version,
                 load_flags,
                 additional_search_paths,
                 &mut trace,
-            )
+            );
+            eprintln!("Driver load trace:\n");
+            for e in &trace {
+                eprintln!("  - {}", e);
+            }
+            res
         }
     }
 
