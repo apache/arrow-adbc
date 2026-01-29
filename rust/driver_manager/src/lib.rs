@@ -491,10 +491,9 @@ impl ManagedDriver {
         }
 
         path_list.extend(get_search_paths(load_flags & !LOAD_FLAG_SEARCH_ENV));
-        if let Ok(result) =
-            Self::search_path_list(driver_path, path_list, entrypoint, version, trace)
-        {
-            return Ok(result);
+        match Self::search_path_list(driver_path, path_list, entrypoint, version, trace) {
+            Ok(driver) => return Ok(driver),
+            Err(e) => trace.push(e),
         }
 
         // Convert OsStr to String before passing to load_dynamic_from_name
