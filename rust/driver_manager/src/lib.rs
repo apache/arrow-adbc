@@ -200,48 +200,49 @@ impl ManagedDriver {
         load_flags: LoadFlags,
         additional_search_paths: Option<Vec<PathBuf>>,
     ) -> Result<Self> {
+        let mut trace = Vec::new();
         let driver_path = Path::new(name.as_ref());
         let allow_relative = load_flags & LOAD_FLAG_ALLOW_RELATIVE_PATHS != 0;
-        if let Some(ext) = driver_path.extension() {
-            if !allow_relative && driver_path.is_relative() {
-                return Err(Error::with_message_and_status(
-                    "Relative paths are not allowed",
-                    Status::InvalidArguments,
-                ));
-            }
-
-            if ext == "toml" {
-                Self::load_from_manifest(driver_path, entrypoint, version)
+        let driver = {
+            if let Some(ext) = driver_path.extension() {
+                if !allow_relative && driver_path.is_relative() {
+                    Err(Error::with_message_and_status(
+                        "Relative paths are not allowed",
+                        Status::InvalidArguments,
+                    ))
+                } else if ext == "toml" {
+                    Self::load_from_manifest(driver_path, entrypoint, version)
+                } else {
+                    Self::load_dynamic_from_filename(driver_path, entrypoint, version)
+                }
+            } else if driver_path.is_absolute() {
+                let toml_path = driver_path.with_extension("toml");
+                if toml_path.is_file() {
+                    Self::load_from_manifest(&toml_path, entrypoint, version)
+                } else {
+                    Self::load_dynamic_from_filename(driver_path, entrypoint, version)
+                }
             } else {
-                Self::load_dynamic_from_filename(driver_path, entrypoint, version)
+                let res = DriverLibrary::find_driver(
+                    driver_path,
+                    load_flags,
+                    additional_search_paths,
+                    &mut trace,
+                );
+                eprintln!("Driver load trace:\n");
+                for e in &trace {
+                    eprintln!("  - {}", e);
+                }
+                let (lib_path, library, entrypoint_from_manifest) = res?;
+                let default_entrypoint = DriverLibrary::get_default_entrypoint(&lib_path);
+                let entrypoint = entrypoint_from_manifest // prioritize manifest entrypoint...
+                    .as_deref()
+                    .or(entrypoint) // ...over the provided one
+                    .unwrap_or(default_entrypoint.as_bytes());
+                Self::load_from_library(library, entrypoint, version)
             }
-        } else if driver_path.is_absolute() {
-            let toml_path = driver_path.with_extension("toml");
-            if toml_path.is_file() {
-                return Self::load_from_manifest(&toml_path, entrypoint, version);
-            }
-
-            Self::load_dynamic_from_filename(driver_path, entrypoint, version)
-        } else {
-            let mut trace = Vec::new();
-            let res = DriverLibrary::find_driver(
-                driver_path,
-                load_flags,
-                additional_search_paths,
-                &mut trace,
-            );
-            eprintln!("Driver load trace:");
-            for e in &trace {
-                eprintln!("  - {}", e);
-            }
-            let (lib_path, library, entrypoint_from_manifest) = res?;
-            let default_entrypoint = DriverLibrary::get_default_entrypoint(&lib_path);
-            let entrypoint = entrypoint_from_manifest // prioritize manifest entrypoint...
-                .as_deref()
-                .or(entrypoint) // ...over the provided one
-                .unwrap_or(default_entrypoint.as_bytes());
-            Self::load_from_library(library, entrypoint, version)
-        }
+        }?;
+        Ok(driver)
     }
 
     /// Load a driver from a dynamic library filename.
