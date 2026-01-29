@@ -203,7 +203,7 @@ impl ManagedDriver {
         let mut trace = Vec::new();
         let driver_path = Path::new(name.as_ref());
         let allow_relative = load_flags & LOAD_FLAG_ALLOW_RELATIVE_PATHS != 0;
-        let driver = {
+        let res = {
             if let Some(ext) = driver_path.extension() {
                 if !allow_relative && driver_path.is_relative() {
                     Err(Error::with_message_and_status(
@@ -211,38 +211,43 @@ impl ManagedDriver {
                         Status::InvalidArguments,
                     ))
                 } else if ext == "toml" {
-                    Self::load_from_manifest(driver_path, entrypoint, version)
+                    let (info, library) = DriverLibrary::load_library_from_manifest(driver_path)?;
+                    Ok((info.lib_path, library, info.entrypoint))
                 } else {
-                    Self::load_dynamic_from_filename(driver_path, entrypoint, version)
+                    let library = DriverLibrary::load_library(driver_path)?;
+                    Ok((driver_path.to_path_buf(), library, None))
                 }
             } else if driver_path.is_absolute() {
                 let toml_path = driver_path.with_extension("toml");
                 if toml_path.is_file() {
-                    Self::load_from_manifest(&toml_path, entrypoint, version)
+                    let (info, library) = DriverLibrary::load_library_from_manifest(&toml_path)?;
+                    Ok((info.lib_path, library, info.entrypoint))
                 } else {
-                    Self::load_dynamic_from_filename(driver_path, entrypoint, version)
+                    let library = DriverLibrary::load_library(driver_path)?;
+                    Ok((driver_path.to_path_buf(), library, None))
                 }
             } else {
-                let res = DriverLibrary::find_driver(
+                DriverLibrary::find_driver(
                     driver_path,
                     load_flags,
                     additional_search_paths,
                     &mut trace,
-                );
-                eprintln!("Driver load trace:\n");
-                for e in &trace {
-                    eprintln!("  - {}", e);
-                }
-                let (lib_path, library, entrypoint_from_manifest) = res?;
-                let default_entrypoint = DriverLibrary::get_default_entrypoint(&lib_path);
-                let entrypoint = entrypoint_from_manifest // prioritize manifest entrypoint...
-                    .as_deref()
-                    .or(entrypoint) // ...over the provided one
-                    .unwrap_or(default_entrypoint.as_bytes());
-                Self::load_from_library(library, entrypoint, version)
+                )
             }
-        }?;
-        Ok(driver)
+        };
+
+        eprintln!("Driver load trace:\n");
+        for e in &trace {
+            eprintln!("  - {}", e);
+        }
+        let (lib_path, library, entrypoint_from_manifest) = res?;
+
+        let default_entrypoint = DriverLibrary::get_default_entrypoint(&lib_path);
+        let entrypoint = entrypoint_from_manifest // prioritize manifest entrypoint...
+            .as_deref()
+            .or(entrypoint) // ...over the provided one
+            .unwrap_or(default_entrypoint.as_bytes());
+        Self::load_from_library(library, entrypoint, version)
     }
 
     /// Load a driver from a dynamic library filename.
@@ -332,21 +337,6 @@ impl ManagedDriver {
         check_status(status, error)?;
 
         Ok(database)
-    }
-
-    fn load_from_manifest(
-        driver_path: &Path,
-        entrypoint: Option<&[u8]>,
-        version: AdbcVersion,
-    ) -> Result<Self> {
-        let (info, library) = DriverLibrary::load_library_from_manifest(driver_path)?;
-        let default_entrypoint = DriverLibrary::get_default_entrypoint(&info.lib_path);
-        let entrypoint = info
-            .entrypoint // prioritize manifest entrypoint...
-            .as_deref()
-            .or(entrypoint) // ...over the provided one
-            .unwrap_or(default_entrypoint.as_bytes());
-        Self::load_from_library(library, entrypoint, version)
     }
 }
 
