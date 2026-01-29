@@ -128,7 +128,7 @@ use adbc_core::{
 };
 use adbc_ffi::driver_method;
 
-use self::search::{parse_driver_uri, DriverLibrary};
+use self::search::{parse_driver_uri, DriverLibrary, SearchHit};
 
 const ERR_CANCEL_UNSUPPORTED: &str =
     "Canceling connection or statement is not supported with ADBC 1.0.0";
@@ -211,20 +211,18 @@ impl ManagedDriver {
                         Status::InvalidArguments,
                     ))
                 } else if ext == "toml" {
-                    let (info, library) = DriverLibrary::load_library_from_manifest(driver_path)?;
-                    Ok((info.lib_path, library, info.entrypoint))
+                    DriverLibrary::load_library_from_manifest(driver_path)
                 } else {
                     let library = DriverLibrary::load_library(driver_path)?;
-                    Ok((driver_path.to_path_buf(), library, None))
+                    Ok(SearchHit::new(driver_path.to_path_buf(), library, None))
                 }
             } else if driver_path.is_absolute() {
                 let toml_path = driver_path.with_extension("toml");
                 if toml_path.is_file() {
-                    let (info, library) = DriverLibrary::load_library_from_manifest(&toml_path)?;
-                    Ok((info.lib_path, library, info.entrypoint))
+                    DriverLibrary::load_library_from_manifest(&toml_path)
                 } else {
                     let library = DriverLibrary::load_library(driver_path)?;
-                    Ok((driver_path.to_path_buf(), library, None))
+                    Ok(SearchHit::new(driver_path.to_path_buf(), library, None))
                 }
             } else {
                 DriverLibrary::find_driver(
@@ -240,14 +238,15 @@ impl ManagedDriver {
         for e in &trace {
             eprintln!("  - {}", e);
         }
-        let (lib_path, library, entrypoint_from_manifest) = res?;
+        let search_hit = res?;
 
-        let default_entrypoint = DriverLibrary::get_default_entrypoint(&lib_path);
-        let entrypoint = entrypoint_from_manifest // prioritize manifest entrypoint...
+        let default_entrypoint = DriverLibrary::get_default_entrypoint(&search_hit.lib_path);
+        let entrypoint = search_hit
+            .entrypoint // prioritize manifest entrypoint...
             .as_deref()
             .or(entrypoint) // ...over the provided one
             .unwrap_or(default_entrypoint.as_bytes());
-        Self::load_from_library(library, entrypoint, version)
+        Self::load_from_library(search_hit.library, entrypoint, version)
     }
 
     /// Load a driver from a dynamic library filename.
