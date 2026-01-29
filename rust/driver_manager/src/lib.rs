@@ -345,25 +345,33 @@ impl ManagedDriver {
         entrypoint: Option<&[u8]>,
         version: AdbcVersion,
     ) -> Result<Self> {
-        for path in path_list {
-            let mut full_path = path.join(driver_path);
-            full_path.set_extension("toml");
-            if full_path.is_file() {
-                if let Ok(result) = Self::load_from_manifest(&full_path, entrypoint, version) {
-                    return Ok(result);
+        path_list
+            .into_iter()
+            .find_map(|path| {
+                let mut full_path = path.join(driver_path);
+                full_path.set_extension("toml");
+                if full_path.is_file() {
+                    if let result @ Ok(_) =
+                        Self::load_from_manifest(&full_path, entrypoint, version)
+                    {
+                        return Some(result);
+                    }
                 }
-            }
 
-            full_path.set_extension(""); // Remove the extension to try loading as a dynamic library.
-            if let Ok(result) = Self::load_dynamic_from_filename(full_path, entrypoint, version) {
-                return Ok(result);
-            }
-        }
-
-        Err(Error::with_message_and_status(
-            format!("Driver not found: {}", driver_path.display()),
-            Status::NotFound,
-        ))
+                full_path.set_extension(""); // Remove the extension to try loading as a dynamic library.
+                if let result @ Ok(_) =
+                    Self::load_dynamic_from_filename(full_path, entrypoint, version)
+                {
+                    return Some(result);
+                }
+                None
+            })
+            .unwrap_or_else(|| {
+                Err(Error::with_message_and_status(
+                    format!("Driver not found: {}", driver_path.display()),
+                    Status::NotFound,
+                ))
+            })
     }
 
     #[cfg(target_os = "windows")]
