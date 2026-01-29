@@ -129,7 +129,6 @@ use adbc_core::{
 use adbc_ffi::driver_method;
 
 use crate::search::get_search_paths;
-use crate::search::DriverInfo;
 
 use self::search::{parse_driver_uri, DriverLibrary};
 
@@ -285,8 +284,10 @@ impl ManagedDriver {
         entrypoint: Option<&[u8]>,
         version: AdbcVersion,
     ) -> Result<Self> {
-        let filename = libloading::library_filename(name.as_ref());
-        Self::load_dynamic_from_filename(filename, entrypoint, version)
+        let library = DriverLibrary::load_library_from_name(name.as_ref())?;
+        let default_entrypoint = DriverLibrary::get_default_entrypoint_from_name(name.as_ref());
+        let entrypoint = entrypoint.unwrap_or(default_entrypoint.as_bytes());
+        Self::load_from_library(library, entrypoint, version)
     }
 
     fn inner_ffi_driver(&self) -> &adbc_ffi::FFI_AdbcDriver {
@@ -328,10 +329,14 @@ impl ManagedDriver {
         entrypoint: Option<&[u8]>,
         version: AdbcVersion,
     ) -> Result<Self> {
-        let info = DriverInfo::load_driver_manifest(driver_path)?;
-        // Prioritize manifest entrypoint over the provided one
-        let entrypoint = info.entrypoint.as_deref().or(entrypoint);
-        Self::load_dynamic_from_filename(info.lib_path, entrypoint, version)
+        let (info, library) = DriverLibrary::load_library_from_manifest(driver_path)?;
+        let default_entrypoint = DriverLibrary::get_default_entrypoint(&info.lib_path);
+        let entrypoint = info
+            .entrypoint // prioritize manifest entrypoint...
+            .as_deref()
+            .or(entrypoint) // ...over the provided one
+            .unwrap_or(default_entrypoint.as_bytes());
+        Self::load_from_library(library, entrypoint, version)
     }
 
     fn search_path_list(
