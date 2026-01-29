@@ -213,6 +213,10 @@ impl<'a> DriverLibrary<'a> {
     }
 
     pub(crate) fn load_library(filename: impl AsRef<OsStr>) -> Result<libloading::Library> {
+        eprintln!(
+            "Trying to load library from path: {}",
+            filename.as_ref().to_string_lossy()
+        );
         // By default, go builds the libraries with '-Wl -z nodelete' which does not
         // unload the go runtime. This isn't respected on mac ( https://github.com/golang/go/issues/11100#issuecomment-932638093 )
         // so we need to explicitly load the library with RTLD_NODELETE( which prevents unloading )
@@ -267,6 +271,7 @@ impl<'a> DriverLibrary<'a> {
             library.pin().map_err(libloading_error_to_adbc_error)?;
             library.into()
         };
+        eprintln!("Successfully loaded library: {library:?}");
         Ok(library)
     }
 
