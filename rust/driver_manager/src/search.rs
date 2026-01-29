@@ -182,6 +182,32 @@ impl DriverInfo {
     }
 }
 
+pub(crate) struct SearchHit {
+    /// The path where `library` was loaded from.
+    pub lib_path: PathBuf,
+    /// The loaded library.
+    pub library: libloading::Library,
+    /// The entrypoint from the manifest file or registry if specified.
+    ///
+    /// Must have priority over a specified entrypoint or the one derived
+    /// from the library name.
+    pub entrypoint: Option<Vec<u8>>,
+}
+
+impl SearchHit {
+    pub fn new(
+        lib_path: PathBuf,
+        library: libloading::Library,
+        entrypoint: Option<Vec<u8>>,
+    ) -> Self {
+        Self {
+            lib_path,
+            library,
+            entrypoint,
+        }
+    }
+}
+
 enum DriverInitFunc<'a> {
     /// The driver initialization function as a static function pointer.
     Static(&'a FFI_AdbcDriverInitFunc),
@@ -309,22 +335,20 @@ impl<'a> DriverLibrary<'a> {
         Self::load_library(&filename)
     }
 
-    pub(crate) fn load_library_from_manifest(
-        manifest_file: &Path,
-    ) -> Result<(DriverInfo, libloading::Library)> {
+    pub(crate) fn load_library_from_manifest(manifest_file: &Path) -> Result<SearchHit> {
         let info = DriverInfo::load_driver_manifest(manifest_file)?;
         let library = Self::load_library(&info.lib_path)?;
-        Ok((info, library))
+        Ok(SearchHit::new(info.lib_path, library, info.entrypoint))
     }
 
     #[cfg(target_os = "windows")]
     pub(crate) fn load_library_from_registry(
         root: &windows_registry::Key,
         driver_name: &OsStr,
-    ) -> Result<(DriverInfo, libloading::Library)> {
+    ) -> Result<SearchHit> {
         let info = DriverInfo::load_from_registry(root, driver_name)?;
         let library = Self::load_library(&info.lib_path)?;
-        Ok((info, library))
+        Ok(SearchHit::new(info.lib_path, library, info.entrypoint))
     }
 
     #[cfg(target_os = "windows")]
@@ -333,7 +357,7 @@ impl<'a> DriverLibrary<'a> {
         load_flags: LoadFlags,
         additional_search_paths: Option<Vec<PathBuf>>,
         trace: &mut Vec<Error>,
-    ) -> Result<(PathBuf, libloading::Library, Option<Vec<u8>>)> {
+    ) -> Result<SearchHit> {
         if load_flags & LOAD_FLAG_SEARCH_ENV != 0 {
             if let Ok(result) = DriverLibrary::search_path_list(
                 driver_path,
@@ -375,8 +399,7 @@ impl<'a> DriverLibrary<'a> {
             let result = DriverLibrary::load_library_from_registry(
                 windows_registry::CURRENT_USER,
                 driver_path.as_os_str(),
-            )
-            .map(|(info, library)| (info.lib_path, library, info.entrypoint));
+            );
             if result.is_ok() {
                 return result;
             }
@@ -394,8 +417,7 @@ impl<'a> DriverLibrary<'a> {
             let result = DriverLibrary::load_library_from_registry(
                 windows_registry::LOCAL_MACHINE,
                 driver_path.as_os_str(),
-            )
-            .map(|(info, library)| (info.lib_path, library, info.entrypoint));
+            );
             if result.is_ok() {
                 return result;
             }
@@ -411,7 +433,7 @@ impl<'a> DriverLibrary<'a> {
 
         let driver_name = driver_path.as_os_str().to_string_lossy().into_owned();
         let library = DriverLibrary::load_library_from_name(driver_name)?;
-        Ok((driver_path.to_path_buf(), library, None))
+        Ok(SearchHit::new(driver_path.to_path_buf(), library, None))
         // XXX: should we return NotFound like the non-Windows version?
     }
 
@@ -421,7 +443,7 @@ impl<'a> DriverLibrary<'a> {
         load_flags: LoadFlags,
         additional_search_paths: Option<Vec<PathBuf>>,
         trace: &mut Vec<Error>,
-    ) -> Result<(PathBuf, libloading::Library, Option<Vec<u8>>)> {
+    ) -> Result<SearchHit> {
         let mut path_list = get_search_paths(load_flags & LOAD_FLAG_SEARCH_ENV);
 
         if let Some(additional_search_paths) = additional_search_paths {
@@ -447,7 +469,7 @@ impl<'a> DriverLibrary<'a> {
         // Convert OsStr to String before passing to load_dynamic_from_name
         let driver_name = driver_path.as_os_str().to_string_lossy().into_owned();
         match DriverLibrary::load_library_from_name(driver_name) {
-            Ok(library) => return Ok((driver_path.to_path_buf(), library, None)),
+            Ok(library) => return Ok(SearchHit::new(driver_path.to_path_buf(), library, None)),
             Err(err) => trace.push(err),
         }
 
@@ -469,24 +491,22 @@ impl<'a> DriverLibrary<'a> {
         driver_path: &Path,
         path_list: &[PathBuf],
         trace: &mut Vec<Error>,
-    ) -> Result<(PathBuf, libloading::Library, Option<Vec<u8>>)> {
-        let (lib_path, library, entrypoint_from_manifest) = path_list
+    ) -> Result<SearchHit> {
+        path_list
             .iter()
             .find_map(|path| {
                 let mut full_path = path.join(driver_path);
                 full_path.set_extension("toml");
                 if full_path.is_file() {
-                    let result = DriverLibrary::load_library_from_manifest(&full_path)
-                        .map(|(info, library)| (info.lib_path, library, info.entrypoint));
-                    match result {
-                        Ok(res) => return Some(Ok(res)),
+                    match DriverLibrary::load_library_from_manifest(&full_path) {
+                        Ok(hit) => return Some(Ok(hit)),
                         Err(err) => trace.push(err),
                     }
                 }
 
                 full_path.set_extension(""); // Remove the extension to try loading as a dynamic library.
                 let result = DriverLibrary::load_library(&full_path)
-                    .map(|library| (full_path, library, None));
+                    .map(|library| SearchHit::new(full_path, library, None));
                 match result {
                     Ok(res) => return Some(Ok(res)),
                     Err(err) => trace.push(err),
@@ -498,9 +518,7 @@ impl<'a> DriverLibrary<'a> {
                     format!("Driver not found: {}", driver_path.display()),
                     Status::NotFound,
                 ))
-            })?;
-
-        Ok((lib_path, library, entrypoint_from_manifest))
+            })
     }
 
     /// Construct default entrypoint from the library path.
