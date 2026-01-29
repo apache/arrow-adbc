@@ -23,11 +23,14 @@ use std::{env, ops};
 use libloading::Symbol;
 use toml::de::{DeTable, DeValue};
 
+use adbc_core::LOAD_FLAG_SEARCH_ENV;
 use adbc_core::{
     error::{Error, Result, Status},
     options::AdbcVersion,
-    LoadFlags, LOAD_FLAG_SEARCH_ENV, LOAD_FLAG_SEARCH_SYSTEM, LOAD_FLAG_SEARCH_USER,
+    LoadFlags, LOAD_FLAG_SEARCH_SYSTEM, LOAD_FLAG_SEARCH_USER,
 };
+#[cfg(target_os = "windows")]
+use adbc_core::{LOAD_FLAG_SEARCH_SYSTEM, LOAD_FLAG_SEARCH_USER};
 use adbc_ffi::{
     options::check_status,
     {FFI_AdbcDriver, FFI_AdbcDriverInitFunc, FFI_AdbcError},
@@ -324,6 +327,136 @@ impl<'a> DriverLibrary<'a> {
         Ok((info, library))
     }
 
+    #[cfg(target_os = "windows")]
+    pub(crate) fn find_driver(
+        driver_path: &Path,
+        load_flags: LoadFlags,
+        additional_search_paths: Option<Vec<PathBuf>>,
+        trace: &mut Vec<Error>,
+    ) -> Result<(PathBuf, libloading::Library, Option<Vec<u8>>)> {
+        if load_flags & LOAD_FLAG_SEARCH_ENV != 0 {
+            if let Ok(result) = DriverLibrary::search_path_list(
+                driver_path,
+                &get_search_paths(LOAD_FLAG_SEARCH_ENV),
+                trace,
+            ) {
+                return Ok(result);
+            }
+        }
+
+        // the logic we want is that we first search ADBC_DRIVER_PATH if set,
+        // then we search the additional search paths if they exist. Finally,
+        // we will search CONDA_PREFIX if built with conda_build before moving on.
+        if let Some(additional_search_paths) = additional_search_paths {
+            if let Ok(result) =
+                DriverLibrary::search_path_list(driver_path, &additional_search_paths, trace)
+            {
+                return Ok(result);
+            }
+        }
+
+        #[cfg(conda_build)]
+        if load_flags & LOAD_FLAG_SEARCH_ENV != 0 {
+            if let Some(conda_prefix) = env::var_os("CONDA_PREFIX") {
+                let conda_path = PathBuf::from(conda_prefix)
+                    .join("etc")
+                    .join("adbc")
+                    .join("drivers");
+                if let Ok(result) =
+                    DriverLibrary::search_path_list(driver_path, &[conda_path], trace)
+                {
+                    return Ok(result);
+                }
+            }
+        }
+
+        if load_flags & LOAD_FLAG_SEARCH_USER != 0 {
+            // first check registry for the driver, then check the user config path
+            let result = DriverLibrary::load_library_from_registry(
+                windows_registry::CURRENT_USER,
+                driver_path.as_os_str(),
+            )
+            .map(|(info, library)| (info.lib_path, library, info.entrypoint));
+            if result.is_ok() {
+                return result;
+            }
+
+            if let Ok(result) = DriverLibrary::search_path_list(
+                driver_path,
+                &get_search_paths(LOAD_FLAG_SEARCH_USER),
+                trace,
+            ) {
+                return Ok(result);
+            }
+        }
+
+        if load_flags & LOAD_FLAG_SEARCH_SYSTEM != 0 {
+            let result = DriverLibrary::load_library_from_registry(
+                windows_registry::LOCAL_MACHINE,
+                driver_path.as_os_str(),
+            )
+            .map(|(info, library)| (info.lib_path, library, info.entrypoint));
+            if result.is_ok() {
+                return result;
+            }
+
+            if let Ok(result) = DriverLibrary::search_path_list(
+                driver_path,
+                &get_search_paths(LOAD_FLAG_SEARCH_SYSTEM),
+                trace,
+            ) {
+                return Ok(result);
+            }
+        }
+
+        let driver_name = driver_path.as_os_str().to_string_lossy().into_owned();
+        let library = DriverLibrary::load_library_from_name(driver_name)?;
+        Ok((driver_path.to_path_buf(), library, None))
+        // XXX: should we return NotFound like the non-Windows version?
+    }
+
+    #[cfg(not(windows))]
+    pub(crate) fn find_driver(
+        driver_path: &Path,
+        load_flags: LoadFlags,
+        additional_search_paths: Option<Vec<PathBuf>>,
+        trace: &mut Vec<Error>,
+    ) -> Result<(PathBuf, libloading::Library, Option<Vec<u8>>)> {
+        let mut path_list = get_search_paths(load_flags & LOAD_FLAG_SEARCH_ENV);
+
+        if let Some(additional_search_paths) = additional_search_paths {
+            path_list.extend(additional_search_paths);
+        }
+
+        #[cfg(conda_build)]
+        if load_flags & LOAD_FLAG_SEARCH_ENV != 0 {
+            if let Some(conda_prefix) = env::var_os("CONDA_PREFIX") {
+                let conda_path = PathBuf::from(conda_prefix)
+                    .join("etc")
+                    .join("adbc")
+                    .join("drivers");
+                path_list.push(conda_path);
+            }
+        }
+
+        path_list.extend(get_search_paths(load_flags & !LOAD_FLAG_SEARCH_ENV));
+        if let Ok(result) = DriverLibrary::search_path_list(driver_path, &path_list, trace) {
+            return Ok(result);
+        }
+
+        // Convert OsStr to String before passing to load_dynamic_from_name
+        let driver_name = driver_path.as_os_str().to_string_lossy().into_owned();
+        match DriverLibrary::load_library_from_name(driver_name) {
+            Ok(library) => return Ok((driver_path.to_path_buf(), library, None)),
+            Err(err) => trace.push(err),
+        }
+
+        Err(Error::with_message_and_status(
+            format!("Driver not found: {}", driver_path.display()),
+            Status::NotFound,
+        ))
+    }
+
     /// Search for the driver library in the given list of paths.
     ///
     /// `driver_path` can be a library name or a manifest file name. The search loop will also try
@@ -544,7 +677,7 @@ pub(crate) fn system_config_dir() -> Option<PathBuf> {
     }
 }
 
-pub(crate) fn get_search_paths(lvls: LoadFlags) -> Vec<PathBuf> {
+fn get_search_paths(lvls: LoadFlags) -> Vec<PathBuf> {
     let mut result = Vec::new();
     if lvls & LOAD_FLAG_SEARCH_ENV != 0 {
         if let Some(paths) = env::var_os("ADBC_DRIVER_PATH") {
