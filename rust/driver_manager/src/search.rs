@@ -23,14 +23,11 @@ use std::{env, ops};
 use libloading::Symbol;
 use toml::de::{DeTable, DeValue};
 
-use adbc_core::LOAD_FLAG_SEARCH_ENV;
 use adbc_core::{
     error::{Error, Result, Status},
     options::AdbcVersion,
-    LoadFlags, LOAD_FLAG_SEARCH_SYSTEM, LOAD_FLAG_SEARCH_USER,
+    LoadFlags, LOAD_FLAG_SEARCH_ENV, LOAD_FLAG_SEARCH_SYSTEM, LOAD_FLAG_SEARCH_USER,
 };
-#[cfg(target_os = "windows")]
-use adbc_core::{LOAD_FLAG_SEARCH_SYSTEM, LOAD_FLAG_SEARCH_USER};
 use adbc_ffi::{
     options::check_status,
     {FFI_AdbcDriver, FFI_AdbcDriverInitFunc, FFI_AdbcError},
