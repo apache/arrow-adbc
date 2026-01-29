@@ -225,12 +225,14 @@ impl ManagedDriver {
 
             Self::load_dynamic_from_filename(driver_path, entrypoint, version)
         } else {
+            let mut trace = Vec::new();
             Self::find_driver(
                 driver_path,
                 entrypoint,
                 version,
                 load_flags,
                 additional_search_paths,
+                &mut trace,
             )
         }
     }
@@ -344,6 +346,7 @@ impl ManagedDriver {
         path_list: Vec<PathBuf>,
         entrypoint: Option<&[u8]>,
         version: AdbcVersion,
+        trace: &mut Vec<Error>,
     ) -> Result<Self> {
         path_list
             .into_iter()
@@ -351,18 +354,16 @@ impl ManagedDriver {
                 let mut full_path = path.join(driver_path);
                 full_path.set_extension("toml");
                 if full_path.is_file() {
-                    if let result @ Ok(_) =
-                        Self::load_from_manifest(&full_path, entrypoint, version)
-                    {
-                        return Some(result);
+                    match Self::load_from_manifest(&full_path, entrypoint, version) {
+                        Ok(driver) => return Some(Ok(driver)),
+                        Err(err) => trace.push(err),
                     }
                 }
 
                 full_path.set_extension(""); // Remove the extension to try loading as a dynamic library.
-                if let result @ Ok(_) =
-                    Self::load_dynamic_from_filename(full_path, entrypoint, version)
-                {
-                    return Some(result);
+                match Self::load_dynamic_from_filename(full_path, entrypoint, version) {
+                    Ok(driver) => return Some(Ok(driver)),
+                    Err(err) => trace.push(err),
                 }
                 None
             })
@@ -381,6 +382,7 @@ impl ManagedDriver {
         version: AdbcVersion,
         load_flags: LoadFlags,
         additional_search_paths: Option<Vec<PathBuf>>,
+        trace: &mut Vec<Error>,
     ) -> Result<Self> {
         if load_flags & LOAD_FLAG_SEARCH_ENV != 0 {
             if let Ok(result) = Self::search_path_list(
@@ -388,6 +390,7 @@ impl ManagedDriver {
                 get_search_paths(LOAD_FLAG_SEARCH_ENV),
                 entrypoint,
                 version,
+                trace,
             ) {
                 return Ok(result);
             }
@@ -397,9 +400,13 @@ impl ManagedDriver {
         // then we search the additional search paths if they exist. Finally,
         // we will search CONDA_PREFIX if built with conda_build before moving on.
         if let Some(additional_search_paths) = additional_search_paths {
-            if let Ok(result) =
-                Self::search_path_list(driver_path, additional_search_paths, entrypoint, version)
-            {
+            if let Ok(result) = Self::search_path_list(
+                driver_path,
+                additional_search_paths,
+                entrypoint,
+                version,
+                trace,
+            ) {
                 return Ok(result);
             }
         }
@@ -411,9 +418,13 @@ impl ManagedDriver {
                     .join("etc")
                     .join("adbc")
                     .join("drivers");
-                if let Ok(result) =
-                    Self::search_path_list(driver_path, vec![conda_path], entrypoint, version)
-                {
+                if let Ok(result) = Self::search_path_list(
+                    driver_path,
+                    vec![conda_path],
+                    entrypoint,
+                    version,
+                    trace,
+                ) {
                     return Ok(result);
                 }
             }
@@ -434,6 +445,7 @@ impl ManagedDriver {
                 get_search_paths(LOAD_FLAG_SEARCH_USER),
                 entrypoint,
                 version,
+                trace,
             ) {
                 return Ok(result);
             }
@@ -453,6 +465,7 @@ impl ManagedDriver {
                 get_search_paths(LOAD_FLAG_SEARCH_SYSTEM),
                 entrypoint,
                 version,
+                trace,
             ) {
                 return Ok(result);
             }
@@ -469,6 +482,7 @@ impl ManagedDriver {
         version: AdbcVersion,
         load_flags: LoadFlags,
         additional_search_paths: Option<Vec<PathBuf>>,
+        trace: &mut Vec<Error>,
     ) -> Result<Self> {
         let mut path_list = get_search_paths(load_flags & LOAD_FLAG_SEARCH_ENV);
 
@@ -488,14 +502,17 @@ impl ManagedDriver {
         }
 
         path_list.extend(get_search_paths(load_flags & !LOAD_FLAG_SEARCH_ENV));
-        if let Ok(result) = Self::search_path_list(driver_path, path_list, entrypoint, version) {
+        if let Ok(result) =
+            Self::search_path_list(driver_path, path_list, entrypoint, version, trace)
+        {
             return Ok(result);
         }
 
         // Convert OsStr to String before passing to load_dynamic_from_name
         let driver_name = driver_path.as_os_str().to_string_lossy().into_owned();
-        if let Ok(driver) = Self::load_dynamic_from_name(driver_name, entrypoint, version) {
-            return Ok(driver);
+        match Self::load_dynamic_from_name(driver_name, entrypoint, version) {
+            Ok(driver) => return Ok(driver),
+            Err(e) => trace.push(e),
         }
 
         Err(Error::with_message_and_status(
