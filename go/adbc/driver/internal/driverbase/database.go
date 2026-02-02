@@ -27,8 +27,6 @@ import (
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow-go/v18/arrow"
-	"github.com/apache/arrow-go/v18/arrow/extensions"
 	"github.com/apache/arrow-go/v18/arrow/memory"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -81,34 +79,6 @@ var getExporterName = sync.OnceValue(func() string {
 	return os.Getenv(otelTracesExporter)
 })
 
-// registerExtensionTypes ensures that canonical Arrow extension types are registered.
-// This is called once during driver initialization to make sure extension types like
-// UUID are available for use throughout the driver.
-var registerExtensionTypes = sync.OnceFunc(func() {
-	// The arrow/extensions package automatically registers canonical extension types
-	// (UUID, Bool8, JSON, Opaque, Variant) in its init() function.
-	// However, we explicitly ensure registration here in case the package wasn't
-	// imported elsewhere, and to handle any registration errors gracefully.
-
-	// List of canonical extension types to ensure are registered
-	canonicalTypes := []arrow.ExtensionType{
-		extensions.NewUUIDType(),
-		extensions.NewBool8Type(),
-		&extensions.JSONType{},
-		&extensions.OpaqueType{},
-		&extensions.VariantType{},
-	}
-
-	for _, extType := range canonicalTypes {
-		// RegisterExtensionType is idempotent - it returns an error only if
-		// a different type with the same name is already registered
-		if err := arrow.RegisterExtensionType(extType); err != nil {
-			// Log but don't fail - the type might already be registered
-			// which is fine (the extensions package init() may have done it)
-		}
-	}
-})
-
 // DatabaseImpl is an interface that drivers implement to provide
 // vendor-specific functionality.
 type DatabaseImpl interface {
@@ -145,9 +115,6 @@ type DatabaseImplBase struct {
 //   - driver is a DriverImplBase containing the common resources from the parent
 //     driver, allowing the Arrow allocator and error handler to be reused.
 func NewDatabaseImplBase(ctx context.Context, driver *DriverImplBase) (DatabaseImplBase, error) {
-	// Ensure extension types are registered before creating the database
-	registerExtensionTypes()
-
 	database := DatabaseImplBase{
 		Alloc:       driver.Alloc,
 		ErrorHelper: driver.ErrorHelper,

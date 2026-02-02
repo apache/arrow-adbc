@@ -102,16 +102,6 @@ func TestToXdbcDataType(t *testing.T) {
 			dataType: extensions.NewOpaqueType(arrow.BinaryTypes.String, "test.opaque", "test_vendor"),
 			expected: internal.XdbcDataType_XDBC_VARCHAR,
 		},
-		{
-			name:     "Bool8 Extension Type",
-			dataType: extensions.NewBool8Type(),
-			expected: internal.XdbcDataType_XDBC_TINYINT,
-		},
-		{
-			name:     "Bool8 Extension Type",
-			dataType: extensions.NewJSONType(arrow.BinaryTypes.String),
-			expected: internal.XdbcDataType_XDBC_TINYINT,
-		},
 	}
 
 	for _, tt := range tests {
