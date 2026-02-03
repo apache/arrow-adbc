@@ -52,4 +52,4 @@ regex = { version = "1.12.2", default-features = false, optional = true }
 url = "2.5.8"
 
 [dev-dependencies]
-test-with = { version = "0.15.6", default-features = false }
+test-with = { version = "0.15.7", default-features = false }
