@@ -97,7 +97,7 @@
 
   <properties>
     <dep.arrow.version>18.3.0</dep.arrow.version>
-    <dep.org.checkerframework.version>3.53.0</dep.org.checkerframework.version>
+    <dep.org.checkerframework.version>3.53.1</dep.org.checkerframework.version>
     <!-- org.apache:apache overrides -->
     <minimalJavaBuildVersion>11</minimalJavaBuildVersion>
     <maven.compiler.release>11</maven.compiler.release>
