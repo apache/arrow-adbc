@@ -23,13 +23,25 @@ else()
   find_package(unofficial-sqlite3 CONFIG REQUIRED)
   set(SQLite3_LINK_LIBRARIES unofficial::sqlite3::sqlite3)
   set(SQLite3_INCLUDE_DIRS)
+  set(ADBC_SQLITE_WITH_LOAD_EXTENSION ON)
 endif()
 
 # Check for sqlite3_load_extension() in sqlite3.h
-if(EXISTS "${SQLite3_INCLUDE_DIRS}/sqlite3.h")
+if(NOT ADBC_SQLITE_WITH_LOAD_EXTENSION AND EXISTS "${SQLite3_INCLUDE_DIRS}/sqlite3.h")
   file(READ "${SQLite3_INCLUDE_DIRS}/sqlite3.h" ADBC_SQLITE_H_CONTENT)
   string(FIND "${ADBC_SQLITE_H_CONTENT}" "sqlite3_load_extension"
-              ADBC_SQLITE_WITH_LOAD_EXTENSION)
+              ADBC_SQLITE3_LOAD_EXTENSION_POS)
+
+  if(ADBC_SQLITE3_LOAD_EXTENSION_POS EQUAL -1)
+    set(ADBC_SQLITE_WITH_LOAD_EXTENSION OFF)
+  else()
+    set(ADBC_SQLITE_WITH_LOAD_EXTENSION ON)
+  endif()
+  message(STATUS "Inferred SQLite3 extension support from ${SQLite3_INCLUDE_DIRS}/sqlite3.h (${ADBC_SQLITE_WITH_LOAD_EXTENSION})"
+  )
+else()
+  message(STATUS "Can't detect SQLite3 extension support (defaulting to ON)")
+  set(ADBC_SQLITE_WITH_LOAD_EXTENSION ON)
 endif()
 
 if(NOT ADBC_SQLITE_WITH_LOAD_EXTENSION)
