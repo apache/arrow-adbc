@@ -26,11 +26,15 @@ Installation
 Source
 ======
 
-The latest source release can be downloaded from the `Apache mirrors`_.
+Download the latest source release: |source_download| (|source_checksum|, |source_signature|)
+
+To verify a release, please see the `instructions`_ page  and the project's `KEYS`_ file.
+
 Compilation instructions can be found in `CONTRIBUTING.md`_.
 
-.. _Apache mirrors: https://www.apache.org/dyn/closer.lua/arrow/
 .. _CONTRIBUTING.md: https://github.com/apache/arrow-adbc/blob/main/CONTRIBUTING.md
+.. _instructions: https://www.apache.org/info/verification.html
+.. _KEYS: https://downloads.apache.org/arrow/KEYS
 
 C/C++
 =====
