@@ -64,7 +64,7 @@ impl adbc_core::Statement for Statement {
         self.0.bind_stream(reader)
     }
 
-    fn execute(&mut self) -> Result<impl RecordBatchReader + Send> {
+    fn execute(&mut self) -> Result<Box<dyn RecordBatchReader + Send + 'static>> {
         self.0.execute()
     }
 

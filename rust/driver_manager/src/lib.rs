@@ -1158,7 +1158,10 @@ impl Connection for ManagedConnection {
         check_status(status, error)
     }
 
-    fn get_info(&self, codes: Option<HashSet<InfoCode>>) -> Result<impl RecordBatchReader> {
+    fn get_info(
+        &self,
+        codes: Option<HashSet<InfoCode>>,
+    ) -> Result<Box<dyn RecordBatchReader + Send + 'static>> {
         let mut stream = FFI_ArrowArrayStream::empty();
         let codes: Option<Vec<u32>> =
             codes.map(|codes| codes.iter().map(|code| code.into()).collect());
@@ -1181,7 +1184,7 @@ impl Connection for ManagedConnection {
         };
         check_status(status, error)?;
         let reader = ArrowArrayStreamReader::try_new(stream)?;
-        Ok(reader)
+        Ok(Box::new(reader))
     }
 
     fn get_objects(
@@ -1192,7 +1195,7 @@ impl Connection for ManagedConnection {
         table_name: Option<&str>,
         table_type: Option<Vec<&str>>,
         column_name: Option<&str>,
-    ) -> Result<impl RecordBatchReader> {
+    ) -> Result<Box<dyn RecordBatchReader + Send + 'static>> {
         let catalog = catalog.map(CString::new).transpose()?;
         let db_schema = db_schema.map(CString::new).transpose()?;
         let table_name = table_name.map(CString::new).transpose()?;
@@ -1244,7 +1247,7 @@ impl Connection for ManagedConnection {
         check_status(status, error)?;
 
         let reader = ArrowArrayStreamReader::try_new(stream)?;
-        Ok(reader)
+        Ok(Box::new(reader))
     }
 
     fn get_statistics(
@@ -1253,7 +1256,7 @@ impl Connection for ManagedConnection {
         db_schema: Option<&str>,
         table_name: Option<&str>,
         approximate: bool,
-    ) -> Result<impl RecordBatchReader> {
+    ) -> Result<Box<dyn RecordBatchReader + Send + 'static>> {
         if let AdbcVersion::V100 = self.driver_version() {
             return Err(Error::with_message_and_status(
                 ERR_STATISTICS_UNSUPPORTED,
@@ -1287,10 +1290,10 @@ impl Connection for ManagedConnection {
         };
         check_status(status, error)?;
         let reader = ArrowArrayStreamReader::try_new(stream)?;
-        Ok(reader)
+        Ok(Box::new(reader))
     }
 
-    fn get_statistic_names(&self) -> Result<impl RecordBatchReader> {
+    fn get_statistic_names(&self) -> Result<Box<dyn RecordBatchReader + Send + 'static>> {
         if let AdbcVersion::V100 = self.driver_version() {
             return Err(Error::with_message_and_status(
                 ERR_STATISTICS_UNSUPPORTED,
@@ -1305,7 +1308,7 @@ impl Connection for ManagedConnection {
         let status = unsafe { method(connection.deref_mut(), &mut stream, &mut error) };
         check_status(status, error)?;
         let reader = ArrowArrayStreamReader::try_new(stream)?;
-        Ok(reader)
+        Ok(Box::new(reader))
     }
 
     fn get_table_schema(
@@ -1341,7 +1344,7 @@ impl Connection for ManagedConnection {
         Ok((&schema).try_into()?)
     }
 
-    fn get_table_types(&self) -> Result<impl RecordBatchReader> {
+    fn get_table_types(&self) -> Result<Box<dyn RecordBatchReader + Send + 'static>> {
         let mut stream = FFI_ArrowArrayStream::empty();
         let driver = self.ffi_driver();
         let mut connection = self.inner.connection.lock().unwrap();
@@ -1350,10 +1353,13 @@ impl Connection for ManagedConnection {
         let status = unsafe { method(connection.deref_mut(), &mut stream, &mut error) };
         check_status(status, error)?;
         let reader = ArrowArrayStreamReader::try_new(stream)?;
-        Ok(reader)
+        Ok(Box::new(reader))
     }
 
-    fn read_partition(&self, partition: impl AsRef<[u8]>) -> Result<impl RecordBatchReader> {
+    fn read_partition(
+        &self,
+        partition: impl AsRef<[u8]>,
+    ) -> Result<Box<dyn RecordBatchReader + Send + 'static>> {
         let mut stream = FFI_ArrowArrayStream::empty();
         let driver = self.ffi_driver();
         let mut connection = self.inner.connection.lock().unwrap();
@@ -1371,7 +1377,7 @@ impl Connection for ManagedConnection {
         };
         check_status(status, error)?;
         let reader = ArrowArrayStreamReader::try_new(stream)?;
-        Ok(reader)
+        Ok(Box::new(reader))
     }
 }
 
@@ -1434,7 +1440,7 @@ impl Statement for ManagedStatement {
         check_status(status, error)
     }
 
-    fn execute(&mut self) -> Result<impl RecordBatchReader> {
+    fn execute(&mut self) -> Result<Box<dyn RecordBatchReader + Send + 'static>> {
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
@@ -1443,7 +1449,7 @@ impl Statement for ManagedStatement {
         let status = unsafe { method(statement.deref_mut(), &mut stream, null_mut(), &mut error) };
         check_status(status, error)?;
         let reader = ArrowArrayStreamReader::try_new(stream)?;
-        Ok(reader)
+        Ok(Box::new(reader))
     }
 
     fn execute_schema(&mut self) -> Result<arrow_schema::Schema> {
