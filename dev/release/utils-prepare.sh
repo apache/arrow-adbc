@@ -98,6 +98,8 @@ update_versions() {
 
   sed -i.bak -E "s/release = \".+\"/release = \"${docs_version}\"/g" "${ADBC_DIR}/docs/source/conf.py"
   rm "${ADBC_DIR}/docs/source/conf.py.bak"
+  sed -i.bak -E "s/latest_release = \".+\"/latest_release = \"${docs_version}\"/g" "${ADBC_DIR}/docs/source/conf.py"
+  rm "${ADBC_DIR}/docs/source/conf.py.bak"
   git add "${ADBC_DIR}/docs/source/conf.py"
 
   pushd "${ADBC_DIR}/java/"

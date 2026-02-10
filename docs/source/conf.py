@@ -35,6 +35,8 @@ author = "the Apache Arrow Developers"
 release = "23 (dev)"
 # Needed to generate version switcher
 version = release
+# For linking to latest downloads
+latest_release = "22"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -80,9 +82,9 @@ def setup(app):
 # -- Global substitutions -----------------------------------------------------
 # Note: uses quote because Sphinx will break if `release` has any spaces in it
 rst_prolog = (
-    f".. |source_download| replace:: `apache-arrow-adbc-{quote(release)}.tar.gz <https://www.apache.org/dyn/closer.lua/arrow/apache-arrow-adbc-{quote(release)}/apache-arrow-adbc-{quote(release)}.tar.gz>`__\n"  # noqa: E501
-    f".. |source_checksum| replace:: `checksum <https://downloads.apache.org/arrow/apache-arrow-adbc-{quote(release)}/apache-arrow-adbc-{quote(release)}.tar.gz.sha512>`__\n"  # noqa: E501
-    f".. |source_signature| replace:: `signature <https://downloads.apache.org/arrow/apache-arrow-adbc-{quote(release)}/apache-arrow-adbc-{quote(release)}.tar.gz.asc>`__\n"  # noqa: E501
+    f".. |source_download| replace:: `apache-arrow-adbc-{quote(latest_release)}.tar.gz <https://www.apache.org/dyn/closer.lua/arrow/apache-arrow-adbc-{quote(latest_release)}/apache-arrow-adbc-{quote(latest_release)}.tar.gz>`__\n"  # noqa: E501
+    f".. |source_checksum| replace:: `checksum <https://downloads.apache.org/arrow/apache-arrow-adbc-{quote(latest_release)}/apache-arrow-adbc-{quote(latest_release)}.tar.gz.sha512>`__\n"  # noqa: E501
+    f".. |source_signature| replace:: `signature <https://downloads.apache.org/arrow/apache-arrow-adbc-{quote(latest_release)}/apache-arrow-adbc-{quote(latest_release)}.tar.gz.asc>`__\n"  # noqa: E501
 )
 
 
