@@ -34,6 +34,7 @@ update_versions() {
       local java_version="${VERSION_JAVA}"
       local py_version="${VERSION_NATIVE}"
       local r_version="${VERSION_R}"
+      local latest_release_version="${RELEASE}"
       ;;
     snapshot)
       local c_version="${VERSION_NATIVE}-SNAPSHOT"
@@ -43,6 +44,7 @@ update_versions() {
       local java_version="${VERSION_JAVA}-SNAPSHOT"
       local py_version="${VERSION_NATIVE}dev"
       local r_version="${PREVIOUS_VERSION_R}.9000"
+      local latest_release_version="${PREVIOUS_RELEASE}"
       ;;
     *)
       echo "Unknown type: ${type}"
@@ -97,6 +99,8 @@ update_versions() {
   git add "${ADBC_DIR}/csharp/Directory.Build.props"
 
   sed -i.bak -E "s/release = \".+\"/release = \"${docs_version}\"/g" "${ADBC_DIR}/docs/source/conf.py"
+  rm "${ADBC_DIR}/docs/source/conf.py.bak"
+  sed -i.bak -E "s/latest_release = \".+\"/latest_release = \"${latest_release_version}\"/g" "${ADBC_DIR}/docs/source/conf.py"
   rm "${ADBC_DIR}/docs/source/conf.py.bak"
   git add "${ADBC_DIR}/docs/source/conf.py"
 
