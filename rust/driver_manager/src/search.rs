@@ -15,6 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+use std::borrow::Cow;
 use std::ffi::{c_void, OsStr};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -26,7 +27,8 @@ use toml::de::{DeTable, DeValue};
 use adbc_core::{
     error::{Error, Result, Status},
     options::AdbcVersion,
-    LoadFlags, LOAD_FLAG_SEARCH_ENV, LOAD_FLAG_SEARCH_SYSTEM, LOAD_FLAG_SEARCH_USER,
+    LoadFlags, LOAD_FLAG_ALLOW_RELATIVE_PATHS, LOAD_FLAG_SEARCH_ENV, LOAD_FLAG_SEARCH_SYSTEM,
+    LOAD_FLAG_SEARCH_USER,
 };
 use adbc_ffi::{
     options::check_status,
@@ -203,6 +205,20 @@ impl SearchHit {
             entrypoint,
         }
     }
+
+    pub fn resolve_entrypoint<'a>(&'a self, entrypoint: Option<&'a [u8]>) -> Cow<'a, [u8]> {
+        if let Some(entrypoint) = self.entrypoint.as_deref() {
+            // prioritize manifest entrypoint..
+            Cow::Borrowed(entrypoint)
+        } else if let Some(entrypoint) = entrypoint {
+            // ...over the provided one
+            Cow::Borrowed(entrypoint)
+        } else {
+            let default_entrypoint =
+                DriverLibrary::get_default_entrypoint(&self.lib_path).into_bytes();
+            Cow::Owned(default_entrypoint)
+        }
+    }
 }
 
 enum DriverInitFunc<'a> {
@@ -336,6 +352,40 @@ impl<'a> DriverLibrary<'a> {
         let info = DriverInfo::load_driver_manifest(manifest_file)?;
         let library = Self::load_library(&info.lib_path)?;
         Ok(SearchHit::new(info.lib_path, library, info.entrypoint))
+    }
+
+    pub(crate) fn search(
+        name: impl AsRef<OsStr>,
+        load_flags: LoadFlags,
+        additional_search_paths: Option<Vec<PathBuf>>,
+        trace: &mut Vec<Error>,
+    ) -> Result<SearchHit> {
+        let driver_path = Path::new(name.as_ref());
+        let allow_relative = load_flags & LOAD_FLAG_ALLOW_RELATIVE_PATHS != 0;
+
+        if let Some(ext) = driver_path.extension() {
+            if !allow_relative && driver_path.is_relative() {
+                Err(Error::with_message_and_status(
+                    "Relative paths are not allowed",
+                    Status::InvalidArguments,
+                ))
+            } else if ext == "toml" {
+                DriverLibrary::load_library_from_manifest(driver_path)
+            } else {
+                let library = DriverLibrary::load_library(driver_path)?;
+                Ok(SearchHit::new(driver_path.to_path_buf(), library, None))
+            }
+        } else if driver_path.is_absolute() {
+            let toml_path = driver_path.with_extension("toml");
+            if toml_path.is_file() {
+                DriverLibrary::load_library_from_manifest(&toml_path)
+            } else {
+                let library = DriverLibrary::load_library(driver_path)?;
+                Ok(SearchHit::new(driver_path.to_path_buf(), library, None))
+            }
+        } else {
+            DriverLibrary::find_driver(driver_path, load_flags, additional_search_paths, trace)
+        }
     }
 
     #[cfg(target_os = "windows")]

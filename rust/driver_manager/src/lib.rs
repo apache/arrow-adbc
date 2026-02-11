@@ -107,7 +107,7 @@ use std::collections::HashSet;
 use std::ffi::{CString, OsStr};
 use std::ops::DerefMut;
 use std::os::raw::c_char;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::pin::Pin;
 use std::ptr::{null, null_mut};
 use std::sync::{Arc, Mutex};
@@ -124,11 +124,10 @@ use adbc_core::{
     error::{Error, Result, Status},
     options::{self, AdbcVersion, InfoCode, OptionDatabase, OptionValue},
     Connection, Database, Driver, LoadFlags, Optionable, PartitionedResult, Statement,
-    LOAD_FLAG_ALLOW_RELATIVE_PATHS,
 };
 use adbc_ffi::driver_method;
 
-use self::search::{parse_driver_uri, DriverLibrary, SearchHit};
+use self::search::{parse_driver_uri, DriverLibrary};
 
 const ERR_CANCEL_UNSUPPORTED: &str =
     "Canceling connection or statement is not supported with ADBC 1.0.0";
@@ -201,38 +200,7 @@ impl ManagedDriver {
         additional_search_paths: Option<Vec<PathBuf>>,
     ) -> Result<Self> {
         let mut trace = Vec::new();
-        let driver_path = Path::new(name.as_ref());
-        let allow_relative = load_flags & LOAD_FLAG_ALLOW_RELATIVE_PATHS != 0;
-        let res = {
-            if let Some(ext) = driver_path.extension() {
-                if !allow_relative && driver_path.is_relative() {
-                    Err(Error::with_message_and_status(
-                        "Relative paths are not allowed",
-                        Status::InvalidArguments,
-                    ))
-                } else if ext == "toml" {
-                    DriverLibrary::load_library_from_manifest(driver_path)
-                } else {
-                    let library = DriverLibrary::load_library(driver_path)?;
-                    Ok(SearchHit::new(driver_path.to_path_buf(), library, None))
-                }
-            } else if driver_path.is_absolute() {
-                let toml_path = driver_path.with_extension("toml");
-                if toml_path.is_file() {
-                    DriverLibrary::load_library_from_manifest(&toml_path)
-                } else {
-                    let library = DriverLibrary::load_library(driver_path)?;
-                    Ok(SearchHit::new(driver_path.to_path_buf(), library, None))
-                }
-            } else {
-                DriverLibrary::find_driver(
-                    driver_path,
-                    load_flags,
-                    additional_search_paths,
-                    &mut trace,
-                )
-            }
-        };
+        let res = DriverLibrary::search(name, load_flags, additional_search_paths, &mut trace);
 
         eprintln!("Driver load trace:\n");
         for e in &trace {
@@ -240,13 +208,8 @@ impl ManagedDriver {
         }
         let search_hit = res?;
 
-        let default_entrypoint = DriverLibrary::get_default_entrypoint(&search_hit.lib_path);
-        let entrypoint = search_hit
-            .entrypoint // prioritize manifest entrypoint...
-            .as_deref()
-            .or(entrypoint) // ...over the provided one
-            .unwrap_or(default_entrypoint.as_bytes());
-        Self::load_from_library(search_hit.library, entrypoint, version)
+        let entrypoint = search_hit.resolve_entrypoint(entrypoint).to_vec();
+        Self::load_from_library(search_hit.library, entrypoint.as_ref(), version)
     }
 
     /// Load a driver from a dynamic library filename.
@@ -1218,12 +1181,16 @@ impl Drop for ManagedStatement {
 #[cfg(test)]
 mod tests {
     use std::env;
+    use std::path::Path;
 
     use crate::search::{arch_triplet, user_config_dir};
 
     use super::*;
 
-    use adbc_core::{LOAD_FLAG_DEFAULT, LOAD_FLAG_SEARCH_ENV, LOAD_FLAG_SEARCH_USER};
+    use adbc_core::{
+        LOAD_FLAG_ALLOW_RELATIVE_PATHS, LOAD_FLAG_DEFAULT, LOAD_FLAG_SEARCH_ENV,
+        LOAD_FLAG_SEARCH_USER,
+    };
     use temp_env::{with_var, with_var_unset};
     use tempfile::Builder;
 
