@@ -178,6 +178,97 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             return tlsProperties;
         }
 
+        /// <summary>
+        /// Analyzes certificate chain validation errors and throws descriptive exceptions with actionable guidance.
+        /// </summary>
+        private static void ThrowDetailedCertificateError(X509Chain chain, TlsProperties tlsProperties)
+        {
+            foreach (var status in chain.ChainStatus)
+            {
+                switch (status.Status)
+                {
+                    case X509ChainStatusFlags.UntrustedRoot:
+                        throw new System.Net.Http.HttpRequestException(
+                            "Certificate validation failed: The root certificate is not trusted. " +
+                            "This occurs when the Certificate Authority (CA) that signed the server certificate is not in your system's trusted root store. " +
+                            "To resolve this: (1) Install the CA certificate in your system's trusted root store, or " +
+                            "(2) Specify the trusted certificate using 'adbc.http_options.tls.trusted_certificate_path', or " +
+                            "(3) For testing only, set 'adbc.http_options.tls.disable_server_certificate_validation=true' (NOT recommended for production).");
+
+                    case X509ChainStatusFlags.PartialChain:
+                        throw new System.Net.Http.HttpRequestException(
+                            "Certificate validation failed: The certificate chain is incomplete. " +
+                            "This occurs when one or more intermediate certificates are missing from the chain. " +
+                            "The server should send all intermediate certificates, but some servers are misconfigured. " +
+                            "To resolve this: (1) Contact the server administrator to fix the certificate chain configuration, or " +
+                            "(2) Install the missing intermediate certificates in your system's certificate store, or " +
+                            "(3) Specify the complete certificate chain using 'adbc.http_options.tls.trusted_certificate_path'.");
+
+                    case X509ChainStatusFlags.RevocationStatusUnknown:
+                        throw new System.Net.Http.HttpRequestException(
+                            "Certificate validation failed: Unable to determine the revocation status of the certificate. " +
+                            "This typically occurs when the Certificate Revocation List (CRL) or Online Certificate Status Protocol (OCSP) servers are unreachable. " +
+                            "Common causes: AWS PrivateLink, corporate firewalls blocking port 80, or network restrictions. " +
+                            $"Current revocation mode: {tlsProperties.RevocationMode}. " +
+                            "To resolve this: Set 'adbc.http_options.tls.revocation_mode=nocheck' to skip revocation checking (safe in isolated networks), " +
+                            "or set 'revocation_mode=offline' to use only cached CRL data.");
+
+                    case X509ChainStatusFlags.OfflineRevocation:
+                        throw new System.Net.Http.HttpRequestException(
+                            "Certificate validation failed: The revocation server is offline or unreachable. " +
+                            "The certificate contains revocation URLs (CRL/OCSP) that require outbound HTTP (port 80) access, but the connection failed. " +
+                            "This is common in AWS PrivateLink environments or networks with restrictive egress rules. " +
+                            "To resolve this: Set 'adbc.http_options.tls.revocation_mode=nocheck' to disable revocation checking, " +
+                            "or set 'revocation_mode=offline' to use only locally cached revocation data.");
+
+                    case X509ChainStatusFlags.Revoked:
+                        throw new System.Net.Http.HttpRequestException(
+                            "Certificate validation failed: The certificate has been revoked by the Certificate Authority. " +
+                            "This is a critical security issue - the certificate is no longer valid and should not be trusted. " +
+                            "To resolve this: Contact the server administrator to install a new, valid certificate. " +
+                            "Do NOT disable certificate validation to work around this error.");
+
+                    case X509ChainStatusFlags.NotTimeValid:
+                        throw new System.Net.Http.HttpRequestException(
+                            "Certificate validation failed: The certificate is not valid for the current date/time. " +
+                            "The certificate may be expired or not yet valid. " +
+                            $"Certificate details: {status.StatusInformation}. " +
+                            "To resolve this: (1) Verify your system clock is correct, or " +
+                            "(2) Contact the server administrator to renew the expired certificate.");
+
+                    case X509ChainStatusFlags.NotSignatureValid:
+                        throw new System.Net.Http.HttpRequestException(
+                            "Certificate validation failed: The certificate signature is invalid. " +
+                            "This indicates the certificate may be corrupted, tampered with, or improperly signed. " +
+                            "This is a critical security issue. " +
+                            "To resolve this: Contact the server administrator - the certificate needs to be replaced.");
+
+                    case X509ChainStatusFlags.InvalidNameConstraints:
+                    case X509ChainStatusFlags.HasNotPermittedNameConstraint:
+                    case X509ChainStatusFlags.HasExcludedNameConstraint:
+                        throw new System.Net.Http.HttpRequestException(
+                            "Certificate validation failed: Certificate name constraints violation. " +
+                            "The certificate is not permitted to be used for this hostname or domain. " +
+                            $"Details: {status.StatusInformation}. " +
+                            "To resolve this: Verify you are connecting to the correct hostname, or contact the server administrator.");
+
+                    case X509ChainStatusFlags.InvalidBasicConstraints:
+                        throw new System.Net.Http.HttpRequestException(
+                            "Certificate validation failed: Invalid basic constraints. " +
+                            "The certificate chain violates basic constraints (e.g., a non-CA certificate is being used as a CA). " +
+                            "This indicates a misconfigured certificate hierarchy. " +
+                            "To resolve this: Contact the server administrator to fix the certificate chain.");
+
+                    default:
+                        // For any other error, include the raw status information
+                        throw new System.Net.Http.HttpRequestException(
+                            $"Certificate validation failed: {status.Status}. " +
+                            $"Details: {status.StatusInformation}. " +
+                            "This may indicate a certificate configuration issue. Please contact your system administrator.");
+                }
+            }
+        }
+
         static internal bool ValidateCertificate(X509Certificate? cert, SslPolicyErrors policyErrors, TlsProperties tlsProperties)
         {
             if (policyErrors == SslPolicyErrors.None || tlsProperties.DisableServerCertificateValidation)
@@ -192,7 +283,25 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
             if (string.IsNullOrEmpty(tlsProperties.TrustedCertificatePath))
             {
-                return !policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateChainErrors) || (tlsProperties.AllowSelfSigned && IsSelfSigned(cert2));
+                // If chain errors exist, provide detailed error information
+                if (policyErrors.HasFlag(SslPolicyErrors.RemoteCertificateChainErrors))
+                {
+                    if (tlsProperties.AllowSelfSigned && IsSelfSigned(cert2))
+                        return true;
+
+                    // Build a chain to get detailed error information
+                    using (X509Chain defaultChain = new X509Chain())
+                    {
+                        defaultChain.ChainPolicy.RevocationMode = tlsProperties.RevocationMode;
+                        defaultChain.Build(cert2);
+
+                        // Throw detailed error with actionable guidance
+                        ThrowDetailedCertificateError(defaultChain, tlsProperties);
+                    }
+
+                    return false;
+                }
+                return true;
             }
 
             X509Certificate2 trustedRoot = new X509Certificate2(tlsProperties.TrustedCertificatePath);
@@ -203,6 +312,17 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             customChain.ChainPolicy.RevocationMode = tlsProperties.RevocationMode;
 
             bool chainValid = customChain.Build(cert2);
+
+            // Check for validation failures and provide detailed error message
+            if (!chainValid)
+            {
+                if (tlsProperties.AllowSelfSigned && IsSelfSigned(cert2))
+                    return true;
+
+                // Throw detailed error with actionable guidance
+                ThrowDetailedCertificateError(customChain, tlsProperties);
+            }
+
             return chainValid || (tlsProperties.AllowSelfSigned && IsSelfSigned(cert2));
         }
     }
