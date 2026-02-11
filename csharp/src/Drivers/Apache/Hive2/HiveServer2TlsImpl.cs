@@ -295,11 +295,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                         defaultChain.ChainPolicy.RevocationMode = tlsProperties.RevocationMode;
                         defaultChain.Build(cert2);
 
-                        // Throw detailed error with actionable guidance
+                        // Throw detailed error with actionable guidance (never returns)
                         ThrowDetailedCertificateError(defaultChain, tlsProperties);
                     }
 
-                    return false;
+                    // Unreachable - ThrowDetailedCertificateError always throws
+                    throw new InvalidOperationException("ThrowDetailedCertificateError should have thrown an exception");
                 }
                 return true;
             }
@@ -313,17 +314,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
             bool chainValid = customChain.Build(cert2);
 
-            // Check for validation failures and provide detailed error message
+            // If self-signed is allowed and this is self-signed, accept it
+            if (tlsProperties.AllowSelfSigned && IsSelfSigned(cert2))
+                return true;
+
+            // If validation failed, throw detailed error (never returns)
             if (!chainValid)
-            {
-                if (tlsProperties.AllowSelfSigned && IsSelfSigned(cert2))
-                    return true;
-
-                // Throw detailed error with actionable guidance
                 ThrowDetailedCertificateError(customChain, tlsProperties);
-            }
 
-            return chainValid || (tlsProperties.AllowSelfSigned && IsSelfSigned(cert2));
+            return true;
         }
     }
 }
