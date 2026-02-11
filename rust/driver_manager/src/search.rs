@@ -1373,8 +1373,10 @@ mod tests {
         let driver_name = OsStr::new("nonexistent_test_driver");
         let result =
             DriverLibrary::load_library_from_registry(windows_registry::CURRENT_USER, driver_name);
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err().status, Status::NotFound);
+        match result {
+            Ok(_) => panic!("Expected registry lookup to fail"),
+            Err(err) => assert_eq!(err.status, Status::NotFound),
+        }
     }
 
     #[test]
@@ -1436,7 +1438,7 @@ mod tests {
     #[cfg(target_os = "windows")]
     #[test]
     fn test_parse_driver_uri_windows_file() {
-        let tmp_dir = Builder::new()
+        let tmp_dir = tempfile::Builder::new()
             .prefix("adbc_tests")
             .tempdir()
             .expect("Failed to create temporary directory for driver manager manifest test");
