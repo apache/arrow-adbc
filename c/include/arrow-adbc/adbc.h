@@ -1351,6 +1351,35 @@ ADBC_EXPORT
 AdbcStatusCode AdbcDatabaseSetOptionInt(struct AdbcDatabase* database, const char* key,
                                         int64_t value, struct AdbcError* error);
 
+/// \brief A warning handler function.
+///
+/// The handler must not block and must not call any other ADBC functions
+/// (besides releasing the warning).  The warning does not need to be released
+/// before returning.
+///
+/// \param[in] warning The warning information.  The application must release
+///   the warning.
+/// \param[in] user_data The user_data pointer.
+typedef void (*AdbcWarningHandler)(const struct AdbcError* warning, void* user_data);
+
+/// \brief Set a warning handler.
+///
+/// May be set before or after AdbcDatabaseInit.
+///
+/// \since ADBC API revision 1.2.0
+/// \param[in] database The database.
+/// \param[in] handler The warning handler to use; NULL removes the handler.
+/// \param[in] user_data A user data pointer to be passed to the handler.
+///   Must live at least until the database is released or the warning handler
+///   is replaced.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if warning handlers are not supported
+ADBC_EXPORT
+AdbcStatusCode AdbcDatabaseSetWarningHandler(struct AdbcDatabase* database,
+                                             AdbcWarningHandler handler,
+                                             struct AdbcError* error);
+
 /// \brief Finish setting options and initialize the database.
 ///
 /// Some drivers may support setting options after initialization
