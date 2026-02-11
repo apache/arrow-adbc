@@ -125,6 +125,9 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 {
                     chain.ChainPolicy.ExtraStore.Add(issuer);
                     chain.ChainPolicy.VerificationFlags = X509VerificationFlags.AllowUnknownCertificateAuthority;
+                    // Note: NoCheck is intentional here - this helper only validates cryptographic signatures,
+                    // not full certificate chain validation. Revocation checking happens in ValidateCertificate()
+                    // which uses the configurable tlsProperties.RevocationMode.
                     chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
 
                     return chain.Build(cert)
