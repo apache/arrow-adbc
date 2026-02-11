@@ -112,6 +112,9 @@ type statement struct {
 	// Field that contains the JSON string to authorize a view to source datasets
 	authorizeViewToDatasets string
 
+	// Field that contains the table description to update
+	tableDescription string
+
 	// Copy table fields
 	copyTableSource           string
 	copyTableDestination      string
@@ -219,6 +222,8 @@ func (st *statement) GetOption(key string) (string, error) {
 		return st.ingestPath, nil
 	case OptionJsonUpdateTableColumnsDescription:
 		return st.updateTableColumnsDescription, nil
+	case OptionStringUpdateTableDescriptionValue:
+		return st.tableDescription, nil
 	case OptionJsonAuthorizeViewToDatasets:
 		return st.authorizeViewToDatasets, nil
 	case OptionStringDataprocReqRegion:
@@ -436,6 +441,9 @@ func (st *statement) SetOption(key string, v string) error {
 		return nil
 	case OptionJsonAuthorizeViewToDatasets:
 		st.authorizeViewToDatasets = v
+	case OptionStringUpdateTableDescriptionValue:
+		st.tableDescription = v
+		return nil
 	case OptionBoolQueryLinkFailedJob:
 		val, err := strconv.ParseBool(v)
 		if err == nil {
@@ -544,6 +552,10 @@ func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int6
 
 	if st.updateTableColumnsDescription != "" {
 		return st.executeUpdateTableColumnsDescription(ctx)
+	}
+
+	if st.tableDescription != "" {
+		return st.executeUpdateTableDescription(ctx)
 	}
 
 	if st.authorizeViewToDatasets != "" {
@@ -1636,6 +1648,7 @@ func (st *statement) executeCreateNotebookExecutionJob(ctx context.Context) (arr
 
 // executeUpdateTableColumnsDescription updates the table columns descriptions
 // based on the JSON string in st.updateTableColumnsDescription
+// using the table reference from st.queryConfig.Dst
 //
 // The JSON string is a map of column name to description.
 //
@@ -1683,6 +1696,34 @@ func (st *statement) executeUpdateTableColumnsDescription(ctx context.Context) (
 	}
 	if _, err := table.Update(ctx, tableUpdate, tableMetadata.ETag); err != nil {
 		return nil, -1, adbcError(adbc.StatusInternal, thisFunction, fmt.Sprintf("failed to update table schema: %v", err))
+	}
+
+	return emptyResult()
+}
+
+// executeUpdateTableDescription updates the table description
+// using the table reference from st.queryConfig.Dst
+func (st *statement) executeUpdateTableDescription(ctx context.Context) (array.RecordReader, int64, error) {
+	thisFunction := getFunctionName()
+
+	if st.queryConfig.Dst == nil {
+		return nil, -1, adbcError(adbc.StatusInvalidArgument, thisFunction, "destination table not specified")
+	}
+
+	table := st.cnxn.client.DatasetInProject(st.queryConfig.Dst.ProjectID, st.queryConfig.Dst.DatasetID).Table(st.queryConfig.Dst.TableID)
+
+	// Get the current table metadata
+	md, err := table.Metadata(ctx)
+	if err != nil {
+		return nil, -1, adbcError(adbc.StatusInternal, thisFunction, fmt.Sprintf("failed to get table metadata: %v", err))
+	}
+
+	update := bigquery.TableMetadataToUpdate{
+		Description: st.tableDescription,
+	}
+	_, err = table.Update(ctx, update, md.ETag)
+	if err != nil {
+		return nil, -1, adbcError(adbc.StatusInternal, thisFunction, fmt.Sprintf("failed to update table description: %v", err))
 	}
 
 	return emptyResult()
