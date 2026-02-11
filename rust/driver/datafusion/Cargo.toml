@@ -33,7 +33,7 @@ categories.workspace = true
 [dependencies]
 adbc_core.workspace = true
 adbc_ffi = { workspace = true, optional = true }
-arrow-array = "57.2.0"
+arrow-array = "57.3.0"
 arrow-buffer = "57.2.0"
 arrow-schema = "57.2.0"
 datafusion = { version = "52.1.0", default-features = false }
@@ -42,7 +42,7 @@ tokio = { version = "1.49", features = ["rt-multi-thread"] }
 prost = "0.14.3"
 
 [dev-dependencies]
-arrow-select = "57.2.0"
+arrow-select = "57.3.0"
 
 [lib]
 crate-type = ["lib", "cdylib"]
