@@ -210,18 +210,6 @@ struct ADBC_EXPORT AdbcConnectionProfile {
   /// \brief Release the profile and perform any cleanup.
   void (*release)(struct AdbcConnectionProfile* profile);
 
-  /// \brief Allow providing a custom init_func
-  ///
-  /// If this is not NULL, the driver manager will use this function
-  /// to initialize the driver instead of using the normal driver search
-  /// behavior. This allows the profile to have complete control over
-  /// how the driver is initialized, and can be used to implement custom
-  /// loading behavior or to load drivers from non-traditional sources.
-  ///
-  /// If this is NULL, the driver manager will use the normal driver search
-  /// behavior to initialize the driver.
-  AdbcDriverInitFunc init_func;
-
   /// \brief Get the driver to use as specified by this profile.
   ///
   /// It is not required that a profile specify a driver. If the options
@@ -231,9 +219,11 @@ struct ADBC_EXPORT AdbcConnectionProfile {
   ///
   /// \param[in] profile The profile to query.
   /// \param[out] driver_name The name of the driver to use, or NULL if not specified.
+  /// \param[out] init_func The init function to use for the driver, or NULL if not specified.
   /// \param[out] error An optional location to return an error message
   AdbcStatusCode (*GetDriverName)(struct AdbcConnectionProfile* profile,
-                                  const char** driver_name, struct AdbcError* error);
+                                  const char** driver_name, AdbcDriverInitFunc* init_func,
+                                  struct AdbcError* error);
 
   /// \brief Get the string options specified by the profile
   ///
