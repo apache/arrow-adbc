@@ -210,13 +210,9 @@ impl SearchHit {
         if let Some(entrypoint) = self.entrypoint.as_deref() {
             // prioritize manifest entrypoint..
             Cow::Borrowed(entrypoint)
-        } else if let Some(entrypoint) = entrypoint {
-            // ...over the provided one
-            Cow::Borrowed(entrypoint)
         } else {
-            let default_entrypoint =
-                DriverLibrary::get_default_entrypoint(&self.lib_path).into_bytes();
-            Cow::Owned(default_entrypoint)
+            // ...over the provided one
+            DriverLibrary::derive_entrypoint(entrypoint, &self.lib_path)
         }
     }
 }
@@ -352,6 +348,28 @@ impl<'a> DriverLibrary<'a> {
         let info = DriverInfo::load_driver_manifest(manifest_file)?;
         let library = Self::load_library(&info.lib_path)?;
         Ok(SearchHit::new(info.lib_path, library, info.entrypoint))
+    }
+
+    pub(crate) fn derive_entrypoint<'b>(
+        entrypoint: Option<&'b [u8]>,
+        driver_path: impl AsRef<OsStr>,
+    ) -> Cow<'b, [u8]> {
+        if let Some(entrypoint) = entrypoint {
+            Cow::Borrowed(entrypoint)
+        } else {
+            Cow::Owned(Self::get_default_entrypoint(driver_path).into_bytes())
+        }
+    }
+
+    pub(crate) fn derive_entrypoint_from_name<'b>(
+        entrypoint: Option<&'b [u8]>,
+        name: &str,
+    ) -> Cow<'b, [u8]> {
+        if let Some(entrypoint) = entrypoint {
+            Cow::Borrowed(entrypoint)
+        } else {
+            Cow::Owned(Self::get_default_entrypoint_from_name(name).into_bytes())
+        }
     }
 
     pub(crate) fn search(

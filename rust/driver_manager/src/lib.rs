@@ -227,10 +227,9 @@ impl ManagedDriver {
         entrypoint: Option<&[u8]>,
         version: AdbcVersion,
     ) -> Result<Self> {
-        let default_entrypoint = DriverLibrary::get_default_entrypoint(filename.as_ref());
-        let entrypoint = entrypoint.unwrap_or(default_entrypoint.as_bytes());
+        let entrypoint = DriverLibrary::derive_entrypoint(entrypoint, filename.as_ref());
         let library = DriverLibrary::load_library(filename)?;
-        Self::load_from_library(library, entrypoint, version)
+        Self::load_from_library(library, entrypoint.as_ref(), version)
     }
 
     fn load_from_library(
@@ -261,10 +260,9 @@ impl ManagedDriver {
         entrypoint: Option<&[u8]>,
         version: AdbcVersion,
     ) -> Result<Self> {
+        let entrypoint = DriverLibrary::derive_entrypoint_from_name(entrypoint, name.as_ref());
         let library = DriverLibrary::load_library_from_name(name.as_ref())?;
-        let default_entrypoint = DriverLibrary::get_default_entrypoint_from_name(name.as_ref());
-        let entrypoint = entrypoint.unwrap_or(default_entrypoint.as_bytes());
-        Self::load_from_library(library, entrypoint, version)
+        Self::load_from_library(library, entrypoint.as_ref(), version)
     }
 
     fn inner_ffi_driver(&self) -> &adbc_ffi::FFI_AdbcDriver {
