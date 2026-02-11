@@ -375,7 +375,11 @@ impl<'a> DriverLibrary<'a> {
         load_flags: LoadFlags,
         additional_search_paths: Option<Vec<PathBuf>>,
     ) -> Result<SearchHit> {
+        // Trace ownership rules:
+        // 1. A failed attempt is recorded exactly once by the function that chooses to continue.
+        // 2. The returned error doesn't have to be recorded.
         let mut trace = Vec::new();
+
         let driver_path = Path::new(name.as_ref());
         let allow_relative = load_flags & LOAD_FLAG_ALLOW_RELATIVE_PATHS != 0;
 
@@ -442,12 +446,13 @@ impl<'a> DriverLibrary<'a> {
         trace: &mut Vec<Error>,
     ) -> Result<SearchHit> {
         if load_flags & LOAD_FLAG_SEARCH_ENV != 0 {
-            if let Ok(result) = DriverLibrary::search_path_list(
+            match DriverLibrary::search_path_list(
                 driver_path,
                 &get_search_paths(LOAD_FLAG_SEARCH_ENV),
                 trace,
             ) {
-                return Ok(result);
+                Ok(result) => return Ok(result),
+                Err(err) => trace.push(err),
             }
         }
 
@@ -455,10 +460,9 @@ impl<'a> DriverLibrary<'a> {
         // then we search the additional search paths if they exist. Finally,
         // we will search CONDA_PREFIX if built with conda_build before moving on.
         if let Some(additional_search_paths) = additional_search_paths {
-            if let Ok(result) =
-                DriverLibrary::search_path_list(driver_path, &additional_search_paths, trace)
-            {
-                return Ok(result);
+            match DriverLibrary::search_path_list(driver_path, &additional_search_paths, trace) {
+                Ok(result) => return Ok(result),
+                Err(err) => trace.push(err),
             }
         }
 
@@ -469,10 +473,9 @@ impl<'a> DriverLibrary<'a> {
                     .join("etc")
                     .join("adbc")
                     .join("drivers");
-                if let Ok(result) =
-                    DriverLibrary::search_path_list(driver_path, &[conda_path], trace)
-                {
-                    return Ok(result);
+                match DriverLibrary::search_path_list(driver_path, &[conda_path], trace) {
+                    Ok(result) => return Ok(result),
+                    Err(err) => trace.push(err),
                 }
             }
         }
@@ -483,16 +486,19 @@ impl<'a> DriverLibrary<'a> {
                 windows_registry::CURRENT_USER,
                 driver_path.as_os_str(),
             );
-            if result.is_ok() {
+            if let Err(err) = result {
+                trace.push(err);
+            } else {
                 return result;
             }
 
-            if let Ok(result) = DriverLibrary::search_path_list(
+            match DriverLibrary::search_path_list(
                 driver_path,
                 &get_search_paths(LOAD_FLAG_SEARCH_USER),
                 trace,
             ) {
-                return Ok(result);
+                Ok(result) => return Ok(result),
+                Err(err) => trace.push(err),
             }
         }
 
@@ -501,16 +507,19 @@ impl<'a> DriverLibrary<'a> {
                 windows_registry::LOCAL_MACHINE,
                 driver_path.as_os_str(),
             );
-            if result.is_ok() {
+            if let Err(err) = result {
+                trace.push(err);
+            } else {
                 return result;
             }
 
-            if let Ok(result) = DriverLibrary::search_path_list(
+            match DriverLibrary::search_path_list(
                 driver_path,
                 &get_search_paths(LOAD_FLAG_SEARCH_SYSTEM),
                 trace,
             ) {
-                return Ok(result);
+                Ok(result) => return Ok(result),
+                Err(err) => trace.push(err),
             }
         }
 
@@ -545,9 +554,10 @@ impl<'a> DriverLibrary<'a> {
         }
 
         path_list.extend(get_search_paths(load_flags & !LOAD_FLAG_SEARCH_ENV));
-        if let Ok(result) = DriverLibrary::search_path_list(driver_path, &path_list, trace) {
-            return Ok(result);
-        }
+        match DriverLibrary::search_path_list(driver_path, &path_list, trace) {
+            Ok(hit) => return Ok(hit),
+            Err(err) => trace.push(err),
+        };
 
         // Convert OsStr to String before passing to load_dynamic_from_name
         let driver_name = driver_path.as_os_str().to_string_lossy().into_owned();
