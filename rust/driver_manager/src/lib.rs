@@ -199,14 +199,7 @@ impl ManagedDriver {
         load_flags: LoadFlags,
         additional_search_paths: Option<Vec<PathBuf>>,
     ) -> Result<Self> {
-        let mut trace = Vec::new();
-        let res = DriverLibrary::search(name, load_flags, additional_search_paths, &mut trace);
-
-        eprintln!("Driver load trace:\n");
-        for e in &trace {
-            eprintln!("  - {}", e);
-        }
-        let search_hit = res?;
+        let search_hit = DriverLibrary::search(name, load_flags, additional_search_paths)?;
 
         let entrypoint = search_hit.resolve_entrypoint(entrypoint).to_vec();
         Self::load_from_library(search_hit.library, entrypoint.as_ref(), version)

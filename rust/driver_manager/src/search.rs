@@ -17,6 +17,7 @@
 
 use std::borrow::Cow;
 use std::ffi::{c_void, OsStr};
+use std::fmt::Write;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::{env, ops};
@@ -36,6 +37,8 @@ use adbc_ffi::{
 };
 
 use crate::error::libloading_error_to_adbc_error;
+
+const ERR_DETAIL_DRIVER_LOAD_TRACE: &str = "adbc.drivermanager.driver_load_trace";
 
 #[derive(Debug, Default)]
 pub(crate) struct DriverInfo {
@@ -277,10 +280,6 @@ impl<'a> DriverLibrary<'a> {
     }
 
     pub(crate) fn load_library(filename: impl AsRef<OsStr>) -> Result<libloading::Library> {
-        eprintln!(
-            "Trying to load library from path: {}",
-            filename.as_ref().to_string_lossy()
-        );
         // By default, go builds the libraries with '-Wl -z nodelete' which does not
         // unload the go runtime. This isn't respected on mac ( https://github.com/golang/go/issues/11100#issuecomment-932638093 )
         // so we need to explicitly load the library with RTLD_NODELETE( which prevents unloading )
@@ -335,7 +334,6 @@ impl<'a> DriverLibrary<'a> {
             library.pin().map_err(libloading_error_to_adbc_error)?;
             library.into()
         };
-        eprintln!("Successfully loaded library: {library:?}");
         Ok(library)
     }
 
@@ -376,12 +374,12 @@ impl<'a> DriverLibrary<'a> {
         name: impl AsRef<OsStr>,
         load_flags: LoadFlags,
         additional_search_paths: Option<Vec<PathBuf>>,
-        trace: &mut Vec<Error>,
     ) -> Result<SearchHit> {
+        let mut trace = Vec::new();
         let driver_path = Path::new(name.as_ref());
         let allow_relative = load_flags & LOAD_FLAG_ALLOW_RELATIVE_PATHS != 0;
 
-        if let Some(ext) = driver_path.extension() {
+        let result = if let Some(ext) = driver_path.extension() {
             if !allow_relative && driver_path.is_relative() {
                 Err(Error::with_message_and_status(
                     "Relative paths are not allowed",
@@ -402,8 +400,28 @@ impl<'a> DriverLibrary<'a> {
                 Ok(SearchHit::new(driver_path.to_path_buf(), library, None))
             }
         } else {
-            DriverLibrary::find_driver(driver_path, load_flags, additional_search_paths, trace)
-        }
+            DriverLibrary::find_driver(driver_path, load_flags, additional_search_paths, &mut trace)
+        };
+
+        result.map_err(|mut err| {
+            if !trace.is_empty() {
+                let mut trace_text = String::new();
+                for (i, trace_entry) in trace.iter().enumerate() {
+                    if i > 0 {
+                        trace_text.push('\n');
+                    }
+                    // SAFETY: writing to String via the Write trait doesn't fail
+                    unsafe { write!(&mut trace_text, "{trace_entry}").unwrap_unchecked() };
+                }
+                let mut details = err.details.take().unwrap_or_default();
+                details.push((
+                    ERR_DETAIL_DRIVER_LOAD_TRACE.to_string(),
+                    trace_text.into_bytes(),
+                ));
+                err.details = Some(details);
+            }
+            err
+        })
     }
 
     #[cfg(target_os = "windows")]
@@ -1379,6 +1397,30 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn test_load_from_name_includes_search_trace_in_error_details() {
+        let err = ManagedDriver::load_from_name(
+            "adbc_test_driver_manager_missing_driver_7c8f5482",
+            None,
+            AdbcVersion::V100,
+            adbc_core::LOAD_FLAG_DEFAULT,
+            None,
+        )
+        .unwrap_err();
+
+        let details = err
+            .details
+            .expect("Expected load-from-name errors to include details");
+        let trace = details
+            .iter()
+            .find(|(key, _)| key == "adbc.drivermanager.driver_load_trace")
+            .expect("Expected driver load trace in error details");
+        assert!(
+            !trace.1.is_empty(),
+            "Expected driver load trace detail to be non-empty"
+        );
     }
 
     #[cfg(target_os = "windows")]
