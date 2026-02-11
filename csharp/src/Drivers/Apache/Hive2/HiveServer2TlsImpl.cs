@@ -21,6 +21,7 @@ using System.IO;
 using System.Net;
 using System.Net.Http;
 using System.Net.Security;
+using System.Security.Authentication;
 using System.Security.Cryptography.X509Certificates;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
@@ -28,6 +29,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
     class TlsProperties
     {
         public bool IsTlsEnabled { get; set; } = true;
+        public X509RevocationMode RevocationMode { get; set; } = X509RevocationMode.Online;
         public bool DisableServerCertificateValidation { get; set; }
         public bool AllowHostnameMismatch { get; set; }
         public bool AllowSelfSigned { get; set; }
@@ -36,6 +38,27 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
     static class HiveServer2TlsImpl
     {
+        /// <summary>
+        /// Parses a revocation mode string into the corresponding X509RevocationMode enum value.
+        /// </summary>
+        /// <param name="value">The revocation mode string (case-insensitive): "online", "offline", or "nocheck"</param>
+        /// <returns>The parsed X509RevocationMode, or X509RevocationMode.Online if the value is invalid</returns>
+        private static X509RevocationMode ParseRevocationMode(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return X509RevocationMode.Online;
+            }
+
+            return value.Trim().ToLowerInvariant() switch
+            {
+                "online" => X509RevocationMode.Online,
+                "offline" => X509RevocationMode.Offline,
+                "nocheck" => X509RevocationMode.NoCheck,
+                _ => X509RevocationMode.Online
+            };
+        }
+
         static internal TlsProperties GetHttpTlsOptions(IReadOnlyDictionary<string, string> properties)
         {
             TlsProperties tlsProperties = new();
@@ -65,6 +88,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             tlsProperties.DisableServerCertificateValidation = false;
             tlsProperties.AllowHostnameMismatch = properties.TryGetValue(HttpTlsOptions.AllowHostnameMismatch, out string? allowHostnameMismatch) && bool.TryParse(allowHostnameMismatch, out bool allowHostnameMismatchBool) && allowHostnameMismatchBool;
             tlsProperties.AllowSelfSigned = properties.TryGetValue(HttpTlsOptions.AllowSelfSigned, out string? allowSelfSigned) && bool.TryParse(allowSelfSigned, out bool allowSelfSignedBool) && allowSelfSignedBool;
+
+            // Parse revocation mode if specified
+            if (properties.TryGetValue(HttpTlsOptions.RevocationMode, out string? revocationMode))
+            {
+                tlsProperties.RevocationMode = ParseRevocationMode(revocationMode);
+            }
+
             if (!properties.TryGetValue(HttpTlsOptions.TrustedCertificatePath, out string? trustedCertificatePath)) return tlsProperties;
             tlsProperties.TrustedCertificatePath = trustedCertificatePath != "" && File.Exists(trustedCertificatePath) ? trustedCertificatePath : throw new FileNotFoundException("Trusted certificate path is invalid or file does not exist.");
             return tlsProperties;
@@ -95,7 +125,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 {
                     chain.ChainPolicy.ExtraStore.Add(issuer);
                     chain.ChainPolicy.VerificationFlags = X509VerificationFlags.AllowUnknownCertificateAuthority;
-                    chain.ChainPolicy.RevocationMode = X509RevocationMode.Online;
+                    chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
 
                     return chain.Build(cert)
                         && chain.ChainElements.Count == 1
@@ -133,6 +163,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             tlsProperties.DisableServerCertificateValidation = false;
             tlsProperties.AllowHostnameMismatch = properties.TryGetValue(StandardTlsOptions.AllowHostnameMismatch, out string? allowHostnameMismatch) && bool.TryParse(allowHostnameMismatch, out bool allowHostnameMismatchBool) && allowHostnameMismatchBool;
             tlsProperties.AllowSelfSigned = properties.TryGetValue(StandardTlsOptions.AllowSelfSigned, out string? allowSelfSigned) && bool.TryParse(allowSelfSigned, out bool allowSelfSignedBool) && allowSelfSignedBool;
+
+            // Parse revocation mode if specified
+            if (properties.TryGetValue(StandardTlsOptions.RevocationMode, out string? revocationMode))
+            {
+                tlsProperties.RevocationMode = ParseRevocationMode(revocationMode);
+            }
+
             if (!properties.TryGetValue(StandardTlsOptions.TrustedCertificatePath, out string? trustedCertificatePath)) return tlsProperties;
             tlsProperties.TrustedCertificatePath = trustedCertificatePath != "" && File.Exists(trustedCertificatePath) ? trustedCertificatePath : throw new FileNotFoundException("Trusted certificate path is invalid or file does not exist.");
             return tlsProperties;
@@ -160,7 +197,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             customChain.ChainPolicy.ExtraStore.Add(trustedRoot);
             // "tell the X509Chain class that I do trust this root certs and it should check just the certs in the chain and nothing else"
             customChain.ChainPolicy.VerificationFlags = X509VerificationFlags.AllowUnknownCertificateAuthority;
-            customChain.ChainPolicy.RevocationMode = X509RevocationMode.Online;
+            customChain.ChainPolicy.RevocationMode = tlsProperties.RevocationMode;
 
             bool chainValid = customChain.Build(cert2);
             return chainValid || (tlsProperties.AllowSelfSigned && IsSelfSigned(cert2));

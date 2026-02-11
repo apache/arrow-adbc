@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography.X509Certificates;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
 using Xunit;
 
@@ -66,6 +67,24 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
             yield return new object?[] { new Dictionary<string, string> { { HttpTlsOptions.IsTlsEnabled, "TruE" }, { HttpTlsOptions.AllowSelfSigned, "True" }, { HttpTlsOptions.AllowHostnameMismatch, "True" } }, new TlsProperties { IsTlsEnabled = true, DisableServerCertificateValidation = false, AllowSelfSigned = true, AllowHostnameMismatch = true } };
             // invalid certificate path
             yield return new object?[] { new Dictionary<string, string> { { HttpTlsOptions.IsTlsEnabled, "True" }, { HttpTlsOptions.AllowSelfSigned, "True" }, { HttpTlsOptions.AllowHostnameMismatch, "True" }, { HttpTlsOptions.TrustedCertificatePath, "" } }, null, typeof(FileNotFoundException) };
+
+            // RevocationMode tests - default is Online
+            yield return new object?[] { new Dictionary<string, string> { { HttpTlsOptions.IsTlsEnabled, "True" } }, new TlsProperties { IsTlsEnabled = true, RevocationMode = X509RevocationMode.Online } };
+            // RevocationMode = online
+            yield return new object?[] { new Dictionary<string, string> { { HttpTlsOptions.RevocationMode, "online" } }, new TlsProperties { IsTlsEnabled = true, RevocationMode = X509RevocationMode.Online } };
+            // RevocationMode = offline
+            yield return new object?[] { new Dictionary<string, string> { { HttpTlsOptions.RevocationMode, "offline" } }, new TlsProperties { IsTlsEnabled = true, RevocationMode = X509RevocationMode.Offline } };
+            // RevocationMode = nocheck
+            yield return new object?[] { new Dictionary<string, string> { { HttpTlsOptions.RevocationMode, "nocheck" } }, new TlsProperties { IsTlsEnabled = true, RevocationMode = X509RevocationMode.NoCheck } };
+            // RevocationMode case insensitive
+            yield return new object?[] { new Dictionary<string, string> { { HttpTlsOptions.RevocationMode, "ONLINE" } }, new TlsProperties { IsTlsEnabled = true, RevocationMode = X509RevocationMode.Online } };
+            yield return new object?[] { new Dictionary<string, string> { { HttpTlsOptions.RevocationMode, "OffLine" } }, new TlsProperties { IsTlsEnabled = true, RevocationMode = X509RevocationMode.Offline } };
+            yield return new object?[] { new Dictionary<string, string> { { HttpTlsOptions.RevocationMode, "NoCheck" } }, new TlsProperties { IsTlsEnabled = true, RevocationMode = X509RevocationMode.NoCheck } };
+            // RevocationMode with whitespace
+            yield return new object?[] { new Dictionary<string, string> { { HttpTlsOptions.RevocationMode, " online " } }, new TlsProperties { IsTlsEnabled = true, RevocationMode = X509RevocationMode.Online } };
+            // RevocationMode invalid value defaults to Online
+            yield return new object?[] { new Dictionary<string, string> { { HttpTlsOptions.RevocationMode, "invalid" } }, new TlsProperties { IsTlsEnabled = true, RevocationMode = X509RevocationMode.Online } };
+            yield return new object?[] { new Dictionary<string, string> { { HttpTlsOptions.RevocationMode, "" } }, new TlsProperties { IsTlsEnabled = true, RevocationMode = X509RevocationMode.Online } };
         }
 
         public static IEnumerable<object?[]> GetStandardTlsOptionsTestData()
@@ -86,6 +105,24 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Apache.Hive2
             yield return new object?[] { new Dictionary<string, string> { { StandardTlsOptions.IsTlsEnabled, "TruE" }, { StandardTlsOptions.AllowSelfSigned, "True" }, { StandardTlsOptions.AllowHostnameMismatch, "True" } }, new TlsProperties { IsTlsEnabled = true, DisableServerCertificateValidation = false, AllowSelfSigned = true, AllowHostnameMismatch = true } };
             // invalid certificate path
             yield return new object?[] { new Dictionary<string, string> { { StandardTlsOptions.IsTlsEnabled, "True" }, { StandardTlsOptions.AllowSelfSigned, "True" }, { StandardTlsOptions.AllowHostnameMismatch, "True" }, { StandardTlsOptions.TrustedCertificatePath, "" } }, null, typeof(FileNotFoundException) };
+
+            // RevocationMode tests - default is Online
+            yield return new object?[] { new Dictionary<string, string> { { StandardTlsOptions.IsTlsEnabled, "True" } }, new TlsProperties { IsTlsEnabled = true, RevocationMode = X509RevocationMode.Online } };
+            // RevocationMode = online
+            yield return new object?[] { new Dictionary<string, string> { { StandardTlsOptions.RevocationMode, "online" } }, new TlsProperties { IsTlsEnabled = true, RevocationMode = X509RevocationMode.Online } };
+            // RevocationMode = offline
+            yield return new object?[] { new Dictionary<string, string> { { StandardTlsOptions.RevocationMode, "offline" } }, new TlsProperties { IsTlsEnabled = true, RevocationMode = X509RevocationMode.Offline } };
+            // RevocationMode = nocheck
+            yield return new object?[] { new Dictionary<string, string> { { StandardTlsOptions.RevocationMode, "nocheck" } }, new TlsProperties { IsTlsEnabled = true, RevocationMode = X509RevocationMode.NoCheck } };
+            // RevocationMode case insensitive
+            yield return new object?[] { new Dictionary<string, string> { { StandardTlsOptions.RevocationMode, "ONLINE" } }, new TlsProperties { IsTlsEnabled = true, RevocationMode = X509RevocationMode.Online } };
+            yield return new object?[] { new Dictionary<string, string> { { StandardTlsOptions.RevocationMode, "OffLine" } }, new TlsProperties { IsTlsEnabled = true, RevocationMode = X509RevocationMode.Offline } };
+            yield return new object?[] { new Dictionary<string, string> { { StandardTlsOptions.RevocationMode, "NoCheck" } }, new TlsProperties { IsTlsEnabled = true, RevocationMode = X509RevocationMode.NoCheck } };
+            // RevocationMode with whitespace
+            yield return new object?[] { new Dictionary<string, string> { { StandardTlsOptions.RevocationMode, " online " } }, new TlsProperties { IsTlsEnabled = true, RevocationMode = X509RevocationMode.Online } };
+            // RevocationMode invalid value defaults to Online
+            yield return new object?[] { new Dictionary<string, string> { { StandardTlsOptions.RevocationMode, "invalid" } }, new TlsProperties { IsTlsEnabled = true, RevocationMode = X509RevocationMode.Online } };
+            yield return new object?[] { new Dictionary<string, string> { { StandardTlsOptions.RevocationMode, "" } }, new TlsProperties { IsTlsEnabled = true, RevocationMode = X509RevocationMode.Online } };
         }
     }
 }
