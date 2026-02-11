@@ -1761,6 +1761,87 @@ TEST_F(ConnectionProfiles, UseEnvVar) {
   UnsetConfigPath();
 }
 
+TEST_F(ConnectionProfiles, UseEnvVarNotExist) {
+  auto filepath = temp_dir / "profile.toml";
+  toml::table profile = toml::parse(R"|(
+    version = 1
+    driver = "adbc_driver_sqlite"
+    [options]
+    foo = "env_var(FOOBAR_ENV_VAR_THAT_DOES_NOT_EXIST)"
+  )|");
+
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << profile;
+  test_manifest_file.close();
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+
+  // find profile by name using ADBC_PROFILE_PATH
+  SetConfigPath(temp_dir.string().c_str());
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+              IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("Unknown database option foo=''"));
+  UnsetConfigPath();
+}
+
+TEST_F(ConnectionProfiles, UseEnvVarMalformed) {
+  auto filepath = temp_dir / "profile.toml";
+  toml::table profile = toml::parse(R"|(
+    version = 1
+    driver = "adbc_driver_sqlite"
+    [options]
+    foo = "env_var(ENV_VAR_WITHOUT_CLOSING_PAREN"
+  )|");
+
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << profile;
+  test_manifest_file.close();
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+
+  // find profile by name using ADBC_PROFILE_PATH
+  SetConfigPath(temp_dir.string().c_str());
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("Malformed env_var() profile value: missing closing parenthesis"));
+  UnsetConfigPath();
+}
+
+TEST_F(ConnectionProfiles, UseEnvVarMissingArg) {
+  auto filepath = temp_dir / "profile.toml";
+  toml::table profile = toml::parse(R"|(
+    version = 1
+    driver = "adbc_driver_sqlite"
+    [options]
+    foo = "env_var()"
+  )|");
+
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << profile;
+  test_manifest_file.close();
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+
+  // find profile by name using ADBC_PROFILE_PATH
+  SetConfigPath(temp_dir.string().c_str());
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("Malformed env_var() profile value: missing environment variable name"));
+  UnsetConfigPath();
+}
+
 TEST_F(ConnectionProfiles, UseEnvVarInterpolation) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = toml::parse(R"|(

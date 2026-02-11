@@ -2343,6 +2343,10 @@ AdbcStatusCode InternalInitializeProfile(TempDatabase* args,
     args->driver = driver_name;
   }
 
+  if (guard.profile.init_func != nullptr) {
+    args->init_func = guard.profile.init_func;
+  }
+
   const char** keys = nullptr;
   const char** values = nullptr;
   size_t num_options = 0;
@@ -2384,14 +2388,14 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
     return ADBC_STATUS_INVALID_STATE;
   }
   TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
+  const auto profile_in_use = args->options.find("profile");
+  if (profile_in_use != args->options.end()) {
+    std::string_view profile = profile_in_use->second;
+    CHECK_STATUS(InternalInitializeProfile(args, profile, error));
+    args->options.erase("profile");
+  }
+  
   if (!args->init_func) {
-    const auto profile_in_use = args->options.find("profile");
-    if (profile_in_use != args->options.end()) {
-      std::string_view profile = profile_in_use->second;
-      CHECK_STATUS(InternalInitializeProfile(args, profile, error));
-      args->options.erase("profile");
-    }
-
     const auto uri = args->options.find("uri");
     if (args->driver.empty() && uri != args->options.end()) {
       std::string owned_uri = uri->second;
