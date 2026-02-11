@@ -2394,7 +2394,7 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
     CHECK_STATUS(InternalInitializeProfile(args, profile, error));
     args->options.erase("profile");
   }
-  
+
   if (!args->init_func) {
     const auto uri = args->options.find("uri");
     if (args->driver.empty() && uri != args->options.end()) {

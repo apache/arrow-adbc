@@ -176,8 +176,8 @@ ADBC_EXPORT
 const char* AdbcStatusCodeMessage(AdbcStatusCode code);
 
 /// \defgroup adbc-driver-manager-connection-profile Connection Profiles
-/// Similar to odbc.ini, the ADBC driver manager can support "connection profiles"
-/// that specify a driver and options to use when connecting. This allows users to
+/// The ADBC driver manager can support "connection profiles" that specify
+/// a driver and options to use when connecting. This allows users to
 /// specify connection information in a file or environment variable, and have the
 /// driver manager load the appropriate driver and set options accordingly.
 ///
@@ -209,6 +209,18 @@ struct ADBC_EXPORT AdbcConnectionProfile {
 
   /// \brief Release the profile and perform any cleanup.
   void (*release)(struct AdbcConnectionProfile* profile);
+
+  /// \brief Allow providing a custom init_func
+  ///
+  /// If this is not NULL, the driver manager will use this function
+  /// to initialize the driver instead of using the normal driver search
+  /// behavior. This allows the profile to have complete control over
+  /// how the driver is initialized, and can be used to implement custom
+  /// loading behavior or to load drivers from non-traditional sources.
+  ///
+  /// If this is NULL, the driver manager will use the normal driver search
+  /// behavior to initialize the driver.
+  AdbcDriverInitFunc init_func;
 
   /// \brief Get the driver to use as specified by this profile.
   ///
