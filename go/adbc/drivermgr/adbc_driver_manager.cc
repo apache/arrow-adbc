@@ -1187,7 +1187,8 @@ struct FilesystemProfile {
     };
 
     out->GetDriverName = [](AdbcConnectionProfile* profile, const char** out,
-                            AdbcDriverInitFunc* init_func, struct AdbcError* error) -> AdbcStatusCode {
+                            AdbcDriverInitFunc* init_func,
+                            struct AdbcError* error) -> AdbcStatusCode {
       if (!profile || !profile->private_data) {
         SetError(error, "Invalid connection profile");
         return ADBC_STATUS_INVALID_ARGUMENT;
@@ -2340,7 +2341,8 @@ AdbcStatusCode InternalInitializeProfile(TempDatabase* args,
 
   const char* driver_name = nullptr;
   AdbcDriverInitFunc init_func = nullptr;
-  CHECK_STATUS(guard.profile.GetDriverName(&guard.profile, &driver_name, &init_func, error));
+  CHECK_STATUS(
+      guard.profile.GetDriverName(&guard.profile, &driver_name, &init_func, error));
   if (driver_name != nullptr && strlen(driver_name) > 0) {
     args->driver = driver_name;
   }
