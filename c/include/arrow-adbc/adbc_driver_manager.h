@@ -220,7 +220,8 @@ struct ADBC_EXPORT AdbcConnectionProfile {
   /// \param[in] profile The profile to query.
   /// \param[out] driver_name The name of the driver to use, or NULL if not specified.
   /// \param[out] init_func The init function to use for the driver, or NULL if not
-  /// specified. \param[out] error An optional location to return an error message
+  ///   specified.
+  /// \param[out] error An optional location to return an error message
   AdbcStatusCode (*GetDriverName)(struct AdbcConnectionProfile* profile,
                                   const char** driver_name, AdbcDriverInitFunc* init_func,
                                   struct AdbcError* error);
