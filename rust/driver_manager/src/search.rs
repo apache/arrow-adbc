@@ -41,9 +41,9 @@ use crate::error::libloading_error_to_adbc_error;
 const ERR_DETAIL_DRIVER_LOAD_TRACE: &str = "adbc.drivermanager.driver_load_trace";
 
 #[derive(Debug, Default)]
-pub(crate) struct DriverInfo {
-    pub(crate) lib_path: PathBuf,
-    pub(crate) entrypoint: Option<Vec<u8>>,
+struct DriverInfo {
+    lib_path: PathBuf,
+    entrypoint: Option<Vec<u8>>,
     // TODO: until we add more logging these are unused so we'll leave
     // them out until such time that we do so.
     // driver_name: String,
@@ -52,7 +52,7 @@ pub(crate) struct DriverInfo {
 }
 
 impl DriverInfo {
-    pub fn load_driver_manifest(manifest_file: &Path) -> Result<DriverInfo> {
+    fn load_driver_manifest(manifest_file: &Path) -> Result<DriverInfo> {
         let contents = fs::read_to_string(manifest_file).map_err(|e| {
             Error::with_message_and_status(
                 format!("Could not read manifest '{}': {e}", manifest_file.display()),
@@ -148,10 +148,7 @@ impl DriverInfo {
     }
 
     #[cfg(target_os = "windows")]
-    pub(crate) fn load_from_registry(
-        root: &windows_registry::Key,
-        driver_name: &OsStr,
-    ) -> Result<DriverInfo> {
+    fn load_from_registry(root: &windows_registry::Key, driver_name: &OsStr) -> Result<DriverInfo> {
         const ADBC_DRIVER_REGISTRY: &str = "SOFTWARE\\ADBC\\Drivers";
         let drivers_key = root
             .open(ADBC_DRIVER_REGISTRY)
@@ -342,7 +339,7 @@ impl<'a> DriverLibrary<'a> {
         Self::load_library(&filename)
     }
 
-    pub(crate) fn load_library_from_manifest(manifest_file: &Path) -> Result<SearchHit> {
+    fn load_library_from_manifest(manifest_file: &Path) -> Result<SearchHit> {
         let info = DriverInfo::load_driver_manifest(manifest_file)?;
         let library = Self::load_library(&info.lib_path)?;
         Ok(SearchHit::new(info.lib_path, library, info.entrypoint))
@@ -429,7 +426,7 @@ impl<'a> DriverLibrary<'a> {
     }
 
     #[cfg(target_os = "windows")]
-    pub(crate) fn load_library_from_registry(
+    fn load_library_from_registry(
         root: &windows_registry::Key,
         driver_name: &OsStr,
     ) -> Result<SearchHit> {
@@ -439,7 +436,7 @@ impl<'a> DriverLibrary<'a> {
     }
 
     #[cfg(target_os = "windows")]
-    pub(crate) fn find_driver(
+    fn find_driver(
         driver_path: &Path,
         load_flags: LoadFlags,
         additional_search_paths: Option<Vec<PathBuf>>,
@@ -530,7 +527,7 @@ impl<'a> DriverLibrary<'a> {
     }
 
     #[cfg(not(windows))]
-    pub(crate) fn find_driver(
+    fn find_driver(
         driver_path: &Path,
         load_flags: LoadFlags,
         additional_search_paths: Option<Vec<PathBuf>>,
@@ -580,7 +577,7 @@ impl<'a> DriverLibrary<'a> {
     ///
     /// The first successful load will return the library path, the loaded library, and an optional
     /// entrypoint defined in the manifest in case it was loaded from one that specified it.
-    pub(crate) fn search_path_list(
+    fn search_path_list(
         driver_path: &Path,
         path_list: &[PathBuf],
         trace: &mut Vec<Error>,
@@ -615,7 +612,7 @@ impl<'a> DriverLibrary<'a> {
     }
 
     /// Construct default entrypoint from the library path.
-    pub(crate) fn get_default_entrypoint(driver_path: impl AsRef<OsStr>) -> String {
+    fn get_default_entrypoint(driver_path: impl AsRef<OsStr>) -> String {
         // - libadbc_driver_sqlite.so.2.0.0 -> AdbcDriverSqliteInit
         // - adbc_driver_sqlite.dll -> AdbcDriverSqliteInit
         // - proprietary_driver.dll -> AdbcProprietaryDriverInit
@@ -637,7 +634,7 @@ impl<'a> DriverLibrary<'a> {
     }
 
     /// Construct default entrypoint from the library name.
-    pub(crate) fn get_default_entrypoint_from_name(name: &str) -> String {
+    fn get_default_entrypoint_from_name(name: &str) -> String {
         let entrypoint = name
             .split(&['-', '_'][..])
             .map(|s| {
@@ -660,7 +657,7 @@ impl<'a> DriverLibrary<'a> {
     }
 }
 
-pub(crate) const fn arch_triplet() -> (&'static str, &'static str, &'static str) {
+const fn arch_triplet() -> (&'static str, &'static str, &'static str) {
     #[cfg(target_arch = "x86_64")]
     const ARCH: &str = "amd64";
     #[cfg(all(target_arch = "aarch64", target_endian = "big"))]
@@ -694,7 +691,7 @@ pub(crate) const fn arch_triplet() -> (&'static str, &'static str, &'static str)
 }
 
 #[cfg(target_os = "windows")]
-pub(crate) mod target_windows {
+mod target_windows {
     use windows_sys as windows;
 
     use std::ffi::c_void;
@@ -730,7 +727,7 @@ pub(crate) mod target_windows {
     }
 }
 
-pub(crate) fn user_config_dir() -> Option<PathBuf> {
+fn user_config_dir() -> Option<PathBuf> {
     #[cfg(target_os = "windows")]
     {
         use target_windows::user_config_dir;
@@ -771,7 +768,7 @@ pub(crate) fn user_config_dir() -> Option<PathBuf> {
     }
 }
 
-pub(crate) fn system_config_dir() -> Option<PathBuf> {
+fn system_config_dir() -> Option<PathBuf> {
     #[cfg(target_os = "macos")]
     {
         Some(PathBuf::from("/Library/Application Support/ADBC/Drivers"))
