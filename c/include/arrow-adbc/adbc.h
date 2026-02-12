@@ -1178,20 +1178,6 @@ struct ADBC_EXPORT AdbcDriver {
   /// the AdbcDriverInitFunc is greater than or equal to
   /// ADBC_VERSION_1_1_0.
   ///
-  /// When a driver implementing an older spec is loaded by a newer
-  /// driver manager, the newer manager will allocate the new, expanded
-  /// AdbcDriver struct and attempt to have the driver initialize it with
-  /// the newer version. This must return an error, after which the driver
-  /// will try again with successively older versions all the way back to
-  /// ADBC_VERSION_1_0_0. The driver must not access the new fields,
-  /// which will carry undefined values.
-  ///
-  /// When a driver implementing a newer spec is loaded by an older
-  /// driver manager, the older manager will allocate the old AdbcDriver
-  /// struct and attempt to have the driver initialize it with the
-  /// older version.  The driver must not access the new fields,
-  /// and should initialize the old fields.
-  ///
   /// @{
 
   int (*ErrorGetDetailCount)(const struct AdbcError* error);
