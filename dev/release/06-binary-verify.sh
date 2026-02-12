@@ -58,6 +58,11 @@ main() {
 
     set_resolved_issues "${RELEASE}"
 
+    # Embed source tarball hash into the email. Assume directory structure
+    # from 02-sign.sh.
+    local -r download_dir="packages/${tag}"
+    local -r SOURCE_TARBALL_HASH=$(cat $(find "${download_dir}" -type f -name "apache-arrow-adbc-${RELEASE}*.tar.gz.sha512") | awk '{print $1}')
+
     echo "The following draft email has been created to send to the"
     echo "dev@arrow.apache.org mailing list"
     echo ""
@@ -84,6 +89,10 @@ The subcomponents are versioned independently:
 This release candidate is based on commit: ${commit} [2]
 
 The source release rc${rc_number} is hosted at [3].
+This is not a permanent URL. If the RC is accepted, it will be moved to the final release location.
+The SHA512 hash of the source tarball is:
+${SOURCE_TARBALL_HASH}
+
 The binary artifacts are hosted at [4][5][6][7][8].
 The changelog is located at [9].
 
