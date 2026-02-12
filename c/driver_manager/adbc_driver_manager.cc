@@ -429,7 +429,7 @@ AdbcStatusCode ProcessProfileValue(std::string_view value, std::string& out,
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
-  const static std::regex pattern(R"(\{\{\s*([^{}]*?)\s*\}\})");
+  static const std::regex pattern(R"(\{\{\s*([^{}]*?)\s*\}\})");
   auto end_of_last_match = value.begin();
   auto begin = std::regex_iterator(value.begin(), value.end(), pattern);
   auto end = decltype(begin){};
