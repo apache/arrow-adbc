@@ -179,7 +179,7 @@ Profile values can reference environment variables using the ``{{ env_var() }}``
    driver = "adbc_driver_snowflake"
 
    [options]
-   adbc.snowflake.sql.account = "{{ env_var(SNOWFLAKE_ACCOUNT) }}
+   adbc.snowflake.sql.account = "{{ env_var(SNOWFLAKE_ACCOUNT) }}""
    adbc.snowflake.sql.auth_token = "{{ env_var(SNOWFLAKE_TOKEN) }}"
    adbc.snowflake.sql.warehouse = "COMPUTE_WH"
 
