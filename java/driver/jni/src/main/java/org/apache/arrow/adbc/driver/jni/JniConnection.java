@@ -20,8 +20,10 @@ package org.apache.arrow.adbc.driver.jni;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
+import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.adbc.driver.jni.impl.JniLoader;
 import org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle;
+import org.apache.arrow.adbc.driver.jni.impl.NativeStatementHandle;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.ipc.ArrowReader;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -38,6 +40,40 @@ public class JniConnection implements AdbcConnection {
   @Override
   public AdbcStatement createStatement() throws AdbcException {
     return new JniStatement(allocator, JniLoader.INSTANCE.openStatement(handle));
+  }
+
+  @Override
+  public AdbcStatement bulkIngest(String targetTableName, BulkIngestMode mode)
+      throws AdbcException {
+    NativeStatementHandle stmtHandle = JniLoader.INSTANCE.openStatement(handle);
+    try {
+      String modeValue;
+      switch (mode) {
+        case CREATE:
+          modeValue = "adbc.ingest.mode.create";
+          break;
+        case APPEND:
+          modeValue = "adbc.ingest.mode.append";
+          break;
+        case REPLACE:
+          modeValue = "adbc.ingest.mode.replace";
+          break;
+        case CREATE_APPEND:
+          modeValue = "adbc.ingest.mode.create_append";
+          break;
+        default:
+          throw new IllegalArgumentException("Unknown bulk ingest mode: " + mode);
+      }
+
+      JniLoader.INSTANCE.statementSetOption(
+          stmtHandle, "adbc.ingest.target_table", targetTableName);
+      JniLoader.INSTANCE.statementSetOption(stmtHandle, "adbc.ingest.mode", modeValue);
+
+      return new JniStatement(allocator, stmtHandle);
+    } catch (Exception e) {
+      stmtHandle.close();
+      throw e;
+    }
   }
 
   @Override
