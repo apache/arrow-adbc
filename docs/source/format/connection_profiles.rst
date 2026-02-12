@@ -153,10 +153,25 @@ The ``[options]`` section contains driver-specific configuration options. Option
 
       adbc.snowflake.sql.client_session_keep_alive = true
 
-Environment Variable Substitution
-----------------------------------
+Value Substitution
+------------------
 
-Profile values can reference environment variables using the ``env_var()`` syntax:
+Profile values support substitution of environment variables and other dynamic content.
+This allows profiles to reference sensitive information (like passwords or tokens) without
+hardcoding them in the profile file. Dynamic values can be injected by the presence of the ``{{ }}`` syntax,
+similar to many templating engines. Within the double curly braces, the driver manager can
+recognize certain functions to perform substitutions.
+
+Currently, the only recognized function is ``env_var()`` for environment variable substitution,
+but this may be extended in the future to support other types of dynamic content.
+
+.. important::
+   Dynamic content substitution only applies to option **values**, not **keys**.
+
+Environment Variable Substitution
+'''''''''''''''''''''''''''''''''
+
+Profile values can reference environment variables using the ``{{ env_var() }}`` syntax:
 
 .. code-block:: toml
 
@@ -164,14 +179,11 @@ Profile values can reference environment variables using the ``env_var()`` synta
    driver = "adbc_driver_snowflake"
 
    [options]
-   adbc.snowflake.sql.account = "env_var(SNOWFLAKE_ACCOUNT)"
-   adbc.snowflake.sql.auth_token = "env_var(SNOWFLAKE_TOKEN)"
+   adbc.snowflake.sql.account = "{{ env_var(SNOWFLAKE_ACCOUNT) }}
+   adbc.snowflake.sql.auth_token = "{{ env_var(SNOWFLAKE_TOKEN) }}"
    adbc.snowflake.sql.warehouse = "COMPUTE_WH"
 
-When the driver manager encounters ``env_var(VAR_NAME)``, it replaces the value with the contents of environment variable ``VAR_NAME``. If the environment variable is not set, the value becomes an empty string.
-
-.. important::
-   Environment variable substitution only applies to option **values**, not **keys**.
+When the driver manager encounters ``{{ env_var(VAR_NAME) }}``, it replaces the value with the contents of environment variable ``VAR_NAME``. If the environment variable is not set, the value becomes an empty string.
 
 Profile Search Locations
 =========================
@@ -216,8 +228,8 @@ File: ``~/.config/adbc/profiles/snowflake_prod.toml``
    driver = "snowflake"
 
    [options]
-   adbc.snowflake.sql.account = "env_var(SNOWFLAKE_ACCOUNT)"
-   adbc.snowflake.sql.auth_token = "env_var(SNOWFLAKE_TOKEN)"
+   adbc.snowflake.sql.account = "{{ env_var(SNOWFLAKE_ACCOUNT) }}"
+   adbc.snowflake.sql.auth_token = "{{ env_var(SNOWFLAKE_TOKEN) }}"
    adbc.snowflake.sql.warehouse = "PRODUCTION_WH"
    adbc.snowflake.sql.database = "PROD_DB"
    adbc.snowflake.sql.schema = "PUBLIC"
@@ -251,7 +263,7 @@ File: ``~/.config/adbc/profiles/postgres_dev.toml``
    [options]
    uri = "postgresql://localhost:5432/dev_db?sslmode=disable"
    username = "dev_user"
-   password = "env_var(POSTGRES_DEV_PASSWORD)"
+   password = "{{ env_var(POSTGRES_DEV_PASSWORD) }}"
 
 Example 3: Driver-Agnostic Profile
 -----------------------------------
@@ -325,6 +337,7 @@ A profile provider must implement the ``AdbcConnectionProfile`` interface:
        void (*release)(struct AdbcConnectionProfile* profile);
        AdbcStatusCode (*GetDriverName)(struct AdbcConnectionProfile* profile,
                                        const char** driver_name,
+                                       AdbcDriverInit* init_func,
                                        struct AdbcError* error);
        AdbcStatusCode (*GetOptions)(struct AdbcConnectionProfile* profile,
                                     const char*** keys, const char*** values,
@@ -495,7 +508,7 @@ Best Practices
    .. code-block:: toml
 
       # Good
-      password = "env_var(DB_PASSWORD)"
+      password = "{{ env_var(DB_PASSWORD) }}"
 
       # Bad
       password = "my_secret_password"
@@ -504,7 +517,7 @@ Best Practices
 
 3. **Document profile schemas**: Maintain documentation of required environment variables for each profile.
 
-4. **Version control without secrets**: Profile files can be version controlled when using ``env_var()`` for sensitive values.
+4. **Version control without secrets**: Profile files can be version controlled when using ``{{ env_var(VAR_NAME) }}`` for sensitive values.
 
 5. **Test profile loading**: Verify profiles load correctly in CI/CD pipelines.
 

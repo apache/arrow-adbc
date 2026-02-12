@@ -47,6 +47,7 @@
 #include <cstring>
 #include <filesystem>
 #include <functional>
+#include <regex>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -428,66 +429,76 @@ AdbcStatusCode ProcessProfileValue(std::string_view value, std::string& out,
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
-  size_t pos = 0;
-  size_t prev_pos = 0;
+  std::regex pattern(R"(\{\{\s*([^{}]*?)\s*\}\})");
+  auto end_of_last_match = value.begin();
+  auto begin = std::regex_iterator(value.begin(), value.end(), pattern);
+  auto end = decltype(begin){};
+  std::match_results<std::string_view::iterator>::difference_type pos_last_match = 0;
+
   out.resize(0);
-  while ((pos = value.find("env_var(", prev_pos)) != std::string_view::npos) {
-    const auto closing_paren = value.find_first_of(')', pos);
-    if (closing_paren == std::string_view::npos) {
-      SetError(error, "Malformed env_var() profile value: missing closing parenthesis");
-      return ADBC_STATUS_INVALID_ARGUMENT;
-    }
+  for (auto itr = begin; itr != end; ++itr) {
+    auto match = *itr;
+    auto pos_match = match.position();
+    auto diff = pos_match - pos_last_match;
+    auto start_match = end_of_last_match;
+    std::advance(start_match, diff);
+    if (pos_match > 0 && value[pos_match - 1] == '\\') {
+      out.append(end_of_last_match, start_match - 1);  // don't append the backslash
+      out.append(match.str());
+    } else {
+      out.append(end_of_last_match, start_match);
 
-    const auto env_var_start = pos + 8;
-    const auto env_var_len = closing_paren - env_var_start;
-    if (env_var_len == 0) {
-      SetError(error,
-               "Malformed env_var() profile value: missing environment variable name");
-      return ADBC_STATUS_INVALID_ARGUMENT;
-    }
+      const auto content = match[1].str();
+      if (content.rfind("env_var(", 0) != 0) {
+        SetError(error, "Unsupported interpolation type in profile value: " + content);
+        return ADBC_STATUS_INVALID_ARGUMENT;
+      }
 
-    out.append(value.substr(prev_pos, pos - prev_pos));
-    prev_pos = closing_paren + 1;
+      if (content[content.size() - 1] != ')') {
+        SetError(error, "Malformed env_var() profile value: missing closing parenthesis");
+        return ADBC_STATUS_INVALID_ARGUMENT;
+      }
 
-    // Extract the environment variable name from the value
-    // which should be formatted as env_var(VAR_NAME) as we confirmed
-    // above.
-    const auto env_var_name = value.substr(env_var_start, env_var_len);
+      const auto env_var_name = content.substr(8, content.size() - 9);
+      if (env_var_name.empty()) {
+        SetError(error,
+                 "Malformed env_var() profile value: missing environment variable name");
+        return ADBC_STATUS_INVALID_ARGUMENT;
+      }
+
 #ifdef _WIN32
-    auto local_env_var = Utf8Decode(std::string(env_var_name));
-    DWORD required_size = GetEnvironmentVariableW(local_env_var.c_str(), NULL, 0);
-    if (required_size == 0) {
-      out = "";
-      return ADBC_STATUS_OK;
-    }
+      auto local_env_var = Utf8Decode(std::string(env_var_name));
+      DWORD required_size = GetEnvironmentVariableW(local_env_var.c_str(), NULL, 0);
+      if (required_size == 0) {
+        out = "";
+        return ADBC_STATUS_OK;
+      }
 
-    std::wstring wvalue;
-    wvalue.resize(required_size);
-    DWORD actual_size =
-        GetEnvironmentVariableW(local_env_var.c_str(), wvalue.data(), required_size);
-    // remove null terminator
-    wvalue.resize(actual_size);
-    const auto env_var_value = Utf8Encode(wvalue);
+      std::wstring wvalue;
+      wvalue.resize(required_size);
+      DWORD actual_size =
+          GetEnvironmentVariableW(local_env_var.c_str(), wvalue.data(), required_size);
+      // remove null terminator
+      wvalue.resize(actual_size);
+      const auto env_var_value = Utf8Encode(wvalue);
 #else
-    const char* env_value = std::getenv(std::string(env_var_name).c_str());
-    if (!env_value) {
-      out = "";
-      return ADBC_STATUS_OK;
-    }
-    const auto env_var_value = std::string(env_value);
+      const char* env_value = std::getenv(env_var_name.c_str());
+      if (!env_value) {
+        out = "";
+        return ADBC_STATUS_OK;
+      }
+      const auto env_var_value = std::string(env_value);
 #endif
+      out.append(env_var_value);
+    }
 
-    const size_t new_total_len =
-        out.size() + env_var_value.size() + (value.size() - closing_paren - 1);
-    out.reserve(new_total_len);
-    out.append(env_var_value);
+    auto length_match = match.length();
+    pos_last_match = pos_match + length_match;
+    end_of_last_match = start_match;
+    std::advance(end_of_last_match, length_match);
   }
 
-  if (out.size() == 0) {
-    out = std::string(value);
-  } else {  // append remainder
-    out.append(value.substr(prev_pos));
-  }
+  out.append(end_of_last_match, value.end());
   return ADBC_STATUS_OK;
 }
 
