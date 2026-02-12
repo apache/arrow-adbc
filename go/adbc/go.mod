@@ -22,7 +22,7 @@ go 1.25.0
 toolchain go1.25.5
 
 require (
-	cloud.google.com/go/bigquery v1.72.0
+	cloud.google.com/go/bigquery v1.73.1
 	github.com/apache/arrow-go/v18 v18.5.1
 	github.com/bluele/gcache v0.0.2
 	github.com/databricks/databricks-sql-go v1.9.0
@@ -48,7 +48,7 @@ require (
 )
 
 require (
-	cloud.google.com/go v0.121.6 // indirect
+	cloud.google.com/go v0.123.0 // indirect
 	cloud.google.com/go/auth v0.18.1 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.8 // indirect
 	cloud.google.com/go/compute/metadata v0.9.0 // indirect
@@ -129,7 +129,7 @@ require (
 	github.com/stretchr/objx v0.5.2 // indirect
 	github.com/zeebo/xxh3 v1.0.2 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.61.0 // indirect
+	go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc v0.63.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.61.0 // indirect
 	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.40.0 // indirect
 	go.opentelemetry.io/otel/metric v1.40.0 // indirect
