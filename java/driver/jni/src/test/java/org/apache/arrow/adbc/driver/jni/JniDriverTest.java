@@ -246,9 +246,7 @@ class JniDriverTest {
   @Test
   void preparedStatement() throws Exception {
     final Schema paramSchema =
-        new Schema(
-            Collections.singletonList(
-                Field.nullable("", Types.MinorType.BIGINT.getType())));
+        new Schema(Collections.singletonList(Field.nullable("", Types.MinorType.BIGINT.getType())));
     try (final BufferAllocator allocator = new RootAllocator()) {
       JniDriver driver = new JniDriver(allocator);
       Map<String, Object> parameters = new HashMap<>();
@@ -278,8 +276,7 @@ class JniDriverTest {
   void bulkIngest() throws Exception {
     final Schema schema =
         new Schema(
-            Collections.singletonList(
-                Field.nullable("v", Types.MinorType.BIGINT.getType())));
+            Collections.singletonList(Field.nullable("v", Types.MinorType.BIGINT.getType())));
     try (final BufferAllocator allocator = new RootAllocator()) {
       JniDriver driver = new JniDriver(allocator);
       Map<String, Object> parameters = new HashMap<>();

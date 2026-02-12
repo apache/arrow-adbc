@@ -433,15 +433,14 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementPrepare(
 
 JNIEXPORT void JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementSetOption(
-    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key,
-    jstring value) {
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key, jstring value) {
   try {
     struct AdbcError error = ADBC_ERROR_INIT;
     auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
     JniStringView key_str(env, key);
     JniStringView value_str(env, value);
-    CHECK_ADBC_ERROR(
-        AdbcStatementSetOption(ptr, key_str.value, value_str.value, &error), error);
+    CHECK_ADBC_ERROR(AdbcStatementSetOption(ptr, key_str.value, value_str.value, &error),
+                     error);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }

@@ -50,6 +50,5 @@ class NativeAdbc {
 
   static native void statementPrepare(long handle) throws AdbcException;
 
-  static native void statementSetOption(long handle, String key, String value)
-      throws AdbcException;
+  static native void statementSetOption(long handle, String key, String value) throws AdbcException;
 }
