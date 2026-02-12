@@ -1052,8 +1052,7 @@ AdbcStatusCode AdbcMultiResultSetRelease(struct AdbcMultiResultSet* result_set,
 /// \param[out] error An optional location to return an error message if necessary.
 ///
 /// \return ADBC_STATUS_NOT_IMPLEMENTED if the driver only supports fetching results
-///   as partitions, ADBC_STATUS_INVALID_STATE if called at an inappropriate time,
-///   and ADBC_STATUS_OK (or an appropriate error code) otherwise.
+///   as partitions or ADBC_STATUS_OK (or an appropriate error code) otherwise.
 AdbcStatusCode AdbcMultiResultSetNext(struct AdbcMultiResultSet* result_set,
                                       struct ArrowArrayStream* out,
                                       int64_t* rows_affected, struct AdbcError* error);
@@ -1061,8 +1060,6 @@ AdbcStatusCode AdbcMultiResultSetNext(struct AdbcMultiResultSet* result_set,
 /// \brief Get the next result set from a multi-result-set execution as partitions.
 ///
 /// \since ADBC API revision 1.2.0
-///
-/// The AdbcMultiResultSet must outlive the returned partitions.
 ///
 /// The driver can decide whether to allow fetching the next result set
 /// as a single stream or as a set of partitions.  If the driver does not
@@ -1266,19 +1263,10 @@ struct ADBC_EXPORT AdbcDriver {
   /// the AdbcDriverInitFunc is greater than or equal to
   /// ADBC_VERSION_1_2_0.
   ///
-  /// When a driver implementing an older spec is loaded by a newer
-  /// driver manager, the newer manager will allocate the new, expanded
-  /// AdbcDriver struct and attempt to have the driver initialize it with
-  /// the newer version. This must return an error, after which the driver
-  /// will try again with successively older versions all the way back to
-  /// ADBC_VERSION_1_0_0. The driver must not access the new fields,
-  /// which will carry undefined values.
-  ///
-  /// When a driver implementing a newer spec is loaded by an older
-  /// driver manager, the older manager will allocate the old AdbcDriver
-  /// struct and attempt to have the driver initialize it with the
-  /// older version.  The driver must not access the new fields,
-  /// and should initialize the old fields.
+  /// When the driver manager attempts to initalize a driver at a particular
+  /// version, such as the case where the driver manager and driver are using different
+  /// versions of the ADBC spec, the driver should not try to access any functions defined
+  /// in the spec after that version.
   ///
   /// @{
 
@@ -2211,9 +2199,9 @@ AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
 /// \return ADBC_STATUS_NOT_IMPLEMENTED if the driver does not support this,
 ///   and ADBC_STATUS_OK (or an appropriate error code) otherwise.
 ADBC_EXPORT
-AdbcStatusCode AdbcStatementExecuteMulti(struct AdbcStatement* statement,
-                                         struct AdbcMultiResultSet* results,
-                                         struct AdbcError* error);
+AdbcStatusCode AdbcStatementExecuteSchemaMulti(struct AdbcStatement* statement,
+                                               struct AdbcMultiResultSet* results,
+                                               struct AdbcError* error);
 
 /// \brief Execute a statement that potentially returns multiple result sets
 ///
