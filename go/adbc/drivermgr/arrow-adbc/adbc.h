@@ -1263,7 +1263,7 @@ struct ADBC_EXPORT AdbcDriver {
   /// the AdbcDriverInitFunc is greater than or equal to
   /// ADBC_VERSION_1_2_0.
   ///
-  /// When the driver manager attempts to initalize a driver at a particular
+  /// When the driver manager attempts to initialize a driver at a particular
   /// version, such as the case where the driver manager and driver are using different
   /// versions of the ADBC spec, the driver should not try to access any functions defined
   /// in the spec after that version.
