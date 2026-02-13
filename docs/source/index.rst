@@ -257,6 +257,7 @@ Why ADBC?
    format/comparison
    format/how_manager
    format/driver_manifests
+   format/connection_profiles
    format/related_work
 
 .. toctree::

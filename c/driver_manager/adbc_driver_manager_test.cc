@@ -43,6 +43,7 @@ std::filesystem::path InternalAdbcUserConfigDir();
 struct ParseDriverUriResult {
   std::string_view driver;
   std::optional<std::string_view> uri;
+  std::optional<std::string_view> profile;
 };
 
 std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view str);
@@ -624,11 +625,15 @@ TEST(AdbcDriverManagerInternal, InternalAdbcParsePath) {
 TEST(AdbcDriverManagerInternal, InternalAdbcParseDriverUri) {
   std::vector<std::pair<std::string, std::optional<ParseDriverUriResult>>> uris = {
       {"sqlite", std::nullopt},
-      {"sqlite:", {{"sqlite", std::nullopt}}},
-      {"sqlite:file::memory:", {{"sqlite", "file::memory:"}}},
-      {"sqlite:file::memory:?cache=shared", {{"sqlite", "file::memory:?cache=shared"}}},
+      {"sqlite:", {{"sqlite", std::nullopt, std::nullopt}}},
+      {"sqlite:file::memory:", {{"sqlite", "file::memory:", std::nullopt}}},
+      {"sqlite:file::memory:?cache=shared",
+       {{"sqlite", "file::memory:?cache=shared", std::nullopt}}},
       {"postgresql://a:b@localhost:9999/nonexistent",
-       {{"postgresql", "postgresql://a:b@localhost:9999/nonexistent"}}}};
+       {{"postgresql", "postgresql://a:b@localhost:9999/nonexistent", std::nullopt}}},
+      {"profile://foo_prof", {{"", std::nullopt, "foo_prof"}}},
+      {"profile:///foo/bar/profile.toml", {{"", std::nullopt, "/foo/bar/profile.toml"}}},
+  };
 
 #ifdef _WIN32
   auto temp_dir = std::filesystem::temp_directory_path() / "adbc_driver_manager_tests";
@@ -1458,6 +1463,506 @@ TEST_F(DriverManifest, ControlCodes) {
         ::testing::HasSubstr(
             "Note: driver name may have non-printable characters: `\\x16sqlite`"));
   }
+}
+
+class ConnectionProfiles : public ::testing::Test {
+ public:
+  void SetUp() override {
+    std::memset(&driver, 0, sizeof(driver));
+    std::memset(&error, 0, sizeof(error));
+
+    temp_dir =
+        std::filesystem::temp_directory_path() / "adbc_driver_manager_profile_test";
+    std::filesystem::create_directories(temp_dir);
+
+    simple_profile = toml::table{
+        {"version", 1},
+        {"driver", "adbc_driver_sqlite"},
+        {"options",
+         toml::table{
+             {"uri", "file::memory:"},
+         }},
+    };
+  }
+
+  void TearDown() override {
+    if (error.release) {
+      error.release(&error);
+    }
+
+    if (driver.release) {
+      ASSERT_THAT(driver.release(&driver, &error), IsOkStatus(&error));
+      ASSERT_EQ(driver.private_data, nullptr);
+      ASSERT_EQ(driver.private_manager, nullptr);
+    }
+
+    driver_path.clear();
+    if (std::filesystem::exists(temp_dir)) {
+      std::filesystem::remove_all(temp_dir);
+    }
+  }
+
+ protected:
+  void SetConfigPath(const char* path) {
+#ifdef _WIN32
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, path, -1, nullptr, 0);
+    std::wstring wpath(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, path, -1, &wpath[0], size_needed);
+    ASSERT_TRUE(SetEnvironmentVariableW(L"ADBC_PROFILE_PATH", wpath.c_str()));
+#else
+    setenv("ADBC_PROFILE_PATH", path, 1);
+#endif
+  }
+
+  void UnsetConfigPath() { SetConfigPath(""); }
+
+  struct AdbcDriver driver = {};
+  struct AdbcError error = {};
+
+  std::filesystem::path temp_dir;
+  std::filesystem::path driver_path;
+  toml::table simple_profile;
+};
+
+TEST_F(ConnectionProfiles, SetProfileOption) {
+  auto filepath = temp_dir / "profile.toml";
+  toml::table profile = simple_profile;
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << profile;
+  test_manifest_file.close();
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+
+  // absolute path to the profile
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", filepath.string().c_str(),
+                                    &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
+
+  // inherit additional_search_path_list
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
+                  &database.value, temp_dir.string().c_str(), &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
+
+  // find profile by name using ADBC_PROFILE_PATH
+  SetConfigPath(temp_dir.string().c_str());
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
+  UnsetConfigPath();
+}
+
+TEST_F(ConnectionProfiles, HierarchicalProfile) {
+  auto filepath = temp_dir / "dev" / "profile.toml";
+  std::filesystem::create_directories(filepath.parent_path());
+  toml::table profile = simple_profile;
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << profile;
+  test_manifest_file.close();
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+
+  SetConfigPath(temp_dir.string().c_str());
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "dev/profile", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
+  UnsetConfigPath();
+}
+
+TEST_F(ConnectionProfiles, UriProfileOption) {
+  auto filepath = temp_dir / "profile.toml";
+  toml::table profile = simple_profile;
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << profile;
+  test_manifest_file.close();
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+
+  // absolute path to the profile
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "uri",
+                                    ("profile://" + filepath.string()).c_str(), &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
+
+  // find profile by name using ADBC_PROFILE_PATH
+  SetConfigPath(temp_dir.string().c_str());
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "uri", "profile://profile", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
+  UnsetConfigPath();
+}
+
+TEST_F(ConnectionProfiles, DriverProfileOption) {
+  auto filepath = temp_dir / "profile.toml";
+  toml::table profile = simple_profile;
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << profile;
+  test_manifest_file.close();
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+
+  // absolute path to the profile
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "driver",
+                                    ("profile://" + filepath.string()).c_str(), &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
+
+  // find profile by name using ADBC_PROFILE_PATH
+  SetConfigPath(temp_dir.string().c_str());
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(
+      AdbcDatabaseSetOption(&database.value, "driver", "profile://profile", &error),
+      IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
+  UnsetConfigPath();
+}
+
+TEST_F(ConnectionProfiles, ExtraStringOption) {
+  auto filepath = temp_dir / "profile.toml";
+  toml::table profile = simple_profile;
+  profile["options"].as_table()->insert("foo", "bar");
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << profile;
+  test_manifest_file.close();
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+
+  // find profile by name using ADBC_PROFILE_PATH
+  SetConfigPath(temp_dir.string().c_str());
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+              IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("Unknown database option foo='bar'"));
+  UnsetConfigPath();
+}
+
+TEST_F(ConnectionProfiles, ExtraIntOption) {
+  auto filepath = temp_dir / "profile.toml";
+  toml::table profile = simple_profile;
+  profile["options"].as_table()->insert("foo", int64_t(42));
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << profile;
+  test_manifest_file.close();
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+
+  // find profile by name using ADBC_PROFILE_PATH
+  SetConfigPath(temp_dir.string().c_str());
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+              IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("Unknown database option foo=42"));
+  UnsetConfigPath();
+}
+
+TEST_F(ConnectionProfiles, ExtraDoubleOption) {
+  auto filepath = temp_dir / "profile.toml";
+  toml::table profile = simple_profile;
+  profile["options"].as_table()->insert("foo", 42.0);
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << profile;
+  test_manifest_file.close();
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+
+  // find profile by name using ADBC_PROFILE_PATH
+  SetConfigPath(temp_dir.string().c_str());
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+              IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("Unknown database option foo=42"));
+  UnsetConfigPath();
+}
+
+TEST_F(ConnectionProfiles, DotSeparatedKey) {
+  auto filepath = temp_dir / "profile.toml";
+  toml::table profile = toml::parse(R"(
+    version = 1
+    driver = "adbc_driver_sqlite"
+    [options]
+    foo.bar.baz = "bar"
+  )");
+
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << profile;
+  test_manifest_file.close();
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+
+  // find profile by name using ADBC_PROFILE_PATH
+  SetConfigPath(temp_dir.string().c_str());
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+              IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
+  ASSERT_THAT(error.message,
+              ::testing::HasSubstr("Unknown database option foo.bar.baz='bar'"));
+  UnsetConfigPath();
+}
+
+TEST_F(ConnectionProfiles, UseEnvVar) {
+  auto filepath = temp_dir / "profile.toml";
+  toml::table profile = toml::parse(R"|(
+    version = 1
+    driver = "adbc_driver_sqlite"
+    [options]
+    foo = "{{ env_var(ADBC_PROFILE_PATH) }}"
+  )|");
+
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << profile;
+  test_manifest_file.close();
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+
+  // find profile by name using ADBC_PROFILE_PATH
+  SetConfigPath(temp_dir.string().c_str());
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+              IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("Unknown database option foo='" +
+                                                  temp_dir.string() + "'"));
+  UnsetConfigPath();
+}
+
+TEST_F(ConnectionProfiles, UseEnvVarNotExist) {
+  auto filepath = temp_dir / "profile.toml";
+  toml::table profile = toml::parse(R"|(
+    version = 1
+    driver = "adbc_driver_sqlite"
+    [options]
+    foo = "{{ env_var(FOOBAR_ENV_VAR_THAT_DOES_NOT_EXIST) }}"
+  )|");
+
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << profile;
+  test_manifest_file.close();
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+
+  // find profile by name using ADBC_PROFILE_PATH
+  SetConfigPath(temp_dir.string().c_str());
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+              IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("Unknown database option foo=''"));
+  UnsetConfigPath();
+}
+
+TEST_F(ConnectionProfiles, UseEnvVarMalformed) {
+  auto filepath = temp_dir / "profile.toml";
+  toml::table profile = toml::parse(R"|(
+    version = 1
+    driver = "adbc_driver_sqlite"
+    [options]
+    foo = "{{ env_var(ENV_VAR_WITHOUT_CLOSING_PAREN }}"
+  )|");
+
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << profile;
+  test_manifest_file.close();
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+
+  // find profile by name using ADBC_PROFILE_PATH
+  SetConfigPath(temp_dir.string().c_str());
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+  ASSERT_THAT(error.message,
+              ::testing::HasSubstr(
+                  "Malformed env_var() profile value: missing closing parenthesis"));
+  UnsetConfigPath();
+}
+
+TEST_F(ConnectionProfiles, UseEnvVarMissingArg) {
+  auto filepath = temp_dir / "profile.toml";
+  toml::table profile = toml::parse(R"|(
+    version = 1
+    driver = "adbc_driver_sqlite"
+    [options]
+    foo = "{{ env_var() }}"
+  )|");
+
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << profile;
+  test_manifest_file.close();
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+
+  // find profile by name using ADBC_PROFILE_PATH
+  SetConfigPath(temp_dir.string().c_str());
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+  ASSERT_THAT(
+      error.message,
+      ::testing::HasSubstr(
+          "Malformed env_var() profile value: missing environment variable name"));
+  UnsetConfigPath();
+}
+
+TEST_F(ConnectionProfiles, UseEnvVarInterpolation) {
+  auto filepath = temp_dir / "profile.toml";
+  toml::table profile = toml::parse(R"|(
+    version = 1
+    driver = "adbc_driver_sqlite"
+    [options]
+    foo = "super {{ env_var(ADBC_PROFILE_PATH) }} duper"
+  )|");
+
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << profile;
+  test_manifest_file.close();
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+
+  // find profile by name using ADBC_PROFILE_PATH
+  SetConfigPath(temp_dir.string().c_str());
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+              IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("Unknown database option foo='super " +
+                                                  temp_dir.string() + " duper'"));
+  UnsetConfigPath();
+}
+
+TEST_F(ConnectionProfiles, UseEnvVarInterpolationMultiple) {
+  auto filepath = temp_dir / "profile.toml";
+  toml::table profile = toml::parse(R"|(
+    version = 1
+    driver = "adbc_driver_sqlite"
+    [options]
+    foo = "super {{ env_var(ADBC_PROFILE_PATH) }} duper {{ env_var(ADBC_PROFILE_PATH) }} end"
+  )|");
+
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << profile;
+  test_manifest_file.close();
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+
+  // find profile by name using ADBC_PROFILE_PATH
+  SetConfigPath(temp_dir.string().c_str());
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+              IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("Unknown database option foo='super " +
+                                                  temp_dir.string() + " duper " +
+                                                  temp_dir.string() + " end'"));
+  UnsetConfigPath();
+}
+
+TEST_F(ConnectionProfiles, ProfileNotFound) {
+  adbc_validation::Handle<struct AdbcDatabase> database;
+
+  // absolute path to the profile
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile",
+                                    (temp_dir / "profile.toml").string().c_str(), &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+              IsStatus(ADBC_STATUS_NOT_FOUND, &error));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("Profile file does not exist: " +
+                                                  (temp_dir / "profile.toml").string()));
+  ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
+
+  // find profile by name using ADBC_PROFILE_PATH
+  SetConfigPath(temp_dir.string().c_str());
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+              IsStatus(ADBC_STATUS_NOT_FOUND, &error));
+  ASSERT_THAT(error.message,
+              ::testing::HasSubstr(std::string("Profile not found: profile\n") +
+                                   "Also searched these paths for profiles:\n\t" +
+                                   "ADBC_PROFILE_PATH: " + temp_dir.string() + "\n\t"));
+  ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
+  UnsetConfigPath();
+}
+
+TEST_F(ConnectionProfiles, CustomProfileProvider) {
+  adbc_validation::Handle<struct AdbcDatabase> database;
+
+  AdbcConnectionProfileProvider provider =
+      [](const char* profile_name, const char* additional_path_list,
+         struct AdbcConnectionProfile* out, struct AdbcError* error) -> AdbcStatusCode {
+    EXPECT_EQ(std::string(profile_name), "profile");
+
+    static const std::string expected = "custom profile provider error";
+    error->message = new char[expected.size() + 1];
+    std::copy(expected.begin(), expected.end(), error->message);
+    error->message[expected.size()] = '\0';
+    error->release = [](struct AdbcError* error) {
+      delete[] error->message;
+      error->message = nullptr;
+      error->release = nullptr;
+    };
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  };
+
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(
+      AdbcDriverManagerDatabaseSetProfileProvider(&database.value, provider, &error),
+      IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("custom profile provider error"));
+  ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
 }
 
 }  // namespace adbc
