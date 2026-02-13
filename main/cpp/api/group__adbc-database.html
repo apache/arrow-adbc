@@ -514,6 +514,7 @@ Functions</h2></td></tr>
 
 <p>Set a char* option. </p>
 <p>Options may be set before AdbcDatabaseInit. Some drivers may support setting options after initialization as well.</p>
+<p>Driver managers may treat some option keys as manager-reserved and handle them without forwarding them to the underlying driver. In particular, the option key "profile" is reserved for connection profiles and must not be implemented or interpreted by drivers.</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramdir">[in]</td><td class="paramname">database</td><td>The database. </td></tr>

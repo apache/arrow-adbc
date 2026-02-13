@@ -13,7 +13,7 @@
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
 <meta name="description" content="There are two ways to load a driver with the driver manager: Directly specifying the dynamic library to load, Referring to a driver manifest file which contains metadata along with the location of ..." />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Related Work" href="related_work.html" /><link rel="prev" title="How Drivers and the Driver Manager Work Together" href="how_manager.html" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Driver Manager Connection Profiles" href="connection_profiles.html" /><link rel="prev" title="How Drivers and the Driver Manager Work Together" href="how_manager.html" />
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2024.08.06 -->
         <title>ADBC Driver Manager and Manifests - ADBC 23 (dev) documentation</title>
@@ -344,6 +344,7 @@
 <li class="toctree-l1"><a class="reference internal" href="comparison.html">Comparison with Other APIs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="how_manager.html">How Drivers and the Driver Manager Work Together</a></li>
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">ADBC Driver Manager and Manifests</a></li>
+<li class="toctree-l1"><a class="reference internal" href="connection_profiles.html">Driver Manager Connection Profiles</a></li>
 <li class="toctree-l1"><a class="reference internal" href="related_work.html">Related Work</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Development</span></p>
@@ -838,6 +839,15 @@ the type <code class="docutils literal notranslate"><span class="pre">adbc_core:
 </ul>
 </div>
 </div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>A driver manifest file must not be named <code class="docutils literal notranslate"><span class="pre">profile.toml</span></code>.
+The name <code class="docutils literal notranslate"><span class="pre">profile</span></code> is reserved for
+<a class="reference internal" href="connection_profiles.html"><span class="doc">connection profiles</span></a>.
+Using it as the basename of a driver manifest conflicts with how
+driver managers interpret URIs beginning with the
+<code class="docutils literal notranslate"><span class="pre">profile://</span></code> scheme.</p>
+</div>
 <section id="unix-like-platforms">
 <h4>Unix-like Platforms<a class="headerlink" href="#unix-like-platforms" title="Link to this heading">¶</a></h4>
 <p>For Unix-like platforms, (e.g. Linux, macOS), the driver manager will search the following directories based on the options provided, in
@@ -917,12 +927,12 @@ as above are used.</p></li>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="related_work.html">
+          <a class="next-page" href="connection_profiles.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Related Work</div>
+                <div class="title">Driver Manager Connection Profiles</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>

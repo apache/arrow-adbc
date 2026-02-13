@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['message_0',['message',['../group__adbc-error-handling.html#a4d5fa5da8a0f26399c3690d26f265425',1,'AdbcError']]]
+  ['key_0',['key',['../group__adbc-error-handling.html#a4284ecf3d541a476771e0d03e0148ecb',1,'AdbcErrorDetail']]]
 ];
