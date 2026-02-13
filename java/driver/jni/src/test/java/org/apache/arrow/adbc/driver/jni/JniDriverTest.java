@@ -33,6 +33,7 @@ import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.AdbcStatusCode;
+import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.BigIntVector;
@@ -175,6 +176,7 @@ class JniDriverTest {
     }
   }
 
+  @Test
   void queryParams() throws Exception {
     final Schema paramSchema =
         new Schema(Collections.singletonList(Field.nullable("", Types.MinorType.BIGINT.getType())));
@@ -201,6 +203,107 @@ class JniDriverTest {
           assertThat(result.getReader().getVectorSchemaRoot().getVector(0).getObject(1)).isNull();
 
           assertThat(result.getReader().loadNextBatch()).isFalse();
+        }
+      }
+    }
+  }
+
+  @Test
+  void executeUpdate() throws Exception {
+    try (final BufferAllocator allocator = new RootAllocator()) {
+      JniDriver driver = new JniDriver(allocator);
+      Map<String, Object> parameters = new HashMap<>();
+      JniDriver.PARAM_DRIVER.set(parameters, "adbc_driver_sqlite");
+
+      try (final AdbcDatabase db = driver.open(parameters);
+          final AdbcConnection conn = db.connect()) {
+        // Create table
+        try (final AdbcStatement stmt = conn.createStatement()) {
+          stmt.setSqlQuery("CREATE TABLE test_update (id INTEGER, name TEXT)");
+          stmt.executeUpdate();
+        }
+
+        // Insert rows
+        try (final AdbcStatement stmt = conn.createStatement()) {
+          stmt.setSqlQuery("INSERT INTO test_update VALUES (1, 'a'), (2, 'b'), (3, 'c')");
+          AdbcStatement.UpdateResult result = stmt.executeUpdate();
+          assertThat(result.getAffectedRows()).isEqualTo(3L);
+        }
+
+        // Verify data was inserted
+        try (final AdbcStatement stmt = conn.createStatement()) {
+          stmt.setSqlQuery("SELECT COUNT(*) FROM test_update");
+          try (final AdbcStatement.QueryResult result = stmt.executeQuery()) {
+            assertThat(result.getReader().loadNextBatch()).isTrue();
+            assertThat(result.getReader().getVectorSchemaRoot().getVector(0).getObject(0))
+                .isEqualTo(3L);
+          }
+        }
+      }
+    }
+  }
+
+  @Test
+  void preparedStatement() throws Exception {
+    final Schema paramSchema =
+        new Schema(Collections.singletonList(Field.nullable("", Types.MinorType.BIGINT.getType())));
+    try (final BufferAllocator allocator = new RootAllocator()) {
+      JniDriver driver = new JniDriver(allocator);
+      Map<String, Object> parameters = new HashMap<>();
+      JniDriver.PARAM_DRIVER.set(parameters, "adbc_driver_sqlite");
+
+      try (final AdbcDatabase db = driver.open(parameters);
+          final AdbcConnection conn = db.connect();
+          final AdbcStatement stmt = conn.createStatement();
+          final VectorSchemaRoot root = VectorSchemaRoot.create(paramSchema, allocator)) {
+        stmt.setSqlQuery("SELECT 1 + ?");
+        stmt.prepare();
+
+        ((BigIntVector) root.getVector(0)).setSafe(0, 41);
+        root.setRowCount(1);
+        stmt.bind(root);
+
+        try (final AdbcStatement.QueryResult result = stmt.executeQuery()) {
+          assertThat(result.getReader().loadNextBatch()).isTrue();
+          assertThat(result.getReader().getVectorSchemaRoot().getVector(0).getObject(0))
+              .isEqualTo(42L);
+        }
+      }
+    }
+  }
+
+  @Test
+  void bulkIngest() throws Exception {
+    final Schema schema =
+        new Schema(
+            Collections.singletonList(Field.nullable("v", Types.MinorType.BIGINT.getType())));
+    try (final BufferAllocator allocator = new RootAllocator()) {
+      JniDriver driver = new JniDriver(allocator);
+      Map<String, Object> parameters = new HashMap<>();
+      JniDriver.PARAM_DRIVER.set(parameters, "adbc_driver_sqlite");
+
+      try (final AdbcDatabase db = driver.open(parameters);
+          final AdbcConnection conn = db.connect()) {
+        // Bulk ingest with CREATE mode
+        try (final AdbcStatement stmt = conn.bulkIngest("bulk_test", BulkIngestMode.CREATE);
+            final VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator)) {
+          ((BigIntVector) root.getVector(0)).setSafe(0, 1);
+          ((BigIntVector) root.getVector(0)).setSafe(1, 2);
+          ((BigIntVector) root.getVector(0)).setSafe(2, 3);
+          root.setRowCount(3);
+
+          stmt.bind(root);
+          AdbcStatement.UpdateResult result = stmt.executeUpdate();
+          assertThat(result.getAffectedRows()).isEqualTo(3L);
+        }
+
+        // Verify data
+        try (final AdbcStatement stmt = conn.createStatement()) {
+          stmt.setSqlQuery("SELECT * FROM bulk_test ORDER BY v ASC");
+          try (final AdbcStatement.QueryResult result = stmt.executeQuery()) {
+            assertThat(result.getReader().loadNextBatch()).isTrue();
+            assertThat(result.getReader().getVectorSchemaRoot().getRowCount()).isEqualTo(3);
+          }
         }
       }
     }

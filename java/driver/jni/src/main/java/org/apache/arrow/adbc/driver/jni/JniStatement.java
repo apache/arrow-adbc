@@ -69,12 +69,13 @@ public class JniStatement implements AdbcStatement {
 
   @Override
   public UpdateResult executeUpdate() throws AdbcException {
-    throw new UnsupportedOperationException();
+    long rowsAffected = JniLoader.INSTANCE.statementExecuteUpdate(handle);
+    return new UpdateResult(rowsAffected);
   }
 
   @Override
   public void prepare() throws AdbcException {
-    throw new UnsupportedOperationException();
+    JniLoader.INSTANCE.statementPrepare(handle);
   }
 
   @Override

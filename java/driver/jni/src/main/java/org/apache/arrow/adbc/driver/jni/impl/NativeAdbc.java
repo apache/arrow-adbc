@@ -45,4 +45,10 @@ class NativeAdbc {
   // isn't a very general interface)
   @SuppressWarnings("unused")
   static native void statementBindStream(long handle, long stream) throws AdbcException;
+
+  static native long statementExecuteUpdate(long handle) throws AdbcException;
+
+  static native void statementPrepare(long handle) throws AdbcException;
+
+  static native void statementSetOption(long handle, String key, String value) throws AdbcException;
 }

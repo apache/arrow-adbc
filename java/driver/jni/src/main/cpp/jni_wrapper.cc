@@ -402,4 +402,47 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementBindStream(
     e.ThrowJavaException(env);
   }
 }
+
+JNIEXPORT jlong JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementExecuteUpdate(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
+  try {
+    struct AdbcError error = ADBC_ERROR_INIT;
+    auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
+    int64_t rows_affected = 0;
+    CHECK_ADBC_ERROR(
+        AdbcStatementExecuteQuery(ptr, /*out=*/nullptr, &rows_affected, &error), error);
+    return static_cast<jlong>(rows_affected);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+  return -1;
+}
+
+JNIEXPORT void JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementPrepare(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
+  try {
+    struct AdbcError error = ADBC_ERROR_INIT;
+    auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
+    CHECK_ADBC_ERROR(AdbcStatementPrepare(ptr, &error), error);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+}
+
+JNIEXPORT void JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementSetOption(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key, jstring value) {
+  try {
+    struct AdbcError error = ADBC_ERROR_INIT;
+    auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
+    JniStringView key_str(env, key);
+    JniStringView value_str(env, value);
+    CHECK_ADBC_ERROR(AdbcStatementSetOption(ptr, key_str.value, value_str.value, &error),
+                     error);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+}
 }

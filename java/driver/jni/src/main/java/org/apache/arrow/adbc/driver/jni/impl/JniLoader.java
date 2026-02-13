@@ -105,4 +105,17 @@ public enum JniLoader {
     NativeAdbc.statementBind(
         statement.getStatementHandle(), batch.memoryAddress(), schema.memoryAddress());
   }
+
+  public long statementExecuteUpdate(NativeStatementHandle statement) throws AdbcException {
+    return NativeAdbc.statementExecuteUpdate(statement.getStatementHandle());
+  }
+
+  public void statementPrepare(NativeStatementHandle statement) throws AdbcException {
+    NativeAdbc.statementPrepare(statement.getStatementHandle());
+  }
+
+  public void statementSetOption(NativeStatementHandle statement, String key, String value)
+      throws AdbcException {
+    NativeAdbc.statementSetOption(statement.getStatementHandle(), key, value);
+  }
 }
