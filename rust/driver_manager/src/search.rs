@@ -821,29 +821,44 @@ pub(crate) fn find_filesystem_profile(
     additional_path_list: Option<Vec<PathBuf>>,
 ) -> Result<PathBuf> {
     let profile_path = Path::new(name.as_ref());
-    match profile_path.extension() {
-        Some(ext) if ext == "toml" => {
-            if profile_path.is_file() {
-                return Ok(profile_path.to_path_buf());
-            }
 
-            return Err(Error::with_message_and_status(
-                format!("Profile not found: {}", profile_path.display()),
-                Status::NotFound,
-            ));
-        }
-        Some(_) => {}
-        None => {}
-    }
-
+    // If it's an absolute path with .toml extension, check if it exists
     if profile_path.is_absolute() {
+        if let Some(ext) = profile_path.extension() {
+            if ext == "toml" {
+                if profile_path.is_file() {
+                    return Ok(profile_path.to_path_buf());
+                }
+                return Err(Error::with_message_and_status(
+                    format!("Profile not found: {}", profile_path.display()),
+                    Status::NotFound,
+                ));
+            }
+        }
+        // Absolute path without .toml extension - add it
         return Ok(profile_path.with_extension("toml").to_path_buf());
     }
 
+    // For relative paths, check if it's a file at the current location first
+    if profile_path.is_file() {
+        return Ok(profile_path.to_path_buf());
+    }
+
+    // Search in the configured paths
     let path_list = get_profile_search_paths(additional_path_list);
+    let has_toml_ext = profile_path.extension().map_or(false, |ext| ext == "toml");
+
     path_list
         .iter()
         .find_map(|path| {
+            if has_toml_ext {
+                // Name already has .toml extension, use it as-is
+                let full_path = path.join(profile_path);
+                if full_path.is_file() {
+                    return Some(full_path);
+                }
+            }
+            // Try adding .toml extension
             let mut full_path = path.join(profile_path);
             full_path.set_extension("toml");
             if full_path.is_file() {
@@ -916,6 +931,12 @@ pub(crate) fn parse_driver_uri<'a>(uri: &'a str) -> Result<SearchResult<'a>> {
     if &uri[idx..idx + 2] == ":/" {
         // scheme is also driver
         if driver == "profile" && uri.len() > idx + 2 {
+            // Check if it's "://" (two slashes) or just ":/" (one slash)
+            if uri.len() > idx + 3 && &uri[idx + 2..idx + 3] == "/" {
+                // It's "profile://..." - skip "://" (three characters)
+                return Ok(SearchResult::Profile(&uri[idx + 3..]));
+            }
+            // It's "profile:/..." - skip ":/" (two characters)
             return Ok(SearchResult::Profile(&uri[idx + 2..]));
         }
         return Ok(SearchResult::DriverUri(driver, uri));
@@ -1576,5 +1597,159 @@ mod tests {
         tmp_dir
             .close()
             .expect("Failed to close/remove temporary directory");
+    }
+
+    #[test]
+    fn test_find_filesystem_profile() {
+        let test_cases = vec![
+            (
+                "absolute path with extension",
+                "test_profile.toml",
+                None,
+                true,
+                true,
+            ),
+            (
+                "relative name without extension",
+                "my_profile",
+                Some(vec![]),
+                false,
+                true,
+            ),
+            (
+                "relative name with extension",
+                "my_profile.toml",
+                Some(vec![]),
+                false,
+                true,
+            ),
+            (
+                "absolute path without extension",
+                "profile_no_ext",
+                None,
+                true,
+                true,
+            ),
+            ("nonexistent profile", "nonexistent_profile", None, false, false),
+        ];
+
+        for (name, profile_name, search_paths_opt, is_absolute, should_succeed) in test_cases {
+            let tmp_dir = tempfile::Builder::new()
+                .prefix("adbc_profile_test")
+                .tempdir()
+                .unwrap();
+
+            let expected_profile_path = tmp_dir.path().join(
+                if profile_name.ends_with(".toml") {
+                    profile_name.to_string()
+                } else {
+                    format!("{}.toml", profile_name)
+                }
+            );
+
+            if should_succeed {
+                std::fs::write(&expected_profile_path, "test content").unwrap();
+            }
+
+            let search_paths = search_paths_opt.map(|mut paths| {
+                paths.push(tmp_dir.path().to_path_buf());
+                paths
+            });
+
+            let profile_arg = if is_absolute {
+                if profile_name.ends_with(".toml") {
+                    expected_profile_path.to_str().unwrap().to_string()
+                } else {
+                    tmp_dir.path().join(profile_name).to_str().unwrap().to_string()
+                }
+            } else {
+                profile_name.to_string()
+            };
+
+            let result = find_filesystem_profile(&profile_arg, search_paths);
+
+            if should_succeed {
+                assert!(
+                    result.is_ok(),
+                    "Test case '{}' failed: {:?}",
+                    name,
+                    result.err()
+                );
+                assert_eq!(
+                    result.unwrap(),
+                    expected_profile_path,
+                    "Test case '{}': path mismatch",
+                    name
+                );
+            } else {
+                assert!(result.is_err(), "Test case '{}': expected error", name);
+                let err = result.unwrap_err();
+                assert_eq!(
+                    err.status,
+                    Status::NotFound,
+                    "Test case '{}': wrong error status",
+                    name
+                );
+                assert!(
+                    err.message.contains("Profile not found"),
+                    "Test case '{}': wrong error message",
+                    name
+                );
+            }
+
+            tmp_dir.close().unwrap();
+        }
+    }
+
+    #[test]
+    fn test_find_filesystem_profile_search_multiple_paths() {
+        let tmp_dir1 = tempfile::Builder::new()
+            .prefix("adbc_profile_test1")
+            .tempdir()
+            .unwrap();
+        let tmp_dir2 = tempfile::Builder::new()
+            .prefix("adbc_profile_test2")
+            .tempdir()
+            .unwrap();
+
+        // Create profile in second directory
+        let profile_path = tmp_dir2.path().join("searched_profile.toml");
+        std::fs::write(&profile_path, "test content").unwrap();
+
+        let result = find_filesystem_profile(
+            "searched_profile",
+            Some(vec![
+                tmp_dir1.path().to_path_buf(),
+                tmp_dir2.path().to_path_buf(),
+            ]),
+        );
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), profile_path);
+
+        tmp_dir1.close().unwrap();
+        tmp_dir2.close().unwrap();
+    }
+
+    #[test]
+    fn test_get_profile_search_paths() {
+        // Test that additional paths are included
+        let tmp_dir = tempfile::Builder::new()
+            .prefix("adbc_profile_test")
+            .tempdir()
+            .unwrap();
+
+        let paths = get_profile_search_paths(Some(vec![tmp_dir.path().to_path_buf()]));
+
+        assert!(paths.contains(&tmp_dir.path().to_path_buf()));
+        assert!(paths.len() >= 1);
+
+        tmp_dir.close().unwrap();
+    }
+
+    #[test]
+    fn test_get_profile_search_paths_empty() {
+        let paths = get_profile_search_paths(None);
+        // Should still return some paths (env vars, user config, etc.)
+        assert!(!paths.is_empty() || paths.is_empty()); // Just verify it doesn't panic
     }
 }

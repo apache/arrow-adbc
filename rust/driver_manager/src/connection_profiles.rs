@@ -105,6 +105,7 @@ fn process_options(
     Ok(())
 }
 
+#[derive(Debug)]
 pub struct FilesystemProfile {
     profile_path: PathBuf,
     driver: String,
@@ -185,5 +186,377 @@ impl ConnectionProfile for FilesystemProfile {
 impl fmt::Display for FilesystemProfile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "FilesystemProfile({})", self.profile_path.display())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+    use toml::de::DeTable;
+
+    #[test]
+    fn test_process_options_basic_types() {
+        let test_cases = vec![
+            (
+                "string value",
+                r#"key = "value""#,
+                vec![("key", OptionValue::String("value".to_string()))],
+            ),
+            (
+                "integer value",
+                r#"port = 5432"#,
+                vec![("port", OptionValue::Int(5432))],
+            ),
+            (
+                "float value",
+                r#"timeout = 30.5"#,
+                vec![("timeout", OptionValue::Double(30.5))],
+            ),
+            (
+                "boolean values",
+                r#"enabled = true
+disabled = false"#,
+                vec![
+                    ("enabled", OptionValue::String("true".to_string())),
+                    ("disabled", OptionValue::String("false".to_string())),
+                ],
+            ),
+            (
+                "multiple types",
+                r#"str = "text"
+num = 42
+flt = 1.5
+flag = true"#,
+                vec![
+                    ("str", OptionValue::String("text".to_string())),
+                    ("num", OptionValue::Int(42)),
+                    ("flt", OptionValue::Double(1.5)),
+                    ("flag", OptionValue::String("true".to_string())),
+                ],
+            ),
+        ];
+
+        for (name, toml_str, expected_opts) in test_cases {
+            let table = DeTable::parse(toml_str).unwrap();
+            let mut opts = HashMap::new();
+            process_options(&mut opts, "".to_string(), table.get_ref())
+                .unwrap_or_else(|_| panic!("Failed to process options for test case: {}", name));
+
+            assert_eq!(
+                opts.len(),
+                expected_opts.len(),
+                "Test case '{}': expected {} options, got {}",
+                name,
+                expected_opts.len(),
+                opts.len()
+            );
+
+            for (key_str, expected_value) in expected_opts {
+                let key = OptionDatabase::from(key_str);
+                let actual_value = opts
+                    .get(&key)
+                    .unwrap_or_else(|| panic!("Test case '{}': missing key '{}'", name, key_str));
+
+                match (actual_value, &expected_value) {
+                    (OptionValue::String(a), OptionValue::String(e)) => {
+                        assert_eq!(a, e, "Test case '{}': string mismatch for key '{}'", name, key_str);
+                    }
+                    (OptionValue::Int(a), OptionValue::Int(e)) => {
+                        assert_eq!(a, e, "Test case '{}': int mismatch for key '{}'", name, key_str);
+                    }
+                    (OptionValue::Double(a), OptionValue::Double(e)) => {
+                        assert!(
+                            (a - e).abs() < 1e-10,
+                            "Test case '{}': float mismatch for key '{}'",
+                            name,
+                            key_str
+                        );
+                    }
+                    _ => panic!(
+                        "Test case '{}': type mismatch for key '{}'",
+                        name, key_str
+                    ),
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_process_options_nested_table() {
+        let toml_str = r#"
+key = "value"
+[nested]
+subkey = "subvalue"
+number = 42
+"#;
+        let table = DeTable::parse(toml_str).unwrap();
+        let mut opts = HashMap::new();
+        process_options(&mut opts, "".to_string(), table.get_ref()).unwrap();
+
+        assert_eq!(opts.len(), 3);
+
+        let key1 = OptionDatabase::from("key");
+        match opts.get(&key1) {
+            Some(OptionValue::String(s)) => assert_eq!(s, "value"),
+            _ => panic!("Expected string value"),
+        }
+
+        let key2 = OptionDatabase::from("nested.subkey");
+        match opts.get(&key2) {
+            Some(OptionValue::String(s)) => assert_eq!(s, "subvalue"),
+            _ => panic!("Expected string value for nested.subkey"),
+        }
+
+        let key3 = OptionDatabase::from("nested.number");
+        match opts.get(&key3) {
+            Some(OptionValue::Int(i)) => assert_eq!(*i, 42),
+            _ => panic!("Expected int value for nested.number"),
+        }
+    }
+
+    #[test]
+    fn test_process_options_deeply_nested() {
+        let toml_str = r#"
+[level1]
+[level1.level2]
+[level1.level2.level3]
+deep = "value"
+"#;
+        let table = DeTable::parse(toml_str).unwrap();
+        let mut opts = HashMap::new();
+        process_options(&mut opts, "".to_string(), table.get_ref()).unwrap();
+
+        assert_eq!(opts.len(), 1);
+
+        let key = OptionDatabase::from("level1.level2.level3.deep");
+        match opts.get(&key) {
+            Some(OptionValue::String(s)) => assert_eq!(s, "value"),
+            _ => panic!("Expected string value"),
+        }
+    }
+
+    #[test]
+    fn test_process_options_error_cases() {
+        let test_cases = vec![
+            (
+                "invalid integer (too large)",
+                r#"bad_int = 999999999999999999999999999999"#,
+                "invalid integer value",
+            ),
+            (
+                "unsupported type (array)",
+                r#"array = [1, 2, 3]"#,
+                "unsupported option type",
+            ),
+        ];
+
+        for (name, toml_str, expected_error_msg) in test_cases {
+            let table = DeTable::parse(toml_str).unwrap();
+            let mut opts = HashMap::new();
+            let result = process_options(&mut opts, "".to_string(), table.get_ref());
+
+            assert!(
+                result.is_err(),
+                "Test case '{}': expected error but got Ok",
+                name
+            );
+            let err = result.unwrap_err();
+            assert_eq!(
+                err.status,
+                Status::InvalidArguments,
+                "Test case '{}': wrong status",
+                name
+            );
+            assert!(
+                err.message.contains(expected_error_msg),
+                "Test case '{}': expected '{}' in error message, got '{}'",
+                name,
+                expected_error_msg,
+                err.message
+            );
+        }
+    }
+
+    #[test]
+    fn test_filesystem_profile_from_path_errors() {
+        let test_cases = vec![
+            (
+                "missing file",
+                "/nonexistent/path/to/profile.toml",
+                None,
+                "could not read profile",
+            ),
+            (
+                "invalid version (too high)",
+                "invalid_version_high.toml",
+                Some(r#"
+version = 99
+driver = "test_driver"
+
+[options]
+key = "value"
+"#),
+                "unsupported profile version '99', expected '1'",
+            ),
+            (
+                "version 0",
+                "version_zero.toml",
+                Some(r#"
+version = 0
+driver = "test_driver"
+
+[options]
+key = "value"
+"#),
+                "unsupported profile version '0', expected '1'",
+            ),
+            (
+                "version 2",
+                "version_two.toml",
+                Some(r#"
+version = 2
+driver = "test_driver"
+
+[options]
+key = "value"
+"#),
+                "unsupported profile version '2', expected '1'",
+            ),
+        ];
+
+        for (name, filename, content_opt, expected_error_msg) in test_cases {
+            let profile_path = if let Some(content) = content_opt {
+                let tmp_dir = tempfile::Builder::new()
+                    .prefix("adbc_profile_test")
+                    .tempdir()
+                    .unwrap();
+                let path = tmp_dir.path().join(filename);
+                std::fs::write(&path, content).unwrap();
+                // Keep tmp_dir alive until after the test
+                let result = FilesystemProfile::from_path(path.clone());
+
+                assert!(
+                    result.is_err(),
+                    "Test case '{}': expected error but got Ok",
+                    name
+                );
+                let err = result.unwrap_err();
+                assert_eq!(
+                    err.status,
+                    Status::InvalidArguments,
+                    "Test case '{}': wrong status",
+                    name
+                );
+                assert!(
+                    err.message.contains(expected_error_msg),
+                    "Test case '{}': expected '{}' in error message, got '{}'",
+                    name,
+                    expected_error_msg,
+                    err.message
+                );
+
+                tmp_dir.close().unwrap();
+                continue;
+            } else {
+                PathBuf::from(filename)
+            };
+
+            let result = FilesystemProfile::from_path(profile_path);
+
+            assert!(
+                result.is_err(),
+                "Test case '{}': expected error but got Ok",
+                name
+            );
+            let err = result.unwrap_err();
+            assert_eq!(
+                err.status,
+                Status::InvalidArguments,
+                "Test case '{}': wrong status",
+                name
+            );
+            assert!(
+                err.message.contains(expected_error_msg),
+                "Test case '{}': expected '{}' in error message, got '{}'",
+                name,
+                expected_error_msg,
+                err.message
+            );
+        }
+    }
+
+    #[test]
+    fn test_filesystem_profile_provider() {
+        let profile_content = r#"
+version = 1
+driver = "test_driver"
+
+[options]
+test_key = "test_value"
+"#;
+
+        let test_cases = vec![
+            ("absolute path", "absolute_test.toml", None, true),
+            (
+                "search path with name only",
+                "search_test",
+                Some(vec![]),
+                true,
+            ),
+            (
+                "search path with .toml extension",
+                "search_test.toml",
+                Some(vec![]),
+                true,
+            ),
+        ];
+
+        for (name, profile_name, search_paths_opt, should_succeed) in test_cases {
+            let tmp_dir = tempfile::Builder::new()
+                .prefix("adbc_profile_test")
+                .tempdir()
+                .unwrap();
+
+            let profile_path = tmp_dir.path().join(
+                if profile_name.ends_with(".toml") {
+                    profile_name.to_string()
+                } else {
+                    format!("{}.toml", profile_name)
+                }
+            );
+            std::fs::write(&profile_path, profile_content).unwrap();
+
+            let provider = FilesystemProfileProvider {};
+            let search_paths = search_paths_opt
+                .map(|mut paths| {
+                    paths.push(tmp_dir.path().to_path_buf());
+                    paths
+                });
+
+            let profile_arg = if name.contains("absolute") {
+                profile_path.to_str().unwrap().to_string()
+            } else {
+                profile_name.to_string()
+            };
+
+            let result = provider.get_profile(&profile_arg, search_paths);
+
+            if should_succeed {
+                let profile = result.unwrap_or_else(|e| {
+                    panic!("Test case '{}' failed: {:?}", name, e)
+                });
+                let (driver, _) = profile.get_driver_name().unwrap();
+                assert_eq!(
+                    driver, "test_driver",
+                    "Test case '{}': driver mismatch",
+                    name
+                );
+            } else {
+                assert!(result.is_err(), "Test case '{}': expected error", name);
+            }
+
+            tmp_dir.close().unwrap();
+        }
     }
 }
