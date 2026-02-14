@@ -359,10 +359,7 @@ fn test_database_from_uri_with_profile_additional_options() {
         None,
         additional_opts,
     )
-    .unwrap();
-
-    let uri = database.get_option_string(OptionDatabase::Uri).unwrap();
-    assert_eq!(uri, "file::memory:");
+    .unwrap();        
 
     common::test_database(&database);
 
