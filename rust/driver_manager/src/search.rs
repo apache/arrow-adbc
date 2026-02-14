@@ -842,20 +842,6 @@ fn get_search_paths(lvls: LoadFlags) -> Vec<PathBuf> {
 /// # Errors
 ///
 /// Returns `Status::NotFound` if the profile cannot be located in any search path.
-///
-/// # Examples
-///
-/// ```no_run
-/// # use std::path::PathBuf;
-/// # use adbc_driver_manager::search::find_filesystem_profile;
-/// // Search by name in standard locations
-/// let path = find_filesystem_profile("my_database", None)?;
-///
-/// // Search with additional paths
-/// let extra_paths = vec![PathBuf::from("/opt/adbc/profiles")];
-/// let path = find_filesystem_profile("my_database", Some(extra_paths))?;
-/// # Ok::<(), adbc_core::error::Error>(())
-/// ```
 pub(crate) fn find_filesystem_profile(
     name: impl AsRef<str>,
     additional_path_list: Option<Vec<PathBuf>>,
@@ -1011,29 +997,6 @@ pub(crate) enum SearchResult<'a> {
 /// Returns `Status::InvalidArguments` if:
 /// - The URI has no colon separator
 /// - The URI format is invalid
-///
-/// # Examples
-///
-/// ```no_run
-/// # use adbc_driver_manager::search::{parse_driver_uri, SearchResult};
-/// // Direct driver connection
-/// let result = parse_driver_uri("sqlite::memory:")?;
-/// match result {
-///     SearchResult::DriverUri(driver, conn) => {
-///         assert_eq!(driver, "sqlite");
-///         assert_eq!(conn, ":memory:");
-///     }
-///     _ => panic!("Expected DriverUri"),
-/// }
-///
-/// // Profile reference
-/// let result = parse_driver_uri("profile://my_database")?;
-/// match result {
-///     SearchResult::Profile(name) => assert_eq!(name, "my_database"),
-///     _ => panic!("Expected Profile"),
-/// }
-/// # Ok::<(), adbc_core::error::Error>(())
-/// ```
 pub(crate) fn parse_driver_uri<'a>(uri: &'a str) -> Result<SearchResult<'a>> {
     let idx = uri.find(":").ok_or(Error::with_message_and_status(
         format!("Invalid URI: {uri}"),
