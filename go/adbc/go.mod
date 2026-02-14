@@ -19,7 +19,9 @@ module github.com/apache/arrow-adbc/go/adbc
 
 go 1.25.0
 
-toolchain go1.25.5
+// Only require 1.25, but prefer 1.26 to build to pick up latest CVE fixes in
+// Go itself.
+toolchain go1.26.0
 
 require (
 	cloud.google.com/go/bigquery v1.73.1
