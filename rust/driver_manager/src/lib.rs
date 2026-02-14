@@ -100,6 +100,7 @@
 // an immutable struct of function pointers. Wrapping the driver in a `Mutex`
 // would prevent any parallelism between driver calls, which is not desirable.
 
+pub mod connection_profiles;
 pub mod error;
 pub(crate) mod search;
 
@@ -127,7 +128,10 @@ use adbc_core::{
 };
 use adbc_ffi::driver_method;
 
-use self::search::{parse_driver_uri, DriverLibrary};
+use self::search::{parse_driver_uri, DriverLibrary, SearchResult};
+use crate::connection_profiles::{
+    process_profile_value, ConnectionProfile, ConnectionProfileProvider, FilesystemProfileProvider,
+};
 
 const ERR_CANCEL_UNSUPPORTED: &str =
     "Canceling connection or statement is not supported with ADBC 1.0.0";
@@ -354,6 +358,67 @@ pub struct ManagedDatabase {
 }
 
 impl ManagedDatabase {
+    /// Creates a new database connection from a URI string.
+    ///
+    /// This method supports both direct driver URIs and profile references.
+    ///
+    /// # URI Formats
+    ///
+    /// ## Direct Driver Connection
+    /// - `"driver_name:connection_string"` - Loads the specified driver and connects
+    /// - `"driver_name://host:port/database"` - Standard database URI format
+    ///
+    /// ## Profile Reference
+    /// - `"profile://name"` - Loads connection configuration from a profile file
+    /// - `"profile:///absolute/path/to/profile.toml"` - Absolute path to profile
+    /// - `"profile://relative/path/to/profile.toml"` - Relative path to profile
+    ///
+    /// # Arguments
+    ///
+    /// * `uri` - The connection URI or profile reference
+    /// * `entrypoint` - Optional driver entrypoint name (uses default if `None`)
+    /// * `version` - ADBC version to use
+    /// * `load_flags` - Flags controlling driver loading behavior
+    /// * `additional_search_paths` - Optional paths to search for drivers or profiles
+    ///
+    /// # Returns
+    ///
+    /// A configured `ManagedDatabase` ready for creating connections.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The URI format is invalid
+    /// - The driver cannot be loaded
+    /// - The profile cannot be found or parsed
+    /// - Database initialization fails
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use adbc_core::options::AdbcVersion;
+    /// use adbc_driver_manager::ManagedDatabase;
+    /// use adbc_core::LOAD_FLAG_DEFAULT;
+    ///
+    /// // Direct connection
+    /// let db = ManagedDatabase::from_uri(
+    ///     "sqlite::memory:",
+    ///     None,
+    ///     AdbcVersion::V100,
+    ///     LOAD_FLAG_DEFAULT,
+    ///     None
+    /// )?;
+    ///
+    /// // Profile connection
+    /// let db = ManagedDatabase::from_uri(
+    ///     "profile://my_database",
+    ///     None,
+    ///     AdbcVersion::V100,
+    ///     LOAD_FLAG_DEFAULT,
+    ///     None
+    /// )?;
+    /// # Ok::<(), adbc_core::error::Error>(())
+    /// ```
     pub fn from_uri(
         uri: &str,
         entrypoint: Option<&[u8]>,
@@ -371,6 +436,53 @@ impl ManagedDatabase {
         )
     }
 
+    /// Creates a new database connection from a URI with additional options.
+    ///
+    /// This is similar to [`from_uri`](Self::from_uri), but allows passing additional
+    /// database options that override any options from profiles.
+    ///
+    /// # Arguments
+    ///
+    /// * `uri` - The connection URI or profile reference
+    /// * `entrypoint` - Optional driver entrypoint name
+    /// * `version` - ADBC version to use
+    /// * `load_flags` - Flags controlling driver loading behavior
+    /// * `additional_search_paths` - Optional paths to search for drivers or profiles
+    /// * `opts` - Database options to apply (override profile options)
+    ///
+    /// # Returns
+    ///
+    /// A configured `ManagedDatabase` with the specified options applied.
+    ///
+    /// # Option Priority
+    ///
+    /// Options are applied in this order (later values override earlier ones):
+    /// 1. Profile options (if using a profile URI)
+    /// 2. Options provided via `opts` parameter
+    /// 3. URI connection string (for direct driver URIs)
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use adbc_core::options::{AdbcVersion, OptionDatabase, OptionValue};
+    /// use adbc_driver_manager::ManagedDatabase;
+    /// use adbc_core::LOAD_FLAG_DEFAULT;
+    ///
+    /// let opts = vec![
+    ///     (OptionDatabase::Username, OptionValue::String("user".to_string())),
+    ///     (OptionDatabase::Password, OptionValue::String("pass".to_string())),
+    /// ];
+    ///
+    /// let db = ManagedDatabase::from_uri_with_opts(
+    ///     "profile://my_database",
+    ///     None,
+    ///     AdbcVersion::V100,
+    ///     LOAD_FLAG_DEFAULT,
+    ///     None,
+    ///     opts,
+    /// )?;
+    /// # Ok::<(), adbc_core::error::Error>(())
+    /// ```
     pub fn from_uri_with_opts(
         uri: &str,
         entrypoint: Option<&[u8]>,
@@ -379,20 +491,118 @@ impl ManagedDatabase {
         additional_search_paths: Option<Vec<PathBuf>>,
         opts: impl IntoIterator<Item = (<Self as Optionable>::Option, OptionValue)>,
     ) -> Result<Self> {
-        let (driver, final_uri) = parse_driver_uri(uri)?;
-
-        let mut drv = ManagedDriver::load_from_name(
-            driver,
+        let profile_provider = FilesystemProfileProvider;
+        Self::from_uri_with_profile_provider(
+            uri,
             entrypoint,
             version,
             load_flags,
             additional_search_paths,
-        )?;
+            profile_provider,
+            opts,
+        )
+    }
 
-        drv.new_database_with_opts(opts.into_iter().chain(std::iter::once((
-            OptionDatabase::Uri,
-            OptionValue::String(final_uri.to_string()),
-        ))))
+    /// Creates a new database connection from a URI with a custom profile provider.
+    ///
+    /// This advanced method allows using a custom implementation of
+    /// [`ConnectionProfileProvider`] to load profiles from alternative sources
+    /// (e.g., remote configuration services, encrypted storage, etc.).
+    ///
+    /// # Arguments
+    ///
+    /// * `uri` - The connection URI or profile reference
+    /// * `entrypoint` - Optional driver entrypoint name
+    /// * `version` - ADBC version to use
+    /// * `load_flags` - Flags controlling driver loading behavior
+    /// * `additional_search_paths` - Optional paths to search for drivers or profiles
+    /// * `profile_provider` - Custom profile provider implementation
+    /// * `opts` - Database options to apply (override profile options)
+    ///
+    /// # Returns
+    ///
+    /// A configured `ManagedDatabase` using the custom profile provider.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use adbc_core::options::{AdbcVersion, OptionDatabase, OptionValue};
+    /// use adbc_driver_manager::ManagedDatabase;
+    /// use adbc_driver_manager::connection_profiles::FilesystemProfileProvider;
+    /// use adbc_core::LOAD_FLAG_DEFAULT;
+    ///
+    /// let provider = FilesystemProfileProvider;
+    /// let opts = vec![(OptionDatabase::Username, OptionValue::String("admin".to_string()))];
+    ///
+    /// let db = ManagedDatabase::from_uri_with_profile_provider(
+    ///     "profile://my_database",
+    ///     None,
+    ///     AdbcVersion::V100,
+    ///     LOAD_FLAG_DEFAULT,
+    ///     None,
+    ///     provider,
+    ///     opts,
+    /// )?;
+    /// # Ok::<(), adbc_core::error::Error>(())
+    /// ```
+    pub fn from_uri_with_profile_provider(
+        uri: &str,
+        entrypoint: Option<&[u8]>,
+        version: AdbcVersion,
+        load_flags: LoadFlags,
+        additional_search_paths: Option<Vec<PathBuf>>,
+        profile_provider: impl ConnectionProfileProvider,
+        opts: impl IntoIterator<Item = (<Self as Optionable>::Option, OptionValue)>,
+    ) -> Result<Self> {
+        let mut drv: ManagedDriver;
+        let result = parse_driver_uri(uri)?;
+        match result {
+            SearchResult::DriverUri(driver, final_uri) => {
+                drv = ManagedDriver::load_from_name(
+                    driver,
+                    entrypoint,
+                    version,
+                    load_flags,
+                    additional_search_paths.clone(),
+                )?;
+
+                drv.new_database_with_opts(opts.into_iter().chain(std::iter::once((
+                    OptionDatabase::Uri,
+                    OptionValue::String(final_uri.to_string()),
+                ))))
+            }
+            SearchResult::Profile(profile) => {
+                let profile =
+                    profile_provider.get_profile(profile, additional_search_paths.clone())?;
+                let (driver_name, init_func) = profile.get_driver_name()?;
+
+                if let Some(init_fn) = init_func {
+                    drv = ManagedDriver::load_static(init_fn, version)?;
+                } else {
+                    drv = ManagedDriver::load_from_name(
+                        driver_name,
+                        entrypoint,
+                        version,
+                        load_flags,
+                        additional_search_paths,
+                    )?;
+                }
+
+                let profile_opts: Vec<(OptionDatabase, OptionValue)> = profile
+                    .get_options()?
+                    .into_iter()
+                    .map(|(k, v)| {
+                        if let OptionValue::String(s) = v {
+                            let result = process_profile_value(&s)?;
+                            Ok::<(OptionDatabase, OptionValue), Error>((k, result))
+                        } else {
+                            Ok((k, v))
+                        }
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+                drv.new_database_with_opts(profile_opts.into_iter().chain(opts))
+            }
+        }
     }
 
     fn ffi_driver(&self) -> &adbc_ffi::FFI_AdbcDriver {
