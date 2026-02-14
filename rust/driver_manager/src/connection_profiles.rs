@@ -23,11 +23,11 @@ use adbc_core::{
     Optionable,
 };
 use adbc_ffi::FFI_AdbcDriverInitFunc;
-use std::{env, fmt, sync::OnceLock};
+use regex::{Captures, Regex};
 use std::path::PathBuf;
 use std::{collections::HashMap, fs};
+use std::{env, fmt, sync::OnceLock};
 use toml::de::{DeTable, DeValue};
-use regex::{Captures, Regex};
 
 /// A connection profile that provides configuration for creating ADBC database connections.
 ///
@@ -333,24 +333,25 @@ impl fmt::Display for FilesystemProfile {
 
 fn profile_value_regex() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
-    RE.get_or_init(|| {
-        Regex::new(r"{{\s*([^{}]]*?)\s*}}").unwrap()
-    })
+    RE.get_or_init(|| Regex::new(r"\{\{\s*([^{}]*?)\s*\}\}").unwrap())
 }
 
-pub(crate) fn process_profile_value(value: &String) -> Result<OptionValue> {
-    let re = profile_value_regex();
-    
-    let replacer = |caps: &Captures| -> Result<String> {
+pub(crate) fn process_profile_value(value: &str) -> Result<OptionValue> {
+    let re = profile_value_regex();    
+
+    let replacer = |caps: &Captures| -> Result<String> {        
         let content = caps.get(1).unwrap().as_str();
         if !content.starts_with("env_var(") || !content.ends_with(")") {
             return Err(Error::with_message_and_status(
-                format!("invalid profile replacement expression '{{{{ {} }}}}'", content),
+                format!(
+                    "invalid profile replacement expression '{{{{ {} }}}}'",
+                    content
+                ),
                 Status::InvalidArguments,
             ));
         }
 
-        let env_var_name = content[8..content.len()-1].trim();
+        let env_var_name = content[8..content.len() - 1].trim();
         if env_var_name.is_empty() {
             return Err(Error::with_message_and_status(
                 format!("empty environment variable name in profile replacement expression '{{{{ {} }}}}'", content),
@@ -371,7 +372,7 @@ pub(crate) fn process_profile_value(value: &String) -> Result<OptionValue> {
     let mut new = String::with_capacity(value.len());
     let mut last_match = 0;
     for caps in re.captures_iter(value) {
-        let m = caps.get(0).unwrap();
+        let m = caps.get(0).unwrap();        
         new.push_str(&value[last_match..m.start()]);
         new.push_str(&replacer(&caps)?);
         last_match = m.end();

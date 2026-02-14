@@ -483,8 +483,12 @@ fn test_profile_hierarchical_path_via_env_var() {
 
     // Verify it loaded from the correct path
     let display_str = format!("{}", profile);
-    assert!(display_str.contains(&profile_path.to_string_lossy().to_string()),
-        "display: {}, profile_path: {}", display_str, profile_path.to_string_lossy());
+    assert!(
+        display_str.contains(&profile_path.to_string_lossy().to_string()),
+        "display: {}, profile_path: {}",
+        display_str,
+        profile_path.to_string_lossy()
+    );
 
     tmp_dir
         .close()

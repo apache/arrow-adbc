@@ -15,11 +15,11 @@
 // specific language governing permissions and limitations
 // under the License.
 
+use path_slash::PathBufExt;
 use std::borrow::Cow;
 use std::ffi::{c_void, OsStr};
 use std::fmt::Write;
 use std::fs;
-use path_slash::PathBufExt;
 use std::path::{Path, PathBuf};
 use std::{env, ops};
 
