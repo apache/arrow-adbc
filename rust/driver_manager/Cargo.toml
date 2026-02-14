@@ -40,6 +40,7 @@ adbc_ffi.workspace = true
 arrow-array.workspace = true
 arrow-schema.workspace = true
 libloading = "0.8.8"
+path-slash = "0.2.1"
 toml = { version = "0.9.12", default-features = false, features = [
     "parse",
     "display",

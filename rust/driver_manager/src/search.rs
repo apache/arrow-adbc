@@ -19,6 +19,7 @@ use std::borrow::Cow;
 use std::ffi::{c_void, OsStr};
 use std::fmt::Write;
 use std::fs;
+use path_slash::PathBufExt;
 use std::path::{Path, PathBuf};
 use std::{env, ops};
 
@@ -848,7 +849,7 @@ pub(crate) fn find_filesystem_profile(
 ) -> Result<PathBuf> {
     // Convert the name to a PathBuf to ensure proper platform-specific path handling.
     // This normalizes forward slashes to backslashes on Windows.
-    let profile_path = PathBuf::from(name.as_ref());
+    let profile_path = PathBuf::from_slash(name.as_ref());
     let profile_path = profile_path.as_path();
 
     // Handle absolute paths
