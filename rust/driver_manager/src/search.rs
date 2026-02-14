@@ -816,7 +816,88 @@ fn get_search_paths(lvls: LoadFlags) -> Vec<PathBuf> {
     result
 }
 
-pub(crate) fn parse_driver_uri(uri: &str) -> Result<(&str, &str)> {
+pub(crate) fn find_filesystem_profile(
+    name: impl AsRef<str>,
+    additional_path_list: Option<Vec<PathBuf>>,
+) -> Result<PathBuf> {
+    let profile_path = Path::new(name.as_ref());
+    match profile_path.extension() {
+        Some(ext) if ext == "toml" => {
+            if profile_path.is_file() {
+                return Ok(profile_path.to_path_buf());
+            }
+
+            return Err(Error::with_message_and_status(
+                format!("Profile not found: {}", profile_path.display()),
+                Status::NotFound,
+            ));
+        }
+        Some(_) => {}
+        None => {}
+    }
+
+    if profile_path.is_absolute() {
+        return Ok(profile_path.with_extension("toml").to_path_buf());
+    }
+
+    let path_list = get_profile_search_paths(additional_path_list);
+    path_list
+        .iter()
+        .find_map(|path| {
+            let mut full_path = path.join(profile_path);
+            full_path.set_extension("toml");
+            if full_path.is_file() {
+                return Some(full_path);
+            }
+            None
+        })
+        .ok_or_else(|| {
+            Error::with_message_and_status(
+                format!("Profile not found: {}", name.as_ref()),
+                Status::NotFound,
+            )
+        })
+}
+
+fn get_profile_search_paths(additional_path_list: Option<Vec<PathBuf>>) -> Vec<PathBuf> {
+    let mut result = vec![];
+    if let Some(additional_paths) = additional_path_list {
+        result.extend(additional_paths);
+    }
+
+    if let Some(paths) = env::var_os("ADBC_PROFILE_PATH") {
+        result.extend(env::split_paths(&paths));
+    }
+
+    #[cfg(conda_build)]
+    if let Some(conda_prefix) = env::var_os("CONDA_PREFIX") {
+        let conda_path = PathBuf::from(conda_prefix)
+            .join("etc")
+            .join("adbc")
+            .join("drivers");
+        result.push(conda_path);
+    }
+
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
+    let profile_dir_name = "Profiles";
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    let profile_dir_name = "profiles";
+
+    if let Some(cfgdir) = user_config_dir() {
+        if let Some(profiles_dir) = cfgdir.parent() {
+            result.push(profiles_dir.join(profile_dir_name).to_path_buf());
+        }
+    }
+    result
+}
+
+#[derive(Debug)]
+pub(crate) enum SearchResult<'a> {
+    DriverUri(&'a str, &'a str),
+    Profile(&'a str),
+}
+
+pub(crate) fn parse_driver_uri<'a>(uri: &'a str) -> Result<SearchResult<'a>> {
     let idx = uri.find(":").ok_or(Error::with_message_and_status(
         format!("Invalid URI: {uri}"),
         Status::InvalidArguments,
@@ -824,20 +905,23 @@ pub(crate) fn parse_driver_uri(uri: &str) -> Result<(&str, &str)> {
 
     let driver = &uri[..idx];
     if uri.len() <= idx + 2 {
-        return Ok((driver, uri));
+        return Ok(SearchResult::DriverUri(driver, uri));
     }
 
     #[cfg(target_os = "windows")]
     if let Ok(true) = std::fs::exists(uri) {
-        return Ok((uri, ""));
+        return Ok(SearchResult::DriverUri(uri, ""));
     }
 
     if &uri[idx..idx + 2] == ":/" {
         // scheme is also driver
-        return Ok((driver, uri));
+        if driver == "profile" && uri.len() > idx + 2 {
+            return Ok(SearchResult::Profile(&uri[idx + 2..]));
+        }
+        return Ok(SearchResult::DriverUri(driver, uri));
     }
 
-    Ok((driver, &uri[idx + 1..]))
+    Ok(SearchResult::DriverUri(driver, &uri[idx + 1..]))
 }
 
 #[cfg(test)]
@@ -1380,25 +1464,58 @@ mod tests {
     fn test_parse_driver_uri() {
         let cases = vec![
             ("sqlite", Err(Status::InvalidArguments)),
-            ("sqlite:", Ok(("sqlite", "sqlite:"))),
-            ("sqlite:file::memory:", Ok(("sqlite", "file::memory:"))),
+            ("sqlite:", Ok(SearchResult::DriverUri("sqlite", "sqlite:"))),
+            (
+                "sqlite:file::memory:",
+                Ok(SearchResult::DriverUri("sqlite", "file::memory:")),
+            ),
             (
                 "sqlite:file::memory:?cache=shared",
-                Ok(("sqlite", "file::memory:?cache=shared")),
+                Ok(SearchResult::DriverUri(
+                    "sqlite",
+                    "file::memory:?cache=shared",
+                )),
             ),
             (
                 "postgresql://a:b@localhost:9999/nonexistent",
-                Ok(("postgresql", "postgresql://a:b@localhost:9999/nonexistent")),
+                Ok(SearchResult::DriverUri(
+                    "postgresql",
+                    "postgresql://a:b@localhost:9999/nonexistent",
+                )),
             ),
+            (
+                "profile://my_profile",
+                Ok(SearchResult::Profile("my_profile")),
+            ),
+            (
+                "profile://path/to/profile.toml",
+                Ok(SearchResult::Profile("path/to/profile.toml")),
+            ),
+            (
+                "profile:///absolute/path/to/profile.toml",
+                Ok(SearchResult::Profile("/absolute/path/to/profile.toml")),
+            ),
+            ("invalid_uri", Err(Status::InvalidArguments)),
         ];
 
         for (input, expected) in cases {
             let result = parse_driver_uri(input);
             match expected {
-                Ok((exp_driver, exp_conn)) => {
-                    let (driver, conn) = result.expect("Expected Ok result");
+                Ok(SearchResult::DriverUri(exp_driver, exp_conn)) => {
+                    let SearchResult::DriverUri(driver, conn) = result.expect("Expected Ok result")
+                    else {
+                        panic!("Expected DriverUri result");
+                    };
+
                     assert_eq!(driver, exp_driver);
                     assert_eq!(conn, exp_conn);
+                }
+                Ok(SearchResult::Profile(exp_profile)) => {
+                    let SearchResult::Profile(profile) = result.expect("Expected Ok result") else {
+                        panic!("Expected Profile result");
+                    };
+
+                    assert_eq!(profile, exp_profile);
                 }
                 Err(exp_status) => {
                     let err = result.expect_err("Expected Err result");
@@ -1447,7 +1564,11 @@ mod tests {
         }
         std::fs::write(&temp_db_path, b"").expect("Failed to create temporary database file");
 
-        let (driver, conn) = parse_driver_uri(temp_db_path.to_str().unwrap()).unwrap();
+        let SearchResult::DriverUri(driver, conn) =
+            parse_driver_uri(temp_db_path.to_str().unwrap()).unwrap()
+        else {
+            panic!("Expected DriverUri result");
+        };
 
         assert_eq!(driver, temp_db_path.to_str().unwrap());
         assert_eq!(conn, "");

@@ -100,6 +100,7 @@
 // an immutable struct of function pointers. Wrapping the driver in a `Mutex`
 // would prevent any parallelism between driver calls, which is not desirable.
 
+pub mod connection_profiles;
 pub mod error;
 pub(crate) mod search;
 
@@ -127,7 +128,10 @@ use adbc_core::{
 };
 use adbc_ffi::driver_method;
 
-use self::search::{parse_driver_uri, DriverLibrary};
+use self::search::{parse_driver_uri, DriverLibrary, SearchResult};
+use crate::connection_profiles::{
+    ConnectionProfile, ConnectionProfileProvider, FilesystemProfileProvider,
+};
 
 const ERR_CANCEL_UNSUPPORTED: &str =
     "Canceling connection or statement is not supported with ADBC 1.0.0";
@@ -379,20 +383,65 @@ impl ManagedDatabase {
         additional_search_paths: Option<Vec<PathBuf>>,
         opts: impl IntoIterator<Item = (<Self as Optionable>::Option, OptionValue)>,
     ) -> Result<Self> {
-        let (driver, final_uri) = parse_driver_uri(uri)?;
-
-        let mut drv = ManagedDriver::load_from_name(
-            driver,
+        let profile_provider = FilesystemProfileProvider {};
+        Self::from_uri_with_profile_provider(
+            uri,
             entrypoint,
             version,
             load_flags,
             additional_search_paths,
-        )?;
+            profile_provider,
+            opts,
+        )
+    }
 
-        drv.new_database_with_opts(opts.into_iter().chain(std::iter::once((
-            OptionDatabase::Uri,
-            OptionValue::String(final_uri.to_string()),
-        ))))
+    pub fn from_uri_with_profile_provider(
+        uri: &str,
+        entrypoint: Option<&[u8]>,
+        version: AdbcVersion,
+        load_flags: LoadFlags,
+        additional_search_paths: Option<Vec<PathBuf>>,
+        profile_provider: impl ConnectionProfileProvider,
+        opts: impl IntoIterator<Item = (<Self as Optionable>::Option, OptionValue)>,
+    ) -> Result<Self> {
+        let mut drv: ManagedDriver;
+        let result = parse_driver_uri(uri)?;
+        match result {
+            SearchResult::DriverUri(driver, final_uri) => {
+                drv = ManagedDriver::load_from_name(
+                    driver,
+                    entrypoint,
+                    version,
+                    load_flags,
+                    additional_search_paths.clone(),
+                )?;
+
+                drv.new_database_with_opts(opts.into_iter().chain(std::iter::once((
+                    OptionDatabase::Uri,
+                    OptionValue::String(final_uri.to_string()),
+                ))))
+            }
+            SearchResult::Profile(profile) => {
+                let profile =
+                    profile_provider.get_profile(profile, additional_search_paths.clone())?;
+                let (driver_name, init_func) = profile.get_driver_name()?;
+
+                if let Some(init_fn) = init_func {
+                    drv = ManagedDriver::load_static(&init_fn, version)?;
+                } else {
+                    drv = ManagedDriver::load_from_name(
+                        driver_name,
+                        entrypoint,
+                        version,
+                        load_flags,
+                        additional_search_paths,
+                    )?;
+                }
+
+                let profile_opts = profile.get_options()?;
+                drv.new_database_with_opts(profile_opts.into_iter().chain(opts))
+            }
+        }
     }
 
     fn ffi_driver(&self) -> &adbc_ffi::FFI_AdbcDriver {
