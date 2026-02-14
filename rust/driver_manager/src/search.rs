@@ -822,21 +822,24 @@ pub(crate) fn find_filesystem_profile(
 ) -> Result<PathBuf> {
     let profile_path = Path::new(name.as_ref());
 
-    // If it's an absolute path with .toml extension, check if it exists
+    // Handle absolute paths
     if profile_path.is_absolute() {
-        if let Some(ext) = profile_path.extension() {
-            if ext == "toml" {
-                if profile_path.is_file() {
-                    return Ok(profile_path.to_path_buf());
-                }
-                return Err(Error::with_message_and_status(
+        let has_toml_ext = profile_path.extension().is_some_and(|ext| ext == "toml");
+
+        if has_toml_ext {
+            // Has .toml extension - verify it exists
+            return if profile_path.is_file() {
+                Ok(profile_path.to_path_buf())
+            } else {
+                Err(Error::with_message_and_status(
                     format!("Profile not found: {}", profile_path.display()),
                     Status::NotFound,
-                ));
-            }
+                ))
+            };
         }
-        // Absolute path without .toml extension - add it
-        return Ok(profile_path.with_extension("toml").to_path_buf());
+
+        // No .toml extension - add it
+        return Ok(profile_path.with_extension("toml"));
     }
 
     // For relative paths, check if it's a file at the current location first
@@ -875,34 +878,34 @@ pub(crate) fn find_filesystem_profile(
 }
 
 fn get_profile_search_paths(additional_path_list: Option<Vec<PathBuf>>) -> Vec<PathBuf> {
-    let mut result = vec![];
-    if let Some(additional_paths) = additional_path_list {
-        result.extend(additional_paths);
-    }
+    let mut result = additional_path_list.unwrap_or_default();
 
+    // Add ADBC_PROFILE_PATH environment variable paths
     if let Some(paths) = env::var_os("ADBC_PROFILE_PATH") {
         result.extend(env::split_paths(&paths));
     }
 
+    // Add conda-specific path if built with conda_build
     #[cfg(conda_build)]
     if let Some(conda_prefix) = env::var_os("CONDA_PREFIX") {
-        let conda_path = PathBuf::from(conda_prefix)
-            .join("etc")
-            .join("adbc")
-            .join("drivers");
-        result.push(conda_path);
+        result.push(
+            PathBuf::from(conda_prefix)
+                .join("etc")
+                .join("adbc")
+                .join("drivers")
+        );
     }
 
+    // Add user config directory path
     #[cfg(any(target_os = "windows", target_os = "macos"))]
-    let profile_dir_name = "Profiles";
+    const PROFILE_DIR_NAME: &str = "Profiles";
     #[cfg(not(any(target_os = "windows", target_os = "macos")))]
-    let profile_dir_name = "profiles";
+    const PROFILE_DIR_NAME: &str = "profiles";
 
-    if let Some(cfgdir) = user_config_dir() {
-        if let Some(profiles_dir) = cfgdir.parent() {
-            result.push(profiles_dir.join(profile_dir_name).to_path_buf());
-        }
+    if let Some(profiles_dir) = user_config_dir().and_then(|d| d.parent().map(|p| p.to_path_buf())) {
+        result.push(profiles_dir.join(PROFILE_DIR_NAME));
     }
+
     result
 }
 

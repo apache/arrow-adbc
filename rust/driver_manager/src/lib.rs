@@ -383,7 +383,7 @@ impl ManagedDatabase {
         additional_search_paths: Option<Vec<PathBuf>>,
         opts: impl IntoIterator<Item = (<Self as Optionable>::Option, OptionValue)>,
     ) -> Result<Self> {
-        let profile_provider = FilesystemProfileProvider {};
+        let profile_provider = FilesystemProfileProvider;
         Self::from_uri_with_profile_provider(
             uri,
             entrypoint,

@@ -124,7 +124,7 @@ uri = ":memory:"
 fn test_filesystem_profile_load_simple() {
     let (tmp_dir, profile_path) = write_profile_to_tempfile("simple", &simple_profile());
 
-    let provider = FilesystemProfileProvider {};
+    let provider = FilesystemProfileProvider;
     let profile = provider
         .get_profile(
             profile_path.to_str().unwrap(),
@@ -156,7 +156,7 @@ fn test_filesystem_profile_nested_options() {
     let (tmp_dir, profile_path) =
         write_profile_to_tempfile("nested", &profile_with_nested_options());
 
-    let provider = FilesystemProfileProvider {};
+    let provider = FilesystemProfileProvider;
     let profile = provider
         .get_profile(
             profile_path.to_str().unwrap(),
@@ -192,7 +192,7 @@ fn test_filesystem_profile_nested_options() {
 fn test_filesystem_profile_all_option_types() {
     let (tmp_dir, profile_path) = write_profile_to_tempfile("all_types", &profile_with_all_types());
 
-    let provider = FilesystemProfileProvider {};
+    let provider = FilesystemProfileProvider;
     let profile = provider
         .get_profile(
             profile_path.to_str().unwrap(),
@@ -260,7 +260,7 @@ fn test_filesystem_profile_error_cases() {
     for (name, profile_content, expected_status, expected_msg_fragment) in test_cases {
         let (tmp_dir, profile_path) = write_profile_to_tempfile(name, &profile_content);
 
-        let provider = FilesystemProfileProvider {};
+        let provider = FilesystemProfileProvider;
         let result = provider.get_profile(
             profile_path.to_str().unwrap(),
             Some(vec![tmp_dir.path().to_path_buf()]),
@@ -291,7 +291,7 @@ fn test_filesystem_profile_error_cases() {
 
 #[test]
 fn test_filesystem_profile_not_found() {
-    let provider = FilesystemProfileProvider {};
+    let provider = FilesystemProfileProvider;
     let result = provider.get_profile("nonexistent_profile", None);
 
     assert!(result.is_err());
@@ -304,7 +304,7 @@ fn test_filesystem_profile_not_found() {
 fn test_filesystem_profile_without_driver() {
     let (tmp_dir, profile_path) = write_profile_to_tempfile("no_driver", &profile_without_driver());
 
-    let provider = FilesystemProfileProvider {};
+    let provider = FilesystemProfileProvider;
     let profile = provider
         .get_profile(
             profile_path.to_str().unwrap(),
@@ -383,7 +383,7 @@ fn test_profile_loading_scenarios() {
     for (name, profile_name, profile_content, use_search_path, use_absolute) in test_cases {
         let (tmp_dir, profile_path) = write_profile_to_tempfile(profile_name, &profile_content);
 
-        let provider = FilesystemProfileProvider {};
+        let provider = FilesystemProfileProvider;
         let search_paths = if use_search_path {
             Some(vec![tmp_dir.path().to_path_buf()])
         } else {
@@ -417,7 +417,7 @@ fn test_profile_loading_scenarios() {
 fn test_profile_display() {
     let (tmp_dir, profile_path) = write_profile_to_tempfile("display", &simple_profile());
 
-    let provider = FilesystemProfileProvider {};
+    let provider = FilesystemProfileProvider;
     let profile = provider
         .get_profile(profile_path.to_str().unwrap(), None)
         .unwrap();
