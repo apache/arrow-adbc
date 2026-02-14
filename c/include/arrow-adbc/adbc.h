@@ -1134,6 +1134,10 @@ struct ADBC_EXPORT AdbcDriver {
   AdbcStatusCode (*StatementSetOptionInt)(struct AdbcStatement*, const char*, int64_t,
                                           struct AdbcError*);
 
+  // ADBC 1.2
+  AdbcStatusCode (*StatementRequestSchema)(struct AdbcStatement*, struct ArrowSchema*,
+                                           struct AdbcError*);
+
   /// @}
 };
 
@@ -2036,6 +2040,36 @@ AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
 /// \return ADBC_STATUS_NOT_IMPLEMENTED if the driver does not support this.
 ADBC_EXPORT
 AdbcStatusCode AdbcStatementExecuteSchema(struct AdbcStatement* statement,
+                                          struct ArrowSchema* schema,
+                                          struct AdbcError* error);
+
+/// \brief Request the schema of the next statement execution
+///
+/// Allows the caller to request a specific schema based on prior
+/// information or user input. This may be used to ensure a
+/// consistent schema when executing queries against a database
+/// with row-based types (e.g., SQLite) or a database whose types
+/// are implemented with row-based parameters where Arrow prefers
+/// type-level parameters (e.g., NUMERIC for PostgreSQL).
+///
+/// The provided schema is a request and not a guarantee (i.e.,
+/// callers must use the schema provided by the output stream to
+/// interpret the result).
+///
+/// Calling AdbcStatementRequestSchema() must not affect the result
+/// of AdbcStatementExecuteSchema (which always infers its result
+/// from the input query).
+///
+/// \since ADBC API revision 1.2.0
+///
+/// \param[in] statement The statement to execute.
+/// \param[in] schema The requested schema.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+///
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the driver does not support this.
+ADBC_EXPORT
+AdbcStatusCode AdbcStatementRequestSchema(struct AdbcStatement* statement,
                                           struct ArrowSchema* schema,
                                           struct AdbcError* error);
 
