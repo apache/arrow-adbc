@@ -17,6 +17,7 @@
 
 use std::path::PathBuf;
 
+use adbc_core::Optionable;
 use adbc_core::options::{AdbcVersion, OptionDatabase, OptionValue};
 use adbc_core::{error::Status, LOAD_FLAG_DEFAULT};
 use adbc_driver_manager::connection_profiles::{
@@ -346,8 +347,8 @@ fn test_database_from_uri_with_profile_additional_options() {
 
     // Additional options should override profile options
     let additional_opts = vec![(
-        OptionDatabase::Username,
-        OptionValue::String("testuser".to_string()),
+        OptionDatabase::Uri,
+        OptionValue::String("file::memory:".to_string()),
     )];
 
     let database = ManagedDatabase::from_uri_with_opts(
@@ -359,6 +360,9 @@ fn test_database_from_uri_with_profile_additional_options() {
         additional_opts,
     )
     .unwrap();
+
+    let uri = database.get_option_string(OptionDatabase::Uri).unwrap();
+    assert_eq!(uri, "file::memory:");
 
     common::test_database(&database);
 
