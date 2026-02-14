@@ -846,7 +846,10 @@ pub(crate) fn find_filesystem_profile(
     name: impl AsRef<str>,
     additional_path_list: Option<Vec<PathBuf>>,
 ) -> Result<PathBuf> {
-    let profile_path = Path::new(name.as_ref());
+    // Convert the name to a PathBuf to ensure proper platform-specific path handling.
+    // This normalizes forward slashes to backslashes on Windows.
+    let profile_path = PathBuf::from(name.as_ref());
+    let profile_path = profile_path.as_path();
 
     // Handle absolute paths
     if profile_path.is_absolute() {
