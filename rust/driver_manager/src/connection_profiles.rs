@@ -23,10 +23,11 @@ use adbc_core::{
     Optionable,
 };
 use adbc_ffi::FFI_AdbcDriverInitFunc;
-use std::fmt;
+use std::{env, fmt, sync::OnceLock};
 use std::path::PathBuf;
 use std::{collections::HashMap, fs};
 use toml::de::{DeTable, DeValue};
+use regex::{Captures, Regex};
 
 /// A connection profile that provides configuration for creating ADBC database connections.
 ///
@@ -328,6 +329,55 @@ impl fmt::Display for FilesystemProfile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "FilesystemProfile({})", self.profile_path.display())
     }
+}
+
+fn profile_value_regex() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| {
+        Regex::new(r"{{\s*([^{}]]*?)\s*}}").unwrap()
+    })
+}
+
+pub(crate) fn process_profile_value(value: &String) -> Result<OptionValue> {
+    let re = profile_value_regex();
+    
+    let replacer = |caps: &Captures| -> Result<String> {
+        let content = caps.get(1).unwrap().as_str();
+        if !content.starts_with("env_var(") || !content.ends_with(")") {
+            return Err(Error::with_message_and_status(
+                format!("invalid profile replacement expression '{{{{ {} }}}}'", content),
+                Status::InvalidArguments,
+            ));
+        }
+
+        let env_var_name = content[8..content.len()-1].trim();
+        if env_var_name.is_empty() {
+            return Err(Error::with_message_and_status(
+                format!("empty environment variable name in profile replacement expression '{{{{ {} }}}}'", content),
+                Status::InvalidArguments,
+            ));
+        }
+
+        match env::var(env_var_name) {
+            Ok(val) => Ok(val),
+            Err(env::VarError::NotPresent) => Ok("".to_string()),
+            Err(e) => Err(Error::with_message_and_status(
+                format!("error retrieving environment variable '{}' for profile replacement expression '{{{{ {} }}}}': {}", env_var_name, content, e),
+                Status::InvalidArguments,
+            )),
+        }
+    };
+
+    let mut new = String::with_capacity(value.len());
+    let mut last_match = 0;
+    for caps in re.captures_iter(value) {
+        let m = caps.get(0).unwrap();
+        new.push_str(&value[last_match..m.start()]);
+        new.push_str(&replacer(&caps)?);
+        last_match = m.end();
+    }
+    new.push_str(&value[last_match..]);
+    Ok(OptionValue::String(new))
 }
 
 #[cfg(test)]

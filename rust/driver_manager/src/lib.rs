@@ -130,7 +130,7 @@ use adbc_ffi::driver_method;
 
 use self::search::{parse_driver_uri, DriverLibrary, SearchResult};
 use crate::connection_profiles::{
-    ConnectionProfile, ConnectionProfileProvider, FilesystemProfileProvider,
+    process_profile_value, ConnectionProfile, ConnectionProfileProvider, FilesystemProfileProvider,
 };
 
 const ERR_CANCEL_UNSUPPORTED: &str =
@@ -588,7 +588,18 @@ impl ManagedDatabase {
                     )?;
                 }
 
-                let profile_opts = profile.get_options()?;
+                let profile_opts: Vec<(OptionDatabase, OptionValue)> = profile
+                    .get_options()?
+                    .into_iter()
+                    .map(|(k, v)| {
+                        if let OptionValue::String(s) = v {
+                            let result = process_profile_value(&s)?;
+                            Ok::<(OptionDatabase, OptionValue), Error>((k, result))
+                        } else {
+                            Ok((k, v))
+                        }
+                    })
+                    .collect::<Result<Vec<_>>>()?;
                 drv.new_database_with_opts(profile_opts.into_iter().chain(opts))
             }
         }

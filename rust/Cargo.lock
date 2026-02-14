@@ -37,6 +37,7 @@ dependencies = [
  "arrow-select",
  "libloading",
  "path-slash",
+ "regex",
  "temp-env",
  "tempfile",
  "toml",

@@ -41,6 +41,7 @@ arrow-array.workspace = true
 arrow-schema.workspace = true
 libloading = "0.8.8"
 path-slash = "0.2.1"
+regex = "1.12.3"
 toml = { version = "0.9.12", default-features = false, features = [
     "parse",
     "display",
