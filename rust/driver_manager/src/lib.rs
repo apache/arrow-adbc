@@ -427,7 +427,7 @@ impl ManagedDatabase {
                 let (driver_name, init_func) = profile.get_driver_name()?;
 
                 if let Some(init_fn) = init_func {
-                    drv = ManagedDriver::load_static(&init_fn, version)?;
+                    drv = ManagedDriver::load_static(init_fn, version)?;
                 } else {
                     drv = ManagedDriver::load_from_name(
                         driver_name,

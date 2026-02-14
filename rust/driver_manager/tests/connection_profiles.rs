@@ -77,7 +77,7 @@ driver = "adbc_driver_sqlite"
 uri = ":memory:"
 string_opt = "test_value"
 int_opt = 42
-float_opt = 3.14
+float_opt = 2.718
 bool_opt = true
 "#
     .to_string()
@@ -219,7 +219,7 @@ fn test_filesystem_profile_all_option_types() {
                 _ => panic!("Expected int value for int_opt"),
             },
             "float_opt" => match value {
-                OptionValue::Double(f) => assert!((f - 3.14).abs() < 1e-10),
+                OptionValue::Double(f) => assert!((f - 2.718).abs() < 1e-10),
                 _ => panic!("Expected double value for float_opt"),
             },
             "bool_opt" => match value {

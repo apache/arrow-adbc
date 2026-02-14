@@ -846,7 +846,7 @@ pub(crate) fn find_filesystem_profile(
 
     // Search in the configured paths
     let path_list = get_profile_search_paths(additional_path_list);
-    let has_toml_ext = profile_path.extension().map_or(false, |ext| ext == "toml");
+    let has_toml_ext = profile_path.extension().is_some_and(|ext| ext == "toml");
 
     path_list
         .iter()
@@ -1741,7 +1741,7 @@ mod tests {
         let paths = get_profile_search_paths(Some(vec![tmp_dir.path().to_path_buf()]));
 
         assert!(paths.contains(&tmp_dir.path().to_path_buf()));
-        assert!(paths.len() >= 1);
+        assert!(!paths.is_empty());
 
         tmp_dir.close().unwrap();
     }
