@@ -337,9 +337,9 @@ fn profile_value_regex() -> &'static Regex {
 }
 
 pub(crate) fn process_profile_value(value: &str) -> Result<OptionValue> {
-    let re = profile_value_regex();    
+    let re = profile_value_regex();
 
-    let replacer = |caps: &Captures| -> Result<String> {        
+    let replacer = |caps: &Captures| -> Result<String> {
         let content = caps.get(1).unwrap().as_str();
         if !content.starts_with("env_var(") || !content.ends_with(")") {
             return Err(Error::with_message_and_status(
@@ -372,7 +372,7 @@ pub(crate) fn process_profile_value(value: &str) -> Result<OptionValue> {
     let mut new = String::with_capacity(value.len());
     let mut last_match = 0;
     for caps in re.captures_iter(value) {
-        let m = caps.get(0).unwrap();        
+        let m = caps.get(0).unwrap();
         new.push_str(&value[last_match..m.start()]);
         new.push_str(&replacer(&caps)?);
         last_match = m.end();
