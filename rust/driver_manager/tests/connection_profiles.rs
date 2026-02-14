@@ -33,8 +33,7 @@ fn write_profile_to_tempfile(profile_name: &str, content: &str) -> (tempfile::Te
         .expect("Failed to create temporary directory for profile tests");
 
     let profile_path = tmp_dir.path().join(format!("{}.toml", profile_name));
-    std::fs::write(&profile_path, content)
-        .expect("Failed to write profile to temporary file");
+    std::fs::write(&profile_path, content).expect("Failed to write profile to temporary file");
 
     (tmp_dir, profile_path)
 }
@@ -328,14 +327,8 @@ fn test_database_from_uri_with_profile() {
     let (tmp_dir, profile_path) = write_profile_to_tempfile("test_db", &simple_profile());
 
     let uri = format!("profile://{}", profile_path.display());
-    let database = ManagedDatabase::from_uri(
-        &uri,
-        None,
-        AdbcVersion::V100,
-        LOAD_FLAG_DEFAULT,
-        None,
-    )
-    .unwrap();
+    let database =
+        ManagedDatabase::from_uri(&uri, None, AdbcVersion::V100, LOAD_FLAG_DEFAULT, None).unwrap();
 
     common::test_database(&database);
 
@@ -352,7 +345,10 @@ fn test_database_from_uri_with_profile_additional_options() {
     let uri = format!("profile://{}", profile_path.display());
 
     // Additional options should override profile options
-    let additional_opts = vec![(OptionDatabase::Username, OptionValue::String("testuser".to_string()))];
+    let additional_opts = vec![(
+        OptionDatabase::Username,
+        OptionValue::String("testuser".to_string()),
+    )];
 
     let database = ManagedDatabase::from_uri_with_opts(
         &uri,
@@ -381,13 +377,7 @@ fn test_profile_loading_scenarios() {
             true,
             true,
         ),
-        (
-            "absolute path",
-            "absolute",
-            simple_profile(),
-            false,
-            true,
-        ),
+        ("absolute path", "absolute", simple_profile(), false, true),
     ];
 
     for (name, profile_name, profile_content, use_search_path, use_absolute) in test_cases {

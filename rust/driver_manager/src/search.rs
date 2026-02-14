@@ -1630,7 +1630,13 @@ mod tests {
                 true,
                 true,
             ),
-            ("nonexistent profile", "nonexistent_profile", None, false, false),
+            (
+                "nonexistent profile",
+                "nonexistent_profile",
+                None,
+                false,
+                false,
+            ),
         ];
 
         for (name, profile_name, search_paths_opt, is_absolute, should_succeed) in test_cases {
@@ -1639,13 +1645,11 @@ mod tests {
                 .tempdir()
                 .unwrap();
 
-            let expected_profile_path = tmp_dir.path().join(
-                if profile_name.ends_with(".toml") {
-                    profile_name.to_string()
-                } else {
-                    format!("{}.toml", profile_name)
-                }
-            );
+            let expected_profile_path = tmp_dir.path().join(if profile_name.ends_with(".toml") {
+                profile_name.to_string()
+            } else {
+                format!("{}.toml", profile_name)
+            });
 
             if should_succeed {
                 std::fs::write(&expected_profile_path, "test content").unwrap();
@@ -1660,7 +1664,12 @@ mod tests {
                 if profile_name.ends_with(".toml") {
                     expected_profile_path.to_str().unwrap().to_string()
                 } else {
-                    tmp_dir.path().join(profile_name).to_str().unwrap().to_string()
+                    tmp_dir
+                        .path()
+                        .join(profile_name)
+                        .to_str()
+                        .unwrap()
+                        .to_string()
                 }
             } else {
                 profile_name.to_string()
