@@ -76,7 +76,7 @@ driver = "adbc_driver_sqlite"
 uri = ":memory:"
 string_opt = "test_value"
 int_opt = 42
-float_opt = 2.718
+float_opt = 12.34
 bool_opt = true
 "#
     .to_string()
@@ -218,7 +218,7 @@ fn test_filesystem_profile_all_option_types() {
                 _ => panic!("Expected int value for int_opt"),
             },
             "float_opt" => match value {
-                OptionValue::Double(f) => assert!((f - 2.718).abs() < 1e-10),
+                OptionValue::Double(f) => assert!((f - 12.34).abs() < 1e-10),
                 _ => panic!("Expected double value for float_opt"),
             },
             "bool_opt" => match value {
@@ -425,6 +425,140 @@ fn test_profile_display() {
     let display_str = format!("{}", profile);
     assert!(display_str.contains("FilesystemProfile"));
     assert!(display_str.contains(profile_path.to_str().unwrap()));
+
+    tmp_dir
+        .close()
+        .expect("Failed to close/remove temporary directory");
+}
+
+#[test]
+fn test_profile_hierarchical_path_via_env_var() {
+    use std::env;
+
+    let tmp_dir = tempfile::Builder::new()
+        .prefix("adbc_profile_env_test")
+        .tempdir()
+        .expect("Failed to create temporary directory");
+
+    // Create a hierarchical directory structure: databases/postgres/
+    let databases_dir = tmp_dir.path().join("databases");
+    let postgres_dir = databases_dir.join("postgres");
+    std::fs::create_dir_all(&postgres_dir).expect("Failed to create subdirectories");
+
+    // Create a profile in the nested directory
+    let profile_path = postgres_dir.join("production.toml");
+    std::fs::write(&profile_path, simple_profile()).expect("Failed to write profile");
+
+    // Verify the file was created
+    assert!(
+        profile_path.is_file(),
+        "Profile file should exist at {}",
+        profile_path.display()
+    );
+
+    // Set ADBC_PROFILE_PATH to the parent directory
+    let prev_value = env::var_os("ADBC_PROFILE_PATH");
+    env::set_var("ADBC_PROFILE_PATH", tmp_dir.path());
+
+    // Verify the environment variable is set correctly
+    assert_eq!(
+        env::var_os("ADBC_PROFILE_PATH").as_deref(),
+        Some(tmp_dir.path().as_os_str())
+    );
+
+    // Try to load the profile using hierarchical relative path
+    let provider = FilesystemProfileProvider;
+    let result = provider.get_profile("databases/postgres/production", None);
+
+    // Restore the original environment variable
+    match prev_value {
+        Some(val) => env::set_var("ADBC_PROFILE_PATH", val),
+        None => env::remove_var("ADBC_PROFILE_PATH"),
+    }
+
+    // Verify the profile was loaded successfully
+    let profile = result.expect("Failed to load profile from hierarchical path");
+    let (driver_name, _) = profile.get_driver_name().unwrap();
+    assert_eq!(driver_name, "adbc_driver_sqlite");
+
+    // Verify it loaded from the correct path
+    let display_str = format!("{}", profile);
+    assert!(display_str.contains(&profile_path.to_string_lossy().to_string()));
+
+    tmp_dir
+        .close()
+        .expect("Failed to close/remove temporary directory");
+}
+
+#[test]
+fn test_profile_hierarchical_path_with_extension_via_env_var() {
+    use std::env;
+
+    let tmp_dir = tempfile::Builder::new()
+        .prefix("adbc_profile_env_test2")
+        .tempdir()
+        .expect("Failed to create temporary directory");
+
+    // Create a hierarchical directory structure: configs/dev/
+    let configs_dir = tmp_dir.path().join("configs");
+    let dev_dir = configs_dir.join("dev");
+    std::fs::create_dir_all(&dev_dir).expect("Failed to create subdirectories");
+
+    // Create a profile in the nested directory
+    let profile_path = dev_dir.join("database.toml");
+    std::fs::write(&profile_path, simple_profile()).expect("Failed to write profile");
+
+    // Set ADBC_PROFILE_PATH to the parent directory
+    let prev_value = env::var_os("ADBC_PROFILE_PATH");
+    env::set_var("ADBC_PROFILE_PATH", tmp_dir.path());
+
+    // Try to load the profile using hierarchical relative path with .toml extension
+    let provider = FilesystemProfileProvider;
+    let result = provider.get_profile("configs/dev/database.toml", None);
+
+    // Restore the original environment variable
+    match prev_value {
+        Some(val) => env::set_var("ADBC_PROFILE_PATH", val),
+        None => env::remove_var("ADBC_PROFILE_PATH"),
+    }
+
+    // Verify the profile was loaded successfully
+    let profile = result.expect("Failed to load profile from hierarchical path with extension");
+    let (driver_name, _) = profile.get_driver_name().unwrap();
+    assert_eq!(driver_name, "adbc_driver_sqlite");
+
+    tmp_dir
+        .close()
+        .expect("Failed to close/remove temporary directory");
+}
+
+#[test]
+fn test_profile_hierarchical_path_additional_search_paths() {
+    let tmp_dir = tempfile::Builder::new()
+        .prefix("adbc_profile_hier_test")
+        .tempdir()
+        .expect("Failed to create temporary directory");
+
+    // Create a hierarchical directory structure: projects/myapp/
+    let projects_dir = tmp_dir.path().join("projects");
+    let myapp_dir = projects_dir.join("myapp");
+    std::fs::create_dir_all(&myapp_dir).expect("Failed to create subdirectories");
+
+    // Create a profile in the nested directory
+    let profile_path = myapp_dir.join("local.toml");
+    std::fs::write(&profile_path, simple_profile()).expect("Failed to write profile");
+
+    // Load profile using hierarchical path via additional_search_paths
+    let provider = FilesystemProfileProvider;
+    let result = provider.get_profile(
+        "projects/myapp/local",
+        Some(vec![tmp_dir.path().to_path_buf()]),
+    );
+
+    // Verify the profile was loaded successfully
+    let profile = result.expect("Failed to load profile from hierarchical path");
+    let (driver_name, _) = profile.get_driver_name().unwrap();
+    assert_eq!(driver_name, "adbc_driver_sqlite");
 
     tmp_dir
         .close()

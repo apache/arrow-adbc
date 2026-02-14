@@ -816,6 +816,46 @@ fn get_search_paths(lvls: LoadFlags) -> Vec<PathBuf> {
     result
 }
 
+/// Locates a connection profile file on the filesystem.
+///
+/// This function searches for profile files with a `.toml` extension using the
+/// following strategy:
+///
+/// 1. If `name` is an absolute path with `.toml` extension, verify it exists
+/// 2. If `name` is an absolute path without extension, add `.toml` and return
+/// 3. If `name` is a relative path that exists in the current directory, return it
+/// 4. Search configured profile directories in order:
+///    - Additional paths provided
+///    - `ADBC_PROFILE_PATH` environment variable paths
+///    - Conda prefix path (if built with `conda_build`)
+///    - User configuration directory
+///
+/// # Arguments
+///
+/// * `name` - Profile name or path (e.g., "my_profile", "/path/to/profile.toml")
+/// * `additional_path_list` - Optional additional directories to search
+///
+/// # Returns
+///
+/// The absolute path to the located profile file.
+///
+/// # Errors
+///
+/// Returns `Status::NotFound` if the profile cannot be located in any search path.
+///
+/// # Examples
+///
+/// ```no_run
+/// # use std::path::PathBuf;
+/// # use adbc_driver_manager::search::find_filesystem_profile;
+/// // Search by name in standard locations
+/// let path = find_filesystem_profile("my_database", None)?;
+///
+/// // Search with additional paths
+/// let extra_paths = vec![PathBuf::from("/opt/adbc/profiles")];
+/// let path = find_filesystem_profile("my_database", Some(extra_paths))?;
+/// # Ok::<(), adbc_core::error::Error>(())
+/// ```
 pub(crate) fn find_filesystem_profile(
     name: impl AsRef<str>,
     additional_path_list: Option<Vec<PathBuf>>,
@@ -877,6 +917,25 @@ pub(crate) fn find_filesystem_profile(
         })
 }
 
+/// Returns the list of directories to search for connection profiles.
+///
+/// Directories are returned in search priority order:
+///
+/// 1. Additional paths provided (highest priority)
+/// 2. `ADBC_PROFILE_PATH` environment variable (colon/semicolon-separated paths)
+/// 3. Conda prefix path: `$CONDA_PREFIX/etc/adbc/drivers` (if built with `conda_build`)
+/// 4. User config directory:
+///    - Linux: `~/.config/adbc/profiles`
+///    - macOS: `~/Library/Application Support/ADBC/Profiles`
+///    - Windows: `%LOCALAPPDATA%\ADBC\Profiles`
+///
+/// # Arguments
+///
+/// * `additional_path_list` - Optional additional directories to prepend to the search path
+///
+/// # Returns
+///
+/// A vector of paths to search for profiles, in priority order.
 fn get_profile_search_paths(additional_path_list: Option<Vec<PathBuf>>) -> Vec<PathBuf> {
     let mut result = additional_path_list.unwrap_or_default();
 
@@ -892,7 +951,7 @@ fn get_profile_search_paths(additional_path_list: Option<Vec<PathBuf>>) -> Vec<P
             PathBuf::from(conda_prefix)
                 .join("etc")
                 .join("adbc")
-                .join("drivers")
+                .join("drivers"),
         );
     }
 
@@ -902,19 +961,79 @@ fn get_profile_search_paths(additional_path_list: Option<Vec<PathBuf>>) -> Vec<P
     #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     const PROFILE_DIR_NAME: &str = "profiles";
 
-    if let Some(profiles_dir) = user_config_dir().and_then(|d| d.parent().map(|p| p.to_path_buf())) {
+    if let Some(profiles_dir) = user_config_dir().and_then(|d| d.parent().map(|p| p.to_path_buf()))
+    {
         result.push(profiles_dir.join(PROFILE_DIR_NAME));
     }
 
     result
 }
 
+/// Result of parsing a driver URI, indicating how to load the driver.
+///
+/// URIs can specify either a direct driver connection or a profile to load.
 #[derive(Debug)]
 pub(crate) enum SearchResult<'a> {
+    /// Direct driver URI: (driver_name, connection_string)
+    ///
+    /// Example: `"sqlite:file::memory:"` → `DriverUri("sqlite", "file::memory:")`
     DriverUri(&'a str, &'a str),
+
+    /// Profile reference: (profile_name_or_path)
+    ///
+    /// Example: `"profile://my_database"` → `Profile("my_database")`
     Profile(&'a str),
 }
 
+/// Parses a driver URI to determine the connection method.
+///
+/// # URI Formats
+///
+/// ## Direct Driver URI
+/// - `driver:connection_string` - Uses the specified driver with connection string
+/// - `driver://host:port/database` - Standard URI format with driver scheme
+///
+/// ## Profile URI
+/// - `profile://name` - Loads profile named "name" from standard locations
+/// - `profile://path/to/profile.toml` - Loads profile from relative path
+/// - `profile:///absolute/path/to/profile.toml` - Loads profile from absolute path
+///
+/// # Arguments
+///
+/// * `uri` - The URI string to parse
+///
+/// # Returns
+///
+/// A `SearchResult` indicating whether to use a driver directly or load a profile.
+///
+/// # Errors
+///
+/// Returns `Status::InvalidArguments` if:
+/// - The URI has no colon separator
+/// - The URI format is invalid
+///
+/// # Examples
+///
+/// ```no_run
+/// # use adbc_driver_manager::search::{parse_driver_uri, SearchResult};
+/// // Direct driver connection
+/// let result = parse_driver_uri("sqlite::memory:")?;
+/// match result {
+///     SearchResult::DriverUri(driver, conn) => {
+///         assert_eq!(driver, "sqlite");
+///         assert_eq!(conn, ":memory:");
+///     }
+///     _ => panic!("Expected DriverUri"),
+/// }
+///
+/// // Profile reference
+/// let result = parse_driver_uri("profile://my_database")?;
+/// match result {
+///     SearchResult::Profile(name) => assert_eq!(name, "my_database"),
+///     _ => panic!("Expected Profile"),
+/// }
+/// # Ok::<(), adbc_core::error::Error>(())
+/// ```
 pub(crate) fn parse_driver_uri<'a>(uri: &'a str) -> Result<SearchResult<'a>> {
     let idx = uri.find(":").ok_or(Error::with_message_and_status(
         format!("Invalid URI: {uri}"),

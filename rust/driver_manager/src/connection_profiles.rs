@@ -28,15 +28,65 @@ use std::path::PathBuf;
 use std::{collections::HashMap, fs};
 use toml::de::{DeTable, DeValue};
 
+/// A connection profile that provides configuration for creating ADBC database connections.
+///
+/// Profiles contain the driver name, optional initialization function, and database options
+/// that can be used to create a configured database connection without needing to specify
+/// all connection details programmatically.
 pub trait ConnectionProfile {
+    /// Returns the driver name and an optional static initialization function.
+    ///
+    /// # Returns
+    ///
+    /// A tuple containing:
+    /// - A string slice with the driver name (e.g., "adbc_driver_sqlite")
+    /// - An optional reference to a statically-linked driver initialization function
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the profile is malformed or cannot be read.
     fn get_driver_name(&self) -> Result<(&str, Option<&FFI_AdbcDriverInitFunc>)>;
+
+    /// Returns an iterator of database options to apply when creating a connection.
+    ///
+    /// # Returns
+    ///
+    /// An iterator yielding `(OptionDatabase, OptionValue)` tuples that should be
+    /// applied to the database before initialization.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the options cannot be retrieved or parsed.
     fn get_options(
         &self,
     ) -> Result<impl IntoIterator<Item = (<ManagedDatabase as Optionable>::Option, OptionValue)>>;
 }
 
+/// Provides access to connection profiles from a specific storage backend.
+///
+/// Implementations of this trait define how profiles are located and loaded,
+/// such as from the filesystem, a configuration service, or other sources.
 pub trait ConnectionProfileProvider {
+    /// The concrete profile type returned by this provider.
     type Profile: ConnectionProfile;
+
+    /// Retrieves a connection profile by name.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The profile name or path to locate
+    /// * `additional_path_list` - Optional additional directories to search for profiles
+    ///
+    /// # Returns
+    ///
+    /// The loaded connection profile.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The profile cannot be found
+    /// - The profile file is malformed
+    /// - The profile version is unsupported
     fn get_profile(
         &self,
         name: &str,
@@ -44,6 +94,32 @@ pub trait ConnectionProfileProvider {
     ) -> Result<Self::Profile>;
 }
 
+/// Provides connection profiles from TOML files on the filesystem.
+///
+/// This provider searches for profile files with a `.toml` extension in standard
+/// configuration directories and any additional paths provided. Profile files must
+/// conform to the ADBC profile specification version 1.
+///
+/// # Search Order
+///
+/// Profiles are searched in the following order:
+/// 1. Additional paths provided via `get_profile()`
+/// 2. `ADBC_PROFILE_PATH` environment variable paths
+/// 3. User configuration directory (`~/.config/adbc/profiles` on Linux,
+///    `~/Library/Application Support/ADBC/Profiles` on macOS,
+///    `%LOCALAPPDATA%\ADBC\Profiles` on Windows)
+///
+/// # Example
+///
+/// ```no_run
+/// use adbc_driver_manager::connection_profiles::{
+///     ConnectionProfileProvider, FilesystemProfileProvider
+/// };
+///
+/// let provider = FilesystemProfileProvider;
+/// let profile = provider.get_profile("my_database", None)?;
+/// # Ok::<(), adbc_core::error::Error>(())
+/// ```
 pub struct FilesystemProfileProvider;
 
 impl ConnectionProfileProvider for FilesystemProfileProvider {
@@ -59,6 +135,31 @@ impl ConnectionProfileProvider for FilesystemProfileProvider {
     }
 }
 
+/// Recursively processes TOML table entries into database options.
+///
+/// This function flattens nested TOML tables into dot-separated option keys
+/// and converts TOML values into appropriate `OptionValue` types.
+///
+/// # Arguments
+///
+/// * `opts` - Map to populate with parsed options
+/// * `prefix` - Current key prefix for nested tables (e.g., "connection." for nested options)
+/// * `table` - TOML table to process
+///
+/// # Supported Types
+///
+/// - String values → `OptionValue::String`
+/// - Integer values → `OptionValue::Int`
+/// - Float values → `OptionValue::Double`
+/// - Boolean values → `OptionValue::String` (converted to "true" or "false")
+/// - Nested tables → Recursively processed with dot-separated keys
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - An integer value cannot be parsed as `i64`
+/// - A float value cannot be parsed as `f64`
+/// - An unsupported TOML type is encountered (e.g., arrays, inline tables)
 fn process_options(
     opts: &mut HashMap<OptionDatabase, OptionValue>,
     prefix: &str,
@@ -106,6 +207,27 @@ fn process_options(
     Ok(())
 }
 
+/// A connection profile loaded from a TOML file on the filesystem.
+///
+/// This profile contains:
+/// - The path to the profile file
+/// - The driver name specified in the profile
+/// - A map of database options parsed from the profile
+///
+/// # Profile Format
+///
+/// Profile files must be valid TOML with the following structure:
+///
+/// ```toml
+/// version = 1
+/// driver = "driver_name"
+///
+/// [options]
+/// option_key = "option_value"
+/// nested.key = "nested_value"
+/// ```
+///
+/// Currently, only version 1 profiles are supported.
 #[derive(Debug)]
 pub struct FilesystemProfile {
     profile_path: PathBuf,
@@ -114,6 +236,24 @@ pub struct FilesystemProfile {
 }
 
 impl FilesystemProfile {
+    /// Loads a profile from the specified filesystem path.
+    ///
+    /// # Arguments
+    ///
+    /// * `profile_path` - Path to the TOML profile file
+    ///
+    /// # Returns
+    ///
+    /// A loaded `FilesystemProfile` with parsed configuration.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The file cannot be read
+    /// - The TOML is malformed
+    /// - The profile version is not "1"
+    /// - The `options` table is missing or invalid
+    /// - Any option values cannot be parsed
     fn from_path(profile_path: PathBuf) -> Result<Self> {
         let contents = fs::read_to_string(&profile_path).map_err(|e| {
             Error::with_message_and_status(
@@ -261,10 +401,18 @@ flag = true"#,
 
                 match (actual_value, &expected_value) {
                     (OptionValue::String(a), OptionValue::String(e)) => {
-                        assert_eq!(a, e, "Test case '{}': string mismatch for key '{}'", name, key_str);
+                        assert_eq!(
+                            a, e,
+                            "Test case '{}': string mismatch for key '{}'",
+                            name, key_str
+                        );
                     }
                     (OptionValue::Int(a), OptionValue::Int(e)) => {
-                        assert_eq!(a, e, "Test case '{}': int mismatch for key '{}'", name, key_str);
+                        assert_eq!(
+                            a, e,
+                            "Test case '{}': int mismatch for key '{}'",
+                            name, key_str
+                        );
                     }
                     (OptionValue::Double(a), OptionValue::Double(e)) => {
                         assert!(
@@ -274,10 +422,7 @@ flag = true"#,
                             key_str
                         );
                     }
-                    _ => panic!(
-                        "Test case '{}': type mismatch for key '{}'",
-                        name, key_str
-                    ),
+                    _ => panic!("Test case '{}': type mismatch for key '{}'", name, key_str),
                 }
             }
         }
@@ -391,37 +536,43 @@ deep = "value"
             (
                 "invalid version (too high)",
                 "invalid_version_high.toml",
-                Some(r#"
+                Some(
+                    r#"
 version = 99
 driver = "test_driver"
 
 [options]
 key = "value"
-"#),
+"#,
+                ),
                 "unsupported profile version '99', expected '1'",
             ),
             (
                 "version 0",
                 "version_zero.toml",
-                Some(r#"
+                Some(
+                    r#"
 version = 0
 driver = "test_driver"
 
 [options]
 key = "value"
-"#),
+"#,
+                ),
                 "unsupported profile version '0', expected '1'",
             ),
             (
                 "version 2",
                 "version_two.toml",
-                Some(r#"
+                Some(
+                    r#"
 version = 2
 driver = "test_driver"
 
 [options]
 key = "value"
-"#),
+"#,
+                ),
                 "unsupported profile version '2', expected '1'",
             ),
         ];
@@ -519,21 +670,18 @@ test_key = "test_value"
                 .tempdir()
                 .unwrap();
 
-            let profile_path = tmp_dir.path().join(
-                if profile_name.ends_with(".toml") {
-                    profile_name.to_string()
-                } else {
-                    format!("{}.toml", profile_name)
-                }
-            );
+            let profile_path = tmp_dir.path().join(if profile_name.ends_with(".toml") {
+                profile_name.to_string()
+            } else {
+                format!("{}.toml", profile_name)
+            });
             std::fs::write(&profile_path, profile_content).unwrap();
 
             let provider = FilesystemProfileProvider;
-            let search_paths = search_paths_opt
-                .map(|mut paths| {
-                    paths.push(tmp_dir.path().to_path_buf());
-                    paths
-                });
+            let search_paths = search_paths_opt.map(|mut paths| {
+                paths.push(tmp_dir.path().to_path_buf());
+                paths
+            });
 
             let profile_arg = if name.contains("absolute") {
                 profile_path.to_str().unwrap().to_string()
@@ -544,9 +692,8 @@ test_key = "test_value"
             let result = provider.get_profile(&profile_arg, search_paths);
 
             if should_succeed {
-                let profile = result.unwrap_or_else(|e| {
-                    panic!("Test case '{}' failed: {:?}", name, e)
-                });
+                let profile =
+                    result.unwrap_or_else(|e| panic!("Test case '{}' failed: {:?}", name, e));
                 let (driver, _) = profile.get_driver_name().unwrap();
                 assert_eq!(
                     driver, "test_driver",
