@@ -17,7 +17,6 @@
 
 use std::path::PathBuf;
 
-use adbc_core::Optionable;
 use adbc_core::options::{AdbcVersion, OptionDatabase, OptionValue};
 use adbc_core::{error::Status, LOAD_FLAG_DEFAULT};
 use adbc_driver_manager::connection_profiles::{
@@ -359,7 +358,7 @@ fn test_database_from_uri_with_profile_additional_options() {
         None,
         additional_opts,
     )
-    .unwrap();        
+    .unwrap();
 
     common::test_database(&database);
 
