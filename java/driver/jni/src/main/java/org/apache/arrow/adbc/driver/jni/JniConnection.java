@@ -23,9 +23,15 @@ import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.adbc.driver.jni.impl.JniLoader;
 import org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle;
+import org.apache.arrow.adbc.driver.jni.impl.NativeQueryResult;
 import org.apache.arrow.adbc.driver.jni.impl.NativeStatementHandle;
+import org.apache.arrow.c.ArrowArrayStream;
+import org.apache.arrow.c.ArrowSchema;
+import org.apache.arrow.c.CDataDictionaryProvider;
+import org.apache.arrow.c.Data;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.ipc.ArrowReader;
+import org.apache.arrow.vector.types.pojo.Schema;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 public class JniConnection implements AdbcConnection {
@@ -76,9 +82,54 @@ public class JniConnection implements AdbcConnection {
     }
   }
 
+  private ArrowReader importStream(NativeQueryResult result) {
+    try (final ArrowArrayStream cStream = ArrowArrayStream.wrap(result.cDataStream())) {
+      return Data.importArrayStream(allocator, cStream);
+    }
+  }
+
   @Override
   public ArrowReader getInfo(int @Nullable [] infoCodes) throws AdbcException {
-    throw new UnsupportedOperationException();
+    NativeQueryResult result = JniLoader.INSTANCE.connectionGetInfo(handle, infoCodes);
+    return importStream(result);
+  }
+
+  @Override
+  public ArrowReader getObjects(
+      GetObjectsDepth depth,
+      String catalogPattern,
+      String dbSchemaPattern,
+      String tableNamePattern,
+      String[] tableTypes,
+      String columnNamePattern)
+      throws AdbcException {
+    NativeQueryResult result =
+        JniLoader.INSTANCE.connectionGetObjects(
+            handle,
+            depth.ordinal(),
+            catalogPattern,
+            dbSchemaPattern,
+            tableNamePattern,
+            tableTypes,
+            columnNamePattern);
+    return importStream(result);
+  }
+
+  @Override
+  public Schema getTableSchema(String catalog, String dbSchema, String tableName)
+      throws AdbcException {
+    long schemaAddress =
+        JniLoader.INSTANCE.connectionGetTableSchema(handle, catalog, dbSchema, tableName);
+    try (final ArrowSchema cSchema = ArrowSchema.wrap(schemaAddress);
+        final CDataDictionaryProvider provider = new CDataDictionaryProvider()) {
+      return Data.importSchema(allocator, cSchema, provider);
+    }
+  }
+
+  @Override
+  public ArrowReader getTableTypes() throws AdbcException {
+    NativeQueryResult result = JniLoader.INSTANCE.connectionGetTableTypes(handle);
+    return importStream(result);
   }
 
   @Override
