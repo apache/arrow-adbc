@@ -413,22 +413,6 @@ Be sure to go through on the following checklist:
 
    A conda-forge or feedstock maintainer can review and merge.
 
-.. dropdown:: Announce the new release
-   :class-title: sd-fs-5
-   :class-container: sd-shadow-md
-
-   Write a release announcement and send to announce@apache.org and
-   dev@arrow.apache.org.
-
-   The announcement to announce@apache.org must be sent from your apache.org
-   e-mail address to be accepted.
-
-   Template:
-
-   .. code-block:: Bash
-
-      dev/release/post-09-announce.sh
-
 .. dropdown:: Remove old artifacts
    :class-title: sd-fs-5
    :class-container: sd-shadow-md
@@ -437,7 +421,7 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      dev/release/post-10-remove-old-artifacts.sh
+      dev/release/post-09-remove-old-artifacts.sh
 
 .. dropdown:: Bump versions
    :class-title: sd-fs-5
@@ -462,5 +446,24 @@ Be sure to go through on the following checklist:
 
       # dev/release/post-12-website.sh ../arrow-site
       dev/release/post-12-website.sh <arrow-site-dir>
+
+.. dropdown:: Announce the new release
+   :class-title: sd-fs-5
+   :class-container: sd-shadow-md
+
+   Write a release announcement and send to announce@apache.org and
+   dev@arrow.apache.org.  The script below will generate an announcement.  It
+   requires you to provide the URL of the blog post above, so this cannot be
+   sent until the blog post is published.  Also, it expects to be run from the
+   *release branch* and not ``main``.
+
+   The announcement to announce@apache.org must be sent from your apache.org
+   e-mail address to be accepted.
+
+   Template:
+
+   .. code-block:: Bash
+
+      dev/release/post-10-announce.sh
 
 .. _nightly-website.yml: https://github.com/apache/arrow-adbc/actions/workflows/nightly-website.yml
