@@ -16,7 +16,9 @@
 # KIND, either express or implied.  See the License for the
 # specific language governing permissions and limitations
 # under the License.
-#
+
+# https://apache.org/legal/release-policy#publication
+# Don't link to GitHub, etc.
 set -ue
 
 SOURCE_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -24,24 +26,26 @@ source "${SOURCE_DIR}/utils-common.sh"
 source "${SOURCE_DIR}/utils-prepare.sh"
 
 main() {
-
     set_resolved_issues "${RELEASE}"
+
+    read -p "Enter the URL of the announcement blog post..." BLOG_URL
 
     cat <<EOF
 To: announce@apache.org
 CC: dev@arrow.apache.org
 Subject: [ANNOUNCE] Apache Arrow ADBC ${RELEASE} Released
 
-The Apache Arrow community is pleased to announce the a new release of
-the Apache Arrow ADBC libraries. It includes ${RESOLVED_ISSUES} resolved GitHub issues
-([1]). Individual components are versioned separately: some packages
-are on version ${VERSION_NATIVE} and others are now version ${VERSION_JAVA}, with the
-release as a whole on version '${RELEASE}'.
+The Apache Arrow PMC is pleased to announce release ${RELEASE} of the
+Apache Arrow ADBC subproject. Individual components are versioned
+separately: some packages are on version ${VERSION_NATIVE} and others
+are on version ${VERSION_JAVA}.
 
-The release is available now from [2] and [3].
+Release artifacts can be downloaded from:
+https://arrow.apache.org/adbc/current/driver/installation.html
 
+This release contains ${RESOLVED_ISSUES} bug fixes and improvements.
 Release notes are available at:
-https://github.com/apache/arrow-adbc/blob/apache-arrow-adbc-${RELEASE}/CHANGELOG.md
+${BLOG_URL}
 
 What is Apache Arrow?
 ---------------------
@@ -59,19 +63,16 @@ What is Apache Arrow ADBC?
 ADBC is a database access abstraction for Arrow-based applications. It
 provides a cross-language API for working with databases while using
 Arrow data, providing an alternative to APIs like JDBC and ODBC for
-analytical applications. For more, see [4].
+analytical applications. For more, see [1].
 
-Please report any feedback to the mailing lists ([5], [6]).
+Please report any feedback to the mailing lists ([2], [3]).
 
 Regards,
 The Apache Arrow Community
 
-[1]: https://github.com/apache/arrow-adbc/issues?q=is%3Aissue+milestone%3A%22ADBC+Libraries+${RELEASE}%22+is%3Aclosed
-[2]: https://arrow.apache.org/adbc/current/driver/installation.html
-[3]: https://packages.apache.org/ui/native/arrow
-[4]: https://arrow.apache.org/blog/2023/01/05/introducing-arrow-adbc/
-[5]: https://lists.apache.org/list.html?user@arrow.apache.org
-[6]: https://lists.apache.org/list.html?dev@arrow.apache.org
+[1]: https://arrow.apache.org/blog/2023/01/05/introducing-arrow-adbc/
+[2]: https://lists.apache.org/list.html?user@arrow.apache.org
+[3]: https://lists.apache.org/list.html?dev@arrow.apache.org
 EOF
 
 }
