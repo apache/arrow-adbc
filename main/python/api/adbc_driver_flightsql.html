@@ -2,8 +2,8 @@
 
 <!doctype html>
 <html class="no-js" lang="en" data-content_root="../../">
-  <head><meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta property="og:title" content="adbc_driver_flightsql" />
 <meta property="og:type" content="website" />
@@ -13,15 +13,17 @@
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
 <meta name="description" content="Low-Level API: Low-level ADBC bindings for the Flight SQL driver. DBAPI 2.0 API: DBAPI 2.0-compatible facade for the ADBC Arrow Flight SQL driver." />
-<link rel="index" title="Index" href="../../genindex.html" /><link rel="search" title="Search" href="../../search.html" /><link rel="next" title="adbc_driver_postgresql" href="adbc_driver_postgresql.html" /><link rel="prev" title="adbc_driver_bigquery" href="adbc_driver_bigquery.html" />
+<link rel="index" title="Index" href="../../genindex.html"><link rel="search" title="Search" href="../../search.html"><link rel="next" title="adbc_driver_postgresql" href="adbc_driver_postgresql.html"><link rel="prev" title="adbc_driver_bigquery" href="adbc_driver_bigquery.html">
+        <link rel="prefetch" href="../../_static/logo-light.png" as="image">
+        <link rel="prefetch" href="../../_static/logo-dark.png" as="image">
 
-    <!-- Generated with Sphinx 8.2.3 and Furo 2024.08.06 -->
+    <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
         <title>adbc_driver_flightsql - ADBC 23 (dev) documentation</title>
-      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=8f2a1f02" />
-    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=354aac6f" />
+      <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
-    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css?v=302659d7" />
+    <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" />
     <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=56d6027c" />
     
@@ -30,8 +32,8 @@
 
 <style>
   body {
-    --color-code-background: #f8f8f8;
-  --color-code-foreground: black;
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
   
   }
   @media not print {
@@ -213,14 +215,10 @@
   </symbol>
 </svg>
 
-<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
-<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
-<label class="overlay sidebar-overlay" for="__navigation">
-  <div class="visually-hidden">Hide navigation sidebar</div>
-</label>
-<label class="overlay toc-overlay" for="__toc">
-  <div class="visually-hidden">Hide table of contents sidebar</div>
-</label>
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
 
 <a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
 
@@ -230,8 +228,7 @@
   <header class="mobile-header">
     <div class="header-left">
       <label class="nav-overlay-icon" for="__navigation">
-        <div class="visually-hidden">Toggle site navigation sidebar</div>
-        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
       </label>
     </div>
     <div class="header-center">
@@ -239,8 +236,7 @@
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
-        <button class="theme-toggle">
-          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
           <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
           <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
           <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
@@ -248,8 +244,7 @@
         </button>
       </div>
       <label class="toc-overlay-icon toc-header-icon" for="__toc">
-        <div class="visually-hidden">Toggle table of contents sidebar</div>
-        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
       </label>
     </div>
   </header>
@@ -257,7 +252,6 @@
     <div class="sidebar-container">
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../index.html">
-  
   <div class="sidebar-logo-container">
     <img class="sidebar-logo only-light" src="../../_static/logo-light.png" alt="Light Logo"/>
     <img class="sidebar-logo only-dark" src="../../_static/logo-dark.png" alt="Dark Logo"/>
@@ -278,7 +272,7 @@
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Supported Environments</span></p>
 <ul class="current">
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../cpp/index.html">C/C++</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of C/C++</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../cpp/index.html">C/C++</a><input aria-label="Toggle navigation of C/C++" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../cpp/quickstart.html">Quickstart</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../cpp/driver_manager.html">Driver Manager</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../cpp/concurrency.html">Concurrency and Thread Safety</a></li>
@@ -289,16 +283,16 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../csharp/index.html">C#/.NET</a></li>
 <li class="toctree-l1"><a class="reference external" href="https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc">Go</a></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../java/index.html">Java</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of Java</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../java/index.html">Java</a><input aria-label="Toggle navigation of Java" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../java/quickstart.html">Quickstart</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../java/driver_manager.html">Driver Manager</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../java/api/index.html">Java API Reference</a></li>
 </ul>
 </li>
-<li class="toctree-l1 current has-children"><a class="reference internal" href="../index.html">Python</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of Python</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l1 current has-children"><a class="reference internal" href="../index.html">Python</a><input aria-label="Toggle navigation of Python" checked="" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="../quickstart.html">Quickstart</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../driver_manager.html">Driver Manager</a></li>
-<li class="toctree-l2 current has-children"><a class="reference internal" href="index.html">Python API Reference</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of Python API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l2 current has-children"><a class="reference internal" href="index.html">Python API Reference</a><input aria-label="Toggle navigation of Python API Reference" checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
 <li class="toctree-l3"><a class="reference internal" href="adbc_driver_manager.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="adbc_driver_bigquery.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_bigquery</span></code></a></li>
 <li class="toctree-l3 current current-page"><a class="current reference internal" href="#"><code class="docutils literal notranslate"><span class="pre">adbc_driver_flightsql</span></code></a></li>
@@ -307,7 +301,7 @@
 <li class="toctree-l3"><a class="reference internal" href="adbc_driver_sqlite.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_sqlite</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l2 has-children"><a class="reference internal" href="../recipe/index.html">Python Cookbook</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of Python Cookbook</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../recipe/index.html">Python Cookbook</a><input aria-label="Toggle navigation of Python Cookbook" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../recipe/driver_manager.html">DBAPI/Driver Manager Recipes</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../recipe/flight_sql.html">Flight SQL Recipes</a></li>
 <li class="toctree-l3"><a class="reference internal" href="../recipe/postgresql.html">PostgreSQL Recipes</a></li>
@@ -317,7 +311,7 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../r/index.html">R</a></li>
-<li class="toctree-l1 has-children"><a class="reference internal" href="../../rust/index.html">Rust</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of Rust</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../rust/index.html">Rust</a><input aria-label="Toggle navigation of Rust" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../rust/quickstart.html">Quickstart</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../rust/driver_manager.html">Driver Manager</a></li>
 <li class="toctree-l2"><a class="reference external" href="https://docs.rs/adbc_core/latest/adbc_core/">Rust API Reference</a></li>
@@ -378,13 +372,12 @@
     <span class="visually-hidden">View this page</span>
   </a>
 </div><div class="edit-this-page">
-  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/python/api/adbc_driver_flightsql.rst" title="Edit this page">
+  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/python/api/adbc_driver_flightsql.rst" rel="edit" title="Edit this page">
     <svg><use href="#svg-pencil"></use></svg>
     <span class="visually-hidden">Edit this page</span>
   </a>
 </div><div class="theme-toggle-container theme-toggle-content">
-            <button class="theme-toggle">
-              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
               <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
               <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
               <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
@@ -392,8 +385,7 @@
             </button>
           </div>
           <label class="toc-overlay-icon toc-content-icon" for="__toc">
-            <div class="visually-hidden">Toggle table of contents sidebar</div>
-            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
           </label>
         </div>
         <article role="main" id="furo-main-content">
@@ -999,7 +991,7 @@ United States and other countries.
 </div><script src="../../_static/documentation_options.js?v=440cf6f5"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
-    <script src="../../_static/scripts/furo.js?v=5fa4622c"></script>
+    <script src="../../_static/scripts/furo.js?v=46bd48cc"></script>
     <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../../_static/copybutton.js?v=f281be69"></script>
     <script src="../../_static/design-tabs.js?v=f930bc37"></script>
