@@ -17,6 +17,11 @@
 
 package org.apache.arrow.adbc.driver.jni.impl;
 
+import org.apache.arrow.c.ArrowArrayStream;
+import org.apache.arrow.c.Data;
+import org.apache.arrow.memory.BufferAllocator;
+import org.apache.arrow.vector.ipc.ArrowReader;
+
 public class NativeQueryResult {
   private final long rowsAffected;
   private final long cDataStream;
@@ -32,5 +37,12 @@ public class NativeQueryResult {
 
   public long cDataStream() {
     return cDataStream;
+  }
+
+  /** Import the C Data stream into a Java ArrowReader. */
+  public ArrowReader importStream(BufferAllocator allocator) {
+    try (final ArrowArrayStream cStream = ArrowArrayStream.wrap(cDataStream)) {
+      return Data.importArrayStream(allocator, cStream);
+    }
   }
 }

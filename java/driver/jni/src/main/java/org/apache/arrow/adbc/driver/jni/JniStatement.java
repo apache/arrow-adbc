@@ -23,12 +23,10 @@ import org.apache.arrow.adbc.driver.jni.impl.JniLoader;
 import org.apache.arrow.adbc.driver.jni.impl.NativeQueryResult;
 import org.apache.arrow.adbc.driver.jni.impl.NativeStatementHandle;
 import org.apache.arrow.c.ArrowArray;
-import org.apache.arrow.c.ArrowArrayStream;
 import org.apache.arrow.c.ArrowSchema;
 import org.apache.arrow.c.Data;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.VectorSchemaRoot;
-import org.apache.arrow.vector.ipc.ArrowReader;
 
 public class JniStatement implements AdbcStatement {
   private final BufferAllocator allocator;
@@ -50,6 +48,9 @@ public class JniStatement implements AdbcStatement {
     this.bindRoot = root;
   }
 
+  // The C Data export takes ownership of the data at bind time and ignores subsequent
+  // client changes to the bound root. Defer the export until execution so we capture
+  // the final state of the VectorSchemaRoot.
   private void exportBind() throws AdbcException {
     if (bindRoot == null) {
       return;
@@ -68,12 +69,7 @@ public class JniStatement implements AdbcStatement {
   public QueryResult executeQuery() throws AdbcException {
     exportBind();
     NativeQueryResult result = JniLoader.INSTANCE.statementExecuteQuery(handle);
-    // TODO: need to handle result in such a way that we free it even if we error here
-    ArrowReader reader;
-    try (final ArrowArrayStream cStream = ArrowArrayStream.wrap(result.cDataStream())) {
-      reader = org.apache.arrow.c.Data.importArrayStream(allocator, cStream);
-    }
-    return new QueryResult(result.rowsAffected(), reader);
+    return new QueryResult(result.rowsAffected(), result.importStream(allocator));
   }
 
   @Override

@@ -23,9 +23,7 @@ import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.adbc.driver.jni.impl.JniLoader;
 import org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle;
-import org.apache.arrow.adbc.driver.jni.impl.NativeQueryResult;
 import org.apache.arrow.adbc.driver.jni.impl.NativeStatementHandle;
-import org.apache.arrow.c.ArrowArrayStream;
 import org.apache.arrow.c.ArrowSchema;
 import org.apache.arrow.c.CDataDictionaryProvider;
 import org.apache.arrow.c.Data;
@@ -82,16 +80,9 @@ public class JniConnection implements AdbcConnection {
     }
   }
 
-  private ArrowReader importStream(NativeQueryResult result) {
-    try (final ArrowArrayStream cStream = ArrowArrayStream.wrap(result.cDataStream())) {
-      return Data.importArrayStream(allocator, cStream);
-    }
-  }
-
   @Override
   public ArrowReader getInfo(int @Nullable [] infoCodes) throws AdbcException {
-    NativeQueryResult result = JniLoader.INSTANCE.connectionGetInfo(handle, infoCodes);
-    return importStream(result);
+    return JniLoader.INSTANCE.connectionGetInfo(handle, infoCodes).importStream(allocator);
   }
 
   @Override
@@ -103,16 +94,16 @@ public class JniConnection implements AdbcConnection {
       String[] tableTypes,
       String columnNamePattern)
       throws AdbcException {
-    NativeQueryResult result =
-        JniLoader.INSTANCE.connectionGetObjects(
+    return JniLoader.INSTANCE
+        .connectionGetObjects(
             handle,
             depth.ordinal(),
             catalogPattern,
             dbSchemaPattern,
             tableNamePattern,
             tableTypes,
-            columnNamePattern);
-    return importStream(result);
+            columnNamePattern)
+        .importStream(allocator);
   }
 
   @Override
@@ -128,8 +119,7 @@ public class JniConnection implements AdbcConnection {
 
   @Override
   public ArrowReader getTableTypes() throws AdbcException {
-    NativeQueryResult result = JniLoader.INSTANCE.connectionGetTableTypes(handle);
-    return importStream(result);
+    return JniLoader.INSTANCE.connectionGetTableTypes(handle).importStream(allocator);
   }
 
   @Override
