@@ -33,6 +33,7 @@ import org.apache.arrow.vector.ipc.ArrowReader;
 public class JniStatement implements AdbcStatement {
   private final BufferAllocator allocator;
   private final NativeStatementHandle handle;
+  private VectorSchemaRoot bindRoot;
 
   public JniStatement(BufferAllocator allocator, NativeStatementHandle handle) {
     this.allocator = allocator;
@@ -46,11 +47,18 @@ public class JniStatement implements AdbcStatement {
 
   @Override
   public void bind(VectorSchemaRoot root) throws AdbcException {
+    this.bindRoot = root;
+  }
+
+  private void exportBind() throws AdbcException {
+    if (bindRoot == null) {
+      return;
+    }
     try (final ArrowArray batch = ArrowArray.allocateNew(allocator);
         final ArrowSchema schema = ArrowSchema.allocateNew(allocator)) {
       // TODO(lidavidm): we may need a way to separately provide a dictionary provider
-      Data.exportSchema(allocator, root.getSchema(), null, schema);
-      Data.exportVectorSchemaRoot(allocator, root, null, batch);
+      Data.exportSchema(allocator, bindRoot.getSchema(), null, schema);
+      Data.exportVectorSchemaRoot(allocator, bindRoot, null, batch);
 
       JniLoader.INSTANCE.statementBind(handle, batch, schema);
     }
@@ -58,6 +66,7 @@ public class JniStatement implements AdbcStatement {
 
   @Override
   public QueryResult executeQuery() throws AdbcException {
+    exportBind();
     NativeQueryResult result = JniLoader.INSTANCE.statementExecuteQuery(handle);
     // TODO: need to handle result in such a way that we free it even if we error here
     ArrowReader reader;
@@ -69,6 +78,7 @@ public class JniStatement implements AdbcStatement {
 
   @Override
   public UpdateResult executeUpdate() throws AdbcException {
+    exportBind();
     long rowsAffected = JniLoader.INSTANCE.statementExecuteUpdate(handle);
     return new UpdateResult(rowsAffected);
   }

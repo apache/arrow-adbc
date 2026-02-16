@@ -140,6 +140,11 @@
       </dependency>
       <dependency>
         <groupId>org.apache.arrow.adbc</groupId>
+        <artifactId>adbc-driver-jni</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.apache.arrow.adbc</groupId>
         <artifactId>adbc-driver-manager</artifactId>
         <version>${project.version}</version>
       </dependency>
@@ -328,6 +333,7 @@
       <id>jni</id>
       <modules>
         <module>driver/jni</module>
+        <module>driver/jni-validation-sqlite</module>
       </modules>
     </profile>
   </profiles>

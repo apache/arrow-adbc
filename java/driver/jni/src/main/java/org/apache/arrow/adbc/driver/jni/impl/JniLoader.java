@@ -118,4 +118,40 @@ public enum JniLoader {
       throws AdbcException {
     NativeAdbc.statementSetOption(statement.getStatementHandle(), key, value);
   }
+
+  public NativeQueryResult connectionGetObjects(
+      NativeConnectionHandle connection,
+      int depth,
+      String catalog,
+      String dbSchema,
+      String tableName,
+      String[] tableTypes,
+      String columnName)
+      throws AdbcException {
+    return NativeAdbc.connectionGetObjects(
+        connection.getConnectionHandle(),
+        depth,
+        catalog,
+        dbSchema,
+        tableName,
+        tableTypes,
+        columnName);
+  }
+
+  public NativeQueryResult connectionGetInfo(NativeConnectionHandle connection, int[] infoCodes)
+      throws AdbcException {
+    return NativeAdbc.connectionGetInfo(connection.getConnectionHandle(), infoCodes);
+  }
+
+  public long connectionGetTableSchema(
+      NativeConnectionHandle connection, String catalog, String dbSchema, String tableName)
+      throws AdbcException {
+    return NativeAdbc.connectionGetTableSchema(
+        connection.getConnectionHandle(), catalog, dbSchema, tableName);
+  }
+
+  public NativeQueryResult connectionGetTableTypes(NativeConnectionHandle connection)
+      throws AdbcException {
+    return NativeAdbc.connectionGetTableTypes(connection.getConnectionHandle());
+  }
 }
