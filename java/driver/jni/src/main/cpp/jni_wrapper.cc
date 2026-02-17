@@ -335,27 +335,27 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_closeStatement(
   }
 }
 
+jobject MakeNativeQueryResult(JNIEnv* env, jlong rows_affected,
+                              struct ArrowArrayStream* out) {
+  jclass native_result_class = RequireImplClass(env, "NativeQueryResult");
+  jmethodID native_result_ctor =
+      RequireMethod(env, native_result_class, "<init>", "(JJ)V");
+  return env->NewObject(native_result_class, native_result_ctor, rows_affected,
+                        static_cast<jlong>(reinterpret_cast<uintptr_t>(out)));
+}
+
 JNIEXPORT jobject JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementExecuteQuery(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
   try {
     struct AdbcError error = ADBC_ERROR_INIT;
     auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
-    auto out = std::make_unique<struct ArrowArrayStream>();
-    std::memset(out.get(), 0, sizeof(struct ArrowArrayStream));
+    struct ArrowArrayStream out = {};
     int64_t rows_affected = 0;
-    CHECK_ADBC_ERROR(AdbcStatementExecuteQuery(ptr, out.get(), &rows_affected, &error),
+    CHECK_ADBC_ERROR(AdbcStatementExecuteQuery(ptr, &out, &rows_affected, &error),
                      error);
 
-    jclass native_result_class = RequireImplClass(env, "NativeQueryResult");
-    jmethodID native_result_ctor =
-        RequireMethod(env, native_result_class, "<init>", "(JJ)V");
-    jobject object =
-        env->NewObject(native_result_class, native_result_ctor, rows_affected,
-                       static_cast<jlong>(reinterpret_cast<uintptr_t>(out.get())));
-    // Don't release until after we've constructed the object
-    out.release();
-    return object;
+    return MakeNativeQueryResult(env, rows_affected, &out);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
@@ -480,25 +480,17 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetObjects(
       c_table_types = table_type_ptrs.data();
     }
 
-    auto out = std::make_unique<struct ArrowArrayStream>();
-    std::memset(out.get(), 0, sizeof(struct ArrowArrayStream));
+    struct ArrowArrayStream out = {};
 
     CHECK_ADBC_ERROR(
         AdbcConnectionGetObjects(
             conn, static_cast<int>(depth), catalog_str ? catalog_str->c_str() : nullptr,
             db_schema_str ? db_schema_str->c_str() : nullptr,
             table_name_str ? table_name_str->c_str() : nullptr, c_table_types,
-            column_name_str ? column_name_str->c_str() : nullptr, out.get(), &error),
+            column_name_str ? column_name_str->c_str() : nullptr, &out, &error),
         error);
 
-    jclass native_result_class = RequireImplClass(env, "NativeQueryResult");
-    jmethodID native_result_ctor =
-        RequireMethod(env, native_result_class, "<init>", "(JJ)V");
-    jobject object =
-        env->NewObject(native_result_class, native_result_ctor, static_cast<jlong>(-1),
-                       static_cast<jlong>(reinterpret_cast<uintptr_t>(out.get())));
-    out.release();
-    return object;
+    return MakeNativeQueryResult(env, -1, &out);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
@@ -525,21 +517,13 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetInfo(
       info_codes_length = static_cast<size_t>(len);
     }
 
-    auto out = std::make_unique<struct ArrowArrayStream>();
-    std::memset(out.get(), 0, sizeof(struct ArrowArrayStream));
+    struct ArrowArrayStream out = {};
 
     CHECK_ADBC_ERROR(
-        AdbcConnectionGetInfo(conn, c_info_codes, info_codes_length, out.get(), &error),
+        AdbcConnectionGetInfo(conn, c_info_codes, info_codes_length, &out, &error),
         error);
 
-    jclass native_result_class = RequireImplClass(env, "NativeQueryResult");
-    jmethodID native_result_ctor =
-        RequireMethod(env, native_result_class, "<init>", "(JJ)V");
-    jobject object =
-        env->NewObject(native_result_class, native_result_ctor, static_cast<jlong>(-1),
-                       static_cast<jlong>(reinterpret_cast<uintptr_t>(out.get())));
-    out.release();
-    return object;
+    return MakeNativeQueryResult(env, -1, &out);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
@@ -583,19 +567,11 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetTableTypes(
     struct AdbcError error = ADBC_ERROR_INIT;
     auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
 
-    auto out = std::make_unique<struct ArrowArrayStream>();
-    std::memset(out.get(), 0, sizeof(struct ArrowArrayStream));
+    struct ArrowArrayStream out = {};
 
-    CHECK_ADBC_ERROR(AdbcConnectionGetTableTypes(conn, out.get(), &error), error);
+    CHECK_ADBC_ERROR(AdbcConnectionGetTableTypes(conn, &out, &error), error);
 
-    jclass native_result_class = RequireImplClass(env, "NativeQueryResult");
-    jmethodID native_result_ctor =
-        RequireMethod(env, native_result_class, "<init>", "(JJ)V");
-    jobject object =
-        env->NewObject(native_result_class, native_result_ctor, static_cast<jlong>(-1),
-                       static_cast<jlong>(reinterpret_cast<uintptr_t>(out.get())));
-    out.release();
-    return object;
+    return MakeNativeQueryResult(env, -1, &out);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
