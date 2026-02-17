@@ -430,8 +430,9 @@ performing a release.</p>
 </section>
 <section id="before-creating-a-release-candidate">
 <h2>Before creating a Release Candidate<a class="headerlink" href="#before-creating-a-release-candidate" title="Link to this heading">¶</a></h2>
-<p>Regenerate the LICENSE.txt (see CONTRIBUTING.md) and create a pull request if
-any changes were needed.</p>
+<ol class="arabic">
+<li><p>Regenerate the LICENSE.txt (see CONTRIBUTING.md) and create a pull request if any changes were needed.</p></li>
+<li><p>Set up your shell environment:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Setup gpg agent for signing artifacts</span>
 <span class="n">source</span> <span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="n">setup</span><span class="o">-</span><span class="n">gpg</span><span class="o">-</span><span class="n">agent</span><span class="o">.</span><span class="n">sh</span>
 
@@ -439,6 +440,13 @@ any changes were needed.</p>
 <span class="n">mamba</span> <span class="n">activate</span> <span class="n">adbc</span>
 </pre></div>
 </div>
+</li>
+<li><p>Ensure merged pull requests and closed issues have their milestone set appropriately:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">./</span><span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="n">assign</span><span class="o">-</span><span class="n">milestone</span><span class="o">.</span><span class="n">sh</span>
+</pre></div>
+</div>
+</li>
+</ol>
 <section id="check-nightly-verification-job">
 <h3>Check Nightly Verification Job<a class="headerlink" href="#check-nightly-verification-job" title="Link to this heading">¶</a></h3>
 <p>Ensure that the <a class="reference external" href="https://github.com/apache/arrow-adbc/actions/workflows/nightly-verify.yml">verification job</a>

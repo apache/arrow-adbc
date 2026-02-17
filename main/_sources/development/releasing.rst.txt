@@ -70,16 +70,23 @@ Some steps of the release require being a committer or a PMC member.
 Before creating a Release Candidate
 ===================================
 
-Regenerate the LICENSE.txt (see CONTRIBUTING.md) and create a pull request if
-any changes were needed.
+1. Regenerate the LICENSE.txt (see CONTRIBUTING.md) and create a pull request if any changes were needed.
 
-.. code-block::
+2. Set up your shell environment:
 
-   # Setup gpg agent for signing artifacts
-   source dev/release/setup-gpg-agent.sh
+   .. code-block::
 
-   # Activate conda environment
-   mamba activate adbc
+      # Setup gpg agent for signing artifacts
+      source dev/release/setup-gpg-agent.sh
+
+      # Activate conda environment
+      mamba activate adbc
+
+3. Ensure merged pull requests and closed issues have their milestone set appropriately:
+
+   .. code-block::
+
+      ./dev/release/assign-milestone.sh
 
 Check Nightly Verification Job
 ------------------------------
