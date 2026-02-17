@@ -352,8 +352,7 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementExecuteQuery(
     auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
     struct ArrowArrayStream out = {};
     int64_t rows_affected = 0;
-    CHECK_ADBC_ERROR(AdbcStatementExecuteQuery(ptr, &out, &rows_affected, &error),
-                     error);
+    CHECK_ADBC_ERROR(AdbcStatementExecuteQuery(ptr, &out, &rows_affected, &error), error);
 
     return MakeNativeQueryResult(env, rows_affected, &out);
   } catch (const AdbcException& e) {
