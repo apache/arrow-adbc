@@ -344,6 +344,14 @@ jobject MakeNativeQueryResult(JNIEnv* env, jlong rows_affected,
                         static_cast<jlong>(reinterpret_cast<uintptr_t>(out)));
 }
 
+jobject MakeNativeSchemaResult(JNIEnv* env, struct ArrowSchema* schema) {
+  jclass native_result_class = RequireImplClass(env, "NativeSchemaResult");
+  jmethodID native_result_ctor =
+      RequireMethod(env, native_result_class, "<init>", "(J)V");
+  return env->NewObject(native_result_class, native_result_ctor,
+                        static_cast<jlong>(reinterpret_cast<uintptr_t>(schema)));
+}
+
 JNIEXPORT jobject JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementExecuteQuery(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
@@ -529,7 +537,7 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetInfo(
   return nullptr;
 }
 
-JNIEXPORT jlong JNICALL
+JNIEXPORT jobject JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetTableSchema(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring catalog,
     jstring db_schema, jstring table_name) {
@@ -541,22 +549,19 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetTableSchema(
     auto db_schema_str = MaybeGetJniString(env, db_schema);
     JniStringView table_name_str(env, table_name);
 
-    auto schema = std::make_unique<struct ArrowSchema>();
-    std::memset(schema.get(), 0, sizeof(struct ArrowSchema));
+    struct ArrowSchema schema = {};
 
     CHECK_ADBC_ERROR(
         AdbcConnectionGetTableSchema(conn, catalog_str ? catalog_str->c_str() : nullptr,
                                      db_schema_str ? db_schema_str->c_str() : nullptr,
-                                     table_name_str.value, schema.get(), &error),
+                                     table_name_str.value, &schema, &error),
         error);
 
-    jlong result = static_cast<jlong>(reinterpret_cast<uintptr_t>(schema.get()));
-    schema.release();
-    return result;
+    return MakeNativeSchemaResult(env, &schema);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
-  return 0;
+  return nullptr;
 }
 
 JNIEXPORT jobject JNICALL

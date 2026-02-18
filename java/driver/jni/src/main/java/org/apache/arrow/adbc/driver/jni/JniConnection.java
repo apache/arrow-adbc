@@ -24,9 +24,6 @@ import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.adbc.driver.jni.impl.JniLoader;
 import org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle;
 import org.apache.arrow.adbc.driver.jni.impl.NativeStatementHandle;
-import org.apache.arrow.c.ArrowSchema;
-import org.apache.arrow.c.CDataDictionaryProvider;
-import org.apache.arrow.c.Data;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.types.pojo.Schema;
@@ -109,12 +106,9 @@ public class JniConnection implements AdbcConnection {
   @Override
   public Schema getTableSchema(String catalog, String dbSchema, String tableName)
       throws AdbcException {
-    long schemaAddress =
-        JniLoader.INSTANCE.connectionGetTableSchema(handle, catalog, dbSchema, tableName);
-    try (final ArrowSchema cSchema = ArrowSchema.wrap(schemaAddress);
-        final CDataDictionaryProvider provider = new CDataDictionaryProvider()) {
-      return Data.importSchema(allocator, cSchema, provider);
-    }
+    return JniLoader.INSTANCE
+        .connectionGetTableSchema(handle, catalog, dbSchema, tableName)
+        .importSchema(allocator);
   }
 
   @Override

@@ -65,7 +65,7 @@ class NativeAdbc {
   static native NativeQueryResult connectionGetInfo(long handle, int[] infoCodes)
       throws AdbcException;
 
-  static native long connectionGetTableSchema(
+  static native NativeSchemaResult connectionGetTableSchema(
       long handle, String catalog, String dbSchema, String tableName) throws AdbcException;
 
   static native NativeQueryResult connectionGetTableTypes(long handle) throws AdbcException;

@@ -143,7 +143,7 @@ public enum JniLoader {
     return NativeAdbc.connectionGetInfo(connection.getConnectionHandle(), infoCodes);
   }
 
-  public long connectionGetTableSchema(
+  public NativeSchemaResult connectionGetTableSchema(
       NativeConnectionHandle connection, String catalog, String dbSchema, String tableName)
       throws AdbcException {
     return NativeAdbc.connectionGetTableSchema(
