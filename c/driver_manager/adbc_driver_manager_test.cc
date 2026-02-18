@@ -806,7 +806,7 @@ TEST_F(DriverManifest, LoadDriverDllFromNonAsciiPath) {
 #else
   std::filesystem::path non_ascii_dir = temp_dir / "\u9879\u76ee";
 #endif
-  std::filesytem::create_directories(non_ascii_dir);
+  std::filesystem::create_directories(non_ascii_dir);
 
   // Create a dummy driver DLL, we'll just check th error message later to confirm
   std::filesystem::path test_file = non_ascii_dir / "dummy.dll";
