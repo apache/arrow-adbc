@@ -436,7 +436,7 @@ Store credentials separately from code:
 
    [options]
    adbc.snowflake.sql.account = "mycompany"
-   adbc.snowflake.sql.auth_token = "env_var(SNOWFLAKE_TOKEN)"
+   adbc.snowflake.sql.auth_token = "{{ env_var(SNOWFLAKE_TOKEN) }}"
 
 Then set ``SNOWFLAKE_TOKEN`` via environment variable, secrets manager, or configuration service.
 
