@@ -193,8 +193,11 @@ When using a profile name (not an absolute path), the driver manager searches fo
 1. **Additional Search Paths** (if configured via ``AdbcDriverManagerDatabaseSetAdditionalSearchPathList()``)
 2. **ADBC_PROFILE_PATH** environment variable (colon-separated on Unix, semicolon-separated on Windows)
 3. **Conda Environment** (if built with Conda support and ``CONDA_PREFIX`` is set):
+
    - ``$CONDA_PREFIX/etc/adbc/profiles/``
+
 4. **User Configuration Directory**:
+
    - Linux: ``~/.config/adbc/profiles/``
    - macOS: ``~/Library/Application Support/ADBC/Profiles/``
    - Windows: ``%LOCALAPPDATA%\ADBC\Profiles\``
@@ -433,7 +436,7 @@ Store credentials separately from code:
 
    [options]
    adbc.snowflake.sql.account = "mycompany"
-   adbc.snowflake.sql.auth_token = "env_var(SNOWFLAKE_TOKEN)"
+   adbc.snowflake.sql.auth_token = "{{ env_var(SNOWFLAKE_TOKEN) }}"
 
 Then set ``SNOWFLAKE_TOKEN`` via environment variable, secrets manager, or configuration service.
 
