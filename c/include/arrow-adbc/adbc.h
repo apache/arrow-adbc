@@ -355,6 +355,15 @@ struct ADBC_EXPORT AdbcError {
 /// \since ADBC API revision 1.1.0
 #define ADBC_ERROR_1_1_0_SIZE (sizeof(struct AdbcError))
 
+/// \brief The size of the AdbcError structure in ADBC 1.2.0.
+///
+/// Drivers written for ADBC 1.2.0 and later should never touch more than this
+/// portion of an AdbcDriver struct when vendor_code is
+/// ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA.
+///
+/// \since ADBC API revision 1.2.0
+#define ADBC_ERROR_1_2_0_SIZE (sizeof(struct AdbcError))
+
 /// \brief Extra key-value metadata for an error.
 ///
 /// The fields here are owned by the driver and should not be freed.  The
@@ -422,6 +431,14 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 ///
 /// \since ADBC API revision 1.1.0
 #define ADBC_VERSION_1_1_0 1001000
+
+/// \brief ADBC revision 1.2.0
+///
+/// When passed to an AdbcDriverInitFunc(), the driver parameter must
+/// point to an AdbcDriver.
+///
+/// \since ADBC API revision 1.2.0
+#define ADBC_VERSION_1_2_0 1002000
 
 /// \brief Canonical option value for enabling an option.
 ///
@@ -525,6 +542,7 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// \see AdbcConnectionGetInfo
 /// \see ADBC_VERSION_1_0_0
 /// \see ADBC_VERSION_1_1_0
+/// \see ADBC_VERSION_1_2_0
 #define ADBC_INFO_DRIVER_ADBC_VERSION 103
 
 /// \brief Return metadata on catalogs, schemas, tables, and columns.
@@ -973,6 +991,107 @@ struct AdbcPartitions {
 
 /// @}
 
+/// \defgroup adbc-statement-multi Multiple Result Set Execution
+/// Some databases support executing a statement that returns multiple
+/// result sets.  This section defines the API for working with such
+/// statements and result sets.
+/// @{
+
+/// \brief A struct for handling a potentially multi-result set execution
+///
+/// This struct is populated by AdbcStatementExecuteMulti and can be used to iterate
+/// through the result sets of the execution.  The caller can use the MultiResultSetNext
+/// or MultiResultSetNextPartitions functions on the AdbcMultiResultSet struct to iterate
+/// through the result sets.  The caller is responsible for calling the release function
+/// when finished with the result set.
+///
+/// \since ADBC API revision 1.2.0
+struct ADBC_EXPORT AdbcMultiResultSet {
+  /// \brief opaque implementation-defined state
+  void* private_data;
+
+  /// \brief The associated driver
+  struct AdbcDriver* private_driver;
+};
+
+/// \brief Release the AdbcMultiResultSet and any associated resources.
+///
+/// \since ADBC API revision 1.2.0
+///
+/// If all the result sets have not been completely consumed, then the driver
+/// should cancel any remaining work if this is called.
+///
+/// \param[in] result_set The result set to release.
+/// \param[out] error An optional location to return an error message if necessary.
+///
+/// \return ADBC_STATUS_OK on success or an appropriate error code.
+AdbcStatusCode AdbcMultiResultSetRelease(struct AdbcMultiResultSet* result_set,
+                                         struct AdbcError* error);
+
+/// \brief Get the next ArrowArrayStream from an AdbcMultiResultSet.
+///
+/// \since ADBC API revision 1.2.0
+///
+/// The driver can decide whether to allow fetching the next result set
+/// as a single stream or as a set of partitions.  If the driver does not
+/// support fetching the next result set as a stream (indicating it should
+/// be fetched as partitions), it should return ADBC_STATUS_NOT_IMPLEMENTED.
+///
+/// To indicate that no additional result sets are available, this should return
+/// ADBC_STATUS_OK and set the release callback on out to NULL. The expected
+/// pattern is that after calling `StatementExecuteMulti`, the caller would
+/// then call `MultiResultSetNext` repeatedly until it returns ADBC_STATUS_OK and
+/// sets the release callback to NULL, indicating that there are no more result sets.
+/// It is not an error to repeatedly call `MultiResultSetNext` after the last result set
+/// has been reached; it should simply continue to return ADBC_STATUS_OK with a
+/// NULL release callback.
+///
+/// \param[in] result_set The result set struct to fetch the next result from.
+/// \param[out] out The result stream to populate
+/// \param[out] rows_affected The number of rows affected if known, else -
+/// \param[out] error An optional location to return an error message if necessary.
+///
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the driver only supports fetching results
+///   as partitions or ADBC_STATUS_OK (or an appropriate error code) otherwise.
+AdbcStatusCode AdbcMultiResultSetNext(struct AdbcMultiResultSet* result_set,
+                                      struct ArrowArrayStream* out,
+                                      int64_t* rows_affected, struct AdbcError* error);
+
+/// \brief Get the next result set from a multi-result-set execution as partitions.
+///
+/// \since ADBC API revision 1.2.0
+///
+/// The driver can decide whether to allow fetching the next result set
+/// as a single stream or as a set of partitions.  If the driver does not
+/// support fetching the next result set as partitions (indicating it should
+/// be fetched as a stream), it should return ADBC_STATUS_NOT_IMPLEMENTED.
+///
+/// To indicate that no additional result sets are available, this should return
+/// ADBC_STATUS_OK and set the release callback on partitions to NULL. The expected
+/// pattern is that after calling `StatementExecuteMulti`, the caller would
+/// then call `MultiResultSetNextPartitions` repeatedly until it returns ADBC_STATUS_OK
+/// and sets the release callback to NULL, indicating that there are no more result sets.
+/// It is not an error to repeatedly call `MultiResultSetNextPartitions` after the last
+/// result set has been reached; it should simply continue to return ADBC_STATUS_OK with
+/// a NULL release callback.
+///
+/// \param[in] result_set The result set struct to fetch the next result from.
+/// \param[out] schema The schema of the result set to populate
+/// \param[out] partitions The partitions to populate
+/// \param[out] rows_affected The number of rows affected if known, else -1. Pass NULL
+/// if the client does not want this information.
+/// \param[out] error An optional location to return an error message if necessary.
+///
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the driver only supports fetching results
+///   as a stream, ADBC_STATUS_INVALID_STATE if called at an inappropriate time, and
+///   ADBC_STATUS_OK (or an appropriate error code) otherwise.
+AdbcStatusCode AdbcMultiResultSetNextPartitions(struct AdbcMultiResultSet* result_set,
+                                                struct ArrowSchema* schema,
+                                                struct AdbcPartitions* partitions,
+                                                int64_t* rows_affected,
+                                                struct AdbcError* error);
+/// @}
+
 /// \defgroup adbc-driver Driver Initialization
 ///
 /// These functions are intended to help support integration between a
@@ -1059,19 +1178,6 @@ struct ADBC_EXPORT AdbcDriver {
   /// the AdbcDriverInitFunc is greater than or equal to
   /// ADBC_VERSION_1_1_0.
   ///
-  /// For a 1.0.0 driver being loaded by a 1.1.0 driver manager: the
-  /// 1.1.0 manager will allocate the new, expanded AdbcDriver struct
-  /// and attempt to have the driver initialize it with
-  /// ADBC_VERSION_1_1_0.  This must return an error, after which the
-  /// driver will try again with ADBC_VERSION_1_0_0.  The driver must
-  /// not access the new fields, which will carry undefined values.
-  ///
-  /// For a 1.1.0 driver being loaded by a 1.0.0 driver manager: the
-  /// 1.0.0 manager will allocate the old AdbcDriver struct and
-  /// attempt to have the driver initialize it with
-  /// ADBC_VERSION_1_0_0.  The driver must not access the new fields,
-  /// and should initialize the old fields.
-  ///
   /// @{
 
   int (*ErrorGetDetailCount)(const struct AdbcError* error);
@@ -1135,6 +1241,36 @@ struct ADBC_EXPORT AdbcDriver {
                                           struct AdbcError*);
 
   /// @}
+
+  /// \defgroup adbc-1.2.0 ADBC API Revision 1.2.0
+  ///
+  /// Functions added in ADBC 1.2.0.  For backwards compatibility,
+  /// these members must not be accessed unless the version passed to
+  /// the AdbcDriverInitFunc is greater than or equal to
+  /// ADBC_VERSION_1_2_0.
+  ///
+  /// When the driver manager attempts to initialize a driver at a particular
+  /// version, such as the case where the driver manager and driver are using different
+  /// versions of the ADBC spec, the driver should not try to access any functions defined
+  /// in the spec after that version.
+  ///
+  /// @{
+
+  AdbcStatusCode (*MultiResultSetNext)(struct AdbcMultiResultSet*,
+                                       struct ArrowArrayStream*, int64_t*,
+                                       struct AdbcError*);
+  AdbcStatusCode (*MultiResultSetNextPartitions)(struct AdbcMultiResultSet*,
+                                                 struct ArrowSchema*,
+                                                 struct AdbcPartitions*, int64_t*,
+                                                 struct AdbcError*);
+  AdbcStatusCode (*MultiResultSetRelease)(struct AdbcMultiResultSet*, struct AdbcError*);
+  AdbcStatusCode (*StatementExecuteSchemaMulti)(struct AdbcStatement*,
+                                                struct AdbcMultiResultSet*,
+                                                struct AdbcError*);
+  AdbcStatusCode (*StatementExecuteMulti)(struct AdbcStatement*,
+                                          struct AdbcMultiResultSet*, struct AdbcError*);
+
+  /// @}
 };
 
 /// \brief The size of the AdbcDriver structure in ADBC 1.0.0.
@@ -1151,7 +1287,15 @@ struct ADBC_EXPORT AdbcDriver {
 /// ADBC_VERSION_1_1_0.
 ///
 /// \since ADBC API revision 1.1.0
-#define ADBC_DRIVER_1_1_0_SIZE (sizeof(struct AdbcDriver))
+#define ADBC_DRIVER_1_1_0_SIZE (offsetof(struct AdbcDriver, StatementExecuteMulti))
+
+/// \brief The size of the AdbcDriver structure in ADBC 1.2.0.
+/// Drivers written for ADBC 1.2.0 and later should never touch more
+/// than this portion of an AdbcDriver struct when given
+/// ADBC_VERSION_1_2_0.
+///
+/// \since ADBC API revision 1.2.0
+#define ADBC_DRIVER_1_2_0_SIZE (sizeof(struct AdbcDriver))
 
 /// @}
 
@@ -2017,6 +2161,72 @@ ADBC_EXPORT
 AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
                                          struct ArrowArrayStream* out,
                                          int64_t* rows_affected, struct AdbcError* error);
+
+/// \defgroup adbc-statement-multi Multiple Result Set Execution
+/// Some databases support executing a statement that returns multiple
+/// result sets.  This section defines the API for working with such
+/// statements and result sets.
+/// @{
+
+/// \brief Retrieve schema for statement that potentially returns multiple result sets
+///
+/// \since ADBC API revision 1.2.0
+///
+/// This can be used to retrieve the schemas of all result sets without
+/// executing the statement.  If the driver does not support this, it should return
+/// ADBC_STATUS_NOT_IMPLEMENTED.
+///
+/// The ArrowArrayStream objects populated by calls to `MultiResultSetNext` with the
+/// results struct returned by this function should have a valid schema but no data (i.e.
+/// `get_next` should return EOS immediately).  This allows clients to inspect the schemas
+/// of all result sets before consuming any data, which can be useful for certain
+/// applications such as query planning or UI display of results.
+///
+/// \param[in] statement The statement to execute.
+/// \param[out] results The result set struct to populate with the schemas of the result
+/// sets.
+/// \param[out] error An optional location to return an error message if necessary.
+///
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the driver does not support this,
+///   and ADBC_STATUS_OK (or an appropriate error code) otherwise.
+ADBC_EXPORT
+AdbcStatusCode AdbcStatementExecuteSchemaMulti(struct AdbcStatement* statement,
+                                               struct AdbcMultiResultSet* results,
+                                               struct AdbcError* error);
+
+/// \brief Execute a statement that potentially returns multiple result sets
+///
+/// \since ADBC API revision 1.2.0
+///
+/// To execute a statement which might potentially return multiple result sets,
+/// this can be called in place of AdbcStatementExecuteQuery if the driver supports it.
+/// If supported, the driver will populate the AdbcMultiResultSet structure with all
+/// necessary information to iterate through the result sets.  The caller can then
+/// use the MultiResultSetNext or MultiResultSetNextPartitions functions on the
+/// AdbcMultiResultSet struct to iterate through the result sets.
+///
+/// A driver MAY support executing this function while the previous result set is
+/// still being consumed (i.e. before the previous ArrowArrayStream is released), but
+/// this is not required.  If the driver does not support this, it should return
+/// ADBC_STATUS_INVALID_STATE if the previous result set is still active.
+///
+/// A driver implementing this function must also implement the AdbcMultiResultSet struct
+/// and its associated functions.
+///
+/// \param[in] statement The statement to execute.
+/// \param[out] results The result set struct to populate with the results of the
+/// execution.
+/// \param[out] error An optional location to return an error message if necessary.
+///
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the driver does not support multi-result set
+/// execution,
+///   and ADBC_STATUS_OK (or an appropriate error code) otherwise.
+ADBC_EXPORT
+AdbcStatusCode AdbcStatementExecuteMulti(struct AdbcStatement* statement,
+                                         struct AdbcMultiResultSet* results,
+                                         struct AdbcError* error);
+
+/// @}
 
 /// \brief Get the schema of the result set of a query without
 ///   executing it.
