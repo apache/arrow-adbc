@@ -766,21 +766,9 @@ dev/release/post-08-rust.sh
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3 sd-shadow-md">
 <summary class="sd-summary-title sd-card-header sd-fs-5">
-<span class="sd-summary-text">Announce the new release</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
-<p class="sd-card-text">Write a release announcement and send to <a class="reference external" href="mailto:announce&#37;&#52;&#48;apache&#46;org">announce<span>&#64;</span>apache<span>&#46;</span>org</a> and
-<a class="reference external" href="mailto:dev&#37;&#52;&#48;arrow&#46;apache&#46;org">dev<span>&#64;</span>arrow<span>&#46;</span>apache<span>&#46;</span>org</a>.</p>
-<p class="sd-card-text">The announcement to <a class="reference external" href="mailto:announce&#37;&#52;&#48;apache&#46;org">announce<span>&#64;</span>apache<span>&#46;</span>org</a> must be sent from your apache.org
-e-mail address to be accepted.</p>
-<p class="sd-card-text">Template:</p>
-<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span>dev/release/post-09-announce.sh
-</pre></div>
-</div>
-</div>
-</details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3 sd-shadow-md">
-<summary class="sd-summary-title sd-card-header sd-fs-5">
 <span class="sd-summary-text">Remove old artifacts</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">Remove RC artifacts on <a class="reference external" href="https://dist.apache.org/repos/dist/dev/arrow/">https://dist.apache.org/repos/dist/dev/arrow/</a> and old release artifacts on <a class="reference external" href="https://dist.apache.org/repos/dist/release/arrow">https://dist.apache.org/repos/dist/release/arrow</a> to follow <a class="reference external" href="https://infra.apache.org/release-download-pages.html#current-and-older-releases">the ASF policy</a>:</p>
-<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span>dev/release/post-10-remove-old-artifacts.sh
+<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span>dev/release/post-09-remove-old-artifacts.sh
 </pre></div>
 </div>
 </div>
@@ -800,6 +788,21 @@ dev/release/post-11-bump-versions.sh<span class="w"> </span>&lt;arrow-dir&gt;
 outline and create a PR on <a class="reference external" href="https://github.com/apache/arrow-site">apache/arrow-site</a>.</p>
 <div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-12-website.sh ../arrow-site</span>
 dev/release/post-12-website.sh<span class="w"> </span>&lt;arrow-site-dir&gt;
+</pre></div>
+</div>
+</div>
+</details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3 sd-shadow-md">
+<summary class="sd-summary-title sd-card-header sd-fs-5">
+<span class="sd-summary-text">Announce the new release</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<p class="sd-card-text">Write a release announcement and send to <a class="reference external" href="mailto:announce&#37;&#52;&#48;apache&#46;org">announce<span>&#64;</span>apache<span>&#46;</span>org</a> and
+<a class="reference external" href="mailto:dev&#37;&#52;&#48;arrow&#46;apache&#46;org">dev<span>&#64;</span>arrow<span>&#46;</span>apache<span>&#46;</span>org</a>.  The script below will generate an announcement.  It
+requires you to provide the URL of the blog post above, so this cannot be
+sent until the blog post is published.  Also, it expects to be run from the
+<em>release branch</em> and not <code class="docutils literal notranslate"><span class="pre">main</span></code>.</p>
+<p class="sd-card-text">The announcement to <a class="reference external" href="mailto:announce&#37;&#52;&#48;apache&#46;org">announce<span>&#64;</span>apache<span>&#46;</span>org</a> must be sent from your apache.org
+e-mail address to be accepted.</p>
+<p class="sd-card-text">Template:</p>
+<div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span>dev/release/post-10-announce.sh
 </pre></div>
 </div>
 </div>

@@ -9,10 +9,10 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://arrow.apache.org/adbc/main/driver/installation.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="Source: Download the latest source release: apache-arrow-adbc-22.tar.gz( checksum, signature) To verify a release, please see the instructions page and the project’s KEYS file. Compilation instruct..." />
+<meta property="og:description" content="Source: Download the latest source release: apache-arrow-adbc-22.tar.gz( checksum, signature) When downloading, please check the SHA512 checksum, and verify the OpenPGP-compatible signature against..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="Source: Download the latest source release: apache-arrow-adbc-22.tar.gz( checksum, signature) To verify a release, please see the instructions page and the project’s KEYS file. Compilation instruct..." />
+<meta name="description" content="Source: Download the latest source release: apache-arrow-adbc-22.tar.gz( checksum, signature) When downloading, please check the SHA512 checksum, and verify the OpenPGP-compatible signature against..." />
 <link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Driver Implementation Status" href="status.html"><link rel="prev" title="Driver Manager" href="../rust/driver_manager.html">
         <link rel="prefetch" href="../_static/logo-light.png" as="image">
         <link rel="prefetch" href="../_static/logo-dark.png" as="image">
@@ -398,22 +398,18 @@
 <section id="source">
 <h2>Source<a class="headerlink" href="#source" title="Link to this heading">¶</a></h2>
 <p>Download the latest source release: <a class="reference external" href="https://www.apache.org/dyn/closer.lua/arrow/apache-arrow-adbc-22/apache-arrow-adbc-22.tar.gz">apache-arrow-adbc-22.tar.gz</a> (<a class="reference external" href="https://downloads.apache.org/arrow/apache-arrow-adbc-22/apache-arrow-adbc-22.tar.gz.sha512">checksum</a>, <a class="reference external" href="https://downloads.apache.org/arrow/apache-arrow-adbc-22/apache-arrow-adbc-22.tar.gz.asc">signature</a>)</p>
-<p>To verify a release, please see the <a class="reference external" href="https://www.apache.org/info/verification.html">instructions</a> page  and the project’s <a class="reference external" href="https://downloads.apache.org/arrow/KEYS">KEYS</a> file.</p>
+<p>When downloading, please check the SHA512 checksum, and verify the OpenPGP-compatible signature against the project’s <a class="reference external" href="https://downloads.apache.org/arrow/KEYS">KEYS</a> file.  Both the checksum and signature are provided above.  See the <a class="reference external" href="https://www.apache.org/info/verification.html">instructions</a> page for more details.</p>
 <p>Compilation instructions can be found in <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/CONTRIBUTING.md">CONTRIBUTING.md</a>.</p>
 </section>
 <section id="c-c">
 <h2>C/C++<a class="headerlink" href="#c-c" title="Link to this heading">¶</a></h2>
-<p>Install the appropriate driver package.  You can use <a class="reference external" href="https://conda-forge.org/">conda-forge</a>, <code class="docutils literal notranslate"><span class="pre">apt</span></code> or <code class="docutils literal notranslate"><span class="pre">dnf</span></code>.</p>
-<p>conda-forge:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">mamba</span> <span class="pre">install</span> <span class="pre">libadbc-driver-flightsql</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">mamba</span> <span class="pre">install</span> <span class="pre">libadbc-driver-postgresql</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">mamba</span> <span class="pre">install</span> <span class="pre">libadbc-driver-sqlite</span></code></p></li>
-</ul>
+<p>Install the appropriate driver package.  Packages for <code class="docutils literal notranslate"><span class="pre">apt</span></code> and <code class="docutils literal notranslate"><span class="pre">dnf</span></code> are provided as part of official releases.</p>
 <p>You can use <code class="docutils literal notranslate"><span class="pre">apt</span></code> on the following platforms:</p>
 <ul class="simple">
-<li><p>Debian GNU/Linux bookworm</p></li>
-<li><p>Ubuntu 22.04</p></li>
+<li><p>Debian GNU/Linux 12 (“bookworm”)</p></li>
+<li><p>Debian GNU/Linux 13 (“trixie”)</p></li>
+<li><p>Ubuntu 22.04 LTS (“jammy”)</p></li>
+<li><p>Ubuntu 24.04 LTS (“noble”)</p></li>
 </ul>
 <p>Prepare the Apache Arrow APT repository:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>apt<span class="w"> </span>update
@@ -467,14 +463,6 @@ sudo<span class="w"> </span>subscription-manager<span class="w"> </span>repos<sp
 </pre></div>
 </div>
 </section>
-<section id="go">
-<h2>Go<a class="headerlink" href="#go" title="Link to this heading">¶</a></h2>
-<p>Add a dependency on the driver package, for example:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">go</span> <span class="pre">get</span> <span class="pre">-u</span> <span class="pre">github.com/apache/arrow-adbc/go/adbc&#64;latest</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">go</span> <span class="pre">get</span> <span class="pre">-u</span> <span class="pre">github.com/apache/arrow-adbc/go/adbc/driver/flightsql&#64;latest</span></code></p></li>
-</ul>
-</section>
 <section id="java">
 <h2>Java<a class="headerlink" href="#java" title="Link to this heading">¶</a></h2>
 <p>Add a dependency on the driver package, for example:</p>
@@ -497,13 +485,6 @@ sudo<span class="w"> </span>subscription-manager<span class="w"> </span>repos<sp
 <li><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">adbc-driver-snowflake</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">adbc-driver-sqlite</span></code></p></li>
 </ul>
-<p>From <a class="reference external" href="https://conda-forge.org/">conda-forge</a>:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">mamba</span> <span class="pre">install</span> <span class="pre">adbc-driver-flightsql</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">mamba</span> <span class="pre">install</span> <span class="pre">adbc-driver-postgresql</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">mamba</span> <span class="pre">install</span> <span class="pre">adbc-driver-snowflake</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">mamba</span> <span class="pre">install</span> <span class="pre">adbc-driver-sqlite</span></code></p></li>
-</ul>
 </section>
 <section id="r">
 <h2>R<a class="headerlink" href="#r" title="Link to this heading">¶</a></h2>
@@ -523,14 +504,6 @@ sudo<span class="w"> </span>subscription-manager<span class="w"> </span>repos<sp
 <h2>Ruby<a class="headerlink" href="#ruby" title="Link to this heading">¶</a></h2>
 <p>Install the appropriate driver package for C/C++. You can use it from
 Ruby.</p>
-</section>
-<section id="rust">
-<h2>Rust<a class="headerlink" href="#rust" title="Link to this heading">¶</a></h2>
-<p>Add a dependency on <code class="docutils literal notranslate"><span class="pre">adbc_core</span></code> and any driver packages
-(e.g. <code class="docutils literal notranslate"><span class="pre">adbc_datafusion</span></code>):</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>cargo<span class="w"> </span>add<span class="w"> </span>adbc_core<span class="w"> </span>adbc_datafusion
-</pre></div>
-</div>
 </section>
 </section>
 
@@ -595,12 +568,10 @@ United States and other countries.
 <li><a class="reference internal" href="#">Installation</a><ul>
 <li><a class="reference internal" href="#source">Source</a></li>
 <li><a class="reference internal" href="#c-c">C/C++</a></li>
-<li><a class="reference internal" href="#go">Go</a></li>
 <li><a class="reference internal" href="#java">Java</a></li>
 <li><a class="reference internal" href="#python">Python</a></li>
 <li><a class="reference internal" href="#r">R</a></li>
 <li><a class="reference internal" href="#ruby">Ruby</a></li>
-<li><a class="reference internal" href="#rust">Rust</a></li>
 </ul>
 </li>
 </ul>

@@ -19,6 +19,19 @@
 Installation
 ============
 
+.. We can't link to things like conda-forge or crates.io because we
+   technically do not vote on those packages as part of the release; they are
+   created post-release. (Python wheels are voted on, though.) If we want to
+   fix this, we would have to do something like provide prereleases on these
+   platforms that we promote post-vote.
+
+   The main Arrow project links to unofficial releases with a disclaimer, but
+   as far as I can tell, this isn't actually allowed. Given our announce
+   emails are getting rejected, let's not risk it.
+
+   https://apache.org/legal/release-policy#publication
+   > Your project's download page can only link to release artifacts that your PMC has approved.
+
 .. note::
 
    See individual driver pages in the sidebar for specific installation instructions.
@@ -28,7 +41,7 @@ Source
 
 Download the latest source release: |source_download| (|source_checksum|, |source_signature|)
 
-To verify a release, please see the `instructions`_ page  and the project's `KEYS`_ file.
+When downloading, please check the SHA512 checksum, and verify the OpenPGP-compatible signature against the project's `KEYS`_ file.  Both the checksum and signature are provided above.  See the `instructions`_ page for more details.
 
 Compilation instructions can be found in `CONTRIBUTING.md`_.
 
@@ -39,18 +52,14 @@ Compilation instructions can be found in `CONTRIBUTING.md`_.
 C/C++
 =====
 
-Install the appropriate driver package.  You can use conda-forge_, ``apt`` or ``dnf``.
-
-conda-forge:
-
-- ``mamba install libadbc-driver-flightsql``
-- ``mamba install libadbc-driver-postgresql``
-- ``mamba install libadbc-driver-sqlite``
+Install the appropriate driver package.  Packages for ``apt`` and ``dnf`` are provided as part of official releases.
 
 You can use ``apt`` on the following platforms:
 
-- Debian GNU/Linux bookworm
-- Ubuntu 22.04
+- Debian GNU/Linux 12 ("bookworm")
+- Debian GNU/Linux 13 ("trixie")
+- Ubuntu 22.04 LTS ("jammy")
+- Ubuntu 24.04 LTS ("noble")
 
 Prepare the Apache Arrow APT repository:
 
@@ -109,16 +118,6 @@ Then they can be used via CMake, e.g.:
 
    target_link_libraries(myapp PRIVATE AdbcDriverPostgreSQL::adbc_driver_postgresql_shared)
 
-.. _conda-forge: https://conda-forge.org/
-
-Go
-==
-
-Add a dependency on the driver package, for example:
-
-- ``go get -u github.com/apache/arrow-adbc/go/adbc@latest``
-- ``go get -u github.com/apache/arrow-adbc/go/adbc/driver/flightsql@latest``
-
 Java
 ====
 
@@ -141,15 +140,8 @@ For example, from PyPI:
 - ``pip install adbc-driver-snowflake``
 - ``pip install adbc-driver-sqlite``
 
-From conda-forge_:
-
-- ``mamba install adbc-driver-flightsql``
-- ``mamba install adbc-driver-postgresql``
-- ``mamba install adbc-driver-snowflake``
-- ``mamba install adbc-driver-sqlite``
-
 R
-=
+===
 
 Install the appropriate driver package from CRAN:
 
@@ -171,13 +163,3 @@ Ruby
 
 Install the appropriate driver package for C/C++. You can use it from
 Ruby.
-
-Rust
-====
-
-Add a dependency on ``adbc_core`` and any driver packages
-(e.g. ``adbc_datafusion``):
-
-.. code-block:: shell
-
-   cargo add adbc_core adbc_datafusion
