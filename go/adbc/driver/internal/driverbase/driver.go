@@ -24,8 +24,11 @@ import (
 	"context"
 	"runtime/debug"
 	"strings"
+	"sync"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-go/v18/arrow"
+	"github.com/apache/arrow-go/v18/arrow/extensions"
 	"github.com/apache/arrow-go/v18/arrow/memory"
 )
 
@@ -105,7 +108,7 @@ func NewDriverImplBase(info *DriverInfo, alloc memory.Allocator) DriverImplBase 
 			panic(err)
 		}
 	}
-
+	registerExtensionTypes()
 	return DriverImplBase{
 		Alloc:       alloc,
 		ErrorHelper: ErrorHelper{DriverName: info.GetName()},
@@ -127,3 +130,31 @@ func NewDriver(impl DriverImpl) Driver {
 }
 
 var _ DriverImpl = (*DriverImplBase)(nil)
+
+// registerExtensionTypes ensures that canonical Arrow extension types are registered.
+// This is called once during driver initialization to make sure extension types like
+// UUID are available for use throughout the driver.
+var registerExtensionTypes = sync.OnceFunc(func() {
+	// The arrow/extensions package automatically registers canonical extension types
+	// (UUID, Bool8, JSON, Opaque, Variant) in its init() function.
+	// However, we explicitly ensure registration here in case the package wasn't
+	// imported elsewhere, and to handle any registration errors gracefully.
+
+	// List of canonical extension types to ensure are registered
+	canonicalTypes := []arrow.ExtensionType{
+		extensions.NewUUIDType(),
+		extensions.NewBool8Type(),
+		&extensions.JSONType{},
+		&extensions.OpaqueType{},
+		&extensions.VariantType{},
+	}
+
+	for _, extType := range canonicalTypes {
+		// RegisterExtensionType is idempotent - it returns an error only if
+		// a different type with the same name is already registered
+		if err := arrow.RegisterExtensionType(extType); err != nil {
+			// Log but don't fail - the type might already be registered
+			// which is fine (the extensions package init() may have done it)
+		}
+	}
+})

@@ -694,6 +694,7 @@ const (
 	XdbcDataType_XDBC_BIT           XdbcDataType = -7
 	XdbcDataType_XDBC_WCHAR         XdbcDataType = -8
 	XdbcDataType_XDBC_WVARCHAR      XdbcDataType = -9
+	XdbcDataType_XDBC_GUID          XdbcDataType = -11
 )
 
 func ToXdbcDataType(dt arrow.DataType) (xdbcType XdbcDataType) {
@@ -703,7 +704,12 @@ func ToXdbcDataType(dt arrow.DataType) (xdbcType XdbcDataType) {
 
 	switch dt.ID() {
 	case arrow.EXTENSION:
-		return ToXdbcDataType(dt.(arrow.ExtensionType).StorageType())
+		switch dt.(arrow.ExtensionType).ExtensionName() {
+		case "arrow.uuid":
+			return XdbcDataType_XDBC_GUID
+		default:
+			return ToXdbcDataType(dt.(arrow.ExtensionType).StorageType())
+		}
 	case arrow.DICTIONARY:
 		return ToXdbcDataType(dt.(*arrow.DictionaryType).ValueType)
 	case arrow.RUN_END_ENCODED:
