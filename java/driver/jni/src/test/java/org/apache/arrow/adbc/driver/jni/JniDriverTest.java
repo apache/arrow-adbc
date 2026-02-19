@@ -38,6 +38,7 @@ import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.BigIntVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.types.Types;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
@@ -267,6 +268,33 @@ class JniDriverTest {
           assertThat(result.getReader().loadNextBatch()).isTrue();
           assertThat(result.getReader().getVectorSchemaRoot().getVector(0).getObject(0))
               .isEqualTo(42L);
+        }
+      }
+    }
+  }
+
+  @Test
+  void getObjects() throws Exception {
+    try (final BufferAllocator allocator = new RootAllocator()) {
+      JniDriver driver = new JniDriver(allocator);
+      Map<String, Object> parameters = new HashMap<>();
+      JniDriver.PARAM_DRIVER.set(parameters, "adbc_driver_sqlite");
+
+      try (final AdbcDatabase db = driver.open(parameters);
+          final AdbcConnection conn = db.connect()) {
+        // Create a table so there's something to find
+        try (final AdbcStatement stmt = conn.createStatement()) {
+          stmt.setSqlQuery("CREATE TABLE get_objects_test (id INTEGER, name TEXT)");
+          stmt.executeUpdate();
+        }
+
+        try (final ArrowReader reader =
+            conn.getObjects(AdbcConnection.GetObjectsDepth.ALL, null, null, null, null, null)) {
+          assertThat(reader.loadNextBatch()).isTrue();
+          VectorSchemaRoot root = reader.getVectorSchemaRoot();
+          assertThat(root.getRowCount()).isGreaterThan(0);
+          // First field should be catalog_name
+          assertThat(root.getSchema().getFields().get(0).getName()).isEqualTo("catalog_name");
         }
       }
     }
