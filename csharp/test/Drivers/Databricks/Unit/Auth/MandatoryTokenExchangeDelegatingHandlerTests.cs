@@ -16,6 +16,7 @@
 */
 
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -167,9 +168,10 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit.Auth
             var httpClient = new HttpClient(handler);
 
             // First request should block until token exchange completes, then use exchanged token
-            var startTime = DateTime.UtcNow;
+            var stopwatch = Stopwatch.StartNew();
             var response = await httpClient.SendAsync(request);
-            var requestDuration = DateTime.UtcNow - startTime;
+            stopwatch.Stop();
+            var requestDuration = stopwatch.Elapsed;
 
             Assert.Equal(expectedResponse, response);
             Assert.True(requestDuration >= tokenExchangeDelay,
