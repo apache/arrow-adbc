@@ -545,6 +545,10 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// \see ADBC_VERSION_1_2_0
 #define ADBC_INFO_DRIVER_ADBC_VERSION 103
 
+/// \defgroup adbc-catalog-metadata ADBC Catalog Metadata Constants
+/// Constants for catalog metadata.
+/// @{
+
 /// \brief Return metadata on catalogs, schemas, tables, and columns.
 ///
 /// \see AdbcConnectionGetObjects
@@ -569,6 +573,72 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 ///
 /// \see AdbcConnectionGetObjects
 #define ADBC_OBJECT_DEPTH_COLUMNS ADBC_OBJECT_DEPTH_ALL
+
+/// \brief This foreign key does not allow update of the corresponding primary
+///   key.
+///
+/// \see AdbcConnectionGetObjects
+#define ADBC_CONSTRAINT_ACTION_NO_ACTION 3
+
+/// \brief This foreign key will be updated/deleted with corresponding primary
+///   key.
+///
+/// \see AdbcConnectionGetObjects
+#define ADBC_CONSTRAINT_ACTION_CASCADE 0
+
+/// \brief This foreign key will be set to NULL if its corresponding primary
+///   key is updated or deleted.
+///
+/// \see AdbcConnectionGetObjects
+#define ADBC_CONSTRAINT_ACTION_SET_NULL 2
+
+/// \brief This foreign key will be set to its default if its corresponding
+///   primary key is updated or deleted.
+///
+/// \see AdbcConnectionGetObjects
+#define ADBC_CONSTRAINT_ACTION_SET_DEFAULT 4
+
+/// \brief Similar to ADBC_CONSTRAINT_ACTION_NO_ACTION but may be interpreted
+///   differently by the vendor (e.g., raise an error immediately instead of
+///   allowing the check to be deferred).
+///
+/// \see AdbcConnectionGetObjects
+#define ADBC_CONSTRAINT_ACTION_RESTRICT 1
+
+/// \brief This constraint is deferrable, and is initially deferred.
+///
+/// \see AdbcConnectionGetObjects
+#define ADBC_CONSTRAINT_DEFERRABLE_DEFERRED 5
+
+/// \brief This constraint is deferrable, but is initially immediate.
+///
+/// \see AdbcConnectionGetObjects
+#define ADBC_CONSTRAINT_DEFERRABLE_IMMEDIATE 6
+
+/// \brief This constraint may not be deferred.
+///
+/// \see AdbcConnectionGetObjects
+#define ADBC_CONSTRAINT_NOT_DEFERRABLE 7
+
+/// \brief This foreign key allows any of the foreign key columns to be NULL;
+///   if so, no match is required in the referenced table.
+///
+/// \see AdbcConnectionGetObjects
+#define ADBC_CONSTRAINT_MATCH_SIMPLE 0
+
+/// \brief This foreign key only allows foreign key columns to be NULL if all
+///   of them are NULL; if so, no match is required in the referenced table.
+///
+/// \see AdbcConnectionGetObjects
+#define ADBC_CONSTRAINT_MATCH_FULL 1
+
+/// \brief This foreign key allows any of the foreign key columns to be NULL;
+///   if so, non-NULL columns must still match.
+///
+/// \see AdbcConnectionGetObjects
+#define ADBC_CONSTRAINT_MATCH_PARTIAL 2
+
+/// @}
 
 /// \defgroup adbc-table-statistics ADBC Statistic Types
 /// Standard statistic names for AdbcConnectionGetStatistics.
@@ -1766,20 +1836,56 @@ AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
 /// | constraint_type          | utf8 not null           | (1)      |
 /// | constraint_column_names  | list<utf8> not null     | (2)      |
 /// | constraint_column_usage  | list<USAGE_SCHEMA>      | (3)      |
+/// | constraint_expression    | utf8                    | (4)      |
+/// | constraint_update_rule   | int16                   | (5)      |
+/// | constraint_delete_rule   | int16                   | (5)      |
+/// | constraint_enforced      | bool                    | (6)      |
+/// | constraint_deferrability | int16                   | (7)      |
+/// | constraint_match_type    | int16                   | (8)      |
 ///
-/// 1. One of 'CHECK', 'FOREIGN KEY', 'PRIMARY KEY', or 'UNIQUE'.
+/// 1. One of 'CHECK', 'FOREIGN KEY', 'PRIMARY KEY', or 'UNIQUE', or a
+///    vendor-specific type.
 /// 2. The columns on the current table that are constrained, in
 ///    order.
 /// 3. For FOREIGN KEY only, the referenced table and columns.
+/// 4. [Since version 1.2.0] The vendor-specific definition of the constraint
+///    (e.g. the SQL expression to be checked).  This field is optional.
+/// 5. [Since version 1.2.0] The action to be taken when the primary key is
+///    updated or deleted.  The value is one of the ADBC_CONSTRAINT_ACTION_
+///    constants. This field is optional.
+/// 6. [Since version 1.2.0] Whether the constraint is currently enabled.
+///    This field is optional.
+/// 7. [Since version 1.2.0] Whether the constraint can be deferred, and if
+///    so, whether it starts deferred.  The value is one of the
+///    ADBC_CONSTRAINT_DEFERRABLE_ constants or
+///    ADBC_CONSTRAINT_NOT_DEFERRABLE.  This field is optional.
+/// 8. [Since version 1.2.0] How the foreign key constraint should be matched.
+///    The value is one of the ADBC_CONSTRAINT_MATCH_ constants.  This field
+///    is optional.
 ///
 /// USAGE_SCHEMA is a Struct with fields:
 ///
-/// | Field Name               | Field Type              |
-/// |--------------------------|-------------------------|
-/// | fk_catalog               | utf8                    |
-/// | fk_db_schema             | utf8                    |
-/// | fk_table                 | utf8 not null           |
-/// | fk_column_name           | utf8 not null           |
+/// | Field Name               | Field Type              | Comments |
+/// |--------------------------|-------------------------|----------|
+/// | fk_catalog               | utf8                    |          |
+/// | fk_db_schema             | utf8                    |          |
+/// | fk_table                 | utf8 not null           |          |
+/// | fk_column_name           | utf8 not null           |          |
+/// | fk_key_seq               | int32 not null          | (1)      |
+/// | fk_pk_name               | utf8                    | (2)      |
+///
+/// 1. [Since version 1.2.0] The ordinal position of the column within the
+///    foreign key.  If present, the driver should sort the rows on this
+///    column.  This field is optional.
+/// 2. [Since version 1.2.0] The name of the referenced primary key.  This
+///    field is optional.
+///
+/// Starting in version 1.2.0, optional fields were introduced to the schema.
+/// Optional fields may not be present and applications should check before
+/// using them.  Drivers may choose to include optional fields (with null
+/// values) even if not supported, but are not required to.  If an optional
+/// field is present, all optional fields defined before it in the schema must
+/// be present.
 ///
 /// This AdbcConnection must outlive the returned ArrowArrayStream.
 ///
