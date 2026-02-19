@@ -272,9 +272,10 @@ install_dotnet() {
   esac
   local dotnet_download_thank_you_url=https://dotnet.microsoft.com/download/thank-you/dotnet-sdk-${dotnet_version}-${dotnet_platform}-x64-binaries
   show_info "Getting .NET download URL from ${dotnet_download_thank_you_url}"
-  local dotnet_download_url=$(curl -sL ${dotnet_download_thank_you_url} | \
-                                  grep 'recordManualDownload' | \
-                                  grep -E -o 'https://builds.dotnet[^"]+')
+  curl --fail -L -o "${ARROW_TMPDIR}/dotnetdownload.html" "${dotnet_download_thank_you_url}"
+  local dotnet_download_url=$(grep 'directLink' "${ARROW_TMPDIR}/dotnetdownload.html" | \
+                                  grep -E -o 'https://builds.dotnet[^"]+' | \
+                                  head -n1)
   if [ -z "${dotnet_download_url}" ]; then
     echo "Failed to get .NET download URL from ${dotnet_download_thank_you_url}"
     exit 1

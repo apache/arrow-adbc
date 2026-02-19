@@ -26,10 +26,10 @@
     <relativePath>../../pom.xml</relativePath>
   </parent>
 
-  <artifactId>adbc-driver-jdbc-validation-postgresql</artifactId>
+  <artifactId>adbc-driver-jni-validation-sqlite</artifactId>
   <packaging>jar</packaging>
-  <name>Arrow ADBC Driver JDBC Validation with PostgreSQL</name>
-  <description>Tests validating the JDBC driver against Postgresql.</description>
+  <name>Arrow ADBC Driver JNI Validation with SQLite</name>
+  <description>Tests validating the JNI driver against SQLite.</description>
 
   <properties>
     <maven.deploy.skip>true</maven.deploy.skip>
@@ -43,18 +43,16 @@
     </dependency>
     <dependency>
       <groupId>org.apache.arrow.adbc</groupId>
-      <artifactId>adbc-driver-jdbc</artifactId>
-      <scope>test</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>org.postgresql</groupId>
-      <artifactId>postgresql</artifactId>
-      <version>42.7.10</version>
+      <artifactId>adbc-driver-jni</artifactId>
       <scope>test</scope>
     </dependency>
 
     <!-- Testing -->
+    <dependency>
+      <groupId>org.apache.arrow</groupId>
+      <artifactId>arrow-memory-netty</artifactId>
+      <scope>test</scope>
+    </dependency>
     <dependency>
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>

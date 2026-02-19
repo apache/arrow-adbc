@@ -219,7 +219,7 @@ impl TryFrom<u32> for InfoCode {
 }
 
 /// Depth parameter for [get_objects][crate::Connection::get_objects] method.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum ObjectDepth {
     /// Catalogs, schemas, tables, and columns.
     All,
@@ -523,7 +523,7 @@ impl From<IsolationLevel> for OptionValue {
 }
 
 /// Ingestion mode value for key [OptionStatement::IngestMode].
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum IngestMode {
     /// Create the table and insert data; error if the table exists.
     Create,
