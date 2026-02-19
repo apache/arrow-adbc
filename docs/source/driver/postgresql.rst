@@ -236,6 +236,10 @@ being read or written.
      - TEXT
      - TEXT
 
+   * - struct
+     - ❌
+     - ❌
+
    * - timestamp
      - TIMESTAMP [#timestamp]_
      - TIMESTAMP/TIMESTAMP WITH TIMEZONE
@@ -256,6 +260,8 @@ being read or written.
      - bool
    * - CHAR
      - utf8
+   * - `COMPOSITE`_
+     - struct
    * - DATE
      - date32
    * - DOUBLE PRECISION
@@ -293,6 +299,8 @@ being read or written.
                 adjusted to the PostgreSQL epoch (2000-01-01) and so may
                 overflow/underflow; an error will be returned if this would be
                 the case.
+
+.. _COMPOSITE: https://www.postgresql.org/docs/current/rowtypes.html
 
 Unknown Types
 ~~~~~~~~~~~~~
