@@ -565,6 +565,31 @@ pub struct ManagedConnection {
     inner: Arc<ManagedConnectionInner>,
 }
 
+struct ConnectionCancelHandle {
+    inner: std::sync::Weak<ManagedConnectionInner>,
+}
+
+impl adbc_core::CancelHandle for ConnectionCancelHandle {
+    fn try_cancel(&self) -> Result<()> {
+        if let Some(inner) = self.inner.upgrade() {
+            if let AdbcVersion::V100 = inner.database.driver.version {
+                return Err(Error::with_message_and_status(
+                    ERR_CANCEL_UNSUPPORTED,
+                    Status::NotImplemented,
+                ));
+            }
+            let driver = &inner.database.driver.driver;
+            let mut connection = inner.connection.lock().unwrap();
+            let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
+            let method = driver_method!(driver, ConnectionCancel);
+            let status = unsafe { method(connection.deref_mut(), &mut error) };
+            check_status(status, error)
+        } else {
+            Ok(())
+        }
+    }
+}
+
 impl ManagedConnection {
     fn ffi_driver(&self) -> &adbc_ffi::FFI_AdbcDriver {
         &self.inner.database.driver.driver
@@ -663,19 +688,10 @@ impl Connection for ManagedConnection {
         Ok(Self::StatementType { inner })
     }
 
-    fn cancel(&mut self) -> Result<()> {
-        if let AdbcVersion::V100 = self.driver_version() {
-            return Err(Error::with_message_and_status(
-                ERR_CANCEL_UNSUPPORTED,
-                Status::NotImplemented,
-            ));
-        }
-        let driver = self.ffi_driver();
-        let mut connection = self.inner.connection.lock().unwrap();
-        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
-        let method = driver_method!(driver, ConnectionCancel);
-        let status = unsafe { method(connection.deref_mut(), &mut error) };
-        check_status(status, error)
+    fn get_cancel_handle(&self) -> Box<dyn adbc_core::CancelHandle> {
+        Box::new(ConnectionCancelHandle {
+            inner: Arc::downgrade(&self.inner),
+        })
     }
 
     fn commit(&mut self) -> Result<()> {
@@ -939,6 +955,31 @@ impl ManagedStatement {
     }
 }
 
+struct StatementCancelHandle {
+    inner: std::sync::Weak<ManagedStatementInner>,
+}
+
+impl adbc_core::CancelHandle for StatementCancelHandle {
+    fn try_cancel(&self) -> Result<()> {
+        if let Some(inner) = self.inner.upgrade() {
+            if let AdbcVersion::V100 = inner.connection.database.driver.version {
+                return Err(Error::with_message_and_status(
+                    ERR_CANCEL_UNSUPPORTED,
+                    Status::NotImplemented,
+                ));
+            }
+            let driver = &inner.connection.database.driver.driver;
+            let mut statement = inner.statement.lock().unwrap();
+            let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
+            let method = driver_method!(driver, StatementCancel);
+            let status = unsafe { method(statement.deref_mut(), &mut error) };
+            check_status(status, error)
+        } else {
+            Ok(())
+        }
+    }
+}
+
 impl Statement for ManagedStatement {
     fn bind(&mut self, batch: RecordBatch) -> Result<()> {
         let driver = self.ffi_driver();
@@ -963,19 +1004,10 @@ impl Statement for ManagedStatement {
         Ok(())
     }
 
-    fn cancel(&mut self) -> Result<()> {
-        if let AdbcVersion::V100 = self.driver_version() {
-            return Err(Error::with_message_and_status(
-                ERR_CANCEL_UNSUPPORTED,
-                Status::NotImplemented,
-            ));
-        }
-        let driver = self.ffi_driver();
-        let mut statement = self.inner.statement.lock().unwrap();
-        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
-        let method = driver_method!(driver, StatementCancel);
-        let status = unsafe { method(statement.deref_mut(), &mut error) };
-        check_status(status, error)
+    fn get_cancel_handle(&self) -> Box<dyn adbc_core::CancelHandle> {
+        Box::new(StatementCancelHandle {
+            inner: Arc::downgrade(&self.inner),
+        })
     }
 
     fn execute(&mut self) -> Result<Box<dyn RecordBatchReader + Send + 'static>> {
