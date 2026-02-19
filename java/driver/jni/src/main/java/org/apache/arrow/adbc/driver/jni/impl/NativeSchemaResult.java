@@ -17,32 +17,28 @@
 
 package org.apache.arrow.adbc.driver.jni.impl;
 
-import org.apache.arrow.c.ArrowArrayStream;
+import org.apache.arrow.c.ArrowSchema;
+import org.apache.arrow.c.CDataDictionaryProvider;
 import org.apache.arrow.c.Data;
 import org.apache.arrow.memory.BufferAllocator;
-import org.apache.arrow.vector.ipc.ArrowReader;
+import org.apache.arrow.vector.types.pojo.Schema;
 
-public class NativeQueryResult {
-  private final long rowsAffected;
-  private final ArrowArrayStream.Snapshot streamSnapshot;
+public class NativeSchemaResult {
+  private final ArrowSchema.Snapshot schemaSnapshot;
 
-  public NativeQueryResult(long rowsAffected, long cDataStream) {
-    this.rowsAffected = rowsAffected;
-    // Immediately snapshot the stream to take ownership of the contents.
+  public NativeSchemaResult(long cDataSchema) {
+    // Immediately snapshot the schema to take ownership of the contents.
     // The address may point to a stack-allocated struct that becomes invalid
     // after the JNI call returns.
-    this.streamSnapshot = ArrowArrayStream.wrap(cDataStream).snapshot();
+    this.schemaSnapshot = ArrowSchema.wrap(cDataSchema).snapshot();
   }
 
-  public long rowsAffected() {
-    return rowsAffected;
-  }
-
-  /** Import the C Data stream into a Java ArrowReader. */
-  public ArrowReader importStream(BufferAllocator allocator) {
-    try (final ArrowArrayStream cStream = ArrowArrayStream.allocateNew(allocator)) {
-      cStream.save(streamSnapshot);
-      return Data.importArrayStream(allocator, cStream);
+  /** Import the C Data schema into a Java Schema. */
+  public Schema importSchema(BufferAllocator allocator) {
+    try (final ArrowSchema cSchema = ArrowSchema.allocateNew(allocator);
+        final CDataDictionaryProvider provider = new CDataDictionaryProvider()) {
+      cSchema.save(schemaSnapshot);
+      return Data.importSchema(allocator, cSchema, provider);
     }
   }
 }
