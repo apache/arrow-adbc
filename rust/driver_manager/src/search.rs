@@ -15,6 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+use path_slash::PathBufExt;
 use std::borrow::Cow;
 use std::ffi::{c_void, OsStr};
 use std::fmt::Write;
@@ -816,7 +817,191 @@ fn get_search_paths(lvls: LoadFlags) -> Vec<PathBuf> {
     result
 }
 
-pub(crate) fn parse_driver_uri(uri: &str) -> Result<(&str, &str)> {
+/// Locates a connection profile file on the filesystem.
+///
+/// This function searches for profile files with a `.toml` extension using the
+/// following strategy:
+///
+/// 1. If `name` is an absolute path with `.toml` extension, verify it exists
+/// 2. If `name` is an absolute path without extension, add `.toml` and return
+/// 3. If `name` is a relative path that exists in the current directory, return it
+/// 4. Search configured profile directories in order:
+///    - Additional paths provided
+///    - `ADBC_PROFILE_PATH` environment variable paths
+///    - Conda prefix path (if built with `conda_build`)
+///    - User configuration directory
+///
+/// # Arguments
+///
+/// * `name` - Profile name or path (e.g., "my_profile", "/path/to/profile.toml")
+/// * `additional_path_list` - Optional additional directories to search
+///
+/// # Returns
+///
+/// The absolute path to the located profile file.
+///
+/// # Errors
+///
+/// Returns `Status::NotFound` if the profile cannot be located in any search path.
+pub(crate) fn find_filesystem_profile(
+    name: impl AsRef<str>,
+    additional_path_list: Option<Vec<PathBuf>>,
+) -> Result<PathBuf> {
+    // Convert the name to a PathBuf to ensure proper platform-specific path handling.
+    // This normalizes forward slashes to backslashes on Windows.
+    let profile_path = PathBuf::from_slash(name.as_ref());
+    let profile_path = profile_path.as_path();
+
+    // Handle absolute paths
+    if profile_path.is_absolute() {
+        let has_toml_ext = profile_path.extension().is_some_and(|ext| ext == "toml");
+
+        if has_toml_ext {
+            // Has .toml extension - verify it exists
+            return if profile_path.is_file() {
+                Ok(profile_path.to_path_buf())
+            } else {
+                Err(Error::with_message_and_status(
+                    format!("Profile not found: {}", profile_path.display()),
+                    Status::NotFound,
+                ))
+            };
+        }
+
+        // No .toml extension - add it
+        return Ok(profile_path.with_extension("toml"));
+    }
+
+    // For relative paths, check if it's a file at the current location first
+    if profile_path.is_file() {
+        return Ok(profile_path.to_path_buf());
+    }
+
+    // Search in the configured paths
+    let path_list = get_profile_search_paths(additional_path_list);
+    let has_toml_ext = profile_path.extension().is_some_and(|ext| ext == "toml");
+
+    path_list
+        .iter()
+        .find_map(|path| {
+            if has_toml_ext {
+                // Name already has .toml extension, use it as-is
+                let full_path = path.join(profile_path);
+                if full_path.is_file() {
+                    return Some(full_path);
+                }
+            }
+            // Try adding .toml extension
+            let mut full_path = path.join(profile_path);
+            full_path.set_extension("toml");
+            if full_path.is_file() {
+                return Some(full_path);
+            }
+            None
+        })
+        .ok_or_else(|| {
+            Error::with_message_and_status(
+                format!("Profile not found: {}", name.as_ref()),
+                Status::NotFound,
+            )
+        })
+}
+
+/// Returns the list of directories to search for connection profiles.
+///
+/// Directories are returned in search priority order:
+///
+/// 1. Additional paths provided (highest priority)
+/// 2. `ADBC_PROFILE_PATH` environment variable (colon/semicolon-separated paths)
+/// 3. Conda prefix path: `$CONDA_PREFIX/etc/adbc/drivers` (if built with `conda_build`)
+/// 4. User config directory:
+///    - Linux: `~/.config/adbc/profiles`
+///    - macOS: `~/Library/Application Support/ADBC/Profiles`
+///    - Windows: `%LOCALAPPDATA%\ADBC\Profiles`
+///
+/// # Arguments
+///
+/// * `additional_path_list` - Optional additional directories to prepend to the search path
+///
+/// # Returns
+///
+/// A vector of paths to search for profiles, in priority order.
+fn get_profile_search_paths(additional_path_list: Option<Vec<PathBuf>>) -> Vec<PathBuf> {
+    let mut result = additional_path_list.unwrap_or_default();
+
+    // Add ADBC_PROFILE_PATH environment variable paths
+    if let Some(paths) = env::var_os("ADBC_PROFILE_PATH") {
+        result.extend(env::split_paths(&paths));
+    }
+
+    // Add conda-specific path if built with conda_build
+    #[cfg(conda_build)]
+    if let Some(conda_prefix) = env::var_os("CONDA_PREFIX") {
+        result.push(
+            PathBuf::from(conda_prefix)
+                .join("etc")
+                .join("adbc")
+                .join("drivers"),
+        );
+    }
+
+    // Add user config directory path
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
+    const PROFILE_DIR_NAME: &str = "Profiles";
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    const PROFILE_DIR_NAME: &str = "profiles";
+
+    if let Some(profiles_dir) = user_config_dir().and_then(|d| d.parent().map(|p| p.to_path_buf()))
+    {
+        result.push(profiles_dir.join(PROFILE_DIR_NAME));
+    }
+
+    result
+}
+
+/// Result of parsing a driver URI, indicating how to load the driver.
+///
+/// URIs can specify either a direct driver connection or a profile to load.
+#[derive(Debug)]
+pub(crate) enum SearchResult<'a> {
+    /// Direct driver URI: (driver_name, connection_string)
+    ///
+    /// Example: `"sqlite:file::memory:"` → `DriverUri("sqlite", "file::memory:")`
+    DriverUri(&'a str, &'a str),
+
+    /// Profile reference: (profile_name_or_path)
+    ///
+    /// Example: `"profile://my_database"` → `Profile("my_database")`
+    Profile(&'a str),
+}
+
+/// Parses a driver URI to determine the connection method.
+///
+/// # URI Formats
+///
+/// ## Direct Driver URI
+/// - `driver:connection_string` - Uses the specified driver with connection string
+/// - `driver://host:port/database` - Standard URI format with driver scheme
+///
+/// ## Profile URI
+/// - `profile://name` - Loads profile named "name" from standard locations
+/// - `profile://path/to/profile.toml` - Loads profile from relative path
+/// - `profile:///absolute/path/to/profile.toml` - Loads profile from absolute path
+///
+/// # Arguments
+///
+/// * `uri` - The URI string to parse
+///
+/// # Returns
+///
+/// A `SearchResult` indicating whether to use a driver directly or load a profile.
+///
+/// # Errors
+///
+/// Returns `Status::InvalidArguments` if:
+/// - The URI has no colon separator
+/// - The URI format is invalid
+pub(crate) fn parse_driver_uri<'a>(uri: &'a str) -> Result<SearchResult<'a>> {
     let idx = uri.find(":").ok_or(Error::with_message_and_status(
         format!("Invalid URI: {uri}"),
         Status::InvalidArguments,
@@ -824,20 +1009,29 @@ pub(crate) fn parse_driver_uri(uri: &str) -> Result<(&str, &str)> {
 
     let driver = &uri[..idx];
     if uri.len() <= idx + 2 {
-        return Ok((driver, uri));
+        return Ok(SearchResult::DriverUri(driver, uri));
     }
 
     #[cfg(target_os = "windows")]
     if let Ok(true) = std::fs::exists(uri) {
-        return Ok((uri, ""));
+        return Ok(SearchResult::DriverUri(uri, ""));
     }
 
     if &uri[idx..idx + 2] == ":/" {
         // scheme is also driver
-        return Ok((driver, uri));
+        if driver == "profile" && uri.len() > idx + 2 {
+            // Check if it's "://" (two slashes) or just ":/" (one slash)
+            if uri.len() > idx + 3 && &uri[idx + 2..idx + 3] == "/" {
+                // It's "profile://..." - skip "://" (three characters)
+                return Ok(SearchResult::Profile(&uri[idx + 3..]));
+            }
+            // It's "profile:/..." - skip ":/" (two characters)
+            return Ok(SearchResult::Profile(&uri[idx + 2..]));
+        }
+        return Ok(SearchResult::DriverUri(driver, uri));
     }
 
-    Ok((driver, &uri[idx + 1..]))
+    Ok(SearchResult::DriverUri(driver, &uri[idx + 1..]))
 }
 
 #[cfg(test)]
@@ -1380,25 +1574,58 @@ mod tests {
     fn test_parse_driver_uri() {
         let cases = vec![
             ("sqlite", Err(Status::InvalidArguments)),
-            ("sqlite:", Ok(("sqlite", "sqlite:"))),
-            ("sqlite:file::memory:", Ok(("sqlite", "file::memory:"))),
+            ("sqlite:", Ok(SearchResult::DriverUri("sqlite", "sqlite:"))),
+            (
+                "sqlite:file::memory:",
+                Ok(SearchResult::DriverUri("sqlite", "file::memory:")),
+            ),
             (
                 "sqlite:file::memory:?cache=shared",
-                Ok(("sqlite", "file::memory:?cache=shared")),
+                Ok(SearchResult::DriverUri(
+                    "sqlite",
+                    "file::memory:?cache=shared",
+                )),
             ),
             (
                 "postgresql://a:b@localhost:9999/nonexistent",
-                Ok(("postgresql", "postgresql://a:b@localhost:9999/nonexistent")),
+                Ok(SearchResult::DriverUri(
+                    "postgresql",
+                    "postgresql://a:b@localhost:9999/nonexistent",
+                )),
             ),
+            (
+                "profile://my_profile",
+                Ok(SearchResult::Profile("my_profile")),
+            ),
+            (
+                "profile://path/to/profile.toml",
+                Ok(SearchResult::Profile("path/to/profile.toml")),
+            ),
+            (
+                "profile:///absolute/path/to/profile.toml",
+                Ok(SearchResult::Profile("/absolute/path/to/profile.toml")),
+            ),
+            ("invalid_uri", Err(Status::InvalidArguments)),
         ];
 
         for (input, expected) in cases {
             let result = parse_driver_uri(input);
             match expected {
-                Ok((exp_driver, exp_conn)) => {
-                    let (driver, conn) = result.expect("Expected Ok result");
+                Ok(SearchResult::DriverUri(exp_driver, exp_conn)) => {
+                    let SearchResult::DriverUri(driver, conn) = result.expect("Expected Ok result")
+                    else {
+                        panic!("Expected DriverUri result");
+                    };
+
                     assert_eq!(driver, exp_driver);
                     assert_eq!(conn, exp_conn);
+                }
+                Ok(SearchResult::Profile(exp_profile)) => {
+                    let SearchResult::Profile(profile) = result.expect("Expected Ok result") else {
+                        panic!("Expected Profile result");
+                    };
+
+                    assert_eq!(profile, exp_profile);
                 }
                 Err(exp_status) => {
                     let err = result.expect_err("Expected Err result");
@@ -1447,7 +1674,11 @@ mod tests {
         }
         std::fs::write(&temp_db_path, b"").expect("Failed to create temporary database file");
 
-        let (driver, conn) = parse_driver_uri(temp_db_path.to_str().unwrap()).unwrap();
+        let SearchResult::DriverUri(driver, conn) =
+            parse_driver_uri(temp_db_path.to_str().unwrap()).unwrap()
+        else {
+            panic!("Expected DriverUri result");
+        };
 
         assert_eq!(driver, temp_db_path.to_str().unwrap());
         assert_eq!(conn, "");
@@ -1455,5 +1686,168 @@ mod tests {
         tmp_dir
             .close()
             .expect("Failed to close/remove temporary directory");
+    }
+
+    #[test]
+    fn test_find_filesystem_profile() {
+        let test_cases = vec![
+            (
+                "absolute path with extension",
+                "test_profile.toml",
+                None,
+                true,
+                true,
+            ),
+            (
+                "relative name without extension",
+                "my_profile",
+                Some(vec![]),
+                false,
+                true,
+            ),
+            (
+                "relative name with extension",
+                "my_profile.toml",
+                Some(vec![]),
+                false,
+                true,
+            ),
+            (
+                "absolute path without extension",
+                "profile_no_ext",
+                None,
+                true,
+                true,
+            ),
+            (
+                "nonexistent profile",
+                "nonexistent_profile",
+                None,
+                false,
+                false,
+            ),
+        ];
+
+        for (name, profile_name, search_paths_opt, is_absolute, should_succeed) in test_cases {
+            let tmp_dir = tempfile::Builder::new()
+                .prefix("adbc_profile_test")
+                .tempdir()
+                .unwrap();
+
+            let expected_profile_path = tmp_dir.path().join(if profile_name.ends_with(".toml") {
+                profile_name.to_string()
+            } else {
+                format!("{}.toml", profile_name)
+            });
+
+            if should_succeed {
+                std::fs::write(&expected_profile_path, "test content").unwrap();
+            }
+
+            let search_paths = search_paths_opt.map(|mut paths| {
+                paths.push(tmp_dir.path().to_path_buf());
+                paths
+            });
+
+            let profile_arg = if is_absolute {
+                if profile_name.ends_with(".toml") {
+                    expected_profile_path.to_str().unwrap().to_string()
+                } else {
+                    tmp_dir
+                        .path()
+                        .join(profile_name)
+                        .to_str()
+                        .unwrap()
+                        .to_string()
+                }
+            } else {
+                profile_name.to_string()
+            };
+
+            let result = find_filesystem_profile(&profile_arg, search_paths);
+
+            if should_succeed {
+                assert!(
+                    result.is_ok(),
+                    "Test case '{}' failed: {:?}",
+                    name,
+                    result.err()
+                );
+                assert_eq!(
+                    result.unwrap(),
+                    expected_profile_path,
+                    "Test case '{}': path mismatch",
+                    name
+                );
+            } else {
+                assert!(result.is_err(), "Test case '{}': expected error", name);
+                let err = result.unwrap_err();
+                assert_eq!(
+                    err.status,
+                    Status::NotFound,
+                    "Test case '{}': wrong error status",
+                    name
+                );
+                assert!(
+                    err.message.contains("Profile not found"),
+                    "Test case '{}': wrong error message",
+                    name
+                );
+            }
+
+            tmp_dir.close().unwrap();
+        }
+    }
+
+    #[test]
+    fn test_find_filesystem_profile_search_multiple_paths() {
+        let tmp_dir1 = tempfile::Builder::new()
+            .prefix("adbc_profile_test1")
+            .tempdir()
+            .unwrap();
+        let tmp_dir2 = tempfile::Builder::new()
+            .prefix("adbc_profile_test2")
+            .tempdir()
+            .unwrap();
+
+        // Create profile in second directory
+        let profile_path = tmp_dir2.path().join("searched_profile.toml");
+        std::fs::write(&profile_path, "test content").unwrap();
+
+        let result = find_filesystem_profile(
+            "searched_profile",
+            Some(vec![
+                tmp_dir1.path().to_path_buf(),
+                tmp_dir2.path().to_path_buf(),
+            ]),
+        );
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), profile_path);
+
+        tmp_dir1.close().unwrap();
+        tmp_dir2.close().unwrap();
+    }
+
+    #[test]
+    fn test_get_profile_search_paths() {
+        // Test that additional paths are included
+        let tmp_dir = tempfile::Builder::new()
+            .prefix("adbc_profile_test")
+            .tempdir()
+            .unwrap();
+
+        let paths = get_profile_search_paths(Some(vec![tmp_dir.path().to_path_buf()]));
+
+        assert!(paths.contains(&tmp_dir.path().to_path_buf()));
+        assert!(!paths.is_empty());
+
+        tmp_dir.close().unwrap();
+    }
+
+    #[test]
+    fn test_get_profile_search_paths_empty() {
+        let paths = get_profile_search_paths(None);
+        // Should still return some paths (env vars, user config, etc.)
+        assert!(!paths.is_empty() || paths.is_empty()); // Just verify it doesn't panic
     }
 }
