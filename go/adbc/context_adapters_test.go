@@ -303,3 +303,18 @@ func TestAsStatementContext_ContextPassThrough(t *testing.T) {
 	assert.NoError(t, err)
 	stmt.AssertExpectations(t)
 }
+
+func TestAsDatabaseContext_Nil(t *testing.T) {
+	dbCtx := adbc.AsDatabaseContext(nil)
+	assert.Nil(t, dbCtx)
+}
+
+func TestAsConnectionContext_Nil(t *testing.T) {
+	connCtx := adbc.AsConnectionContext(nil)
+	assert.Nil(t, connCtx)
+}
+
+func TestAsStatementContext_Nil(t *testing.T) {
+	stmtCtx := adbc.AsStatementContext(nil)
+	assert.Nil(t, stmtCtx)
+}
