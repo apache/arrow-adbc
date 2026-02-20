@@ -162,6 +162,73 @@ func IngestStream(ctx context.Context, cnxn Connection, reader array.RecordReade
 	return count, nil
 }
 
+// IngestStreamContext is a helper for executing a bulk ingestion with context support.
+// This is a wrapper around the five-step boilerplate of NewStatement, SetOption, Bind,
+// Execute, and Close, with context propagation throughout.
+//
+// This version uses ConnectionContext and StatementContext for uniform context propagation.
+// For backward compatibility with non-context connections, use IngestStream.
+//
+// This is not part of the ADBC API specification.
+//
+// Since ADBC API revision 1.2.0 (Experimental).
+func IngestStreamContext(ctx context.Context, cnxn ConnectionContext, reader array.RecordReader, targetTable, ingestMode string, opt IngestStreamOptions) (int64, error) {
+	// Create a new statement
+	stmt, err := cnxn.NewStatement(ctx)
+	if err != nil {
+		return -1, fmt.Errorf("error during ingestion: NewStatement: %w", err)
+	}
+	defer func() {
+		err = errors.Join(err, stmt.Close(ctx))
+	}()
+
+	// Bind the record batch stream
+	if err = stmt.BindStream(ctx, reader); err != nil {
+		return -1, fmt.Errorf("error during ingestion: BindStream: %w", err)
+	}
+
+	// Set required options
+	if err = stmt.SetOption(ctx, OptionKeyIngestTargetTable, targetTable); err != nil {
+		return -1, fmt.Errorf("error during ingestion: SetOption(target_table=%s): %w", targetTable, err)
+	}
+	if err = stmt.SetOption(ctx, OptionKeyIngestMode, ingestMode); err != nil {
+		return -1, fmt.Errorf("error during ingestion: SetOption(mode=%s): %w", ingestMode, err)
+	}
+
+	// Set other options if provided
+	if opt.Catalog != "" {
+		if err = stmt.SetOption(ctx, OptionValueIngestTargetCatalog, opt.Catalog); err != nil {
+			return -1, fmt.Errorf("error during ingestion: target_catalog=%s: %w", opt.Catalog, err)
+		}
+	}
+	if opt.DBSchema != "" {
+		if err = stmt.SetOption(ctx, OptionValueIngestTargetDBSchema, opt.DBSchema); err != nil {
+			return -1, fmt.Errorf("error during ingestion: target_db_schema=%s: %w", opt.DBSchema, err)
+		}
+	}
+	if opt.Temporary {
+		if err = stmt.SetOption(ctx, OptionValueIngestTemporary, OptionValueEnabled); err != nil {
+			return -1, fmt.Errorf("error during ingestion: temporary=true: %w", err)
+		}
+	}
+
+	// Set driver specific options
+	for k, v := range opt.Extra {
+		if err = stmt.SetOption(ctx, k, v); err != nil {
+			return -1, fmt.Errorf("error during ingestion: SetOption(%s=%s): %w", k, v, err)
+		}
+	}
+
+	// Execute the update
+	var count int64
+	count, err = stmt.ExecuteUpdate(ctx)
+	if err != nil {
+		return -1, fmt.Errorf("error during ingestion: ExecuteUpdate: %w", err)
+	}
+
+	return count, nil
+}
+
 // DriverInfo library info map keys for auxiliary information
 //
 // NOTE: If in the future any of these InfoCodes are promoted to top-level fields

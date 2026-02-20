@@ -33,6 +33,18 @@
 // safely from multiple goroutines, but not necessarily concurrent
 // access. Specific implementations may allow concurrent access.
 //
+// # Context Support
+//
+// As of ADBC API revision 1.2.0, context-aware interfaces are available:
+// DatabaseContext, ConnectionContext, and StatementContext. These interfaces
+// require context.Context for all methods to enable uniform OpenTelemetry
+// instrumentation, cancellation, and deadline propagation.
+//
+// Applications can use adapter functions (AsDatabaseContext, AsConnectionContext,
+// AsStatementContext) to wrap non-context implementations, allowing gradual
+// migration without breaking changes. New drivers should implement the Context
+// interfaces directly.
+//
 // EXPERIMENTAL. Interface subject to change.
 package adbc
 
