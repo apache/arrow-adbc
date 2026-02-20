@@ -43,7 +43,7 @@ func ExampleAsDatabaseContext() {
 		fmt.Printf("Error: %v\n", err)
 		return
 	}
-	defer conn.Close(ctx)
+	defer func() { _ = conn.Close(ctx) }()
 
 	fmt.Println("Connected successfully")
 }
@@ -68,7 +68,7 @@ func ExampleConnectionContext() {
 		fmt.Printf("Error: %v\n", err)
 		return
 	}
-	defer stmt.Close(ctx)
+	defer func() { _ = stmt.Close(ctx) }()
 
 	fmt.Println("Statement created")
 }

@@ -140,7 +140,7 @@ func (m *mockStatement) SetSubstraitPlan(plan []byte) error {
 	return args.Error(0)
 }
 
-func (m *mockStatement) Bind(ctx context.Context, values arrow.Record) error {
+func (m *mockStatement) Bind(ctx context.Context, values arrow.RecordBatch) error {
 	args := m.Called(ctx, values)
 	return args.Error(0)
 }
