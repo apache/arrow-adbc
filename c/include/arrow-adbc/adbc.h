@@ -1092,9 +1092,14 @@ AdbcStatusCode AdbcMultiResultSetNextPartitions(struct AdbcMultiResultSet* resul
 
 /// \brief A warning handler function.
 ///
-/// The handler must not block and must not call any other ADBC functions
-/// (besides releasing the warning).  The warning does not need to be released
-/// before returning.
+/// The handler must not block and must not call any ADBC functions (besides
+/// releasing the warning).  The warning does not need to be released before
+/// returning, but the warning pointer itself may not be valid after the
+/// handler returns.
+///
+/// There are no requirements on ordering or concurrency of calls to the
+/// handler; the driver may call the handler at any time from any thread,
+/// including calling the handler concurrently.
 ///
 /// \param[in] warning The warning information.  The application is
 ///   responsible for releasing the warning, but the warning pointer itself
@@ -1630,6 +1635,12 @@ AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
 /// \brief Set a warning handler.
 ///
 /// May be set before or after AdbcConnectionInit.
+///
+/// Drivers should not repeat warnings unnecessarily.  For example, if a
+/// warning is issued for a lossy conversion to Arrow data, ideally it would
+/// be reported at most twice: once for the first occurrence, and/or a second
+/// time at the end of the result set summarizing how many values were
+/// affected.
 ///
 /// \since ADBC API revision 1.2.0
 /// \param[in] database The database.
