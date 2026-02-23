@@ -80,6 +80,7 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Listeners.FileListener
                 activityWithTags.AddTag("key" + index++, new bool[] { true }.AsEnumerable());
                 activityWithTags.AddTag("key" + index++, new char[] { 'A' }.AsEnumerable());
 
+                activityWithTags.AddTag("key" + index++, new Uri("http://example.com"));
                 Add(activityWithTags);
             }
         }

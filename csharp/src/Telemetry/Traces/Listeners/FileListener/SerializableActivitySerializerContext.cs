@@ -15,6 +15,7 @@
  * limitations under the License.
  */
 
+using System;
 using System.Text.Json.Serialization;
 
 namespace Apache.Arrow.Adbc.Telemetry.Traces.Listeners.FileListener
@@ -52,6 +53,8 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Listeners.FileListener
     [JsonSerializable(typeof(decimal[]))]
     [JsonSerializable(typeof(char[]))]
     [JsonSerializable(typeof(bool[]))]
+
+    [JsonSerializable(typeof(Uri))]
     internal partial class SerializableActivitySerializerContext : JsonSerializerContext
     {
     }
