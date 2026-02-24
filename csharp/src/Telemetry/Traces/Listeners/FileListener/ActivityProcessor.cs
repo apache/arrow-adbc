@@ -20,6 +20,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -29,6 +30,12 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Listeners.FileListener
     internal sealed class ActivityProcessor : IDisposable
     {
         private static readonly byte[] s_newLine = Encoding.UTF8.GetBytes(Environment.NewLine);
+        private static readonly JsonSerializerOptions s_serializerOptions = new()
+        {
+            TypeInfoResolver = JsonTypeInfoResolver.Combine(
+                SerializableActivitySerializerContext.Default,
+                new DefaultJsonTypeInfoResolver())
+        };
         private Task? _processingTask;
         private readonly Channel<Activity> _channel;
         private readonly Func<Stream, CancellationToken, Task> _streamWriterFunc;
@@ -91,7 +98,9 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Listeners.FileListener
                     SerializableActivity serializableActivity = new(activity);
                     await JsonSerializer.SerializeAsync(
                         stream,
-                        serializableActivity, cancellationToken: cancellationToken).ConfigureAwait(false);
+                        serializableActivity,
+                        s_serializerOptions,
+                        cancellationToken: cancellationToken).ConfigureAwait(false);
                     stream.Write(s_newLine, 0, s_newLine.Length);
                     stream.Position = 0;
 

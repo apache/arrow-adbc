@@ -21,6 +21,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
 using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
@@ -38,6 +39,12 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
 
         private static readonly ConcurrentDictionary<string, Lazy<FileExporterInstance>> s_fileExporters = new();
         private static readonly byte[] s_newLine = Encoding.UTF8.GetBytes(Environment.NewLine);
+        private static readonly JsonSerializerOptions s_serializerOptions = new()
+        {
+            TypeInfoResolver = JsonTypeInfoResolver.Combine(
+                SerializableActivitySerializerContext.Default,
+                new DefaultJsonTypeInfoResolver())
+        };
 
         private readonly TracingFile _tracingFile;
         private readonly string _fileBaseName;
@@ -151,7 +158,9 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
                     SerializableActivity serializableActivity = new(activity);
                     await JsonSerializer.SerializeAsync(
                         stream,
-                        serializableActivity, cancellationToken: cancellationToken).ConfigureAwait(false);
+                        serializableActivity,
+                        s_serializerOptions,
+                        cancellationToken: cancellationToken).ConfigureAwait(false);
                     stream.Write(s_newLine, 0, s_newLine.Length);
                     stream.Position = 0;
 
