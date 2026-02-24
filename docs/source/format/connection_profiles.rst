@@ -198,7 +198,7 @@ When using a profile name (not an absolute path), the driver manager searches fo
 
 4. **User Configuration Directory**:
 
-   - Linux: ``~/.config/adbc/profiles/``
+   - Linux: ``$XDG_CONFIG_HOME/adbc/profiles`` if set, else ``~/.config/adbc/profiles/``
    - macOS: ``~/Library/Application Support/ADBC/Profiles/``
    - Windows: ``%LOCALAPPDATA%\ADBC\Profiles\``
 
