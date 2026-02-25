@@ -989,8 +989,6 @@ struct AdbcPartitions {
 
 /// @}
 
-/// @}
-
 /// \defgroup adbc-statement-multi Multiple Result Set Execution
 /// Some databases support executing a statement that returns multiple
 /// result sets.  This section defines the API for working with such
@@ -1091,6 +1089,23 @@ AdbcStatusCode AdbcMultiResultSetNextPartitions(struct AdbcMultiResultSet* resul
                                                 int64_t* rows_affected,
                                                 struct AdbcError* error);
 /// @}
+
+/// \brief A warning handler function.
+///
+/// The handler must not block and must not call any ADBC functions (besides
+/// releasing the warning).  The warning does not need to be released before
+/// returning, but the warning pointer itself may not be valid after the
+/// handler returns.
+///
+/// There are no requirements on ordering or concurrency of calls to the
+/// handler; the driver may call the handler at any time from any thread,
+/// including calling the handler concurrently.
+///
+/// \param[in] warning The warning information.  The application is
+///   responsible for releasing the warning, but the warning pointer itself
+///   may not be valid after the handler returns.
+/// \param[in] user_data The user_data pointer.
+typedef void (*AdbcWarningHandler)(const struct AdbcError* warning, void* user_data);
 
 /// \defgroup adbc-driver Driver Initialization
 ///
@@ -1264,6 +1279,11 @@ struct ADBC_EXPORT AdbcDriver {
                                                  struct AdbcPartitions*, int64_t*,
                                                  struct AdbcError*);
   AdbcStatusCode (*MultiResultSetRelease)(struct AdbcMultiResultSet*, struct AdbcError*);
+
+  AdbcStatusCode (*ConnectionSetWarningHandler)(struct AdbcConnection*,
+                                                AdbcWarningHandler handler,
+                                                void* user_data, struct AdbcError*);
+
   AdbcStatusCode (*StatementExecuteSchemaMulti)(struct AdbcStatement*,
                                                 struct AdbcMultiResultSet*,
                                                 struct AdbcError*);
@@ -1611,6 +1631,30 @@ AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
 ADBC_EXPORT
 AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
                                      struct AdbcError* error);
+
+/// \brief Set a warning handler.
+///
+/// May be set before or after AdbcConnectionInit.
+///
+/// Drivers should not repeat warnings unnecessarily.  For example, if a
+/// warning is issued for a lossy conversion to Arrow data, ideally it would
+/// be reported at most twice: once for the first occurrence, and/or a second
+/// time at the end of the result set summarizing how many values were
+/// affected.
+///
+/// \since ADBC API revision 1.2.0
+/// \param[in] database The database.
+/// \param[in] handler The warning handler to use; NULL removes the handler.
+/// \param[in] user_data A user data pointer to be passed to the handler.
+///   Must live at least until the connection is released or the warning
+///   handler is replaced.
+/// \param[out] error An optional location to return an error
+///   message if necessary.
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if warning handlers are not supported
+ADBC_EXPORT
+AdbcStatusCode AdbcConnectionSetWarningHandler(struct AdbcConnection* connection,
+                                               AdbcWarningHandler handler,
+                                               void* user_data, struct AdbcError* error);
 
 /// \brief Cancel the in-progress operation on a connection.
 ///
