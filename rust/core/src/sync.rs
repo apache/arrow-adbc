@@ -20,7 +20,7 @@ use std::collections::HashSet;
 use arrow_array::{RecordBatch, RecordBatchReader};
 use arrow_schema::Schema;
 
-use crate::error::Result;
+use crate::error::{Error, Result, Status};
 use crate::options::{self, OptionConnection, OptionDatabase, OptionStatement, OptionValue};
 use crate::PartitionedResult;
 
@@ -44,12 +44,13 @@ pub trait Optionable {
     fn get_option_double(&self, key: Self::Option) -> Result<f64>;
 }
 
-/// A handle to cancel an in-progress operation on a connection.
+/// A handle to cancel an in-progress operation.
 ///
 /// This is a separated handle because otherwise it would be impossible to
-/// call a `cancel` method on a connection or statement itself.
-pub trait CancelHandle: Send {
-    /// Cancel the in-progress operation on a connection.
+/// safely call a `cancel` method on a database/connection/statement itself
+/// due to the borrow checker.
+pub trait CancelHandle: Send + Sync {
+    /// Attempt to cancel the in-progress operation (best-effort).
     fn try_cancel(&self) -> Result<()>;
 }
 
@@ -58,7 +59,10 @@ pub struct NoOpCancellationHandle;
 
 impl CancelHandle for NoOpCancellationHandle {
     fn try_cancel(&self) -> Result<()> {
-        Ok(())
+        Err(Error::with_message_and_status(
+            "cancellation not implemented",
+            Status::Unknown,
+        ))
     }
 }
 
