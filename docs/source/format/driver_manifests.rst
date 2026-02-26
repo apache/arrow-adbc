@@ -499,7 +499,7 @@ would happen for ODBC drivers. The search for a manifest on Windows would be the
      * ``entrypoint`` - the entrypoint to use for the driver if a non-default entrypoint is needed
      * ``driver`` - the path to the driver shared library
 
-   * If no registry key is found, then the directory ``%LOCAL_APPDATA%\ADBC\Drivers`` is searched
+   * If no registry key is found, then the directory ``%LOCALAPPDATA%\ADBC\Drivers`` is searched
 
 #. If the ``LOAD_FLAG_SEARCH_SYSTEM`` load option is set, the driver manager will search for a system-level configuration
 
