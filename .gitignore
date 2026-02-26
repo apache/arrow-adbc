@@ -83,6 +83,9 @@ local/
 
 site/
 
+# Design plans
+docs/plans/
+
 # Python
 dist/
 .hypothesis/
