@@ -545,12 +545,18 @@ but this may be extended in the future to support other types of dynamic content
 <ol class="arabic simple">
 <li><p><strong>Additional Search Paths</strong> (if configured via <code class="docutils literal notranslate"><span class="pre">AdbcDriverManagerDatabaseSetAdditionalSearchPathList()</span></code>)</p></li>
 <li><p><strong>ADBC_PROFILE_PATH</strong> environment variable (colon-separated on Unix, semicolon-separated on Windows)</p></li>
-<li><p><strong>Conda Environment</strong> (if built with Conda support and <code class="docutils literal notranslate"><span class="pre">CONDA_PREFIX</span></code> is set):
-- <code class="docutils literal notranslate"><span class="pre">$CONDA_PREFIX/etc/adbc/profiles/</span></code></p></li>
-<li><p><strong>User Configuration Directory</strong>:
-- Linux: <code class="docutils literal notranslate"><span class="pre">~/.config/adbc/profiles/</span></code>
-- macOS: <code class="docutils literal notranslate"><span class="pre">~/Library/Application</span> <span class="pre">Support/ADBC/Profiles/</span></code>
-- Windows: <code class="docutils literal notranslate"><span class="pre">%LOCALAPPDATA%\ADBC\Profiles\</span></code></p></li>
+<li><p><strong>Conda Environment</strong> (if built with Conda support and <code class="docutils literal notranslate"><span class="pre">CONDA_PREFIX</span></code> is set):</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">$CONDA_PREFIX/etc/adbc/profiles/</span></code></p></li>
+</ul>
+</li>
+<li><p><strong>User Configuration Directory</strong>:</p>
+<ul class="simple">
+<li><p>Linux: <code class="docutils literal notranslate"><span class="pre">$XDG_CONFIG_HOME/adbc/profiles</span></code> if set, else <code class="docutils literal notranslate"><span class="pre">~/.config/adbc/profiles/</span></code></p></li>
+<li><p>macOS: <code class="docutils literal notranslate"><span class="pre">~/Library/Application</span> <span class="pre">Support/ADBC/Profiles/</span></code></p></li>
+<li><p>Windows: <code class="docutils literal notranslate"><span class="pre">%LOCALAPPDATA%\ADBC\Profiles\</span></code></p></li>
+</ul>
+</li>
 </ol>
 <p>The driver manager searches locations in order and uses the first matching profile file found.</p>
 <section id="using-absolute-paths">
@@ -756,7 +762,7 @@ but this may be extended in the future to support other types of dynamic content
 <p>Store credentials separately from code:</p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[options]</span>
 <span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">account</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;mycompany&quot;</span>
-<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">auth_token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;env_var(SNOWFLAKE_TOKEN)&quot;</span>
+<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">auth_token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;{{ env_var(SNOWFLAKE_TOKEN) }}&quot;</span>
 </pre></div>
 </div>
 <p>Then set <code class="docutils literal notranslate"><span class="pre">SNOWFLAKE_TOKEN</span></code> via environment variable, secrets manager, or configuration service.</p>
