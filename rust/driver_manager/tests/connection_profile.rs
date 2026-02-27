@@ -23,6 +23,7 @@ use adbc_driver_manager::profile::{
     ConnectionProfile, ConnectionProfileProvider, FilesystemProfileProvider,
 };
 use adbc_driver_manager::ManagedDatabase;
+use serial_test::serial;
 
 mod common;
 
@@ -432,6 +433,7 @@ fn test_profile_display() {
 }
 
 #[test]
+#[serial]
 fn test_profile_hierarchical_path_via_env_var() {
     use std::env;
 
@@ -496,6 +498,7 @@ fn test_profile_hierarchical_path_via_env_var() {
 }
 
 #[test]
+#[serial]
 fn test_profile_hierarchical_path_with_extension_via_env_var() {
     use std::env;
 

@@ -869,27 +869,16 @@ pub(crate) fn find_filesystem_profile(
 
     // Search in the configured paths
     let path_list = get_profile_search_paths(additional_path_list);
-    let has_toml_ext = profile_path.extension().is_some_and(|ext| ext == "toml");
 
+    let actual_path = profile_path.with_extension("toml");
     path_list
         .iter()
         .find_map(|path| {
-            let mut full_path = path.join(profile_path.as_path());
-            if has_toml_ext {
-                // Name already has .toml extension, use it as-is
-                if full_path.is_file() {
-                    Some(full_path)
-                } else {
-                    None
-                }
+            let full_path = path.join(actual_path.as_path());
+            if full_path.is_file() {
+                Some(full_path)
             } else {
-                // try adding .toml extension
-                full_path.set_extension("toml");
-                if full_path.is_file() {
-                    Some(full_path)
-                } else {
-                    None
-                }
+                None
             }
         })
         .ok_or_else(|| {
