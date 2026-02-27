@@ -94,6 +94,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             return await this.TraceActivityAsync(async activity =>
             {
                 // All records have been exhausted
@@ -131,6 +132,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     throw new HiveServer2Exception($"An unexpected error occurred while fetching results. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
                 }
             }, ClassName + "." + nameof(ReadNextRecordBatchAsync));
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         private RecordBatch CreateBatch(TFetchResultsResp response, int columnCount, int rowCount)

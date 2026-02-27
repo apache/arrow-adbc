@@ -346,6 +346,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal async Task OpenAsync()
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             await this.TraceActivityAsync(async activity =>
             {
                 CancellationToken cancellationToken = ApacheUtility.GetCancellationToken(ConnectTimeoutMilliseconds, ApacheUtility.TimeUnit.Milliseconds);
@@ -389,6 +390,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     throw new HiveServer2Exception($"An unexpected error occurred while opening the session. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
                 }
             }, ClassName + "." + nameof(OpenAsync));
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         private static bool IsUnauthorized(HttpRequestException httpEx)
@@ -500,7 +502,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override IArrowArrayStream GetObjects(GetObjectsDepth depth, string? catalogPattern, string? dbSchemaPattern, string? tableNamePattern, IReadOnlyList<string>? tableTypes, string? columnNamePattern)
         {
-            return this.TraceActivity(_ =>
+#pragma warning disable CS0618 // Type or member is obsolete
+            return this.TraceActivity((Activity? _) =>
             {
                 if (SessionHandle == null)
                 {
@@ -689,10 +692,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
                 }
             }, ClassName + "." + nameof(GetObjects));
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         public override IArrowArrayStream GetTableTypes()
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             return this.TraceActivity(activity =>
             {
                 TGetTableTypesReq req = new()
@@ -731,11 +736,13 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
                 }
             }, ClassName + "." + nameof(GetTableTypes));
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         internal async Task PollForResponseAsync(TOperationHandle operationHandle, TCLIService.IAsync client, int pollTimeMilliseconds, CancellationToken cancellationToken = default)
         {
-            await this.TraceActivityAsync(async activity =>
+#pragma warning disable CS0618 // Type or member is obsolete
+            await this.TraceActivityAsync(async (Activity? activity) =>
             {
                 activity?.AddEvent("hive2.thrift.poll_start");
                 TGetOperationStatusResp? statusResponse = null;
@@ -763,10 +770,12 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 #pragma warning restore CS0618 // Type or member is obsolete
                 }
             }, ClassName + "." + nameof(PollForResponseAsync));
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         private string GetInfoTypeStringValue(TGetInfoType infoType)
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             return this.TraceActivity(activity =>
             {
                 TGetInfoReq req = new()
@@ -792,6 +801,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
                 }
             }, nameof(HiveServer2Connection) + "." + nameof(GetInfoTypeStringValue));
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         protected override void Dispose(bool disposing)
@@ -807,6 +817,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private void DisposeClient()
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             this.TraceActivity(activity =>
             {
                 if (_client != null && SessionHandle != null)
@@ -826,6 +837,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     _client = null;
                 }
             }, ClassName + "." + nameof(DisposeClient));
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         internal async Task<TGetResultSetMetadataResp> GetResultSetMetadataAsync(TOperationHandle operationHandle, TCLIService.IAsync client, CancellationToken cancellationToken = default)
@@ -1060,6 +1072,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal async Task<TGetCatalogsResp> GetCatalogsAsync(CancellationToken cancellationToken)
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             return await this.TraceActivityAsync(async activity =>
             {
                 if (SessionHandle == null)
@@ -1075,6 +1088,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                 return resp;
             }, ClassName + "." + nameof(GetCatalogsAsync));
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         internal async Task<TGetSchemasResp> GetSchemasAsync(
@@ -1082,6 +1096,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             string? schemaName,
             CancellationToken cancellationToken)
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             return await this.TraceActivityAsync(async activity =>
             {
                 if (SessionHandle == null)
@@ -1105,6 +1120,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                 return resp;
             }, ClassName + "." + nameof(GetSchemasAsync));
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         internal async Task<TGetTablesResp> GetTablesAsync(
@@ -1114,6 +1130,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             List<string>? tableTypes,
             CancellationToken cancellationToken)
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             return await this.TraceActivityAsync(async activity =>
             {
                 if (SessionHandle == null)
@@ -1145,6 +1162,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                 return resp;
             }, ClassName + "." + nameof(GetTablesAsync));
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         internal async Task<TGetColumnsResp> GetColumnsAsync(
@@ -1154,6 +1172,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             string? columnName,
             CancellationToken cancellationToken)
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             return await this.TraceActivityAsync(async activity =>
             {
                 if (SessionHandle == null)
@@ -1185,6 +1204,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                 return resp;
             }, ClassName + "." + nameof(GetColumnsAsync));
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         internal async Task<TGetPrimaryKeysResp> GetPrimaryKeysAsync(
@@ -1193,6 +1213,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             string? tableName,
             CancellationToken cancellationToken = default)
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             return await this.TraceActivityAsync(async activity =>
             {
                 if (SessionHandle == null)
@@ -1220,6 +1241,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                 return resp;
             }, ClassName + "." + nameof(GetPrimaryKeysAsync));
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         internal async Task<TGetCrossReferenceResp> GetCrossReferenceAsync(
@@ -1231,6 +1253,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             string? foreignTableName,
             CancellationToken cancellationToken = default)
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             return await this.TraceActivityAsync(async activity =>
             {
                 if (SessionHandle == null)
@@ -1269,6 +1292,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 HandleThriftResponse(resp.Status, activity);
                 return resp;
             }, ClassName + "." + nameof(GetCrossReferenceAsync));
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         private static StructArray GetColumnSchema(TableInfo tableInfo)
@@ -1359,6 +1383,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override Schema GetTableSchema(string? catalog, string? dbSchema, string? tableName)
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             return this.TraceActivity(activity =>
             {
                 if (SessionHandle == null)
@@ -1407,6 +1432,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                     throw new HiveServer2Exception($"An unexpected error occurred while running metadata query. '{ApacheUtility.FormatExceptionMessage(ex)}'", ex);
                 }
             }, ClassName + "." + nameof(GetTableSchema));
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         private static IArrowType GetArrowType(int columnTypeId, string typeName, bool isColumnSizeValid, int? columnSize, int? decimalDigits)
@@ -1471,7 +1497,8 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         internal async Task<TRowSet> FetchResultsAsync(TOperationHandle operationHandle, long batchSize = BatchSizeDefault, CancellationToken cancellationToken = default)
         {
-            return await this.TraceActivityAsync(async activity =>
+#pragma warning disable CS0618 // Type or member is obsolete
+            return await this.TraceActivityAsync(async (Activity? activity) =>
             {
                 await PollForResponseAsync(operationHandle, Client, PollTimeMillisecondsDefault, cancellationToken);
 
@@ -1485,6 +1512,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, HiveServer2Reader.GetRowCount(fetchResp.Results, fetchResp.Results.Columns.Count));
                 return fetchResp.Results;
             }, ClassName + "." + nameof(FetchResultsAsync));
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         private static async Task<TFetchResultsResp> FetchNextAsync(TOperationHandle operationHandle, TCLIService.IAsync client, long batchSize, CancellationToken cancellationToken = default)
@@ -1496,6 +1524,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override IArrowArrayStream GetInfo(IReadOnlyList<AdbcInfoCode> codes)
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             return this.TraceActivity(activity =>
             {
                 const int strValTypeID = 0;
@@ -1645,6 +1674,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                 return new HiveInfoArrowStream(StandardSchemas.GetInfoSchema, dataArrays);
             }, ClassName + "." + nameof(GetInfo));
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         internal struct TableInfo(string type)

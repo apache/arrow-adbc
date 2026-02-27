@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
@@ -50,7 +51,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
 
         public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
-            return await this.TraceActivityAsync(async activity =>
+#pragma warning disable CS0618 // Type or member is obsolete
+            return await this.TraceActivityAsync(async (Activity? activity) =>
             {
                 ThrowIfDisposed();
 
@@ -101,6 +103,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader
                     this.hasNoMoreRows = !response.HasMoreRows;
                 }
             });
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         private void ProcessFetchedBatches()

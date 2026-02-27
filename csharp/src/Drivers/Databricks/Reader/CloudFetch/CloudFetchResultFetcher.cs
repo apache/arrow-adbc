@@ -181,10 +181,12 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     var refreshedLink = response.Results.ResultLinks.FirstOrDefault(l => l.StartRowOffset == offset);
                     if (refreshedLink != null)
                     {
+#pragma warning disable CS0618 // Type or member is obsolete
                         Activity.Current?.AddEvent("cloudfetch.url_fetched", [
                             new("offset", offset),
                             new("url_length", refreshedLink.FileLink?.Length ?? 0)
                         ]);
+#pragma warning restore CS0618 // Type or member is obsolete
 
                         // Create a download result for the refreshed link
                         var downloadResult = new DownloadResult(refreshedLink, _memoryManager);
@@ -194,7 +196,9 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     }
                 }
 
+#pragma warning disable CS0618 // Type or member is obsolete
                 Activity.Current?.AddEvent("cloudfetch.url_fetch_failed", [new("offset", offset)]);
+#pragma warning restore CS0618 // Type or member is obsolete
                 return null;
             }
             finally

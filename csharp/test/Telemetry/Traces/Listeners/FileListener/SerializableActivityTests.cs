@@ -20,6 +20,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization.Metadata;
 using Apache.Arrow.Adbc.Telemetry.Traces.Listeners.FileListener;
+using Apache.Arrow.Adbc.Tracing;
 using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Listeners.FileListener
@@ -93,7 +94,7 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Listeners.FileListener
         [Fact]
         public async Task CannnotSerializeAnonymousObjectWithSerializerContext()
         {
-            Activity activity = new Activity("activity");
+            Activity activity = new("activity");
             using (activity.Start())
             {
                 activity.AddTag("key1", new { Field1 = "value1" });
@@ -163,7 +164,7 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Listeners.FileListener
         [Fact]
         public async Task CanSerializeAnonymousObjectWithDefaultTypeInfoResolver()
         {
-            Activity activity = new Activity("activity");
+            Activity activity = new("activity");
             using (activity.Start())
             {
                 activity.AddTag("key1", new { Field1 = "value1" });
@@ -184,5 +185,76 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Listeners.FileListener
                 _output.WriteLine("Serialized Activity: {0}", Encoding.UTF8.GetString(stream.ToArray()));
             }
         }
+
+        [Fact]
+        public async Task CanRedactValue()
+        {
+            string activityName = NewName();
+            Activity activity = new Activity(activityName).Start();
+            using ActivityWithPii? activityWithPii = ActivityWithPii.New(activity);
+            Assert.NotNull(activityWithPii);
+            string testValue = NewName();
+            activityWithPii.AddTag("keyName", new RedactedValue(testValue));
+            var value = activity.TagObjects.First().Value as RedactedValue;
+            Assert.NotNull(value);
+            Assert.Equal("[REDACTED]", value.ToString());
+            Assert.Equal(testValue, value.GetValue());
+
+            SerializableActivity serializableActivity = new(activity);
+            var stream = new MemoryStream();
+            JsonSerializerOptions serializerOptions = new()
+            {
+                TypeInfoResolver = JsonTypeInfoResolver.Combine(
+                    SerializableActivitySerializerContext.Default,
+                    new DefaultJsonTypeInfoResolver()),
+            };
+            await JsonSerializer.SerializeAsync(
+                stream,
+                serializableActivity,
+                serializerOptions);
+            Assert.NotNull(stream);
+            string actualString = Encoding.UTF8.GetString(stream.ToArray());
+            Assert.DoesNotContain(testValue, actualString);
+            Assert.Contains("[REDACTED]", actualString);
+        }
+
+        [Fact]
+        public async Task CanUnredactValue()
+        {
+            string activityName = NewName();
+            Activity activity = new Activity(activityName).Start();
+            using ActivityWithPii? activityWithPii = ActivityWithPii.New(activity);
+            Assert.NotNull(activityWithPii);
+            activity.Start();
+            string testValue = NewName();
+            activityWithPii.AddTag("keyName", new RedactedValue(testValue));
+            var value = activity.TagObjects.First().Value as RedactedValue;
+            Assert.NotNull(value);
+            Assert.Equal("[REDACTED]", value.ToString());
+            Assert.Equal(testValue, value.GetValue());
+
+            SerializableActivity serializableActivity = new(activity);
+            var stream = new MemoryStream();
+            JsonSerializerOptions serializerOptions = new()
+            {
+                TypeInfoResolver = JsonTypeInfoResolver.Combine(
+                    SerializableActivitySerializerContext.Default,
+                    new DefaultJsonTypeInfoResolver()),
+                Converters =
+                {
+                    new UnredactConverter()
+                },
+            };
+            await JsonSerializer.SerializeAsync(
+                stream,
+                serializableActivity,
+                serializerOptions);
+            Assert.NotNull(stream);
+            string actualString = Encoding.UTF8.GetString(stream.ToArray());
+            Assert.Contains(testValue, actualString);
+            Assert.DoesNotContain("[REDACTED]", actualString);
+        }
+
+        private string NewName() => Guid.NewGuid().ToString("N");
     }
 }

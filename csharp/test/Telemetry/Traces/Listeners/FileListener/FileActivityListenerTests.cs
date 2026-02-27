@@ -35,9 +35,18 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Listeners.FileListener
         [InlineData(ListenersOptions.Exporters.AdbcFile, true)]
         public void TestTryActivateFileListener(string? exporterOption, bool expected)
         {
-            Assert.Equal(expected, FileActivityListener.TryActivateFileListener("TestSource", exporterOption, out FileActivityListener? listener));
-            Assert.True(expected == (listener != null));
-            listener?.Dispose();
+            string? previousEnvValue = Environment.GetEnvironmentVariable(ListenersOptions.Environment.Exporter);
+            try
+            {
+                Environment.SetEnvironmentVariable(ListenersOptions.Environment.Exporter, null);
+                Assert.Equal(expected, FileActivityListener.TryActivateFileListener("TestSource", exporterOption, out FileActivityListener? listener));
+                Assert.True(expected == (listener != null));
+                listener?.Dispose();
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(ListenersOptions.Environment.Exporter, previousEnvValue);
+            }
         }
 
         [Fact]
@@ -122,7 +131,7 @@ namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Listeners.FileListener
 
             public async Task EmulateWorkAsync(string key, string value)
             {
-                await this.TraceActivityAsync(async (activity) =>
+                await this.TraceActivityAsync(async (ActivityWithPii? activity) =>
                 {
                     activity?.AddTag(key, value);
                     // Simulate some work

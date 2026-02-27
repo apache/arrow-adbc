@@ -88,6 +88,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private async Task<QueryResult> ExecuteQueryInternalAsync()
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             return await this.TraceActivityAsync(async activity =>
             {
                 QueryOptions queryOptions = ValidateOptions(activity);
@@ -220,6 +221,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, totalRows);
                 return new QueryResult(totalRows, stream);
             });
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         private async Task<IEnumerable<IArrowReader>> GetArrowReaders(
@@ -249,10 +251,12 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         public override void Cancel()
         {
-            this.TraceActivity(_ =>
+#pragma warning disable CS0618 // Type or member is obsolete
+            this.TraceActivity((Activity? _) =>
             {
                 this.cancellationRegistry.CancelAll();
             });
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         public override void Dispose()
@@ -263,6 +267,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private async Task<UpdateResult> ExecuteUpdateInternalAsync()
         {
+#pragma warning disable CS0618 // Type or member is obsolete
             return await this.TraceActivityAsync(async activity =>
             {
                 GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
@@ -293,6 +298,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, updatedRows);
                 return new UpdateResult(updatedRows);
             });
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         private Schema TranslateSchema(TableSchema schema)
@@ -710,7 +716,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
             {
-                return await this.TraceActivityAsync(async activity =>
+#pragma warning disable CS0618 // Type or member is obsolete
+                return await this.TraceActivityAsync(async (Activity? activity) =>
                 {
                     if (this.readers == null)
                     {
@@ -743,6 +750,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                         this.reader = null;
                     }
                 });
+#pragma warning restore CS0618 // Type or member is obsolete
             }
 
             protected override void Dispose(bool disposing)

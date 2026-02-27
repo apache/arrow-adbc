@@ -91,7 +91,8 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         /// <returns>The next record batch, or null if there are no more batches.</returns>
         public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
-            return await this.TraceActivityAsync(async _ =>
+#pragma warning disable CS0618 // Type or member is obsolete
+            return await this.TraceActivityAsync(async (Activity? _) =>
             {
                 ThrowIfDisposed();
 
@@ -167,6 +168,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     return null;
                 }
             });
+#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         protected override void Dispose(bool disposing)

@@ -30,6 +30,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// <param name="eventName">The name of the event.</param>
         /// <param name="tags">The optional list of tags to attach to the event.</param>
         /// <returns><see langword="this"/> for convenient chaining.</returns>
+        [Obsolete("This method is deprecated. Please use the methods from ActivityWithPii, instead.")]
         public static Activity? AddEvent(this Activity? activity, string eventName, IReadOnlyList<KeyValuePair<string, object?>>? tags = default)
         {
             if (activity == null) return activity;
@@ -43,6 +44,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// <param name="traceParent">The traceParent id for the associated <see cref="ActivityContext"/>.</param>
         /// <param name="tags">The optional list of tags to attach to the event.</param>
         /// <returns><see langword="this"/> for convenient chaining.</returns>
+        [Obsolete("This method is deprecated. Please use the methods from ActivityWithPii, instead.")]
         public static Activity? AddLink(this Activity? activity, string traceParent, IReadOnlyList<KeyValuePair<string, object?>>? tags = default)
         {
             if (activity == null) return activity;
@@ -58,6 +60,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// <returns><see langword="this" /> for convenient chaining.</returns>
         /// <param name="key">The tag key name as a function</param>
         /// <param name="value">The tag value mapped to the input key as a function</param>
+        [Obsolete("This method is deprecated. Please use the methods from ActivityWithPii, instead.")]
         public static Activity? AddTag(this Activity? activity, string key, Func<object?> value)
         {
             return activity?.AddTag(key, value());
@@ -72,6 +75,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// <param name="key">The tag key name as a function</param>
         /// <param name="value">The tag value mapped to the input key</param>
         /// /// <param name="condition">The condition to check before adding the tag</param>
+        [Obsolete("This method is deprecated. Please use the methods from ActivityWithPii, instead.")]
         public static Activity? AddConditionalTag(this Activity? activity, string key, string? value, bool condition)
         {
             if (condition)
@@ -91,6 +95,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// <param name="key">The tag key name</param>
         /// <param name="value">The tag value mapped to the input key as a function</param>
         /// <param name="guidFormat">The format indicator for 16-byte GUID arrays.</param>
+        [Obsolete("This method is deprecated. Please use the methods from ActivityWithPii, instead.")]
         public static Activity? AddTag(this Activity? activity, string key, byte[]? value, string? guidFormat)
         {
             if (value == null)
