@@ -59,7 +59,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
         /// and an Event <see cref="ActivityEvent"/> is added to the activity and finally the exception is rethrown.
         /// </remarks>
-        [Obsolete("This method is deprecated. Please use TraceActivity overloads that take ActivityWithPii instead of Activity to avoid accidentally logging PII data.")]   
+        [Obsolete("This method is deprecated. Please use TraceActivity overloads that take ActivityWithPii instead of Activity to avoid accidentally logging PII data.")]
         public static T TraceActivity<T>(this IActivityTracer tracer, Func<Activity?, T> call, [CallerMemberName] string? activityName = null, string? traceParent = null)
         {
             Type type = typeof(T);
