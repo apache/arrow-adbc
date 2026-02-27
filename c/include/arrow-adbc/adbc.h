@@ -1255,10 +1255,6 @@ struct ADBC_EXPORT AdbcDriver {
   AdbcStatusCode (*StatementSetOptionInt)(struct AdbcStatement*, const char*, int64_t,
                                           struct AdbcError*);
 
-  // ADBC 1.2
-  AdbcStatusCode (*StatementRequestSchema)(struct AdbcStatement*, struct ArrowSchema*,
-                                           struct AdbcError*);
-
   /// @}
 
   /// \defgroup adbc-1.2.0 ADBC API Revision 1.2.0
@@ -1293,6 +1289,9 @@ struct ADBC_EXPORT AdbcDriver {
                                                 struct AdbcError*);
   AdbcStatusCode (*StatementExecuteMulti)(struct AdbcStatement*,
                                           struct AdbcMultiResultSet*, struct AdbcError*);
+
+  AdbcStatusCode (*StatementRequestSchema)(struct AdbcStatement*, struct ArrowSchema*,
+                                           struct AdbcError*);
 
   /// @}
 };

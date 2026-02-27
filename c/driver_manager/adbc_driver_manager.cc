@@ -3363,7 +3363,6 @@ AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, int vers
     FILL_DEFAULT(driver, StatementSetOption);
     FILL_DEFAULT(driver, StatementSetSqlQuery);
     FILL_DEFAULT(driver, StatementSetSubstraitPlan);
-    FILL_DEFAULT(driver, StatementRequestSchema);
   }
   if (version >= ADBC_VERSION_1_1_0) {
     auto* driver = reinterpret_cast<struct AdbcDriver*>(raw_driver);
@@ -3399,6 +3398,10 @@ AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, int vers
     FILL_DEFAULT(driver, StatementSetOptionBytes);
     FILL_DEFAULT(driver, StatementSetOptionDouble);
     FILL_DEFAULT(driver, StatementSetOptionInt);
+  }
+  if (version >= ADBC_VERSION_1_2_0) {
+    auto* driver = reinterpret_cast<struct AdbcDriver*>(raw_driver);
+    FILL_DEFAULT(driver, StatementRequestSchema);
   }
 
   return ADBC_STATUS_OK;
