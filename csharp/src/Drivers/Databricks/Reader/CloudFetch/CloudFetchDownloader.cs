@@ -200,8 +200,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
 
         private async Task DownloadFilesAsync(CancellationToken cancellationToken)
         {
-#pragma warning disable CS0618 // Type or member is obsolete
-            await this.TraceActivityAsync(async activity =>
+            await this.TraceActivityAsync(async (ActivityWithPii? activity) =>
             {
                 await Task.Yield();
 
@@ -269,7 +268,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                                 downloadResult.UpdateWithRefreshedLink(refreshedLink);
                                 activity?.AddEvent("cloudfetch.url_refreshed_before_download", [
                                     new("offset", refreshedLink.StartRowOffset)
-                                ]);
+                                ], isPii: false);
                             }
                         }
 
@@ -353,7 +352,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                         new("total_mb", totalBytes / 1024.0 / 1024.0),
                         new("total_time_ms", overallStopwatch.ElapsedMilliseconds),
                         new("total_time_sec", overallStopwatch.ElapsedMilliseconds / 1000.0)
-                    ]);
+                    ], isPii: false);
 
                     // If there's an error, add the error to the result queue
                     if (HasError)
@@ -362,13 +361,11 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     }
                 }
             });
-#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         private async Task DownloadFileAsync(IDownloadResult downloadResult, CancellationToken cancellationToken)
         {
-#pragma warning disable CS0618 // Type or member is obsolete
-            await this.TraceActivityAsync(async (Activity? activity) =>
+            await this.TraceActivityAsync(async (ActivityWithPii? activity) =>
             {
                 string url = downloadResult.Link.FileLink;
                 string sanitizedUrl = SanitizeUrl(downloadResult.Link.FileLink);
@@ -378,20 +375,20 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                 long size = downloadResult.Size;
 
                 // Add tags to the Activity for filtering/searching
-                activity?.SetTag("cloudfetch.offset", downloadResult.Link.StartRowOffset);
-                activity?.SetTag("cloudfetch.sanitized_url", sanitizedUrl);
-                activity?.SetTag("cloudfetch.expected_size_bytes", size);
+                activity?.SetTag("cloudfetch.offset", downloadResult.Link.StartRowOffset, isPii: false);
+                activity?.SetTag("cloudfetch.sanitized_url", sanitizedUrl, isPii: false);
+                activity?.SetTag("cloudfetch.expected_size_bytes", size, isPii: false);
 
                 // Create a stopwatch to track download time
                 var stopwatch = Stopwatch.StartNew();
 
                 // Log download start
                 activity?.AddEvent("cloudfetch.download_start", [
-                new("offset", downloadResult.Link.StartRowOffset),
+                    new("offset", downloadResult.Link.StartRowOffset),
                     new("sanitized_url", sanitizedUrl),
                     new("expected_size_bytes", size),
                     new("expected_size_kb", size / 1024.0)
-            ]);
+                ], isPii: false);
 
                 // Retry logic for downloading files
                 for (int retry = 0; retry < _maxRetries; retry++)
@@ -426,7 +423,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                                 activity?.AddEvent("cloudfetch.url_refreshed_after_auth_error", [
                                     new("offset", refreshedLink.StartRowOffset),
                                     new("sanitized_url", sanitizedUrl)
-                                ]);
+                                ], isPii: false);
 
                                 // Continue to the next retry attempt with the refreshed URL
                                 continue;
@@ -449,7 +446,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                                 new("sanitized_url", sanitizedUrl),
                                 new("content_length_bytes", contentLength.Value),
                                 new("content_length_mb", contentLength.Value / 1024.0 / 1024.0)
-                            ]);
+                            ], isPii: false);
                         }
 
                         // Read the file data
@@ -479,7 +476,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                         new("sanitized_url", sanitizedUrl),
                         new("max_retries", _maxRetries),
                         new("elapsed_time_ms", stopwatch.ElapsedMilliseconds)
-                    ]);
+                    ], isPii: false);
 
                     // Release the memory we acquired
                     _memoryManager.ReleaseMemory(size);
@@ -520,7 +517,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                             new("decompressed_size_bytes", dataStream.Length),
                             new("decompressed_size_kb", dataStream.Length / 1024.0),
                             new("compression_ratio", compressionRatio)
-                        ]);
+                        ], isPii: false);
 
                         actualSize = dataStream.Length;
                     }
@@ -554,15 +551,14 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     new("actual_size_kb", actualSize / 1024.0),
                     new("latency_ms", stopwatch.ElapsedMilliseconds),
                     new("throughput_mbps", throughputMBps)
-                ]);
+                ], isPii: false);
 
                 // Set the download as completed with the original size
                 downloadResult.SetCompleted(dataStream, size);
             }, activityName: "DownloadFile");
-#pragma warning restore CS0618 // Type or member is obsolete
         }
 
-        private void SetError(Exception ex, Activity? activity = null)
+        private void SetError(Exception ex, ActivityWithPii? activity = null)
         {
             lock (_errorLock)
             {
@@ -574,7 +570,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
             }
         }
 
-        private void CompleteWithError(Activity? activity = null)
+        private void CompleteWithError(ActivityWithPii? activity = null)
         {
             try
             {

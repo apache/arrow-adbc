@@ -25,6 +25,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift;
 using Thrift.Protocol;
@@ -127,7 +128,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected override TTransport CreateTransport()
         {
-            Activity? activity = Activity.Current;
+            ActivityWithPii? activity = ActivityWithPii.Wrap(Activity.Current);
 
             // Assumption: parameters have already been validated.
             Properties.TryGetValue(HiveServer2Parameters.HostName, out string? hostName);
@@ -154,12 +155,11 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             httpClient.DefaultRequestHeaders.AcceptEncoding.Add(new StringWithQualityHeaderValue("identity"));
             httpClient.DefaultRequestHeaders.ExpectContinue = false;
 
-            activity?.AddTag(ActivityKeys.Encrypted, TlsOptions.IsTlsEnabled);
-            activity?.AddTag(ActivityKeys.TransportType, baseAddress.Scheme);
-            activity?.AddTag(ActivityKeys.AuthType, authTypeValue.ToString());
-            activity?.AddTag(ActivityKeys.Http.UserAgent, s_userAgent);
-            activity?.AddTag(ActivityKeys.Http.Uri, baseAddress);
-
+            activity?.AddTag(ActivityKeys.Encrypted, TlsOptions.IsTlsEnabled, isPii: false);
+            activity?.AddTag(ActivityKeys.TransportType, baseAddress.Scheme, isPii: false);
+            activity?.AddTag(ActivityKeys.AuthType, authTypeValue.ToString(), isPii: false);
+            activity?.AddTag(ActivityKeys.Http.UserAgent, s_userAgent, isPii: false);
+            activity?.AddTag(ActivityKeys.Http.Uri, baseAddress, isPii: true);
             TConfiguration config = GetTconfiguration();
             THttpTransport transport = new(httpClient, config)
             {
@@ -173,21 +173,21 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private static AuthenticationHeaderValue? GetAuthenticationHeaderValue(HiveServer2AuthType authType, string? username, string? password)
         {
-            Activity? activity = Activity.Current;
+            ActivityWithPii? activity = ActivityWithPii.Wrap(Activity.Current);
 
             if (!string.IsNullOrEmpty(username) && !string.IsNullOrEmpty(password) && (authType == HiveServer2AuthType.Empty || authType == HiveServer2AuthType.Basic))
             {
-                activity?.AddTag(ActivityKeys.Http.AuthScheme, BasicAuthenticationScheme);
+                activity?.AddTag(ActivityKeys.Http.AuthScheme, BasicAuthenticationScheme, isPii: false);
                 return new AuthenticationHeaderValue(BasicAuthenticationScheme, Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:{password}")));
             }
             else if (!string.IsNullOrEmpty(username) && (authType == HiveServer2AuthType.Empty || authType == HiveServer2AuthType.UsernameOnly))
             {
-                activity?.AddTag(ActivityKeys.Http.AuthScheme, BasicAuthenticationScheme);
+                activity?.AddTag(ActivityKeys.Http.AuthScheme, BasicAuthenticationScheme, isPii: false);
                 return new AuthenticationHeaderValue(BasicAuthenticationScheme, Convert.ToBase64String(Encoding.UTF8.GetBytes($"{username}:")));
             }
             else if (authType == HiveServer2AuthType.None)
             {
-                activity?.AddTag(ActivityKeys.Http.AuthScheme, AnonymousAuthenticationScheme);
+                activity?.AddTag(ActivityKeys.Http.AuthScheme, AnonymousAuthenticationScheme, isPii: false);
                 return null;
             }
             else

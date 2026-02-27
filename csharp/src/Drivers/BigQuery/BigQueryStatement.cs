@@ -88,12 +88,11 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private async Task<QueryResult> ExecuteQueryInternalAsync()
         {
-#pragma warning disable CS0618 // Type or member is obsolete
-            return await this.TraceActivityAsync(async activity =>
+            return await this.TraceActivityAsync(async (ActivityWithPii? activity) =>
             {
                 QueryOptions queryOptions = ValidateOptions(activity);
 
-                activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, SqlQuery, this.bigQueryConnection.IsSafeToTrace);
+                activity?.AddTag(SemanticConventions.Db.Query.Text, SqlQuery, isPii: true);
 
                 BigQueryJob job = await Client.CreateQueryJobAsync(SqlQuery, null, queryOptions);
                 JobReference jobReference = job.Reference;
@@ -218,10 +217,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
                 // Note: MultiArrowReader must dispose the cancellationContext.
                 IArrowArrayStream stream = new MultiArrowReader(this, TranslateSchema(results.Schema), readers, new CancellationContext(cancellationRegistry));
-                activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, totalRows);
+                activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, totalRows, isPii: false);
                 return new QueryResult(totalRows, stream);
             });
-#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         private async Task<IEnumerable<IArrowReader>> GetArrowReaders(
@@ -229,7 +227,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             string table,
             string projectId,
             int maxStreamCount,
-            Activity? activity,
+            ActivityWithPii? activity,
             CancellationToken cancellationToken = default)
         {
             ReadSession rs = new ReadSession { Table = table, DataFormat = DataFormat.Arrow };
@@ -237,7 +235,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             ReadSession rrs = await bigQueryReadClient.CreateReadSessionAsync("projects/" + projectId, rs, maxStreamCount);
 
             var readers = rrs.Streams
-                             .Select(s => ReadChunk(bigQueryReadClient, s.Name, activity, this.bigQueryConnection.IsSafeToTrace, cancellationToken))
+                             .Select(s => ReadChunk(bigQueryReadClient, s.Name, activity, cancellationToken))
                              .Where(chunk => chunk != null)
                              .Cast<IArrowReader>();
 
@@ -251,12 +249,10 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         public override void Cancel()
         {
-#pragma warning disable CS0618 // Type or member is obsolete
-            this.TraceActivity((Activity? _) =>
+            this.TraceActivity((ActivityWithPii? _) =>
             {
                 this.cancellationRegistry.CancelAll();
             });
-#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         public override void Dispose()
@@ -267,8 +263,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         private async Task<UpdateResult> ExecuteUpdateInternalAsync()
         {
-#pragma warning disable CS0618 // Type or member is obsolete
-            return await this.TraceActivityAsync(async activity =>
+            return await this.TraceActivityAsync(async (ActivityWithPii? activity) =>
             {
                 GetQueryResultsOptions getQueryResultsOptions = new GetQueryResultsOptions();
 
@@ -280,7 +275,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     activity?.AddBigQueryParameterTag(BigQueryParameters.GetQueryResultsOptionsTimeout, seconds);
                 }
 
-                activity?.AddConditionalTag(SemanticConventions.Db.Query.Text, SqlQuery, this.bigQueryConnection.IsSafeToTrace);
+                activity?.AddTag(SemanticConventions.Db.Query.Text, SqlQuery, isPii: true);
 
                 using JobCancellationContext context = new(cancellationRegistry);
                 // Cannot set destination table in jobs with DDL statements, otherwise an error will be prompted
@@ -295,10 +290,9 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 BigQueryResults? result = await ExecuteWithRetriesAsync(getQueryResultsAsyncFunc, activity, context.CancellationToken);
                 long updatedRows = result?.NumDmlAffectedRows.HasValue == true ? result.NumDmlAffectedRows.Value : -1L;
 
-                activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, updatedRows);
+                activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, updatedRows, isPii: false);
                 return new UpdateResult(updatedRows);
             });
-#pragma warning restore CS0618 // Type or member is obsolete
         }
 
         private Schema TranslateSchema(TableSchema schema)
@@ -387,27 +381,27 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             return type;
         }
 
-        private static IArrowReader? ReadChunk(BigQueryReadClient client, string streamName, Activity? activity, bool isSafeToTrace, CancellationToken cancellationToken = default)
+        private static IArrowReader? ReadChunk(BigQueryReadClient client, string streamName, ActivityWithPii? activity, CancellationToken cancellationToken = default)
         {
             // Ideally we wouldn't need to indirect through a stream, but the necessary APIs in Arrow
             // are internal. (TODO: consider changing Arrow).
-            activity?.AddConditionalBigQueryTag("read_stream", streamName, isSafeToTrace);
+            activity?.AddTag("read_stream", streamName, isPii: true);
             BigQueryReadClient.ReadRowsStream readRowsStream = client.ReadRows(new ReadRowsRequest { ReadStream = streamName });
             IAsyncEnumerator<ReadRowsResponse> enumerator = readRowsStream.GetResponseStream().GetAsyncEnumerator(cancellationToken);
 
             ReadRowsStream stream = new ReadRowsStream(enumerator);
-            activity?.AddBigQueryTag("read_stream.has_rows", stream.HasRows);
+            activity?.AddBigQueryTag("read_stream.has_rows", stream.HasRows, isPii: false);
 
             return stream.HasRows ? stream : null;
         }
 
-        private QueryOptions ValidateOptions(Activity? activity)
+        private QueryOptions ValidateOptions(ActivityWithPii? activity)
         {
             QueryOptions options = new QueryOptions();
 
             if (Client.ProjectId == BigQueryConstants.DetectProjectId)
             {
-                activity?.AddBigQueryTag("client_project_id", BigQueryConstants.DetectProjectId);
+                activity?.AddBigQueryTag("client_project_id", BigQueryConstants.DetectProjectId, isPii: false);
 
                 // An error occurs when calling CreateQueryJob without the ID set,
                 // so use the first one that is found. This does not prevent from calling
@@ -426,7 +420,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     if (firstProjectId != null)
                     {
                         options.ProjectId = firstProjectId;
-                        activity?.AddBigQueryTag("detected_client_project_id", firstProjectId);
+                        activity?.AddBigQueryTag("detected_client_project_id", firstProjectId, isPii: false);
                         // need to reopen the Client with the projectId specified
                         this.bigQueryConnection.Open(firstProjectId);
                     }
@@ -500,15 +494,15 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         /// </summary>
         /// <param name="datasetId">The name of the dataset.</param>
         /// <returns>A <see cref="TableReference"/> to a randomly generated table name in the specified dataset.</returns>
-        private TableReference TryGetLargeDestinationTableReference(string datasetId, Activity? activity)
+        private TableReference TryGetLargeDestinationTableReference(string datasetId, ActivityWithPii? activity)
         {
             BigQueryDataset? dataset = null;
 
             try
             {
-                activity?.AddBigQueryTag("large_results.dataset.try_find", datasetId);
+                activity?.AddBigQueryTag("large_results.dataset.try_find", datasetId, isPii: false);
                 dataset = this.Client.GetDataset(datasetId);
-                activity?.AddBigQueryTag("large_results.dataset.found", datasetId);
+                activity?.AddBigQueryTag("large_results.dataset.found", datasetId, isPii: false);
             }
             catch (GoogleApiException gaEx)
             {
@@ -523,8 +517,8 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             {
                 try
                 {
-                    activity?.AddBigQueryTag("large_results.dataset.try_create", datasetId);
-                    activity?.AddBigQueryTag("large_results.dataset.try_create_region", this.Client.DefaultLocation);
+                    activity?.AddBigQueryTag("large_results.dataset.try_create", datasetId, isPii: false);
+                    activity?.AddBigQueryTag("large_results.dataset.try_create_region", this.Client.DefaultLocation, isPii: false);
                     DatasetReference reference = this.Client.GetDatasetReference(datasetId);
 
                     // The location is not set here because it will use the DefaultLocation from the client.
@@ -538,7 +532,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     });
 
                     dataset = this.Client.CreateDataset(datasetId, bigQueryDataset.Resource);
-                    activity?.AddBigQueryTag("large_results.dataset.created", datasetId);
+                    activity?.AddBigQueryTag("large_results.dataset.created", datasetId, isPii: false);
                 }
                 catch (Exception ex)
                 {
@@ -560,7 +554,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                     TableId = "lg_" + Guid.NewGuid().ToString().Replace("-", "")
                 };
 
-                activity?.AddBigQueryTag("large_results.table_reference", reference.ToString());
+                activity?.AddBigQueryTag("large_results.table_reference", reference.ToString(), isPii: false);
 
                 return reference;
             }
@@ -568,12 +562,12 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
         public bool TokenRequiresUpdate(Exception ex) => BigQueryUtils.TokenRequiresUpdate(ex);
 
-        private async Task<T> ExecuteWithRetriesAsync<T>(Func<Task<T>> action, Activity? activity, CancellationToken cancellationToken = default) =>
+        private async Task<T> ExecuteWithRetriesAsync<T>(Func<Task<T>> action, ActivityWithPii? activity, CancellationToken cancellationToken = default) =>
             await RetryManager.ExecuteWithRetriesAsync<T>(this, action, activity, MaxRetryAttempts, RetryDelayMs, cancellationToken);
 
         private async Task<T> ExecuteCancellableJobAsync<T>(
             JobCancellationContext context,
-            Activity? activity,
+            ActivityWithPii? activity,
             Func<JobCancellationContext, Task<T>> func)
         {
             try
@@ -591,7 +585,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 {
                     if (context.Job != null)
                     {
-                        activity?.AddBigQueryTag("job.cancel", context.Job.Reference.JobId);
+                        activity?.AddBigQueryTag("job.cancel", context.Job.Reference.JobId, isPii: false);
                         await context.Job.CancelAsync().ConfigureAwait(false);
                     }
                 }
@@ -716,8 +710,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
             public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
             {
-#pragma warning disable CS0618 // Type or member is obsolete
-                return await this.TraceActivityAsync(async (Activity? activity) =>
+                return await this.TraceActivityAsync(async (ActivityWithPii? activity) =>
                 {
                     if (this.readers == null)
                     {
@@ -750,7 +743,6 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                         this.reader = null;
                     }
                 });
-#pragma warning restore CS0618 // Type or member is obsolete
             }
 
             protected override void Dispose(bool disposing)
