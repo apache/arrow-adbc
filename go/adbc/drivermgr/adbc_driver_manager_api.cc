@@ -651,6 +651,20 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
       } else if (args->driver.empty()) {
         args->driver = owned_uri;
       }
+    } else if (!args->driver.empty() && uri == args->options.end()) {
+      std::string owned_driver = args->driver;
+      auto result = InternalAdbcParseDriverUri(owned_driver);
+      if (result) {
+        args->driver = std::string{result->driver};
+        if (result->uri) {
+          args->options["uri"] = std::string{*result->uri};
+        } else if (result->profile) {
+          auto status = InternalInitializeProfile(args, *result->profile, error);
+          if (status != ADBC_STATUS_OK) {
+            return status;
+          }
+        }
+      }
     }
   }
 
@@ -681,6 +695,8 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
   }
 
   if (status != ADBC_STATUS_OK) {
+    // Restore private_data so it will be released by AdbcDatabaseRelease
+    database->private_data = args;
     if (database->private_driver->private_manager) {
       // Driver may have been partially initialized, try to clean up
       ReleaseDriver(database->private_driver, nullptr);
@@ -691,9 +707,13 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
   }
 
   // Create the underlying driver database
+  // Clear private_data so the driver doesn't think it's already initialized
+  database->private_data = nullptr;
   INIT_ERROR(error, database);
   status = database->private_driver->DatabaseNew(database, error);
   if (status != ADBC_STATUS_OK) {
+    // Restore private_data so it will be released by AdbcDatabaseRelease
+    database->private_data = args;
     ReleaseDriver(database->private_driver, nullptr);
     delete database->private_driver;
     database->private_driver = nullptr;
