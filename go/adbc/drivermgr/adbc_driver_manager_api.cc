@@ -727,6 +727,8 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
   INIT_ERROR(error, database);
   status = database->private_driver->DatabaseNew(database, error);
   if (status != ADBC_STATUS_OK) {
+    // Restore private_data so SetOption can be called again if needed
+    database->private_data = args;
     if (database->private_driver->release) {
       database->private_driver->release(database->private_driver, nullptr);
     }
@@ -740,6 +742,8 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
     status = database->private_driver->DatabaseSetOption(database, key.c_str(),
                                                          value.c_str(), error);
     if (status != ADBC_STATUS_OK) {
+      // Restore private_data so SetOption can be called again if needed
+      database->private_data = args;
       database->private_driver->DatabaseRelease(database, error);
       if (database->private_driver->release) {
         database->private_driver->release(database->private_driver, nullptr);
@@ -754,6 +758,8 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
         database, key.c_str(), reinterpret_cast<const uint8_t*>(value.data()),
         value.size(), error);
     if (status != ADBC_STATUS_OK) {
+      // Restore private_data so SetOption can be called again if needed
+      database->private_data = args;
       database->private_driver->DatabaseRelease(database, error);
       if (database->private_driver->release) {
         database->private_driver->release(database->private_driver, nullptr);
@@ -767,6 +773,8 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
     status = database->private_driver->DatabaseSetOptionInt(database, key.c_str(), value,
                                                             error);
     if (status != ADBC_STATUS_OK) {
+      // Restore private_data so SetOption can be called again if needed
+      database->private_data = args;
       database->private_driver->DatabaseRelease(database, error);
       if (database->private_driver->release) {
         database->private_driver->release(database->private_driver, nullptr);
@@ -780,6 +788,8 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
     status = database->private_driver->DatabaseSetOptionDouble(database, key.c_str(),
                                                                value, error);
     if (status != ADBC_STATUS_OK) {
+      // Restore private_data so SetOption can be called again if needed
+      database->private_data = args;
       database->private_driver->DatabaseRelease(database, error);
       if (database->private_driver->release) {
         database->private_driver->release(database->private_driver, nullptr);
@@ -793,6 +803,8 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
   // Initialize the underlying driver database
   status = database->private_driver->DatabaseInit(database, error);
   if (status != ADBC_STATUS_OK) {
+    // Restore private_data so SetOption can be called again if needed
+    database->private_data = args;
     database->private_driver->DatabaseRelease(database, error);
     ReleaseDriver(database->private_driver, nullptr);
     delete database->private_driver;
@@ -1055,6 +1067,8 @@ AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
   INIT_ERROR(error, connection);
   auto status = connection->private_driver->ConnectionNew(connection, error);
   if (status != ADBC_STATUS_OK) {
+    // Restore private_data so SetOption can be called again if needed
+    connection->private_data = args;
     connection->private_driver = nullptr;
     return status;
   }
@@ -1064,6 +1078,8 @@ AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
     status = connection->private_driver->ConnectionSetOption(connection, key.c_str(),
                                                              value.c_str(), error);
     if (status != ADBC_STATUS_OK) {
+      // Restore private_data so SetOption can be called again if needed
+      connection->private_data = args;
       connection->private_driver->ConnectionRelease(connection, error);
       connection->private_driver = nullptr;
       return status;
@@ -1074,6 +1090,8 @@ AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
         connection, key.c_str(), reinterpret_cast<const uint8_t*>(value.data()),
         value.size(), error);
     if (status != ADBC_STATUS_OK) {
+      // Restore private_data so SetOption can be called again if needed
+      connection->private_data = args;
       connection->private_driver->ConnectionRelease(connection, error);
       connection->private_driver = nullptr;
       return status;
@@ -1083,6 +1101,8 @@ AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
     status = connection->private_driver->ConnectionSetOptionInt(connection, key.c_str(),
                                                                 value, error);
     if (status != ADBC_STATUS_OK) {
+      // Restore private_data so SetOption can be called again if needed
+      connection->private_data = args;
       connection->private_driver->ConnectionRelease(connection, error);
       connection->private_driver = nullptr;
       return status;
@@ -1092,6 +1112,8 @@ AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
     status = connection->private_driver->ConnectionSetOptionDouble(
         connection, key.c_str(), value, error);
     if (status != ADBC_STATUS_OK) {
+      // Restore private_data so SetOption can be called again if needed
+      connection->private_data = args;
       connection->private_driver->ConnectionRelease(connection, error);
       connection->private_driver = nullptr;
       return status;
@@ -1100,6 +1122,8 @@ AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
 
   status = connection->private_driver->ConnectionInit(connection, database, error);
   if (status != ADBC_STATUS_OK) {
+    // Restore private_data so SetOption can be called again if needed
+    connection->private_data = args;
     connection->private_driver->ConnectionRelease(connection, error);
     connection->private_driver = nullptr;
     return status;
