@@ -17,7 +17,7 @@
 
 CXX_STD = CXX17
 CONDA_BUILD ?= "0"
-PKG_CPPFLAGS=-I../src/c/include -I../src/c -I../src/c/vendor -DADBC_EXPORT="" -D_LIBCPP_DISABLE_AVAILABILITY -DADBC_CONDA_BUILD=$(CONDA_BUILD)
+PKG_CPPFLAGS=-I../src/c/include -I../src/c -I../src/c/vendor -DADBC_EXPORT="" -DADBC_CONDA_BUILD=$(CONDA_BUILD)
 
 OBJECTS = driver_test.o \
     error.o \
