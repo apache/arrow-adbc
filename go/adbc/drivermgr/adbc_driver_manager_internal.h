@@ -15,8 +15,12 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#ifndef ADBC_DRIVER_MANAGER_INTERNAL_H
-#define ADBC_DRIVER_MANAGER_INTERNAL_H
+#pragma once
+
+#if defined(_WIN32)
+#define NOMINMAX
+#include <windows.h>  // Must come first
+#endif                // defined(_WIN32)
 
 #include <filesystem>
 #include <optional>
@@ -248,5 +252,3 @@ inline const wchar_t* kAdbcDriverPath = L"ADBC_DRIVER_PATH";
 #else
 inline const char* kAdbcDriverPath = "ADBC_DRIVER_PATH";
 #endif  // _WIN32
-
-#endif  // ADBC_DRIVER_MANAGER_INTERNAL_H

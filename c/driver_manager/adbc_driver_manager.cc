@@ -16,9 +16,6 @@
 // under the License.
 
 #if defined(_WIN32)
-#define NOMINMAX
-#include <windows.h>  // Must come first
-
 #ifndef NTDDI_VERSION
 #define NTDDI_VERSION 0x0A00000C  // For SHGetKnownFolderPath in ShlObj_core.h in ShlObj.h
 #endif
@@ -89,7 +86,6 @@ std::string CheckNonPrintableLibraryName(const std::string& name) {
   return error_message;
 }
 
-namespace {
 // Platform-specific helpers
 
 #if defined(_WIN32)
@@ -166,7 +162,6 @@ static AdbcStatusCode ReleaseDriverInternal(struct AdbcDriver* driver,
 // Default stubs
 
 static const char kDefaultEntrypoint[] = "AdbcDriverInit";
-}  // namespace
 
 // Wrapper to expose ReleaseDriver from anonymous namespace
 AdbcStatusCode ReleaseDriver(struct AdbcDriver* driver, struct AdbcError* error) {

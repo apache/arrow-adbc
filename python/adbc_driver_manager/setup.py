@@ -127,6 +127,9 @@ setup(
                 "adbc_driver_manager/_blocking_impl.cc",
                 "adbc_driver_manager/_lib.pyx",
                 "adbc_driver_manager/adbc_driver_manager.cc",
+                "adbc_driver_manager/adbc_driver_manager_api.cc",
+                "adbc_driver_manager/adbc_driver_manager_driver_loading.cc",
+                "adbc_driver_manager/adbc_driver_manager_profiles.cc",
             ],
         ),
         Extension(
