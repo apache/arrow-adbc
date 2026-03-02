@@ -34,46 +34,7 @@
 
 using namespace std::string_literals;  // NOLINT [build/namespaces]
 
-#define CHECK_STATUS(EXPR)                                \
-  if (auto _status = (EXPR); _status != ADBC_STATUS_OK) { \
-    return _status;                                       \
-  }
-
-ADBC_EXPORT
-std::vector<std::filesystem::path> InternalAdbcParsePath(const std::string_view path);
-ADBC_EXPORT
-std::filesystem::path InternalAdbcUserConfigDir();
-
 namespace {
-
-#ifdef _WIN32
-using char_type = wchar_t;
-using string_type = std::wstring;
-
-std::string Utf8Encode(const std::wstring& wstr) {
-  if (wstr.empty()) return std::string();
-  int size_needed = WideCharToMultiByte(
-      CP_UTF8, 0, wstr.data(), static_cast<int>(wstr.size()), NULL, 0, NULL, NULL);
-  std::string str_to(size_needed, 0);
-  WideCharToMultiByte(CP_UTF8, 0, wstr.data(), static_cast<int>(wstr.size()),
-                      str_to.data(), size_needed, NULL, NULL);
-  return str_to;
-}
-
-std::wstring Utf8Decode(const std::string& str) {
-  if (str.empty()) return std::wstring();
-  int size_needed =
-      MultiByteToWideChar(CP_UTF8, 0, str.data(), static_cast<int>(str.size()), NULL, 0);
-  std::wstring wstr_to(size_needed, 0);
-  MultiByteToWideChar(CP_UTF8, 0, str.data(), static_cast<int>(str.size()),
-                      wstr_to.data(), size_needed);
-  return wstr_to;
-}
-
-#else
-using char_type = char;
-using string_type = std::string;
-#endif  // _WIN32
 
 #ifdef _WIN32
 static const wchar_t* kAdbcProfilePath = L"ADBC_PROFILE_PATH";

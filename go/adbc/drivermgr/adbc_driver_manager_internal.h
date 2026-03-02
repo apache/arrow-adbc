@@ -31,12 +31,6 @@
 
 // Forward declarations and shared utilities for driver manager implementation
 
-// Forward declare C types from adbc_driver_manager.h for use in C++ contexts
-struct AdbcConnectionProfile;
-typedef AdbcStatusCode (*AdbcConnectionProfileProvider)(
-    const char* profile_name, const char* additional_search_path_list,
-    struct AdbcConnectionProfile* out, struct AdbcError* error);
-
 // Enums
 enum class SearchPathSource {
   kEnv,
@@ -165,11 +159,15 @@ void AddSearchPathsToError(const SearchPaths& search_paths, const SearchPathType
 SearchPaths GetEnvPaths(const char_type* env_var);
 
 // Path management
+ADBC_EXPORT
 std::vector<std::filesystem::path> InternalAdbcParsePath(const std::string_view path);
+ADBC_EXPORT
 std::filesystem::path InternalAdbcUserConfigDir();
 #if !defined(_WIN32)
+ADBC_EXPORT
 std::filesystem::path InternalAdbcSystemConfigDir();
 #endif
+ADBC_EXPORT
 std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view str);
 
 // Search paths
@@ -181,7 +179,6 @@ AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
 std::string InternalAdbcDriverManagerDefaultEntrypoint(const std::string& driver);
 
 #ifdef _WIN32
-class RegistryKey;
 AdbcStatusCode LoadDriverFromRegistry(HKEY root, const std::wstring& driver_name,
                                       DriverInfo& info, struct AdbcError* error);
 #endif
@@ -240,6 +237,11 @@ AdbcStatusCode ReleaseDriver(struct AdbcDriver* driver, struct AdbcError* error)
   AdbcStatusCode status_code = EXPR;                     \
   ErrorArrayStreamInit(OUT, (SOURCE)->private_driver);   \
   return status_code;
+
+#define CHECK_STATUS(EXPR)                                \
+  if (auto _status = (EXPR); _status != ADBC_STATUS_OK) { \
+    return _status;                                       \
+  }
 
 #ifdef _WIN32
 inline const wchar_t* kAdbcDriverPath = L"ADBC_DRIVER_PATH";

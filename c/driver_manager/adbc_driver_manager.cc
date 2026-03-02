@@ -56,18 +56,6 @@
 
 using namespace std::string_literals;  // NOLINT [build/namespaces]
 
-ADBC_EXPORT
-std::vector<std::filesystem::path> InternalAdbcParsePath(const std::string_view path);
-ADBC_EXPORT
-std::filesystem::path InternalAdbcUserConfigDir();
-#if !defined(_WIN32)
-ADBC_EXPORT
-std::filesystem::path InternalAdbcSystemConfigDir();
-#endif  // !defined(_WIN32)
-
-ADBC_EXPORT
-std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view str);
-
 // NOTE: Error handling, structures, and helper functions are now in internal header
 // and shared across all source files. This anonymous namespace only contains
 // implementation-specific helpers for this file.
@@ -147,67 +135,6 @@ std::wstring Utf8Decode(const std::string& str) {
   return wstr_to;
 }
 #endif  // _WIN32
-
-#ifdef _WIN32
-class RegistryKey {
- public:
-  RegistryKey(HKEY root, const std::wstring_view subkey) noexcept
-      : root_(root), key_(nullptr) {
-    status_ = RegOpenKeyExW(root_, subkey.data(), 0, KEY_READ, &key_);
-  }
-
-  ~RegistryKey() {
-    if (is_open() && key_ != nullptr) {
-      RegCloseKey(key_);
-      key_ = nullptr;
-      status_ = ERROR_REGISTRY_IO_FAILED;
-    }
-  }
-
-  HKEY key() const { return key_; }
-  bool is_open() const { return status_ == ERROR_SUCCESS; }
-  LSTATUS status() const { return status_; }
-
-  std::wstring GetString(const std::wstring& name, std::wstring default_value) {
-    if (!is_open()) return default_value;
-
-    DWORD type = REG_SZ;
-    DWORD size = 0;
-    auto result = RegQueryValueExW(key_, name.data(), nullptr, &type, nullptr, &size);
-    if (result != ERROR_SUCCESS) return default_value;
-    if (type != REG_SZ) return default_value;
-
-    std::wstring value(size, '\0');
-    result = RegQueryValueExW(key_, name.data(), nullptr, &type,
-                              reinterpret_cast<LPBYTE>(value.data()), &size);
-    if (result != ERROR_SUCCESS) return default_value;
-    return value;
-  }
-
-  int32_t GetInt(const std::wstring& name, const int32_t default_value) {
-    if (!is_open()) return default_value;
-
-    DWORD dwValue;
-    DWORD dataSize = sizeof(dwValue);
-    DWORD valueType;
-    auto result = RegQueryValueExW(key_, name.data(), nullptr, &valueType,
-                                   (LPBYTE)&dwValue, &dataSize);
-    if (result != ERROR_SUCCESS) return default_value;
-    if (valueType != REG_DWORD) return default_value;
-    return static_cast<int32_t>(dwValue);
-  }
-
- private:
-  HKEY root_;
-  HKEY key_;
-  LSTATUS status_;
-};
-#endif  // _WIN32
-
-#define CHECK_STATUS(EXPR)                                \
-  if (auto _status = (EXPR); _status != ADBC_STATUS_OK) { \
-    return _status;                                       \
-  }
 
 /// Hold the driver DLL and the driver release callback in the driver struct.
 struct ManagerDriverState {
@@ -461,7 +388,6 @@ std::vector<std::filesystem::path> InternalAdbcParsePath(const std::string_view 
   return result;
 }
 
-ADBC_EXPORT
 ADBC_EXPORT
 std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view str) {
   std::string::size_type pos = str.find(":");

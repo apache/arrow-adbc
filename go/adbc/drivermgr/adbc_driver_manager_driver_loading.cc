@@ -48,18 +48,6 @@
 
 using namespace std::string_literals;  // NOLINT [build/namespaces]
 
-namespace {
-
-#ifdef _WIN32
-using char_type = wchar_t;
-using string_type = std::wstring;
-#else
-using char_type = char;
-using string_type = std::string;
-#endif
-
-}  // namespace
-
 #ifdef _WIN32
 class RegistryKey {
  public:
