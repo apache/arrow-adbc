@@ -692,8 +692,10 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
   // Allocate the underlying driver
   database->private_driver = new AdbcDriver;
   std::memset(database->private_driver, 0, sizeof(AdbcDriver));
-
+  
   AdbcStatusCode status = ADBC_STATUS_OK;
+  // So we don't confuse a driver into thinking it's initialized already
+  database->private_data = nullptr;
 
   if (args->init_func) {
     status = AdbcLoadDriverFromInitFunc(args->init_func, ADBC_VERSION_1_1_0,
