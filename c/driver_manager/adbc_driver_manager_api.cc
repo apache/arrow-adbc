@@ -710,7 +710,7 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
                                 database->private_driver, error);
   }
 
-  if (status != ADBC_STATUS_OK) {
+ if (status != ADBC_STATUS_OK) {
     // Restore private_data so it will be released by AdbcDatabaseRelease
     database->private_data = args;
     if (database->private_driver->release) {
@@ -721,101 +721,68 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
     return status;
   }
 
-  // Create the underlying driver database
-  // Clear private_data so the driver doesn't think it's already initialized
-  database->private_data = nullptr;
-  INIT_ERROR(error, database);
-  status = database->private_driver->DatabaseNew(database, error);
+  // Errors that occur during AdbcDatabaseXXX() refer to the driver via
+  // the private_driver member; however, after we return we have released
+  // the driver and inspecting the error might segfault. Here, we scope
+  // the driver-produced error to this function and make a copy if necessary.
+  OwnedError driver_error;
+
+  status = database->private_driver->DatabaseNew(database, &driver_error.error);
   if (status != ADBC_STATUS_OK) {
-    // Restore private_data so SetOption can be called again if needed
-    database->private_data = args;
     if (database->private_driver->release) {
+      SetError(error, &driver_error.error);
       database->private_driver->release(database->private_driver, nullptr);
     }
     delete database->private_driver;
     database->private_driver = nullptr;
     return status;
   }
+  auto options = std::move(args->options);
+  auto bytes_options = std::move(args->bytes_options);
+  auto int_options = std::move(args->int_options);
+  auto double_options = std::move(args->double_options);
+  delete args;
 
-  // Apply saved options
-  for (const auto& [key, value] : args->options) {
-    status = database->private_driver->DatabaseSetOption(database, key.c_str(),
-                                                         value.c_str(), error);
-    if (status != ADBC_STATUS_OK) {
-      // Restore private_data so SetOption can be called again if needed
-      database->private_data = args;
-      database->private_driver->DatabaseRelease(database, error);
-      if (database->private_driver->release) {
-        database->private_driver->release(database->private_driver, nullptr);
-      }
-      delete database->private_driver;
-      database->private_driver = nullptr;
-      return status;
-    }
+  INIT_ERROR(error, database);
+  for (const auto& option : options) {
+    status = database->private_driver->DatabaseSetOption(
+        database, option.first.c_str(), option.second.c_str(), &driver_error.error);
+    if (status != ADBC_STATUS_OK) break;
   }
-  for (const auto& [key, value] : args->bytes_options) {
+  for (const auto& option : bytes_options) {
     status = database->private_driver->DatabaseSetOptionBytes(
-        database, key.c_str(), reinterpret_cast<const uint8_t*>(value.data()),
-        value.size(), error);
-    if (status != ADBC_STATUS_OK) {
-      // Restore private_data so SetOption can be called again if needed
-      database->private_data = args;
-      database->private_driver->DatabaseRelease(database, error);
-      if (database->private_driver->release) {
-        database->private_driver->release(database->private_driver, nullptr);
-      }
-      delete database->private_driver;
-      database->private_driver = nullptr;
-      return status;
-    }
+        database, option.first.c_str(),
+        reinterpret_cast<const uint8_t*>(option.second.data()), option.second.size(),
+        &driver_error.error);
+    if (status != ADBC_STATUS_OK) break;
   }
-  for (const auto& [key, value] : args->int_options) {
-    status = database->private_driver->DatabaseSetOptionInt(database, key.c_str(), value,
-                                                            error);
-    if (status != ADBC_STATUS_OK) {
-      // Restore private_data so SetOption can be called again if needed
-      database->private_data = args;
-      database->private_driver->DatabaseRelease(database, error);
-      if (database->private_driver->release) {
-        database->private_driver->release(database->private_driver, nullptr);
-      }
-      delete database->private_driver;
-      database->private_driver = nullptr;
-      return status;
-    }
+  for (const auto& option : int_options) {
+    status = database->private_driver->DatabaseSetOptionInt(
+        database, option.first.c_str(), option.second, &driver_error.error);
+    if (status != ADBC_STATUS_OK) break;
   }
-  for (const auto& [key, value] : args->double_options) {
-    status = database->private_driver->DatabaseSetOptionDouble(database, key.c_str(),
-                                                               value, error);
-    if (status != ADBC_STATUS_OK) {
-      // Restore private_data so SetOption can be called again if needed
-      database->private_data = args;
-      database->private_driver->DatabaseRelease(database, error);
-      if (database->private_driver->release) {
-        database->private_driver->release(database->private_driver, nullptr);
-      }
-      delete database->private_driver;
-      database->private_driver = nullptr;
-      return status;
-    }
+  for (const auto& option : double_options) {
+    status = database->private_driver->DatabaseSetOptionDouble(
+        database, option.first.c_str(), option.second, &driver_error.error);
+    if (status != ADBC_STATUS_OK) break;
   }
 
-  // Initialize the underlying driver database
-  status = database->private_driver->DatabaseInit(database, error);
   if (status != ADBC_STATUS_OK) {
-    // Restore private_data so SetOption can be called again if needed
-    database->private_data = args;
-    database->private_driver->DatabaseRelease(database, error);
-    ReleaseDriver(database->private_driver, nullptr);
+    // Release the database
+    std::ignore = database->private_driver->DatabaseRelease(database, nullptr);
+    if (database->private_driver->release) {
+      SetError(error, &driver_error.error);
+      database->private_driver->release(database->private_driver, nullptr);
+    }
     delete database->private_driver;
     database->private_driver = nullptr;
+    // Should be redundant, but ensure that AdbcDatabaseRelease
+    // below doesn't think that it contains a TempDatabase
+    database->private_data = nullptr;
     return status;
   }
 
-  // Clean up temporary state
-  delete args;
-  // Don't clear private_data here - the driver has set it to its own state
-  return ADBC_STATUS_OK;
+  return database->private_driver->DatabaseInit(database, error);
 }
 
 AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
@@ -1047,93 +1014,52 @@ AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
 AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
                                   struct AdbcDatabase* database,
                                   struct AdbcError* error) {
-  if (!database->private_driver) {
-    SetError(error, "AdbcConnectionInit: must call AdbcDatabaseInit first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
   if (!connection->private_data) {
-    SetError(error, "AdbcConnectionInit: must call AdbcConnectionNew first");
+    SetError(error, "Must call AdbcConnectionNew first");
     return ADBC_STATUS_INVALID_STATE;
-  }
-  if (connection->private_driver) {
-    SetError(error, "AdbcConnectionInit: already initialized");
-    return ADBC_STATUS_INVALID_STATE;
+  } else if (!database->private_driver) {
+    SetError(error, "Database is not initialized");
+    return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
   TempConnection* args = reinterpret_cast<TempConnection*>(connection->private_data);
+  connection->private_data = nullptr;
+  std::unordered_map<std::string, std::string> options = std::move(args->options);
+  std::unordered_map<std::string, std::string> bytes_options =
+      std::move(args->bytes_options);
+  std::unordered_map<std::string, int64_t> int_options = std::move(args->int_options);
+  std::unordered_map<std::string, double> double_options =
+      std::move(args->double_options);
+  delete args;
+
+  auto status = database->private_driver->ConnectionNew(connection, error);
+  if (status != ADBC_STATUS_OK) return status;
   connection->private_driver = database->private_driver;
 
-  // Clear private_data so the driver doesn't think it's already initialized
-  connection->private_data = nullptr;
+  for (const auto& option : options) {
+    status = database->private_driver->ConnectionSetOption(
+        connection, option.first.c_str(), option.second.c_str(), error);
+    if (status != ADBC_STATUS_OK) return status;
+  }
+  for (const auto& option : bytes_options) {
+    status = database->private_driver->ConnectionSetOptionBytes(
+        connection, option.first.c_str(),
+        reinterpret_cast<const uint8_t*>(option.second.data()), option.second.size(),
+        error);
+    if (status != ADBC_STATUS_OK) return status;
+  }
+  for (const auto& option : int_options) {
+    status = database->private_driver->ConnectionSetOptionInt(
+        connection, option.first.c_str(), option.second, error);
+    if (status != ADBC_STATUS_OK) return status;
+  }
+  for (const auto& option : double_options) {
+    status = database->private_driver->ConnectionSetOptionDouble(
+        connection, option.first.c_str(), option.second, error);
+    if (status != ADBC_STATUS_OK) return status;
+  }
   INIT_ERROR(error, connection);
-  auto status = connection->private_driver->ConnectionNew(connection, error);
-  if (status != ADBC_STATUS_OK) {
-    // Restore private_data so SetOption can be called again if needed
-    connection->private_data = args;
-    connection->private_driver = nullptr;
-    return status;
-  }
-
-  // Apply saved options
-  for (const auto& [key, value] : args->options) {
-    status = connection->private_driver->ConnectionSetOption(connection, key.c_str(),
-                                                             value.c_str(), error);
-    if (status != ADBC_STATUS_OK) {
-      // Restore private_data so SetOption can be called again if needed
-      connection->private_data = args;
-      connection->private_driver->ConnectionRelease(connection, error);
-      connection->private_driver = nullptr;
-      return status;
-    }
-  }
-  for (const auto& [key, value] : args->bytes_options) {
-    status = connection->private_driver->ConnectionSetOptionBytes(
-        connection, key.c_str(), reinterpret_cast<const uint8_t*>(value.data()),
-        value.size(), error);
-    if (status != ADBC_STATUS_OK) {
-      // Restore private_data so SetOption can be called again if needed
-      connection->private_data = args;
-      connection->private_driver->ConnectionRelease(connection, error);
-      connection->private_driver = nullptr;
-      return status;
-    }
-  }
-  for (const auto& [key, value] : args->int_options) {
-    status = connection->private_driver->ConnectionSetOptionInt(connection, key.c_str(),
-                                                                value, error);
-    if (status != ADBC_STATUS_OK) {
-      // Restore private_data so SetOption can be called again if needed
-      connection->private_data = args;
-      connection->private_driver->ConnectionRelease(connection, error);
-      connection->private_driver = nullptr;
-      return status;
-    }
-  }
-  for (const auto& [key, value] : args->double_options) {
-    status = connection->private_driver->ConnectionSetOptionDouble(
-        connection, key.c_str(), value, error);
-    if (status != ADBC_STATUS_OK) {
-      // Restore private_data so SetOption can be called again if needed
-      connection->private_data = args;
-      connection->private_driver->ConnectionRelease(connection, error);
-      connection->private_driver = nullptr;
-      return status;
-    }
-  }
-
-  status = connection->private_driver->ConnectionInit(connection, database, error);
-  if (status != ADBC_STATUS_OK) {
-    // Restore private_data so SetOption can be called again if needed
-    connection->private_data = args;
-    connection->private_driver->ConnectionRelease(connection, error);
-    connection->private_driver = nullptr;
-    return status;
-  }
-
-  // Clean up temporary state
-  delete args;
-  // Don't clear private_data here - the driver has set it to its own state
-  return ADBC_STATUS_OK;
+  return connection->private_driver->ConnectionInit(connection, database, error);
 }
 
 AdbcStatusCode AdbcConnectionNew(struct AdbcConnection* connection,
