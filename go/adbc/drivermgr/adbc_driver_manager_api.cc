@@ -525,6 +525,10 @@ AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* 
     INIT_ERROR(error, database);
     return database->private_driver->DatabaseSetOption(database, key, value, error);
   }
+  if (!database->private_data) {
+    SetError(error, "AdbcDatabaseSetOption: database not initialized");
+    return ADBC_STATUS_INVALID_STATE;
+  }
   TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
   if (std::strcmp(key, "driver") == 0) {
     args->driver = value;
@@ -544,6 +548,10 @@ AdbcStatusCode AdbcDatabaseSetOptionBytes(struct AdbcDatabase* database, const c
     return database->private_driver->DatabaseSetOptionBytes(database, key, value, length,
                                                             error);
   }
+  if (!database->private_data) {
+    SetError(error, "AdbcDatabaseSetOptionBytes: database not initialized");
+    return ADBC_STATUS_INVALID_STATE;
+  }
   TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
   args->bytes_options[key] = std::string(reinterpret_cast<const char*>(value), length);
   return ADBC_STATUS_OK;
@@ -555,6 +563,10 @@ AdbcStatusCode AdbcDatabaseSetOptionInt(struct AdbcDatabase* database, const cha
     INIT_ERROR(error, database);
     return database->private_driver->DatabaseSetOptionInt(database, key, value, error);
   }
+  if (!database->private_data) {
+    SetError(error, "AdbcDatabaseSetOptionInt: database not initialized");
+    return ADBC_STATUS_INVALID_STATE;
+  }
   TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
   args->int_options[key] = value;
   return ADBC_STATUS_OK;
@@ -565,6 +577,10 @@ AdbcStatusCode AdbcDatabaseSetOptionDouble(struct AdbcDatabase* database, const 
   if (database->private_driver) {
     INIT_ERROR(error, database);
     return database->private_driver->DatabaseSetOptionDouble(database, key, value, error);
+  }
+  if (!database->private_data) {
+    SetError(error, "AdbcDatabaseSetOptionDouble: database not initialized");
+    return ADBC_STATUS_INVALID_STATE;
   }
   TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
   args->double_options[key] = value;
@@ -711,9 +727,9 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
   INIT_ERROR(error, database);
   status = database->private_driver->DatabaseNew(database, error);
   if (status != ADBC_STATUS_OK) {
-    // Restore private_data so it will be released by AdbcDatabaseRelease
-    database->private_data = args;
-    ReleaseDriver(database->private_driver, nullptr);
+    if (database->private_driver->release) {
+      database->private_driver->release(database->private_driver, nullptr);
+    }
     delete database->private_driver;
     database->private_driver = nullptr;
     return status;
@@ -725,7 +741,9 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
                                                          value.c_str(), error);
     if (status != ADBC_STATUS_OK) {
       database->private_driver->DatabaseRelease(database, error);
-      ReleaseDriver(database->private_driver, nullptr);
+      if (database->private_driver->release) {
+        database->private_driver->release(database->private_driver, nullptr);
+      }
       delete database->private_driver;
       database->private_driver = nullptr;
       return status;
@@ -737,7 +755,9 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
         value.size(), error);
     if (status != ADBC_STATUS_OK) {
       database->private_driver->DatabaseRelease(database, error);
-      ReleaseDriver(database->private_driver, nullptr);
+      if (database->private_driver->release) {
+        database->private_driver->release(database->private_driver, nullptr);
+      }
       delete database->private_driver;
       database->private_driver = nullptr;
       return status;
@@ -748,7 +768,9 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
                                                             error);
     if (status != ADBC_STATUS_OK) {
       database->private_driver->DatabaseRelease(database, error);
-      ReleaseDriver(database->private_driver, nullptr);
+      if (database->private_driver->release) {
+        database->private_driver->release(database->private_driver, nullptr);
+      }
       delete database->private_driver;
       database->private_driver = nullptr;
       return status;
@@ -759,7 +781,9 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
                                                                value, error);
     if (status != ADBC_STATUS_OK) {
       database->private_driver->DatabaseRelease(database, error);
-      ReleaseDriver(database->private_driver, nullptr);
+      if (database->private_driver->release) {
+        database->private_driver->release(database->private_driver, nullptr);
+      }
       delete database->private_driver;
       database->private_driver = nullptr;
       return status;
@@ -1026,6 +1050,8 @@ AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
   TempConnection* args = reinterpret_cast<TempConnection*>(connection->private_data);
   connection->private_driver = database->private_driver;
 
+  // Clear private_data so the driver doesn't think it's already initialized
+  connection->private_data = nullptr;
   INIT_ERROR(error, connection);
   auto status = connection->private_driver->ConnectionNew(connection, error);
   if (status != ADBC_STATUS_OK) {
