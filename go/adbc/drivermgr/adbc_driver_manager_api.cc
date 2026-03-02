@@ -23,6 +23,7 @@
 #include <cstring>
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 #include "adbc_driver_manager_internal.h"
 #include "arrow-adbc/adbc.h"
