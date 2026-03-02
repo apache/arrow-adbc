@@ -666,11 +666,11 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
         }
       }
     }
-  }
 
-  if (args->driver.empty()) {
-    SetError(error, "Must set 'driver' option before AdbcDatabaseInit");
-    return ADBC_STATUS_INVALID_ARGUMENT;
+    if (args->driver.empty()) {
+      SetError(error, "Must set 'driver' option before AdbcDatabaseInit");
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
   }
 
   // Allocate the underlying driver
@@ -697,9 +697,8 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
   if (status != ADBC_STATUS_OK) {
     // Restore private_data so it will be released by AdbcDatabaseRelease
     database->private_data = args;
-    if (database->private_driver->private_manager) {
-      // Driver may have been partially initialized, try to clean up
-      ReleaseDriver(database->private_driver, nullptr);
+    if (database->private_driver->release) {
+      database->private_driver->release(database->private_driver, error);
     }
     delete database->private_driver;
     database->private_driver = nullptr;
