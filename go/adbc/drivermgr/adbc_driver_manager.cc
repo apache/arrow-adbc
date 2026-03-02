@@ -16,6 +16,8 @@
 // under the License.
 
 #if defined(_WIN32)
+#include <windows.h>  // Must come first
+
 #ifndef NTDDI_VERSION
 #define NTDDI_VERSION 0x0A00000C  // For SHGetKnownFolderPath in ShlObj_core.h in ShlObj.h
 #endif

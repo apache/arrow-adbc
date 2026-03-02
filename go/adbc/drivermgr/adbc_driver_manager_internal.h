@@ -180,6 +180,7 @@ SearchPaths GetSearchPaths(const AdbcLoadFlags levels);
 // Driver loading
 AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
                                   DriverInfo& info, struct AdbcError* error);
+ADBC_EXPORT
 std::string InternalAdbcDriverManagerDefaultEntrypoint(const std::string& driver);
 
 #ifdef _WIN32
