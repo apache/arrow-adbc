@@ -814,7 +814,7 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
 
   // Clean up temporary state
   delete args;
-  database->private_data = nullptr;
+  // Don't clear private_data here - the driver has set it to its own state
   return ADBC_STATUS_OK;
 }
 
@@ -822,10 +822,11 @@ AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
                                    struct AdbcError* error) {
   if (!database->private_driver) {
     if (database->private_data) {
-      // Init not called, but we still need to free the temporary state
+      // Init not called or Init failed, need to free the temporary state
       TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
       delete args;
       database->private_data = nullptr;
+      return ADBC_STATUS_OK;
     }
     return ADBC_STATUS_INVALID_STATE;
   }
@@ -1131,7 +1132,7 @@ AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
 
   // Clean up temporary state
   delete args;
-  connection->private_data = nullptr;
+  // Don't clear private_data here - the driver has set it to its own state
   return ADBC_STATUS_OK;
 }
 
@@ -1162,10 +1163,11 @@ AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
                                      struct AdbcError* error) {
   if (!connection->private_driver) {
     if (connection->private_data) {
-      // Init not called, but we still need to free the temporary state
+      // Init not called or Init failed, need to free the temporary state
       TempConnection* args = reinterpret_cast<TempConnection*>(connection->private_data);
       delete args;
       connection->private_data = nullptr;
+      return ADBC_STATUS_OK;
     }
     return ADBC_STATUS_INVALID_STATE;
   }
