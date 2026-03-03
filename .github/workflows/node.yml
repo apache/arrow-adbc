@@ -1,0 +1,172 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+name: Node.js Binding
+
+env:
+  DEBUG: napi:*
+  APP_NAME: adbc-driver-manager
+  MACOSX_DEPLOYMENT_TARGET: '10.13'
+  CARGO_INCREMENTAL: '1'
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'javascript/**'
+      - 'rust/**'
+      - '.github/workflows/node.yml'
+  pull_request:
+    paths:
+      - 'javascript/**'
+      - 'rust/**'
+      - '.github/workflows/node.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: javascript/package-lock.json
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@631a55b12751854ce901bb631d5902ceb48146f7 # stable
+        with:
+          components: clippy, rustfmt
+      - name: Install dependencies
+        working-directory: javascript
+        run: npm install
+      - name: Cargo fmt
+        working-directory: javascript
+        run: cargo fmt -- --check
+      - name: Clippy
+        working-directory: javascript
+        run: cargo clippy -- -D warnings
+
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        settings:
+          - host: macos-15-intel
+            target: x86_64-apple-darwin
+            arch: amd64
+            os: macOS
+            build: npm run build -- --target x86_64-apple-darwin
+          - host: macos-latest
+            target: aarch64-apple-darwin
+            arch: arm64
+            os: macOS
+            build: npm run build -- --target aarch64-apple-darwin
+          - host: windows-latest
+            target: x86_64-pc-windows-msvc
+            arch: amd64
+            os: Windows
+            build: npm run build -- --target x86_64-pc-windows-msvc
+          - host: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            arch: amd64
+            os: Linux
+            build: npm run build -- --target x86_64-unknown-linux-gnu --use-napi-cross
+          - host: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            arch: arm64
+            os: Linux
+            build: npm run build -- --target aarch64-unknown-linux-gnu --use-napi-cross
+    name: Build Node.js ${{ matrix.settings.arch }} ${{ matrix.settings.os }}
+    runs-on: ${{ matrix.settings.host }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: javascript/package-lock.json
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@631a55b12751854ce901bb631d5902ceb48146f7 # stable
+        with:
+          toolchain: stable
+          targets: ${{ matrix.settings.target }}
+      - name: Install dependencies
+        working-directory: javascript
+        run: npm install
+      - name: Build
+        working-directory: javascript
+        run: ${{ matrix.settings.build }}
+        shell: bash
+      - name: Ad-hoc sign binary (macOS)
+        if: runner.os == 'macOS'
+        working-directory: javascript
+        run: codesign --sign - *.node
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bindings-${{ matrix.settings.target }}
+          path: javascript/*.node
+          if-no-files-found: error
+
+  test:
+    name: Test ${{ matrix.settings.target }}
+    needs: build
+    runs-on: ${{ matrix.settings.host }}
+    strategy:
+      fail-fast: false
+      matrix:
+        settings:
+          - host: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - host: macos-latest
+            target: x86_64-apple-darwin
+          # Windows testing is tricky without proper env setup for sqlite driver build
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: javascript/package-lock.json
+      - name: Install dependencies
+        working-directory: javascript
+        run: npm install --omit=optional
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: bindings-${{ matrix.settings.target }}
+          path: javascript
+      - name: Build Driver
+        # We need to build the SQLite driver for tests.
+        # This assumes the host has CMake and C++ compiler.
+        working-directory: javascript
+        run: npm run build:driver
+        env:
+          # Point to vendored sqlite for reliable build in CI
+          ADBC_CMAKE_ARGS: "-DSQLite3_INCLUDE_DIR=${{ github.workspace }}/c/vendor/sqlite3"
+      - name: Run Tests
+        working-directory: javascript
+        run: npm test
