@@ -15,7 +15,16 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[codespell]
-dictionary = .codespell-dictionary,-
-ignore-words = .codespell-ignore
-skip = go/adbc/go.sum,javascript/package-lock.json
+# Auto detect text files and perform LF normalization
+*        text=auto
+
+
+*.ts   text eol=lf merge=union
+*.tsx  text eol=lf merge=union
+*.rs   text eol=lf merge=union
+*.js   text eol=lf merge=union
+*.json text eol=lf merge=union
+
+# Generated codes
+binding.js  linguist-detectable=false
+binding.d.ts linguist-detectable=false

@@ -1,0 +1,88 @@
+{
+  "name": "adbc-driver-manager",
+  "version": "0.0.1",
+  "description": "Node.js ADBC Driver Manager",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/apache/arrow-adbc.git",
+    "directory": "javascript"
+  },
+  "license": "Apache-2.0",
+  "keywords": [
+    "adbc",
+    "arrow",
+    "database",
+    "arrow-adbc"
+  ],
+  "files": [
+    "dist",
+    "binding.d.ts",
+    "binding.js"
+  ],
+  "napi": {
+    "binaryName": "adbc-driver-manager",
+    "targets": [
+      "x86_64-pc-windows-msvc",
+      "x86_64-apple-darwin",
+      "x86_64-unknown-linux-gnu",
+      "aarch64-unknown-linux-gnu",
+      "aarch64-apple-darwin"
+    ]
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "artifacts": "napi artifacts",
+    "build": "napi build --platform --release && mv index.js binding.js && mv index.d.ts binding.d.ts && tsc",
+    "build:debug": "napi build --platform && mv index.js binding.js && mv index.d.ts binding.d.ts && tsc",
+    "build:ts": "tsc",
+    "build:driver": "../ci/scripts/node_build.sh $(pwd)/build",
+    "fix": "prettier . -w && oxlint . --fix",
+    "check": "prettier --check . && oxlint . && tsc --noEmit",
+    "test": "tsx --test __test__/*.spec.ts",
+    "preversion": "napi build --platform && git add .",
+    "version": "napi version",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^3.2.0",
+    "@taplo/cli": "^0.7.0",
+    "tsx": "^4.0.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.6",
+    "oxlint": "^1.14.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.2"
+  },
+  "lint-staged": {
+    "*.@(js|ts|tsx)": [
+      "oxlint --fix"
+    ],
+    "*.@(js|ts|tsx|yml|yaml|md|json)": [
+      "prettier --write"
+    ],
+    "*.toml": [
+      "taplo format"
+    ]
+  },
+  "prettier": {
+    "printWidth": 120,
+    "semi": false,
+    "trailingComma": "all",
+    "singleQuote": true,
+    "arrowParens": "always"
+  },
+  "peerDependencies": {
+    "apache-arrow": "^21.1.0"
+  },
+  "optionalDependencies": {
+    "adbc-driver-manager-win32-x64-msvc": "0.0.1",
+    "adbc-driver-manager-darwin-x64": "0.0.1",
+    "adbc-driver-manager-linux-x64-gnu": "0.0.1",
+    "adbc-driver-manager-linux-arm64-gnu": "0.0.1",
+    "adbc-driver-manager-darwin-arm64": "0.0.1"
+  }
+}

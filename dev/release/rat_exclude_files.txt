@@ -44,5 +44,5 @@ r/*/tests/testthat/_snaps/*
 rust/Cargo.lock
 testing/*
 javascript/core/Cargo.lock
-javascript/native/binding.d.ts
-javascript/native/binding.js
+javascript/binding.d.ts
+javascript/binding.js
