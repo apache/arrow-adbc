@@ -545,6 +545,137 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// \see ADBC_VERSION_1_2_0
 #define ADBC_INFO_DRIVER_ADBC_VERSION 103
 
+/// \brief Whether the driver supports bulk ingest (type: bool).
+/// \since ADBC API revision 1.2.0
+/// \see AdbcConnectionGetInfo
+#define ADBC_INFO_FEATURE_INGEST 200
+
+/// \brief Supported bulk ingest modes (type: string list).
+///
+/// Values are the mode constants themselves.
+///
+/// \since ADBC API revision 1.2.0
+/// \see AdbcConnectionGetInfo
+#define ADBC_INFO_FEATURE_INGEST_MODES 201
+
+/// \brief Whether the driver supports ingesting into a temporary table (type:
+///   bool).
+///
+/// \since ADBC API revision 1.2.0
+/// \see AdbcConnectionGetInfo
+/// \see ADBC_INGEST_OPTION_TEMPORARY
+#define ADBC_INFO_FEATURE_INGEST_TEMPORARY 202
+
+/// \brief Whether the driver supports specifying the catalog of the table to
+///   ingest into (type: bool).
+///
+/// \since ADBC API revision 1.2.0
+/// \see AdbcConnectionGetInfo
+/// \see ADBC_INGEST_OPTION_TARGET_CATALOG
+#define ADBC_INFO_FEATURE_INGEST_TARGET_CATALOG 203
+
+/// \brief Whether the driver supports specifying the catalog of the table to
+///   ingest into (type: bool).
+///
+/// \since ADBC API revision 1.2.0
+/// \see AdbcConnectionGetInfo
+/// \see ADBC_INGEST_OPTION_TARGET_CATALOG
+#define ADBC_INFO_FEATURE_INGEST_TARGET_SCHEMA 204
+
+/// \brief Whether the driver supports getting catalog metadata (type: bool).
+/// \since ADBC API revision 1.2.0
+/// \see AdbcConnectionGetInfo
+/// \see AdbcConnectionGetObjects
+#define ADBC_INFO_FEATURE_OBJECTS 220
+
+/// \brief Whether the driver supports getting table schemas (type: bool).
+/// \since ADBC API revision 1.2.0
+/// \see AdbcConnectionGetInfo
+/// \see AdbcConnectionGetObjects
+#define ADBC_INFO_FEATURE_TABLE_SCHEMA 221
+
+/// \brief Whether the driver supports getting table types (type: bool).
+/// \since ADBC API revision 1.2.0
+/// \see AdbcConnectionGetInfo
+/// \see AdbcConnectionGetObjects
+#define ADBC_INFO_FEATURE_TABLE_TYPES 222
+
+/// \brief Whether the driver supports transactions (true), or if autocommit
+///   is always enabled (false) (type: bool).
+/// \since ADBC API revision 1.2.0
+/// \see AdbcConnectionGetInfo
+/// \see ADBC_CONNECTION_OPTION_AUTOCOMMIT
+#define ADBC_INFO_FEATURE_TRANSACTIONS 240
+
+/// \brief Whether the driver supports setting the isolation level of
+///   transactions (type: bool).
+/// \since ADBC API revision 1.2.0
+/// \see AdbcConnectionGetInfo
+/// \see ADBC_CONNECTION_OPTION_ISOLATION_LEVEL
+#define ADBC_INFO_FEATURE_TRANSACTION_ISOLATION_LEVEL 241
+
+/// \brief Whether the driver supports getting statistics (type: bool).
+/// \since ADBC API revision 1.2.0
+/// \see AdbcConnectionGetInfo
+/// \see AdbcConnectionGetStatistics
+#define ADBC_INFO_FEATURE_STATISTICS 242
+
+/// \brief Whether the driver supports getting/setting the current catalog
+///   (type: bool).
+/// \since ADBC API revision 1.2.0
+/// \see AdbcConnectionGetInfo
+/// \see ADBC_CONNECTION_OPTION_CURRENT_CATALOG
+#define ADBC_INFO_FEATURE_CURRENT_CATALOG 243
+
+/// \brief Whether the driver supports getting/setting the current schema
+///   (type: bool).
+/// \since ADBC API revision 1.2.0
+/// \see AdbcConnectionGetInfo
+/// \see ADBC_CONNECTION_OPTION_CURRENT_CATALOG
+#define ADBC_INFO_FEATURE_CURRENT_DB_SCHEMA 244
+
+/// \brief Whether the driver supports binding data (type: bool).
+/// \since ADBC API revision 1.2.0
+/// \see AdbcConnectionGetInfo
+/// \see AdbcStatementBind
+/// \see AdbcStatementBindStream
+#define ADBC_INFO_FEATURE_BIND 245
+
+/// \brief Whether the driver supports partitioned execution (type: bool).
+/// \since ADBC API revision 1.2.0
+/// \see AdbcConnectionGetInfo
+/// \see AdbcConnectionReadPartition
+/// \see AdbcStatementExecutePartitions
+#define ADBC_INFO_FEATURE_EXECUTE_PARTITIONS 246
+
+/// \brief Whether the driver supports multiple result sets (type: bool).
+/// \since ADBC API revision 1.2.0
+/// \see AdbcConnectionGetInfo
+/// \see AdbcStatementExecuteMulti
+#define ADBC_INFO_FEATURE_EXECUTE_MULTI 247
+
+/// \brief Whether the driver supports getting result set schemas (type: bool).
+/// \since ADBC API revision 1.2.0
+/// \see AdbcConnectionGetInfo
+/// \see AdbcStatementExecuteSchema
+/// \see AdbcStatementExecuteSchemaMulti
+#define ADBC_INFO_FEATURE_EXECUTE_SCHEMA 248
+
+/// \brief Whether the driver supports getting parameter schemas (type: bool).
+/// \since ADBC API revision 1.2.0
+/// \see AdbcConnectionGetInfo
+/// \see AdbcStatementGetParameterSchema
+#define ADBC_INFO_FEATURE_PARAMETER_SCHEMA 249
+
+/// \brief Whether the driver supports getting error metadata (type: bool).
+/// \since ADBC API revision 1.2.0
+/// \see AdbcConnectionGetInfo
+/// \see AdbcErrorGetDetailCount
+/// \see AdbcErrorGetDetail
+/// \see AdbcErrorFromArrayStream
+/// \see ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA
+#define ADBC_INFO_FEATURE_ERROR_METADATA 250
+
 /// \brief Return metadata on catalogs, schemas, tables, and columns.
 ///
 /// \see AdbcConnectionGetObjects
