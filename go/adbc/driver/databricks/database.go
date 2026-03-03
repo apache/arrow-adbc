@@ -248,6 +248,7 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		}
 
 		d.db = db
+		d.needsRefresh = false
 	}
 
 	c, err := d.db.Conn(ctx)
