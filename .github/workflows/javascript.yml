@@ -172,15 +172,19 @@ jobs:
       - name: Install C++ dependencies (Windows)
         if: runner.os == 'Windows'
         run: conda install -c conda-forge --file ci/conda_env_cpp.txt
+      - name: Set cmake args (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: echo "ADBC_CMAKE_ARGS=-DSQLite3_INCLUDE_DIR=${{ github.workspace }}/c/vendor/sqlite3" >> "$GITHUB_ENV"
+      - name: Set cmake args (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: echo "ADBC_CMAKE_ARGS=-DCMAKE_PREFIX_PATH=$env:CONDA_PREFIX" >> $env:GITHUB_ENV
       - name: Build Driver
         # We need to build the SQLite driver for tests.
         # This assumes the host has CMake and C++ compiler.
         # Use shell: bash so this works on Windows (Git Bash) as well.
         shell: bash
         run: ci/scripts/node_build.sh "${{ github.workspace }}/javascript/build"
-        env:
-          # Point to vendored sqlite for reliable build in CI
-          ADBC_CMAKE_ARGS: "-DSQLite3_INCLUDE_DIR=${{ github.workspace }}/c/vendor/sqlite3"
       - name: Set driver path (Linux)
         if: runner.os == 'Linux'
         run: echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/javascript/build/lib/libadbc_driver_sqlite.so" >> "$GITHUB_ENV"
