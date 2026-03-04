@@ -307,7 +307,7 @@ impl AdbcResultIteratorCore {
     let schema = self.reader.schema();
     let mut output = Vec::new();
     let mut writer = StreamWriter::try_new(&mut output, &schema)?;
-    while let Some(batch) = self.reader.next() {
+    for batch in self.reader.by_ref() {
       writer.write(&batch?)?;
     }
     writer.finish()?;

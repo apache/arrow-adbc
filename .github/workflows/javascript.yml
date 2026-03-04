@@ -65,12 +65,12 @@ jobs:
       - name: Install dependencies
         working-directory: javascript
         run: npm ci
-      - name: Cargo fmt
+      - name: Check JS
         working-directory: javascript
-        run: cargo fmt -- --check
-      - name: Clippy
+        run: npm run check:js
+      - name: Check Rust
         working-directory: javascript
-        run: cargo clippy -- -D warnings
+        run: npm run check:rust
 
   build:
     strategy:
