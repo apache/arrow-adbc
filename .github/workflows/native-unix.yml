@@ -141,7 +141,7 @@ jobs:
           cd
           tar czf ~/local.tgz local
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: driver-manager-${{ matrix.os }}
           retention-days: 3
@@ -357,7 +357,7 @@ jobs:
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: driver-manager-${{ matrix.os }}
           path: "~"
@@ -495,7 +495,7 @@ jobs:
           cache: true
           cache-dependency-path: go/adbc/go.sum
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: driver-manager-${{ matrix.os }}
           path: "~"
@@ -572,7 +572,7 @@ jobs:
           cache: true
           cache-dependency-path: go/adbc/go.sum
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: driver-manager-${{ matrix.os }}
           path: "~"
@@ -689,7 +689,7 @@ jobs:
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: driver-manager-${{ matrix.os }}
           path: "~"
@@ -711,7 +711,7 @@ jobs:
         run: |
           ./ci/scripts/docs_build.sh "$(pwd)"
       - name: Archive docs
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: docs
           retention-days: 2
