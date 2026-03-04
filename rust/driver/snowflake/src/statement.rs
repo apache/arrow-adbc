@@ -20,9 +20,9 @@
 //!
 
 use adbc_core::{
+    Optionable, PartitionedResult,
     error::Result,
     options::{OptionStatement, OptionValue},
-    Optionable, PartitionedResult,
 };
 use adbc_driver_manager::ManagedStatement;
 use arrow_array::{RecordBatch, RecordBatchReader};
