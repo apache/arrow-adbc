@@ -54,6 +54,18 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#if defined(__clang__)
+// See https://github.com/google/benchmark/pull/2108
+#define NANOARROW_IGNORE_COUNTER_WARNING                        \
+  _Pragma("GCC diagnostic push")                                 \
+  _Pragma("GCC diagnostic ignored \"-Wunknown-warning-option\"") \
+  _Pragma("GCC diagnostic ignored \"-Wc2y-extensions\"")
+#define NANOARROW_RESTORE_COUNTER_WARNING _Pragma("GCC diagnostic pop")
+#else
+#define NANOARROW_IGNORE_COUNTER_WARNING
+#define NANOARROW_RESTORE_COUNTER_WARNING
+#endif
+
 #ifndef NANOARROW_NANOARROW_TYPES_H_INCLUDED
 #define NANOARROW_NANOARROW_TYPES_H_INCLUDED
 
@@ -305,7 +317,9 @@ static inline void ArrowErrorSetString(struct ArrowError* error, const char* src
 /// \brief Check the result of an expression and return it if not NANOARROW_OK
 /// \ingroup nanoarrow-errors
 #define NANOARROW_RETURN_NOT_OK(EXPR) \
-  _NANOARROW_RETURN_NOT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR)
+  NANOARROW_IGNORE_COUNTER_WARNING \
+  _NANOARROW_RETURN_NOT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR) \
+  NANOARROW_RESTORE_COUNTER_WARNING
 
 /// \brief Check the result of an expression and return it if not NANOARROW_OK,
 /// adding an auto-generated message to an ArrowError.
@@ -315,8 +329,10 @@ static inline void ArrowErrorSetString(struct ArrowError* error, const char* src
 /// as input always set its message when returning an error code (e.g., when calling
 /// a nanoarrow function that does *not* accept ArrowError).
 #define NANOARROW_RETURN_NOT_OK_WITH_ERROR(EXPR, ERROR_EXPR) \
+  NANOARROW_IGNORE_COUNTER_WARNING \
   _NANOARROW_RETURN_NOT_OK_WITH_ERROR_IMPL(                  \
-      _NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR, ERROR_EXPR, #EXPR)
+      _NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR, ERROR_EXPR, #EXPR) \
+  NANOARROW_RESTORE_COUNTER_WARNING
 
 #if defined(NANOARROW_DEBUG) && !defined(NANOARROW_PRINT_AND_DIE)
 #define NANOARROW_PRINT_AND_DIE(VALUE, EXPR_STR)                                 \
@@ -343,7 +359,9 @@ static inline void ArrowErrorSetString(struct ArrowError* error, const char* src
 /// be defining the NANOARROW_PRINT_AND_DIE macro before including nanoarrow.h
 /// This macro is provided as a convenience for users and is not used internally.
 #define NANOARROW_ASSERT_OK(EXPR) \
-  _NANOARROW_ASSERT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR, #EXPR)
+  NANOARROW_IGNORE_COUNTER_WARNING \
+  _NANOARROW_ASSERT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR, #EXPR) \
+  NANOARROW_RESTORE_COUNTER_WARNING
 
 #define _NANOARROW_DCHECK_IMPL(EXPR, EXPR_STR)          \
   do {                                                  \
