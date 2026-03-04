@@ -136,7 +136,10 @@ fn test_get_objects_database() {
 fn test_execute_sql() {
     let mut connection = get_connection(None);
 
-    execute_update(&mut connection, "CREATE TABLE IF NOT EXISTS datafusion.public.example (c1 INT, c2 VARCHAR) AS VALUES(1,'HELLO'),(2,'DATAFUSION'),(3,'!')");
+    execute_update(
+        &mut connection,
+        "CREATE TABLE IF NOT EXISTS datafusion.public.example (c1 INT, c2 VARCHAR) AS VALUES(1,'HELLO'),(2,'DATAFUSION'),(3,'!')",
+    );
 
     let batch = execute_sql_query(&mut connection, "SELECT * FROM datafusion.public.example");
 
@@ -148,7 +151,10 @@ fn test_execute_sql() {
 fn test_ingest() {
     let mut connection = get_connection(None);
 
-    execute_update(&mut connection, "CREATE TABLE IF NOT EXISTS datafusion.public.example (c1 INT, c2 VARCHAR) AS VALUES(1,'HELLO'),(2,'DATAFUSION'),(3,'!')");
+    execute_update(
+        &mut connection,
+        "CREATE TABLE IF NOT EXISTS datafusion.public.example (c1 INT, c2 VARCHAR) AS VALUES(1,'HELLO'),(2,'DATAFUSION'),(3,'!')",
+    );
 
     let batch = execute_sql_query(&mut connection, "SELECT * FROM datafusion.public.example");
 
@@ -174,7 +180,10 @@ fn test_ingest() {
 fn test_execute_substrait() {
     let mut connection = get_connection(None);
 
-    execute_update(&mut connection, "CREATE TABLE IF NOT EXISTS datafusion.public.example (c1 INT, c2 VARCHAR) AS VALUES(1,'HELLO'),(2,'DATAFUSION'),(3,'!')");
+    execute_update(
+        &mut connection,
+        "CREATE TABLE IF NOT EXISTS datafusion.public.example (c1 INT, c2 VARCHAR) AS VALUES(1,'HELLO'),(2,'DATAFUSION'),(3,'!')",
+    );
 
     let ctx = SessionContext::new();
 
@@ -203,7 +212,10 @@ fn test_execute_substrait() {
 async fn test_running_in_async() {
     let mut connection = get_connection(Some(tokio::runtime::Handle::current()));
 
-    execute_update(&mut connection, "CREATE TABLE IF NOT EXISTS datafusion.public.example (c1 INT, c2 VARCHAR) AS VALUES(1,'HELLO'),(2,'DATAFUSION'),(3,'!')");
+    execute_update(
+        &mut connection,
+        "CREATE TABLE IF NOT EXISTS datafusion.public.example (c1 INT, c2 VARCHAR) AS VALUES(1,'HELLO'),(2,'DATAFUSION'),(3,'!')",
+    );
 
     let batch = execute_sql_query(&mut connection, "SELECT * FROM datafusion.public.example");
 

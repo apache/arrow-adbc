@@ -29,12 +29,12 @@ use arrow_buffer::{OffsetBuffer, ScalarBuffer};
 use arrow_schema::{ArrowError, DataType, Field, Schema, SchemaRef, UnionFields};
 
 use adbc_core::{
-    constants,
+    Connection, Database, Driver, Optionable, PartitionedResult, Statement, constants,
     error::{Error, Result, Status},
     options::{
         InfoCode, ObjectDepth, OptionConnection, OptionDatabase, OptionStatement, OptionValue,
     },
-    schemas, Connection, Database, Driver, Optionable, PartitionedResult, Statement,
+    schemas,
 };
 
 #[derive(Debug)]

@@ -17,7 +17,7 @@
 
 use path_slash::PathBufExt;
 use std::borrow::Cow;
-use std::ffi::{c_void, OsStr};
+use std::ffi::{OsStr, c_void};
 use std::fmt::Write;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -27,10 +27,10 @@ use libloading::Symbol;
 use toml::de::{DeTable, DeValue};
 
 use adbc_core::{
+    LOAD_FLAG_ALLOW_RELATIVE_PATHS, LOAD_FLAG_SEARCH_ENV, LOAD_FLAG_SEARCH_SYSTEM,
+    LOAD_FLAG_SEARCH_USER, LoadFlags,
     error::{Error, Result, Status},
     options::AdbcVersion,
-    LoadFlags, LOAD_FLAG_ALLOW_RELATIVE_PATHS, LOAD_FLAG_SEARCH_ENV, LOAD_FLAG_SEARCH_SYSTEM,
-    LOAD_FLAG_SEARCH_USER,
 };
 use adbc_ffi::{
     options::check_status,
@@ -226,7 +226,7 @@ enum DriverInitFunc<'a> {
 }
 
 /// Allow using [DriverInitFunc] as a function pointer.
-impl<'a> ops::Deref for DriverInitFunc<'a> {
+impl ops::Deref for DriverInitFunc<'_> {
     type Target = FFI_AdbcDriverInitFunc;
 
     fn deref(&self) -> &Self::Target {
@@ -346,10 +346,10 @@ impl<'a> DriverLibrary<'a> {
         Ok(SearchHit::new(info.lib_path, library, info.entrypoint))
     }
 
-    pub(crate) fn derive_entrypoint<'b>(
-        entrypoint: Option<&'b [u8]>,
+    pub(crate) fn derive_entrypoint(
+        entrypoint: Option<&[u8]>,
         driver_path: impl AsRef<OsStr>,
-    ) -> Cow<'b, [u8]> {
+    ) -> Cow<'_, [u8]> {
         if let Some(entrypoint) = entrypoint {
             Cow::Borrowed(entrypoint)
         } else {
@@ -695,8 +695,8 @@ const fn arch_triplet() -> (&'static str, &'static str, &'static str) {
 mod target_windows {
     use windows_sys as windows;
 
-    use std::ffi::c_void;
     use std::ffi::OsString;
+    use std::ffi::c_void;
     use std::os::windows::ffi::OsStringExt;
     use std::path::PathBuf;
     use std::slice;
@@ -980,7 +980,7 @@ pub(crate) enum DriverLocator<'a> {
 /// Returns `Status::InvalidArguments` if:
 /// - The URI has no colon separator
 /// - The URI format is invalid
-pub(crate) fn parse_driver_uri<'a>(uri: &'a str) -> Result<DriverLocator<'a>> {
+pub(crate) fn parse_driver_uri(uri: &'_ str) -> Result<DriverLocator<'_>> {
     let idx = uri.find(":").ok_or(Error::with_message_and_status(
         format!("Invalid URI: {uri}"),
         Status::InvalidArguments,
@@ -1017,7 +1017,7 @@ pub(crate) fn parse_driver_uri<'a>(uri: &'a str) -> Result<DriverLocator<'a>> {
 mod tests {
     use std::env;
 
-    use adbc_core::{options::AdbcVersion, LOAD_FLAG_ALLOW_RELATIVE_PATHS};
+    use adbc_core::{LOAD_FLAG_ALLOW_RELATIVE_PATHS, options::AdbcVersion};
     use temp_env::{with_var, with_var_unset};
 
     use crate::ManagedDriver;

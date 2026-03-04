@@ -20,9 +20,9 @@ use std::collections::HashSet;
 use arrow_array::{RecordBatch, RecordBatchReader};
 use arrow_schema::Schema;
 
+use crate::PartitionedResult;
 use crate::error::Result;
 use crate::options::{self, OptionConnection, OptionDatabase, OptionStatement, OptionValue};
-use crate::PartitionedResult;
 
 /// Ability to configure an object by setting/getting options.
 pub trait Optionable {

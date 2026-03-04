@@ -18,11 +18,11 @@
 use std::path::PathBuf;
 
 use adbc_core::options::{AdbcVersion, OptionDatabase, OptionValue};
-use adbc_core::{error::Status, LOAD_FLAG_DEFAULT};
+use adbc_core::{LOAD_FLAG_DEFAULT, error::Status};
+use adbc_driver_manager::ManagedDatabase;
 use adbc_driver_manager::profile::{
     ConnectionProfile, ConnectionProfileProvider, FilesystemProfileProvider,
 };
-use adbc_driver_manager::ManagedDatabase;
 use serial_test::serial;
 
 mod common;
@@ -460,7 +460,9 @@ fn test_profile_hierarchical_path_via_env_var() {
 
     // Set ADBC_PROFILE_PATH to the parent directory
     let prev_value = env::var_os("ADBC_PROFILE_PATH");
-    env::set_var("ADBC_PROFILE_PATH", tmp_dir.path());
+    unsafe {
+        env::set_var("ADBC_PROFILE_PATH", tmp_dir.path());
+    }
 
     // Verify the environment variable is set correctly
     assert_eq!(
@@ -473,9 +475,11 @@ fn test_profile_hierarchical_path_via_env_var() {
     let result = provider.get_profile("databases/postgres/production", None);
 
     // Restore the original environment variable
-    match prev_value {
-        Some(val) => env::set_var("ADBC_PROFILE_PATH", val),
-        None => env::remove_var("ADBC_PROFILE_PATH"),
+    unsafe {
+        match prev_value {
+            Some(val) => env::set_var("ADBC_PROFILE_PATH", val),
+            None => env::remove_var("ADBC_PROFILE_PATH"),
+        }
     }
 
     // Verify the profile was loaded successfully
@@ -518,16 +522,20 @@ fn test_profile_hierarchical_path_with_extension_via_env_var() {
 
     // Set ADBC_PROFILE_PATH to the parent directory
     let prev_value = env::var_os("ADBC_PROFILE_PATH");
-    env::set_var("ADBC_PROFILE_PATH", tmp_dir.path());
+    unsafe {
+        env::set_var("ADBC_PROFILE_PATH", tmp_dir.path());
+    }
 
     // Try to load the profile using hierarchical relative path with .toml extension
     let provider = FilesystemProfileProvider;
     let result = provider.get_profile("configs/dev/database.toml", None);
 
     // Restore the original environment variable
-    match prev_value {
-        Some(val) => env::set_var("ADBC_PROFILE_PATH", val),
-        None => env::remove_var("ADBC_PROFILE_PATH"),
+    unsafe {
+        match prev_value {
+            Some(val) => env::set_var("ADBC_PROFILE_PATH", val),
+            None => env::remove_var("ADBC_PROFILE_PATH"),
+        }
     }
 
     // Verify the profile was loaded successfully

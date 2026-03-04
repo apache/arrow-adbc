@@ -28,8 +28,8 @@ use adbc_core::{Connection, Database, Driver, Optionable, Statement};
 use adbc_driver_manager::{ManagedConnection, ManagedDatabase, ManagedDriver, ManagedStatement};
 
 use arrow_array::{
-    cast::as_string_array, Array, Float64Array, Int64Array, RecordBatch, RecordBatchReader,
-    StringArray,
+    Array, Float64Array, Int64Array, RecordBatch, RecordBatchReader, StringArray,
+    cast::as_string_array,
 };
 use arrow_schema::{ArrowError, DataType, Field, Schema, SchemaRef};
 use arrow_select::concat::concat_batches;
@@ -105,14 +105,18 @@ pub fn test_database(database: &ManagedDatabase) {
 }
 
 pub fn test_connection(connection: &mut ManagedConnection) {
-    assert!(connection
-        .set_option(OptionConnection::AutoCommit, "true".into())
-        .is_ok());
+    assert!(
+        connection
+            .set_option(OptionConnection::AutoCommit, "true".into())
+            .is_ok()
+    );
 
     // Unknown connection option
-    assert!(connection
-        .set_option(OptionConnection::Other("unknown".into()), "".into())
-        .is_err());
+    assert!(
+        connection
+            .set_option(OptionConnection::Other("unknown".into()), "".into())
+            .is_err()
+    );
 
     assert!(connection.new_statement().is_ok());
 }
@@ -238,9 +242,11 @@ pub fn test_connection_get_table_schema(connection: &mut ManagedConnection) {
 
     connection.rollback().unwrap();
 
-    assert!(connection
-        .get_table_schema(None, None, "nonexistent_table")
-        .is_err());
+    assert!(
+        connection
+            .get_table_schema(None, None, "nonexistent_table")
+            .is_err()
+    );
 }
 
 pub fn test_statement(statement: &mut ManagedStatement) {

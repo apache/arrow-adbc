@@ -33,16 +33,16 @@ categories.workspace = true
 [dependencies]
 adbc_core.workspace = true
 adbc_ffi = { workspace = true, optional = true }
-arrow-array = "57.3.0"
-arrow-buffer = "57.3.0"
-arrow-schema = "57.3.0"
-datafusion = { version = "52.1.0", default-features = false }
-datafusion-substrait = { version = "52.1.0", default-features = false }
+arrow-array = "58"
+arrow-buffer = "58"
+arrow-schema = "58"
+datafusion = { git = "https://github.com/apache/arrow-datafusion", default-features = false, features = ["sql"] }
+datafusion-substrait = { git = "https://github.com/apache/arrow-datafusion", default-features = false }
 tokio = { version = "1.50", features = ["rt-multi-thread"] }
 prost = "0.14.3"
 
 [dev-dependencies]
-arrow-select = "57.3.0"
+arrow-select = "58"
 
 [lib]
 crate-type = ["lib", "cdylib"]
