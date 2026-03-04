@@ -1097,7 +1097,7 @@ jobs:
           popd
 
   node-binaries:
-    name: "Node.js ${{ matrix.settings.arch }} ${{ matrix.settings.os }}"
+    name: "Node.js ${{ matrix.settings.target }}"
     runs-on: ${{ matrix.settings.host }}
     needs:
       - source
@@ -1107,29 +1107,14 @@ jobs:
         settings:
           - host: macos-15-intel
             target: x86_64-apple-darwin
-            arch: amd64
-            os: macOS
-            build: npx napi build --platform --release --target x86_64-apple-darwin
           - host: macos-latest
             target: aarch64-apple-darwin
-            arch: arm64
-            os: macOS
-            build: npx napi build --platform --release --target aarch64-apple-darwin
           - host: windows-latest
             target: x86_64-pc-windows-msvc
-            arch: amd64
-            os: Windows
-            build: npx napi build --platform --release --target x86_64-pc-windows-msvc
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            arch: amd64
-            os: Linux
-            build: npx napi build --platform --release --target x86_64-unknown-linux-gnu --use-napi-cross
-          - host: ubuntu-latest
+          - host: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
-            arch: arm64
-            os: Linux
-            build: npx napi build --platform --release --target aarch64-unknown-linux-gnu --use-napi-cross
     steps:
       - uses: actions/download-artifact@v6
         with:
@@ -1152,18 +1137,18 @@ jobs:
           cache-dependency-path: adbc/javascript/package-lock.json
 
       - name: Setup Rust
-        uses: dtolnay/rust-toolchain@631a55b12751854ce901bb631d5902ceb48146f7 # stable
-        with:
-          toolchain: stable
-          targets: ${{ matrix.settings.target }}
+        run: |
+          rustup toolchain install stable --no-self-update
+          rustup default stable
+          rustup target add ${{ matrix.settings.target }}
 
       - name: Install Node dependencies
         working-directory: adbc/javascript
-        run: npm install
+        run: npm ci
 
       - name: Build Node.js binaries
         working-directory: adbc/javascript
-        run: ${{ matrix.settings.build }}
+        run: npx napi build --platform --release --target ${{ matrix.settings.target }}
         shell: bash
 
       - name: Sign binary (macOS)
@@ -1207,7 +1192,7 @@ jobs:
 
       - name: Install Node dependencies
         working-directory: adbc/javascript
-        run: npm install
+        run: npm ci
 
       - name: Build Node.js JS
         working-directory: adbc/javascript
