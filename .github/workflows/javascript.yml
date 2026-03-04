@@ -181,12 +181,15 @@ jobs:
         env:
           # Point to vendored sqlite for reliable build in CI
           ADBC_CMAKE_ARGS: "-DSQLite3_INCLUDE_DIR=${{ github.workspace }}/c/vendor/sqlite3"
-      - name: Set ADBC_DRIVER_PATH (Unix)
-        if: runner.os != 'Windows'
-        run: echo "ADBC_DRIVER_PATH=${{ github.workspace }}/javascript/build/lib" >> "$GITHUB_ENV"
-      - name: Set ADBC_DRIVER_PATH (Windows)
+      - name: Set driver path (Linux)
+        if: runner.os == 'Linux'
+        run: echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/javascript/build/lib/libadbc_driver_sqlite.so" >> "$GITHUB_ENV"
+      - name: Set driver path (macOS)
+        if: runner.os == 'macOS'
+        run: echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/javascript/build/lib/libadbc_driver_sqlite.dylib" >> "$GITHUB_ENV"
+      - name: Set driver path (Windows)
         if: runner.os == 'Windows'
-        run: echo "ADBC_DRIVER_PATH=${{ github.workspace }}/javascript/build/bin" >> $GITHUB_ENV
+        run: echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/javascript/build/bin/adbc_driver_sqlite.dll" >> $GITHUB_ENV
       - name: Run Tests
         working-directory: javascript
         run: npm test

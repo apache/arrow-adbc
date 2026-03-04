@@ -19,7 +19,8 @@ import { RecordBatchReader } from 'apache-arrow'
 import { AdbcDatabase, AdbcStatement } from '../lib/index.js'
 
 export async function createSqliteDatabase(): Promise<AdbcDatabase> {
-  return new AdbcDatabase({ driver: 'sqlite' })
+  const driver = process.env.ADBC_DRIVER_MANAGER_TEST_LIB ?? 'sqlite'
+  return new AdbcDatabase({ driver })
 }
 
 export async function createTestTable(stmt: AdbcStatement, tableName: string = 'test_table'): Promise<void> {
