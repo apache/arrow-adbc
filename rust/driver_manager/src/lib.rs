@@ -117,20 +117,20 @@ use adbc_ffi::options::{
     check_status, get_option_bytes, get_option_string, set_option_connection, set_option_database,
     set_option_statement,
 };
-use arrow_array::ffi::{to_ffi, FFI_ArrowSchema};
+use arrow_array::ffi::{FFI_ArrowSchema, to_ffi};
 use arrow_array::ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream};
 use arrow_array::{Array, RecordBatch, RecordBatchReader, StructArray};
 
 use adbc_core::{
+    Connection, Database, Driver, LoadFlags, Optionable, PartitionedResult, Statement,
     error::{Error, Result, Status},
     options::{self, AdbcVersion, InfoCode, OptionDatabase, OptionValue},
-    Connection, Database, Driver, LoadFlags, Optionable, PartitionedResult, Statement,
 };
 use adbc_ffi::driver_method;
 
-use self::search::{parse_driver_uri, DriverLibrary, DriverLocator};
+use self::search::{DriverLibrary, DriverLocator, parse_driver_uri};
 use crate::profile::{
-    process_profile_value, ConnectionProfile, ConnectionProfileProvider, FilesystemProfileProvider,
+    ConnectionProfile, ConnectionProfileProvider, FilesystemProfileProvider, process_profile_value,
 };
 
 const ERR_CANCEL_UNSUPPORTED: &str =
