@@ -175,10 +175,13 @@ jobs:
       - name: Install C++ dependencies (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get install libsqlite3-dev
+      - name: Set cmake args (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: echo "ADBC_CMAKE_ARGS=-DCMAKE_PREFIX_PATH=$env:CONDA_PREFIX/Library" >> $env:GITHUB_ENV
       - name: Build Driver
         # We need to build the SQLite driver for tests.
-        # Use login bash (-l) so conda is activated on Windows, matching rust.yml.
-        shell: bash -l -eo pipefail {0}
+        shell: bash
         run: ci/scripts/node_build.sh "${{ github.workspace }}/javascript/build"
       - name: Set driver path (Linux)
         if: runner.os == 'Linux'
