@@ -25,4 +25,7 @@ OBJECTS = driver_test.o \
     options.o \
     radbc.o \
     utils.o \
-    c/driver_manager/adbc_driver_manager.o
+    c/driver_manager/adbc_driver_manager.o \
+    c/driver_manager/adbc_driver_manager_driver_loading.o \
+    c/driver_manager/adbc_driver_manager_api.o \
+    c/driver_manager/adbc_driver_manager_profiles.o

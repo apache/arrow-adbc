@@ -54,7 +54,7 @@ def test_version():
 def test_database_init():
     with pytest.raises(
         adbc_driver_manager.ProgrammingError,
-        match=".*Must provide 'driver' parameter.*",
+        match=".*Must set 'driver' option.*",
     ):
         with adbc_driver_manager.AdbcDatabase():
             pass
