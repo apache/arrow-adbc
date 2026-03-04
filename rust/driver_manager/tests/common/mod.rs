@@ -29,8 +29,8 @@ use adbc_core::{Connection, Database, Driver, Optionable, Statement};
 use adbc_driver_manager::{ManagedConnection, ManagedDatabase, ManagedDriver, ManagedStatement};
 
 use arrow_array::{
-    cast::as_string_array, Array, Float64Array, Int64Array, RecordBatch, RecordBatchReader,
-    StringArray,
+    Array, Float64Array, Int64Array, RecordBatch, RecordBatchReader, StringArray,
+    cast::as_string_array,
 };
 use arrow_schema::{ArrowError, DataType, Field, Schema, SchemaRef};
 use arrow_select::concat::concat_batches;
@@ -106,14 +106,18 @@ pub fn test_database(database: &ManagedDatabase) {
 }
 
 pub fn test_connection(connection: &mut ManagedConnection) {
-    assert!(connection
-        .set_option(OptionConnection::AutoCommit, "true".into())
-        .is_ok());
+    assert!(
+        connection
+            .set_option(OptionConnection::AutoCommit, "true".into())
+            .is_ok()
+    );
 
     // Unknown connection option
-    assert!(connection
-        .set_option(OptionConnection::Other("unknown".into()), "".into())
-        .is_err());
+    assert!(
+        connection
+            .set_option(OptionConnection::Other("unknown".into()), "".into())
+            .is_err()
+    );
 
     assert!(connection.new_statement().is_ok());
 }
@@ -239,9 +243,11 @@ pub fn test_connection_get_table_schema(connection: &mut ManagedConnection) {
 
     connection.rollback().unwrap();
 
-    assert!(connection
-        .get_table_schema(None, None, "nonexistent_table")
-        .is_err());
+    assert!(
+        connection
+            .get_table_schema(None, None, "nonexistent_table")
+            .is_err()
+    );
 }
 
 pub fn test_statement(statement: &mut ManagedStatement) {
@@ -350,7 +356,9 @@ pub struct SetEnv {
 impl SetEnv {
     pub fn new(env_var: &'static str, new_value: impl AsRef<OsStr>) -> Self {
         let original_value = std::env::var_os(env_var);
-        std::env::set_var(env_var, new_value);
+        unsafe {
+            std::env::set_var(env_var, new_value);
+        }
         Self {
             env_var,
             original_value,
@@ -361,9 +369,13 @@ impl SetEnv {
 impl Drop for SetEnv {
     fn drop(&mut self) {
         if let Some(original_value) = &self.original_value {
-            std::env::set_var(self.env_var, original_value);
+            unsafe {
+                std::env::set_var(self.env_var, original_value);
+            }
         } else {
-            std::env::remove_var(self.env_var);
+            unsafe {
+                std::env::remove_var(self.env_var);
+            }
         }
     }
 }

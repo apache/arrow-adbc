@@ -33,8 +33,7 @@ pub static GET_TABLE_TYPES_SCHEMA: LazyLock<SchemaRef> = LazyLock::new(|| {
 /// Schema of the data returned by [get_info][crate::Connection::get_info].
 pub static GET_INFO_SCHEMA: LazyLock<SchemaRef> = LazyLock::new(|| {
     let info_schema = DataType::Union(
-        #[allow(deprecated)] // TODO: remove this once update the minimum arrow version to 57.2.0
-        UnionFields::new(
+        UnionFields::try_new(
             vec![0, 1, 2, 3, 4, 5],
             vec![
                 Field::new("string_value", DataType::Utf8, true),
@@ -55,7 +54,8 @@ pub static GET_INFO_SCHEMA: LazyLock<SchemaRef> = LazyLock::new(|| {
                     true,
                 ),
             ],
-        ),
+        )
+        .expect("must be valid"),
         UnionMode::Dense,
     );
 
@@ -75,8 +75,7 @@ pub static GET_STATISTIC_NAMES_SCHEMA: LazyLock<SchemaRef> = LazyLock::new(|| {
 
 pub static STATISTIC_VALUE_SCHEMA: LazyLock<DataType> = LazyLock::new(|| {
     DataType::Union(
-        #[allow(deprecated)] // TODO: remove this once update the minimum arrow version to 57.2.0
-        UnionFields::new(
+        UnionFields::try_new(
             vec![0, 1, 2, 3],
             vec![
                 Field::new("int64", DataType::Int64, true),
@@ -84,7 +83,8 @@ pub static STATISTIC_VALUE_SCHEMA: LazyLock<DataType> = LazyLock::new(|| {
                 Field::new("float64", DataType::Float64, true),
                 Field::new("binary", DataType::Binary, true),
             ],
-        ),
+        )
+        .expect("must be valid"),
         UnionMode::Dense,
     )
 });
