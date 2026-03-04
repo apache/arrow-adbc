@@ -17,7 +17,7 @@
 
 use path_slash::PathBufExt;
 use std::borrow::Cow;
-use std::ffi::{c_void, OsStr};
+use std::ffi::{OsStr, c_void};
 use std::fmt::Write;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -27,10 +27,10 @@ use libloading::Symbol;
 use toml::de::{DeTable, DeValue};
 
 use adbc_core::{
+    LOAD_FLAG_ALLOW_RELATIVE_PATHS, LOAD_FLAG_SEARCH_ENV, LOAD_FLAG_SEARCH_SYSTEM,
+    LOAD_FLAG_SEARCH_USER, LoadFlags,
     error::{Error, Result, Status},
     options::AdbcVersion,
-    LoadFlags, LOAD_FLAG_ALLOW_RELATIVE_PATHS, LOAD_FLAG_SEARCH_ENV, LOAD_FLAG_SEARCH_SYSTEM,
-    LOAD_FLAG_SEARCH_USER,
 };
 use adbc_ffi::{
     options::check_status,
@@ -695,8 +695,8 @@ const fn arch_triplet() -> (&'static str, &'static str, &'static str) {
 mod target_windows {
     use windows_sys as windows;
 
-    use std::ffi::c_void;
     use std::ffi::OsString;
+    use std::ffi::c_void;
     use std::os::windows::ffi::OsStringExt;
     use std::path::PathBuf;
     use std::slice;
@@ -788,30 +788,28 @@ fn system_config_dir() -> Option<PathBuf> {
 
 fn get_search_paths(lvls: LoadFlags) -> Vec<PathBuf> {
     let mut result = Vec::new();
-    if lvls & LOAD_FLAG_SEARCH_ENV != 0 {
-        if let Some(paths) = env::var_os("ADBC_DRIVER_PATH") {
-            for p in env::split_paths(&paths) {
-                result.push(p);
-            }
+    if lvls & LOAD_FLAG_SEARCH_ENV != 0
+        && let Some(paths) = env::var_os("ADBC_DRIVER_PATH")
+    {
+        for p in env::split_paths(&paths) {
+            result.push(p);
         }
     }
 
-    if lvls & LOAD_FLAG_SEARCH_USER != 0 {
-        if let Some(path) = user_config_dir() {
-            if path.exists() {
-                result.push(path);
-            }
-        }
+    if lvls & LOAD_FLAG_SEARCH_USER != 0
+        && let Some(path) = user_config_dir()
+        && path.exists()
+    {
+        result.push(path);
     }
 
     // system level for windows is to search the registry keys
     #[cfg(not(windows))]
-    if lvls & LOAD_FLAG_SEARCH_SYSTEM != 0 {
-        if let Some(path) = system_config_dir() {
-            if path.exists() {
-                result.push(path);
-            }
-        }
+    if lvls & LOAD_FLAG_SEARCH_SYSTEM != 0
+        && let Some(path) = system_config_dir()
+        && path.exists()
+    {
+        result.push(path);
     }
 
     result
@@ -1017,7 +1015,7 @@ pub(crate) fn parse_driver_uri<'a>(uri: &'a str) -> Result<DriverLocator<'a>> {
 mod tests {
     use std::env;
 
-    use adbc_core::{options::AdbcVersion, LOAD_FLAG_ALLOW_RELATIVE_PATHS};
+    use adbc_core::{LOAD_FLAG_ALLOW_RELATIVE_PATHS, options::AdbcVersion};
     use temp_env::{with_var, with_var_unset};
 
     use crate::ManagedDriver;

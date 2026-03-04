@@ -19,7 +19,7 @@ use std::env;
 use std::path::PathBuf;
 
 use adbc_core::options::AdbcVersion;
-use adbc_core::{error::Status, LOAD_FLAG_DEFAULT};
+use adbc_core::{LOAD_FLAG_DEFAULT, error::Status};
 use adbc_driver_manager::ManagedDatabase;
 
 fn write_profile_to_tempfile(tmp_dir: &tempfile::TempDir, name: &str, content: &str) -> PathBuf {
@@ -38,7 +38,10 @@ fn test_env_var_replacement_basic() {
 
     // Set a test environment variable
     let prev_value = env::var_os("ADBC_TEST_ENV_VAR");
-    env::set_var("ADBC_TEST_ENV_VAR", ":memory:");
+
+    unsafe {
+        env::set_var("ADBC_TEST_ENV_VAR", ":memory:");
+    }
 
     let profile_content = r#"
 version = 1
@@ -54,9 +57,11 @@ uri = "{{ env_var(ADBC_TEST_ENV_VAR) }}"
     let result = ManagedDatabase::from_uri(&uri, None, AdbcVersion::V100, LOAD_FLAG_DEFAULT, None);
 
     // Restore environment variable
-    match prev_value {
-        Some(val) => env::set_var("ADBC_TEST_ENV_VAR", val),
-        None => env::remove_var("ADBC_TEST_ENV_VAR"),
+    unsafe {
+        match prev_value {
+            Some(val) => env::set_var("ADBC_TEST_ENV_VAR", val),
+            None => env::remove_var("ADBC_TEST_ENV_VAR"),
+        }
     }
 
     match result {
@@ -85,7 +90,9 @@ fn test_env_var_replacement_empty() {
         .expect("Failed to create temporary directory");
 
     // Make sure the env var doesn't exist
-    env::remove_var("ADBC_NONEXISTENT_VAR_12345");
+    unsafe {
+        env::remove_var("ADBC_NONEXISTENT_VAR_12345");
+    }
 
     let profile_content = r#"
 version = 1
@@ -199,7 +206,9 @@ fn test_env_var_replacement_interpolation() {
 
     // Set a test environment variable
     let prev_value = env::var_os("ADBC_TEST_INTERPOLATE");
-    env::set_var("ADBC_TEST_INTERPOLATE", "middle_value");
+    unsafe {
+        env::set_var("ADBC_TEST_INTERPOLATE", "middle_value");
+    }
 
     let profile_content = r#"
 version = 1
@@ -216,9 +225,11 @@ test_option = "prefix_{{ env_var(ADBC_TEST_INTERPOLATE) }}_suffix"
     let result = ManagedDatabase::from_uri(&uri, None, AdbcVersion::V100, LOAD_FLAG_DEFAULT, None);
 
     // Restore environment variable
-    match prev_value {
-        Some(val) => env::set_var("ADBC_TEST_INTERPOLATE", val),
-        None => env::remove_var("ADBC_TEST_INTERPOLATE"),
+    unsafe {
+        match prev_value {
+            Some(val) => env::set_var("ADBC_TEST_INTERPOLATE", val),
+            None => env::remove_var("ADBC_TEST_INTERPOLATE"),
+        }
     }
 
     assert!(result.is_err(), "Expected error for malformed env_var");
@@ -245,8 +256,10 @@ fn test_env_var_replacement_multiple() {
     // Set test environment variables
     let prev_var1 = env::var_os("ADBC_TEST_VAR1");
     let prev_var2 = env::var_os("ADBC_TEST_VAR2");
-    env::set_var("ADBC_TEST_VAR1", "first");
-    env::set_var("ADBC_TEST_VAR2", "second");
+    unsafe {
+        env::set_var("ADBC_TEST_VAR1", "first");
+        env::set_var("ADBC_TEST_VAR2", "second");
+    }
 
     let profile_content = r#"
 version = 1
@@ -263,13 +276,15 @@ test_option = "{{ env_var(ADBC_TEST_VAR1) }}_and_{{ env_var(ADBC_TEST_VAR2) }}"
     let result = ManagedDatabase::from_uri(&uri, None, AdbcVersion::V100, LOAD_FLAG_DEFAULT, None);
 
     // Restore environment variables
-    match prev_var1 {
-        Some(val) => env::set_var("ADBC_TEST_VAR1", val),
-        None => env::remove_var("ADBC_TEST_VAR1"),
-    }
-    match prev_var2 {
-        Some(val) => env::set_var("ADBC_TEST_VAR2", val),
-        None => env::remove_var("ADBC_TEST_VAR2"),
+    unsafe {
+        match prev_var1 {
+            Some(val) => env::set_var("ADBC_TEST_VAR1", val),
+            None => env::remove_var("ADBC_TEST_VAR1"),
+        }
+        match prev_var2 {
+            Some(val) => env::set_var("ADBC_TEST_VAR2", val),
+            None => env::remove_var("ADBC_TEST_VAR2"),
+        }
     }
 
     assert!(result.is_err(), "Expected error for malformed env_var");
@@ -295,7 +310,9 @@ fn test_env_var_replacement_whitespace() {
 
     // Set a test environment variable
     let prev_value = env::var_os("ADBC_TEST_WHITESPACE");
-    env::set_var("ADBC_TEST_WHITESPACE", "value");
+    unsafe {
+        env::set_var("ADBC_TEST_WHITESPACE", "value");
+    }
 
     let profile_content = r#"
 version = 1
@@ -312,9 +329,11 @@ test_option = "{{   env_var(  ADBC_TEST_WHITESPACE  )   }}"
     let result = ManagedDatabase::from_uri(&uri, None, AdbcVersion::V100, LOAD_FLAG_DEFAULT, None);
 
     // Restore environment variable
-    match prev_value {
-        Some(val) => env::set_var("ADBC_TEST_WHITESPACE", val),
-        None => env::remove_var("ADBC_TEST_WHITESPACE"),
+    unsafe {
+        match prev_value {
+            Some(val) => env::set_var("ADBC_TEST_WHITESPACE", val),
+            None => env::remove_var("ADBC_TEST_WHITESPACE"),
+        }
     }
 
     assert!(result.is_err(), "Expected error for malformed env_var");

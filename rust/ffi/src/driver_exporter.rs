@@ -20,14 +20,14 @@ use std::ffi::{CStr, CString};
 use std::hash::Hash;
 use std::os::raw::{c_char, c_int, c_void};
 
-use arrow_array::ffi::{from_ffi, FFI_ArrowArray, FFI_ArrowSchema};
-use arrow_array::ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream};
 use arrow_array::StructArray;
+use arrow_array::ffi::{FFI_ArrowArray, FFI_ArrowSchema, from_ffi};
+use arrow_array::ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream};
 use arrow_schema::DataType;
 
 use super::{
-    options::get_opt_name, types::ErrorPrivateData, FFI_AdbcConnection, FFI_AdbcDatabase,
-    FFI_AdbcDriver, FFI_AdbcError, FFI_AdbcErrorDetail, FFI_AdbcPartitions, FFI_AdbcStatement,
+    FFI_AdbcConnection, FFI_AdbcDatabase, FFI_AdbcDriver, FFI_AdbcError, FFI_AdbcErrorDetail,
+    FFI_AdbcPartitions, FFI_AdbcStatement, options::get_opt_name, types::ErrorPrivateData,
 };
 use adbc_core::constants::ADBC_STATUS_OK;
 use adbc_core::error::{AdbcStatusCode, Error, Result, Status};
@@ -181,7 +181,7 @@ impl<DriverType: Driver + Default + 'static> FFIDriver for DriverType {
 macro_rules! export_driver {
     ($func_name:ident, $driver_type:ty) => {
         #[allow(non_snake_case)]
-        #[no_mangle]
+        #[unsafe(no_mangle)]
         pub unsafe extern "C" fn $func_name(
             version: std::os::raw::c_int,
             driver: *mut std::os::raw::c_void,
@@ -211,7 +211,7 @@ macro_rules! export_driver {
 
         // Fallback symbol, if the driver manager does not find the init above
         #[allow(non_snake_case)]
-        #[no_mangle]
+        #[unsafe(no_mangle)]
         pub unsafe extern "C" fn AdbcDriverInit(
             version: std::os::raw::c_int,
             driver: *mut std::os::raw::c_void,
@@ -300,16 +300,16 @@ unsafe extern "C" fn release_ffi_driver(
     driver: *mut FFI_AdbcDriver,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    if let Some(driver) = driver.as_mut() {
-        if driver.release.take().is_none() {
-            check_err!(
-                Err(Error::with_message_and_status(
-                    "Driver already released",
-                    Status::InvalidState
-                )),
-                error
-            );
-        }
+    if let Some(driver) = driver.as_mut()
+        && driver.release.take().is_none()
+    {
+        check_err!(
+            Err(Error::with_message_and_status(
+                "Driver already released",
+                Status::InvalidState
+            )),
+            error
+        );
     }
     ADBC_STATUS_OK
 }
@@ -545,11 +545,10 @@ unsafe fn database_private_data<'a, DriverType: Driver>(
     database: &mut FFI_AdbcDatabase,
 ) -> Result<&'a mut ExportedDatabase<DriverType>> {
     let exported = database.private_data as *mut ExportedDatabase<DriverType>;
-    let exported = exported.as_mut().ok_or(Error::with_message_and_status(
+    exported.as_mut().ok_or(Error::with_message_and_status(
         "Uninitialized database",
         Status::InvalidState,
-    ));
-    exported
+    ))
 }
 
 // SAFETY: Will panic if `key` is null.
@@ -819,11 +818,10 @@ unsafe fn connection_private_data<'a, DriverType: Driver>(
     connection: &mut FFI_AdbcConnection,
 ) -> Result<&'a mut ExportedConnection<DriverType>> {
     let exported = connection.private_data as *mut ExportedConnection<DriverType>;
-    let exported = exported.as_mut().ok_or(Error::with_message_and_status(
+    exported.as_mut().ok_or(Error::with_message_and_status(
         "Uninitialized connection",
         Status::InvalidState,
-    ));
-    exported
+    ))
 }
 
 // SAFETY: Will panic if `connection` or `key` is null.
@@ -1400,11 +1398,10 @@ unsafe fn statement_private_data<'a, DriverType: Driver>(
 ) -> Result<&'a mut ExportedStatement<DriverType>> {
     assert!(!statement.is_null());
     let exported = (*statement).private_data as *mut ExportedStatement<DriverType>;
-    let exported = exported.as_mut().ok_or(Error::with_message_and_status(
+    exported.as_mut().ok_or(Error::with_message_and_status(
         "Uninitialized statement",
         Status::InvalidState,
-    ));
-    exported
+    ))
 }
 
 // SAFETY: Will panic if `statement` or `key` is null.

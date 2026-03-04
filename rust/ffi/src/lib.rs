@@ -15,6 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#![allow(unsafe_op_in_unsafe_fn)]
+
 //! ADBC: Arrow Database Connectivity
 //!
 //! ADBC is a set of APIs and libraries for [Arrow](https://arrow.apache.org/)-native
