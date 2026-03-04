@@ -226,7 +226,7 @@ enum DriverInitFunc<'a> {
 }
 
 /// Allow using [DriverInitFunc] as a function pointer.
-impl<'a> ops::Deref for DriverInitFunc<'a> {
+impl ops::Deref for DriverInitFunc<'_> {
     type Target = FFI_AdbcDriverInitFunc;
 
     fn deref(&self) -> &Self::Target {
@@ -346,10 +346,10 @@ impl<'a> DriverLibrary<'a> {
         Ok(SearchHit::new(info.lib_path, library, info.entrypoint))
     }
 
-    pub(crate) fn derive_entrypoint<'b>(
-        entrypoint: Option<&'b [u8]>,
+    pub(crate) fn derive_entrypoint(
+        entrypoint: Option<&[u8]>,
         driver_path: impl AsRef<OsStr>,
-    ) -> Cow<'b, [u8]> {
+    ) -> Cow<'_, [u8]> {
         if let Some(entrypoint) = entrypoint {
             Cow::Borrowed(entrypoint)
         } else {
@@ -788,28 +788,30 @@ fn system_config_dir() -> Option<PathBuf> {
 
 fn get_search_paths(lvls: LoadFlags) -> Vec<PathBuf> {
     let mut result = Vec::new();
-    if lvls & LOAD_FLAG_SEARCH_ENV != 0
-        && let Some(paths) = env::var_os("ADBC_DRIVER_PATH")
-    {
-        for p in env::split_paths(&paths) {
-            result.push(p);
+    if lvls & LOAD_FLAG_SEARCH_ENV != 0 {
+        if let Some(paths) = env::var_os("ADBC_DRIVER_PATH") {
+            for p in env::split_paths(&paths) {
+                result.push(p);
+            }
         }
     }
 
-    if lvls & LOAD_FLAG_SEARCH_USER != 0
-        && let Some(path) = user_config_dir()
-        && path.exists()
-    {
-        result.push(path);
+    if lvls & LOAD_FLAG_SEARCH_USER != 0 {
+        if let Some(path) = user_config_dir() {
+            if path.exists() {
+                result.push(path);
+            }
+        }
     }
 
     // system level for windows is to search the registry keys
     #[cfg(not(windows))]
-    if lvls & LOAD_FLAG_SEARCH_SYSTEM != 0
-        && let Some(path) = system_config_dir()
-        && path.exists()
-    {
-        result.push(path);
+    if lvls & LOAD_FLAG_SEARCH_SYSTEM != 0 {
+        if let Some(path) = system_config_dir() {
+            if path.exists() {
+                result.push(path);
+            }
+        }
     }
 
     result
@@ -978,7 +980,7 @@ pub(crate) enum DriverLocator<'a> {
 /// Returns `Status::InvalidArguments` if:
 /// - The URI has no colon separator
 /// - The URI format is invalid
-pub(crate) fn parse_driver_uri<'a>(uri: &'a str) -> Result<DriverLocator<'a>> {
+pub(crate) fn parse_driver_uri(uri: &'_ str) -> Result<DriverLocator<'_>> {
     let idx = uri.find(":").ok_or(Error::with_message_and_status(
         format!("Invalid URI: {uri}"),
         Status::InvalidArguments,

@@ -300,16 +300,16 @@ unsafe extern "C" fn release_ffi_driver(
     driver: *mut FFI_AdbcDriver,
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
-    if let Some(driver) = driver.as_mut()
-        && driver.release.take().is_none()
-    {
-        check_err!(
-            Err(Error::with_message_and_status(
-                "Driver already released",
-                Status::InvalidState
-            )),
-            error
-        );
+    if let Some(driver) = driver.as_mut() {
+        if driver.release.take().is_none() {
+            check_err!(
+                Err(Error::with_message_and_status(
+                    "Driver already released",
+                    Status::InvalidState
+                )),
+                error
+            );
+        }
     }
     ADBC_STATUS_OK
 }
