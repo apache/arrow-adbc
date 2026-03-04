@@ -110,8 +110,12 @@ jobs:
         run: npm ci
       - name: Build
         working-directory: javascript
-        run: npm run build -- --target ${{ matrix.settings.target }}
         shell: bash
+        run: |
+          npx napi build --platform --release --target ${{ matrix.settings.target }}
+          mv index.js binding.js
+          mv index.d.ts binding.d.ts
+          npx tsc
       - name: Ad-hoc sign binary (macOS)
         if: runner.os == 'macOS'
         working-directory: javascript
