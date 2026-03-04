@@ -32,9 +32,13 @@ repo_root = source_root.joinpath("../../")
 FileToCopy = namedtuple("FileToCopy", ["source", "dest_dir"])
 files_to_copy = [
     FileToCopy("c/include/arrow-adbc/adbc.h", "arrow-adbc"),
+    FileToCopy("c/include/arrow-adbc/adbc_driver_manager.h", "arrow-adbc"),
     FileToCopy("c/driver_manager/adbc_driver_manager.cc", ""),
     FileToCopy("c/driver_manager/current_arch.h", ""),
-    FileToCopy("c/include/arrow-adbc/adbc_driver_manager.h", "arrow-adbc"),
+    FileToCopy("c/driver_manager/adbc_driver_manager_profiles.cc", ""),
+    FileToCopy("c/driver_manager/adbc_driver_manager_api.cc", ""),
+    FileToCopy("c/driver_manager/adbc_driver_manager_driver_loading.cc", ""),
+    FileToCopy("c/driver_manager/adbc_driver_manager_internal.h", ""),
     FileToCopy("c/vendor/backward/backward.hpp", ""),
     FileToCopy("c/vendor/toml++/toml.hpp", "toml++"),
 ]
@@ -123,6 +127,9 @@ setup(
                 "adbc_driver_manager/_blocking_impl.cc",
                 "adbc_driver_manager/_lib.pyx",
                 "adbc_driver_manager/adbc_driver_manager.cc",
+                "adbc_driver_manager/adbc_driver_manager_api.cc",
+                "adbc_driver_manager/adbc_driver_manager_driver_loading.cc",
+                "adbc_driver_manager/adbc_driver_manager_profiles.cc",
             ],
         ),
         Extension(

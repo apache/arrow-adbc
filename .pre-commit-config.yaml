@@ -118,10 +118,16 @@ repos:
       files: '^c/include/arrow-adbc/[^/]*\.h$'
       entry: "./ci/scripts/run_cgo_drivermgr_check.sh"
     - id: check-cgo-adbc-impl
-      name: Ensure CGO adbc_driver_manager.cc is syncd
+      name: Ensure CGO adbc_driver_manager*.cc is syncd
       language: script
       pass_filenames: true
-      files: '^c/driver_manager/adbc_driver_manager\.cc$'
+      files: '^c/driver_manager/adbc_driver_manager(|_api|_profiles|_driver_loading)\.cc$'
+      entry: "./ci/scripts/run_cgo_drivermgr_check.sh"
+    - id: check-cgo-adbc-impl-headers
+      name: Ensure CGO adbc_driver_manager headers are syncd
+      language: script
+      pass_filenames: true
+      files: '^c/driver_manager/(adbc_driver_manager_internal|current_arch)\.h$'
       entry: "./ci/scripts/run_cgo_drivermgr_check.sh"
     # https://infra.apache.org/github-actions-policy.html
     - id: check-pin

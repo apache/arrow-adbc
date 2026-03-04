@@ -46,6 +46,9 @@ endif()
 add_arrow_lib(adbc_driver_manager
               SOURCES
               adbc_driver_manager.cc
+              adbc_driver_manager_api.cc
+              adbc_driver_manager_driver_loading.cc
+              adbc_driver_manager_profiles.cc
               OUTPUTS
               ADBC_LIBRARIES
               CMAKE_PACKAGE_NAME
