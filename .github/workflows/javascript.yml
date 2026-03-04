@@ -20,7 +20,7 @@ name: JavaScript
 env:
   DEBUG: napi:*
   APP_NAME: adbc-driver-manager
-  MACOSX_DEPLOYMENT_TARGET: '10.13'
+  MACOSX_DEPLOYMENT_TARGET: '10.15'
   CARGO_INCREMENTAL: '1'
 
 on:
@@ -139,7 +139,8 @@ jobs:
             target: x86_64-apple-darwin
           - host: macos-latest
             target: aarch64-apple-darwin
-          # Windows testing is tricky without proper env setup for sqlite driver build
+          - host: windows-latest
+            target: x86_64-pc-windows-msvc
     steps:
       - uses: actions/checkout@v6
         with:
@@ -159,11 +160,20 @@ jobs:
         with:
           name: bindings-${{ matrix.settings.target }}
           path: javascript
+      - name: Setup conda (Windows)
+        if: runner.os == 'Windows'
+        uses: conda-incubator/setup-miniconda@fc2d68f6413eb2d87b895e92f8584b5b94a10167  # v3.3.0
+        with:
+          miniforge-version: latest
+      - name: Install C++ dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: conda install -c conda-forge --file ci/conda_env_cpp.txt
       - name: Build Driver
         # We need to build the SQLite driver for tests.
         # This assumes the host has CMake and C++ compiler.
-        working-directory: javascript
-        run: npm run build:driver
+        # Use shell: bash so this works on Windows (Git Bash) as well.
+        shell: bash
+        run: ci/scripts/node_build.sh "${{ github.workspace }}/javascript/build"
         env:
           # Point to vendored sqlite for reliable build in CI
           ADBC_CMAKE_ARGS: "-DSQLite3_INCLUDE_DIR=${{ github.workspace }}/c/vendor/sqlite3"
