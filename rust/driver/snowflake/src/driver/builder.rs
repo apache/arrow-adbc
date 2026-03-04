@@ -24,9 +24,9 @@ use adbc_core::{
     options::AdbcVersion,
 };
 
+use crate::Driver;
 #[cfg(feature = "env")]
 use crate::builder::env_parse;
-use crate::Driver;
 
 /// A builder for [`Driver`].
 ///
@@ -94,7 +94,9 @@ mod tests {
     #[test]
     fn from_env_parse_error() {
         // Set a value that fails to parse to an AdbcVersion
-        env::set_var(Builder::ADBC_VERSION_ENV, "?");
+        unsafe {
+            env::set_var(Builder::ADBC_VERSION_ENV, "?");
+        }
         let result = Builder::from_env();
         assert!(result.is_err());
         assert_eq!(

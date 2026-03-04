@@ -64,7 +64,7 @@ impl fmt::Debug for Driver {
 }
 
 #[cfg(any(feature = "bundled", feature = "linked"))]
-extern "C" {
+unsafe extern "C" {
     #[link_name = "AdbcDriverSnowflakeInit"]
     fn init(version: c_int, raw_driver: *mut c_void, err: *mut FFI_AdbcError) -> AdbcStatusCode;
 }

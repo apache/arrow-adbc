@@ -29,12 +29,12 @@ use arrow_buffer::{OffsetBuffer, ScalarBuffer};
 use arrow_schema::{ArrowError, DataType, Field, Schema, SchemaRef, UnionFields};
 
 use adbc_core::{
-    constants,
+    Connection, Database, Driver, Optionable, PartitionedResult, Statement, constants,
     error::{Error, Result, Status},
     options::{
         InfoCode, ObjectDepth, OptionConnection, OptionDatabase, OptionStatement, OptionValue,
     },
-    schemas, Connection, Database, Driver, Optionable, PartitionedResult, Statement,
+    schemas,
 };
 
 #[derive(Debug)]
@@ -177,13 +177,12 @@ where
 
 fn maybe_panic(fnname: impl AsRef<str>) {
     if let Some(func) = std::env::var_os("PANICDUMMY_FUNC").map(|x| x.to_string_lossy().to_string())
+        && fnname.as_ref() == func
     {
-        if fnname.as_ref() == func {
-            let message = std::env::var_os("PANICDUMMY_MESSAGE")
-                .map(|x| x.to_string_lossy().to_string())
-                .unwrap_or_else(|| format!("We panicked in {}!", fnname.as_ref()));
-            panic!("{}", message);
-        }
+        let message = std::env::var_os("PANICDUMMY_MESSAGE")
+            .map(|x| x.to_string_lossy().to_string())
+            .unwrap_or_else(|| format!("We panicked in {}!", fnname.as_ref()));
+        panic!("{}", message);
     }
 }
 

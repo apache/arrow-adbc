@@ -24,9 +24,8 @@ use std::ptr::{null, null_mut};
 
 use super::methods;
 use adbc_core::{
-    constants,
+    Partitions, constants,
     error::{AdbcStatusCode, Error, Status},
-    Partitions,
 };
 
 /// A driver initialization function.
@@ -468,24 +467,24 @@ impl TryFrom<&FFI_AdbcError> for Error {
             details: None,
         };
 
-        if value.vendor_code == constants::ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA {
-            if let Some(driver) = unsafe { value.private_driver.as_ref() } {
-                let get_detail_count = driver_method!(driver, ErrorGetDetailCount);
-                let get_detail = driver_method!(driver, ErrorGetDetail);
-                let num_details = unsafe { get_detail_count(value) };
-                let details = (0..num_details)
-                    .map(|i| unsafe { get_detail(value, i) })
-                    .filter(|d| !d.key.is_null() && !d.value.is_null())
-                    .map(|d| unsafe {
-                        // SAFETY: we assume that C gives us a valid string.
-                        let key = CStr::from_ptr(d.key).to_string_lossy().to_string();
-                        // SAFETY: we assume that C gives us valid data.
-                        let value = std::slice::from_raw_parts(d.value, d.value_length);
-                        (key, value.to_vec())
-                    })
-                    .collect();
-                error.details = Some(details);
-            }
+        if value.vendor_code == constants::ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA
+            && let Some(driver) = unsafe { value.private_driver.as_ref() }
+        {
+            let get_detail_count = driver_method!(driver, ErrorGetDetailCount);
+            let get_detail = driver_method!(driver, ErrorGetDetail);
+            let num_details = unsafe { get_detail_count(value) };
+            let details = (0..num_details)
+                .map(|i| unsafe { get_detail(value, i) })
+                .filter(|d| !d.key.is_null() && !d.value.is_null())
+                .map(|d| unsafe {
+                    // SAFETY: we assume that C gives us a valid string.
+                    let key = CStr::from_ptr(d.key).to_string_lossy().to_string();
+                    // SAFETY: we assume that C gives us valid data.
+                    let value = std::slice::from_raw_parts(d.value, d.value_length);
+                    (key, value.to_vec())
+                })
+                .collect();
+            error.details = Some(details);
         }
 
         Ok(error)
