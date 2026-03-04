@@ -32,6 +32,7 @@ version.workspace = true
 
 [features]
 default = []
+async = ["arrow-array/async"]
 
 [dependencies]
 arrow-array.workspace = true
