@@ -191,7 +191,10 @@ jobs:
         run: echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/javascript/build/lib/libadbc_driver_sqlite.dylib" >> "$GITHUB_ENV"
       - name: Set driver path (Windows)
         if: runner.os == 'Windows'
-        run: echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/javascript/build/bin/adbc_driver_sqlite.dll" >> $GITHUB_ENV
+        shell: pwsh
+        run: |
+          echo "PATH=${{ github.workspace }}/javascript/build/bin;$env:CONDA_PREFIX\Library\bin;$env:PATH" >> $env:GITHUB_ENV
+          echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/javascript/build/bin/adbc_driver_sqlite.dll" >> $env:GITHUB_ENV
       - name: Run Tests
         working-directory: javascript
         run: npm test
