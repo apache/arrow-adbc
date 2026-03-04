@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-name: Node.js Binding
+name: JavaScript
 
 env:
   DEBUG: napi:*
@@ -24,18 +24,19 @@ env:
   CARGO_INCREMENTAL: '1'
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
     paths:
       - 'javascript/**'
       - 'rust/**'
-      - '.github/workflows/node.yml'
+      - '.github/workflows/javascript.yml'
   pull_request:
     paths:
       - 'javascript/**'
       - 'rust/**'
-      - '.github/workflows/node.yml'
+      - '.github/workflows/javascript.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -56,7 +57,7 @@ jobs:
           node-version: 22
           cache: 'npm'
           cache-dependency-path: javascript/package-lock.json
-      - name: Install Rust
+      - name: Use stable Rust
         run: |
           rustup toolchain install stable --no-self-update
           rustup default stable
@@ -99,7 +100,7 @@ jobs:
           node-version: 22
           cache: 'npm'
           cache-dependency-path: javascript/package-lock.json
-      - name: Install Rust
+      - name: Use stable Rust
         run: |
           rustup toolchain install stable --no-self-update
           rustup default stable
