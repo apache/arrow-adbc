@@ -181,6 +181,12 @@ jobs:
         env:
           # Point to vendored sqlite for reliable build in CI
           ADBC_CMAKE_ARGS: "-DSQLite3_INCLUDE_DIR=${{ github.workspace }}/c/vendor/sqlite3"
+      - name: Set ADBC_DRIVER_PATH (Unix)
+        if: runner.os != 'Windows'
+        run: echo "ADBC_DRIVER_PATH=${{ github.workspace }}/javascript/build/lib" >> "$GITHUB_ENV"
+      - name: Set ADBC_DRIVER_PATH (Windows)
+        if: runner.os == 'Windows'
+        run: echo "ADBC_DRIVER_PATH=${{ github.workspace }}/javascript/build/bin" >> $GITHUB_ENV
       - name: Run Tests
         working-directory: javascript
         run: npm test
