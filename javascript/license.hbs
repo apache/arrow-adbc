@@ -1,0 +1,15 @@
+{{#each licenses}}{{#if first_of_kind}}
+--------------------------------------------------------------------------------
+{{#if (eq id "Apache-2.0")}}
+The following crates are used under the Apache License 2.0 (see above):
+{{else}}
+{{name}} ({{id}})
+
+The following crates are used under this license:
+{{/if}}
+{{#each used_by}}  {{crate.name}} {{crate.version}}{{#if crate.repository}} ({{crate.repository}}){{/if}}
+{{/each}}
+{{#unless (eq id "Apache-2.0")}}
+{{{text}}}
+{{/unless}}
+{{/if}}{{/each}}
