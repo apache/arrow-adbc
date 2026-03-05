@@ -1411,6 +1411,10 @@ struct ADBC_EXPORT AdbcDriver {
                                                  struct AdbcError*);
   AdbcStatusCode (*MultiResultSetRelease)(struct AdbcMultiResultSet*, struct AdbcError*);
 
+  AdbcStatusCode (*ConnectionGetObjectsRoutines)(struct AdbcConnection*, const char*,
+                                                 const char*, const char*, int, int,
+                                                 struct ArrowArrayStream*,
+                                                 struct AdbcError*);
   AdbcStatusCode (*ConnectionSetWarningHandler)(struct AdbcConnection*,
                                                 AdbcWarningHandler handler,
                                                 void* user_data, struct AdbcError*);
@@ -1993,60 +1997,66 @@ AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int d
 ///
 /// The result is an Arrow dataset with the following schema:
 ///
-/// | Field Name               | Field Type              |
-/// |--------------------------|-------------------------|
-/// | catalog_name             | utf8                    |
-/// | catalog_db_schemas       | list<DB_SCHEMA_SCHEMA>  |
+/// | Field Name                  | Field Type              |
+/// |-----------------------------|-------------------------|
+/// | catalog_name                | utf8                    |
+/// | catalog_db_schemas          | list<DB_SCHEMA_SCHEMA>  |
 ///
 /// DB_SCHEMA_SCHEMA is a Struct with fields:
 ///
-/// | Field Name               | Field Type              |
-/// |--------------------------|-------------------------|
-/// | db_schema_name           | utf8                    |
-/// | db_schema_routines       | list<ROUTINE_SCHEMA>    |
+/// | Field Name                  | Field Type              |
+/// |-----------------------------|-------------------------|
+/// | db_schema_name              | utf8                    |
+/// | db_schema_routines          | list<ROUTINE_SCHEMA>    |
 ///
 /// ROUTINE_SCHEMA is a Struct with fields:
 ///
-/// | Field Name               | Field Type              | Comments |
-/// |--------------------------|-------------------------|----------|
-/// | routine_name             | utf8 not null           |          |
-/// | routine_specific_name    | utf8 not null           | (1)      |
-/// | routine_type             | utf8 not null           | (2)      |
-/// | routine_remarks          | utf8                    | (3)      |
-/// | routine_parameters       | list<PARAMETER_SCHEMA>  | (4)      |
-/// | routine_result           | list<PARAMETER_SCHEMA>  | (4)      |
-/// | routine_parameter_schema | binary                  | (5)      |
-/// | routine_result_schema    | binary                  | (5)      |
+/// | Field Name                  | Field Type              | Comments |
+/// |-----------------------------|-------------------------|----------|
+/// | routine_name                | utf8 not null           |          |
+/// | routine_specific_name       | utf8 not null           | (1)      |
+/// | routine_type                | utf8 not null           | (2)      |
+/// | routine_remarks             | utf8                    | (3)      |
+/// | routine_examples            | list<utf8>              | (3)      |
+/// | routine_definition          | utf8                    | (4)      |
+/// | routine_definition_language | utf8                    | (4)      |
+/// | routine_parameters          | list<PARAMETER_SCHEMA>  | (5)      |
+/// | routine_result              | list<PARAMETER_SCHEMA>  | (5)      |
+/// | routine_parameter_schema    | binary                  | (6)      |
+/// | routine_result_schema       | binary                  | (6)      |
 ///
 /// 1. A name that uniquely identifies the routine, to disambiguate
 ///    overloads.
 /// 2. 'FUNCTION', 'PROCEDURE', or a vendor-specific name (e.g. 'TABLE
 ///    FUNCTION').
-/// 3. Vendor-specific description of the routine.
-/// 4. Metadata about the accepted parameters and return values as structured
+/// 3. Vendor-specific description or help text, along with examples of the
+///    syntax.
+/// 4. The definition (e.g. SQL text used to create a procedure) and the
+///    language of the definition (e.g. SQL, Python)
+/// 5. Metadata about the accepted parameters and return values as structured
 ///    Arrow data.  Only populated if include_columns is set, otherwise null.
-/// 5. Metadata about the accepted parameters and return values as an Arrow
+/// 6. Metadata about the accepted parameters and return values as an Arrow
 ///    schema, serialized as an IPC message containing a schema Flatbuffers
 ///    structure.  Only populated if include_arrow_schema is set, otherwise
 ///    null.
 ///
 /// PARAMETER_SCHEMA is a Struct with fields:
 ///
-/// | Field Name               | Field Type              | Comments |
-/// |--------------------------|-------------------------|----------|
-/// | param_name               | utf8 not null           |          |
-/// | ordinal_position         | int32                   | (1)      |
-/// | remarks                  | utf8                    | (2)      |
-/// | param_type               | utf8                    | (3)      |
-/// | xdbc_data_type           | int16                   | (3)      |
-/// | xdbc_type_name           | utf8                    | (3)      |
-/// | xdbc_precision           | int32                   | (3)      |
-/// | xdbc_length              | int32                   | (3)      |
-/// | xdbc_scale               | int16                   | (3)      |
-/// | xdbc_num_prec_radix      | int16                   | (3)      |
-/// | xdbc_nullable            | int16                   | (3)      |
-/// | xdbc_char_octet_length   | int32                   | (3)      |
-/// | xdbc_is_nullable         | utf8                    | (3)      |
+/// | Field Name                  | Field Type              | Comments |
+/// |-----------------------------|-------------------------|----------|
+/// | param_name                  | utf8 not null           |          |
+/// | ordinal_position            | int32                   | (1)      |
+/// | remarks                     | utf8                    | (2)      |
+/// | param_type                  | utf8                    | (3)      |
+/// | xdbc_data_type              | int16                   | (3)      |
+/// | xdbc_type_name              | utf8                    | (3)      |
+/// | xdbc_precision              | int32                   | (3)      |
+/// | xdbc_length                 | int32                   | (3)      |
+/// | xdbc_scale                  | int16                   | (3)      |
+/// | xdbc_num_prec_radix         | int16                   | (3)      |
+/// | xdbc_nullable               | int16                   | (3)      |
+/// | xdbc_char_octet_length      | int32                   | (3)      |
+/// | xdbc_is_nullable            | utf8                    | (3)      |
 ///
 /// 1. The ordinal position of the parameter or return value (1-indexed).
 /// 2. Vendor-specific description of the parameter or return value.
@@ -2055,6 +2065,7 @@ AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int d
 ///    xdbc_ values are meant to provide JDBC/ODBC-compatible metadata
 ///    in an agnostic manner.
 ///
+/// \since ADBC API revision 1.2.0
 /// \param[in] connection The database connection.
 /// \param[in] catalog Only show routines in the given catalog. If NULL,
 ///   do not filter by catalog. If an empty string, only show routines

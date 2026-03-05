@@ -1411,6 +1411,10 @@ struct ADBC_EXPORT AdbcDriver {
                                                  struct AdbcError*);
   AdbcStatusCode (*MultiResultSetRelease)(struct AdbcMultiResultSet*, struct AdbcError*);
 
+  AdbcStatusCode (*ConnectionGetObjectsRoutines)(struct AdbcConnection*, const char*,
+                                                 const char*, const char*, int, int,
+                                                 struct ArrowArrayStream*,
+                                                 struct AdbcError*);
   AdbcStatusCode (*ConnectionSetWarningHandler)(struct AdbcConnection*,
                                                 AdbcWarningHandler handler,
                                                 void* user_data, struct AdbcError*);
@@ -1988,6 +1992,103 @@ AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int d
                                         const char* column_name,
                                         struct ArrowArrayStream* out,
                                         struct AdbcError* error);
+
+/// \brief Get a hierarchical view of all functions and procedures.
+///
+/// The result is an Arrow dataset with the following schema:
+///
+/// | Field Name                  | Field Type              |
+/// |-----------------------------|-------------------------|
+/// | catalog_name                | utf8                    |
+/// | catalog_db_schemas          | list<DB_SCHEMA_SCHEMA>  |
+///
+/// DB_SCHEMA_SCHEMA is a Struct with fields:
+///
+/// | Field Name                  | Field Type              |
+/// |-----------------------------|-------------------------|
+/// | db_schema_name              | utf8                    |
+/// | db_schema_routines          | list<ROUTINE_SCHEMA>    |
+///
+/// ROUTINE_SCHEMA is a Struct with fields:
+///
+/// | Field Name                  | Field Type              | Comments |
+/// |-----------------------------|-------------------------|----------|
+/// | routine_name                | utf8 not null           |          |
+/// | routine_specific_name       | utf8 not null           | (1)      |
+/// | routine_type                | utf8 not null           | (2)      |
+/// | routine_remarks             | utf8                    | (3)      |
+/// | routine_examples            | list<utf8>              | (3)      |
+/// | routine_definition          | utf8                    | (4)      |
+/// | routine_definition_language | utf8                    | (4)      |
+/// | routine_parameters          | list<PARAMETER_SCHEMA>  | (5)      |
+/// | routine_result              | list<PARAMETER_SCHEMA>  | (5)      |
+/// | routine_parameter_schema    | binary                  | (6)      |
+/// | routine_result_schema       | binary                  | (6)      |
+///
+/// 1. A name that uniquely identifies the routine, to disambiguate
+///    overloads.
+/// 2. 'FUNCTION', 'PROCEDURE', or a vendor-specific name (e.g. 'TABLE
+///    FUNCTION').
+/// 3. Vendor-specific description or help text, along with examples of the
+///    syntax.
+/// 4. The definition (e.g. SQL text used to create a procedure) and the
+///    language of the definition (e.g. SQL, Python)
+/// 5. Metadata about the accepted parameters and return values as structured
+///    Arrow data.  Only populated if include_columns is set, otherwise null.
+/// 6. Metadata about the accepted parameters and return values as an Arrow
+///    schema, serialized as an IPC message containing a schema Flatbuffers
+///    structure.  Only populated if include_arrow_schema is set, otherwise
+///    null.
+///
+/// PARAMETER_SCHEMA is a Struct with fields:
+///
+/// | Field Name                  | Field Type              | Comments |
+/// |-----------------------------|-------------------------|----------|
+/// | param_name                  | utf8 not null           |          |
+/// | ordinal_position            | int32                   | (1)      |
+/// | remarks                     | utf8                    | (2)      |
+/// | param_type                  | utf8                    | (3)      |
+/// | xdbc_data_type              | int16                   | (3)      |
+/// | xdbc_type_name              | utf8                    | (3)      |
+/// | xdbc_precision              | int32                   | (3)      |
+/// | xdbc_length                 | int32                   | (3)      |
+/// | xdbc_scale                  | int16                   | (3)      |
+/// | xdbc_num_prec_radix         | int16                   | (3)      |
+/// | xdbc_nullable               | int16                   | (3)      |
+/// | xdbc_char_octet_length      | int32                   | (3)      |
+/// | xdbc_is_nullable            | utf8                    | (3)      |
+///
+/// 1. The ordinal position of the parameter or return value (1-indexed).
+/// 2. Vendor-specific description of the parameter or return value.
+/// 3. 'IN', 'OUT', 'INOUT', or a vendor-specific name.
+/// 3. Optional value.  Should be null if not supported by the driver.
+///    xdbc_ values are meant to provide JDBC/ODBC-compatible metadata
+///    in an agnostic manner.
+///
+/// \since ADBC API revision 1.2.0
+/// \param[in] connection The database connection.
+/// \param[in] catalog Only show routines in the given catalog. If NULL,
+///   do not filter by catalog. If an empty string, only show routines
+///   without a catalog.  May be a search pattern (see section
+///   documentation).
+/// \param[in] db_schema Only show routines in the given database schema. If
+///   NULL, do not filter by database schema. If an empty string, only show
+///   routines without a database schema. May be a search pattern (see section
+///   documentation).
+/// \param[in] routine_name Only show routines with the given name. If NULL, do not
+///   filter by name. May be a search pattern (see section documentation).
+/// \param[in] include_columns If non-zero, include (if applicable) metadata
+///   about parameters and return values as structured data.
+/// \param[in] include_arrow_schema If non-zero, include (if applicable)
+///   metadata about parameters and return values as a serialized Arrow
+///   schema.
+/// \param[out] out The result set.
+/// \param[out] error Error details, if an error occurs.
+ADBC_EXPORT
+AdbcStatusCode AdbcConnectionGetObjectsRoutines(
+    struct AdbcConnection* connection, const char* catalog, const char* db_schema,
+    const char* routine_name, int include_columns, int include_arrow_schema,
+    struct ArrowArrayStream* out, struct AdbcError* error);
 
 /// \brief Get a string option of the connection.
 ///
