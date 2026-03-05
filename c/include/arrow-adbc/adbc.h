@@ -1991,12 +1991,16 @@ AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
 ///
 /// TABLE_SCHEMA is a Struct with fields:
 ///
-/// | Field Name               | Field Type              |
-/// |--------------------------|-------------------------|
-/// | table_name               | utf8 not null           |
-/// | table_type               | utf8 not null           |
-/// | table_columns            | list<COLUMN_SCHEMA>     |
-/// | table_constraints        | list<CONSTRAINT_SCHEMA> |
+/// | Field Name               | Field Type              | Comments |
+/// |--------------------------|-------------------------|----------|
+/// | table_name               | utf8 not null           |          |
+/// | table_type               | utf8 not null           |          |
+/// | table_columns            | list<COLUMN_SCHEMA>     |          |
+/// | table_constraints        | list<CONSTRAINT_SCHEMA> |          |
+/// | table_definition         | utf8                    | (1)      |
+///
+/// 1. [Since version 1.2.0] The table or view definition (e.g. a SQL DDL
+///    statement).  This field is optional.
 ///
 /// COLUMN_SCHEMA is a Struct with fields:
 ///
