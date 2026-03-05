@@ -41,10 +41,9 @@ after(async () => {
 })
 
 test('error: invalid sql syntax', async () => {
-  await stmt.setSqlQuery('SELECT * FROM') // Syntax error
-
   let error: unknown
   try {
+    await stmt.setSqlQuery('SELECT * FROM') // Syntax error
     const reader = await stmt.executeQuery()
     for await (const _ of reader) {
     }
@@ -54,14 +53,17 @@ test('error: invalid sql syntax', async () => {
 
   assert.ok(error instanceof AdbcError)
   assert.match(error.message, /syntax error|incomplete input/i)
-  assert.ok(error.sqlState)
+  assert.strictEqual(error.code, 'InvalidArguments')
+  // SQLite does not expose a numeric vendor code; the ADBC sentinel (INT32_MIN) is filtered to undefined
+  assert.strictEqual(error.vendorCode, undefined)
+  // SQLite does not set a SQLSTATE for this error
+  assert.strictEqual(error.sqlState, undefined)
 })
 
 test('error: table not found', async () => {
-  await stmt.setSqlQuery('SELECT * FROM non_existent_table')
-
   let error: unknown
   try {
+    await stmt.setSqlQuery('SELECT * FROM non_existent_table')
     const reader = await stmt.executeQuery()
     for await (const _ of reader) {
     }
@@ -71,6 +73,9 @@ test('error: table not found', async () => {
 
   assert.ok(error instanceof AdbcError)
   assert.match(error.message, /no such table/i)
+  assert.strictEqual(error.code, 'InvalidArguments')
+  assert.strictEqual(error.vendorCode, undefined)
+  assert.strictEqual(error.sqlState, undefined)
 })
 
 test('error: constraint violation', async () => {
@@ -91,6 +96,8 @@ test('error: constraint violation', async () => {
 
   assert.ok(error instanceof AdbcError)
   assert.match(error.code, /AlreadyExists|Integrity|IO/)
+  assert.strictEqual(error.vendorCode, undefined)
+  assert.strictEqual(error.sqlState, undefined)
 })
 
 test('error: unsupported option', () => {
@@ -104,4 +111,6 @@ test('error: unsupported option', () => {
 
   assert.ok(error instanceof AdbcError)
   assert.strictEqual(error.code, 'NotImplemented')
+  assert.strictEqual(error.vendorCode, undefined)
+  assert.strictEqual(error.sqlState, undefined)
 })

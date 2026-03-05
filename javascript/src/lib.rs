@@ -23,8 +23,10 @@ use crate::client::{
   GetTableSchemaOptions as CoreGetTableSchemaOptions,
 };
 use adbc_core::options::AdbcVersion;
-use napi::bindgen_prelude::{AsyncTask, Buffer, Error, Result, Status};
-use napi::Task;
+use napi::bindgen_prelude::{
+  AsyncTask, Buffer, Error, JsObjectValue, Result, Status, ToNapiValue, Unknown,
+};
+use napi::{Env, Task};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -33,19 +35,85 @@ extern crate napi_derive;
 
 fn to_napi_err(err: ClientError) -> Error {
   match err {
-    ClientError::Adbc(e) => {
-      // Format: [STATUS] Message (Vendor Code: X, SQL State: Y)
-      let sqlstate_u8: Vec<u8> = e.sqlstate.iter().map(|&c| c as u8).collect();
-      let sqlstate = std::str::from_utf8(&sqlstate_u8).unwrap_or("UNKNOWN");
-      let reason = format!(
-        "[{:?}] {} (Vendor Code: {}, SQL State: {})",
-        e.status, e.message, e.vendor_code, sqlstate
-      );
-      Error::new(Status::GenericFailure, reason)
-    }
-    ClientError::Arrow(e) => Error::new(Status::GenericFailure, format!("Arrow Error: {}", e)),
-    ClientError::Other(e) => Error::new(Status::GenericFailure, format!("Internal Error: {}", e)),
+    ClientError::Adbc(e) => Error::new(Status::GenericFailure, e.message),
+    ClientError::Arrow(e) => Error::new(Status::GenericFailure, format!("Arrow Error: {e}")),
+    ClientError::Other(e) => Error::new(Status::GenericFailure, format!("Internal Error: {e}")),
   }
+}
+
+/// Converts an ADBC error into a `napi::Error` whose JS form is a structured `AdbcError`
+/// object with `name`, `code`, `vendorCode`, and `sqlState` properties.
+///
+/// The JS object is stored via `napi_ref` (napi-rs's `maybe_raw` field) so napi-rs uses it
+/// directly as the throw/rejection value. This avoids `env.throw()`, which sets a V8 pending
+/// exception that would escape `Task::reject` as an uncaughtException instead of rejecting
+/// the Promise.
+fn build_adbc_err(env: Env, ae: adbc_core::error::Error) -> Error {
+  let adbc_core::error::Error {
+    message,
+    status,
+    vendor_code,
+    sqlstate,
+    ..
+  } = ae;
+  // details (ADBC 1.1.0 key-value metadata) are not yet exposed to JS.
+  let Ok(mut js_err) = env.create_error(Error::new(Status::GenericFailure, message.as_str()))
+  else {
+    return Error::new(Status::GenericFailure, message);
+  };
+  let _ = js_err.set_named_property("name", "AdbcError");
+  let _ = js_err.set_named_property("code", format!("{status:?}").as_str());
+  if vendor_code != i32::MIN {
+    let _ = js_err.set_named_property("vendorCode", vendor_code);
+  }
+  let sqlstate_bytes: [u8; 5] = sqlstate.map(|c| c as u8);
+  if sqlstate_bytes.iter().any(|&b| b != 0) {
+    let sql_state = std::str::from_utf8(&sqlstate_bytes).unwrap_or("");
+    let _ = js_err.set_named_property("sqlState", sql_state);
+  }
+  let raw_env = env.raw();
+  match unsafe { ToNapiValue::to_napi_value(raw_env, js_err) } {
+    Ok(raw_val) => Error::from(unsafe { Unknown::from_raw_unchecked(raw_env, raw_val) }),
+    Err(fallback) => fallback,
+  }
+}
+
+/// For synchronous `#[napi]` methods: converts a `ClientError` to a `napi::Error` that,
+/// when propagated by napi-rs, throws a structured `AdbcError` JS object.
+fn sync_adbc_err(err: ClientError, env: Env) -> Error {
+  match err {
+    ClientError::Adbc(ae) => build_adbc_err(env, ae),
+    other => to_napi_err(other),
+  }
+}
+
+/// Captures an ADBC error from a thread-pool `compute()` result into `sink` so that
+/// `reject()` (main JS thread) can later call `build_adbc_err` with an `Env`.
+fn capture_adbc_err<T>(
+  result: crate::client::Result<T>,
+  sink: &mut Option<adbc_core::error::Error>,
+) -> Result<T> {
+  result.map_err(|e| match e {
+    ClientError::Adbc(ae) => {
+      let napi_err = Error::new(Status::GenericFailure, ae.message.as_str());
+      *sink = Some(ae);
+      napi_err
+    }
+    other => to_napi_err(other),
+  })
+}
+
+fn reject_adbc<T>(
+  env: Env,
+  adbc_err: &mut Option<adbc_core::error::Error>,
+  err: Error,
+) -> Result<T> {
+  Err(
+    adbc_err
+      .take()
+      .map(|ae| build_adbc_err(env, ae))
+      .unwrap_or(err),
+  )
 }
 
 fn closed_err() -> Error {
@@ -159,6 +227,7 @@ impl _NativeAdbcDatabase {
     Ok(AsyncTask::new(ConnectTask {
       database: db.clone(),
       options,
+      adbc_err: None,
     }))
   }
 
@@ -172,6 +241,7 @@ impl _NativeAdbcDatabase {
 pub struct ConnectTask {
   database: Arc<CoreDatabase>,
   options: Option<HashMap<String, String>>,
+  adbc_err: Option<adbc_core::error::Error>,
 }
 
 impl Task for ConnectTask {
@@ -179,16 +249,20 @@ impl Task for ConnectTask {
   type JsValue = _NativeAdbcConnection;
 
   fn compute(&mut self) -> Result<Self::Output> {
-    self
-      .database
-      .connect(self.options.take())
-      .map_err(to_napi_err)
+    capture_adbc_err(
+      self.database.connect(self.options.take()),
+      &mut self.adbc_err,
+    )
   }
 
-  fn resolve(&mut self, _env: napi::Env, output: Self::Output) -> Result<Self::JsValue> {
+  fn resolve(&mut self, _env: Env, output: Self::Output) -> Result<Self::JsValue> {
     Ok(_NativeAdbcConnection {
       inner: Some(Arc::new(output)),
     })
+  }
+
+  fn reject(&mut self, env: Env, err: Error) -> Result<Self::JsValue> {
+    reject_adbc(env, &mut self.adbc_err, err)
   }
 }
 
@@ -206,13 +280,16 @@ impl _NativeAdbcConnection {
     let conn = self.inner.as_ref().ok_or_else(closed_err)?;
     Ok(AsyncTask::new(CreateStatementTask {
       connection: conn.clone(),
+      adbc_err: None,
     }))
   }
 
   #[napi]
-  pub fn set_option(&self, key: String, value: String) -> Result<()> {
+  pub fn set_option(&self, env: Env, key: String, value: String) -> Result<()> {
     let conn = self.inner.as_ref().ok_or_else(closed_err)?;
-    conn.set_option(&key, &value).map_err(to_napi_err)
+    conn
+      .set_option(&key, &value)
+      .map_err(|e| sync_adbc_err(e, env))
   }
 
   #[napi]
@@ -221,6 +298,7 @@ impl _NativeAdbcConnection {
     Ok(AsyncTask::new(GetObjectsTask {
       connection: conn.clone(),
       options: Some(opts.into()),
+      adbc_err: None,
     }))
   }
 
@@ -233,6 +311,7 @@ impl _NativeAdbcConnection {
     Ok(AsyncTask::new(GetTableSchemaTask {
       connection: conn.clone(),
       options: Some(opts.into()),
+      adbc_err: None,
     }))
   }
 
@@ -241,6 +320,7 @@ impl _NativeAdbcConnection {
     let conn = self.inner.as_ref().ok_or_else(closed_err)?;
     Ok(AsyncTask::new(GetTableTypesTask {
       connection: conn.clone(),
+      adbc_err: None,
     }))
   }
 
@@ -250,6 +330,7 @@ impl _NativeAdbcConnection {
     Ok(AsyncTask::new(GetInfoTask {
       connection: conn.clone(),
       info_codes,
+      adbc_err: None,
     }))
   }
 
@@ -258,6 +339,7 @@ impl _NativeAdbcConnection {
     let conn = self.inner.as_ref().ok_or_else(closed_err)?;
     Ok(AsyncTask::new(CommitTask {
       connection: conn.clone(),
+      adbc_err: None,
     }))
   }
 
@@ -266,6 +348,7 @@ impl _NativeAdbcConnection {
     let conn = self.inner.as_ref().ok_or_else(closed_err)?;
     Ok(AsyncTask::new(RollbackTask {
       connection: conn.clone(),
+      adbc_err: None,
     }))
   }
 
@@ -278,6 +361,7 @@ impl _NativeAdbcConnection {
 
 pub struct CreateStatementTask {
   connection: Arc<CoreConnection>,
+  adbc_err: Option<adbc_core::error::Error>,
 }
 
 impl Task for CreateStatementTask {
@@ -285,13 +369,17 @@ impl Task for CreateStatementTask {
   type JsValue = _NativeAdbcStatement;
 
   fn compute(&mut self) -> Result<Self::Output> {
-    self.connection.new_statement().map_err(to_napi_err)
+    capture_adbc_err(self.connection.new_statement(), &mut self.adbc_err)
   }
 
-  fn resolve(&mut self, _env: napi::Env, output: Self::Output) -> Result<Self::JsValue> {
+  fn resolve(&mut self, _env: Env, output: Self::Output) -> Result<Self::JsValue> {
     Ok(_NativeAdbcStatement {
       inner: Some(Arc::new(Mutex::new(output))),
     })
+  }
+
+  fn reject(&mut self, env: Env, err: Error) -> Result<Self::JsValue> {
+    reject_adbc(env, &mut self.adbc_err, err)
   }
 }
 
@@ -300,6 +388,7 @@ impl Task for CreateStatementTask {
 pub struct GetObjectsTask {
   connection: Arc<CoreConnection>,
   options: Option<CoreGetObjectsOptions>,
+  adbc_err: Option<adbc_core::error::Error>,
 }
 
 impl Task for GetObjectsTask {
@@ -308,19 +397,24 @@ impl Task for GetObjectsTask {
 
   fn compute(&mut self) -> Result<Self::Output> {
     let opts = self.options.take().expect("compute called twice");
-    self.connection.get_objects(opts).map_err(to_napi_err)
+    capture_adbc_err(self.connection.get_objects(opts), &mut self.adbc_err)
   }
 
-  fn resolve(&mut self, _env: napi::Env, output: Self::Output) -> Result<Self::JsValue> {
+  fn resolve(&mut self, _env: Env, output: Self::Output) -> Result<Self::JsValue> {
     Ok(_NativeAdbcResultIterator {
       inner: Some(Arc::new(Mutex::new(output))),
     })
+  }
+
+  fn reject(&mut self, env: Env, err: Error) -> Result<Self::JsValue> {
+    reject_adbc(env, &mut self.adbc_err, err)
   }
 }
 
 pub struct GetTableSchemaTask {
   connection: Arc<CoreConnection>,
   options: Option<CoreGetTableSchemaOptions>,
+  adbc_err: Option<adbc_core::error::Error>,
 }
 
 impl Task for GetTableSchemaTask {
@@ -329,16 +423,21 @@ impl Task for GetTableSchemaTask {
 
   fn compute(&mut self) -> Result<Self::Output> {
     let opts = self.options.take().expect("compute called twice");
-    self.connection.get_table_schema(opts).map_err(to_napi_err)
+    capture_adbc_err(self.connection.get_table_schema(opts), &mut self.adbc_err)
   }
 
-  fn resolve(&mut self, _env: napi::Env, output: Self::Output) -> Result<Self::JsValue> {
+  fn resolve(&mut self, _env: Env, output: Self::Output) -> Result<Self::JsValue> {
     Ok(Buffer::from(output))
+  }
+
+  fn reject(&mut self, env: Env, err: Error) -> Result<Self::JsValue> {
+    reject_adbc(env, &mut self.adbc_err, err)
   }
 }
 
 pub struct GetTableTypesTask {
   connection: Arc<CoreConnection>,
+  adbc_err: Option<adbc_core::error::Error>,
 }
 
 impl Task for GetTableTypesTask {
@@ -346,19 +445,24 @@ impl Task for GetTableTypesTask {
   type JsValue = _NativeAdbcResultIterator;
 
   fn compute(&mut self) -> Result<Self::Output> {
-    self.connection.get_table_types().map_err(to_napi_err)
+    capture_adbc_err(self.connection.get_table_types(), &mut self.adbc_err)
   }
 
-  fn resolve(&mut self, _env: napi::Env, output: Self::Output) -> Result<Self::JsValue> {
+  fn resolve(&mut self, _env: Env, output: Self::Output) -> Result<Self::JsValue> {
     Ok(_NativeAdbcResultIterator {
       inner: Some(Arc::new(Mutex::new(output))),
     })
+  }
+
+  fn reject(&mut self, env: Env, err: Error) -> Result<Self::JsValue> {
+    reject_adbc(env, &mut self.adbc_err, err)
   }
 }
 
 pub struct GetInfoTask {
   connection: Arc<CoreConnection>,
   info_codes: Option<Vec<u32>>,
+  adbc_err: Option<adbc_core::error::Error>,
 }
 
 impl Task for GetInfoTask {
@@ -366,21 +470,26 @@ impl Task for GetInfoTask {
   type JsValue = _NativeAdbcResultIterator;
 
   fn compute(&mut self) -> Result<Self::Output> {
-    self
-      .connection
-      .get_info(self.info_codes.take())
-      .map_err(to_napi_err)
+    capture_adbc_err(
+      self.connection.get_info(self.info_codes.take()),
+      &mut self.adbc_err,
+    )
   }
 
-  fn resolve(&mut self, _env: napi::Env, output: Self::Output) -> Result<Self::JsValue> {
+  fn resolve(&mut self, _env: Env, output: Self::Output) -> Result<Self::JsValue> {
     Ok(_NativeAdbcResultIterator {
       inner: Some(Arc::new(Mutex::new(output))),
     })
+  }
+
+  fn reject(&mut self, env: Env, err: Error) -> Result<Self::JsValue> {
+    reject_adbc(env, &mut self.adbc_err, err)
   }
 }
 
 pub struct CommitTask {
   connection: Arc<CoreConnection>,
+  adbc_err: Option<adbc_core::error::Error>,
 }
 
 impl Task for CommitTask {
@@ -388,16 +497,21 @@ impl Task for CommitTask {
   type JsValue = ();
 
   fn compute(&mut self) -> Result<Self::Output> {
-    self.connection.commit().map_err(to_napi_err)
+    capture_adbc_err(self.connection.commit(), &mut self.adbc_err)
   }
 
-  fn resolve(&mut self, _env: napi::Env, _output: Self::Output) -> Result<Self::JsValue> {
+  fn resolve(&mut self, _env: Env, _output: Self::Output) -> Result<Self::JsValue> {
     Ok(())
+  }
+
+  fn reject(&mut self, env: Env, err: Error) -> Result<Self::JsValue> {
+    reject_adbc(env, &mut self.adbc_err, err)
   }
 }
 
 pub struct RollbackTask {
   connection: Arc<CoreConnection>,
+  adbc_err: Option<adbc_core::error::Error>,
 }
 
 impl Task for RollbackTask {
@@ -405,11 +519,15 @@ impl Task for RollbackTask {
   type JsValue = ();
 
   fn compute(&mut self) -> Result<Self::Output> {
-    self.connection.rollback().map_err(to_napi_err)
+    capture_adbc_err(self.connection.rollback(), &mut self.adbc_err)
   }
 
-  fn resolve(&mut self, _env: napi::Env, _output: Self::Output) -> Result<Self::JsValue> {
+  fn resolve(&mut self, _env: Env, _output: Self::Output) -> Result<Self::JsValue> {
     Ok(())
+  }
+
+  fn reject(&mut self, env: Env, err: Error) -> Result<Self::JsValue> {
+    reject_adbc(env, &mut self.adbc_err, err)
   }
 }
 
@@ -423,21 +541,25 @@ pub struct _NativeAdbcStatement {
 #[napi]
 impl _NativeAdbcStatement {
   #[napi]
-  pub fn set_sql_query(&self, query: String) -> Result<()> {
+  pub fn set_sql_query(&self, env: Env, query: String) -> Result<()> {
     let mutex = self.inner.as_ref().ok_or_else(closed_err)?;
     let mut stmt = mutex
       .lock()
       .map_err(|e| Error::from_reason(e.to_string()))?;
-    stmt.set_sql_query(&query).map_err(to_napi_err)
+    stmt
+      .set_sql_query(&query)
+      .map_err(|e| sync_adbc_err(e, env))
   }
 
   #[napi]
-  pub fn set_option(&self, key: String, value: String) -> Result<()> {
+  pub fn set_option(&self, env: Env, key: String, value: String) -> Result<()> {
     let mutex = self.inner.as_ref().ok_or_else(closed_err)?;
     let mut stmt = mutex
       .lock()
       .map_err(|e| Error::from_reason(e.to_string()))?;
-    stmt.set_option(&key, &value).map_err(to_napi_err)
+    stmt
+      .set_option(&key, &value)
+      .map_err(|e| sync_adbc_err(e, env))
   }
 
   #[napi]
@@ -445,6 +567,7 @@ impl _NativeAdbcStatement {
     let mutex = self.inner.as_ref().ok_or_else(closed_err)?;
     Ok(AsyncTask::new(ExecuteQueryTask {
       statement: mutex.clone(),
+      adbc_err: None,
     }))
   }
 
@@ -453,6 +576,7 @@ impl _NativeAdbcStatement {
     let mutex = self.inner.as_ref().ok_or_else(closed_err)?;
     Ok(AsyncTask::new(ExecuteUpdateTask {
       statement: mutex.clone(),
+      adbc_err: None,
     }))
   }
 
@@ -462,6 +586,7 @@ impl _NativeAdbcStatement {
     Ok(AsyncTask::new(BindTask {
       statement: mutex.clone(),
       data: data.to_vec(),
+      adbc_err: None,
     }))
   }
 
@@ -474,6 +599,7 @@ impl _NativeAdbcStatement {
 
 pub struct ExecuteQueryTask {
   statement: Arc<Mutex<CoreStatement>>,
+  adbc_err: Option<adbc_core::error::Error>,
 }
 
 impl Task for ExecuteQueryTask {
@@ -485,18 +611,23 @@ impl Task for ExecuteQueryTask {
       .statement
       .lock()
       .map_err(|e| Error::from_reason(e.to_string()))?;
-    stmt.execute_query().map_err(to_napi_err)
+    capture_adbc_err(stmt.execute_query(), &mut self.adbc_err)
   }
 
-  fn resolve(&mut self, _env: napi::Env, output: Self::Output) -> Result<Self::JsValue> {
+  fn resolve(&mut self, _env: Env, output: Self::Output) -> Result<Self::JsValue> {
     Ok(_NativeAdbcResultIterator {
       inner: Some(Arc::new(Mutex::new(output))),
     })
+  }
+
+  fn reject(&mut self, env: Env, err: Error) -> Result<Self::JsValue> {
+    reject_adbc(env, &mut self.adbc_err, err)
   }
 }
 
 pub struct ExecuteUpdateTask {
   statement: Arc<Mutex<CoreStatement>>,
+  adbc_err: Option<adbc_core::error::Error>,
 }
 
 impl Task for ExecuteUpdateTask {
@@ -508,17 +639,22 @@ impl Task for ExecuteUpdateTask {
       .statement
       .lock()
       .map_err(|e| Error::from_reason(e.to_string()))?;
-    stmt.execute_update().map_err(to_napi_err)
+    capture_adbc_err(stmt.execute_update(), &mut self.adbc_err)
   }
 
-  fn resolve(&mut self, _env: napi::Env, output: Self::Output) -> Result<Self::JsValue> {
+  fn resolve(&mut self, _env: Env, output: Self::Output) -> Result<Self::JsValue> {
     Ok(output)
+  }
+
+  fn reject(&mut self, env: Env, err: Error) -> Result<Self::JsValue> {
+    reject_adbc(env, &mut self.adbc_err, err)
   }
 }
 
 pub struct BindTask {
   statement: Arc<Mutex<CoreStatement>>,
   data: Vec<u8>,
+  adbc_err: Option<adbc_core::error::Error>,
 }
 
 impl Task for BindTask {
@@ -530,13 +666,18 @@ impl Task for BindTask {
       .statement
       .lock()
       .map_err(|e| Error::from_reason(e.to_string()))?;
-    stmt
-      .bind(std::mem::take(&mut self.data))
-      .map_err(to_napi_err)
+    capture_adbc_err(
+      stmt.bind(std::mem::take(&mut self.data)),
+      &mut self.adbc_err,
+    )
   }
 
-  fn resolve(&mut self, _env: napi::Env, _output: Self::Output) -> Result<Self::JsValue> {
+  fn resolve(&mut self, _env: Env, _output: Self::Output) -> Result<Self::JsValue> {
     Ok(())
+  }
+
+  fn reject(&mut self, env: Env, err: Error) -> Result<Self::JsValue> {
+    reject_adbc(env, &mut self.adbc_err, err)
   }
 }
 
@@ -544,6 +685,7 @@ impl Task for BindTask {
 
 pub struct IteratorNextTask {
   iterator: Arc<Mutex<CoreResultIterator>>,
+  adbc_err: Option<adbc_core::error::Error>,
 }
 
 impl Task for IteratorNextTask {
@@ -555,11 +697,15 @@ impl Task for IteratorNextTask {
       .iterator
       .lock()
       .map_err(|e| Error::from_reason(e.to_string()))?;
-    iterator.next().map_err(to_napi_err)
+    capture_adbc_err(iterator.next(), &mut self.adbc_err)
   }
 
-  fn resolve(&mut self, _env: napi::Env, output: Self::Output) -> Result<Self::JsValue> {
+  fn resolve(&mut self, _env: Env, output: Self::Output) -> Result<Self::JsValue> {
     Ok(output.map(Buffer::from))
+  }
+
+  fn reject(&mut self, env: Env, err: Error) -> Result<Self::JsValue> {
+    reject_adbc(env, &mut self.adbc_err, err)
   }
 }
 
@@ -575,6 +721,7 @@ impl _NativeAdbcResultIterator {
     let iterator = self.inner.as_ref().ok_or_else(closed_err)?;
     Ok(AsyncTask::new(IteratorNextTask {
       iterator: iterator.clone(),
+      adbc_err: None,
     }))
   }
 

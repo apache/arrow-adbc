@@ -31,14 +31,6 @@ OUT_DIR="$1"
 echo "=== Building C++ Drivers ==="
 mkdir -p "${OUT_DIR}"
 
-# On macOS, the system sqlite3.h omits sqlite3_load_extension. The cmake
-# auto-detection has a bug (string(FIND) returns -1 which is truthy in
-# cmake's if(), so the NO_LOAD_EXTENSION guard is never set). Pass it
-# explicitly on macOS to avoid a compilation error.
-if [[ "$(uname)" == "Darwin" ]]; then
-  ADBC_CMAKE_ARGS="${ADBC_CMAKE_ARGS} -DADBC_SQLITE_COMPILE_DEFINES=-DADBC_SQLITE_WITH_NO_LOAD_EXTENSION"
-fi
-
 cmake -S "${REPO_ROOT}/c" -B "${OUT_DIR}" \
   ${ADBC_CMAKE_ARGS} \
   -DCMAKE_INSTALL_PREFIX="${OUT_DIR}" \
