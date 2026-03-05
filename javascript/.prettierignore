@@ -20,3 +20,4 @@ build
 dist
 binding.js
 binding.d.ts
+license.hbs

@@ -38,10 +38,12 @@ main() {
     cargo about generate license.hbs > "${tmp_file}"
     popd
 
-    # Prepend the Apache 2.0 header that covers our own code.
+    # Prepend the Apache 2.0 header that covers our own code, then strip
+    # trailing blank lines that the handlebars template may emit.
     head -202 "${source_dir}/LICENSE.txt" > "${output}"
     cat "${tmp_file}" >> "${output}"
     rm "${tmp_file}"
+    perl -i -0777 -pe 's/\n+$/\n/' "${output}"
 }
 
 main "$@"

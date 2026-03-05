@@ -46,3 +46,4 @@ testing/*
 javascript/core/Cargo.lock
 javascript/binding.d.ts
 javascript/binding.js
+javascript/license.hbs
