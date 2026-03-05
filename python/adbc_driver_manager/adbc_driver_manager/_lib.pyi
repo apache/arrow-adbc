@@ -20,7 +20,7 @@
 import enum
 import pathlib
 import typing
-from typing import overload, Any, ClassVar, List, Literal, Optional, Tuple, Union
+from typing import Any, List, Optional, Tuple, Union
 
 import typing_extensions
 from typing_extensions import CapsuleType
