@@ -720,7 +720,7 @@ impl Database for ManagedDatabase {
 
     fn new_connection(&self) -> Result<Self::ConnectionType> {
         // Construct a new connection.
-        let connection = self.connection_new()?;        
+        let connection = self.connection_new()?;
         // Initialize the connection.
         let connection = self.connection_init(connection)?;
         let inner = ManagedConnectionInner {

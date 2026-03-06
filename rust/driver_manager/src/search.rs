@@ -934,7 +934,7 @@ fn get_profile_search_paths(additional_path_list: Option<Vec<PathBuf>>) -> Vec<P
     {
         result.push(profiles_dir.join(PROFILE_DIR_NAME));
     }
-    
+
     result
 }
 
