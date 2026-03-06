@@ -102,7 +102,7 @@
 
 pub mod error;
 pub mod profile;
-pub(crate) mod search;
+pub mod search;
 
 use std::collections::HashSet;
 use std::ffi::{CString, OsStr};
@@ -271,6 +271,7 @@ impl ManagedDriver {
         let driver = self.inner_ffi_driver();
         let mut database = adbc_ffi::FFI_AdbcDatabase::default();
 
+        database.private_driver = driver;
         // DatabaseNew
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(*driver, DatabaseNew);
@@ -719,7 +720,7 @@ impl Database for ManagedDatabase {
 
     fn new_connection(&self) -> Result<Self::ConnectionType> {
         // Construct a new connection.
-        let connection = self.connection_new()?;
+        let connection = self.connection_new()?;        
         // Initialize the connection.
         let connection = self.connection_init(connection)?;
         let inner = ManagedConnectionInner {
