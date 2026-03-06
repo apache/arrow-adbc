@@ -207,12 +207,7 @@ class Statement : public BaseStatement<Derived> {
                                 // No-op
                                 return status::Ok();
                               } else if constexpr (std::is_same_v<T, QueryState>) {
-                                // unwrap macro appears to fail due to -Wc2y-extensions
-                                // which for some reason doesn't get suppressed here
-                                auto status = impl().PrepareImpl(state);
-                                if (!status.ok()) {
-                                  return status;
-                                }
+                                UNWRAP_STATUS(impl().PrepareImpl(state));
                                 state_ = PreparedState{std::move(state.query)};
                                 return status::Ok();
                               } else {

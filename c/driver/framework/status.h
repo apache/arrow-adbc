@@ -34,18 +34,6 @@
 
 /// \file status.h
 
-#if defined(__clang__)
-// See https://github.com/google/benchmark/pull/2108
-#define IGNORE_COUNTER_WARNING                                    \
-  _Pragma("GCC diagnostic push");                                 \
-  _Pragma("GCC diagnostic ignored \"-Wunknown-warning-option\""); \
-  _Pragma("GCC diagnostic ignored \"-Wc2y-extensions\"");
-#define RESTORE_COUNTER_WARNING _Pragma("GCC diagnostic pop")
-#else
-#define IGNORE_COUNTER_WARNING
-#define RESTORE_COUNTER_WARNING
-#endif
-
 namespace adbc::driver {
 
 /// \brief A wrapper around AdbcStatusCode + AdbcError.
@@ -286,26 +274,17 @@ class Result {
 #define UNWRAP_RESULT_NAME(x, y) DRIVER_CONCAT(x, y)
 
 /// \brief A helper to unwrap a Result in functions returning AdbcStatusCode.
-#define RAISE_RESULT(ERROR, LHS, RHS)                                                 \
-  IGNORE_COUNTER_WARNING                                                              \
-  RAISE_RESULT_IMPL(UNWRAP_RESULT_NAME(driver_raise_result, __COUNTER__), ERROR, LHS, \
-                    RHS)                                                              \
-  RESTORE_COUNTER_WARNING
+#define RAISE_RESULT(ERROR, LHS, RHS) \
+  RAISE_RESULT_IMPL(UNWRAP_RESULT_NAME(driver_raise_result, __COUNTER__), ERROR, LHS, RHS)
 /// \brief A helper to unwrap a Status in functions returning AdbcStatusCode.
-#define RAISE_STATUS(ERROR, RHS)                                                      \
-  IGNORE_COUNTER_WARNING                                                              \
-  RAISE_STATUS_IMPL(UNWRAP_RESULT_NAME(driver_raise_status, __COUNTER__), ERROR, RHS) \
-  RESTORE_COUNTER_WARNING
+#define RAISE_STATUS(ERROR, RHS) \
+  RAISE_STATUS_IMPL(UNWRAP_RESULT_NAME(driver_raise_status, __COUNTER__), ERROR, RHS)
 /// \brief A helper to unwrap a Result in functions returning Result/Status.
-#define UNWRAP_RESULT(lhs, rhs)                                                       \
-  IGNORE_COUNTER_WARNING                                                              \
-  UNWRAP_RESULT_IMPL(UNWRAP_RESULT_NAME(driver_unwrap_result, __COUNTER__), lhs, rhs) \
-  RESTORE_COUNTER_WARNING
+#define UNWRAP_RESULT(lhs, rhs) \
+  UNWRAP_RESULT_IMPL(UNWRAP_RESULT_NAME(driver_unwrap_result, __COUNTER__), lhs, rhs)
 /// \brief A helper to unwrap a Status in functions returning Result/Status.
-#define UNWRAP_STATUS(rhs)                                                       \
-  IGNORE_COUNTER_WARNING                                                         \
-  UNWRAP_STATUS_IMPL(UNWRAP_RESULT_NAME(driver_unwrap_status, __COUNTER__), rhs) \
-  RESTORE_COUNTER_WARNING
+#define UNWRAP_STATUS(rhs) \
+  UNWRAP_STATUS_IMPL(UNWRAP_RESULT_NAME(driver_unwrap_status, __COUNTER__), rhs)
 
 }  // namespace adbc::driver
 
@@ -365,10 +344,8 @@ STATUS_CTOR(Unknown, UNKNOWN)
                                       std::strerror(NAME));                            \
   }
 
-#define UNWRAP_ERRNO(CODE, RHS)                                               \
-  IGNORE_COUNTER_WARNING                                                      \
-  UNWRAP_ERRNO_IMPL(UNWRAP_RESULT_NAME(driver_errno, __COUNTER__), CODE, RHS) \
-  RESTORE_COUNTER_WARNING
+#define UNWRAP_ERRNO(CODE, RHS) \
+  UNWRAP_ERRNO_IMPL(UNWRAP_RESULT_NAME(driver_errno, __COUNTER__), CODE, RHS)
 
 #define UNWRAP_NANOARROW_IMPL(NAME, ERROR, CODE, RHS)                                    \
   auto&& NAME = (RHS);                                                                   \
@@ -378,7 +355,5 @@ STATUS_CTOR(Unknown, UNKNOWN)
   }
 
 #define UNWRAP_NANOARROW(ERROR, CODE, RHS)                                             \
-  IGNORE_COUNTER_WARNING                                                               \
   UNWRAP_NANOARROW_IMPL(UNWRAP_RESULT_NAME(driver_errno_na, __COUNTER__), ERROR, CODE, \
-                        RHS)                                                           \
-  RESTORE_COUNTER_WARNING
+                        RHS)
