@@ -26,10 +26,7 @@ use adbc_core::{
   },
   Connection, Database, Driver, Optionable, Statement, LOAD_FLAG_DEFAULT,
 };
-use adbc_driver_manager::{
-  profile::FilesystemProfileProvider, ManagedConnection, ManagedDatabase, ManagedDriver,
-  ManagedStatement,
-};
+use adbc_driver_manager::{ManagedConnection, ManagedDatabase, ManagedDriver, ManagedStatement};
 use arrow_array::RecordBatchReader;
 use arrow_ipc::reader::StreamReader;
 use arrow_ipc::writer::StreamWriter;
@@ -87,13 +84,12 @@ impl AdbcDatabaseCore {
 
     let database = if opts.driver.contains(':') {
       // URI-style ("sqlite:file::memory:") or profile URI ("profile://my_profile")
-      ManagedDatabase::from_uri_with_profile_provider(
+      ManagedDatabase::from_uri_with_opts(
         &opts.driver,
         entrypoint.as_deref(),
         version,
         load_flags,
         search_paths,
-        FilesystemProfileProvider,
         database_opts.into_iter().flatten(),
       )?
     } else {

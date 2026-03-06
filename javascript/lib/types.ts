@@ -115,13 +115,10 @@ export interface ConnectOptions {
    * - Absolute path to a shared library: `"/usr/lib/libadbc_driver_sqlite.so"`
    * - Absolute path to a driver manifest `.toml` file (with or without the `.toml` extension).
    * - Relative path (only valid when {@link LoadFlags.AllowRelativePaths} is set).
-   *
-   * **Note:** URI-style driver strings (e.g. `"sqlite:file::memory:"`, `"postgresql://..."`)
-   * and connection profile URIs (e.g. `"profile://my_profile"`) are defined in the ADBC spec
-   * but are not yet supported. Use `databaseOptions` to pass a connection URI to the driver instead:
-   * ```ts
-   * new AdbcDatabase({ driver: 'sqlite', databaseOptions: { uri: 'file::memory:' } })
-   * ```
+   * - URI-style string: `"sqlite:file::memory:"`, `"postgresql://user:pass@host/db"` — the
+   *   driver name is the URI scheme and the remainder is passed as the connection URI.
+   * - Connection profile URI: `"profile://my_profile"` — loads a named profile from a
+   *   `.toml` file found in {@link searchPaths} or the default search directories.
    */
   driver: string
   /**
