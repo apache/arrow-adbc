@@ -18,13 +18,15 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, isAbsolute } from 'node:path'
 import { tmpdir } from 'node:os'
 import { AdbcDatabase } from '../lib/index.js'
 import { dumpReader } from './test_utils.js'
 
+const testLib = process.env.ADBC_DRIVER_MANAGER_TEST_LIB
+
 test('profile: load database from profile:// URI', async () => {
-  const driver = process.env.ADBC_DRIVER_MANAGER_TEST_LIB ?? 'sqlite'
+  const driver = testLib ?? 'sqlite'
   const tmpDir = mkdtempSync(join(tmpdir(), 'adbc-profile-test-'))
   try {
     // Create a SQLite file with a known table so we can confirm the profile
@@ -37,9 +39,11 @@ test('profile: load database from profile:// URI', async () => {
     await setupConn.close()
     await setupDb.close()
 
+    // TOML requires forward slashes — backslashes are escape sequences
+    const toml = (p: string) => p.replaceAll('\\', '/')
     writeFileSync(
       join(tmpDir, 'test_sqlite.toml'),
-      `version = 1\ndriver = "${driver}"\n\n[options]\nuri = "${dbPath}"\n`,
+      `version = 1\ndriver = "${toml(driver)}"\n\n[options]\nuri = "${toml(dbPath)}"\n`,
     )
 
     const db = new AdbcDatabase({
@@ -60,8 +64,10 @@ test('profile: load database from profile:// URI', async () => {
   }
 })
 
-test('profile: load database from sqlite: URI', async () => {
-  const driver = process.env.ADBC_DRIVER_MANAGER_TEST_LIB ?? 'sqlite'
+// URI-style driver strings require a short name as the scheme — skip when the
+// test env var is set to an absolute path (e.g. on Windows CI).
+test('profile: load database from sqlite: URI', { skip: testLib !== undefined && isAbsolute(testLib) }, async () => {
+  const driver = testLib ?? 'sqlite'
   const db = new AdbcDatabase({
     driver: `${driver}::memory:`,
   })
