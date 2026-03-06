@@ -24,6 +24,7 @@ import type {
   ConnectOptions,
   GetObjectsOptions,
 } from './types.js'
+import { LoadFlags, ObjectDepth, InfoCode } from './types.js'
 
 import { RecordBatchReader, RecordBatch, Table, tableToIPC, Schema } from 'apache-arrow'
 import { AdbcError } from './error.js'
@@ -33,6 +34,15 @@ const asyncDisposeSymbol = (Symbol as any).asyncDispose ?? Symbol('Symbol.asyncD
 
 type NativeIterator = { next(): Promise<Buffer | null | undefined>; close(): void }
 
+/**
+ * Converts the native result iterator into an Apache Arrow `RecordBatchReader`.
+ *
+ * The native iterator yields Arrow IPC stream bytes (schema + record batches) as a
+ * Node.js `Buffer`. Since `Buffer` is a subclass of `Uint8Array`, we can wrap the
+ * iterator directly as `AsyncIterable<Uint8Array>` and pass it to
+ * `RecordBatchReader.from()`, which accepts an async iterable of IPC bytes and
+ * returns a standard Arrow `RecordBatchReader`.
+ */
 async function iteratorToReader(iterator: NativeIterator): Promise<RecordBatchReader> {
   const asyncIterable: AsyncIterable<Uint8Array> = {
     [Symbol.asyncIterator]: async function* () {
@@ -56,9 +66,9 @@ async function iteratorToReader(iterator: NativeIterator): Promise<RecordBatchRe
   return RecordBatchReader.from(asyncIterable)
 }
 
-// Export Options types and Error class
+// Export Options types, constants, and Error class
 export type { ConnectOptions, GetObjectsOptions }
-export { AdbcError }
+export { AdbcError, LoadFlags, ObjectDepth, InfoCode }
 
 /**
  * Represents an ADBC Database.
@@ -170,7 +180,7 @@ export class AdbcConnection implements AdbcConnectionInterface {
     }
   }
 
-  async getInfo(infoCodes?: number[]): Promise<RecordBatchReader> {
+  async getInfo(infoCodes?: InfoCode[]): Promise<RecordBatchReader> {
     try {
       const iterator = await this._inner.getInfo(infoCodes)
       return iteratorToReader(iterator as NativeIterator)

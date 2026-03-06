@@ -18,15 +18,103 @@
 import { RecordBatch, RecordBatchReader, Table, Schema } from 'apache-arrow'
 
 /**
+ * Bitmask flags controlling how the driver manager resolves a driver name.
+ *
+ * These values correspond to the `ADBC_LOAD_FLAG_*` constants in the ADBC spec.
+ * Flags can be combined with bitwise OR. When `loadFlags` is omitted in
+ * `ConnectOptions`, `LoadFlags.Default` is used.
+ *
+ * @example
+ * // Only search system paths, disallow relative paths
+ * const db = new AdbcDatabase({
+ *   driver: 'sqlite',
+ *   loadFlags: LoadFlags.SearchSystem,
+ * })
+ */
+export const LoadFlags = {
+  /** Search directory paths in the `ADBC_DRIVER_PATH` environment variable (and the conda environment, if installed via conda). */
+  SearchEnv: 1 << 1,
+  /** Search the user configuration directory. */
+  SearchUser: 1 << 2,
+  /** Search the system configuration directory. */
+  SearchSystem: 1 << 3,
+  /** Allow a relative path to be provided as the driver name. */
+  AllowRelativePaths: 1 << 4,
+  /** All defined flags enabled. This is the default when `loadFlags` is omitted. */
+  Default: (1 << 1) | (1 << 2) | (1 << 3) | (1 << 4),
+} as const
+export type LoadFlags = (typeof LoadFlags)[keyof typeof LoadFlags]
+
+/**
+ * Depth values for the `getObjects` metadata call.
+ *
+ * These correspond to the `ADBC_OBJECT_DEPTH_*` constants in the ADBC spec.
+ *
+ * @example
+ * // Retrieve catalogs and schemas only
+ * await conn.getObjects({ depth: ObjectDepth.Schemas })
+ */
+export const ObjectDepth = {
+  /** Catalogs, schemas, tables, and columns (default). */
+  All: 0,
+  /** Catalogs only. */
+  Catalogs: 1,
+  /** Catalogs and schemas. */
+  Schemas: 2,
+  /** Catalogs, schemas, and tables. */
+  Tables: 3,
+} as const
+export type ObjectDepth = (typeof ObjectDepth)[keyof typeof ObjectDepth]
+
+/**
+ * Info codes for the `getInfo` metadata call.
+ *
+ * These correspond to the `ADBC_INFO_*` constants in the ADBC spec.
+ * Pass a subset to `getInfo()` to retrieve only specific metadata fields.
+ *
+ * @example
+ * const reader = await conn.getInfo([InfoCode.VendorName, InfoCode.DriverVersion])
+ */
+export const InfoCode = {
+  /** The database vendor/product name (string). */
+  VendorName: 0,
+  /** The database vendor/product version (string). */
+  VendorVersion: 1,
+  /** The Arrow library version used by the vendor (string). */
+  VendorArrowVersion: 2,
+  /** Whether the vendor supports SQL queries (bool). */
+  VendorSql: 3,
+  /** Whether the vendor supports Substrait queries (bool). */
+  VendorSubstrait: 4,
+  /** Minimum supported Substrait version, or null (string). */
+  VendorSubstraitMinVersion: 5,
+  /** Maximum supported Substrait version, or null (string). */
+  VendorSubstraitMaxVersion: 6,
+  /** The driver name (string). */
+  DriverName: 100,
+  /** The driver version (string). */
+  DriverVersion: 101,
+  /** The Arrow library version used by the driver (string). */
+  DriverArrowVersion: 102,
+  /** The ADBC API version implemented by the driver (int64). Available since ADBC 1.1.0. */
+  DriverAdbcVersion: 103,
+} as const
+export type InfoCode = (typeof InfoCode)[keyof typeof InfoCode]
+
+/**
  * Options for connecting to a driver/database.
  *
  * These options configure how the ADBC driver is loaded and how the initial connection is established.
  */
 export interface ConnectOptions {
   /**
-   * Path to the driver library or short name of the driver.
-   * Short names (e.g. "sqlite") work when the corresponding ADBC driver is installed on the system.
-   * Full paths to a .so/.dylib/.dll or a manifest .toml file are also accepted.
+   * Driver to load. Accepts any of the following forms:
+   * - Short name: `"sqlite"`, `"postgresql"` — the driver manager searches for a matching
+   *   manifest file (e.g. `sqlite.toml`) in the configured directories, then falls back to
+   *   `LD_LIBRARY_PATH` / `PATH`.
+   * - Absolute path to a shared library: `"/usr/lib/libadbc_driver_sqlite.so"`
+   * - Absolute path to a driver manifest `.toml` file (with or without the `.toml` extension).
+   * - Relative path (only valid when {@link LoadFlags.AllowRelativePaths} is set).
    */
   driver: string
   /**
@@ -35,13 +123,14 @@ export interface ConnectOptions {
    */
   entrypoint?: string
   /**
-   * Paths to search for the driver (optional).
-   * Useful if the driver is not in the standard library paths.
+   * Additional directories to search for drivers and driver manifest (`.toml`) profile files (optional).
+   * Searched before the default system and user configuration directories.
    */
   searchPaths?: string[]
   /**
-   * Load flags (optional).
-   * Bitmask controlling how the driver is loaded (e.g., search system paths, search user paths).
+   * Bitmask controlling how the driver name is resolved (optional).
+   * Use the {@link LoadFlags} constants to compose a value.
+   * Defaults to {@link LoadFlags.Default} (all search locations enabled) when omitted.
    */
   loadFlags?: number
   /**
@@ -54,14 +143,10 @@ export interface ConnectOptions {
 /** Options for getObjects metadata call. */
 export interface GetObjectsOptions {
   /**
-   * The level of depth to retrieve.
-   * 0: All (Catalogs, Schemas, Tables, and Columns)
-   * 1: Catalogs only
-   * 2: Catalogs and Schemas
-   * 3: Catalogs, Schemas, and Tables
-   * 4: Catalogs, Schemas, Tables, and Columns (same as 0)
+   * The level of depth to retrieve. Use the {@link ObjectDepth} constants.
+   * Defaults to {@link ObjectDepth.All} when omitted.
    */
-  depth?: number
+  depth?: ObjectDepth
   /** Filter by catalog name pattern. */
   catalog?: string
   /** Filter by database schema name pattern. */
@@ -161,10 +246,11 @@ export interface AdbcConnection {
   /**
    * Get metadata about the driver and database.
    *
-   * @param infoCodes Optional list of integer info codes to retrieve.
+   * @param infoCodes Optional list of info codes to retrieve. Use the {@link InfoCode} constants.
+   *   If omitted, all available info is returned.
    * @returns A RecordBatchReader containing the requested metadata info.
    */
-  getInfo(infoCodes?: number[]): Promise<RecordBatchReader>
+  getInfo(infoCodes?: InfoCode[]): Promise<RecordBatchReader>
 
   /**
    * Execute a SQL query and return the results as a RecordBatchReader.

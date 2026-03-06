@@ -143,11 +143,9 @@ impl AdbcConnectionCore {
       .lock()
       .map_err(|e| ClientError::Other(e.to_string()))?;
     let depth = match opts.depth {
-      0 => ObjectDepth::All,
       1 => ObjectDepth::Catalogs,
       2 => ObjectDepth::Schemas,
       3 => ObjectDepth::Tables,
-      4 => ObjectDepth::Columns,
       _ => ObjectDepth::All,
     };
 
