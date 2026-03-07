@@ -16,12 +16,12 @@
 # under the License.
 
 
-import adbc_driver_bigquery
 import pyarrow
 import pytest
-from adbc_driver_bigquery import DatabaseOptions
 
+import adbc_driver_bigquery
 import adbc_driver_manager
+from adbc_driver_bigquery import DatabaseOptions
 
 
 @pytest.fixture
