@@ -75,6 +75,14 @@ repos:
     - id: pretty-format-java
       args: [--autofix]
       types_or: [java]
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: b969e2851312ca2b24bbec879ba4954341d1bd12 # v0.15.5
+    hooks:
+      - id: ruff-check
+        types_or: [python, pyi]
+        args: [--fix]
+      - id: ruff-format
+        types_or: [python, pyi]
   - repo: https://github.com/MarcoGorelli/cython-lint
     rev: 9247866fce7128f2c0eaf4a09f437880397d4689  # v0.16.2
     hooks:
