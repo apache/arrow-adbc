@@ -45,7 +45,6 @@ pub(crate) fn get_opt_name(value: &OptionValue) -> &str {
         OptionValue::String(_) => "String",
         OptionValue::Bytes(_) => "Bytes",
         OptionValue::Int(_) => "Int",
-        OptionValue::Double(_) => "Double",
         _ => unreachable!(),
     }
 }
