@@ -42,9 +42,10 @@ def main():
 
     args = parser.parse_args()
 
-    with open(args.input, "r", encoding="utf-8") as input_file, open(
-        args.output, "w", encoding="utf-8"
-    ) as output_file:
+    with (
+        open(args.input, "r", encoding="utf-8") as input_file,
+        open(args.output, "w", encoding="utf-8") as output_file,
+    ):
         write_header(input_file, output_file, args.library, args.version)
 
 
