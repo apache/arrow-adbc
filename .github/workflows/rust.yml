@@ -172,7 +172,12 @@ jobs:
         working-directory: rust
         run: |
           rustup toolchain install nightly --component clippy
-          cargo +nightly clippy --workspace --all-targets --all-features --locked -- -Dwarnings
+          # Run clippy in two passes: adbc_ffi needs the unstable
+          # non_exhaustive_omitted_patterns_lint feature gate (https://github.com/apache/arrow-adbc/pull/3245),
+          # but applying it workspace-wide causes an unused-features error in packages that don't use the lint.
+          cargo +nightly clippy --workspace --exclude adbc_ffi --all-targets --all-features --locked -- -Dwarnings
+          cargo +nightly clippy -p adbc_ffi --all-targets --all-features --locked -- -Dwarnings \
+            -Zcrate-attr='feature(non_exhaustive_omitted_patterns_lint)'
       - name: Test (Default Features)
         working-directory: rust
         # TODO: enable snowflake tests on windows
