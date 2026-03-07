@@ -75,21 +75,6 @@ repos:
     - id: pretty-format-java
       args: [--autofix]
       types_or: [java]
-  - repo: https://github.com/psf/black
-    rev: 8a737e727ac5ab2f1d4cf5876720ed276dc8dc4b  # 25.1.0
-    hooks:
-    - id: black
-      types_or: [pyi, python]
-  - repo: https://github.com/PyCQA/flake8
-    rev: bddd87797f8dfc07d2a10c894776018d9bec590b  # 7.1.2
-    hooks:
-    - id: flake8
-      types_or: [python]
-  - repo: https://github.com/PyCQA/isort
-    rev: 0a0b7a830386ba6a31c2ec8316849ae4d1b8240d  # 6.0.0
-    hooks:
-    - id: isort
-      types_or: [python]
   - repo: https://github.com/MarcoGorelli/cython-lint
     rev: 9247866fce7128f2c0eaf4a09f437880397d4689  # v0.16.2
     hooks:
