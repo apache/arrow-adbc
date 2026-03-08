@@ -85,7 +85,8 @@ class Connection : public ObjectBase {
     }
 
     std::vector<uint32_t> codes(info_codes, info_codes + info_codes_length);
-    RAISE_RESULT(error, auto infos, impl().InfoImpl(codes));
+    std::vector<InfoValue> infos;
+    RAISE_RESULT(error, infos, impl().InfoImpl(codes));
     RAISE_STATUS(error, MakeGetInfoStream(infos, out));
     return ADBC_STATUS_OK;
   }
@@ -131,7 +132,8 @@ class Connection : public ObjectBase {
             .ToAdbc(error);
     }
 
-    RAISE_RESULT(error, auto helper, impl().GetObjectsImpl());
+    std::unique_ptr<GetObjectsHelper> helper;
+    RAISE_RESULT(error, helper, impl().GetObjectsImpl());
     auto status = BuildGetObjects(helper.get(), depth, catalog_filter, schema_filter,
                                   table_filter, column_filter, table_type_filter, out);
     RAISE_STATUS(error, helper->Close());
@@ -149,13 +151,15 @@ class Connection : public ObjectBase {
           return driver::Option(ADBC_OPTION_VALUE_DISABLED);
       }
     } else if (key == ADBC_CONNECTION_OPTION_CURRENT_CATALOG) {
-      UNWRAP_RESULT(auto catalog, impl().GetCurrentCatalogImpl());
+      std::optional<std::string> catalog;
+      UNWRAP_RESULT(catalog, impl().GetCurrentCatalogImpl());
       if (catalog) {
         return driver::Option(std::move(*catalog));
       }
       return driver::Option();
     } else if (key == ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA) {
-      UNWRAP_RESULT(auto schema, impl().GetCurrentSchemaImpl());
+      std::optional<std::string> schema;
+      UNWRAP_RESULT(schema, impl().GetCurrentSchemaImpl());
       if (schema) {
         return driver::Option(std::move(*schema));
       }
@@ -203,7 +207,8 @@ class Connection : public ObjectBase {
       RAISE_STATUS(error, status::InvalidArgument("out must be non-null"));
     }
 
-    RAISE_RESULT(error, std::vector<std::string> table_types, impl().GetTableTypesImpl());
+    std::vector<std::string> table_types;
+    RAISE_RESULT(error, table_types, impl().GetTableTypesImpl());
     RAISE_STATUS(error, MakeTableTypesStream(table_types, out));
     return ADBC_STATUS_OK;
   }
@@ -281,7 +286,8 @@ class Connection : public ObjectBase {
 
   Status SetOptionImpl(std::string_view key, Option value) {
     if (key == ADBC_CONNECTION_OPTION_AUTOCOMMIT) {
-      UNWRAP_RESULT(auto enabled, value.AsBool());
+      bool enabled;
+      UNWRAP_RESULT(enabled, value.AsBool());
       switch (autocommit_) {
         case AutocommitState::kAutocommit: {
           if (!enabled) {

@@ -244,47 +244,59 @@ class Result {
   std::variant<Status, T> value_;
 };
 
+#define RESULT_NAME_SUFFIX _adbc_framework_result
 #define RAISE_RESULT_IMPL(NAME, ERROR, LHS, RHS) \
-  auto&& NAME = (RHS);                           \
-  if (!(NAME).has_value()) {                     \
-    return (NAME).status().ToAdbc(ERROR);        \
-  }                                              \
-  LHS = std::move((NAME).value());
+  do {                                           \
+    auto&& NAME = (RHS);                         \
+    if (!(NAME).has_value()) {                   \
+      return (NAME).status().ToAdbc(ERROR);      \
+    }                                            \
+    LHS = std::move((NAME).value());             \
+  } while (0);
 
 #define RAISE_STATUS_IMPL(NAME, ERROR, RHS) \
-  auto&& NAME = (RHS);                      \
-  if (!(NAME).ok()) {                       \
-    return (NAME).ToAdbc(ERROR);            \
-  }
+  do {                                      \
+    auto&& NAME = (RHS);                    \
+    if (!(NAME).ok()) {                     \
+      return (NAME).ToAdbc(ERROR);          \
+    }                                       \
+  } while (0);
 
 #define UNWRAP_RESULT_IMPL(name, lhs, rhs) \
-  auto&& name = (rhs);                     \
-  if (!(name).has_value()) {               \
-    return std::move(name).status();       \
-  }                                        \
-  lhs = std::move((name).value());
+  do {                                     \
+    auto&& name = (rhs);                   \
+    if (!(name).has_value()) {             \
+      return std::move(name).status();     \
+    }                                      \
+    lhs = std::move((name).value());       \
+  } while (0);
 
 #define UNWRAP_STATUS_IMPL(name, rhs) \
-  auto&& name = (rhs);                \
-  if (!(name).ok()) {                 \
-    return std::move(name);           \
-  }
+  do {                                \
+    auto&& name = (rhs);              \
+    if (!(name).ok()) {               \
+      return std::move(name);         \
+    }                                 \
+  } while (0);
 
 #define DRIVER_CONCAT(x, y) x##y
 #define UNWRAP_RESULT_NAME(x, y) DRIVER_CONCAT(x, y)
 
 /// \brief A helper to unwrap a Result in functions returning AdbcStatusCode.
-#define RAISE_RESULT(ERROR, LHS, RHS) \
-  RAISE_RESULT_IMPL(UNWRAP_RESULT_NAME(driver_raise_result, __COUNTER__), ERROR, LHS, RHS)
+#define RAISE_RESULT(ERROR, LHS, RHS)                                                   \
+  RAISE_RESULT_IMPL(UNWRAP_RESULT_NAME(driver_raise_result, RESULT_NAME_SUFFIX), ERROR, \
+                    LHS, RHS)
 /// \brief A helper to unwrap a Status in functions returning AdbcStatusCode.
-#define RAISE_STATUS(ERROR, RHS) \
-  RAISE_STATUS_IMPL(UNWRAP_RESULT_NAME(driver_raise_status, __COUNTER__), ERROR, RHS)
+#define RAISE_STATUS(ERROR, RHS)                                                        \
+  RAISE_STATUS_IMPL(UNWRAP_RESULT_NAME(driver_raise_status, RESULT_NAME_SUFFIX), ERROR, \
+                    RHS)
 /// \brief A helper to unwrap a Result in functions returning Result/Status.
-#define UNWRAP_RESULT(lhs, rhs) \
-  UNWRAP_RESULT_IMPL(UNWRAP_RESULT_NAME(driver_unwrap_result, __COUNTER__), lhs, rhs)
+#define UNWRAP_RESULT(lhs, rhs)                                                         \
+  UNWRAP_RESULT_IMPL(UNWRAP_RESULT_NAME(driver_unwrap_result, RESULT_NAME_SUFFIX), lhs, \
+                     rhs)
 /// \brief A helper to unwrap a Status in functions returning Result/Status.
 #define UNWRAP_STATUS(rhs) \
-  UNWRAP_STATUS_IMPL(UNWRAP_RESULT_NAME(driver_unwrap_status, __COUNTER__), rhs)
+  UNWRAP_STATUS_IMPL(UNWRAP_RESULT_NAME(driver_unwrap_status, RESULT_NAME_SUFFIX), rhs)
 
 }  // namespace adbc::driver
 
@@ -337,23 +349,28 @@ STATUS_CTOR(Unknown, UNKNOWN)
 }  // namespace adbc::driver::status::fmt
 #endif
 
-#define UNWRAP_ERRNO_IMPL(NAME, CODE, RHS)                                             \
-  auto&& NAME = (RHS);                                                                 \
-  if (NAME != 0) {                                                                     \
-    return adbc::driver::status::CODE("Call failed: ", #RHS, " = (errno ", NAME, ") ", \
-                                      std::strerror(NAME));                            \
-  }
+#define UNWRAP_ERRNO_IMPL(NAME, CODE, RHS)                                               \
+  do {                                                                                   \
+    auto&& NAME = (RHS);                                                                 \
+    if (NAME != 0) {                                                                     \
+      return adbc::driver::status::CODE("Call failed: ", #RHS, " = (errno ", NAME, ") ", \
+                                        std::strerror(NAME));                            \
+    }                                                                                    \
+  } while (0);
 
 #define UNWRAP_ERRNO(CODE, RHS) \
-  UNWRAP_ERRNO_IMPL(UNWRAP_RESULT_NAME(driver_errno, __COUNTER__), CODE, RHS)
+  UNWRAP_ERRNO_IMPL(UNWRAP_RESULT_NAME(driver_errno, RESULT_NAME_SUFFIX), CODE, RHS)
 
-#define UNWRAP_NANOARROW_IMPL(NAME, ERROR, CODE, RHS)                                    \
-  auto&& NAME = (RHS);                                                                   \
-  if (NAME != 0) {                                                                       \
-    return adbc::driver::status::CODE("nanoarrow call failed: ", #RHS, " = (", NAME,     \
-                                      ") ", std::strerror(NAME), ". ", (ERROR).message); \
-  }
+#define UNWRAP_NANOARROW_IMPL(NAME, ERROR, CODE, RHS)                                  \
+  do {                                                                                 \
+    auto&& NAME = (RHS);                                                               \
+    if (NAME != 0) {                                                                   \
+      return adbc::driver::status::CODE("nanoarrow call failed: ", #RHS, " = (", NAME, \
+                                        ") ", std::strerror(NAME), ". ",               \
+                                        (ERROR).message);                              \
+    }                                                                                  \
+  } while (0);
 
-#define UNWRAP_NANOARROW(ERROR, CODE, RHS)                                             \
-  UNWRAP_NANOARROW_IMPL(UNWRAP_RESULT_NAME(driver_errno_na, __COUNTER__), ERROR, CODE, \
-                        RHS)
+#define UNWRAP_NANOARROW(ERROR, CODE, RHS)                                              \
+  UNWRAP_NANOARROW_IMPL(UNWRAP_RESULT_NAME(driver_errno_na, RESULT_NAME_SUFFIX), ERROR, \
+                        CODE, RHS)
