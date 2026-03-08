@@ -15,8 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from adbc_drivers_validation.tests.statement import TestStatement  # noqa: F401
 from adbc_drivers_validation.tests.statement import (
+    TestStatement,  # noqa: F401
     generate_tests,
 )
 

@@ -22,7 +22,6 @@ DBAPI 2.0-compatible facade for the ADBC BigQuery driver.
 import typing
 
 import adbc_driver_bigquery
-
 import adbc_driver_manager
 import adbc_driver_manager.dbapi
 
