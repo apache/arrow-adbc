@@ -40,15 +40,15 @@ class JniSqliteStatementTest extends AbstractStatementTest {
   public void bulkIngestCreateConflict() {}
 
   @Override
-  @Disabled("Not yet implemented in JNI driver")
+  @Disabled("SQLite driver does not support ExecuteSchema")
   public void executeSchema() {}
 
   @Override
-  @Disabled("Not yet implemented in JNI driver")
+  @Disabled("SQLite driver does not support ExecuteSchema")
   public void executeSchemaPrepared() {}
 
   @Override
-  @Disabled("Not yet implemented in JNI driver")
+  @Disabled("SQLite driver does not support ExecuteSchema")
   public void executeSchemaParams() {}
 
   @Override

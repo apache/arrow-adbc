@@ -27,6 +27,7 @@ import org.apache.arrow.c.ArrowSchema;
 import org.apache.arrow.c.Data;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.types.pojo.Schema;
 
 public class JniStatement implements AdbcStatement {
   private final BufferAllocator allocator;
@@ -77,6 +78,12 @@ public class JniStatement implements AdbcStatement {
     exportBind();
     long rowsAffected = JniLoader.INSTANCE.statementExecuteUpdate(handle);
     return new UpdateResult(rowsAffected);
+  }
+
+  @Override
+  public Schema executeSchema() throws AdbcException {
+    exportBind();
+    return JniLoader.INSTANCE.statementExecuteSchema(handle).importSchema(allocator);
   }
 
   @Override
