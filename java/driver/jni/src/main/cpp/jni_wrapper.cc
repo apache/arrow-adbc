@@ -97,7 +97,8 @@ void RaiseAdbcException(AdbcStatusCode code, const AdbcError& error) {
   assert(code != ADBC_STATUS_OK);
   throw AdbcException{
       .code = code,
-      .message = std::string(error.message),
+      .message =
+          error.message ? std::string(error.message) : std::string("(unknown error)"),
   };
 }
 
@@ -437,6 +438,22 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementPrepare(
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
+}
+
+JNIEXPORT jobject JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementExecuteSchema(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
+  try {
+    struct AdbcError error = ADBC_ERROR_INIT;
+    auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
+    struct ArrowSchema schema = {};
+    CHECK_ADBC_ERROR(AdbcStatementExecuteSchema(ptr, &schema, &error), error);
+
+    return MakeNativeSchemaResult(env, &schema);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+  return nullptr;
 }
 
 JNIEXPORT void JNICALL
