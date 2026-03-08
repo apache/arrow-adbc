@@ -98,9 +98,9 @@ class Exception : public std::exception {
   } while (0)
 #endif
 
-#define NANOARROW_THROW_NOT_OK(EXPR)                                                   \
-  _NANOARROW_THROW_NOT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR, \
-                               #EXPR)
+#define NANOARROW_THROW_NOT_OK(EXPR) \
+  _NANOARROW_THROW_NOT_OK_IMPL(      \
+      _NANOARROW_MAKE_NAME(errno_status_, _NANOARROW_UNIQUE_SUFFIX), EXPR, #EXPR)
 
 /// @}
 

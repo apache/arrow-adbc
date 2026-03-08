@@ -19,9 +19,9 @@
 #define NANOARROW_CONFIG_H_INCLUDED
 
 #define NANOARROW_VERSION_MAJOR 0
-#define NANOARROW_VERSION_MINOR 8
+#define NANOARROW_VERSION_MINOR 9
 #define NANOARROW_VERSION_PATCH 0
-#define NANOARROW_VERSION "0.8.0"
+#define NANOARROW_VERSION "0.9.0-SNAPSHOT"
 
 #define NANOARROW_VERSION_INT                                        \
   (NANOARROW_VERSION_MAJOR * 10000 + NANOARROW_VERSION_MINOR * 100 + \
@@ -181,6 +181,13 @@ struct ArrowArrayStream {
     if (NAME) return NAME;                        \
   } while (0)
 
+// __COUNTER__ is not guaranteed to be available and some compiler warnings may occur
+// if we use it (-Wc2y-extensions). We don't strictly need it because of the
+// do { ... } while(0) scoping and because we never need the return value to live
+// outside the temporary scope. Here we define a suffix that is unlikely to collide
+// with anything in EXPR.
+#define _NANOARROW_UNIQUE_SUFFIX _nanoarrow_unique_suffix
+
 #define _NANOARROW_CHECK_RANGE(x_, min_, max_) \
   NANOARROW_RETURN_NOT_OK((x_ >= min_ && x_ <= max_) ? NANOARROW_OK : EINVAL)
 
@@ -305,7 +312,8 @@ static inline void ArrowErrorSetString(struct ArrowError* error, const char* src
 /// \brief Check the result of an expression and return it if not NANOARROW_OK
 /// \ingroup nanoarrow-errors
 #define NANOARROW_RETURN_NOT_OK(EXPR) \
-  _NANOARROW_RETURN_NOT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR)
+  _NANOARROW_RETURN_NOT_OK_IMPL(      \
+      _NANOARROW_MAKE_NAME(errno_status_, _NANOARROW_UNIQUE_SUFFIX), EXPR)
 
 /// \brief Check the result of an expression and return it if not NANOARROW_OK,
 /// adding an auto-generated message to an ArrowError.
@@ -314,9 +322,10 @@ static inline void ArrowErrorSetString(struct ArrowError* error, const char* src
 /// This macro is used to ensure that functions that accept an ArrowError
 /// as input always set its message when returning an error code (e.g., when calling
 /// a nanoarrow function that does *not* accept ArrowError).
-#define NANOARROW_RETURN_NOT_OK_WITH_ERROR(EXPR, ERROR_EXPR) \
-  _NANOARROW_RETURN_NOT_OK_WITH_ERROR_IMPL(                  \
-      _NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR, ERROR_EXPR, #EXPR)
+#define NANOARROW_RETURN_NOT_OK_WITH_ERROR(EXPR, ERROR_EXPR)                           \
+  _NANOARROW_RETURN_NOT_OK_WITH_ERROR_IMPL(                                            \
+      _NANOARROW_MAKE_NAME(errno_status_, _NANOARROW_UNIQUE_SUFFIX), EXPR, ERROR_EXPR, \
+      #EXPR)
 
 #if defined(NANOARROW_DEBUG) && !defined(NANOARROW_PRINT_AND_DIE)
 #define NANOARROW_PRINT_AND_DIE(VALUE, EXPR_STR)                                 \
@@ -343,7 +352,8 @@ static inline void ArrowErrorSetString(struct ArrowError* error, const char* src
 /// be defining the NANOARROW_PRINT_AND_DIE macro before including nanoarrow.h
 /// This macro is provided as a convenience for users and is not used internally.
 #define NANOARROW_ASSERT_OK(EXPR) \
-  _NANOARROW_ASSERT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR, #EXPR)
+  _NANOARROW_ASSERT_OK_IMPL(      \
+      _NANOARROW_MAKE_NAME(errno_status_, _NANOARROW_UNIQUE_SUFFIX), EXPR, #EXPR)
 
 #define _NANOARROW_DCHECK_IMPL(EXPR, EXPR_STR)          \
   do {                                                  \

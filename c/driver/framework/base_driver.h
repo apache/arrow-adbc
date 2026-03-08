@@ -325,13 +325,15 @@ class ObjectBase {
   template <typename T>
   AdbcStatusCode CGetOptionStringLike(const char* key, T* value, size_t* length,
                                       AdbcError* error) {
-    RAISE_RESULT(error, auto option, GetOption(key));
+    Option option;
+    RAISE_RESULT(error, option, GetOption(key));
     return option.CGet(value, length, error);
   }
 
   template <typename T>
   AdbcStatusCode CGetOptionNumeric(const char* key, T* value, AdbcError* error) {
-    RAISE_RESULT(error, auto option, GetOption(key));
+    Option option;
+    RAISE_RESULT(error, option, GetOption(key));
     return option.CGet(value, error);
   }
 };
@@ -1057,7 +1059,8 @@ class BaseStatement : public ObjectBase {
 
   AdbcStatusCode ExecuteQuery(ArrowArrayStream* stream, int64_t* rows_affected,
                               AdbcError* error) {
-    RAISE_RESULT(error, int64_t rows_affected_result, impl().ExecuteQueryImpl(stream));
+    int64_t rows_affected_result;
+    RAISE_RESULT(error, rows_affected_result, impl().ExecuteQueryImpl(stream));
     if (rows_affected) {
       *rows_affected = rows_affected_result;
     }
