@@ -17,6 +17,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+# ruff: noqa: E501
 
 import argparse
 import re
@@ -41,9 +42,10 @@ def main():
 
     args = parser.parse_args()
 
-    with open(args.input, "r", encoding="utf-8") as input_file, open(
-        args.output, "w", encoding="utf-8"
-    ) as output_file:
+    with (
+        open(args.input, "r", encoding="utf-8") as input_file,
+        open(args.output, "w", encoding="utf-8") as output_file,
+    ):
         write_header(input_file, output_file, args.library, args.version)
 
 
@@ -106,7 +108,7 @@ def generate_encoded_versions(library: str) -> str:
  *
  * Since: {major_version}.{minor_version}.0
  */
-#define {library}_VERSION_{major_version}_{minor_version} G_ENCODE_VERSION({major_version}, {minor_version})"""  # noqa: #501
+#define {library}_VERSION_{major_version}_{minor_version} G_ENCODE_VERSION({major_version}, {minor_version})"""
         )
 
     return "\n\n".join(macros)
@@ -129,7 +131,7 @@ def generate_availability_macros(library: str) -> str:
 #  define {library}_AVAILABLE_IN_{major_version}_{minor_version} {library}_EXTERN {library}_UNAVAILABLE({major_version}, {minor_version})
 #else
 #  define {library}_AVAILABLE_IN_{major_version}_{minor_version} {library}_EXTERN
-#endif"""  # noqa: #501
+#endif"""
         )
 
     return "\n\n".join(macros)

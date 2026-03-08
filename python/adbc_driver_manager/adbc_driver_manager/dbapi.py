@@ -353,8 +353,7 @@ class Connection(_Closeable):
             except _lib.NotSupportedError:
                 self._commit_supported = False
                 warnings.warn(
-                    "Cannot disable autocommit; "
-                    "conn will not be DB-API 2.0 compliant",
+                    "Cannot disable autocommit; conn will not be DB-API 2.0 compliant",
                     category=Warning,
                 )
                 self._autocommit = True

@@ -99,7 +99,7 @@ def scrape_links(item_id_to_url, root):
                     continue
                 else:
                     raise NotImplementedError(
-                        f"<memberdef kind=\"{memberdef.attrib['kind']}\"> not supported"
+                        f'<memberdef kind="{memberdef.attrib["kind"]}"> not supported'
                     )
 
                 anchor = parse_member_id(memberdef.attrib["id"])
