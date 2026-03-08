@@ -172,7 +172,13 @@ jobs:
         working-directory: rust
         run: |
           rustup toolchain install nightly --component clippy
-          cargo +nightly clippy --workspace --all-targets --all-features --locked -- -Dwarnings -Zcrate-attr='feature(non_exhaustive_omitted_patterns_lint)'
+          # -Zcrate-attr enables the unstable non_exhaustive_omitted_patterns lint
+          # (https://github.com/apache/arrow-adbc/pull/3245).
+          # It applies to all workspace packages, so we also allow unused_features for crates that
+          # don't use the lint.
+          cargo +nightly clippy --workspace --all-targets --all-features --locked -- -Dwarnings \
+            -Zcrate-attr='feature(non_exhaustive_omitted_patterns_lint)' \
+            -Zcrate-attr='allow(unused_features)'
       - name: Test (Default Features)
         working-directory: rust
         # TODO: enable snowflake tests on windows
