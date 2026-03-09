@@ -15,7 +15,18 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[codespell]
-dictionary = .codespell-dictionary,-
-ignore-words = .codespell-ignore
-skip = go/adbc/go.sum,javascript/package-lock.json
+# EditorConfig helps developers define and maintain consistent
+# coding styles between different editors or IDEs
+# http://editorconfig.org
+root = true
+
+[*]
+indent_style = space
+indent_size = 2
+end_of_line = lf
+charset = utf-8
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+[*.md]
+trim_trailing_whitespace = false

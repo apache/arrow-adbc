@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "strict": true,
+    "moduleResolution": "node",
+    "module": "CommonJS",
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "rootDir": "lib",
+    "outDir": "./dist",
+    "declaration": true,
+    "paths": {
+      "apache-arrow": ["./node_modules/apache-arrow"]
+    }
+  },
+  "include": ["lib"],
+  "exclude": ["node_modules", "bench", "__test__", "src"]
+}

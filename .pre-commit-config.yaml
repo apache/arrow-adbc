@@ -136,7 +136,12 @@ repos:
     hooks:
     - id: fmt
       name: rustfmt
+      files: ^rust/
       args: ["--all", "--manifest-path", "rust/Cargo.toml", "--"]
+    - id: fmt
+      name: rustfmt-node
+      files: ^javascript/
+      args: ["--all", "--manifest-path", "javascript/Cargo.toml", "--"]
   - repo: https://github.com/codespell-project/codespell
     rev: 63c8f8312b7559622c0d82815639671ae42132ac  # v2.4.1
     hooks:
