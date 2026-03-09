@@ -15,7 +15,10 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[codespell]
-dictionary = .codespell-dictionary,-
-ignore-words = .codespell-ignore
-skip = go/adbc/go.sum,javascript/package-lock.json
+exclude = ["node_modules/**/*.toml"]
+
+# https://taplo.tamasfe.dev/configuration/formatter-options.html
+[formatting]
+align_entries = true
+indent_tables = true
+reorder_keys  = true

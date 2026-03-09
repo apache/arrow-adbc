@@ -15,7 +15,28 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[codespell]
-dictionary = .codespell-dictionary,-
-ignore-words = .codespell-ignore
-skip = go/adbc/go.sum,javascript/package-lock.json
+[package]
+edition = "2021"
+name = "adbc_driver_manager"
+version = "0.1.0"
+license = "Apache-2.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+napi = "3.0.0"
+napi-derive = "3.0.0"
+adbc_core = { path = "../rust/core" }
+adbc_driver_manager = { path = "../rust/driver_manager" }
+arrow-array = { version = ">=53.1.0", default-features = false, features = ["ffi"] }
+arrow-ipc = { version = ">=53.1.0" }
+arrow-schema = { version = ">=53.1.0" }
+thiserror = "1.0"
+
+[build-dependencies]
+napi-build = "2"
+
+[profile.release]
+lto = true
+strip = "symbols"

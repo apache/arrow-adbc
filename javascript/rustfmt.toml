@@ -15,7 +15,4 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[codespell]
-dictionary = .codespell-dictionary,-
-ignore-words = .codespell-ignore
-skip = go/adbc/go.sum,javascript/package-lock.json
+tab_spaces = 2

@@ -15,7 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
-[codespell]
-dictionary = .codespell-dictionary,-
-ignore-words = .codespell-ignore
-skip = go/adbc/go.sum,javascript/package-lock.json
+target
+build
+dist
+binding.js
+binding.d.ts
+license.hbs
