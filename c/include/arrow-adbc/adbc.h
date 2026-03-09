@@ -1977,17 +1977,25 @@ AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
 ///
 /// The result is an Arrow dataset with the following schema:
 ///
-/// | Field Name               | Field Type              |
-/// |--------------------------|-------------------------|
-/// | catalog_name             | utf8                    |
-/// | catalog_db_schemas       | list<DB_SCHEMA_SCHEMA>  |
+/// | Field Name               | Field Type              | Comments |
+/// |--------------------------|-------------------------|----------|
+/// | catalog_name             | utf8                    |          |
+/// | catalog_db_schemas       | list<DB_SCHEMA_SCHEMA>  |          |
+/// | remarks                  | utf8                    | (1)      |
+///
+/// 1. [Since version 1.2.0] A description of the catalog.  This field is
+///    optional.
 ///
 /// DB_SCHEMA_SCHEMA is a Struct with fields:
 ///
-/// | Field Name               | Field Type              |
-/// |--------------------------|-------------------------|
-/// | db_schema_name           | utf8                    |
-/// | db_schema_tables         | list<TABLE_SCHEMA>      |
+/// | Field Name               | Field Type              | Comments |
+/// |--------------------------|-------------------------|----------|
+/// | db_schema_name           | utf8                    |          |
+/// | db_schema_tables         | list<TABLE_SCHEMA>      |          |
+/// | remarks                  | utf8                    | (1)      |
+///
+/// 1. [Since version 1.2.0] A description of the schema.  This field is
+///    optional.
 ///
 /// TABLE_SCHEMA is a Struct with fields:
 ///
@@ -1998,9 +2006,12 @@ AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
 /// | table_columns            | list<COLUMN_SCHEMA>     |          |
 /// | table_constraints        | list<CONSTRAINT_SCHEMA> |          |
 /// | table_definition         | utf8                    | (1)      |
+/// | remarks                  | utf8                    | (2)      |
 ///
 /// 1. [Since version 1.2.0] The table or view definition (e.g. a SQL DDL
 ///    statement).  This field is optional.
+/// 2. [Since version 1.2.0] A description of the table.  This field is
+///    optional.
 ///
 /// COLUMN_SCHEMA is a Struct with fields:
 ///
@@ -2025,12 +2036,14 @@ AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
 /// | xdbc_scope_table         | utf8                    | (3)      |
 /// | xdbc_is_autoincrement    | bool                    | (3)      |
 /// | xdbc_is_generatedcolumn  | bool                    | (3)      |
+/// | xdbc_source_data_type    | int16                   | (3, 4)   |
 ///
 /// 1. The column's ordinal position in the table (starting from 1).
 /// 2. Database-specific description of the column.
 /// 3. Optional value.  Should be null if not supported by the driver.
 ///    xdbc_ values are meant to provide JDBC/ODBC-compatible metadata
 ///    in an agnostic manner.
+/// 4. [Since version 1.2.0] This field is optional.
 ///
 /// CONSTRAINT_SCHEMA is a Struct with fields:
 ///
@@ -2092,6 +2105,13 @@ AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
 /// optional fields defined before it in the schema must be present (but the
 /// values may still be null if the driver does not actually support that
 /// field).
+///
+/// Starting in version 1.2.0, driver-specific fields were introduced to the
+/// schema.  Drivers may add custom fields at the end of any schema above to
+/// reflect vendor-specific metadata.  Applications must access these using an
+/// offset from the end of the schema and cannot assume that the index of the
+/// field will remain stable.  Drivers should prefix field names with the
+/// vendor/driver name to differentiate them (e.g. 'POSTGRESQL:owner').
 ///
 /// This AdbcConnection must outlive the returned ArrowArrayStream.
 ///
