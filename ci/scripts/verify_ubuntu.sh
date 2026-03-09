@@ -25,7 +25,7 @@
 set -euo pipefail
 
 : ${JDK:=21}
-: ${MAVEN:=3.9.12}
+: ${MAVEN:=3.9.13}
 
 main() {
     local -r source_dir="${1}"
