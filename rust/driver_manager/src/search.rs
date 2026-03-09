@@ -182,7 +182,7 @@ impl DriverInfo {
     }
 }
 
-pub(crate) struct SearchHit {
+pub struct SearchHit {
     /// The path where `library` was loaded from.
     pub lib_path: PathBuf,
     /// The loaded library.
@@ -237,7 +237,7 @@ impl<'a> ops::Deref for DriverInitFunc<'a> {
     }
 }
 
-pub(crate) struct DriverLibrary<'a> {
+pub struct DriverLibrary<'a> {
     init: DriverInitFunc<'a>,
 }
 
@@ -248,7 +248,7 @@ impl<'a> DriverLibrary<'a> {
         }
     }
 
-    pub(crate) fn try_from_dynamic_library(
+    pub fn try_from_dynamic_library(
         library: &'a libloading::Library,
         entrypoint: &[u8],
     ) -> Result<Self> {
@@ -263,7 +263,7 @@ impl<'a> DriverLibrary<'a> {
     }
 
     /// Initialize the driver via the library's entrypoint.
-    pub(crate) fn init_driver(&self, version: AdbcVersion) -> Result<FFI_AdbcDriver> {
+    pub fn init_driver(&self, version: AdbcVersion) -> Result<FFI_AdbcDriver> {
         let mut error = FFI_AdbcError::default();
         let mut driver = FFI_AdbcDriver::default();
         let status = unsafe {
@@ -277,7 +277,7 @@ impl<'a> DriverLibrary<'a> {
         Ok(driver)
     }
 
-    pub(crate) fn load_library(filename: impl AsRef<OsStr>) -> Result<libloading::Library> {
+    pub fn load_library(filename: impl AsRef<OsStr>) -> Result<libloading::Library> {
         // By default, go builds the libraries with '-Wl -z nodelete' which does not
         // unload the go runtime. This isn't respected on mac ( https://github.com/golang/go/issues/11100#issuecomment-932638093 )
         // so we need to explicitly load the library with RTLD_NODELETE( which prevents unloading )
@@ -368,7 +368,7 @@ impl<'a> DriverLibrary<'a> {
         }
     }
 
-    pub(crate) fn search(
+    pub fn search(
         name: impl AsRef<OsStr>,
         load_flags: LoadFlags,
         additional_search_paths: Option<Vec<PathBuf>>,
@@ -920,7 +920,7 @@ fn get_profile_search_paths(additional_path_list: Option<Vec<PathBuf>>) -> Vec<P
             PathBuf::from(conda_prefix)
                 .join("etc")
                 .join("adbc")
-                .join("drivers"),
+                .join("profiles"),
         );
     }
 

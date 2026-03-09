@@ -336,7 +336,7 @@ fn profile_value_regex() -> &'static Regex {
     RE.get_or_init(|| Regex::new(r"\{\{\s*([^{}]*?)\s*\}\}").unwrap())
 }
 
-pub(crate) fn process_profile_value(value: &str) -> Result<OptionValue> {
+pub fn process_profile_value(value: &str) -> Result<OptionValue> {
     let re = profile_value_regex();
 
     let replacer = |caps: &Captures| -> Result<String> {
