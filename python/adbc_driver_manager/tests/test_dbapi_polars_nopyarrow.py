@@ -147,7 +147,7 @@ def test_query_executemany_parameters(sqlite: dbapi.Connection, parameters) -> N
         )
 
 
-def test_execute_parameters_name(sqlite):
+def test_execute_parameters_name(sqlite) -> None:
     with sqlite.cursor() as cursor:
         cursor.execute("SELECT @a + 1, @b", {"@b": 2, "@a": 1})
         df = cursor.fetch_polars()
@@ -201,7 +201,7 @@ def test_execute_parameters_name(sqlite):
         )
 
 
-def test_executemany_parameters_name(sqlite):
+def test_executemany_parameters_name(sqlite) -> None:
     with sqlite.cursor() as cursor:
         cursor.execute("CREATE TABLE executemany_params (a, b)")
 
