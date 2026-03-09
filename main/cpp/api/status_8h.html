@@ -124,6 +124,9 @@ Classes</h2></td></tr>
 Macros</h2></td></tr>
 <tr class="memitem:add6b3ef76c8ad13acd4247cae140c118" id="r_add6b3ef76c8ad13acd4247cae140c118"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#add6b3ef76c8ad13acd4247cae140c118">STATUS_CTOR</a>(NAME,  CODE)</td></tr>
 <tr class="separator:add6b3ef76c8ad13acd4247cae140c118"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab4c024bf334b90849ac805dcd4c18ee3" id="r_ab4c024bf334b90849ac805dcd4c18ee3"><td class="memItemLeft" align="right" valign="top"><a id="ab4c024bf334b90849ac805dcd4c18ee3" name="ab4c024bf334b90849ac805dcd4c18ee3"></a>
+#define&#160;</td><td class="memItemRight" valign="bottom"><b>RESULT_NAME_SUFFIX</b>&#160;&#160;&#160;_adbc_framework_result</td></tr>
+<tr class="separator:ab4c024bf334b90849ac805dcd4c18ee3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aeeb1541f04f6fb9c475312b40a54d6bc" id="r_aeeb1541f04f6fb9c475312b40a54d6bc"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aeeb1541f04f6fb9c475312b40a54d6bc">RAISE_RESULT_IMPL</a>(NAME,  ERROR,  LHS,  RHS)</td></tr>
 <tr class="separator:aeeb1541f04f6fb9c475312b40a54d6bc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aae782db26aa5c9ab8b840661ab9db5c5" id="r_aae782db26aa5c9ab8b840661ab9db5c5"><td class="memItemLeft" align="right" valign="top">#define&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="#aae782db26aa5c9ab8b840661ab9db5c5">RAISE_STATUS_IMPL</a>(NAME,  ERROR,  RHS)</td></tr>
@@ -211,7 +214,8 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line">  RAISE_RESULT_IMPL(UNWRAP_RESULT_NAME(driver_raise_result, __COUNTER__), ERROR, LHS, RHS)</div>
+<b>Value:</b><div class="fragment"><div class="line">  RAISE_RESULT_IMPL(UNWRAP_RESULT_NAME(driver_raise_result, RESULT_NAME_SUFFIX), ERROR, \</div>
+<div class="line">                    LHS, RHS)</div>
 </div><!-- fragment -->
 <p>A helper to unwrap a Result in functions returning <a class="el" href="group__adbc-error-handling.html#ga6af034a7846314de57fe1b14f8ad2754" title="Error codes for operations that may fail.">AdbcStatusCode</a>. </p>
 
@@ -245,11 +249,13 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line">  <span class="keyword">auto</span>&amp;&amp; NAME = (RHS);                           \</div>
-<div class="line">  if (!(NAME).has_value()) {                     \</div>
-<div class="line">    return (NAME).status().ToAdbc(ERROR);        \</div>
-<div class="line">  }                                              \</div>
-<div class="line">  LHS = std::move((NAME).value());</div>
+<b>Value:</b><div class="fragment"><div class="line">  <span class="keywordflow">do</span> {                                           \</div>
+<div class="line">    <span class="keyword">auto</span>&amp;&amp; NAME = (RHS);                         \</div>
+<div class="line">    if (!(NAME).has_value()) {                   \</div>
+<div class="line">      return (NAME).status().ToAdbc(ERROR);      \</div>
+<div class="line">    }                                            \</div>
+<div class="line">    LHS = std::move((NAME).value());             \</div>
+<div class="line">  } <span class="keywordflow">while</span> (0);</div>
 </div><!-- fragment -->
 </div>
 </div>
@@ -271,7 +277,8 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line">  RAISE_STATUS_IMPL(UNWRAP_RESULT_NAME(driver_raise_status, __COUNTER__), ERROR, RHS)</div>
+<b>Value:</b><div class="fragment"><div class="line">  RAISE_STATUS_IMPL(UNWRAP_RESULT_NAME(driver_raise_status, RESULT_NAME_SUFFIX), ERROR, \</div>
+<div class="line">                    RHS)</div>
 </div><!-- fragment -->
 <p>A helper to unwrap a Status in functions returning <a class="el" href="group__adbc-error-handling.html#ga6af034a7846314de57fe1b14f8ad2754" title="Error codes for operations that may fail.">AdbcStatusCode</a>. </p>
 
@@ -300,10 +307,12 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line">  <span class="keyword">auto</span>&amp;&amp; NAME = (RHS);                      \</div>
-<div class="line">  if (!(NAME).ok()) {                       \</div>
-<div class="line">    return (NAME).ToAdbc(ERROR);            \</div>
-<div class="line">  }</div>
+<b>Value:</b><div class="fragment"><div class="line">  <span class="keywordflow">do</span> {                                      \</div>
+<div class="line">    <span class="keyword">auto</span>&amp;&amp; NAME = (RHS);                    \</div>
+<div class="line">    if (!(NAME).ok()) {                     \</div>
+<div class="line">      return (NAME).ToAdbc(ERROR);          \</div>
+<div class="line">    }                                       \</div>
+<div class="line">  } <span class="keywordflow">while</span> (0);</div>
 </div><!-- fragment -->
 </div>
 </div>
@@ -379,7 +388,7 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line">  UNWRAP_ERRNO_IMPL(UNWRAP_RESULT_NAME(driver_errno, __COUNTER__), CODE, RHS)</div>
+<b>Value:</b><div class="fragment"><div class="line">  UNWRAP_ERRNO_IMPL(UNWRAP_RESULT_NAME(driver_errno, RESULT_NAME_SUFFIX), CODE, RHS)</div>
 </div><!-- fragment -->
 </div>
 </div>
@@ -406,11 +415,13 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line">  <span class="keyword">auto</span>&amp;&amp; NAME = (RHS);                                                                 \</div>
-<div class="line">  if (NAME != 0) {                                                                     \</div>
-<div class="line">    <span class="keywordflow">return</span> adbc::driver::status::CODE(<span class="stringliteral">&quot;Call failed: &quot;</span>, #RHS, <span class="stringliteral">&quot; = (errno &quot;</span>, NAME, <span class="stringliteral">&quot;) &quot;</span>, \</div>
-<div class="line">                                      std::strerror(NAME));                            \</div>
-<div class="line">  }</div>
+<b>Value:</b><div class="fragment"><div class="line">  <span class="keywordflow">do</span> {                                                                                   \</div>
+<div class="line">    <span class="keyword">auto</span>&amp;&amp; NAME = (RHS);                                                                 \</div>
+<div class="line">    if (NAME != 0) {                                                                     \</div>
+<div class="line">      <span class="keywordflow">return</span> adbc::driver::status::CODE(<span class="stringliteral">&quot;Call failed: &quot;</span>, #RHS, <span class="stringliteral">&quot; = (errno &quot;</span>, NAME, <span class="stringliteral">&quot;) &quot;</span>, \</div>
+<div class="line">                                        std::strerror(NAME));                            \</div>
+<div class="line">    }                                                                                    \</div>
+<div class="line">  } <span class="keywordflow">while</span> (0);</div>
 </div><!-- fragment -->
 </div>
 </div>
@@ -437,8 +448,8 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line">  UNWRAP_NANOARROW_IMPL(UNWRAP_RESULT_NAME(driver_errno_na, __COUNTER__), ERROR, CODE, \</div>
-<div class="line">                        RHS)</div>
+<b>Value:</b><div class="fragment"><div class="line">  UNWRAP_NANOARROW_IMPL(UNWRAP_RESULT_NAME(driver_errno_na, RESULT_NAME_SUFFIX), ERROR, \</div>
+<div class="line">                        CODE, RHS)</div>
 </div><!-- fragment -->
 </div>
 </div>
@@ -470,11 +481,14 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line">  <span class="keyword">auto</span>&amp;&amp; NAME = (RHS);                                                                   \</div>
-<div class="line">  if (NAME != 0) {                                                                       \</div>
-<div class="line">    <span class="keywordflow">return</span> adbc::driver::status::CODE(<span class="stringliteral">&quot;nanoarrow call failed: &quot;</span>, #RHS, <span class="stringliteral">&quot; = (&quot;</span>, NAME,     \</div>
-<div class="line">                                      <span class="stringliteral">&quot;) &quot;</span>, std::strerror(NAME), <span class="stringliteral">&quot;. &quot;</span>, (ERROR).message); \</div>
-<div class="line">  }</div>
+<b>Value:</b><div class="fragment"><div class="line">  <span class="keywordflow">do</span> {                                                                                 \</div>
+<div class="line">    <span class="keyword">auto</span>&amp;&amp; NAME = (RHS);                                                               \</div>
+<div class="line">    if (NAME != 0) {                                                                   \</div>
+<div class="line">      <span class="keywordflow">return</span> adbc::driver::status::CODE(<span class="stringliteral">&quot;nanoarrow call failed: &quot;</span>, #RHS, <span class="stringliteral">&quot; = (&quot;</span>, NAME, \</div>
+<div class="line">                                        <span class="stringliteral">&quot;) &quot;</span>, std::strerror(NAME), <span class="stringliteral">&quot;. &quot;</span>,               \</div>
+<div class="line">                                        (ERROR).message);                              \</div>
+<div class="line">    }                                                                                  \</div>
+<div class="line">  } <span class="keywordflow">while</span> (0);</div>
 </div><!-- fragment -->
 </div>
 </div>
@@ -496,7 +510,8 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line">  UNWRAP_RESULT_IMPL(UNWRAP_RESULT_NAME(driver_unwrap_result, __COUNTER__), lhs, rhs)</div>
+<b>Value:</b><div class="fragment"><div class="line">  UNWRAP_RESULT_IMPL(UNWRAP_RESULT_NAME(driver_unwrap_result, RESULT_NAME_SUFFIX), lhs, \</div>
+<div class="line">                     rhs)</div>
 </div><!-- fragment -->
 <p>A helper to unwrap a Result in functions returning Result/Status. </p>
 
@@ -525,11 +540,13 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line">  <span class="keyword">auto</span>&amp;&amp; name = (rhs);                     \</div>
-<div class="line">  if (!(name).has_value()) {               \</div>
-<div class="line">    <span class="keywordflow">return</span> std::move(name).status();       \</div>
-<div class="line">  }                                        \</div>
-<div class="line">  lhs = std::move((name).value());</div>
+<b>Value:</b><div class="fragment"><div class="line">  <span class="keywordflow">do</span> {                                     \</div>
+<div class="line">    <span class="keyword">auto</span>&amp;&amp; name = (rhs);                   \</div>
+<div class="line">    if (!(name).has_value()) {             \</div>
+<div class="line">      <span class="keywordflow">return</span> std::move(name).status();     \</div>
+<div class="line">    }                                      \</div>
+<div class="line">    lhs = std::move((name).value());       \</div>
+<div class="line">  } <span class="keywordflow">while</span> (0);</div>
 </div><!-- fragment -->
 </div>
 </div>
@@ -569,7 +586,7 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line">  UNWRAP_STATUS_IMPL(UNWRAP_RESULT_NAME(driver_unwrap_status, __COUNTER__), rhs)</div>
+<b>Value:</b><div class="fragment"><div class="line">  UNWRAP_STATUS_IMPL(UNWRAP_RESULT_NAME(driver_unwrap_status, RESULT_NAME_SUFFIX), rhs)</div>
 </div><!-- fragment -->
 <p>A helper to unwrap a Status in functions returning Result/Status. </p>
 
@@ -593,10 +610,12 @@ Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<b>Value:</b><div class="fragment"><div class="line">  <span class="keyword">auto</span>&amp;&amp; name = (rhs);                \</div>
-<div class="line">  if (!(name).ok()) {                 \</div>
-<div class="line">    <span class="keywordflow">return</span> std::move(name);           \</div>
-<div class="line">  }</div>
+<b>Value:</b><div class="fragment"><div class="line">  <span class="keywordflow">do</span> {                                \</div>
+<div class="line">    <span class="keyword">auto</span>&amp;&amp; name = (rhs);              \</div>
+<div class="line">    if (!(name).ok()) {               \</div>
+<div class="line">      <span class="keywordflow">return</span> std::move(name);         \</div>
+<div class="line">    }                                 \</div>
+<div class="line">  } <span class="keywordflow">while</span> (0);</div>
 </div><!-- fragment -->
 </div>
 </div>
