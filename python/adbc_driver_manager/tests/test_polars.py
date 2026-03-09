@@ -22,7 +22,7 @@ polars.testing = pytest.importorskip("polars.testing")
 
 
 @pytest.mark.sqlite
-def test_query_fetch_polars(sqlite):
+def test_query_fetch_polars(sqlite) -> None:
     with sqlite.cursor() as cur:
         cur.execute("SELECT 1, 'foo' AS foo, 2.0")
         polars.testing.assert_frame_equal(
