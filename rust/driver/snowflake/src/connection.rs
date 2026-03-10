@@ -70,8 +70,8 @@ impl adbc_core::Connection for Connection {
         self.0.new_statement().map(Statement)
     }
 
-    fn cancel(&mut self) -> Result<()> {
-        self.0.cancel()
+    fn get_cancel_handle(&self) -> Box<dyn adbc_core::CancelHandle> {
+        self.0.get_cancel_handle()
     }
 
     fn get_info(
