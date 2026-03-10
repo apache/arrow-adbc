@@ -52,7 +52,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: 'npm'
@@ -95,7 +95,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: 'npm'
@@ -121,7 +121,7 @@ jobs:
         working-directory: javascript
         run: codesign --sign - *.node
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bindings-${{ matrix.settings.target }}
           path: javascript/*.node
@@ -151,7 +151,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Setup node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 22
           cache: 'npm'
@@ -160,7 +160,7 @@ jobs:
         working-directory: javascript
         run: npm ci --omit=optional
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: bindings-${{ matrix.settings.target }}
           path: javascript
