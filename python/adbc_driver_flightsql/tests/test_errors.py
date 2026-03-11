@@ -154,7 +154,7 @@ def test_query_error_bind(test_dbapi):
         with pytest.raises(
             test_dbapi.OperationalError,
             match=re.escape(
-                "UNKNOWN: [FlightSQL] expected error (DoPut)" " (Unknown; ExecuteQuery)"
+                "UNKNOWN: [FlightSQL] expected error (DoPut) (Unknown; ExecuteQuery)"
             ),
         ) as excval:
             cur.execute("error_do_put_detail", parameters=(1, "a"))

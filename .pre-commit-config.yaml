@@ -75,21 +75,14 @@ repos:
     - id: pretty-format-java
       args: [--autofix]
       types_or: [java]
-  - repo: https://github.com/psf/black
-    rev: 8a737e727ac5ab2f1d4cf5876720ed276dc8dc4b  # 25.1.0
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: b969e2851312ca2b24bbec879ba4954341d1bd12 # v0.15.5
     hooks:
-    - id: black
-      types_or: [pyi, python]
-  - repo: https://github.com/PyCQA/flake8
-    rev: bddd87797f8dfc07d2a10c894776018d9bec590b  # 7.1.2
-    hooks:
-    - id: flake8
-      types_or: [python]
-  - repo: https://github.com/PyCQA/isort
-    rev: 0a0b7a830386ba6a31c2ec8316849ae4d1b8240d  # 6.0.0
-    hooks:
-    - id: isort
-      types_or: [python]
+      - id: ruff-check
+        types_or: [python, pyi]
+        args: [--fix]
+      - id: ruff-format
+        types_or: [python, pyi]
   - repo: https://github.com/MarcoGorelli/cython-lint
     rev: 9247866fce7128f2c0eaf4a09f437880397d4689  # v0.16.2
     hooks:
@@ -143,7 +136,12 @@ repos:
     hooks:
     - id: fmt
       name: rustfmt
+      files: ^rust/
       args: ["--all", "--manifest-path", "rust/Cargo.toml", "--"]
+    - id: fmt
+      name: rustfmt-node
+      files: ^javascript/
+      args: ["--all", "--manifest-path", "javascript/Cargo.toml", "--"]
   - repo: https://github.com/codespell-project/codespell
     rev: 63c8f8312b7559622c0d82815639671ae42132ac  # v2.4.1
     hooks:

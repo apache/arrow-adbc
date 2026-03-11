@@ -47,7 +47,7 @@ import time
 import typing
 import warnings
 import weakref
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Dict, List, Literal, NoReturn, Optional, Tuple, Union
 
 try:
     import pyarrow
@@ -353,8 +353,7 @@ class Connection(_Closeable):
             except _lib.NotSupportedError:
                 self._commit_supported = False
                 warnings.warn(
-                    "Cannot disable autocommit; "
-                    "conn will not be DB-API 2.0 compliant",
+                    "Cannot disable autocommit; conn will not be DB-API 2.0 compliant",
                     category=Warning,
                 )
                 self._autocommit = True
@@ -685,7 +684,7 @@ class Cursor(_Closeable):
         if adbc_stmt_kwargs:
             self._stmt.set_options(**adbc_stmt_kwargs)
 
-    def _clear(self):
+    def _clear(self) -> None:
         if self._results is not None:
             self._results.close()
             self._results = None
@@ -729,11 +728,11 @@ class Cursor(_Closeable):
             return self._results.rownumber
         return None
 
-    def callproc(self, procname, parameters):
+    def callproc(self, procname, parameters) -> NoReturn:
         """Call a stored procedure (not supported)."""
         raise NotSupportedError("Cursor.callproc")
 
-    def close(self):
+    def close(self) -> None:
         """Close the cursor and free resources."""
         if self._closed:
             return
@@ -920,22 +919,22 @@ class Cursor(_Closeable):
             )
         return self._results.fetchall()
 
-    def next(self):
+    def next(self) -> tuple:
         """Fetch the next row, or raise StopIteration."""
         row = self.fetchone()
         if row is None:
             raise StopIteration
         return row
 
-    def nextset(self):
+    def nextset(self) -> NoReturn:
         """Move to the next available result set (not supported)."""
         raise NotSupportedError("Cursor.nextset")
 
-    def setinputsizes(self, sizes):
+    def setinputsizes(self, sizes) -> None:
         """Preallocate memory for the parameters (no-op)."""
         pass
 
-    def setoutputsize(self, size, column=None):
+    def setoutputsize(self, size, column=None) -> None:
         """Preallocate memory for the result set (no-op)."""
         pass
 
@@ -944,10 +943,10 @@ class Cursor(_Closeable):
             self.close()
             _warn_unclosed("adbc_driver_manager.dbapi.Cursor")
 
-    def __iter__(self):
+    def __iter__(self) -> "Self":
         return self
 
-    def __next__(self):
+    def __next__(self) -> tuple:
         return self.next()
 
     # ------------------------------------------------------------
@@ -1454,7 +1453,7 @@ _PYTEST_ENV_VAR = "PYTEST_CURRENT_TEST"
 _ADBC_ENV_VAR = "_ADBC_DRIVER_MANAGER_WARN_UNCLOSED_RESOURCE"
 
 
-def _warn_unclosed(name):
+def _warn_unclosed(name) -> None:
     if _PYTEST_ENV_VAR in os.environ or os.environ.get(_ADBC_ENV_VAR) == "1":
         warnings.warn(
             f"A {name} was not explicitly close()d, which may leak "
@@ -1465,7 +1464,7 @@ def _warn_unclosed(name):
         )
 
 
-def _is_arrow_data(data):
+def _is_arrow_data(data) -> bool:
     # No need to check for PyArrow types explicitly since they support the
     # dunder methods
     return (
@@ -1476,7 +1475,7 @@ def _is_arrow_data(data):
     )
 
 
-def _requires_pyarrow():
+def _requires_pyarrow() -> None:
     if not _has_pyarrow:
         raise ProgrammingError(
             "This API requires PyArrow to be installed",

@@ -119,6 +119,11 @@ public enum JniLoader {
     NativeAdbc.statementSetOption(statement.getStatementHandle(), key, value);
   }
 
+  public NativeSchemaResult statementExecuteSchema(NativeStatementHandle statement)
+      throws AdbcException {
+    return NativeAdbc.statementExecuteSchema(statement.getStatementHandle());
+  }
+
   public NativeQueryResult connectionGetObjects(
       NativeConnectionHandle connection,
       int depth,

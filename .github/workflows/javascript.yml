@@ -1,0 +1,200 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+name: JavaScript
+
+env:
+  DEBUG: napi:*
+  APP_NAME: adbc-driver-manager
+  MACOSX_DEPLOYMENT_TARGET: '10.15'
+  CARGO_INCREMENTAL: '1'
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'javascript/**'
+      - 'rust/**'
+      - '.github/workflows/javascript.yml'
+  pull_request:
+    paths:
+      - 'javascript/**'
+      - 'rust/**'
+      - '.github/workflows/javascript.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: javascript/package-lock.json
+      - name: Use stable Rust
+        run: |
+          rustup toolchain install stable --no-self-update
+          rustup default stable
+          rustup component add clippy rustfmt
+      - name: Install dependencies
+        working-directory: javascript
+        run: npm ci
+      - name: Check JS
+        working-directory: javascript
+        run: npm run check:js
+      - name: Check Rust
+        working-directory: javascript
+        run: npm run check:rust
+
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        settings:
+          - host: macos-15-intel
+            target: x86_64-apple-darwin
+          - host: macos-latest
+            target: aarch64-apple-darwin
+          - host: windows-latest
+            target: x86_64-pc-windows-msvc
+          - host: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - host: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+    name: Build Node.js ${{ matrix.settings.target }}
+    runs-on: ${{ matrix.settings.host }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: javascript/package-lock.json
+      - name: Use stable Rust
+        run: |
+          rustup toolchain install stable --no-self-update
+          rustup default stable
+          rustup target add ${{ matrix.settings.target }}
+      - name: Install dependencies
+        working-directory: javascript
+        run: npm ci
+      - name: Build
+        working-directory: javascript
+        shell: bash
+        run: |
+          npx napi build --platform --release --target ${{ matrix.settings.target }}
+          mv index.js binding.js
+          mv index.d.ts binding.d.ts
+          npx tsc
+      - name: Ad-hoc sign binary (macOS)
+        if: runner.os == 'macOS'
+        working-directory: javascript
+        run: codesign --sign - *.node
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: bindings-${{ matrix.settings.target }}
+          path: javascript/*.node
+          if-no-files-found: error
+
+  test:
+    name: Test ${{ matrix.settings.target }}
+    needs: build
+    runs-on: ${{ matrix.settings.host }}
+    strategy:
+      fail-fast: false
+      matrix:
+        settings:
+          - host: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - host: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          - host: macos-15-intel
+            target: x86_64-apple-darwin
+          - host: macos-latest
+            target: aarch64-apple-darwin
+          - host: windows-latest
+            target: x86_64-pc-windows-msvc
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Setup node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: 'npm'
+          cache-dependency-path: javascript/package-lock.json
+      - name: Install dependencies
+        working-directory: javascript
+        run: npm ci --omit=optional
+      - name: Download artifacts
+        uses: actions/download-artifact@v8
+        with:
+          name: bindings-${{ matrix.settings.target }}
+          path: javascript
+      - name: Setup conda (Windows)
+        if: runner.os == 'Windows'
+        uses: conda-incubator/setup-miniconda@fc2d68f6413eb2d87b895e92f8584b5b94a10167  # v3.3.0
+        with:
+          miniforge-version: latest
+      - name: Install C++ dependencies (Windows)
+        if: runner.os == 'Windows'
+        run: conda install -c conda-forge --file ci/conda_env_cpp.txt
+      - name: Install C++ dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install libsqlite3-dev
+      - name: Set cmake args (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: echo "ADBC_CMAKE_ARGS=-DCMAKE_PREFIX_PATH=$env:CONDA_PREFIX/Library" >> $env:GITHUB_ENV
+      - name: Build Driver
+        # We need to build the SQLite driver for tests.
+        shell: bash
+        run: ci/scripts/node_build.sh "${{ github.workspace }}/javascript/build"
+      - name: Set driver path (Linux)
+        if: runner.os == 'Linux'
+        run: echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/javascript/build/lib/libadbc_driver_sqlite.so" >> "$GITHUB_ENV"
+      - name: Set driver path (macOS)
+        if: runner.os == 'macOS'
+        run: echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/javascript/build/lib/libadbc_driver_sqlite.dylib" >> "$GITHUB_ENV"
+      - name: Set driver path (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          echo "PATH=${{ github.workspace }}/javascript/build/bin;$env:CONDA_PREFIX\Library\bin;$env:PATH" >> $env:GITHUB_ENV
+          echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/javascript/build/bin/adbc_driver_sqlite.dll" >> $env:GITHUB_ENV
+      - name: Run Tests
+        working-directory: javascript
+        run: npm test

@@ -43,3 +43,7 @@ r/*/.Rbuildignore
 r/*/tests/testthat/_snaps/*
 rust/Cargo.lock
 testing/*
+javascript/core/Cargo.lock
+javascript/binding.d.ts
+javascript/binding.js
+javascript/license.hbs

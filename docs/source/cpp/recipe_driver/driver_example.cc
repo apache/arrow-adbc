@@ -98,7 +98,7 @@
 /// * :cpp:class:`adbc::driver::Result`: The ``Result<T>`` is used as a return
 ///   value for functions that on success return a value of type ``T`` and on
 ///   failure communicate their error using a ``Status``. You can use
-///   ``UNWRAP_RESULT(some_type value, some_call())`` as shorthand for
+///   ``UNWRAP_RESULT(value, some_call())`` as shorthand for
 ///
 ///   .. code-block:: cpp
 ///
@@ -138,7 +138,8 @@ class DriverExampleDatabase : public adbc::driver::Database<DriverExampleDatabas
   Status SetOptionImpl(std::string_view key, Option value) override {
     // Handle and validate options implemented by this driver
     if (key == "uri") {
-      UNWRAP_RESULT(std::string_view uri, value.AsString());
+      std::string_view uri;
+      UNWRAP_RESULT(uri, value.AsString());
 
       if (uri.find("file://") != 0) {
         return adbc::driver::status::InvalidArgument(

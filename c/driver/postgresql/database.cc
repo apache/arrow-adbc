@@ -297,9 +297,11 @@ static Status InsertPgAttributeResult(
 
   for (int row = 0; row < num_rows; row++) {
     PqResultRow item = result.Row(row);
-    UNWRAP_RESULT(int64_t type_oid, item[0].ParseInteger());
+    int64_t type_oid;
+    UNWRAP_RESULT(type_oid, item[0].ParseInteger());
     std::string_view col_name = item[1].value();
-    UNWRAP_RESULT(int64_t col_oid, item[2].ParseInteger());
+    int64_t col_oid;
+    UNWRAP_RESULT(col_oid, item[2].ParseInteger());
 
     if (type_oid != current_type_oid && !columns.empty()) {
       resolver->InsertClass(static_cast<uint32_t>(current_type_oid), columns);
@@ -331,11 +333,14 @@ static Status InsertPgTypeResult(const PqResultHelper& result,
 
   for (int row = 0; row < num_rows; row++) {
     PqResultRow item = result.Row(row);
-    UNWRAP_RESULT(int64_t oid, item[0].ParseInteger());
+    int64_t oid;
+    UNWRAP_RESULT(oid, item[0].ParseInteger());
     const char* typname = item[1].data;
     const char* typreceive = item[2].data;
-    UNWRAP_RESULT(int64_t typbasetype, item[3].ParseInteger());
-    UNWRAP_RESULT(int64_t typrelid, item[4].ParseInteger());
+    int64_t typbasetype;
+    UNWRAP_RESULT(typbasetype, item[3].ParseInteger());
+    int64_t typrelid;
+    UNWRAP_RESULT(typrelid, item[4].ParseInteger());
 
     int64_t typarray;
     if (num_cols == 6) {

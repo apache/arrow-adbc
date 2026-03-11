@@ -18,4 +18,4 @@
 [codespell]
 dictionary = .codespell-dictionary,-
 ignore-words = .codespell-ignore
-skip = go/adbc/go.sum
+skip = go/adbc/go.sum,javascript/package-lock.json

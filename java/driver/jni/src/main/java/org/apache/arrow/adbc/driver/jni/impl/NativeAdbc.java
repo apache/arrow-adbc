@@ -52,6 +52,8 @@ class NativeAdbc {
 
   static native void statementSetOption(long handle, String key, String value) throws AdbcException;
 
+  static native NativeSchemaResult statementExecuteSchema(long handle) throws AdbcException;
+
   static native NativeQueryResult connectionGetObjects(
       long handle,
       int depth,
