@@ -269,9 +269,11 @@ impl ManagedDriver {
     /// Returns a new database using the loaded driver.
     fn database_new(&self) -> Result<adbc_ffi::FFI_AdbcDatabase> {
         let driver = self.inner_ffi_driver();
-        let mut database = adbc_ffi::FFI_AdbcDatabase::default();
+        let mut database = adbc_ffi::FFI_AdbcDatabase {
+            private_driver: driver,
+            ..Default::default()
+        };
 
-        database.private_driver = driver;
         // DatabaseNew
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(*driver, DatabaseNew);
