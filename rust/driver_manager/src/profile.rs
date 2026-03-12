@@ -692,50 +692,52 @@ key = "value"
     #[test]
     fn test_process_profile_value() {
         // (name, env_vars_to_set, input, expected_ok / expected_err_fragment)
-        let test_cases: Vec<(
-            &str,
-            Vec<(&str, &str)>,
-            &str,
-            std::result::Result<&str, &str>,
-        )> = vec![
-            ("empty string", vec![], "", Ok("")),
-            (
+        struct TestCase<'a>(
+            &'a str,
+            Vec<(&'a str, &'a str)>,
+            &'a str,
+            std::result::Result<&'a str, &'a str>,
+        );
+
+        let test_cases: Vec<TestCase> = vec![
+            TestCase("empty string", vec![], "", Ok("")),
+            TestCase(
                 "plain string no templates",
                 vec![],
                 "just a plain string",
                 Ok("just a plain string"),
             ),
-            (
+            TestCase(
                 "string with special chars but no templates",
                 vec![],
                 "host=localhost port=5432",
                 Ok("host=localhost port=5432"),
             ),
-            (
+            TestCase(
                 "env var present",
                 vec![("ADBC_TEST_PPV_HOST", "myhost.example.com")],
                 "{{ env_var(ADBC_TEST_PPV_HOST) }}",
                 Ok("myhost.example.com"),
             ),
-            (
+            TestCase(
                 "env var not set returns empty string",
                 vec![],
                 "{{ env_var(ADBC_TEST_PPV_NONEXISTENT_XYZ) }}",
                 Ok(""),
             ),
-            (
+            TestCase(
                 "env var not set interpolates the empty string",
                 vec![],
                 "foo{{ env_var(ADBC_TEST_PPV_NONEXISTENT_XYZ) }}bar",
                 Ok("foobar"),
             ),
-            (
+            TestCase(
                 "mixed literal text and env var",
                 vec![("ADBC_TEST_PPV_PORT", "5432")],
                 "host=localhost port={{ env_var(ADBC_TEST_PPV_PORT) }}",
                 Ok("host=localhost port=5432"),
             ),
-            (
+            TestCase(
                 "multiple env var replacements",
                 vec![
                     ("ADBC_TEST_PPV_USER", "alice"),
@@ -744,25 +746,25 @@ key = "value"
                 "{{ env_var(ADBC_TEST_PPV_USER) }}:{{ env_var(ADBC_TEST_PPV_PASS) }}",
                 Ok("alice:secret"),
             ),
-            (
+            TestCase(
                 "extra whitespace inside braces",
                 vec![("ADBC_TEST_PPV_DB", "mydb")],
                 "{{  env_var(ADBC_TEST_PPV_DB)  }}",
                 Ok("mydb"),
             ),
-            (
+            TestCase(
                 "invalid expression not env_var",
                 vec![],
                 "{{ something_invalid }}",
                 Err("invalid profile replacement expression"),
             ),
-            (
+            TestCase(
                 "empty env var name",
                 vec![],
                 "{{ env_var() }}",
                 Err("empty environment variable name"),
             ),
-            (
+            TestCase(
                 "empty env var name with whitespace",
                 vec![],
                 "{{ env_var(   ) }}",
@@ -770,7 +772,7 @@ key = "value"
             ),
         ];
 
-        for (name, env_vars, input, expected) in test_cases {
+        for TestCase(name, env_vars, input, expected) in test_cases {
             for (k, v) in &env_vars {
                 std::env::set_var(k, v);
             }
