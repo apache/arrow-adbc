@@ -1226,7 +1226,11 @@ TEST_F(DriverManifest, LoadUserLevelManifest) {
                                  ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
               Not(IsOkStatus(&error)));
 
+#if defined(_WIN32) || defined(__APPLE__)
+  auto user_config_dir = InternalAdbcUserConfigDir() / "Drivers";
+#else
   auto user_config_dir = InternalAdbcUserConfigDir() / "drivers";
+#endif
   bool created = false;
   if (!std::filesystem::exists(user_config_dir)) {
     ASSERT_TRUE(std::filesystem::create_directories(user_config_dir));
