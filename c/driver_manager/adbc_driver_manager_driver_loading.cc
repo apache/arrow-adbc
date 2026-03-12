@@ -620,7 +620,8 @@ AdbcStatusCode ManagedLibrary::FindDriver(
   auto status = SearchPathsForDriver(driver_path, more_search_paths, info, error);
   if (status == ADBC_STATUS_NOT_FOUND) {
     if (!(load_options & ADBC_LOAD_FLAG_SEARCH_USER)) {
-      std::filesystem::path user_config_dir = InternalAdbcUserConfigDir() / kDriversSubdir;
+      std::filesystem::path user_config_dir =
+          InternalAdbcUserConfigDir() / kDriversSubdir;
       std::string message = "user config dir ";
       message += user_config_dir.string();
       message += " (enable ADBC_LOAD_FLAG_SEARCH_USER)";
