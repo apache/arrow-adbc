@@ -589,6 +589,7 @@ jobs:
           ADBC_USE_UBSAN: "0"
         run: |
           export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/x64/bin:$PATH
+          export _ADBC_IS_CONDA=1
           ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Build Panic Dummy
         run: |
@@ -603,6 +604,8 @@ jobs:
         run: |
           cargo build -padbc_dummy
       - name: Test Python Driver Manager
+        env:
+          PYTEST_ADDOPTS: "--run-system"
         run: |
           if [[ $(uname) = "Darwin" ]]; then
             export PANICDUMMY_LIBRARY_PATH=$(pwd)/go/adbc/pkg/libadbc_driver_panicdummy.dylib
