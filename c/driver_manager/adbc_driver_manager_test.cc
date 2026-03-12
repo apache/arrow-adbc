@@ -1480,9 +1480,9 @@ class ConnectionProfiles : public ::testing::Test {
     std::filesystem::create_directories(temp_dir);
 
     simple_profile = toml::table{
-        {"version", 1},
+        {"profile_version", 1},
         {"driver", "adbc_driver_sqlite"},
-        {"options",
+        {"Options",
          toml::table{
              {"uri", "file::memory:"},
          }},
@@ -1646,7 +1646,7 @@ TEST_F(ConnectionProfiles, DriverProfileOption) {
 TEST_F(ConnectionProfiles, ExtraStringOption) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = simple_profile;
-  profile["options"].as_table()->insert("foo", "bar");
+  profile["Options"].as_table()->insert("foo", "bar");
   std::ofstream test_manifest_file(filepath);
   ASSERT_TRUE(test_manifest_file.is_open());
   test_manifest_file << profile;
@@ -1668,7 +1668,7 @@ TEST_F(ConnectionProfiles, ExtraStringOption) {
 TEST_F(ConnectionProfiles, ExtraIntOption) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = simple_profile;
-  profile["options"].as_table()->insert("foo", int64_t(42));
+  profile["Options"].as_table()->insert("foo", int64_t(42));
   std::ofstream test_manifest_file(filepath);
   ASSERT_TRUE(test_manifest_file.is_open());
   test_manifest_file << profile;
@@ -1690,7 +1690,7 @@ TEST_F(ConnectionProfiles, ExtraIntOption) {
 TEST_F(ConnectionProfiles, ExtraDoubleOption) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = simple_profile;
-  profile["options"].as_table()->insert("foo", 42.0);
+  profile["Options"].as_table()->insert("foo", 42.0);
   std::ofstream test_manifest_file(filepath);
   ASSERT_TRUE(test_manifest_file.is_open());
   test_manifest_file << profile;
