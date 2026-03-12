@@ -1999,11 +1999,8 @@ TEST_F(ConnectionProfiles, CondaProfileTest) {
   } else {
     ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
                 IsStatus(ADBC_STATUS_NOT_FOUND, &error));
-    ASSERT_THAT(
-        error.message,
-        ::testing::HasSubstr(
-            "Profile file does not exist: " +
-            (temp_dir / "etc" / "adbc" / "profiles" / "sqlite-test.toml").string()));
+    ASSERT_THAT(error.message,
+                ::testing::HasSubstr("not enabled at build time: Conda prefix"));
   }
   ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
 }
