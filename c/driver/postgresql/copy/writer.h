@@ -735,12 +735,13 @@ class PostgresCopyTimestampFieldWriter : public PostgresCopyFieldWriter {
   }
 };
 
-// Microseconds per day (24h)
-constexpr int64_t kUsecsPerDay = 86400LL * 1000000LL;
 
 template <enum ArrowTimeUnit TU>
 class PostgresCopyTimeFieldWriter : public PostgresCopyFieldWriter {
  public:
+  // Microseconds per day (24h)
+  static inline constexpr int64_t kUsecsPerDay = 86400LL * 1000000LL;
+
   ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
     // PostgreSQL TIME binary format is an int64 microseconds-since-midnight
     // and the COPY binary field length must be 8 bytes. https://www.postgresql.org/docs/current/datatype-datetime.html
@@ -750,12 +751,23 @@ class PostgresCopyTimeFieldWriter : public PostgresCopyFieldWriter {
     const int64_t raw_value = ArrowArrayViewGetIntUnsafe(array_view_, index);
     int64_t micros = 0;
 
+    bool overflow_safe = true;
     switch (TU) {
       case NANOARROW_TIME_UNIT_SECOND:
-        micros = raw_value * 1000000LL;
+        overflow_safe =
+            raw_value <= kMaxSafeSecondsToMicros &&
+            raw_value >= kMinSafeSecondsToMicros;
+        if (overflow_safe) {
+          micros = raw_value * 1000000LL;
+        }
         break;
       case NANOARROW_TIME_UNIT_MILLI:
-        micros = raw_value * 1000LL;
+        overflow_safe =
+            raw_value <= kMaxSafeMillisToMicros &&
+            raw_value >= kMinSafeMillisToMicros;
+        if (overflow_safe) {
+          micros = raw_value * 1000LL;
+        }
         break;
       case NANOARROW_TIME_UNIT_MICRO:
         micros = raw_value;
@@ -763,6 +775,15 @@ class PostgresCopyTimeFieldWriter : public PostgresCopyFieldWriter {
       case NANOARROW_TIME_UNIT_NANO:
         micros = raw_value / 1000LL;
         break;
+    }
+
+    if (!overflow_safe) {
+      ArrowErrorSet(
+          error,
+          "[libpq] Row %" PRId64 " time value %" PRId64
+          " with unit %d would overflow",
+          index, raw_value, TU);
+      return ADBC_STATUS_INVALID_ARGUMENT;
     }
 
     if (micros < 0 || micros > kUsecsPerDay) {
