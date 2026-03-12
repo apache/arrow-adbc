@@ -425,14 +425,14 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
   static const uint16_t kNumericNinf = 0xF000;
 };
 
-// Microseconds per day (24h)
-constexpr int64_t kUsecsPerDay = 86400LL * 1000000LL;
-// Nanoseconds per day (24h)
-constexpr int64_t kNsecsPerDay = 86400LL * 1000000000LL;
-
 template <enum ArrowTimeUnit TU, typename OutT>
 class PostgresCopyTimeOfDayFieldReader : public PostgresCopyFieldReader {
  public:
+  // Microseconds per day (24h)
+  static inline constexpr int64_t kUsecsPerDay = 86400LL * 1000000LL;
+  // Nanoseconds per day (24h)
+  static inline constexpr int64_t kNsecsPerDay = 86400LL * 1000000000LL;
+
   ArrowErrorCode Read(ArrowBufferView* data, int32_t field_size_bytes, ArrowArray* array,
                       ArrowError* error) override {
     if (field_size_bytes <= 0) {
@@ -479,21 +479,10 @@ class PostgresCopyTimeOfDayFieldReader : public PostgresCopyFieldReader {
 
     // Ensure the target type can hold the converted value (TIME32 -> int32).
     if constexpr (std::is_same<OutT, int32_t>::value) {
-      if (out64 < (std::numeric_limits<int32_t>::min)() ||
-          out64 > (std::numeric_limits<int32_t>::max)()) {
-        ArrowErrorSet(error,
-                      "[libpq] TIME value %" PRId64
-                      " usec converts to %" PRId64
-                      " which overflows int32 for Arrow TIME32",
-                      time_usec, out64);
-        return EOVERFLOW;
-      }
-
       const int32_t out32 = static_cast<int32_t>(out64);
       NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_, &out32, sizeof(out32)));
     } else {
-      const int64_t out = static_cast<int64_t>(out64);
-      NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_, &out, sizeof(out)));
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_, &out64, sizeof(out64)));
     }
 
     return AppendValid(array);
