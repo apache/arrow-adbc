@@ -1226,7 +1226,7 @@ TEST_F(DriverManifest, LoadUserLevelManifest) {
                                  ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
               Not(IsOkStatus(&error)));
 
-  auto user_config_dir = InternalAdbcUserConfigDir();
+  auto user_config_dir = InternalAdbcUserConfigDir() / "drivers";
   bool created = false;
   if (!std::filesystem::exists(user_config_dir)) {
     ASSERT_TRUE(std::filesystem::create_directories(user_config_dir));
