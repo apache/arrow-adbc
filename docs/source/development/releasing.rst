@@ -229,6 +229,7 @@ How to Verify Release Candidates
       - the javadoc command must also be accessible
    - Go
    - CMake, ninja-build, libpq (with headers), SQLite (with headers)
+   - Node.js 22+
 
    Alternatively, you can have the verification script download and install dependencies automatically via Conda.
    See the environment variables below.
@@ -410,6 +411,25 @@ Be sure to go through on the following checklist:
 
       # dev/release/post-08-rust.sh
       dev/release/post-08-rust.sh
+
+.. dropdown:: Upload Node.js packages to npm
+   :class-title: sd-fs-5
+   :class-container: sd-shadow-md
+
+   You must have publish access to the `apache-arrow npm organization
+   <https://www.npmjs.com/org/apache-arrow>`_.  If you don't have access
+   yet, an existing org admin can add you.
+
+   You will need to `create an access token <https://docs.npmjs.com/creating-and-viewing-access-tokens>`_.
+
+   An owner can upload:
+
+   .. code-block:: bash
+
+      export NPM_TOKEN=<your access token here>
+
+      # dev/release/post-09-npm.sh
+      dev/release/post-09-npm.sh
 
 .. dropdown:: Update conda-forge packages
    :class-title: sd-fs-5

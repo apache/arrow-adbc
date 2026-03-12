@@ -47,12 +47,6 @@ on:
         required: true
         type: boolean
         default: false
-      upload_npm:
-        description: "Publish Node.js packages to npm"
-        required: true
-        type: boolean
-        default: false
-
 concurrency:
   group: ${{ github.repository }}-${{ github.ref }}-${{ github.workflow }}
   cancel-in-progress: true
@@ -1234,7 +1228,7 @@ jobs:
   upload-npm:
     name: "Upload Node.js packages to npm"
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && (github.event.schedule || inputs.upload_npm)
+    if: github.ref == 'refs/heads/main' && (github.event.schedule || inputs.upload_artifacts)
     needs:
       - node-dist
     environment: npm
