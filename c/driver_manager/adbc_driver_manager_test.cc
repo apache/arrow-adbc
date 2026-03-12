@@ -1712,9 +1712,9 @@ TEST_F(ConnectionProfiles, ExtraDoubleOption) {
 TEST_F(ConnectionProfiles, DotSeparatedKey) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = toml::parse(R"(
-    version = 1
+    profile_version = 1
     driver = "adbc_driver_sqlite"
-    [options]
+    [Options]
     foo.bar.baz = "bar"
   )");
 
@@ -1740,9 +1740,9 @@ TEST_F(ConnectionProfiles, DotSeparatedKey) {
 TEST_F(ConnectionProfiles, UseEnvVar) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = toml::parse(R"|(
-    version = 1
+    profile_version = 1
     driver = "adbc_driver_sqlite"
-    [options]
+    [Options]
     foo = "{{ env_var(ADBC_PROFILE_PATH) }}"
   )|");
 
@@ -1768,9 +1768,9 @@ TEST_F(ConnectionProfiles, UseEnvVar) {
 TEST_F(ConnectionProfiles, UseEnvVarNotExist) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = toml::parse(R"|(
-    version = 1
+    profile_version = 1
     driver = "adbc_driver_sqlite"
-    [options]
+    [Options]
     foo = "{{ env_var(FOOBAR_ENV_VAR_THAT_DOES_NOT_EXIST) }}"
   )|");
 
@@ -1792,12 +1792,40 @@ TEST_F(ConnectionProfiles, UseEnvVarNotExist) {
   UnsetConfigPath();
 }
 
+TEST_F(ConnectionProfiles, UseEnvVarNotExistNoBail) {
+  auto filepath = temp_dir / "profile.toml";
+  toml::table profile = toml::parse(R"|(
+    profile_version = 1
+    driver = "adbc_driver_sqlite"
+    [Options]
+    foo = "foo{{ env_var(FOOBAR_ENV_VAR_THAT_DOES_NOT_EXIST) }}bar"
+  )|");
+
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << profile;
+  test_manifest_file.close();
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+
+  // find profile by name using ADBC_PROFILE_PATH
+  SetConfigPath(temp_dir.string().c_str());
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+              IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
+  ASSERT_THAT(error.message,
+              ::testing::HasSubstr("Unknown database option foo='foobar'"));
+  UnsetConfigPath();
+}
+
 TEST_F(ConnectionProfiles, UseEnvVarMalformed) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = toml::parse(R"|(
-    version = 1
+    profile_version = 1
     driver = "adbc_driver_sqlite"
-    [options]
+    [Options]
     foo = "{{ env_var(ENV_VAR_WITHOUT_CLOSING_PAREN }}"
   )|");
 
@@ -1825,9 +1853,9 @@ TEST_F(ConnectionProfiles, UseEnvVarMalformed) {
 TEST_F(ConnectionProfiles, UseEnvVarMissingArg) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = toml::parse(R"|(
-    version = 1
+    profile_version = 1
     driver = "adbc_driver_sqlite"
-    [options]
+    [Options]
     foo = "{{ env_var() }}"
   )|");
 
@@ -1854,9 +1882,9 @@ TEST_F(ConnectionProfiles, UseEnvVarMissingArg) {
 TEST_F(ConnectionProfiles, UseEnvVarInterpolation) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = toml::parse(R"|(
-    version = 1
+    profile_version = 1
     driver = "adbc_driver_sqlite"
-    [options]
+    [Options]
     foo = "super {{ env_var(ADBC_PROFILE_PATH) }} duper"
   )|");
 
@@ -1882,9 +1910,9 @@ TEST_F(ConnectionProfiles, UseEnvVarInterpolation) {
 TEST_F(ConnectionProfiles, UseEnvVarInterpolationMultiple) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = toml::parse(R"|(
-    version = 1
+    profile_version = 1
     driver = "adbc_driver_sqlite"
-    [options]
+    [Options]
     foo = "super {{ env_var(ADBC_PROFILE_PATH) }} duper {{ env_var(ADBC_PROFILE_PATH) }} end"
   )|");
 

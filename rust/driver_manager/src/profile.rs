@@ -220,15 +220,15 @@ fn process_options(
 /// Profile files must be valid TOML with the following structure:
 ///
 /// ```toml
-/// version = 1
+/// profile_version = 1
 /// driver = "driver_name"
 ///
-/// [options]
+/// [Options]
 /// option_key = "option_value"
 /// nested.key = "nested_value"
 /// ```
 ///
-/// Currently, only version 1 profiles are supported.
+/// Currently, only profile_version 1 profiles are supported.
 #[derive(Debug)]
 pub struct FilesystemProfile {
     profile_path: PathBuf,
@@ -268,7 +268,7 @@ impl FilesystemProfile {
 
         let profile_version = profile
             .get_ref()
-            .get("version")
+            .get("profile_version")
             .and_then(|v| v.get_ref().as_integer())
             .map(|v| v.as_str())
             .unwrap_or("1");
@@ -292,11 +292,11 @@ impl FilesystemProfile {
 
         let options_table = profile
             .get_ref()
-            .get("options")
+            .get("Options")
             .and_then(|v| v.get_ref().as_table())
             .ok_or_else(|| {
                 Error::with_message_and_status(
-                    "missing or invalid 'options' table in profile".to_string(),
+                    "missing or invalid 'Options' table in profile".to_string(),
                     Status::InvalidArguments,
                 )
             })?;
@@ -589,10 +589,10 @@ deep = "value"
                 "invalid_version_high.toml",
                 Some(
                     r#"
-version = 99
+profile_version = 99
 driver = "test_driver"
 
-[options]
+[Options]
 key = "value"
 "#,
                 ),
@@ -603,10 +603,10 @@ key = "value"
                 "version_zero.toml",
                 Some(
                     r#"
-version = 0
+profile_version = 0
 driver = "test_driver"
 
-[options]
+[Options]
 key = "value"
 "#,
                 ),
@@ -617,10 +617,10 @@ key = "value"
                 "version_two.toml",
                 Some(
                     r#"
-version = 2
+profile_version = 2
 driver = "test_driver"
 
-[options]
+[Options]
 key = "value"
 "#,
                 ),
@@ -690,12 +690,141 @@ key = "value"
     }
 
     #[test]
+    fn test_process_profile_value() {
+        // (name, env_vars_to_set, input, expected_ok / expected_err_fragment)
+        let test_cases: Vec<(
+            &str,
+            Vec<(&str, &str)>,
+            &str,
+            std::result::Result<&str, &str>,
+        )> = vec![
+            ("empty string", vec![], "", Ok("")),
+            (
+                "plain string no templates",
+                vec![],
+                "just a plain string",
+                Ok("just a plain string"),
+            ),
+            (
+                "string with special chars but no templates",
+                vec![],
+                "host=localhost port=5432",
+                Ok("host=localhost port=5432"),
+            ),
+            (
+                "env var present",
+                vec![("ADBC_TEST_PPV_HOST", "myhost.example.com")],
+                "{{ env_var(ADBC_TEST_PPV_HOST) }}",
+                Ok("myhost.example.com"),
+            ),
+            (
+                "env var not set returns empty string",
+                vec![],
+                "{{ env_var(ADBC_TEST_PPV_NONEXISTENT_XYZ) }}",
+                Ok(""),
+            ),
+            (
+                "env var not set interpolates the empty string",
+                vec![],
+                "foo{{ env_var(ADBC_TEST_PPV_NONEXISTENT_XYZ) }}bar",
+                Ok("foobar"),
+            ),
+            (
+                "mixed literal text and env var",
+                vec![("ADBC_TEST_PPV_PORT", "5432")],
+                "host=localhost port={{ env_var(ADBC_TEST_PPV_PORT) }}",
+                Ok("host=localhost port=5432"),
+            ),
+            (
+                "multiple env var replacements",
+                vec![
+                    ("ADBC_TEST_PPV_USER", "alice"),
+                    ("ADBC_TEST_PPV_PASS", "secret"),
+                ],
+                "{{ env_var(ADBC_TEST_PPV_USER) }}:{{ env_var(ADBC_TEST_PPV_PASS) }}",
+                Ok("alice:secret"),
+            ),
+            (
+                "extra whitespace inside braces",
+                vec![("ADBC_TEST_PPV_DB", "mydb")],
+                "{{  env_var(ADBC_TEST_PPV_DB)  }}",
+                Ok("mydb"),
+            ),
+            (
+                "invalid expression not env_var",
+                vec![],
+                "{{ something_invalid }}",
+                Err("invalid profile replacement expression"),
+            ),
+            (
+                "empty env var name",
+                vec![],
+                "{{ env_var() }}",
+                Err("empty environment variable name"),
+            ),
+            (
+                "empty env var name with whitespace",
+                vec![],
+                "{{ env_var(   ) }}",
+                Err("empty environment variable name"),
+            ),
+        ];
+
+        for (name, env_vars, input, expected) in test_cases {
+            for (k, v) in &env_vars {
+                std::env::set_var(k, v);
+            }
+
+            let result = process_profile_value(input);
+
+            match expected {
+                Ok(expected_str) => match result.unwrap_or_else(|e| {
+                    panic!("Test case '{}': expected Ok but got Err: {:?}", name, e)
+                }) {
+                    OptionValue::String(s) => {
+                        assert_eq!(s, expected_str, "Test case '{}': string mismatch", name)
+                    }
+                    other => panic!(
+                        "Test case '{}': expected OptionValue::String, got {:?}",
+                        name, other
+                    ),
+                },
+                Err(err_fragment) => {
+                    assert!(
+                        result.is_err(),
+                        "Test case '{}': expected Err but got Ok",
+                        name
+                    );
+                    let err = result.unwrap_err();
+                    assert_eq!(
+                        err.status,
+                        Status::InvalidArguments,
+                        "Test case '{}': wrong status",
+                        name
+                    );
+                    assert!(
+                        err.message.contains(err_fragment),
+                        "Test case '{}': expected {:?} in error message, got {:?}",
+                        name,
+                        err_fragment,
+                        err.message
+                    );
+                }
+            }
+
+            for (k, _) in &env_vars {
+                std::env::remove_var(k);
+            }
+        }
+    }
+
+    #[test]
     fn test_filesystem_profile_provider() {
         let profile_content = r#"
-version = 1
+profile_version = 1
 driver = "test_driver"
 
-[options]
+[Options]
 test_key = "test_value"
 "#;
 
