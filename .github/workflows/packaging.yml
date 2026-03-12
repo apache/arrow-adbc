@@ -1189,13 +1189,18 @@ jobs:
           cache: 'npm'
           cache-dependency-path: adbc/javascript/package-lock.json
 
+      - name: Setup Rust
+        run: |
+          rustup toolchain install stable --no-self-update
+          rustup default stable
+
       - name: Install Node dependencies
         working-directory: adbc/javascript
         run: npm ci
 
-      - name: Build Node.js JS
+      - name: Build Node.js
         working-directory: adbc/javascript
-        run: npm run build:ts
+        run: npm run build:ci && npm run build:ts
 
       - name: Download Node.js binaries
         uses: actions/download-artifact@v8
