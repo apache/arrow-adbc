@@ -321,10 +321,10 @@ typedef AdbcStatusCode (*AdbcConnectionProfileProvider)(
 ///
 /// For file-based profiles the expected format is as follows:
 /// ```toml
-/// version = 1
+/// profile_version = 1
 /// driver = "driver_name"
 ///
-/// [options]
+/// [Options]
 /// option1 = "value1"
 /// option2 = 42
 /// option3 = 3.14
