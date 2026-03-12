@@ -24,6 +24,7 @@ use adbc_driver_manager::profile::{
 };
 use adbc_driver_manager::ManagedDatabase;
 use serial_test::serial;
+use std::env;
 
 mod common;
 
@@ -242,7 +243,7 @@ fn test_filesystem_profile_error_cases() {
             "without options",
             profile_without_options(),
             Status::InvalidArguments,
-            "missing or invalid 'options' table in profile",
+            "missing or invalid 'Options' table in profile",
         ),
         (
             "unsupported version",
@@ -571,4 +572,67 @@ fn test_profile_hierarchical_path_additional_search_paths() {
     tmp_dir
         .close()
         .expect("Failed to close/remove temporary directory");
+}
+
+#[test]
+#[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
+fn test_profile_conda_prefix() {
+    #[cfg(conda_build)]
+    let is_conda_build = true;
+    #[cfg(not(conda_build))]
+    let is_conda_build = false;
+
+    eprintln!(
+        "Is conda build: {}",
+        if is_conda_build {
+            "defined"
+        } else {
+            "not defined"
+        }
+    );
+    let tmp_dir = tempfile::Builder::new()
+        .prefix("adbc_profile_conda_prefix_test")
+        .tempdir()
+        .expect("Failed to create temporary directory");
+
+    let filepath = tmp_dir
+        .path()
+        .join("etc")
+        .join("adbc")
+        .join("profiles")
+        .join("sqlite-test.toml");
+
+    std::fs::create_dir_all(filepath.parent().unwrap())
+        .expect("Failed to create directories for conda prefix test");
+    std::fs::write(&filepath, simple_profile()).expect("Failed to write profile");
+
+    // Set CONDA_PREFIX environment variable
+    let prev_value = env::var("CONDA_PREFIX").ok();
+    env::set_var("CONDA_PREFIX", tmp_dir.path());
+
+    let uri = "profile://sqlite-test";
+    let result = ManagedDatabase::from_uri(&uri, None, AdbcVersion::V100, LOAD_FLAG_DEFAULT, None);
+
+    // Restore environment variable
+    match prev_value {
+        Some(val) => env::set_var("CONDA_PREFIX", val),
+        None => env::remove_var("CONDA_PREFIX"),
+    }
+
+    if is_conda_build {
+        assert!(result.is_ok(), "Expected success for conda build");
+    } else {
+        assert!(result.is_err(), "Expected error for non-conda build");
+        if let Err(err) = result {
+            assert!(
+                err.message.contains("Profile file does not exist"),
+                "Expected 'Profile file does not exist' error, got: {}",
+                err.message
+            );
+        }
+    }
+
+    tmp_dir
+        .close()
+        .expect("Failed to close/remove temporary directory")
 }
