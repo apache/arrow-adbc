@@ -735,7 +735,7 @@ def test_connect(tmp_path: pathlib.Path, monkeypatch) -> None:
             cur.execute("SELECT * FROM foo")
             assert cur.fetchone() == (1,)
 
-    monkeypatch.setenv("ADBC_DRIVER_PATH", tmp_path)
+    monkeypatch.setenv("ADBC_DRIVER_PATH", str(tmp_path))
     with (tmp_path / "foobar.toml").open("w") as f:
         f.write(
             """
@@ -746,4 +746,14 @@ shared = "adbc_driver_foobar"
     # Just check that the driver gets detected and loaded (should fail)
     with pytest.raises(dbapi.ProgrammingError, match="NOT_FOUND"):
         with dbapi.connect("foobar://localhost:5439"):
+            pass
+
+    # https://github.com/apache/arrow-adbc/issues/4077: allow profile argument
+    # Just check that the profile gets detected and loaded (should fail)
+    with pytest.raises(dbapi.ProgrammingError, match="NOT_FOUND.*Profile not found"):
+        with dbapi.connect(profile="nonexistent"):
+            pass
+
+    with pytest.raises(TypeError):
+        with dbapi.connect():
             pass
