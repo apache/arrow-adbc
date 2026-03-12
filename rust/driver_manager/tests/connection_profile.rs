@@ -575,7 +575,6 @@ fn test_profile_hierarchical_path_additional_search_paths() {
 }
 
 #[test]
-#[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
 fn test_profile_conda_prefix() {
     #[cfg(conda_build)]
     let is_conda_build = true;
@@ -600,7 +599,7 @@ fn test_profile_conda_prefix() {
         .join("etc")
         .join("adbc")
         .join("profiles")
-        .join("sqlite-test.toml");
+        .join("sqlite-profile.toml");
 
     std::fs::create_dir_all(filepath.parent().unwrap())
         .expect("Failed to create directories for conda prefix test");
@@ -610,8 +609,8 @@ fn test_profile_conda_prefix() {
     let prev_value = env::var("CONDA_PREFIX").ok();
     env::set_var("CONDA_PREFIX", tmp_dir.path());
 
-    let uri = "profile://sqlite-test";
-    let result = ManagedDatabase::from_uri(&uri, None, AdbcVersion::V100, LOAD_FLAG_DEFAULT, None);
+    let uri = "profile://sqlite-profile";
+    let result = ManagedDatabase::from_uri(uri, None, AdbcVersion::V100, LOAD_FLAG_DEFAULT, None);
 
     // Restore environment variable
     match prev_value {
@@ -625,7 +624,7 @@ fn test_profile_conda_prefix() {
         assert!(result.is_err(), "Expected error for non-conda build");
         if let Err(err) = result {
             assert!(
-                err.message.contains("Profile file does not exist"),
+                err.message.contains("Profile not found: sqlite-profile"),
                 "Expected 'Profile file does not exist' error, got: {}",
                 err.message
             );
