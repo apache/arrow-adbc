@@ -41,10 +41,10 @@ fn write_profile_to_tempfile(profile_name: &str, content: &str) -> (tempfile::Te
 
 fn simple_profile() -> String {
     r#"
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
 
-[options]
+[Options]
 uri = ":memory:"
 "#
     .to_string()
@@ -52,15 +52,15 @@ uri = ":memory:"
 
 fn profile_with_nested_options() -> String {
     r#"
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
 
-[options]
+[Options]
 uri = ":memory:"
-[options.connection]
+[Options.connection]
 timeout = 30
 retry = true
-[options.connection.pool]
+[Options.connection.pool]
 max_size = 10
 min_size = 2
 idle_timeout = 300.5
@@ -70,10 +70,10 @@ idle_timeout = 300.5
 
 fn profile_with_all_types() -> String {
     r#"
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
 
-[options]
+[Options]
 uri = ":memory:"
 string_opt = "test_value"
 int_opt = 42
@@ -85,9 +85,9 @@ bool_opt = true
 
 fn profile_without_driver() -> String {
     r#"
-version = 1
+profile_version = 1
 
-[options]
+[Options]
 uri = ":memory:"
 "#
     .to_string()
@@ -95,7 +95,7 @@ uri = ":memory:"
 
 fn profile_without_options() -> String {
     r#"
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
 "#
     .to_string()
@@ -103,10 +103,10 @@ driver = "adbc_driver_sqlite"
 
 fn profile_with_unsupported_version() -> String {
     r#"
-version = 2
+profile_version = 2
 driver = "adbc_driver_sqlite"
 
-[options]
+[Options]
 uri = ":memory:"
 "#
     .to_string()
@@ -114,9 +114,9 @@ uri = ":memory:"
 
 fn invalid_toml() -> &'static str {
     r#"
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
-[options
+[Options
 uri = ":memory:"
 "#
 }

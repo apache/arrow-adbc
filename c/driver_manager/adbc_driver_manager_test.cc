@@ -1965,6 +1965,47 @@ TEST_F(ConnectionProfiles, ProfileNotFound) {
   UnsetConfigPath();
 }
 
+TEST_F(ConnectionProfiles, CondaProfileTest) {
+#if ADBC_CONDA_BUILD
+  constexpr bool is_conda_build = true;
+#else
+  constexpr bool is_conda_build = false;
+#endif  // ADBC_CONDA_BUILD
+
+  std::cerr << "ADBC_CONDA_BUILD: " << (is_conda_build ? "defined" : "not defined")
+            << std::endl;
+
+  auto filepath = temp_dir / "etc" / "adbc" / "profiles" / "sqlite-test.toml";
+  std::filesystem::create_directories(filepath.parent_path());
+  std::ofstream test_profile_file(filepath);
+  ASSERT_TRUE(test_profile_file.is_open());
+  test_profile_file << simple_profile;
+  test_profile_file.close();
+
+#ifdef _WIN32
+  ASSERT_EQ(0, ::_wputenv_s(L"CONDA_PREFIX", temp_dir.native().c_str()));
+#else
+  ASSERT_EQ(0, ::setenv("CONDA_PREFIX", temp_dir.native().c_str(), 1));
+#endif  // _WIN32
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+
+  // absolute path to the profile
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "sqlite-test", &error),
+              IsOkStatus(&error));
+  if constexpr (is_conda_build) {
+    ASSERT_THAT(AdbcDatabaseInit(&database.value, &error), IsOkStatus(&error));
+  } else {
+    ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+                IsStatus(ADBC_STATUS_NOT_FOUND, &error));
+    ASSERT_THAT(error.message,
+                ::testing::HasSubstr("Profile file does not exist: " +
+                                     (temp_dir / "etc" / "adbc" / "profiles" / "sqlite-test.toml").string()));
+  }
+  ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
+}
+
 TEST_F(ConnectionProfiles, CustomProfileProvider) {
   adbc_validation::Handle<struct AdbcDatabase> database;
 
