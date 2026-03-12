@@ -381,7 +381,7 @@ static SearchPaths GetProfileSearchPaths(const char* additional_search_path_list
   const char* profiles_dir = "profiles";
 #endif  // defined(_WIN32)
 
-  auto user_dir = InternalAdbcUserConfigDir().parent_path() / profiles_dir;
+  auto user_dir = InternalAdbcUserConfigDir() / profiles_dir;
   search_paths.emplace_back(SearchPathSource::kUser, user_dir);
   return search_paths;
 }
