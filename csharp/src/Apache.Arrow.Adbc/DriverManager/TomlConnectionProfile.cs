@@ -25,27 +25,41 @@ namespace Apache.Arrow.Adbc.DriverManager
     /// An <see cref="IConnectionProfile"/> loaded from a TOML file.
     /// </summary>
     /// <remarks>
-    /// The expected file format is:
+    /// <para>
+    /// The expected file format for profiles is:
+    /// </para>
     /// <code>
-    /// version = 1
+    /// profile_version = 1
     /// driver = "driver_name"
     ///
-    /// [options]
+    /// [Options]
     /// option1 = "value1"
     /// option2 = 42
     /// option3 = 3.14
     /// </code>
+    /// <para>
+    /// For backward compatibility, the following legacy field names are also supported:
+    /// </para>
+    /// <list type="bullet">
+    ///   <item><c>version</c> (use <c>profile_version</c> instead)</item>
+    ///   <item><c>[options]</c> section (use <c>[Options]</c> instead)</item>
+    /// </list>
+    /// <para>
     /// Boolean option values are converted to the string equivalents <c>"true"</c> or
     /// <c>"false"</c> and placed in <see cref="StringOptions"/>.
     /// Integer values are placed in <see cref="IntOptions"/> and double values in
-    /// <see cref="DoubleOptions"/> (integer values are also reflected in
-    /// <see cref="IntOptions"/>).
+    /// <see cref="DoubleOptions"/>.
     /// Values of the form <c>env_var(ENV_VAR_NAME)</c> are expanded from the named
     /// environment variable when <see cref="ResolveEnvVars"/> is called.
+    /// </para>
     /// </remarks>
     public sealed class TomlConnectionProfile : IConnectionProfile
     {
-        private const string OptionsSection = "options";
+        // New spec names
+        private const string OptionsSectionNew = "Options";
+        // Legacy names (for backward compatibility)
+        private const string OptionsSectionLegacy = "options";
+
         private const string EnvVarPrefix = "env_var(";
 
         private readonly Dictionary<string, string> _stringOptions;
@@ -119,7 +133,14 @@ namespace Apache.Arrow.Adbc.DriverManager
             Dictionary<string, long> intOpts = new Dictionary<string, long>(StringComparer.Ordinal);
             Dictionary<string, double> doubleOpts = new Dictionary<string, double>(StringComparer.Ordinal);
 
-            if (sections.TryGetValue(OptionsSection, out Dictionary<string, object>? optSection))
+            // Try new section name first, fall back to legacy
+            Dictionary<string, object>? optSection = null;
+            if (!sections.TryGetValue(OptionsSectionNew, out optSection))
+            {
+                sections.TryGetValue(OptionsSectionLegacy, out optSection);
+            }
+
+            if (optSection != null)
             {
                 foreach (KeyValuePair<string, object> kv in optSection)
                 {
@@ -204,10 +225,17 @@ namespace Apache.Arrow.Adbc.DriverManager
 
         private static void ValidateVersion(Dictionary<string, object> root)
         {
-            if (!root.TryGetValue("version", out object? versionObj))
+            // Try new field name first, fall back to legacy
+            object? versionObj = null;
+            if (!root.TryGetValue("profile_version", out versionObj))
+            {
+                root.TryGetValue("version", out versionObj);
+            }
+
+            if (versionObj == null)
             {
                 throw new AdbcException(
-                    "TOML profile is missing the required 'version' field.",
+                    "TOML profile is missing the required 'profile_version' field.",
                     AdbcStatusCode.InvalidArgument);
             }
 
@@ -225,7 +253,7 @@ namespace Apache.Arrow.Adbc.DriverManager
                 catch (Exception ex) when (ex is FormatException || ex is InvalidCastException || ex is OverflowException)
                 {
                     throw new AdbcException(
-                        $"The 'version' field has an invalid value '{versionObj}'. It must be an integer.",
+                        $"The 'profile_version' field has an invalid value '{versionObj}'. It must be an integer.",
                         AdbcStatusCode.InvalidArgument);
                 }
             }

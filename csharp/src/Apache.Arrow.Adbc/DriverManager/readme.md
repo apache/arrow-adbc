@@ -29,16 +29,16 @@ A .NET implementation of the ADBC Driver Manager, based on the C interface defin
 
 ## TOML Manifest / Profile Format
 
-### Unmanaged Driver Example (Snowflake)
+### Connection Profile Example (Snowflake)
 
 For unmanaged drivers loaded from native shared libraries:
 
 ```toml
-version = 1
+profile_version = 1
 driver = "libadbc_driver_snowflake"
 entrypoint = "AdbcDriverSnowflakeInit"
 
-[options]
+[Options]
 adbc.snowflake.sql.account = "myaccount"
 adbc.snowflake.sql.warehouse = "mywarehouse"
 adbc.snowflake.sql.auth_type = "auth_snowflake"
@@ -46,16 +46,16 @@ username = "myuser"
 password = "env_var(SNOWFLAKE_PASSWORD)"
 ```
 
-### Managed Driver Example (BigQuery)
+### Managed Driver Profile Example (BigQuery)
 
 For managed .NET drivers:
 
 ```toml
-version = 1
+profile_version = 1
 driver = "C:\\path\\to\\Apache.Arrow.Adbc.Drivers.BigQuery.dll"
 driver_type = "Apache.Arrow.Adbc.Drivers.BigQuery.BigQueryDriver"
 
-[options]
+[Options]
 adbc.bigquery.project_id = "my-project"
 adbc.bigquery.auth_type = "service"
 adbc.bigquery.json_credential = "env_var(BIGQUERY_JSON_CREDENTIAL)"
@@ -63,10 +63,48 @@ adbc.bigquery.json_credential = "env_var(BIGQUERY_JSON_CREDENTIAL)"
 
 ### Format Notes
 
+- Use `profile_version = 1` for the version field (legacy `version` is also supported for backward compatibility)
+- Use `[Options]` for the options section (legacy `[options]` is also supported for backward compatibility)
 - Boolean option values are converted to the string equivalents `"true"` or `"false"`.
 - Values of the form `env_var(ENV_VAR_NAME)` are expanded from the named environment variable at connection time.
 - For unmanaged drivers, use `driver` for the library path and `entrypoint` for the initialization function.
 - For managed drivers, use `driver` for the assembly path and `driver_type` for the fully-qualified type name.
+
+## Managed Driver Loading (.NET Core / .NET 8)
+
+When loading managed .NET drivers using `LoadManagedDriver`, the driver manager uses `Assembly.LoadFrom()` which has different behavior on .NET Core/.NET 8 compared to .NET Framework:
+
+### Dependency Resolution
+
+On .NET Core/.NET 8, dependencies are resolved in the following order:
+
+1. **The `.deps.json` file** - If present alongside the driver assembly, this file describes all dependencies and their locations. This is automatically generated when building with the .NET SDK.
+
+2. **The assembly's directory** - Dependencies in the same directory as the driver are discovered automatically.
+
+3. **The application's probing paths** - Standard .NET Core probing paths are searched.
+
+### Best Practices for Driver Authors
+
+1. **Include a `.deps.json` file** - Build your driver with the .NET SDK to automatically generate this file. It ensures all dependencies are properly resolved.
+
+2. **Deploy dependencies alongside the driver** - Place all required DLLs in the same directory as your driver assembly.
+
+3. **Consider self-contained deployment** - For maximum compatibility, publish your driver as a self-contained deployment with all dependencies included.
+
+4. **Test on both .NET Framework and .NET 8** - Assembly loading behavior differs, so test on both platforms if you support both.
+
+### Advanced Scenarios
+
+For applications requiring isolated loading or explicit dependency resolution, consider using `AssemblyLoadContext` directly:
+
+```csharp
+// Example of isolated loading (requires .NET Core 3.0+)
+var loadContext = new AssemblyLoadContext("MyDriverContext", isCollectible: true);
+var assembly = loadContext.LoadFromAssemblyPath(driverPath);
+// ... use the driver ...
+loadContext.Unload(); // Unload when done (if collectible)
+```
 
 ## Security Features
 

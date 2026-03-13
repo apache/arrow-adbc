@@ -80,6 +80,79 @@ use_ssl = true
             Assert.Equal("true", profile.StringOptions["use_ssl"]);
         }
 
+        // -----------------------------------------------------------------------
+        // New spec format: profile_version and [Options]
+        // -----------------------------------------------------------------------
+
+        [Fact]
+        public void ParseProfile_NewFormat_WithProfileVersionAndOptions_SetsCorrectValues()
+        {
+            const string toml = @"
+profile_version = 1
+driver = ""libadbc_driver_postgresql""
+
+[Options]
+uri = ""postgresql://localhost/mydb""
+port = 5432
+";
+            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+
+            Assert.Equal("libadbc_driver_postgresql", profile.DriverName);
+            Assert.Equal("postgresql://localhost/mydb", profile.StringOptions["uri"]);
+            Assert.Equal(5432L, profile.IntOptions["port"]);
+        }
+
+        [Fact]
+        public void ParseProfile_LegacyFormat_WithVersionAndLowercaseOptions_SetsCorrectValues()
+        {
+            // Legacy format should still work for backward compatibility
+            const string toml = @"
+version = 1
+driver = ""mydriver""
+
+[options]
+key = ""value""
+";
+            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+
+            Assert.Equal("mydriver", profile.DriverName);
+            Assert.Equal("value", profile.StringOptions["key"]);
+        }
+
+        [Fact]
+        public void ParseProfile_MixedFormat_ProfileVersionWithLowercaseOptions_Works()
+        {
+            // Mix of new and old should work
+            const string toml = @"
+profile_version = 1
+driver = ""mydriver""
+
+[options]
+key = ""value""
+";
+            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+
+            Assert.Equal("mydriver", profile.DriverName);
+            Assert.Equal("value", profile.StringOptions["key"]);
+        }
+
+        [Fact]
+        public void ParseProfile_OptionsSectionIsCaseInsensitive()
+        {
+            // The TOML parser treats section names case-insensitively
+            // so [Options], [options], [OPTIONS] all work the same
+            const string toml = @"
+profile_version = 1
+driver = ""mydriver""
+
+[OPTIONS]
+key = ""value""
+";
+            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+
+            Assert.Equal("value", profile.StringOptions["key"]);
+        }
+
         [Fact]
         public void ParseProfile_WithFalseBoolean_SetsStringFalse()
         {
@@ -278,6 +351,7 @@ key = ""value""
             Assert.False(flags.HasFlag(AdbcLoadFlags.AllowRelativePaths));
         }
 
+
         // -----------------------------------------------------------------------
         // Negative: missing version field
         // -----------------------------------------------------------------------
@@ -293,7 +367,7 @@ key = ""value""
 ";
             AdbcException ex = Assert.Throws<AdbcException>(() => TomlConnectionProfile.FromContent(toml));
             Assert.Equal(AdbcStatusCode.InvalidArgument, ex.Status);
-            Assert.Contains("version", ex.Message, StringComparison.OrdinalIgnoreCase);
+            Assert.Contains("profile_version", ex.Message, StringComparison.OrdinalIgnoreCase);
         }
 
         // -----------------------------------------------------------------------
@@ -304,7 +378,7 @@ key = ""value""
         public void ParseProfile_UnsupportedVersion_ThrowsAdbcException()
         {
             const string toml = @"
-version = 99
+profile_version = 99
 driver = ""mydriver""
 ";
             AdbcException ex = Assert.Throws<AdbcException>(() => TomlConnectionProfile.FromContent(toml));
@@ -711,12 +785,12 @@ key = ""value""
         // -----------------------------------------------------------------------
 
         [Fact]
-        public void LoadManagedDriver_NonExistentAssemblyFile_ThrowsAdbcExceptionWithIOErrorStatus()
+        public void LoadManagedDriver_NonExistentAssemblyFile_ThrowsAdbcExceptionWithNotFoundStatus()
         {
             string missingPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".dll");
             AdbcException ex = Assert.Throws<AdbcException>(
                 () => AdbcDriverManager.LoadManagedDriver(missingPath, "Some.Type"));
-            Assert.Equal(AdbcStatusCode.IOError, ex.Status);
+            Assert.Equal(AdbcStatusCode.NotFound, ex.Status);
         }
 
         // -----------------------------------------------------------------------

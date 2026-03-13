@@ -235,27 +235,45 @@ namespace Apache.Arrow.Adbc.DriverManager
         public static AdbcDriver LoadManagedDriver(string assemblyPath, string typeName)
         {
             if (string.IsNullOrEmpty(assemblyPath))
+            {
                 throw new ArgumentException("Assembly path must not be null or empty.", nameof(assemblyPath));
+            }
             if (string.IsNullOrEmpty(typeName))
+            {
                 throw new ArgumentException("Type name must not be null or empty.", nameof(typeName));
+            }
 
             Assembly assembly;
             try
             {
-                assembly = Assembly.LoadFrom(assemblyPath);
+                assembly = ManagedDriverLoader.LoadAssembly(assemblyPath);
+            }
+            catch (FileNotFoundException ex)
+            {
+                throw new AdbcException(
+                    $"Driver assembly not found: {ex.FileName}",
+                    AdbcStatusCode.NotFound);
+            }
+            catch (BadImageFormatException ex)
+            {
+                throw new AdbcException(
+                    $"Driver assembly has an invalid format (possibly wrong platform or not a .NET assembly): {ex.Message}",
+                    AdbcStatusCode.InvalidArgument);
             }
             catch (Exception ex)
             {
                 throw new AdbcException(
-                    $"Failed to load managed driver assembly '{assemblyPath}': {ex.Message}",
+                    $"Failed to load managed driver assembly: {ex.Message}",
                     AdbcStatusCode.IOError);
             }
 
             Type? driverType = assembly.GetType(typeName, throwOnError: false);
             if (driverType == null)
+            {
                 throw new AdbcException(
-                    $"Type '{typeName}' was not found in assembly '{assemblyPath}'.",
+                    $"Type '{typeName}' was not found in the assembly.",
                     AdbcStatusCode.NotFound);
+            }
 
             if (!typeof(AdbcDriver).IsAssignableFrom(driverType))
                 throw new AdbcException(
