@@ -1230,36 +1230,6 @@ jobs:
           path: |
             adbc/javascript/*.tgz
 
-  upload-npm:
-    name: "Upload Node.js packages to npm"
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && (github.event.schedule || inputs.upload_artifacts)
-    needs:
-      - node-dist
-    environment: npm
-    steps:
-      - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Download Node.js packages
-        uses: actions/download-artifact@v8
-        with:
-          name: node-packages
-          path: packages
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          registry-url: 'https://registry.npmjs.org'
-
-      - name: Publish to npm
-        env:
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_TAG: next
-        run: ci/scripts/node_npm_upload.sh packages
 
   release:
     name: "Create release"
@@ -1392,6 +1362,7 @@ jobs:
     needs:
       - clean-gemfury
       - java
+      - node-dist
       - python-manylinux
       - python-macos
       - python-windows
@@ -1415,7 +1386,8 @@ jobs:
               -name '*.jar' -or \
               -name '*.pom' -or \
               -name '*.whl' -or \
-              -name 'adbc_*.tar.gz' \
+              -name 'adbc_*.tar.gz' -or \
+              -name 'apache-arrow-adbc-driver-manager-*.tgz' \
             ')' \
             -exec mv '{}' upload-staging \;
 
@@ -1423,5 +1395,10 @@ jobs:
           ./ci/scripts/java_jar_upload.sh upload-staging/*.pom
           # Python
           ./ci/scripts/python_wheel_upload.sh upload-staging/adbc_*.tar.gz upload-staging/*.whl
+          # Node.js
+          ./ci/scripts/node_npm_upload.sh upload-staging
         env:
           GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
+          NPM_REGISTRY: https://npm.fury.io/arrow-adbc-nightlies/
+          NPM_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
+
