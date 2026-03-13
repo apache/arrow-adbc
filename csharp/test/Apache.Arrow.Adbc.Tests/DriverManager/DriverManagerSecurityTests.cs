@@ -119,8 +119,10 @@ namespace Apache.Arrow.Adbc.Tests.DriverManager
             string subDir = Path.Combine(manifestDir, "drivers");
             Directory.CreateDirectory(subDir);
 
+            // Use Path.Combine for the relative path to be cross-platform
+            string relativePath = Path.Combine("drivers", "mydriver.dll");
             string resolved = DriverManagerSecurity.ValidateAndResolveManifestPath(
-                manifestDir, "drivers\\mydriver.dll");
+                manifestDir, relativePath);
 
             Assert.Equal(Path.Combine(manifestDir, "drivers", "mydriver.dll"), resolved);
         }
@@ -130,9 +132,11 @@ namespace Apache.Arrow.Adbc.Tests.DriverManager
         {
             string manifestDir = CreateTempDirectory();
 
+            // Use ".." with platform-specific separator
+            string maliciousPath = ".." + Path.DirectorySeparatorChar + ".." + Path.DirectorySeparatorChar + "malicious.dll";
             AdbcException ex = Assert.Throws<AdbcException>(
                 () => DriverManagerSecurity.ValidateAndResolveManifestPath(
-                    manifestDir, "..\\..\\malicious.dll"));
+                    manifestDir, maliciousPath));
 
             Assert.Equal(AdbcStatusCode.InvalidArgument, ex.Status);
         }
@@ -144,9 +148,11 @@ namespace Apache.Arrow.Adbc.Tests.DriverManager
 
             // Even without .. in the literal string, symlinks or other means
             // could cause path escape - the method should catch this
+            string escapePath = "subdir" + Path.DirectorySeparatorChar + ".." +
+                Path.DirectorySeparatorChar + ".." + Path.DirectorySeparatorChar + "escape.dll";
             AdbcException ex = Assert.Throws<AdbcException>(
                 () => DriverManagerSecurity.ValidateAndResolveManifestPath(
-                    manifestDir, "subdir\\..\\..\\escape.dll"));
+                    manifestDir, escapePath));
 
             Assert.Equal(AdbcStatusCode.InvalidArgument, ex.Status);
         }

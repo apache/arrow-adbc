@@ -551,7 +551,8 @@ driver = ""mydriver""
             AdbcDriver driver = AdbcDriverManager.LoadManagedDriver(assemblyPath, typeName);
 
             Assert.NotNull(driver);
-            Assert.IsType<FakeAdbcDriver>(driver);
+            // Use type name comparison to avoid assembly identity issues when loaded via Assembly.LoadFrom
+            Assert.Equal(typeName, driver.GetType().FullName);
         }
 
         // -----------------------------------------------------------------------
@@ -615,9 +616,15 @@ driver = ""d""
             TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
             AdbcDatabase db = AdbcDriverManager.OpenDatabaseFromProfile(profile);
 
-            FakeAdbcDatabase fakeDb = Assert.IsType<FakeAdbcDatabase>(db);
-            Assert.Equal("my-project", fakeDb.Parameters["project_id"]);
-            Assert.Equal("us-east1", fakeDb.Parameters["region"]);
+            // Use type name comparison to avoid assembly identity issues when loaded via Assembly.LoadFrom
+            Assert.Equal("Apache.Arrow.Adbc.Tests.DriverManager.FakeAdbcDatabase", db.GetType().FullName);
+
+            // Access parameters via reflection since the type identity differs
+            System.Reflection.PropertyInfo? paramsProp = db.GetType().GetProperty("Parameters");
+            Assert.NotNull(paramsProp);
+            IReadOnlyDictionary<string, string> parameters = (IReadOnlyDictionary<string, string>)paramsProp!.GetValue(db)!;
+            Assert.Equal("my-project", parameters["project_id"]);
+            Assert.Equal("us-east1", parameters["region"]);
         }
 
         // -----------------------------------------------------------------------
@@ -822,10 +829,17 @@ host = ""env_var(ADBC_TEST_RESOLVE_ENVVAR_HOST)""
             TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
             AdbcDatabase db = AdbcDriverManager.OpenDatabaseFromProfile(profile);
 
-            FakeAdbcDatabase fakeDb = Assert.IsType<FakeAdbcDatabase>(db);
+            // Use type name comparison to avoid assembly identity issues
+            Assert.Equal("Apache.Arrow.Adbc.Tests.DriverManager.FakeAdbcDatabase", db.GetType().FullName);
+
+            // Access parameters via reflection since the type identity differs
+            System.Reflection.PropertyInfo? paramsProp = db.GetType().GetProperty("Parameters");
+            Assert.NotNull(paramsProp);
+            IReadOnlyDictionary<string, string> parameters = (IReadOnlyDictionary<string, string>)paramsProp!.GetValue(db)!;
+
             // Both keys arrive at the driver; the driver decides what to do with them.
-            Assert.Equal("hello", fakeDb.Parameters["known_key"]);
-            Assert.Equal("ignored_by_driver", fakeDb.Parameters["unknown_widget"]);
+            Assert.Equal("hello", parameters["known_key"]);
+            Assert.Equal("ignored_by_driver", parameters["unknown_widget"]);
         }
 
         // -----------------------------------------------------------------------
@@ -958,16 +972,22 @@ bool_key = false
 
             AdbcDatabase db = AdbcDriverManager.OpenDatabaseFromProfile(profile, explicitOptions);
 
-            FakeAdbcDatabase fakeDb = Assert.IsType<FakeAdbcDatabase>(db);
+            // Use type name comparison to avoid assembly identity issues
+            Assert.Equal("Apache.Arrow.Adbc.Tests.DriverManager.FakeAdbcDatabase", db.GetType().FullName);
+
+            // Access parameters via reflection since the type identity differs
+            System.Reflection.PropertyInfo? paramsProp = db.GetType().GetProperty("Parameters");
+            Assert.NotNull(paramsProp);
+            IReadOnlyDictionary<string, string> parameters = (IReadOnlyDictionary<string, string>)paramsProp!.GetValue(db)!;
 
             // Profile-only option should be present
-            Assert.Equal("from_profile", fakeDb.Parameters["profile_option"]);
+            Assert.Equal("from_profile", parameters["profile_option"]);
 
             // Explicit-only option should be present
-            Assert.Equal("from_explicit", fakeDb.Parameters["explicit_option"]);
+            Assert.Equal("from_explicit", parameters["explicit_option"]);
 
             // Shared option: explicit should override profile
-            Assert.Equal("explicit_value", fakeDb.Parameters["shared_option"]);
+            Assert.Equal("explicit_value", parameters["shared_option"]);
         }
 
         [Fact]
@@ -986,8 +1006,14 @@ bool_key = false
             TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
             AdbcDatabase db = AdbcDriverManager.OpenDatabaseFromProfile(profile, null);
 
-            FakeAdbcDatabase fakeDb = Assert.IsType<FakeAdbcDatabase>(db);
-            Assert.Equal("value", fakeDb.Parameters["key"]);
+            // Use type name comparison to avoid assembly identity issues
+            Assert.Equal("Apache.Arrow.Adbc.Tests.DriverManager.FakeAdbcDatabase", db.GetType().FullName);
+
+            // Access parameters via reflection since the type identity differs
+            System.Reflection.PropertyInfo? paramsProp = db.GetType().GetProperty("Parameters");
+            Assert.NotNull(paramsProp);
+            IReadOnlyDictionary<string, string> parameters = (IReadOnlyDictionary<string, string>)paramsProp!.GetValue(db)!;
+            Assert.Equal("value", parameters["key"]);
         }
     }
 }
