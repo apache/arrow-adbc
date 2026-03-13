@@ -42,6 +42,7 @@ build-backend = "setuptools.build_meta"
 enable = ["cpython-freethreading"]
 
 [tool.pytest.ini_options]
+filterwarnings = ["error"]
 markers = [
     "duckdb: tests that require DuckDB",
     "panicdummy: tests that require the testing-only panicdummy driver",
