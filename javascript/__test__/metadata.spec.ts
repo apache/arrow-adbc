@@ -17,8 +17,9 @@
 
 import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
-import { createSqliteDatabase, createTestTable, dumpReader } from './test_utils'
+import { createSqliteDatabase, createTestTable } from './test_utils'
 import { AdbcDatabase, AdbcConnection, AdbcStatement } from '../lib/index.js'
+import { Table } from 'apache-arrow'
 
 let db: AdbcDatabase
 let conn: AdbcConnection
@@ -42,13 +43,14 @@ after(async () => {
 })
 
 test('metadata: getTableTypes', async () => {
-  const tableTypes = await dumpReader(await conn.getTableTypes())
+  const table = await conn.getTableTypes()
+  assert.ok(table instanceof Table)
 
-  // Sort actual results for consistent comparison
-  tableTypes.sort((a, b) => (a.table_type || '').localeCompare(b.table_type || ''))
+  const types = Array.from({ length: table.numRows }, (_, i) => table.getChild('table_type')?.get(i) as string)
+  types.sort()
 
-  assert.strictEqual(tableTypes[0].table_type, 'table')
-  assert.strictEqual(tableTypes[1].table_type, 'view')
+  assert.ok(types.includes('table'))
+  assert.ok(types.includes('view'))
 })
 
 test('metadata: getTableSchema', async () => {
@@ -62,21 +64,29 @@ test('metadata: getTableSchema', async () => {
 
 test('metadata: getObjects', async () => {
   // SQLite structure: Catalog (null/main) -> Schemas (null/main) -> Tables
-  const objects = await dumpReader(
-    await conn.getObjects({
-      depth: 3,
-      tableName: 'metadata_test',
-      tableType: ['table', 'view'],
-    }),
-  )
+  const table = await conn.getObjects({
+    depth: 3,
+    tableName: 'metadata_test',
+    tableType: ['table', 'view'],
+  })
+  assert.ok(table instanceof Table)
+  assert.ok(table.numRows > 0)
 
-  const tables = objects[0].catalog_db_schemas[0].db_schema_tables
-  assert.ok(tables.some((t: { table_name: string }) => t.table_name === 'metadata_test'))
+  // Navigate the nested Arrow structure: catalog -> db_schemas -> tables
+  const dbSchemas = table.getChild('catalog_db_schemas')?.get(0)
+  const dbTables = dbSchemas?.get(0)?.db_schema_tables
+  const tableNames = Array.from({ length: dbTables?.length ?? 0 }, (_, i) => dbTables?.get(i)?.table_name as string)
+  assert.ok(tableNames.includes('metadata_test'))
 })
 
 test('metadata: getInfo', async () => {
-  const info = await dumpReader(await conn.getInfo())
+  const table = await conn.getInfo()
+  assert.ok(table instanceof Table)
+  assert.ok(table.numRows > 0)
 
-  assert.strictEqual(info[0].info_name, 0)
-  assert.strictEqual(info[0].info_value, 'SQLite')
+  // Find the VendorName row (info_name === 0)
+  const infoNames = table.getChild('info_name')
+  const vendorNameRow = Array.from({ length: table.numRows }, (_, i) => i).find((i) => infoNames?.get(i) === 0)
+  assert.ok(vendorNameRow !== undefined)
+  assert.strictEqual(table.getChild('info_value')?.get(vendorNameRow), 'SQLite')
 })

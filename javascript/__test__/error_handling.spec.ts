@@ -114,3 +114,79 @@ test('error: unsupported option', () => {
   assert.strictEqual(error.vendorCode, undefined)
   assert.strictEqual(error.sqlState, undefined)
 })
+
+test('error: conn.query() invalid SQL throws AdbcError', async () => {
+  await assert.rejects(
+    () => conn.query('SELECT * FROM'),
+    (e: unknown) => {
+      assert.ok(e instanceof AdbcError)
+      assert.match(e.message, /syntax error|incomplete input/i)
+      assert.strictEqual(e.code, 'InvalidArguments')
+      return true
+    },
+  )
+})
+
+test('error: conn.query() table not found throws AdbcError', async () => {
+  await assert.rejects(
+    () => conn.query('SELECT * FROM non_existent_table'),
+    (e: unknown) => {
+      assert.ok(e instanceof AdbcError)
+      assert.match(e.message, /no such table/i)
+      assert.strictEqual(e.code, 'InvalidArguments')
+      return true
+    },
+  )
+})
+
+test('error: conn.execute() invalid SQL throws AdbcError', async () => {
+  await assert.rejects(
+    () => conn.execute('INSERT INTO'),
+    (e: unknown) => {
+      assert.ok(e instanceof AdbcError)
+      assert.match(e.message, /syntax error|incomplete input/i)
+      assert.strictEqual(e.code, 'InvalidArguments')
+      return true
+    },
+  )
+})
+
+test('error: conn.execute() table not found throws AdbcError', async () => {
+  await assert.rejects(
+    () => conn.execute('INSERT INTO non_existent_table (id) VALUES (1)'),
+    (e: unknown) => {
+      assert.ok(e instanceof AdbcError)
+      assert.match(e.message, /no such table/i)
+      assert.strictEqual(e.code, 'InvalidArguments')
+      return true
+    },
+  )
+})
+
+test('error: conn.queryStream() invalid SQL throws AdbcError', async () => {
+  await assert.rejects(
+    () => conn.queryStream('SELECT * FROM'),
+    (e: unknown) => {
+      assert.ok(e instanceof AdbcError)
+      assert.match(e.message, /syntax error|incomplete input/i)
+      assert.strictEqual(e.code, 'InvalidArguments')
+      return true
+    },
+  )
+})
+
+test('error: conn.queryStream() error during iteration throws AdbcError', async () => {
+  // Verifies that errors surfacing through the async iterator are wrapped as AdbcError,
+  // not just errors thrown at query time.
+  let error: unknown
+  try {
+    const reader = await conn.queryStream('SELECT * FROM non_existent_table')
+    for await (const _ of reader) {
+    }
+  } catch (e) {
+    error = e
+  }
+
+  assert.ok(error instanceof AdbcError)
+  assert.match((error as AdbcError).message, /no such table/i)
+})
