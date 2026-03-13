@@ -92,29 +92,36 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// </exception>
         public static TomlConnectionProfile FromContent(string tomlContent)
         {
-            if (tomlContent == null) throw new ArgumentNullException(nameof(tomlContent));
+            if (tomlContent == null)
+            {
+                throw new ArgumentNullException(nameof(tomlContent));
+            }
 
-            var sections = TomlParser.Parse(tomlContent);
+            Dictionary<string, Dictionary<string, object>> sections = TomlParser.Parse(tomlContent);
 
-            var root = sections.TryGetValue("", out var r) ? r : new Dictionary<string, object>();
+            Dictionary<string, object> root = sections.TryGetValue("", out Dictionary<string, object>? r) ? r : new Dictionary<string, object>();
 
             ValidateVersion(root);
 
             string? driverName = null;
             if (root.TryGetValue("driver", out object? driverObj) && driverObj is string driverStr)
+            {
                 driverName = driverStr;
+            }
 
             string? driverTypeName = null;
             if (root.TryGetValue("driver_type", out object? driverTypeObj) && driverTypeObj is string driverTypeStr)
-                driverTypeName = driverTypeStr;
-
-            var stringOpts = new Dictionary<string, string>(StringComparer.Ordinal);
-            var intOpts = new Dictionary<string, long>(StringComparer.Ordinal);
-            var doubleOpts = new Dictionary<string, double>(StringComparer.Ordinal);
-
-            if (sections.TryGetValue(OptionsSection, out var optSection))
             {
-                foreach (var kv in optSection)
+                driverTypeName = driverTypeStr;
+            }
+
+            Dictionary<string, string> stringOpts = new Dictionary<string, string>(StringComparer.Ordinal);
+            Dictionary<string, long> intOpts = new Dictionary<string, long>(StringComparer.Ordinal);
+            Dictionary<string, double> doubleOpts = new Dictionary<string, double>(StringComparer.Ordinal);
+
+            if (sections.TryGetValue(OptionsSection, out Dictionary<string, object>? optSection))
+            {
+                foreach (KeyValuePair<string, object> kv in optSection)
                 {
                     string key = kv.Key;
                     object val = kv.Value;
@@ -147,7 +154,10 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// <returns>A new <see cref="TomlConnectionProfile"/>.</returns>
         public static TomlConnectionProfile FromFile(string filePath)
         {
-            if (filePath == null) throw new ArgumentNullException(nameof(filePath));
+            if (filePath == null)
+            {
+                throw new ArgumentNullException(nameof(filePath));
+            }
             string content = System.IO.File.ReadAllText(filePath, System.Text.Encoding.UTF8);
             return FromContent(content);
         }
@@ -162,8 +172,8 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// </exception>
         public TomlConnectionProfile ResolveEnvVars()
         {
-            var resolved = new Dictionary<string, string>(StringComparer.Ordinal);
-            foreach (var kv in _stringOptions)
+            Dictionary<string, string> resolved = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (KeyValuePair<string, string> kv in _stringOptions)
             {
                 string value = kv.Value;
                 if (value.StartsWith(EnvVarPrefix, StringComparison.Ordinal) &&
@@ -172,9 +182,11 @@ namespace Apache.Arrow.Adbc.DriverManager
                     string varName = value.Substring(EnvVarPrefix.Length, value.Length - EnvVarPrefix.Length - 1);
                     string? envValue = Environment.GetEnvironmentVariable(varName);
                     if (envValue == null)
+                    {
                         throw new AdbcException(
                             $"Environment variable '{varName}' required by profile option '{kv.Key}' is not set.",
                             AdbcStatusCode.InvalidState);
+                    }
                     resolved[kv.Key] = envValue;
                 }
                 else
@@ -193,9 +205,11 @@ namespace Apache.Arrow.Adbc.DriverManager
         private static void ValidateVersion(Dictionary<string, object> root)
         {
             if (!root.TryGetValue("version", out object? versionObj))
+            {
                 throw new AdbcException(
                     "TOML profile is missing the required 'version' field.",
                     AdbcStatusCode.InvalidArgument);
+            }
 
             long version;
             if (versionObj is long lv)
@@ -217,9 +231,11 @@ namespace Apache.Arrow.Adbc.DriverManager
             }
 
             if (version != 1)
+            {
                 throw new AdbcException(
                     $"Unsupported profile version '{version}'. Only version 1 is supported.",
                     AdbcStatusCode.NotImplemented);
+            }
         }
     }
 }

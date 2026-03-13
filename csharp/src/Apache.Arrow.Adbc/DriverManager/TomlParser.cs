@@ -48,9 +48,12 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// </summary>
         internal static Dictionary<string, Dictionary<string, object>> Parse(string content)
         {
-            if (content == null) throw new ArgumentNullException(nameof(content));
+            if (content == null)
+            {
+                throw new ArgumentNullException(nameof(content));
+            }
 
-            var result = new Dictionary<string, Dictionary<string, object>>(StringComparer.OrdinalIgnoreCase)
+            Dictionary<string, Dictionary<string, object>> result = new Dictionary<string, Dictionary<string, object>>(StringComparer.OrdinalIgnoreCase)
             {
                 [RootSection] = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase),
             };
@@ -62,19 +65,25 @@ namespace Apache.Arrow.Adbc.DriverManager
                 string line = StripComment(rawLine).Trim();
 
                 if (line.Length == 0)
+                {
                     continue;
+                }
 
                 if (line.StartsWith("[", StringComparison.Ordinal) && line.EndsWith("]", StringComparison.Ordinal))
                 {
                     currentSection = line.Substring(1, line.Length - 2).Trim();
                     if (!result.ContainsKey(currentSection))
+                    {
                         result[currentSection] = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+                    }
                     continue;
                 }
 
                 int eqIndex = line.IndexOf('=');
                 if (eqIndex <= 0)
+                {
                     continue;
+                }
 
                 string key = line.Substring(0, eqIndex).Trim();
                 string valueRaw = line.Substring(eqIndex + 1).Trim();
@@ -97,17 +106,25 @@ namespace Apache.Arrow.Adbc.DriverManager
 
             // Boolean
             if (string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase))
+            {
                 return true;
+            }
             if (string.Equals(raw, "false", StringComparison.OrdinalIgnoreCase))
+            {
                 return false;
+            }
 
             // Integer (try before float, since integers are a subset)
             if (long.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out long intValue))
+            {
                 return intValue;
+            }
 
             // Float
             if (double.TryParse(raw, NumberStyles.Float | NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out double dblValue))
+            {
                 return dblValue;
+            }
 
             // Fallback: treat as unquoted string
             return raw;
@@ -115,7 +132,7 @@ namespace Apache.Arrow.Adbc.DriverManager
 
         private static string UnescapeString(string s)
         {
-            var sb = new System.Text.StringBuilder(s.Length);
+            System.Text.StringBuilder sb = new System.Text.StringBuilder(s.Length);
             for (int i = 0; i < s.Length; i++)
             {
                 if (s[i] == '\\' && i + 1 < s.Length)
@@ -147,9 +164,13 @@ namespace Apache.Arrow.Adbc.DriverManager
             {
                 char c = line[i];
                 if (c == '"' && (i == 0 || line[i - 1] != '\\'))
+                {
                     inString = !inString;
+                }
                 if (c == '#' && !inString)
+                {
                     return line.Substring(0, i);
+                }
             }
             return line;
         }

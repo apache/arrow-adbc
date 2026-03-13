@@ -66,30 +66,41 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// <inheritdoc/>
         public IConnectionProfile? GetProfile(string profileName, string? additionalSearchPathList = null)
         {
-            if (profileName == null) throw new ArgumentNullException(nameof(profileName));
+            if (profileName == null)
+            {
+                throw new ArgumentNullException(nameof(profileName));
+            }
 
             // If already an absolute path, load directly.
             if (Path.IsPathRooted(profileName))
             {
                 string candidate = EnsureTomlExtension(profileName);
                 if (File.Exists(candidate))
+                {
                     return TomlConnectionProfile.FromFile(candidate);
+                }
                 return null;
             }
 
             // Build the ordered search directories.
-            var dirs = new List<string>();
+            List<string> dirs = new List<string>();
 
             if (!string.IsNullOrEmpty(additionalSearchPathList))
+            {
                 dirs.AddRange(SplitPathList(additionalSearchPathList!));
+            }
 
             string? profilePathEnv = Environment.GetEnvironmentVariable(ProfilePathEnvVar);
             if (!string.IsNullOrEmpty(profilePathEnv))
+            {
                 dirs.AddRange(SplitPathList(profilePathEnv!));
+            }
 
             string userDir = GetUserProfileDirectory();
             if (!string.IsNullOrEmpty(userDir))
+            {
                 dirs.Add(userDir);
+            }
 
             string fileName = EnsureTomlExtension(profileName);
 
@@ -97,7 +108,9 @@ namespace Apache.Arrow.Adbc.DriverManager
             {
                 string candidate = Path.Combine(dir, fileName);
                 if (File.Exists(candidate))
+                {
                     return TomlConnectionProfile.FromFile(candidate);
+                }
             }
 
             return null;

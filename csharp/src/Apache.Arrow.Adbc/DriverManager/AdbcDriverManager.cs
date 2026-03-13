@@ -275,9 +275,11 @@ namespace Apache.Arrow.Adbc.DriverManager
             }
 
             if (instance == null)
+            {
                 throw new AdbcException(
                     $"Activator returned null for driver type '{typeName}'.",
                     AdbcStatusCode.InternalError);
+            }
 
             return (AdbcDriver)instance;
         }
@@ -564,27 +566,40 @@ namespace Apache.Arrow.Adbc.DriverManager
         private static AdbcDriver LoadFromManifest(string manifestPath, string? entrypoint)
         {
             if (!File.Exists(manifestPath))
+            {
                 throw new AdbcException(
-                    $"Driver manifest file not found: '{manifestPath}'.",
+                    $"Driver manifest file not found.",
                     AdbcStatusCode.NotFound);
+            }
 
             TomlConnectionProfile manifest = TomlConnectionProfile.FromFile(manifestPath);
 
             if (string.IsNullOrEmpty(manifest.DriverName))
+            {
                 throw new AdbcException(
-                    $"Driver manifest '{manifestPath}' does not specify a 'driver' field.",
+                    $"Driver manifest does not specify a 'driver' field.",
                     AdbcStatusCode.InvalidArgument);
+            }
+
+            string? manifestDir = Path.GetDirectoryName(Path.GetFullPath(manifestPath));
 
             // Check if this is a managed driver
             if (!string.IsNullOrEmpty(manifest.DriverTypeName))
             {
-                // Managed .NET driver - resolve relative path relative to manifest directory
+                // Managed .NET driver - resolve path
                 string driverPath = manifest.DriverName!;
-                if (!Path.IsPathRooted(driverPath))
+                if (Path.IsPathRooted(driverPath))
                 {
-                    string? manifestDir = Path.GetDirectoryName(Path.GetFullPath(manifestPath));
+                    // Absolute path - validate it doesn't contain path traversal
+                    DriverManagerSecurity.ValidatePathSecurity(driverPath, "manifest driver path");
+                }
+                else
+                {
+                    // Relative path - validate it doesn't escape the manifest directory
                     if (!string.IsNullOrEmpty(manifestDir))
-                        driverPath = Path.Combine(manifestDir, driverPath);
+                    {
+                        driverPath = DriverManagerSecurity.ValidateAndResolveManifestPath(manifestDir, driverPath);
+                    }
                 }
                 return LoadManagedDriver(driverPath, manifest.DriverTypeName!);
             }
@@ -592,13 +607,20 @@ namespace Apache.Arrow.Adbc.DriverManager
             // Native driver - resolve entrypoint and path
             string resolvedEntrypoint = entrypoint ?? DeriveEntrypoint(manifest.DriverName!);
 
-            // Resolve relative driver path relative to the manifest directory.
+            // Resolve driver path
             string resolvedDriverPath = manifest.DriverName!;
-            if (!Path.IsPathRooted(resolvedDriverPath))
+            if (Path.IsPathRooted(resolvedDriverPath))
             {
-                string? manifestDir = Path.GetDirectoryName(Path.GetFullPath(manifestPath));
+                // Absolute path - validate it doesn't contain path traversal
+                DriverManagerSecurity.ValidatePathSecurity(resolvedDriverPath, "manifest driver path");
+            }
+            else
+            {
+                // Relative path - validate it doesn't escape the manifest directory
                 if (!string.IsNullOrEmpty(manifestDir))
-                    resolvedDriverPath = Path.Combine(manifestDir, resolvedDriverPath);
+                {
+                    resolvedDriverPath = DriverManagerSecurity.ValidateAndResolveManifestPath(manifestDir, resolvedDriverPath);
+                }
             }
 
             return CAdbcDriverImporter.Load(resolvedDriverPath, resolvedEntrypoint);

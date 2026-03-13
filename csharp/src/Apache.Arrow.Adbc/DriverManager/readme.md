@@ -67,3 +67,77 @@ adbc.bigquery.json_credential = "env_var(BIGQUERY_JSON_CREDENTIAL)"
 - Values of the form `env_var(ENV_VAR_NAME)` are expanded from the named environment variable at connection time.
 - For unmanaged drivers, use `driver` for the library path and `entrypoint` for the initialization function.
 - For managed drivers, use `driver` for the assembly path and `driver_type` for the fully-qualified type name.
+
+## Security Features
+
+The Driver Manager includes security features to protect against common attacks when loading drivers dynamically.
+
+### Path Traversal Protection
+
+The driver manager validates all paths from manifest files to prevent path traversal attacks:
+
+- Paths containing `..` sequences are rejected
+- Paths containing null bytes are rejected
+- Relative paths in manifests are validated to ensure they don't escape the manifest directory
+
+```csharp
+// Manual path validation
+DriverManagerSecurity.ValidatePathSecurity(userProvidedPath, "driverPath");
+
+// Validate and resolve a relative path against a base directory
+string resolvedPath = DriverManagerSecurity.ValidateAndResolveManifestPath(
+    manifestDirectory, relativePath);
+```
+
+### Driver Allowlist
+
+Restrict which drivers can be loaded by configuring an allowlist:
+
+```csharp
+// Only allow drivers from specific directories
+DriverManagerSecurity.Allowlist = new DirectoryAllowlist(new[]
+{
+    @"C:\Program Files\ADBC\Drivers",
+    @"C:\MyApp\TrustedDrivers"
+});
+
+// Only allow specific managed driver types
+DriverManagerSecurity.Allowlist = new TypeAllowlist(new[]
+{
+    "Apache.Arrow.Adbc.Drivers.BigQuery.BigQueryDriver",
+    "Apache.Arrow.Adbc.Drivers.Snowflake.SnowflakeDriver"
+});
+
+// Combine multiple restrictions (all must pass)
+DriverManagerSecurity.Allowlist = new CompositeAllowlist(
+    new DirectoryAllowlist(trustedDirectories),
+    new TypeAllowlist(trustedTypes)
+);
+```
+
+### Audit Logging
+
+Log all driver load attempts for security monitoring:
+
+```csharp
+public class MyAuditLogger : IDriverLoadAuditLogger
+{
+    public void LogDriverLoadAttempt(DriverLoadAttempt attempt)
+    {
+        Console.WriteLine($"[{attempt.TimestampUtc:O}] {attempt.LoadMethod}: " +
+            $"{attempt.DriverPath} - {(attempt.Success ? "SUCCESS" : "FAILED: " + attempt.ErrorMessage)}");
+    }
+}
+
+// Enable audit logging
+DriverManagerSecurity.AuditLogger = new MyAuditLogger();
+```
+
+The `DriverLoadAttempt` class captures:
+- `TimestampUtc` - When the load was attempted
+- `DriverPath` - Path to the driver
+- `TypeName` - Type name for managed drivers (null for native)
+- `ManifestPath` - Path to manifest if used
+- `Success` - Whether the load succeeded
+- `ErrorMessage` - Error details if failed
+- `LoadMethod` - Which method was used (LoadDriver, LoadManagedDriver, etc.)

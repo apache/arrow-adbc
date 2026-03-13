@@ -447,7 +447,7 @@ key = ""value""
         [Fact]
         public void FilesystemProfileProvider_UnknownProfile_ReturnsNull()
         {
-            var provider = new FilesystemProfileProvider();
+            FilesystemProfileProvider provider = new FilesystemProfileProvider();
             IConnectionProfile? result = provider.GetProfile(
                 "definitely_not_a_real_profile_xyz",
                 additionalSearchPathList: Path.GetTempPath());
@@ -457,7 +457,7 @@ key = ""value""
         [Fact]
         public void FilesystemProfileProvider_NullName_ThrowsArgumentNullException()
         {
-            var provider = new FilesystemProfileProvider();
+            FilesystemProfileProvider provider = new FilesystemProfileProvider();
             Assert.Throws<ArgumentNullException>(() => provider.GetProfile(null!));
         }
 
@@ -481,7 +481,7 @@ key = ""found""
             File.WriteAllText(filePath, toml, System.Text.Encoding.UTF8);
             try
             {
-                var provider = new FilesystemProfileProvider();
+                FilesystemProfileProvider provider = new FilesystemProfileProvider();
                 IConnectionProfile? profile = provider.GetProfile("myprofile", additionalSearchPathList: dir);
 
                 Assert.NotNull(profile);
@@ -503,7 +503,7 @@ version = 1
 driver = ""abs_driver""
 ";
             string path = WriteTempToml(toml);
-            var provider = new FilesystemProfileProvider();
+            FilesystemProfileProvider provider = new FilesystemProfileProvider();
             IConnectionProfile? profile = provider.GetProfile(path);
 
             Assert.NotNull(profile);
@@ -846,7 +846,7 @@ port = 5432
 ";
             TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
 
-            var explicitOptions = new Dictionary<string, string>
+            Dictionary<string, string> explicitOptions = new Dictionary<string, string>
             {
                 { "explicit_key", "from_explicit" },
                 { "shared_key", "explicit_value" }
@@ -892,7 +892,7 @@ driver = ""d""
 key = ""value""
 ";
             TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
-            var empty = new Dictionary<string, string>();
+            Dictionary<string, string> empty = new Dictionary<string, string>();
             IReadOnlyDictionary<string, string> opts = AdbcDriverManager.BuildStringOptions(profile, empty);
 
             Assert.Equal("value", opts["key"]);
@@ -913,7 +913,7 @@ bool_key = false
 ";
             TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
 
-            var explicitOptions = new Dictionary<string, string>
+            Dictionary<string, string> explicitOptions = new Dictionary<string, string>
             {
                 { "str_key", "explicit_string" },
                 { "int_key", "999" },
@@ -950,7 +950,7 @@ bool_key = false
 
             TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
 
-            var explicitOptions = new Dictionary<string, string>
+            Dictionary<string, string> explicitOptions = new Dictionary<string, string>
             {
                 { "explicit_option", "from_explicit" },
                 { "shared_option", "explicit_value" }
