@@ -448,7 +448,7 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      dev/release/post-09-remove-old-artifacts.sh
+      dev/release/post-10-remove-old-artifacts.sh
 
 .. dropdown:: Bump versions
    :class-title: sd-fs-5
@@ -458,8 +458,8 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      # dev/release/post-11-bump-versions.sh ../arrow
-      dev/release/post-11-bump-versions.sh <arrow-dir>
+      # dev/release/post-12-bump-versions.sh ../arrow
+      dev/release/post-12-bump-versions.sh <arrow-dir>
 
 .. dropdown:: Publish release blog post
    :class-title: sd-fs-5
@@ -471,8 +471,8 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      # dev/release/post-12-website.sh ../arrow-site
-      dev/release/post-12-website.sh <arrow-site-dir>
+      # dev/release/post-13-website.sh ../arrow-site
+      dev/release/post-13-website.sh <arrow-site-dir>
 
 .. dropdown:: Announce the new release
    :class-title: sd-fs-5
@@ -491,6 +491,6 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      dev/release/post-10-announce.sh
+      dev/release/post-11-announce.sh
 
 .. _nightly-website.yml: https://github.com/apache/arrow-adbc/actions/workflows/nightly-website.yml
