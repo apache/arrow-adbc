@@ -125,7 +125,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private async Task<QueryResult> ExecuteQueryAsyncInternal(CancellationToken cancellationToken = default)
         {
-            return await this.TraceActivityAsync(async activity =>
+            return await this.TraceActivityAsync(async (ActivityWithPii? activity) =>
             {
                 if (IsMetadataCommand)
                 {
@@ -186,7 +186,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private async Task<UpdateResult> ExecuteUpdateAsyncInternal(CancellationToken cancellationToken = default)
         {
-            return await this.TraceActivityAsync(async activity =>
+            return await this.TraceActivityAsync(async (ActivityWithPii? activity) =>
             {
                 long? affectedRows = null;
                 try
@@ -233,14 +233,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
                 }
                 finally
                 {
-                    activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, affectedRows ?? -1);
+                    activity?.AddTag(SemanticConventions.Db.Response.ReturnedRows, affectedRows ?? -1, isPii: false);
                 }
             }, ClassName + "." + nameof(ExecuteUpdateAsyncInternal));
         }
 
         public override async Task<UpdateResult> ExecuteUpdateAsync()
         {
-            return await this.TraceActivityAsync(async _ =>
+            return await this.TraceActivityAsync(async (ActivityWithPii? _) =>
             {
                 CancellationTokenSource ts = SetTokenSource();
                 try
@@ -330,19 +330,19 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         protected async Task<IResponse> ExecuteStatementAsync(CancellationToken cancellationToken = default)
         {
-            return await this.TraceActivityAsync(async activity =>
+            return await this.TraceActivityAsync(async (ActivityWithPii? activity) =>
             {
                 if (Connection.SessionHandle == null)
                 {
                     throw new InvalidOperationException("Invalid session");
                 }
 
-                activity?.AddTag(SemanticConventions.Db.Client.Connection.SessionId, Connection.SessionHandle.SessionId.Guid, "N");
+                activity?.AddTag(SemanticConventions.Db.Client.Connection.SessionId, () => ActivityWithPii.ToHexString(Connection.SessionHandle.SessionId.Guid), isPii: false);
                 TExecuteStatementReq executeRequest = new TExecuteStatementReq(Connection.SessionHandle, SqlQuery!);
                 SetStatementProperties(executeRequest);
                 IResponse response = await Connection.Client.ExecuteStatement(executeRequest, cancellationToken);
                 HiveServer2Connection.HandleThriftResponse(response.Status!, activity);
-                activity?.AddTag(SemanticConventions.Db.Response.OperationId, response.OperationHandle!.OperationId.Guid, "N");
+                activity?.AddTag(SemanticConventions.Db.Response.OperationId, () => ActivityWithPii.ToHexString(response.OperationHandle!.OperationId.Guid), isPii: false);
 
                 // Capture direct results if they're available
                 if (response.DirectResults != null)
@@ -426,9 +426,10 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private async Task<QueryResult> ExecuteMetadataCommandQuery(CancellationToken cancellationToken)
         {
-            return await this.TraceActivityAsync(async activity =>
+            return await this.TraceActivityAsync(async (ActivityWithPii? activity) =>
             {
-                activity?.AddTag(SemanticConventions.Db.Query.Text, SqlQuery ?? "<null>");
+                // This is just the name of the metadata query and does not contain sensitive information, so safe to log as-is without redaction
+                activity?.AddTag(SemanticConventions.Db.Query.Text, SqlQuery ?? "<null>", isPii: false);
                 return SqlQuery?.ToLowerInvariant() switch
                 {
                     GetCatalogsCommandName => await GetCatalogsAsync(cancellationToken),
@@ -567,7 +568,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         private async Task<QueryResult> GetQueryResult(IResponse response, CancellationToken cancellationToken)
         {
-            return await this.TraceActivityAsync(async activity =>
+            return await this.TraceActivityAsync(async (ActivityWithPii? activity) =>
             {
                 HiveServer2Connection.HandleThriftResponse(response.Status!, activity);
                 if (Connection.TryGetDirectResults(response.DirectResults, out QueryResult? result))
@@ -1052,14 +1053,14 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
         /// <inheritdoc/>
         public override void Cancel()
         {
-            this.TraceActivity(_ =>
+            this.TraceActivity((ActivityWithPii? _) =>
             {
                 // This will cancel any operation using the current token source
                 CancelTokenSource();
             }, ClassName + "." + nameof(Cancel));
         }
 
-        private async Task CancelOperationAsync(Activity? activity, TOperationHandle? operationHandle)
+        private async Task CancelOperationAsync(ActivityWithPii? activity, TOperationHandle? operationHandle)
         {
             if (operationHandle == null)
             {
@@ -1070,13 +1071,15 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
             {
                 activity?.AddEvent(
                     "db.operation.cancel_operation.starting",
-                    [new(SemanticConventions.Db.Operation.OperationId, new Guid(operationHandle.OperationId.Guid).ToString("N"))]);
+                    [new(SemanticConventions.Db.Operation.OperationId, new Guid(operationHandle.OperationId.Guid).ToString("N"))],
+                    isPii: false);
                 TCancelOperationReq req = new(operationHandle);
                 TCancelOperationResp resp = await Client.CancelOperation(req, cancellationTokenSource.Token);
                 HiveServer2Connection.HandleThriftResponse(resp.Status, activity);
                 activity?.AddEvent(
                     "db.operation.cancel_operation.completed",
-                    [new(SemanticConventions.Db.Response.StatusCode, resp.Status.StatusCode.ToString())]);
+                    [new(SemanticConventions.Db.Response.StatusCode, resp.Status.StatusCode.ToString())],
+                    isPii: false);
             }
             catch (Exception ex)
             {

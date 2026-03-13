@@ -98,8 +98,8 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Listeners.FileListener
             activity.ParentSpanId,
             activity.IdFormat,
             activity.TagObjects.ToDictionary(kv => kv.Key, kv => kv.Value),
-            activity.Events.Select(e => (SerializableActivityEvent)e).ToArray(),
-            activity.Links.Select(l => (SerializableActivityLink)l).ToArray(),
+            [.. activity.Events.Select(e => (SerializableActivityEvent)e)],
+            [.. activity.Links.Select(l => (SerializableActivityLink)l)],
             activity.Baggage.ToDictionary(kv => kv.Key, kv => kv.Value))
         { }
 
@@ -148,7 +148,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Listeners.FileListener
             {
                 Name = source.Name,
                 Timestamp = source.Timestamp,
-                Tags = source.Tags.ToArray(),
+                Tags = [.. source.Tags],
             };
         }
     }

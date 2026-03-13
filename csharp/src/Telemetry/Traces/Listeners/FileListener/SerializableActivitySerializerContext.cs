@@ -17,6 +17,7 @@
 
 using System;
 using System.Text.Json.Serialization;
+using Apache.Arrow.Adbc.Tracing;
 
 namespace Apache.Arrow.Adbc.Telemetry.Traces.Listeners.FileListener
 {
@@ -55,6 +56,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Listeners.FileListener
     [JsonSerializable(typeof(bool[]))]
 
     [JsonSerializable(typeof(Uri))]
+    [JsonSerializable(typeof(RedactedValue))]
     internal partial class SerializableActivitySerializerContext : JsonSerializerContext
     {
     }

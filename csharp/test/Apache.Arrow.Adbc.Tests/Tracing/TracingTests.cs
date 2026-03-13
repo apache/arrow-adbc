@@ -28,7 +28,7 @@ using OpenTelemetry.Trace;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Apache.Arrow.Adbc.Tests.Tracing
+namespace Apache.Arrow.Adbc.Testing.Tracing
 {
     public class TracingTests(ITestOutputHelper? outputHelper) : IDisposable
     {
@@ -61,7 +61,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             Assert.Equal(currLength, exportedActivities.Count);
 
             int lineCount = 0;
-            foreach (var exportedActivity in exportedActivities)
+            foreach (Activity exportedActivity in exportedActivities)
             {
                 lineCount++;
                 Assert.NotNull(exportedActivity);
@@ -94,7 +94,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             Assert.Equal(currLength, exportedActivities.Count);
 
             int lineCount = 0;
-            foreach (var exportedActivity in exportedActivities)
+            foreach (Activity exportedActivity in exportedActivities)
             {
                 lineCount++;
                 Assert.NotNull(exportedActivity);
@@ -120,7 +120,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             testClass.MethodWithActivityRecursive(nameof(TraceProducer.MethodWithActivityRecursive), recurseCount);
 
             int lineCount = 0;
-            foreach (var exportedActivity in exportedActivities)
+            foreach (Activity exportedActivity in exportedActivities)
             {
                 lineCount++;
                 Assert.NotNull(exportedActivity);
@@ -148,7 +148,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             const string eventNameWithParent = "eventNameWithParent";
             const string eventNameWithoutParent = "eventNameWithoutParent";
             testClass.MethodWithActivity(eventNameWithoutParent);
-            Assert.True(exportedActivities.Count() > 0);
+            Assert.True(exportedActivities.Count > 0);
 
             const int withParentCountExpected = 10;
             for (int i = 0; i < withParentCountExpected; i++)
@@ -157,12 +157,12 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             }
 
             testClass.MethodWithActivity(eventNameWithoutParent);
-            Assert.True(exportedActivities.Count() > 0);
+            Assert.True(exportedActivities.Count > 0);
 
             int lineCount = 0;
             int withParentCount = 0;
             int withoutParentCount = 0;
-            foreach (var exportedActivity in exportedActivities)
+            foreach (Activity exportedActivity in exportedActivities)
             {
                 lineCount++;
                 Assert.NotNull(exportedActivity);
@@ -279,7 +279,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             string eventName1 = NewName();
             statement.MethodWithActivity(eventName1);
             Assert.Single(exportedActivities);
-            var activity1 = exportedActivities.First();
+            Activity activity1 = exportedActivities.First();
             Assert.Equal(connectionTraceParent, activity1.ParentId);
 
             // Test 2: Set statement-specific trace parent
@@ -291,7 +291,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             string eventName2 = NewName();
             statement.MethodWithActivity(eventName2);
             Assert.Single(exportedActivities);
-            var activity2 = exportedActivities.First();
+            Activity activity2 = exportedActivities.First();
             Assert.Equal(statementTraceParent, activity2.ParentId);
 
             // Test 3: Set trace parent to null (should fall back to connection's trace parent)
@@ -302,7 +302,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             string eventName3 = NewName();
             statement.MethodWithActivity(eventName3);
             Assert.Single(exportedActivities);
-            var activity3 = exportedActivities.First();
+            Activity activity3 = exportedActivities.First();
             Assert.Equal(connectionTraceParent, activity3.ParentId);
         }
 
@@ -344,12 +344,12 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
 
             internal void MethodWithActivity()
             {
-                _trace.TraceActivity(_ => { });
+                _trace.TraceActivity(_ => { }, exceptionHasPii: true);
             }
 
             internal void MethodWithActivity(string activityName, string? traceParent = default)
             {
-                _trace.TraceActivity(activity => { }, activityName: activityName, traceParent: traceParent);
+                _trace.TraceActivity(activity => { }, activityName: activityName, traceParent: traceParent, exceptionHasPii: true);
             }
 
             internal void MethodWithActivityRecursive(string activityName, int recurseCount)
@@ -361,12 +361,12 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
                     {
                         MethodWithActivityRecursive(activityName, recurseCount);
                     }
-                }, activityName: activityName + recurseCount.ToString());
+                }, activityName: activityName + recurseCount.ToString(), exceptionHasPii: true);
             }
 
             internal void MethodWithEvent(string eventName)
             {
-                _trace.TraceActivity((activity) => activity?.AddEvent(eventName));
+                _trace.TraceActivity((ActivityWithPii? activity) => activity?.AddEvent(eventName));
             }
 
             internal void MethodWithAllProperties(
@@ -375,16 +375,16 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
                 IReadOnlyList<KeyValuePair<string, object?>> tags,
                 string traceParent)
             {
-                _trace.TraceActivity(activity =>
+                _trace.TraceActivity((activity) =>
                 {
                     foreach (KeyValuePair<string, object?> tag in tags)
                     {
                         activity?.AddTag(tag.Key, tag.Value)
                             .AddBaggage(tag.Key, tag.Value?.ToString());
                     }
-                    activity?.AddEvent(eventName, tags)
+                    activity?.AddEvent(eventName, tags)?
                         .AddLink(traceParent, tags);
-                }, activityName: activityName, traceParent: traceParent);
+                }, activityName: activityName, traceParent: traceParent, exceptionHasPii: true);
             }
 
             protected virtual void Dispose(bool disposing)
@@ -416,7 +416,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
 
             public void MethodWithActivity()
             {
-                this.TraceActivity(activity =>
+                this.TraceActivity((ActivityWithPii? activity) =>
                 {
                     activity?.AddTag("exampleTag", "exampleValue")
                         .AddBaggage("exampleBaggage", "exampleBaggageValue")
@@ -428,7 +428,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             public async Task<bool> MethodWithInvalidAsyncTraceActivity1()
             {
                 // This method is intended to demonstrate incorrect usage of TraceActivity with async methods.
-                return await this.TraceActivity(async activity =>
+                return await this.TraceActivity(async (ActivityWithPii? activity) =>
                 {
                     await Task.Delay(1);
                     return true;
@@ -438,7 +438,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             public async Task MethodWithInvalidAsyncTraceActivity2()
             {
                 // This method is intended to demonstrate incorrect usage of TraceActivity with async methods.
-                await this.TraceActivity(async activity =>
+                await this.TraceActivity(async (ActivityWithPii? activity) =>
                 {
                     await Task.Delay(1);
                     return;
@@ -448,7 +448,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             public async ValueTask<bool> MethodWithInvalidAsyncTraceActivity3()
             {
                 // This method is intended to demonstrate incorrect usage of TraceActivity with async methods.
-                return await this.TraceActivity(async activity =>
+                return await this.TraceActivity(async (ActivityWithPii? activity) =>
                 {
                     await Task.Delay(1);
                     return true;
@@ -458,7 +458,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             public async ValueTask MethodWithInvalidAsyncTraceActivity4()
             {
                 // This method is intended to demonstrate incorrect usage of TraceActivity with async methods.
-                await this.TraceActivity(async activity =>
+                await this.TraceActivity(async (ActivityWithPii? activity) =>
                 {
                     await Task.Delay(1);
                     return;
@@ -468,7 +468,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
             public async Task<bool> MethodWithInvalidAsyncTraceActivity5()
             {
                 // This method is intended to demonstrate incorrect usage of TraceActivity with async methods.
-                return await this.TraceActivity(async activity =>
+                return await this.TraceActivity(async (ActivityWithPii? activity) =>
                 {
                     await Task.Delay(1);
                     return await new AwaitableBool();
@@ -509,7 +509,7 @@ namespace Apache.Arrow.Adbc.Tests.Tracing
 
             public void MethodWithActivity(string activityName)
             {
-                this.TraceActivity(activity =>
+                this.TraceActivity((ActivityWithPii? activity) =>
                 {
                     activity?.AddTag("testTag", "testValue");
                 }, activityName);

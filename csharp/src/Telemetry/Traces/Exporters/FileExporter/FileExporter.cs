@@ -43,7 +43,11 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
         {
             TypeInfoResolver = JsonTypeInfoResolver.Combine(
                 SerializableActivitySerializerContext.Default,
-                new DefaultJsonTypeInfoResolver())
+                new DefaultJsonTypeInfoResolver()),
+            Converters =             {
+                // Unredacts any redacted values in the trace when serializing to JSON, so that the full value is available in the file. This is needed since the file exporter is opt-in and users would expect to see the full value in the file.
+                new UnredactConverter(),
+            },
         };
 
         private readonly TracingFile _tracingFile;

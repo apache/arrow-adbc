@@ -181,10 +181,10 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     var refreshedLink = response.Results.ResultLinks.FirstOrDefault(l => l.StartRowOffset == offset);
                     if (refreshedLink != null)
                     {
-                        Activity.Current?.AddEvent("cloudfetch.url_fetched", [
+                        ActivityWithPii.Wrap(Activity.Current)?.AddEvent("cloudfetch.url_fetched", [
                             new("offset", offset),
                             new("url_length", refreshedLink.FileLink?.Length ?? 0)
-                        ]);
+                        ], isPii: false);
 
                         // Create a download result for the refreshed link
                         var downloadResult = new DownloadResult(refreshedLink, _memoryManager);
@@ -194,7 +194,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
                     }
                 }
 
-                Activity.Current?.AddEvent("cloudfetch.url_fetch_failed", [new("offset", offset)]);
+                ActivityWithPii.Wrap(Activity.Current)?.AddEvent("cloudfetch.url_fetch_failed", [new("offset", offset)], isPii: false);
                 return null;
             }
             finally

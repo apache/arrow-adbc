@@ -94,7 +94,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
         public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
-            return await this.TraceActivityAsync(async activity =>
+            return await this.TraceActivityAsync(async (ActivityWithPii? activity) =>
             {
                 // All records have been exhausted
                 if (_hasNoMoreData)
@@ -109,7 +109,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Hive2
 
                     int columnCount = GetColumnCount(response.Results);
                     int rowCount = GetRowCount(response.Results, columnCount);
-                    activity?.AddEvent(SemanticConventions.Messaging.Batch.Response, [new(SemanticConventions.Db.Response.ReturnedRows, rowCount)]);
+                    activity?.AddEvent(SemanticConventions.Messaging.Batch.Response, [new(SemanticConventions.Db.Response.ReturnedRows, rowCount)], isPii: false);
 
                     if ((_statement.EnableBatchSizeStopCondition && _statement.BatchSize > 0 && rowCount < _statement.BatchSize) || rowCount == 0)
                     {

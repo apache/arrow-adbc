@@ -24,6 +24,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.Drivers.Apache.Hive2;
+using Apache.Arrow.Adbc.Tracing;
 using Apache.Arrow.Ipc;
 using Apache.Hive.Service.Rpc.Thrift;
 using Thrift;
@@ -105,7 +106,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override TTransport CreateTransport()
         {
-            Activity? activity = Activity.Current;
+            ActivityWithPii? activity = ActivityWithPii.Wrap(Activity.Current);
 
             // Assumption: hostName and port have already been validated.
             Properties.TryGetValue(SparkParameters.HostName, out string? hostName);
@@ -140,21 +141,21 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                 {
                     baseTransport = new TTlsSocketTransport(hostName!, portValue, config: thriftConfig, 0, trustedCert, certValidator);
                 }
-                activity?.AddTag(ActivityKeys.Encrypted, trustedCert != null);
+                activity?.AddTag(ActivityKeys.Encrypted, trustedCert != null, isPii: false);
             }
             else
             {
                 baseTransport = new TSocketTransport(hostName!, portValue, connectClient, config: thriftConfig);
-                activity?.AddTag(ActivityKeys.Encrypted, false);
+                activity?.AddTag(ActivityKeys.Encrypted, false, isPii: false);
             }
-            activity?.AddTag(ActivityKeys.Host, hostName);
-            activity?.AddTag(ActivityKeys.Port, port);
+            activity?.AddTag(ActivityKeys.Host, hostName, isPii: true);
+            activity?.AddTag(ActivityKeys.Port, port, isPii: true);
 
             TBufferedTransport bufferedTransport = new TBufferedTransport(baseTransport);
             switch (authTypeValue)
             {
                 case SparkAuthType.None:
-                    activity?.AddTag(ActivityKeys.TransportType, "buffered_socket");
+                    activity?.AddTag(ActivityKeys.TransportType, "buffered_socket", isPii: false);
                     return bufferedTransport;
 
                 case SparkAuthType.Basic:
@@ -168,7 +169,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
                     PlainSaslMechanism saslMechanism = new(username, password);
                     TSaslTransport saslTransport = new(bufferedTransport, saslMechanism, config: thriftConfig);
-                    activity?.AddTag(ActivityKeys.TransportType, "sasl_buffered_socket");
+                    activity?.AddTag(ActivityKeys.TransportType, "sasl_buffered_socket", isPii: false);
                     return new TFramedTransport(saslTransport);
 
                 default:
@@ -184,7 +185,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
 
         protected override TOpenSessionReq CreateSessionRequest()
         {
-            Activity? activity = Activity.Current;
+            ActivityWithPii? activity = ActivityWithPii.Wrap(Activity.Current);
 
             // Assumption: user name and password have already been validated.
             Properties.TryGetValue(AdbcOptions.Username, out string? username);
@@ -220,7 +221,7 @@ namespace Apache.Arrow.Adbc.Drivers.Apache.Spark
                     ? SparkAuthType.Basic
                     : SparkAuthType.UsernameOnly
                 : authTypeValue;
-            activity?.AddTag(ActivityKeys.AuthType, authTypeValue.ToString());
+            activity?.AddTag(ActivityKeys.AuthType, authTypeValue.ToString(), isPii: false);
             return request;
         }
 

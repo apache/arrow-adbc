@@ -91,7 +91,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks.Reader.CloudFetch
         /// <returns>The next record batch, or null if there are no more batches.</returns>
         public override async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
-            return await this.TraceActivityAsync(async _ =>
+            return await this.TraceActivityAsync(async (ActivityWithPii? _) =>
             {
                 ThrowIfDisposed();
 

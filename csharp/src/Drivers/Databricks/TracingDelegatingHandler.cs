@@ -60,7 +60,7 @@ namespace Apache.Arrow.Adbc.Drivers.Databricks
         protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
         {
             // Get the current activity or use the trace parent from the connection
-            Activity? currentActivity = Activity.Current;
+            ActivityWithPii? currentActivity = ActivityWithPii.Wrap(Activity.Current);
             string? traceParentValue = null;
             string? traceStateValue = null;
 
