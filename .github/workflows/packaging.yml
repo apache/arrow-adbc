@@ -1401,4 +1401,3 @@ jobs:
           GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
           NPM_REGISTRY: https://npm.fury.io/arrow-adbc-nightlies/
           NPM_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
-
