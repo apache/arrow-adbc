@@ -183,9 +183,10 @@ else:
 
 
 def connect(
-    driver: Union[str, pathlib.Path],
+    driver: Optional[Union[str, pathlib.Path]] = None,
     uri: Optional[str] = None,
     *,
+    profile: Optional[str] = None,
     entrypoint: Optional[str] = None,
     db_kwargs: Optional[Dict[str, Union[str, pathlib.Path]]] = None,
     conn_kwargs: Optional[Dict[str, str]] = None,
@@ -217,10 +218,17 @@ def connect(
           where the scheme happens to be the same as the driver name (so
           PostgreSQL works, but not SQLite, for example, as SQLite uses
           ``file:`` URIs).
+
+        - If the URI begins with ``profile://``, then a connection profile
+          will be loaded instead. See :doc:`/format/connection_profiles`.
     uri
         The "uri" parameter to the database (if applicable).  This is
         equivalent to passing it in ``db_kwargs`` but is slightly cleaner.
         If given, takes precedence over any value in ``db_kwargs``.
+    profile
+        A connection profile to load. Loading ``profile="profile-name"`` is
+        the same as loading the URI ``profile://profile-name``. See
+        :doc:`/format/connection_profiles`.
     entrypoint
         The driver-specific entrypoint, if different than the default.
     db_kwargs
@@ -238,15 +246,21 @@ def connect(
     conn = None
 
     db_kwargs = dict(db_kwargs or {})
-    db_kwargs["driver"] = driver
+    if driver:
+        db_kwargs["driver"] = driver
     if uri:
         db_kwargs["uri"] = uri
     if entrypoint:
         db_kwargs["entrypoint"] = entrypoint
+    if profile:
+        db_kwargs["profile"] = profile
     if conn_kwargs is None:
         conn_kwargs = {}
     # N.B. treating uri = "postgresql://..." as driver = "postgresql", uri =
     # "..." is handled at the C driver manager layer
+
+    if all(k not in db_kwargs for k in ("driver", "uri", "profile")):
+        raise TypeError("Must specify at least one of 'driver', 'uri', or 'profile'")
 
     try:
         db = _lib.AdbcDatabase(**db_kwargs)
