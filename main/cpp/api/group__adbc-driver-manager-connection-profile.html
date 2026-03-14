@@ -361,10 +361,10 @@ Functions</h2></td></tr>
 <li>The user-level configuration directory (e.g. ~/.config/adbc/profiles on Linux).</li>
 </ol>
 <p>The filesystem-based profile looks for a file named &lt;profile_name&gt;.toml if there is no extension provided, attempting to parse the toml file for the profile information. If the file is found and parsed successfully, the options specified in the profile which have not already been set will be set as if by DatabaseSetOption just before initialization as part of DatabaseInit.</p>
-<p>For file-based profiles the expected format is as follows: </p><div class="fragment"><div class="line">version = 1</div>
+<p>For file-based profiles the expected format is as follows: </p><div class="fragment"><div class="line">profile_version = 1</div>
 <div class="line">driver = &quot;driver_name&quot;</div>
 <div class="line"> </div>
-<div class="line">[options]</div>
+<div class="line">[Options]</div>
 <div class="line">option1 = &quot;value1&quot;</div>
 <div class="line">option2 = 42</div>
 <div class="line">option3 = 3.14</div>

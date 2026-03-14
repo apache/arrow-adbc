@@ -437,10 +437,10 @@ from the profile are applied automatically but do not override options already s
 <section id="profile-file-format">
 <h2>Profile File Format<a class="headerlink" href="#profile-file-format" title="Link to this heading">¶</a></h2>
 <p>Filesystem-based profiles use TOML format with the following structure:</p>
-<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">profile_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
 <span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;snowflake&quot;</span>
 
-<span class="k">[options]</span>
+<span class="k">[Options]</span>
 <span class="c1"># String options</span>
 <span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">account</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;mycompany&quot;</span>
 <span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">warehouse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;COMPUTE_WH&quot;</span>
@@ -457,14 +457,14 @@ from the profile are applied automatically but do not override options already s
 <span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">client_session_keep_alive</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
 </pre></div>
 </div>
-<section id="version">
-<h3>version<a class="headerlink" href="#version" title="Link to this heading">¶</a></h3>
+<section id="profile-version">
+<h3>profile_version<a class="headerlink" href="#profile-version" title="Link to this heading">¶</a></h3>
 <ul class="simple">
 <li><p><strong>Required</strong>: Yes</p></li>
 <li><p><strong>Type</strong>: Integer</p></li>
 <li><p><strong>Supported values</strong>: <code class="docutils literal notranslate"><span class="pre">1</span></code></p></li>
 </ul>
-<p>The <code class="docutils literal notranslate"><span class="pre">version</span></code> field specifies the profile format version. Currently, only version 1 is supported.
+<p>The <code class="docutils literal notranslate"><span class="pre">profile_version</span></code> field specifies the profile format version. Currently, only version 1 is supported.
 This will enable future changes while maintaining backward compatibility.</p>
 </section>
 <section id="driver">
@@ -485,7 +485,7 @@ For more detils, see <a class="reference internal" href="driver_manifests.html">
 </section>
 <section id="options-section">
 <h3>Options Section<a class="headerlink" href="#options-section" title="Link to this heading">¶</a></h3>
-<p>The <code class="docutils literal notranslate"><span class="pre">[options]</span></code> section contains driver-specific configuration options. Options can be of the following types:</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">[Options]</span></code> section contains driver-specific configuration options. Options can be of the following types:</p>
 <dl>
 <dt><strong>String values</strong></dt><dd><p>Applied using <code class="docutils literal notranslate"><span class="pre">AdbcDatabaseSetOption()</span></code></p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">account</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;mycompany&quot;</span>
@@ -526,16 +526,16 @@ but this may be extended in the future to support other types of dynamic content
 <section id="environment-variable-substitution">
 <h4>Environment Variable Substitution<a class="headerlink" href="#environment-variable-substitution" title="Link to this heading">¶</a></h4>
 <p>Profile values can reference environment variables using the <code class="docutils literal notranslate"><span class="pre">{{</span> <span class="pre">env_var()</span> <span class="pre">}}</span></code> syntax:</p>
-<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">profile_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
 <span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;adbc_driver_snowflake&quot;</span>
 
-<span class="k">[options]</span>
+<span class="k">[Options]</span>
 <span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">account</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;{{ env_var(SNOWFLAKE_ACCOUNT) }}&quot;</span>
 <span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">auth_token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;{{ env_var(SNOWFLAKE_TOKEN) }}&quot;</span>
 <span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">warehouse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;COMPUTE_WH&quot;</span>
 </pre></div>
 </div>
-<p>When the driver manager encounters <code class="docutils literal notranslate"><span class="pre">{{</span> <span class="pre">env_var(VAR_NAME)</span> <span class="pre">}}</span></code>, it replaces the value with the contents of environment variable <code class="docutils literal notranslate"><span class="pre">VAR_NAME</span></code>. If the environment variable is not set, the value becomes an empty string.</p>
+<p>When the driver manager encounters <code class="docutils literal notranslate"><span class="pre">{{</span> <span class="pre">env_var(VAR_NAME)</span> <span class="pre">}}</span></code>, it replaces the placeholder with the contents of environment variable <code class="docutils literal notranslate"><span class="pre">VAR_NAME</span></code>. If the environment variable is not set, the placeholder is replaced with an empty string and processing of the rest of the value continues (e.g. <code class="docutils literal notranslate"><span class="pre">&quot;foo{{</span> <span class="pre">env_var(MISSING)</span> <span class="pre">}}bar&quot;</span></code> becomes <code class="docutils literal notranslate"><span class="pre">&quot;foobar&quot;</span></code>).</p>
 </section>
 </section>
 </section>
@@ -576,10 +576,10 @@ but this may be extended in the future to support other types of dynamic content
 <section id="example-1-snowflake-production-profile">
 <h3>Example 1: Snowflake Production Profile<a class="headerlink" href="#example-1-snowflake-production-profile" title="Link to this heading">¶</a></h3>
 <p>File: <code class="docutils literal notranslate"><span class="pre">~/.config/adbc/profiles/snowflake_prod.toml</span></code></p>
-<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">profile_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
 <span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;snowflake&quot;</span>
 
-<span class="k">[options]</span>
+<span class="k">[Options]</span>
 <span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">account</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;{{ env_var(SNOWFLAKE_ACCOUNT) }}&quot;</span>
 <span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">auth_token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;{{ env_var(SNOWFLAKE_TOKEN) }}&quot;</span>
 <span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">warehouse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;PRODUCTION_WH&quot;</span>
@@ -605,10 +605,10 @@ but this may be extended in the future to support other types of dynamic content
 <section id="example-2-postgresql-development-profile">
 <h3>Example 2: PostgreSQL Development Profile<a class="headerlink" href="#example-2-postgresql-development-profile" title="Link to this heading">¶</a></h3>
 <p>File: <code class="docutils literal notranslate"><span class="pre">~/.config/adbc/profiles/postgres_dev.toml</span></code></p>
-<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">profile_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
 <span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;postgresql&quot;</span>
 
-<span class="k">[options]</span>
+<span class="k">[Options]</span>
 <span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;postgresql://localhost:5432/dev_db?sslmode=disable&quot;</span>
 <span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;dev_user&quot;</span>
 <span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;{{ env_var(POSTGRES_DEV_PASSWORD) }}&quot;</span>
@@ -619,10 +619,10 @@ but this may be extended in the future to support other types of dynamic content
 <h3>Example 3: Driver-Agnostic Profile<a class="headerlink" href="#example-3-driver-agnostic-profile" title="Link to this heading">¶</a></h3>
 <p>Profiles can omit the driver field for reusable configurations:</p>
 <p>File: <code class="docutils literal notranslate"><span class="pre">~/.config/adbc/profiles/default_timeouts.toml</span></code></p>
-<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">profile_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
 <span class="c1"># No driver specified - can be used with any driver</span>
 
-<span class="k">[options]</span>
+<span class="k">[Options]</span>
 <span class="n">adbc</span><span class="p">.</span><span class="n">connection</span><span class="p">.</span><span class="n">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">30.0</span>
 <span class="n">adbc</span><span class="p">.</span><span class="n">statement</span><span class="p">.</span><span class="n">timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">60.0</span>
 </pre></div>
@@ -644,7 +644,7 @@ but this may be extended in the future to support other types of dynamic content
 <p>Options are applied in the following order (later overrides earlier):</p>
 <ol class="arabic simple">
 <li><p>Driver defaults</p></li>
-<li><p>Profile options (from <code class="docutils literal notranslate"><span class="pre">[options]</span></code> section)</p></li>
+<li><p>Profile options (from <code class="docutils literal notranslate"><span class="pre">[Options]</span></code> section)</p></li>
 <li><p>Options set via <code class="docutils literal notranslate"><span class="pre">AdbcDatabaseSetOption()</span></code> before <code class="docutils literal notranslate"><span class="pre">AdbcDatabaseInit()</span></code></p></li>
 </ol>
 <p>Example:</p>
@@ -760,7 +760,7 @@ but this may be extended in the future to support other types of dynamic content
 <section id="credential-management">
 <h3>Credential Management<a class="headerlink" href="#credential-management" title="Link to this heading">¶</a></h3>
 <p>Store credentials separately from code:</p>
-<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[options]</span>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[Options]</span>
 <span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">account</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;mycompany&quot;</span>
 <span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">auth_token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;{{ env_var(SNOWFLAKE_TOKEN) }}&quot;</span>
 </pre></div>
@@ -964,7 +964,7 @@ United States and other countries.
 </ul>
 </li>
 <li><a class="reference internal" href="#profile-file-format">Profile File Format</a><ul>
-<li><a class="reference internal" href="#version">version</a></li>
+<li><a class="reference internal" href="#profile-version">profile_version</a></li>
 <li><a class="reference internal" href="#driver">driver</a></li>
 <li><a class="reference internal" href="#options-section">Options Section</a></li>
 <li><a class="reference internal" href="#value-substitution">Value Substitution</a><ul>
