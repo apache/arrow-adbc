@@ -16,6 +16,11 @@
     <Compile Remove="C\NativeLibrary.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="DriverManager\readme.md">
+      <PackagePath>\</PackagePath>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Pack>true</Pack>
+    </Content>
     <Content Include="readme.md">
       <Pack>true</Pack>
       <PackagePath>\</PackagePath>
