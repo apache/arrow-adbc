@@ -23,6 +23,7 @@ update_versions() {
 
   local conda_version="${VERSION_NATIVE}"
   local csharp_version="${VERSION_CSHARP}"
+  local js_version="${VERSION_JS}"
   local linux_version="${RELEASE}"
   local rust_version="${VERSION_CSHARP}"
   case ${type} in
@@ -67,6 +68,7 @@ update_versions() {
   echo "GLib/Ruby: ${glib_version}"
   echo "Java: ${java_version}"
   echo "Linux: ${linux_version}"
+  echo "JavaScript: ${js_version}"
   echo "Python: ${py_version}"
   echo "R: ${r_version}"
   echo "Rust: ${rust_version}"
@@ -152,6 +154,18 @@ update_versions() {
   # Update Cargo.lock file
   cargo check --manifest-path "${ADBC_DIR}/rust/Cargo.toml"
   git add "${ADBC_DIR}/rust/Cargo.lock"
+
+  pushd "${ADBC_DIR}/javascript"
+  sed -i.bak -E \
+    -e "s/^  \"version\": \".+\"/  \"version\": \"${js_version}\"/" \
+    -e "s/(\"@apache-arrow\/adbc-driver-manager[^\"]*\"): \".+\"/\1: \"${js_version}\"/g" \
+    package.json
+  rm package.json.bak
+  npx --yes napi version
+  sed -i.bak -E "s/^version = \".+\"/version = \"${js_version}\"/" Cargo.toml
+  rm Cargo.toml.bak
+  git add package.json package-lock.json Cargo.toml npm/*/package.json
+  popd
 
   if [ ${type} = "release" ]; then
     pushd "${ADBC_DIR}/ci/linux-packages"

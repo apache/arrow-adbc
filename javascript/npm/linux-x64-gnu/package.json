@@ -1,6 +1,6 @@
 {
-  "name": "adbc-driver-manager-linux-x64-gnu",
-  "version": "0.0.1",
+  "name": "@apache-arrow/adbc-driver-manager-linux-x64-gnu",
+  "version": "0.23.0",
   "cpu": [
     "x64"
   ],

@@ -1,6 +1,6 @@
 {
-  "name": "adbc-driver-manager-win32-x64-msvc",
-  "version": "0.0.1",
+  "name": "@apache-arrow/adbc-driver-manager-win32-x64-msvc",
+  "version": "0.23.0",
   "cpu": [
     "x64"
   ],

@@ -17,8 +17,8 @@
 
 [package]
 edition = "2021"
-name = "adbc_driver_manager"
-version = "0.1.0"
+name = "adbc_driver_manager_node"
+version = "0.23.0"
 license = "Apache-2.0"
 
 [lib]

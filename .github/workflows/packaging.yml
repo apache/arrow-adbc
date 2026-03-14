@@ -47,7 +47,6 @@ on:
         required: true
         type: boolean
         default: false
-
 concurrency:
   group: ${{ github.repository }}-${{ github.ref }}-${{ github.workflow }}
   cancel-in-progress: true
@@ -1190,13 +1189,18 @@ jobs:
           cache: 'npm'
           cache-dependency-path: adbc/javascript/package-lock.json
 
+      - name: Setup Rust
+        run: |
+          rustup toolchain install stable --no-self-update
+          rustup default stable
+
       - name: Install Node dependencies
         working-directory: adbc/javascript
         run: npm ci
 
-      - name: Build Node.js JS
+      - name: Build Node.js
         working-directory: adbc/javascript
-        run: npm run build:ts
+        run: npm run build:ci && npm run build:ts
 
       - name: Download Node.js binaries
         uses: actions/download-artifact@v8
@@ -1225,6 +1229,7 @@ jobs:
           retention-days: 7
           path: |
             adbc/javascript/*.tgz
+
 
   release:
     name: "Create release"
@@ -1272,7 +1277,7 @@ jobs:
             -exec mv '{}' upload-staging \;
 
           # Handle Node.js packages (in tarball form)
-          find ./release-artifacts/ -name 'adbc-driver-manager-*.tgz' -exec mv '{}' upload-staging \;
+          find ./release-artifacts/ -name 'apache-arrow-adbc-driver-manager-*.tgz' -exec mv '{}' upload-staging \;
 
           UPLOAD=$(find upload-staging -type f | sort | uniq)
 
@@ -1357,6 +1362,7 @@ jobs:
     needs:
       - clean-gemfury
       - java
+      - node-dist
       - python-manylinux
       - python-macos
       - python-windows
@@ -1380,7 +1386,8 @@ jobs:
               -name '*.jar' -or \
               -name '*.pom' -or \
               -name '*.whl' -or \
-              -name 'adbc_*.tar.gz' \
+              -name 'adbc_*.tar.gz' -or \
+              -name 'apache-arrow-adbc-driver-manager-*.tgz' \
             ')' \
             -exec mv '{}' upload-staging \;
 
@@ -1388,5 +1395,9 @@ jobs:
           ./ci/scripts/java_jar_upload.sh upload-staging/*.pom
           # Python
           ./ci/scripts/python_wheel_upload.sh upload-staging/adbc_*.tar.gz upload-staging/*.whl
+          # Node.js
+          ./ci/scripts/node_npm_upload.sh upload-staging
         env:
           GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
+          NPM_REGISTRY: https://npm.fury.io/arrow-adbc-nightlies/
+          NPM_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}

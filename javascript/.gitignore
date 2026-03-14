@@ -18,4 +18,8 @@
 Cargo.lock
 dist
 *.node
+*.tgz
 *.tsbuildinfo
+binding.js
+index.js
+index.d.ts

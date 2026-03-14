@@ -1,6 +1,6 @@
 {
-  "name": "adbc-driver-manager",
-  "version": "0.0.1",
+  "name": "@apache-arrow/adbc-driver-manager",
+  "version": "0.23.0",
   "description": "Node.js ADBC Driver Manager",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -37,6 +37,7 @@
   "scripts": {
     "artifacts": "napi artifacts",
     "build": "napi build --platform --release && mv index.js binding.js && mv index.d.ts binding.d.ts && tsc",
+    "build:ci": "napi build --platform --release --js binding.js --dts binding.d.ts",
     "build:debug": "napi build --platform && mv index.js binding.js && mv index.d.ts binding.d.ts && tsc",
     "build:ts": "tsc",
     "build:driver": "../ci/scripts/node_build.sh $(pwd)/build",
@@ -81,10 +82,10 @@
     "apache-arrow": "^21.1.0"
   },
   "optionalDependencies": {
-    "adbc-driver-manager-win32-x64-msvc": "0.0.1",
-    "adbc-driver-manager-darwin-x64": "0.0.1",
-    "adbc-driver-manager-linux-x64-gnu": "0.0.1",
-    "adbc-driver-manager-linux-arm64-gnu": "0.0.1",
-    "adbc-driver-manager-darwin-arm64": "0.0.1"
+    "@apache-arrow/adbc-driver-manager-win32-x64-msvc": "0.23.0",
+    "@apache-arrow/adbc-driver-manager-darwin-x64": "0.23.0",
+    "@apache-arrow/adbc-driver-manager-linux-x64-gnu": "0.23.0",
+    "@apache-arrow/adbc-driver-manager-linux-arm64-gnu": "0.23.0",
+    "@apache-arrow/adbc-driver-manager-darwin-arm64": "0.23.0"
   }
 }
