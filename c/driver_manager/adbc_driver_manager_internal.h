@@ -207,6 +207,12 @@ struct TempDatabase {
   AdbcConnectionProfileProvider profile_provider = nullptr;
 };
 
+// Parse and validate options like uri/profile, with the result being that
+// `driver` or `init_func` are populated and options like `profile` are
+// removed
+ADBC_EXPORT
+AdbcStatusCode InternalAdbcParseOptions(TempDatabase* db, struct AdbcError* error);
+
 /// Temporary state while the connection is being configured.
 struct TempConnection {
   std::unordered_map<std::string, std::string> options;

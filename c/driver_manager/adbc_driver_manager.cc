@@ -416,16 +416,6 @@ std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view 
   return ParseDriverUriResult{d, str.substr(pos + 1), std::nullopt};
 }
 
-// Direct implementations of API methods
-
-int AdbcErrorGetDetailCount(const struct AdbcError* error) {
-  if (error->vendor_code == ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA && error->private_data &&
-      error->private_driver && error->private_driver->ErrorGetDetailCount) {
-    return error->private_driver->ErrorGetDetailCount(error);
-  }
-  return 0;
-}
-
 struct ProfileGuard {
   AdbcConnectionProfile profile;
   explicit ProfileGuard() : profile{} {}
@@ -435,6 +425,107 @@ struct ProfileGuard {
     }
   }
 };
+
+ADBC_EXPORT
+AdbcStatusCode InternalAdbcParseOptions(TempDatabase* db, struct AdbcError* error) {
+  // https://github.com/apache/arrow-adbc/issues/4085
+
+  // init_func always takes precedence
+  if (db->init_func) return ADBC_STATUS_OK;
+
+  std::optional<ParseDriverUriResult> parsed_driver;
+  std::optional<ParseDriverUriResult> parsed_uri;
+
+  if (!db->driver.empty()) {
+    parsed_driver = InternalAdbcParseDriverUri(db->driver);
+  }
+  if (auto it = db->options.find("uri"); it != db->options.end()) {
+    parsed_uri = InternalAdbcParseDriverUri(it->second);
+  }
+
+  // do we have `profile`, `profile://` URI, or `profile://` URI in driver?
+  {
+    const bool have_profile = db->options.find("profile") != db->options.end();
+    const bool have_profile_driver = parsed_driver && parsed_driver->profile.has_value();
+    const bool have_profile_uri = parsed_uri && parsed_uri->profile.has_value();
+
+    if (static_cast<int>(have_profile) + static_cast<int>(have_profile_uri) +
+            static_cast<int>(have_profile_driver) >
+        1) {
+      SetError(error,
+               "Multiple profiles specified; only one of `profile` option, `profile://` "
+               "URI, or `profile://` driver is allowed");
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+
+    // apply profile (may modify options)
+    std::string profile;
+    if (have_profile) {
+      profile = db->options["profile"];
+      db->options.erase("profile");
+    } else if (have_profile_uri) {
+      profile = *parsed_uri->profile;
+      db->options.erase("uri");
+    } else if (have_profile_driver) {
+      profile = *parsed_driver->profile;
+      db->driver.clear();
+    }
+
+    if (!profile.empty()) {
+      auto status = InternalInitializeProfile(db, profile, error);
+      if (status != ADBC_STATUS_OK) {
+        return status;
+      }
+    }
+  }
+
+  // parse driver for URI. we do this even if it was set via profile
+  {
+    // Reparse because profile may have modified driver
+    std::string owned_driver = db->driver;
+    if (auto maybe_driver = InternalAdbcParseDriverUri(owned_driver);
+        maybe_driver.has_value()) {
+      auto parsed = *maybe_driver;
+      // Don't allow recursive profiles (that is the only way we can reach here)
+      if (parsed.profile.has_value()) {
+        SetError(error, "Profile cannot specify a profile:// URI");
+        return ADBC_STATUS_INVALID_ARGUMENT;
+      }
+      if (parsed.uri.has_value()) {
+        db->driver = std::string{parsed.driver};
+        // maybe only do this if URI is unset?
+        db->options["uri"] = std::string{*parsed.uri};
+      }
+    }
+  }
+
+  // no driver? parse URI
+  if (auto it = db->options.find("uri"); db->driver.empty() && it != db->options.end()) {
+    // Reparse because profile may have modified uri
+    std::string owned_uri = it->second;
+    if (auto maybe_uri = InternalAdbcParseDriverUri(it->second); maybe_uri.has_value()) {
+      auto parsed = *maybe_uri;
+      // Don't allow recursive profiles (that is the only way we can reach here)
+      if (parsed.profile.has_value()) {
+        SetError(error, "Profile cannot specify a profile:// URI");
+        return ADBC_STATUS_INVALID_ARGUMENT;
+      }
+      if (parsed.uri.has_value()) {
+        db->driver = std::string{parsed.driver};
+        db->options["uri"] = std::string{*parsed.uri};
+      }
+    } else if (db->driver.empty()) {
+      db->driver = std::move(owned_uri);
+    }
+  }
+
+  // still no driver? bail
+  if (db->driver.empty()) {
+    SetError(error, "Must set 'driver' option before AdbcDatabaseInit");
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+  return ADBC_STATUS_OK;
+}
 
 AdbcStatusCode InternalInitializeProfile(TempDatabase* args,
                                          const std::string_view profile,
@@ -451,7 +542,17 @@ AdbcStatusCode InternalInitializeProfile(TempDatabase* args,
   AdbcDriverInitFunc init_func = nullptr;
   CHECK_STATUS(
       guard.profile.GetDriverName(&guard.profile, &driver_name, &init_func, error));
-  if (driver_name != nullptr && strlen(driver_name) > 0) {
+  if (driver_name != nullptr && std::strlen(driver_name) > 0) {
+    // ensure the parsed driver matches the profile driver if both are specified
+    if (!args->driver.empty() && args->driver != driver_name) {
+      std::string message = "Profile `";
+      message += profile;
+      message += "` specifies driver `";
+      message += driver_name;
+      message += "` which does not match requested driver `" + args->driver + "`";
+      SetError(error, message);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
     args->driver = driver_name;
   }
 
