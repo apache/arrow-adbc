@@ -16,6 +16,29 @@
 // under the License.
 
 
-// part: metadata
+// part: expected_schema
 
-skip = "COPY Writer not implemented"
+{
+    "format": "+s",
+    "children": [
+        {
+            "name": "idx",
+            "format": "l",
+            "flags": ["nullable"]
+        },
+        {
+            "name": "value",
+            "format": "tts",
+            "flags": ["nullable"]
+        }
+    ]
+}
+
+// part: expected
+
+{"idx": 0, "value": null}
+{"idx": 1, "value": 0}
+{"idx": 2, "value": 1}
+{"idx": 3, "value": 3723}
+{"idx": 4, "value": 86399}
+{"idx": 5, "value": 86400}

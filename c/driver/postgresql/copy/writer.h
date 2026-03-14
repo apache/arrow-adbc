@@ -735,6 +735,71 @@ class PostgresCopyTimestampFieldWriter : public PostgresCopyFieldWriter {
   }
 };
 
+
+template <enum ArrowTimeUnit TU>
+class PostgresCopyTimeFieldWriter : public PostgresCopyFieldWriter {
+ public:
+  // Microseconds per day (24h)
+  static inline constexpr int64_t kUsecsPerDay = 86400LL * 1000000LL;
+
+  ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
+    // PostgreSQL TIME binary format is an int64 microseconds-since-midnight
+    // and the COPY binary field length must be 8 bytes. https://www.postgresql.org/docs/current/datatype-datetime.html
+    constexpr int32_t field_size_bytes = sizeof(int64_t);
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, field_size_bytes, error));
+
+    const int64_t raw_value = ArrowArrayViewGetIntUnsafe(array_view_, index);
+    int64_t micros = 0;
+
+    bool overflow_safe = true;
+    switch (TU) {
+      case NANOARROW_TIME_UNIT_SECOND:
+        overflow_safe =
+            raw_value <= kMaxSafeSecondsToMicros &&
+            raw_value >= kMinSafeSecondsToMicros;
+        if (overflow_safe) {
+          micros = raw_value * 1000000LL;
+        }
+        break;
+      case NANOARROW_TIME_UNIT_MILLI:
+        overflow_safe =
+            raw_value <= kMaxSafeMillisToMicros &&
+            raw_value >= kMinSafeMillisToMicros;
+        if (overflow_safe) {
+          micros = raw_value * 1000LL;
+        }
+        break;
+      case NANOARROW_TIME_UNIT_MICRO:
+        micros = raw_value;
+        break;
+      case NANOARROW_TIME_UNIT_NANO:
+        micros = raw_value / 1000LL;
+        break;
+    }
+
+    if (!overflow_safe) {
+      ArrowErrorSet(
+          error,
+          "[libpq] Row %" PRId64 " time value %" PRId64
+          " with unit %d would overflow",
+          index, raw_value, TU);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+
+    if (micros < 0 || micros > kUsecsPerDay) {
+      ArrowErrorSet(error,
+                    "[libpq] Row %" PRId64
+                    " time value %" PRId64 " (unit %d) -> %" PRId64
+                    " microseconds is out of range [0, %" PRId64 "]",
+                    index, raw_value, TU, micros, kUsecsPerDay);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int64_t>(buffer, micros, error));
+    return ADBC_STATUS_OK;
+  }
+};
+
 static inline ArrowErrorCode MakeCopyFieldWriter(
     struct ArrowSchema* schema, struct ArrowArrayView* array_view,
     const PostgresTypeResolver& type_resolver,
@@ -773,12 +838,34 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
       *out = T::Create<T>(array_view);
       return NANOARROW_OK;
     }
-    case NANOARROW_TYPE_TIME64: {
+    case NANOARROW_TYPE_TIME32: {
       switch (schema_view.time_unit) {
-        case NANOARROW_TIME_UNIT_MICRO:
-          using T = PostgresCopyNetworkEndianFieldWriter<int64_t>;
+        case NANOARROW_TIME_UNIT_SECOND: {
+          using T = PostgresCopyTimeFieldWriter<NANOARROW_TIME_UNIT_SECOND>;
           *out = T::Create<T>(array_view);
           return NANOARROW_OK;
+        }
+        case NANOARROW_TIME_UNIT_MILLI: {
+          using T = PostgresCopyTimeFieldWriter<NANOARROW_TIME_UNIT_MILLI>;
+          *out = T::Create<T>(array_view);
+          return NANOARROW_OK;
+        }
+        default:
+          return ADBC_STATUS_NOT_IMPLEMENTED;
+      }
+    }
+    case NANOARROW_TYPE_TIME64: {
+      switch (schema_view.time_unit) {
+        case NANOARROW_TIME_UNIT_MICRO: {
+          using T = PostgresCopyTimeFieldWriter<NANOARROW_TIME_UNIT_MICRO>;
+          *out = T::Create<T>(array_view);
+          return NANOARROW_OK;
+        }
+        case NANOARROW_TIME_UNIT_NANO: {
+          using T = PostgresCopyTimeFieldWriter<NANOARROW_TIME_UNIT_NANO>;
+          *out = T::Create<T>(array_view);
+          return NANOARROW_OK;
+        }
         default:
           return ADBC_STATUS_NOT_IMPLEMENTED;
       }

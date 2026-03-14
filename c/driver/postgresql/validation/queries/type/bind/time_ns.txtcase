@@ -16,6 +16,24 @@
 // under the License.
 
 
-// part: metadata
+// part: expected_schema
 
-skip = "COPY Writer not implemented"
+{
+    "format": "+s",
+    "children": [
+        {
+            "name": "value",
+            "format": "ttn",
+            "flags": ["nullable"]
+        }
+    ]
+}
+
+// part: expected
+
+{"value": null}
+{"value": 0}
+{"value": 1000}
+{"value": 3723123456000}
+{"value": 86399999999000}
+{"value": 86400000000000}

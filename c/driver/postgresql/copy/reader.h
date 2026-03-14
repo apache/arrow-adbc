@@ -425,6 +425,70 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
   static const uint16_t kNumericNinf = 0xF000;
 };
 
+template <enum ArrowTimeUnit TU, typename OutT>
+class PostgresCopyTimeOfDayFieldReader : public PostgresCopyFieldReader {
+ public:
+  // Microseconds per day (24h)
+  static inline constexpr int64_t kUsecsPerDay = 86400LL * 1000000LL;
+  // Nanoseconds per day (24h)
+  static inline constexpr int64_t kNsecsPerDay = 86400LL * 1000000000LL;
+
+  ArrowErrorCode Read(ArrowBufferView* data, int32_t field_size_bytes, ArrowArray* array,
+                      ArrowError* error) override {
+    if (field_size_bytes <= 0) {
+      return ArrowArrayAppendNull(array, 1);
+    }
+
+    // PostgreSQL TIME binary payload is int64 microseconds since midnight. https://www.postgresql.org/docs/current/datatype-datetime.html
+    if (field_size_bytes != static_cast<int32_t>(sizeof(int64_t))) {
+      ArrowErrorSet(error, "Expected field with %d bytes but found field with %d bytes",
+                    static_cast<int>(sizeof(int64_t)),
+                    static_cast<int>(field_size_bytes));  // NOLINT(runtime/int)
+      return EINVAL;
+    }
+
+    const int64_t time_usec = ReadUnsafe<int64_t>(data);
+
+    // PostgreSQL time_recv validates microseconds since midnight (0..USECS_PER_DAY).
+    // Keep this validation here so we don't produce nonsensical Arrow values.
+    if (time_usec < 0 || time_usec > kUsecsPerDay) {
+      ArrowErrorSet(error,
+                    "[libpq] TIME value %" PRId64
+                    " usec is out of range [0, %" PRId64 "]",
+                    time_usec, kUsecsPerDay);
+      return EINVAL;
+    }
+
+    // Convert to Arrow representation requested by schema:
+    // Arrow TIME32 uses int32 in seconds or milliseconds; TIME64 uses int64 in microseconds or nanoseconds.
+    int64_t out64 = 0;
+    switch (TU) {
+      case NANOARROW_TIME_UNIT_SECOND:
+        out64 = time_usec / 1000000LL;
+        break;
+      case NANOARROW_TIME_UNIT_MILLI:
+        out64 = time_usec / 1000LL;
+        break;
+      case NANOARROW_TIME_UNIT_MICRO:
+        out64 = time_usec;
+        break;
+      case NANOARROW_TIME_UNIT_NANO:
+        out64 = time_usec * 1000LL;
+        break;
+    }
+
+    // Ensure the target type can hold the converted value (TIME32 -> int32).
+    if constexpr (std::is_same<OutT, int32_t>::value) {
+      const int32_t out32 = static_cast<int32_t>(out64);
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_, &out32, sizeof(out32)));
+    } else {
+      NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_, &out64, sizeof(out64)));
+    }
+
+    return AppendValid(array);
+  }
+};
+
 // Reader for Pg->Arrow conversions whose Arrow representation is simply the
 // bytes of the field representation. This can be used with binary and string
 // Arrow types and any Postgres type.
@@ -935,11 +999,43 @@ static inline ArrowErrorCode MakeCopyFieldReader(
       return NANOARROW_OK;
     }
 
+    case NANOARROW_TYPE_TIME32: {
+      switch (pg_type.type_id()) {
+        case PostgresTypeId::kTime:
+          switch (schema_view.time_unit) {
+            case NANOARROW_TIME_UNIT_SECOND:
+              *out = std::make_unique<
+                  PostgresCopyTimeOfDayFieldReader<NANOARROW_TIME_UNIT_SECOND, int32_t>>();
+              return NANOARROW_OK;
+            case NANOARROW_TIME_UNIT_MILLI:
+              *out = std::make_unique<
+                  PostgresCopyTimeOfDayFieldReader<NANOARROW_TIME_UNIT_MILLI, int32_t>>();
+              return NANOARROW_OK;
+            default:
+              // TIME32 only supports second/milli in Arrow. [3](https://arrow.apache.org/docs/cpp/api/datatype.html)
+              return ErrorCantConvert(error, pg_type, schema_view);
+          }
+        default:
+          return ErrorCantConvert(error, pg_type, schema_view);
+      }
+    }
+
     case NANOARROW_TYPE_TIME64: {
       switch (pg_type.type_id()) {
         case PostgresTypeId::kTime:
-          *out = std::make_unique<PostgresCopyNetworkEndianFieldReader<int64_t>>();
-          return NANOARROW_OK;
+          switch (schema_view.time_unit) {
+            case NANOARROW_TIME_UNIT_MICRO:
+              *out = std::make_unique<
+                  PostgresCopyTimeOfDayFieldReader<NANOARROW_TIME_UNIT_MICRO, int64_t>>();
+              return NANOARROW_OK;
+            case NANOARROW_TIME_UNIT_NANO:
+              *out = std::make_unique<
+                  PostgresCopyTimeOfDayFieldReader<NANOARROW_TIME_UNIT_NANO, int64_t>>();
+              return NANOARROW_OK;
+            default:
+              // TIME64 only supports micro/nano in Arrow. [3](https://arrow.apache.org/docs/cpp/api/datatype.html)
+              return ErrorCantConvert(error, pg_type, schema_view);
+          }
         default:
           return ErrorCantConvert(error, pg_type, schema_view);
       }
