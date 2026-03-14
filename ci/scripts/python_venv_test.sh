@@ -40,9 +40,9 @@ EOF
 
     mkdir -p "${scratch}/.venv/etc/adbc/profiles/sqlite/"
     cat >"${scratch}/.venv/etc/adbc/profiles/sqlite/dev.toml" <<EOF
-version = 1
+profile_version = 1
 driver = "sqlite"
-[options]
+[Options]
 uri = "file:///tmp/test.db"
 EOF
 
