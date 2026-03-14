@@ -185,17 +185,18 @@ uri = "{contents}"
                     pass
 
 
-@pytest.mark.xfail(reason="https://github.com/apache/arrow-adbc/issues/4086")
 def test_option_override(tmp_path, monkeypatch) -> None:
     # Test that the driver is optional
     monkeypatch.setenv("ADBC_PROFILE_PATH", str(tmp_path))
 
+    # NOTE: if we use an int value here, the override won't appear to work,
+    # because the options are set separately and do not override each other.
     with (tmp_path / "dev.toml").open("w") as sink:
         sink.write("""
 profile_version = 1
 driver = "adbc_driver_sqlite"
 [Options]
-adbc.sqlite.query.batch_rows = 7
+adbc.sqlite.query.batch_rows = "7"
 """)
 
     key = "adbc.sqlite.query.batch_rows"
