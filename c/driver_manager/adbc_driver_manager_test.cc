@@ -1811,9 +1811,10 @@ TEST_F(ConnectionProfiles, UseEnvVarMalformed) {
               IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
               IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
-  ASSERT_THAT(error.message,
-              ::testing::HasSubstr(
-                  "Malformed env_var() profile value: missing closing parenthesis"));
+  ASSERT_THAT(
+      error.message,
+      ::testing::HasSubstr(
+          "In profile: malformed env_var() in key `foo`: missing closing parenthesis"));
   UnsetConfigPath();
 }
 
@@ -1840,10 +1841,9 @@ TEST_F(ConnectionProfiles, UseEnvVarMissingArg) {
               IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
               IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
-  ASSERT_THAT(
-      error.message,
-      ::testing::HasSubstr(
-          "Malformed env_var() profile value: missing environment variable name"));
+  ASSERT_THAT(error.message,
+              ::testing::HasSubstr("In profile: malformed env_var() in key `foo`: "
+                                   "missing environment variable name"));
   UnsetConfigPath();
 }
 

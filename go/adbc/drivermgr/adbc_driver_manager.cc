@@ -471,7 +471,7 @@ AdbcStatusCode InternalInitializeProfile(TempDatabase* args,
     // use try_emplace so we only add the option if there isn't
     // already an option with the same name
     std::string processed;
-    CHECK_STATUS(ProcessProfileValue(values[i], processed, error));
+    CHECK_STATUS(ProcessProfileValue(keys[i], values[i], processed, error));
     args->options.try_emplace(keys[i], processed);
   }
 

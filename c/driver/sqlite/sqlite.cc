@@ -52,6 +52,7 @@ constexpr std::string_view kConnectionOptionLoadExtensionEntrypoint =
 /// The batch size for query results (and for initial type inference)
 constexpr std::string_view kStatementOptionBatchRows = "adbc.sqlite.query.batch_rows";
 constexpr std::string_view kStatementOptionBindByName = "adbc.statement.bind_by_name";
+constexpr int kDefaultBatchSize = 1024;
 
 std::string_view GetColumnText(sqlite3_stmt* stmt, int index) {
   return {
@@ -547,6 +548,15 @@ class SqliteDatabase : public driver::Database<SqliteDatabase> {
     return Base::ReleaseImpl();
   }
 
+  Result<driver::Option> GetOption(std::string_view key) override {
+    if (key == "uri") {
+      return driver::Option(uri_);
+    } else if (key == kStatementOptionBatchRows) {
+      return driver::Option(static_cast<int64_t>(batch_size_));
+    }
+    return Base::GetOption(key);
+  }
+
   Status SetOptionImpl(std::string_view key, driver::Option value) override {
     if (key == "uri") {
       if (lifecycle_state_ != driver::LifecycleState::kUninitialized) {
@@ -556,13 +566,32 @@ class SqliteDatabase : public driver::Database<SqliteDatabase> {
       UNWRAP_RESULT(uri, value.AsString());
       uri_ = std::move(uri);
       return status::Ok();
+    } else if (key == kStatementOptionBatchRows) {
+      if (lifecycle_state_ != driver::LifecycleState::kUninitialized) {
+        return status::fmt::InvalidState(
+            "{} cannot set {} after AdbcDatabaseInit, set it directly on the statement "
+            "instead",
+            kErrorPrefix, key);
+      }
+      int64_t batch_size;
+      UNWRAP_RESULT(batch_size, value.AsInt());
+      if (batch_size <= 0 || batch_size > std::numeric_limits<int>::max()) {
+        return status::fmt::InvalidArgument(
+            "{} Invalid statement option value {}={} (value is non-positive or out of "
+            "range of int)",
+            kErrorPrefix, key, value.Format());
+      }
+      batch_size_ = static_cast<int>(batch_size);
+      return status::Ok();
     }
     return Base::SetOptionImpl(key, value);
   }
 
  private:
+  friend class SqliteConnection;
   std::string uri_{kDefaultUri};
   sqlite3* conn_ = nullptr;
+  int batch_size_ = kDefaultBatchSize;
 };
 
 class SqliteConnection : public driver::Connection<SqliteConnection> {
@@ -672,6 +701,7 @@ class SqliteConnection : public driver::Connection<SqliteConnection> {
   Status InitImpl(void* parent) {
     auto& db = *reinterpret_cast<SqliteDatabase*>(parent);
     UNWRAP_RESULT(conn_, db.OpenConnection());
+    batch_size_ = db.batch_size_;
     return status::Ok();
   }
 
@@ -691,6 +721,13 @@ class SqliteConnection : public driver::Connection<SqliteConnection> {
     UNWRAP_STATUS(CheckOpen());
     UNWRAP_STATUS(SqliteQuery::Execute(conn_, "ROLLBACK"));
     return SqliteQuery::Execute(conn_, "BEGIN");
+  }
+
+  Result<driver::Option> GetOption(std::string_view key) override {
+    if (key == kStatementOptionBatchRows) {
+      return driver::Option(static_cast<int64_t>(batch_size_));
+    }
+    return Base::GetOption(key);
   }
 
   Status SetOptionImpl(std::string_view key, driver::Option value) {
@@ -761,6 +798,8 @@ class SqliteConnection : public driver::Connection<SqliteConnection> {
   }
 
  private:
+  friend class SqliteStatement;
+
   Status CheckOpen() const {
     if (!conn_) {
       return status::InvalidState("connection is not open");
@@ -772,6 +811,7 @@ class SqliteConnection : public driver::Connection<SqliteConnection> {
   // Temporarily hold the extension path (since the path and entrypoint need
   // to be set separately)
   std::string extension_path_;
+  int batch_size_ = kDefaultBatchSize;
 };
 
 class SqliteStatement : public driver::Statement<SqliteStatement> {
@@ -1111,7 +1151,9 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
   }
 
   Status InitImpl(void* parent) {
-    conn_ = reinterpret_cast<SqliteConnection*>(parent)->conn();
+    auto& conn = *reinterpret_cast<SqliteConnection*>(parent);
+    conn_ = conn.conn();
+    batch_size_ = conn.batch_size_;
     return Statement::InitImpl(parent);
   }
 
@@ -1151,7 +1193,16 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
     return Statement::ReleaseImpl();
   }
 
-  Status SetOptionImpl(std::string_view key, driver::Option value) {
+  Result<driver::Option> GetOption(std::string_view key) override {
+    if (key == kStatementOptionBatchRows) {
+      return driver::Option(static_cast<int64_t>(batch_size_));
+    } else if (key == kStatementOptionBindByName) {
+      return driver::Option(bind_by_name_ ? "true" : "false");
+    }
+    return Base::GetOption(key);
+  }
+
+  Status SetOptionImpl(std::string_view key, driver::Option value) override {
     if (key == kStatementOptionBatchRows) {
       int64_t batch_size;
       UNWRAP_RESULT(batch_size, value.AsInt());
@@ -1170,7 +1221,7 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
     return Base::SetOptionImpl(key, std::move(value));
   }
 
-  int batch_size_ = 1024;
+  int batch_size_ = kDefaultBatchSize;
   bool bind_by_name_ = false;
   AdbcSqliteBinder binder_;
   sqlite3* conn_ = nullptr;

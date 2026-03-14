@@ -38,6 +38,14 @@ name = "SQLite"
 shared = "${sqlite_driver}"
 EOF
 
+    mkdir -p "${scratch}/.venv/etc/adbc/profiles/sqlite/"
+    cat >"${scratch}/.venv/etc/adbc/profiles/sqlite/dev.toml" <<EOF
+version = 1
+driver = "sqlite"
+[options]
+uri = "file:///tmp/test.db"
+EOF
+
     cat >"${scratch}/test.py" <<EOF
 import adbc_driver_manager.dbapi
 
@@ -65,6 +73,20 @@ EOF
 
     "${scratch}"/.venv/bin/python "${scratch}/test2.py"
     echo "PASSED: failed manifest contains the proper path in the exception"
+
+    # TODO(https://github.com/apache/arrow-adbc/issues/4087)
+#     cat >"${scratch}/test3.py" <<EOF
+# import adbc_driver_manager.dbapi
+
+# with adbc_driver_manager.dbapi.connect(profile="sqlite/dev") as con:
+#     with con.cursor() as cur:
+#         cur.execute("SELECT 1")
+#         assert cur.fetchall() == [(1,)]
+# EOF
+
+#     "${scratch}"/.venv/bin/python "${scratch}/test3.py"
+#     test -f /tmp/test.db
+#     echo "PASSED: find profile"
 }
 
 main "$@"

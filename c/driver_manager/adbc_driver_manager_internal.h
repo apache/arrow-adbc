@@ -189,8 +189,8 @@ AdbcStatusCode LoadDriverFromRegistry(HKEY root, const std::wstring& driver_name
 #endif
 
 // Profile loading
-AdbcStatusCode ProcessProfileValue(std::string_view value, std::string& out,
-                                   struct AdbcError* error);
+AdbcStatusCode ProcessProfileValue(std::string_view key, std::string_view value,
+                                   std::string& out, struct AdbcError* error);
 
 // Initialization
 /// Temporary state while the database is being configured.

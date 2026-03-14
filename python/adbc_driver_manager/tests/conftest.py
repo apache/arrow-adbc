@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import os
+import pathlib
 import typing
 
 import pytest
@@ -22,7 +24,31 @@ import pytest
 from adbc_driver_manager import dbapi
 
 
+def pytest_addoption(parser):
+    parser.addoption(
+        "--run-system",
+        action="store_true",
+        default=False,
+        help="Run tests that may modify global filesystem paths",
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    if not config.getoption("--run-system"):
+        mark = pytest.mark.skip(reason="Needs --run-system")
+        for item in items:
+            if "system" in item.keywords:
+                item.add_marker(mark)
+
+
 @pytest.fixture
 def sqlite() -> typing.Generator[dbapi.Connection, None, None]:
     with dbapi.connect(driver="adbc_driver_sqlite") as conn:
         yield conn
+
+
+@pytest.fixture(scope="session")
+def conda_prefix() -> pathlib.Path:
+    if "CONDA_PREFIX" not in os.environ:
+        pytest.skip("only runs in Conda environment")
+    return pathlib.Path(os.environ["CONDA_PREFIX"])

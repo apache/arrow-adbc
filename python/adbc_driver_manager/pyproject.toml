@@ -28,7 +28,7 @@ dependencies = ["typing-extensions"]
 
 [project.optional-dependencies]
 dbapi = ["pandas", "pyarrow>=14.0.1"]
-test = ["duckdb", "pandas", "polars", "pyarrow>=14.0.1", "pytest"]
+test = ["duckdb", "pandas", "polars", "pyarrow>=14.0.1", "pytest>=9"]
 
 [project.urls]
 homepage = "https://arrow.apache.org/adbc/"
@@ -48,6 +48,7 @@ markers = [
     "panicdummy: tests that require the testing-only panicdummy driver",
     "pyarrowless: tests of functionality when PyArrow is NOT installed",
     "sqlite: tests that require the SQLite driver",
+    "system: tests that touch user data directories",
 ]
 xfail_strict = true
 

@@ -20,10 +20,7 @@
 #include <windows.h>  // Must come first
 #endif                // defined(_WIN32)
 
-#include <toml++/toml.hpp>
 #include "adbc_driver_manager_internal.h"
-#include "arrow-adbc/adbc.h"
-#include "arrow-adbc/adbc_driver_manager.h"
 
 #include <filesystem>
 #include <regex>
@@ -31,6 +28,11 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
+#include <toml++/toml.hpp>
+
+#include "arrow-adbc/adbc.h"
+#include "arrow-adbc/adbc_driver_manager.h"
 
 using namespace std::string_literals;  // NOLINT [build/namespaces]
 
@@ -41,82 +43,6 @@ static const wchar_t* kAdbcProfilePath = L"ADBC_PROFILE_PATH";
 #else
 static const char* kAdbcProfilePath = "ADBC_PROFILE_PATH";
 #endif  // _WIN32
-
-static AdbcStatusCode ProcessProfileValueInternal(std::string_view value,
-                                                  std::string& out,
-                                                  struct AdbcError* error) {
-  if (value.empty()) {
-    SetError(error, "Profile value is null");
-    return ADBC_STATUS_INVALID_ARGUMENT;
-  }
-
-  static const std::regex pattern(R"(\{\{\s*([^{}]*?)\s*\}\})");
-  auto end_of_last_match = value.begin();
-  auto begin = std::regex_iterator(value.begin(), value.end(), pattern);
-  auto end = decltype(begin){};
-  std::match_results<std::string_view::iterator>::difference_type pos_last_match = 0;
-
-  out.resize(0);
-  for (auto itr = begin; itr != end; ++itr) {
-    auto match = *itr;
-    auto pos_match = match.position();
-    auto diff = pos_match - pos_last_match;
-    auto start_match = end_of_last_match;
-    std::advance(start_match, diff);
-    out.append(end_of_last_match, start_match);
-
-    const auto content = match[1].str();
-    if (content.rfind("env_var(", 0) != 0) {
-      SetError(error, "Unsupported interpolation type in profile value: " + content);
-      return ADBC_STATUS_INVALID_ARGUMENT;
-    }
-
-    if (content[content.size() - 1] != ')') {
-      SetError(error, "Malformed env_var() profile value: missing closing parenthesis");
-      return ADBC_STATUS_INVALID_ARGUMENT;
-    }
-
-    const auto env_var_name = content.substr(8, content.size() - 9);
-    if (env_var_name.empty()) {
-      SetError(error,
-               "Malformed env_var() profile value: missing environment variable name");
-      return ADBC_STATUS_INVALID_ARGUMENT;
-    }
-
-#ifdef _WIN32
-    auto local_env_var = Utf8Decode(std::string(env_var_name));
-    DWORD required_size = GetEnvironmentVariableW(local_env_var.c_str(), NULL, 0);
-    if (required_size == 0) {
-      out = "";
-      return ADBC_STATUS_OK;
-    }
-
-    std::wstring wvalue;
-    wvalue.resize(required_size);
-    DWORD actual_size =
-        GetEnvironmentVariableW(local_env_var.c_str(), wvalue.data(), required_size);
-    // remove null terminator
-    wvalue.resize(actual_size);
-    const auto env_var_value = Utf8Encode(wvalue);
-#else
-    const char* env_value = std::getenv(env_var_name.c_str());
-    if (!env_value) {
-      out = "";
-      return ADBC_STATUS_OK;
-    }
-    const auto env_var_value = std::string(env_value);
-#endif
-    out.append(env_var_value);
-
-    auto length_match = match.length();
-    pos_last_match = pos_match + length_match;
-    end_of_last_match = start_match;
-    std::advance(end_of_last_match, length_match);
-  }
-
-  out.append(end_of_last_match, value.end());
-  return ADBC_STATUS_OK;
-}
 
 }  // namespace
 
@@ -278,9 +204,80 @@ struct ProfileVisitor {
 };
 
 // Public implementations (non-static for use across translation units)
-AdbcStatusCode ProcessProfileValue(std::string_view value, std::string& out,
-                                   struct AdbcError* error) {
-  return ProcessProfileValueInternal(value, out, error);
+AdbcStatusCode ProcessProfileValue(std::string_view key, std::string_view value,
+                                   std::string& out, struct AdbcError* error) {
+  if (value.empty()) {
+    out = "";
+    return ADBC_STATUS_OK;
+  }
+
+  static const std::regex pattern(R"(\{\{\s*([^{}]*?)\s*\}\})");
+  auto end_of_last_match = value.begin();
+  auto begin = std::regex_iterator(value.begin(), value.end(), pattern);
+  auto end = decltype(begin){};
+  std::match_results<std::string_view::iterator>::difference_type pos_last_match = 0;
+
+  out.resize(0);
+  for (auto itr = begin; itr != end; ++itr) {
+    auto match = *itr;
+    auto pos_match = match.position();
+    auto diff = pos_match - pos_last_match;
+    auto start_match = end_of_last_match;
+    std::advance(start_match, diff);
+    out.append(end_of_last_match, start_match);
+
+    const auto content = match[1].str();
+    if (content.rfind("env_var(", 0) != 0) {
+      std::string message = "In profile: unsupported interpolation type in key `" +
+                            std::string(key) + "`: `" + content + "`";
+      SetError(error, message);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+
+    if (content[content.size() - 1] != ')') {
+      std::string message = "In profile: malformed env_var() in key `" +
+                            std::string(key) + "`: missing closing parenthesis";
+      SetError(error, message);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+
+    const auto env_var_name = content.substr(8, content.size() - 9);
+    if (env_var_name.empty()) {
+      std::string message = "In profile: malformed env_var() in key `" +
+                            std::string(key) + "`: missing environment variable name";
+      SetError(error, message);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+
+    std::string env_var_value;
+#ifdef _WIN32
+    auto local_env_var = Utf8Decode(std::string(env_var_name));
+    DWORD required_size = GetEnvironmentVariableW(local_env_var.c_str(), NULL, 0);
+    if (required_size != 0) {
+      std::wstring wvalue;
+      wvalue.resize(required_size);
+      DWORD actual_size =
+          GetEnvironmentVariableW(local_env_var.c_str(), wvalue.data(), required_size);
+      // remove null terminator
+      wvalue.resize(actual_size);
+      env_var_value = Utf8Encode(wvalue);
+    }
+#else
+    const char* env_value = std::getenv(env_var_name.c_str());
+    if (env_value) {
+      env_var_value = std::string(env_value);
+    }
+#endif
+    out.append(env_var_value);
+
+    auto length_match = match.length();
+    pos_last_match = pos_match + length_match;
+    end_of_last_match = start_match;
+    std::advance(end_of_last_match, length_match);
+  }
+
+  out.append(end_of_last_match, value.end());
+  return ADBC_STATUS_OK;
 }
 
 AdbcStatusCode LoadProfileFile(const std::filesystem::path& profile_path,
@@ -453,8 +450,10 @@ AdbcStatusCode AdbcProfileProviderFilesystem(const char* profile_name,
                             extra_debug_info.end());
         if (intermediate_error.error.message) {
           std::string error_message = intermediate_error.error.message;
+          // Remove [Driver Manager] prefix so it doesn't get repeated
+          error_message = error_message.substr(17);
           AddSearchPathsToError(search_paths, SearchPathType::kProfile, error_message);
-          SetError(error, std::move(error_message));
+          SetError(error, error_message);
         }
         return status;
       }
@@ -463,7 +462,9 @@ AdbcStatusCode AdbcProfileProviderFilesystem(const char* profile_name,
       message += full_path.string();
       message += " but: ";
       if (intermediate_error.error.message) {
-        message += intermediate_error.error.message;
+        std::string m = intermediate_error.error.message;
+        // Remove [Driver Manager] prefix so it doesn't get repeated
+        message += m.substr(17);
       } else {
         message += "could not load the profile";
       }
