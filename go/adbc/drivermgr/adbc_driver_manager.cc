@@ -304,13 +304,13 @@ ADBC_EXPORT std::filesystem::path InternalAdbcUserConfigDir() {
   std::filesystem::path dir(std::move(wpath));
   if (!dir.empty()) {
     config_dir = std::filesystem::path(dir);
-    config_dir /= "ADBC/Drivers";
+    config_dir /= "ADBC";
   }
 #elif defined(__APPLE__)
   auto dir = std::getenv("HOME");
   if (dir) {
     config_dir = std::filesystem::path(dir);
-    config_dir /= "Library/Application Support/ADBC/Drivers";
+    config_dir /= "Library/Application Support/ADBC";
   }
 #elif defined(__linux__)
   auto dir = std::getenv("XDG_CONFIG_HOME");
@@ -324,7 +324,7 @@ ADBC_EXPORT std::filesystem::path InternalAdbcUserConfigDir() {
   }
 
   if (!config_dir.empty()) {
-    config_dir = config_dir / "adbc" / "drivers";
+    config_dir = config_dir / "adbc";
   }
 #endif  // defined(_WIN32)
 

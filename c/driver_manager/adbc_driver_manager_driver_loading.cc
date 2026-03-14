@@ -270,6 +270,12 @@ SearchPaths GetEnvPaths(const char_type* env_var) {
   return paths;
 }
 
+#if defined(_WIN32) || defined(__APPLE__)
+static constexpr const char* kDriversSubdir = "Drivers";
+#else
+static constexpr const char* kDriversSubdir = "drivers";
+#endif
+
 SearchPaths GetSearchPaths(const AdbcLoadFlags levels) {
   SearchPaths paths;
   if (levels & ADBC_LOAD_FLAG_SEARCH_ENV) {
@@ -279,7 +285,7 @@ SearchPaths GetSearchPaths(const AdbcLoadFlags levels) {
 
   if (levels & ADBC_LOAD_FLAG_SEARCH_USER) {
     // Check the user configuration directory
-    std::filesystem::path user_config_dir = InternalAdbcUserConfigDir();
+    std::filesystem::path user_config_dir = InternalAdbcUserConfigDir() / kDriversSubdir;
     if (!user_config_dir.empty() && std::filesystem::exists(user_config_dir)) {
       paths.emplace_back(SearchPathSource::kUser, std::move(user_config_dir));
     } else {
@@ -614,7 +620,8 @@ AdbcStatusCode ManagedLibrary::FindDriver(
   auto status = SearchPathsForDriver(driver_path, more_search_paths, info, error);
   if (status == ADBC_STATUS_NOT_FOUND) {
     if (!(load_options & ADBC_LOAD_FLAG_SEARCH_USER)) {
-      std::filesystem::path user_config_dir = InternalAdbcUserConfigDir();
+      std::filesystem::path user_config_dir =
+          InternalAdbcUserConfigDir() / kDriversSubdir;
       std::string message = "user config dir ";
       message += user_config_dir.string();
       message += " (enable ADBC_LOAD_FLAG_SEARCH_USER)";
