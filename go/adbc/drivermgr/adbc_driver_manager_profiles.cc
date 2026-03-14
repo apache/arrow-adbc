@@ -295,14 +295,14 @@ AdbcStatusCode LoadProfileFile(const std::filesystem::path& profile_path,
   }
 
   profile.path = profile_path;
-  if (!config["version"].is_integer()) {
+  if (!config["profile_version"].is_integer()) {
     std::string message =
         "Profile version is not an integer in profile '" + profile_path.string() + "'";
     SetError(error, std::move(message));
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
-  const auto version = config["version"].value_or(int64_t(1));
+  const auto version = config["profile_version"].value_or(int64_t(1));
   switch (version) {
     case 1:
       break;
@@ -317,7 +317,7 @@ AdbcStatusCode LoadProfileFile(const std::filesystem::path& profile_path,
 
   profile.driver = config["driver"].value_or(""s);
 
-  auto options = config.at_path("options");
+  auto options = config.at_path("Options");
   if (!options.is_table()) {
     std::string message =
         "Profile options is not a table in profile '" + profile_path.string() + "'";

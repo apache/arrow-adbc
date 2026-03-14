@@ -24,6 +24,7 @@ use adbc_driver_manager::profile::{
 };
 use adbc_driver_manager::ManagedDatabase;
 use serial_test::serial;
+use std::env;
 
 mod common;
 
@@ -41,10 +42,10 @@ fn write_profile_to_tempfile(profile_name: &str, content: &str) -> (tempfile::Te
 
 fn simple_profile() -> String {
     r#"
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
 
-[options]
+[Options]
 uri = ":memory:"
 "#
     .to_string()
@@ -52,15 +53,15 @@ uri = ":memory:"
 
 fn profile_with_nested_options() -> String {
     r#"
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
 
-[options]
+[Options]
 uri = ":memory:"
-[options.connection]
+[Options.connection]
 timeout = 30
 retry = true
-[options.connection.pool]
+[Options.connection.pool]
 max_size = 10
 min_size = 2
 idle_timeout = 300.5
@@ -70,10 +71,10 @@ idle_timeout = 300.5
 
 fn profile_with_all_types() -> String {
     r#"
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
 
-[options]
+[Options]
 uri = ":memory:"
 string_opt = "test_value"
 int_opt = 42
@@ -85,9 +86,9 @@ bool_opt = true
 
 fn profile_without_driver() -> String {
     r#"
-version = 1
+profile_version = 1
 
-[options]
+[Options]
 uri = ":memory:"
 "#
     .to_string()
@@ -95,7 +96,7 @@ uri = ":memory:"
 
 fn profile_without_options() -> String {
     r#"
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
 "#
     .to_string()
@@ -103,10 +104,10 @@ driver = "adbc_driver_sqlite"
 
 fn profile_with_unsupported_version() -> String {
     r#"
-version = 2
+profile_version = 2
 driver = "adbc_driver_sqlite"
 
-[options]
+[Options]
 uri = ":memory:"
 "#
     .to_string()
@@ -114,9 +115,9 @@ uri = ":memory:"
 
 fn invalid_toml() -> &'static str {
     r#"
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
-[options
+[Options
 uri = ":memory:"
 "#
 }
@@ -242,7 +243,7 @@ fn test_filesystem_profile_error_cases() {
             "without options",
             profile_without_options(),
             Status::InvalidArguments,
-            "missing or invalid 'options' table in profile",
+            "missing or invalid 'Options' table in profile",
         ),
         (
             "unsupported version",
@@ -571,4 +572,66 @@ fn test_profile_hierarchical_path_additional_search_paths() {
     tmp_dir
         .close()
         .expect("Failed to close/remove temporary directory");
+}
+
+#[test]
+fn test_profile_conda_prefix() {
+    #[cfg(conda_build)]
+    let is_conda_build = true;
+    #[cfg(not(conda_build))]
+    let is_conda_build = false;
+
+    eprintln!(
+        "Is conda build: {}",
+        if is_conda_build {
+            "defined"
+        } else {
+            "not defined"
+        }
+    );
+    let tmp_dir = tempfile::Builder::new()
+        .prefix("adbc_profile_conda_prefix_test")
+        .tempdir()
+        .expect("Failed to create temporary directory");
+
+    let filepath = tmp_dir
+        .path()
+        .join("etc")
+        .join("adbc")
+        .join("profiles")
+        .join("sqlite-profile.toml");
+
+    std::fs::create_dir_all(filepath.parent().unwrap())
+        .expect("Failed to create directories for conda prefix test");
+    std::fs::write(&filepath, simple_profile()).expect("Failed to write profile");
+
+    // Set CONDA_PREFIX environment variable
+    let prev_value = env::var("CONDA_PREFIX").ok();
+    env::set_var("CONDA_PREFIX", tmp_dir.path());
+
+    let uri = "profile://sqlite-profile";
+    let result = ManagedDatabase::from_uri(uri, None, AdbcVersion::V100, LOAD_FLAG_DEFAULT, None);
+
+    // Restore environment variable
+    match prev_value {
+        Some(val) => env::set_var("CONDA_PREFIX", val),
+        None => env::remove_var("CONDA_PREFIX"),
+    }
+
+    if is_conda_build {
+        assert!(result.is_ok(), "Expected success for conda build");
+    } else {
+        assert!(result.is_err(), "Expected error for non-conda build");
+        if let Err(err) = result {
+            assert!(
+                err.message.contains("Profile not found: sqlite-profile"),
+                "Expected 'Profile file does not exist' error, got: {}",
+                err.message
+            );
+        }
+    }
+
+    tmp_dir
+        .close()
+        .expect("Failed to close/remove temporary directory")
 }

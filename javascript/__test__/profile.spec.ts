@@ -42,7 +42,7 @@ test('profile: load database from profile:// URI', async () => {
     const toml = (p: string) => p.replaceAll('\\', '/')
     writeFileSync(
       join(tmpDir, 'test_sqlite.toml'),
-      `version = 1\ndriver = "${toml(driver)}"\n\n[options]\nuri = "${toml(dbPath)}"\n`,
+      `profile_version = 1\ndriver = "${toml(driver)}"\n\n[Options]\nuri = "${toml(dbPath)}"\n`,
     )
 
     const db = new AdbcDatabase({

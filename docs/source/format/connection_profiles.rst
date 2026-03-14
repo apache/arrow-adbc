@@ -74,10 +74,10 @@ Filesystem-based profiles use TOML format with the following structure:
 
 .. code-block:: toml
 
-   version = 1
+   profile_version = 1
    driver = "snowflake"
 
-   [options]
+   [Options]
    # String options
    adbc.snowflake.sql.account = "mycompany"
    adbc.snowflake.sql.warehouse = "COMPUTE_WH"
@@ -93,14 +93,14 @@ Filesystem-based profiles use TOML format with the following structure:
    # Boolean options (converted to "true" or "false" strings)
    adbc.snowflake.sql.client_session_keep_alive = true
 
-version
--------
+profile_version
+---------------
 
 - **Required**: Yes
 - **Type**: Integer
 - **Supported values**: ``1``
 
-The ``version`` field specifies the profile format version. Currently, only version 1 is supported.
+The ``profile_version`` field specifies the profile format version. Currently, only version 1 is supported.
 This will enable future changes while maintaining backward compatibility.
 
 driver
@@ -122,7 +122,7 @@ For more detils, see :doc:`driver_manifests`.
 Options Section
 ---------------
 
-The ``[options]`` section contains driver-specific configuration options. Options can be of the following types:
+The ``[Options]`` section contains driver-specific configuration options. Options can be of the following types:
 
 **String values**
    Applied using ``AdbcDatabaseSetOption()``
@@ -175,15 +175,15 @@ Profile values can reference environment variables using the ``{{ env_var() }}``
 
 .. code-block:: toml
 
-   version = 1
+   profile_version = 1
    driver = "adbc_driver_snowflake"
 
-   [options]
+   [Options]
    adbc.snowflake.sql.account = "{{ env_var(SNOWFLAKE_ACCOUNT) }}"
    adbc.snowflake.sql.auth_token = "{{ env_var(SNOWFLAKE_TOKEN) }}"
    adbc.snowflake.sql.warehouse = "COMPUTE_WH"
 
-When the driver manager encounters ``{{ env_var(VAR_NAME) }}``, it replaces the value with the contents of environment variable ``VAR_NAME``. If the environment variable is not set, the value becomes an empty string.
+When the driver manager encounters ``{{ env_var(VAR_NAME) }}``, it replaces the placeholder with the contents of environment variable ``VAR_NAME``. If the environment variable is not set, the placeholder is replaced with an empty string and processing of the rest of the value continues (e.g. ``"foo{{ env_var(MISSING) }}bar"`` becomes ``"foobar"``).
 
 Profile Search Locations
 =========================
@@ -227,10 +227,10 @@ File: ``~/.config/adbc/profiles/snowflake_prod.toml``
 
 .. code-block:: toml
 
-   version = 1
+   profile_version = 1
    driver = "snowflake"
 
-   [options]
+   [Options]
    adbc.snowflake.sql.account = "{{ env_var(SNOWFLAKE_ACCOUNT) }}"
    adbc.snowflake.sql.auth_token = "{{ env_var(SNOWFLAKE_TOKEN) }}"
    adbc.snowflake.sql.warehouse = "PRODUCTION_WH"
@@ -260,10 +260,10 @@ File: ``~/.config/adbc/profiles/postgres_dev.toml``
 
 .. code-block:: toml
 
-   version = 1
+   profile_version = 1
    driver = "postgresql"
 
-   [options]
+   [Options]
    uri = "postgresql://localhost:5432/dev_db?sslmode=disable"
    username = "dev_user"
    password = "{{ env_var(POSTGRES_DEV_PASSWORD) }}"
@@ -277,10 +277,10 @@ File: ``~/.config/adbc/profiles/default_timeouts.toml``
 
 .. code-block:: toml
 
-   version = 1
+   profile_version = 1
    # No driver specified - can be used with any driver
 
-   [options]
+   [Options]
    adbc.connection.timeout = 30.0
    adbc.statement.timeout = 60.0
 
@@ -303,7 +303,7 @@ Option Precedence
 Options are applied in the following order (later overrides earlier):
 
 1. Driver defaults
-2. Profile options (from ``[options]`` section)
+2. Profile options (from ``[Options]`` section)
 3. Options set via ``AdbcDatabaseSetOption()`` before ``AdbcDatabaseInit()``
 
 Example:
@@ -434,7 +434,7 @@ Store credentials separately from code:
 
 .. code-block:: toml
 
-   [options]
+   [Options]
    adbc.snowflake.sql.account = "mycompany"
    adbc.snowflake.sql.auth_token = "{{ env_var(SNOWFLAKE_TOKEN) }}"
 
