@@ -80,6 +80,9 @@ main() {
     header "Upload signatures for Python"
     upload_asset_signatures "${tag}" $(find "${download_dir}" -type f \( -name '*.whl' -or -name 'adbc_*.tar.gz' \))
 
+    header "Upload signatures for Node.js"
+    upload_asset_signatures "${tag}" $(find "${download_dir}" -type f -name 'apache-arrow-adbc-driver-manager-*.tgz')
+
     header "Upload signatures for docs"
     upload_asset_signatures "${tag}" "${download_dir}/docs.tgz"
 

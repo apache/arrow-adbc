@@ -1,6 +1,6 @@
 {
-  "name": "adbc-driver-manager-darwin-x64",
-  "version": "0.0.1",
+  "name": "@apache-arrow/adbc-driver-manager-darwin-x64",
+  "version": "0.23.0",
   "cpu": [
     "x64"
   ],
