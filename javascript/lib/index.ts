@@ -34,6 +34,14 @@ const asyncDisposeSymbol = (Symbol as any).asyncDispose ?? Symbol('Symbol.asyncD
 
 type NativeIterator = { next(): Promise<Buffer | null | undefined>; close(): void }
 
+async function readerToTable(reader: RecordBatchReader): Promise<Table> {
+  const batches: RecordBatch[] = []
+  for await (const batch of reader) {
+    batches.push(batch)
+  }
+  return new Table(batches)
+}
+
 /**
  * Converts the native result iterator into an Apache Arrow `RecordBatchReader`.
  *
@@ -141,7 +149,7 @@ export class AdbcConnection implements AdbcConnectionInterface {
     this.setOption('adbc.connection.read_only', enabled ? 'true' : 'false')
   }
 
-  async getObjects(options?: GetObjectsOptions): Promise<RecordBatchReader> {
+  async getObjects(options?: GetObjectsOptions): Promise<Table> {
     try {
       const opts = {
         depth: options?.depth ?? 0,
@@ -152,7 +160,7 @@ export class AdbcConnection implements AdbcConnectionInterface {
         columnName: options?.columnName,
       }
       const iterator = await this._inner.getObjects(opts)
-      return iteratorToReader(iterator as NativeIterator)
+      return readerToTable(await iteratorToReader(iterator as NativeIterator))
     } catch (e) {
       throw AdbcError.fromError(e)
     }
@@ -171,25 +179,29 @@ export class AdbcConnection implements AdbcConnectionInterface {
     }
   }
 
-  async getTableTypes(): Promise<RecordBatchReader> {
+  async getTableTypes(): Promise<Table> {
     try {
       const iterator = await this._inner.getTableTypes()
-      return iteratorToReader(iterator as NativeIterator)
+      return readerToTable(await iteratorToReader(iterator as NativeIterator))
     } catch (e) {
       throw AdbcError.fromError(e)
     }
   }
 
-  async getInfo(infoCodes?: InfoCode[]): Promise<RecordBatchReader> {
+  async getInfo(infoCodes?: InfoCode[]): Promise<Table> {
     try {
       const iterator = await this._inner.getInfo(infoCodes)
-      return iteratorToReader(iterator as NativeIterator)
+      return readerToTable(await iteratorToReader(iterator as NativeIterator))
     } catch (e) {
       throw AdbcError.fromError(e)
     }
   }
 
-  async query(sql: string, params?: RecordBatch | Table): Promise<RecordBatchReader> {
+  async query(sql: string, params?: Table): Promise<Table> {
+    return readerToTable(await this.queryStream(sql, params))
+  }
+
+  async queryStream(sql: string, params?: Table): Promise<RecordBatchReader> {
     const stmt = await this.createStatement()
     try {
       await stmt.setSqlQuery(sql)
@@ -202,7 +214,7 @@ export class AdbcConnection implements AdbcConnectionInterface {
     }
   }
 
-  async execute(sql: string, params?: RecordBatch | Table): Promise<number> {
+  async execute(sql: string, params?: Table): Promise<number> {
     const stmt = await this.createStatement()
     try {
       await stmt.setSqlQuery(sql)

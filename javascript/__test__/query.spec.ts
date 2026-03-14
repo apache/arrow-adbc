@@ -19,7 +19,7 @@ import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
 import { createSqliteDatabase, createTestTable, dumpReader } from './test_utils'
 import { AdbcDatabase, AdbcConnection, AdbcStatement } from '../lib/index.js'
-import { tableFromArrays } from 'apache-arrow'
+import { Table, tableFromArrays } from 'apache-arrow'
 
 let db: AdbcDatabase
 let conn: AdbcConnection
@@ -59,9 +59,9 @@ test('query: SELECT returns correct rows', async () => {
   }
 
   assert.strictEqual(rows.length, 3)
-  assert.strictEqual(rows[0].name, 'alice')
-  assert.strictEqual(rows[1].name, 'bob')
-  assert.strictEqual(rows[2].name, 'carol')
+  assert.deepStrictEqual(rows[0], { id: 1n, name: 'alice' })
+  assert.deepStrictEqual(rows[1], { id: 2n, name: 'bob' })
+  assert.deepStrictEqual(rows[2], { id: 3n, name: 'carol' })
 })
 
 test('query: executeUpdate returns affected row count', async () => {
@@ -71,21 +71,55 @@ test('query: executeUpdate returns affected row count', async () => {
     const affected = await stmt.executeUpdate()
     assert.strictEqual(typeof affected, 'number')
     assert.strictEqual(affected, 1)
+
+    // Verify the change was applied
+    const table = await conn.query('SELECT id, name FROM query_test WHERE id = 1')
+    assert.strictEqual(table.numRows, 1)
+    assert.strictEqual(table.getChild('id')?.get(0), 1n)
+    assert.strictEqual(table.getChild('name')?.get(0), 'updated')
   } finally {
     await stmt.close()
   }
 })
 
-test('query: conn.query() returns correct rows', async () => {
+test('query: conn.query() returns an Arrow Table', async () => {
   // id=2 (bob) is never mutated by other tests in this file
-  const rows = await dumpReader(await conn.query('SELECT id, name FROM query_test WHERE id = 2'))
+  const table = await conn.query('SELECT id, name FROM query_test WHERE id = 2')
+  assert.ok(table instanceof Table)
+  assert.strictEqual(table.numCols, 2)
+  assert.strictEqual(table.numRows, 1)
+  assert.strictEqual(table.getChild('id')?.get(0), 2n)
+  assert.strictEqual(table.getChild('name')?.get(0), 'bob')
+})
+
+test('query: conn.query() with bound params', async () => {
+  // id=2 (bob) is never mutated by other tests in this file
+  const params = tableFromArrays({ id: [2] })
+  const table = await conn.query('SELECT id, name FROM query_test WHERE id = ?', params)
+  assert.ok(table instanceof Table)
+  assert.strictEqual(table.numRows, 1)
+  assert.strictEqual(table.getChild('id')?.get(0), 2n)
+  assert.strictEqual(table.getChild('name')?.get(0), 'bob')
+})
+
+test('query: conn.queryStream() returns a RecordBatchReader', async () => {
+  // id=2 (bob) is never mutated by other tests in this file
+  const reader = await conn.queryStream('SELECT id, name FROM query_test WHERE id = 2')
+  const rows = await dumpReader(reader)
   assert.strictEqual(rows.length, 1)
+  assert.strictEqual(rows[0].id, 2n)
   assert.strictEqual(rows[0].name, 'bob')
 })
 
 test('query: conn.execute() returns affected row count', async () => {
   const affected = await conn.execute(`UPDATE query_test SET name = 'via_execute' WHERE id = 3`)
   assert.strictEqual(affected, 1)
+
+  // Verify the change was applied
+  const table = await conn.query('SELECT id, name FROM query_test WHERE id = 3')
+  assert.strictEqual(table.numRows, 1)
+  assert.strictEqual(table.getChild('id')?.get(0), 3n)
+  assert.strictEqual(table.getChild('name')?.get(0), 'via_execute')
 })
 
 test('query: conn.execute() with bound params inserts a row', async () => {
@@ -93,9 +127,10 @@ test('query: conn.execute() with bound params inserts a row', async () => {
   const affected = await conn.execute('INSERT INTO query_test (id, name) VALUES (?, ?)', params)
   assert.strictEqual(affected, 1)
 
-  const rows = await dumpReader(await conn.query('SELECT name FROM query_test WHERE id = 99'))
-  assert.strictEqual(rows.length, 1)
-  assert.strictEqual(rows[0].name, 'bound_insert')
+  const table = await conn.query('SELECT id, name FROM query_test WHERE id = 99')
+  assert.strictEqual(table.numRows, 1)
+  assert.strictEqual(table.getChild('id')?.get(0), 99n)
+  assert.strictEqual(table.getChild('name')?.get(0), 'bound_insert')
 })
 
 test('query: empty result set', async () => {

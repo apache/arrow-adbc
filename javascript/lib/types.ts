@@ -73,7 +73,7 @@ export type ObjectDepth = (typeof ObjectDepth)[keyof typeof ObjectDepth]
  * Pass a subset to `getInfo()` to retrieve only specific metadata fields.
  *
  * @example
- * const reader = await conn.getInfo([InfoCode.VendorName, InfoCode.DriverVersion])
+ * const table = await conn.getInfo([InfoCode.VendorName, InfoCode.DriverVersion])
  */
 export const InfoCode = {
   /** The database vendor/product name (string). */
@@ -225,9 +225,9 @@ export interface AdbcConnection {
    * Get a hierarchical view of database objects (catalogs, schemas, tables, columns).
    *
    * @param options Filtering options for the metadata query.
-   * @returns A RecordBatchReader containing the metadata.
+   * @returns A Promise resolving to an Apache Arrow Table containing the metadata.
    */
-  getObjects(options?: GetObjectsOptions): Promise<RecordBatchReader>
+  getObjects(options?: GetObjectsOptions): Promise<Table>
 
   /**
    * Get the Arrow schema for a specific table.
@@ -243,32 +243,44 @@ export interface AdbcConnection {
   /**
    * Get a list of table types supported by the database.
    *
-   * @returns A RecordBatchReader containing a single string column of table types.
+   * @returns A Promise resolving to an Apache Arrow Table with a single string column of table types.
    */
-  getTableTypes(): Promise<RecordBatchReader>
+  getTableTypes(): Promise<Table>
 
   /**
    * Get metadata about the driver and database.
    *
    * @param infoCodes Optional list of info codes to retrieve. Use the {@link InfoCode} constants.
    *   If omitted, all available info is returned.
-   * @returns A RecordBatchReader containing the requested metadata info.
+   * @returns A Promise resolving to an Apache Arrow Table containing the requested metadata info.
    */
-  getInfo(infoCodes?: InfoCode[]): Promise<RecordBatchReader>
+  getInfo(infoCodes?: InfoCode[]): Promise<Table>
 
   /**
-   * Execute a SQL query and return the results as a RecordBatchReader.
+   * Execute a SQL query and return all results as an Arrow Table.
    *
    * Convenience method that creates a statement, sets the SQL, optionally binds
-   * parameters, executes the query, and closes the statement. The reader remains
-   * valid after the statement is closed because the underlying iterator holds its
-   * own reference to the native resources.
+   * parameters, executes the query, and closes the statement.
+   * For large result sets, use {@link queryStream} to avoid loading everything into memory.
    *
    * @param sql The SQL query to execute.
-   * @param params Optional Arrow RecordBatch or Table to bind as parameters.
+   * @param params Optional Arrow Table to bind as parameters.
+   * @returns A Promise resolving to an Apache Arrow Table.
+   */
+  query(sql: string, params?: Table): Promise<Table>
+
+  /**
+   * Execute a SQL query and return the results as a RecordBatchReader for streaming.
+   *
+   * Use this instead of {@link query} when working with large result sets that should
+   * not be fully loaded into memory. The reader remains valid after the statement is
+   * closed because the underlying iterator holds its own reference to the native resources.
+   *
+   * @param sql The SQL query to execute.
+   * @param params Optional Arrow Table to bind as parameters.
    * @returns A Promise resolving to an Apache Arrow RecordBatchReader.
    */
-  query(sql: string, params?: RecordBatch | Table): Promise<RecordBatchReader>
+  queryStream(sql: string, params?: Table): Promise<RecordBatchReader>
 
   /**
    * Execute a SQL statement (INSERT, UPDATE, DELETE, DDL) and return the row count.
@@ -277,10 +289,10 @@ export interface AdbcConnection {
    * parameters, executes the update, and closes the statement.
    *
    * @param sql The SQL statement to execute.
-   * @param params Optional Arrow RecordBatch or Table to bind as parameters.
+   * @param params Optional Arrow Table to bind as parameters.
    * @returns A Promise resolving to the number of rows affected, or -1 if unknown.
    */
-  execute(sql: string, params?: RecordBatch | Table): Promise<number>
+  execute(sql: string, params?: Table): Promise<number>
 
   /**
    * Commit any pending transactions.
