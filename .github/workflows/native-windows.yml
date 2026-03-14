@@ -337,21 +337,15 @@ jobs:
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
-        run: .\ci\scripts\python_build.ps1 $pwd $pwd\build
-      - name: Build Python Driver PostgreSQL
-        env:
-          BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
-        run: .\ci\scripts\python_build.ps1 $pwd $pwd\build
-      - name: Build Python Driver SQLite
-        env:
-          BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
+          _ADBC_IS_CONDA: "1"
         run: .\ci\scripts\python_build.ps1 $pwd $pwd\build
       - name: Test Python Driver Manager
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
+          PYTEST_ADDOPTS: "--run-system"
         run: .\ci\scripts\python_test.ps1 $pwd $pwd\build
       - name: Test Python Driver PostgreSQL
         env:
