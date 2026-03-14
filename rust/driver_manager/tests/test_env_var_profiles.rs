@@ -41,10 +41,10 @@ fn test_env_var_replacement_basic() {
     env::set_var("ADBC_TEST_ENV_VAR", ":memory:");
 
     let profile_content = r#"
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
 
-[options]
+[Options]
 uri = "{{ env_var(ADBC_TEST_ENV_VAR) }}"
 "#;
 
@@ -88,10 +88,10 @@ fn test_env_var_replacement_empty() {
     env::remove_var("ADBC_NONEXISTENT_VAR_12345");
 
     let profile_content = r#"
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
 
-[options]
+[Options]
 uri = ":memory:"
 test_option = "{{ env_var(ADBC_NONEXISTENT_VAR_12345) }}"
 "#;
@@ -123,10 +123,10 @@ fn test_env_var_replacement_missing_closing_paren() {
         .expect("Failed to create temporary directory");
 
     let profile_content = r#"
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
 
-[options]
+[Options]
 uri = ":memory:"
 test_option = "{{ env_var(SOME_VAR }}"
 "#;
@@ -161,10 +161,10 @@ fn test_env_var_replacement_missing_arg() {
         .expect("Failed to create temporary directory");
 
     let profile_content = r#"
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
 
-[options]
+[Options]
 uri = ":memory:"
 test_option = "{{ env_var() }}"
 "#;
@@ -202,10 +202,10 @@ fn test_env_var_replacement_interpolation() {
     env::set_var("ADBC_TEST_INTERPOLATE", "middle_value");
 
     let profile_content = r#"
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
 
-[options]
+[Options]
 uri = ":memory:"
 test_option = "prefix_{{ env_var(ADBC_TEST_INTERPOLATE) }}_suffix"
 "#;
@@ -249,10 +249,10 @@ fn test_env_var_replacement_multiple() {
     env::set_var("ADBC_TEST_VAR2", "second");
 
     let profile_content = r#"
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
 
-[options]
+[Options]
 uri = ":memory:"
 test_option = "{{ env_var(ADBC_TEST_VAR1) }}_and_{{ env_var(ADBC_TEST_VAR2) }}"
 "#;
@@ -298,10 +298,10 @@ fn test_env_var_replacement_whitespace() {
     env::set_var("ADBC_TEST_WHITESPACE", "value");
 
     let profile_content = r#"
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
 
-[options]
+[Options]
 uri = ":memory:"
 test_option = "{{   env_var(  ADBC_TEST_WHITESPACE  )   }}"
 "#;

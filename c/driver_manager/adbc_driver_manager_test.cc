@@ -1480,9 +1480,9 @@ class ConnectionProfiles : public ::testing::Test {
     std::filesystem::create_directories(temp_dir);
 
     simple_profile = toml::table{
-        {"version", 1},
+        {"profile_version", 1},
         {"driver", "adbc_driver_sqlite"},
-        {"options",
+        {"Options",
          toml::table{
              {"uri", "file::memory:"},
          }},
@@ -1646,7 +1646,7 @@ TEST_F(ConnectionProfiles, DriverProfileOption) {
 TEST_F(ConnectionProfiles, ExtraStringOption) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = simple_profile;
-  profile["options"].as_table()->insert("foo", "bar");
+  profile["Options"].as_table()->insert("foo", "bar");
   std::ofstream test_manifest_file(filepath);
   ASSERT_TRUE(test_manifest_file.is_open());
   test_manifest_file << profile;
@@ -1668,7 +1668,7 @@ TEST_F(ConnectionProfiles, ExtraStringOption) {
 TEST_F(ConnectionProfiles, ExtraIntOption) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = simple_profile;
-  profile["options"].as_table()->insert("foo", int64_t(42));
+  profile["Options"].as_table()->insert("foo", int64_t(42));
   std::ofstream test_manifest_file(filepath);
   ASSERT_TRUE(test_manifest_file.is_open());
   test_manifest_file << profile;
@@ -1690,7 +1690,7 @@ TEST_F(ConnectionProfiles, ExtraIntOption) {
 TEST_F(ConnectionProfiles, ExtraDoubleOption) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = simple_profile;
-  profile["options"].as_table()->insert("foo", 42.0);
+  profile["Options"].as_table()->insert("foo", 42.0);
   std::ofstream test_manifest_file(filepath);
   ASSERT_TRUE(test_manifest_file.is_open());
   test_manifest_file << profile;
@@ -1712,9 +1712,9 @@ TEST_F(ConnectionProfiles, ExtraDoubleOption) {
 TEST_F(ConnectionProfiles, DotSeparatedKey) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = toml::parse(R"(
-    version = 1
+    profile_version = 1
     driver = "adbc_driver_sqlite"
-    [options]
+    [Options]
     foo.bar.baz = "bar"
   )");
 
@@ -1740,9 +1740,9 @@ TEST_F(ConnectionProfiles, DotSeparatedKey) {
 TEST_F(ConnectionProfiles, UseEnvVar) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = toml::parse(R"|(
-    version = 1
+    profile_version = 1
     driver = "adbc_driver_sqlite"
-    [options]
+    [Options]
     foo = "{{ env_var(ADBC_PROFILE_PATH) }}"
   )|");
 
@@ -1768,9 +1768,9 @@ TEST_F(ConnectionProfiles, UseEnvVar) {
 TEST_F(ConnectionProfiles, UseEnvVarNotExist) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = toml::parse(R"|(
-    version = 1
+    profile_version = 1
     driver = "adbc_driver_sqlite"
-    [options]
+    [Options]
     foo = "{{ env_var(FOOBAR_ENV_VAR_THAT_DOES_NOT_EXIST) }}"
   )|");
 
@@ -1792,12 +1792,40 @@ TEST_F(ConnectionProfiles, UseEnvVarNotExist) {
   UnsetConfigPath();
 }
 
+TEST_F(ConnectionProfiles, UseEnvVarNotExistNoBail) {
+  auto filepath = temp_dir / "profile.toml";
+  toml::table profile = toml::parse(R"|(
+    profile_version = 1
+    driver = "adbc_driver_sqlite"
+    [Options]
+    foo = "foo{{ env_var(FOOBAR_ENV_VAR_THAT_DOES_NOT_EXIST) }}bar"
+  )|");
+
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << profile;
+  test_manifest_file.close();
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+
+  // find profile by name using ADBC_PROFILE_PATH
+  SetConfigPath(temp_dir.string().c_str());
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+              IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
+  ASSERT_THAT(error.message,
+              ::testing::HasSubstr("Unknown database option foo='foobar'"));
+  UnsetConfigPath();
+}
+
 TEST_F(ConnectionProfiles, UseEnvVarMalformed) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = toml::parse(R"|(
-    version = 1
+    profile_version = 1
     driver = "adbc_driver_sqlite"
-    [options]
+    [Options]
     foo = "{{ env_var(ENV_VAR_WITHOUT_CLOSING_PAREN }}"
   )|");
 
@@ -1825,9 +1853,9 @@ TEST_F(ConnectionProfiles, UseEnvVarMalformed) {
 TEST_F(ConnectionProfiles, UseEnvVarMissingArg) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = toml::parse(R"|(
-    version = 1
+    profile_version = 1
     driver = "adbc_driver_sqlite"
-    [options]
+    [Options]
     foo = "{{ env_var() }}"
   )|");
 
@@ -1854,9 +1882,9 @@ TEST_F(ConnectionProfiles, UseEnvVarMissingArg) {
 TEST_F(ConnectionProfiles, UseEnvVarInterpolation) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = toml::parse(R"|(
-    version = 1
+    profile_version = 1
     driver = "adbc_driver_sqlite"
-    [options]
+    [Options]
     foo = "super {{ env_var(ADBC_PROFILE_PATH) }} duper"
   )|");
 
@@ -1882,9 +1910,9 @@ TEST_F(ConnectionProfiles, UseEnvVarInterpolation) {
 TEST_F(ConnectionProfiles, UseEnvVarInterpolationMultiple) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = toml::parse(R"|(
-    version = 1
+    profile_version = 1
     driver = "adbc_driver_sqlite"
-    [options]
+    [Options]
     foo = "super {{ env_var(ADBC_PROFILE_PATH) }} duper {{ env_var(ADBC_PROFILE_PATH) }} end"
   )|");
 
@@ -1935,6 +1963,46 @@ TEST_F(ConnectionProfiles, ProfileNotFound) {
                                    "ADBC_PROFILE_PATH: " + temp_dir.string() + "\n\t"));
   ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
   UnsetConfigPath();
+}
+
+TEST_F(ConnectionProfiles, CondaProfileTest) {
+#if ADBC_CONDA_BUILD
+  constexpr bool is_conda_build = true;
+#else
+  constexpr bool is_conda_build = false;
+#endif  // ADBC_CONDA_BUILD
+
+  std::cerr << "ADBC_CONDA_BUILD: " << (is_conda_build ? "defined" : "not defined")
+            << std::endl;
+
+  auto filepath = temp_dir / "etc" / "adbc" / "profiles" / "sqlite-test.toml";
+  std::filesystem::create_directories(filepath.parent_path());
+  std::ofstream test_profile_file(filepath);
+  ASSERT_TRUE(test_profile_file.is_open());
+  test_profile_file << simple_profile;
+  test_profile_file.close();
+
+#ifdef _WIN32
+  ASSERT_EQ(0, ::_wputenv_s(L"CONDA_PREFIX", temp_dir.native().c_str()));
+#else
+  ASSERT_EQ(0, ::setenv("CONDA_PREFIX", temp_dir.native().c_str(), 1));
+#endif  // _WIN32
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+
+  // absolute path to the profile
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "sqlite-test", &error),
+              IsOkStatus(&error));
+  if constexpr (is_conda_build) {
+    ASSERT_THAT(AdbcDatabaseInit(&database.value, &error), IsOkStatus(&error));
+  } else {
+    ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+                IsStatus(ADBC_STATUS_NOT_FOUND, &error));
+    ASSERT_THAT(error.message,
+                ::testing::HasSubstr("not enabled at build time: Conda prefix"));
+  }
+  ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
 }
 
 TEST_F(ConnectionProfiles, CustomProfileProvider) {

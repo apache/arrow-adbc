@@ -41,10 +41,10 @@ def profile_dir(tmp_path_factory) -> typing.Generator[pathlib.Path, None, None]:
 def sqlitedev(profile_dir) -> str:
     with (profile_dir / "sqlitedev.toml").open("w") as sink:
         sink.write("""
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
 
-[options]
+[Options]
 """)
     return "sqlitedev"
 
@@ -97,9 +97,9 @@ def test_option_env_var(subtests, tmp_path, monkeypatch) -> None:
         with subtests.test(i=i, msg=raw_value):
             with (tmp_path / "subst.toml").open("w") as sink:
                 sink.write(f"""
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
-[options]
+[Options]
 adbc.foo.bar = "{raw_value}"
 """)
 
@@ -124,9 +124,9 @@ def test_option_env_var_multiple(tmp_path, monkeypatch) -> None:
         rest = "{{ env_var(TEST_DIR) }}/{{ env_var(TEST_NUM) }}"
         batch = "{{ env_var(BATCH_SIZE) }}"
         sink.write(f"""
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
-[options]
+[Options]
 uri = "file://{windows}{rest}.db"
 adbc.sqlite.query.batch_rows = "{batch}"
 """)
@@ -171,9 +171,9 @@ def test_option_env_var_invalid(subtests, tmp_path, monkeypatch) -> None:
     ]:
         with (tmp_path / "subst.toml").open("w") as sink:
             sink.write(f"""
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
-[options]
+[Options]
 uri = "{contents}"
     """)
 
@@ -192,9 +192,9 @@ def test_option_override(tmp_path, monkeypatch) -> None:
 
     with (tmp_path / "dev.toml").open("w") as sink:
         sink.write("""
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
-[options]
+[Options]
 adbc.sqlite.query.batch_rows = 7
 """)
 
@@ -220,8 +220,8 @@ def test_driver_optional(subtests, tmp_path, monkeypatch) -> None:
 
     with (tmp_path / "nodriver.toml").open("w") as sink:
         sink.write("""
-version = 1
-[options]
+profile_version = 1
+[Options]
 """)
 
     with subtests.test(msg="missing driver"):
@@ -269,9 +269,9 @@ def test_driver_invalid(subtests, tmp_path, monkeypatch) -> None:
 
     with (tmp_path / "nodriver.toml").open("w") as sink:
         sink.write("""
-version = 1
+profile_version = 1
 driver = 2
-[options]
+[Options]
 """)
 
     with subtests.test(msg="numeric driver"):
@@ -281,10 +281,10 @@ driver = 2
 
     with (tmp_path / "nodriver.toml").open("w") as sink:
         sink.write("""
-version = 1
+profile_version = 1
 [driver]
 foo = "bar"
-[options]
+[Options]
 """)
 
     with subtests.test(msg="table driver"):
@@ -300,7 +300,7 @@ def test_version_invalid(tmp_path, monkeypatch) -> None:
     with (tmp_path / "badversion.toml").open("w") as sink:
         sink.write("""
 driver = "adbc_driver_sqlite"
-[options]
+[Options]
 """)
     with pytest.raises(
         dbapi.ProgrammingError, match="Profile version is not an integer"
@@ -311,8 +311,8 @@ driver = "adbc_driver_sqlite"
     with (tmp_path / "badversion.toml").open("w") as sink:
         sink.write("""
 driver = "adbc_driver_sqlite"
-version = "1"
-[options]
+profile_version = "1"
+[Options]
 """)
     with pytest.raises(
         dbapi.ProgrammingError, match="Profile version is not an integer"
@@ -323,8 +323,8 @@ version = "1"
     with (tmp_path / "badversion.toml").open("w") as sink:
         sink.write("""
 driver = "adbc_driver_sqlite"
-version = 9001
-[options]
+profile_version = 9001
+[Options]
 """)
     with pytest.raises(
         dbapi.ProgrammingError, match="Profile version '9001' is not supported"
@@ -339,8 +339,8 @@ def test_reject_malformed(tmp_path, monkeypatch) -> None:
 
     with (tmp_path / "nodriver.toml").open("w") as sink:
         sink.write("""
-version = 1
-[options]
+profile_version = 1
+[Options]
 """)
     with pytest.raises(dbapi.ProgrammingError, match="Must set 'driver' option"):
         with dbapi.connect("profile://nodriver"):
@@ -348,7 +348,7 @@ version = 1
 
     with (tmp_path / "nooptions.toml").open("w") as sink:
         sink.write("""
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
 """)
     with pytest.raises(dbapi.ProgrammingError, match="Profile options is not a table"):
@@ -357,9 +357,9 @@ driver = "adbc_driver_sqlite"
 
     with (tmp_path / "unknownkeys.toml").open("w") as sink:
         sink.write("""
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
-[options]
+[Options]
 [foobar]
 """)
     # Unknown keys is OK, though
@@ -376,9 +376,9 @@ def test_driver_options(tmp_path, monkeypatch) -> None:
     uri = f"file://{windows}{tmp_path.resolve().absolute().as_posix()}/foo.db"
     with (tmp_path / "sqlitetest.toml").open("w") as sink:
         sink.write(f"""
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
-[options]
+[Options]
 uri = "{uri}"
 """)
     with dbapi.connect("profile://sqlitetest") as conn:
@@ -403,9 +403,9 @@ shared = "adbc_driver_sqlite"
 
     with (profile_path / "proddata.toml").open("w") as sink:
         sink.write("""
-version = 1
+profile_version = 1
 driver = "sqlitemanifest"
-[options]
+[Options]
 """)
     with dbapi.connect("profile://proddata") as conn:
         with conn.cursor() as cursor:
@@ -421,9 +421,9 @@ def test_subdir(monkeypatch, tmp_path) -> None:
 
     with (subdir / "sqlitetest.toml").open("w") as sink:
         sink.write("""
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
-[options]
+[Options]
 """)
     with dbapi.connect("profile://sqlite/prod/sqlitetest") as conn:
         with conn.cursor() as cursor:
@@ -439,9 +439,9 @@ def test_absolute(monkeypatch, tmp_path) -> None:
 
     with (subdir / "sqlitetest.toml").open("w") as sink:
         sink.write("""
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
-[options]
+[Options]
 """)
 
     path = (subdir / "sqlitetest.toml").absolute().as_posix()
@@ -470,16 +470,16 @@ def test_user_path() -> None:
 
     with (path / f"{profile}.toml").open("w") as sink:
         sink.write("""
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
-[options]
+[Options]
 """)
 
     with (subpath / f"{profile}.toml").open("w") as sink:
         sink.write("""
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
-[options]
+[Options]
 """)
 
     try:
@@ -505,9 +505,9 @@ def test_conda(conda_prefix) -> None:
 
     with (path / f"{profile}.toml").open("w") as sink:
         sink.write("""
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
-[options]
+[Options]
 """)
     try:
         with dbapi.connect(f"profile://{profile}") as conn:
@@ -526,9 +526,9 @@ def test_conda_subdir(conda_prefix) -> None:
 
     with (path / f"{profile}.toml").open("w") as sink:
         sink.write("""
-version = 1
+profile_version = 1
 driver = "adbc_driver_sqlite"
-[options]
+[Options]
 """)
     try:
         with dbapi.connect(f"profile://{subdir}/{profile}") as conn:
