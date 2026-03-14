@@ -23,7 +23,8 @@ Node.js bindings for the [Arrow Database Connectivity (ADBC)](https://arrow.apac
 Built on a native [NAPI](https://nodejs.org/api/n-api.html) addon — requires Node.js 22+ and does not
 support browser or Deno environments. Bun is not officially tested.
 
-**Alpha: APIs may change without notice.**
+> **Alpha.** APIs may change without notice.
+> If you try this and run into issues or have feedback, please [open an issue](https://github.com/apache/arrow-adbc/issues).
 
 ## Installation
 
@@ -40,13 +41,13 @@ paths for a matching ADBC driver manifest or library.
 ```typescript
 import { AdbcDatabase } from 'adbc-driver-manager'
 
-// Full path to a driver shared library
-const db = new AdbcDatabase({ driver: '/path/to/libadbc_driver_sqlite.dylib' })
+// Short name (resolves from system/user paths)
+const db = new AdbcDatabase({ driver: 'sqlite' })
 ```
 
 ```typescript
-// Short name (resolves from system/user paths)
-const db = new AdbcDatabase({ driver: 'sqlite' })
+// Or a full path to a driver shared library
+const db = new AdbcDatabase({ driver: '/path/to/libadbc_driver_sqlite.dylib' })
 ```
 
 Once you have a database, open a connection and run queries:
@@ -54,23 +55,36 @@ Once you have a database, open a connection and run queries:
 ```typescript
 const connection = await db.connect()
 
-// Execute a query and iterate Arrow RecordBatches
-const reader = await connection.query('SELECT 1 AS value')
-for await (const batch of reader) {
-  console.log(batch.toArray())
-}
+// Execute a query — returns an Apache Arrow Table
+const table = await connection.query('SELECT 1 AS value')
+console.log(table.toArray())
 
-// Or use the lower-level statement API
-const stmt = await connection.createStatement()
-await stmt.setSqlQuery('SELECT 1 AS value')
-const result = await stmt.executeQuery()
-for await (const batch of result) {
+// For large result sets, stream record batches instead
+const reader = await connection.queryStream('SELECT * FROM large_table')
+for await (const batch of reader) {
   console.log(`Received batch with ${batch.numRows} rows`)
 }
-await stmt.close()
+
+// DML — returns the number of affected rows
+const affected = await connection.execute('DELETE FROM my_table WHERE id = 1')
 
 await connection.close()
 await db.close()
+```
+
+For finer-grained control, use the statement API directly:
+
+```typescript
+import { tableFromArrays } from 'apache-arrow'
+
+const stmt = await connection.createStatement()
+await stmt.setSqlQuery('SELECT * FROM my_table WHERE id = ?')
+await stmt.bind(tableFromArrays({ id: [42] }))
+const reader = await stmt.executeQuery()
+for await (const batch of reader) {
+  console.log(batch.toArray())
+}
+await stmt.close()
 ```
 
 ## Development
