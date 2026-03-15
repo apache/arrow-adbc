@@ -797,6 +797,48 @@ TEST_F(DriverManifest, LoadNonAsciiPath) {
   UnsetConfigPath();
 }
 
+// Test loading a driver DLL with a path that contains non-ASCII chars
+// See https://github.com/apache/arrow-adbc/issues/3970
+TEST_F(DriverManifest, LoadDriverDllFromNonAsciiPath) {
+  // Create a directory with original characters from the issue (项目 = "project")
+#ifdef _WIN32
+  std::filesystem::path non_ascii_dir = temp_dir / L"\u9879\u76ee";
+#else
+  std::filesystem::path non_ascii_dir = temp_dir / "\u9879\u76ee";
+#endif
+  std::filesystem::create_directories(non_ascii_dir);
+
+  // Create a dummy driver DLL, we'll just check th error message later to confirm
+  std::filesystem::path test_file = non_ascii_dir / "dummy.dll";
+  std::ofstream(test_file) << "not a real DLL";
+
+  // Create a UTF-8 encoded string to simulate what Python or another caller would
+  // pass
+  std::string utf8_path;
+#ifdef _WIN32
+  std::wstring wpath = test_file.wstring();
+  int size =
+      WideCharToMultiByte(CP_UTF8, 0, wpath.c_str(), -1, nullptr, 0, nullptr, nullptr);
+  utf8_path.resize(size - 1);
+  WideCharToMultiByte(CP_UTF8, 0, wpath.c_str(), -1, utf8_path.data(), size, nullptr,
+                      nullptr);
+#else
+  utf8_path = test_file.string();
+#endif
+
+  // Try to load the dummy driver but let it fail. Then check the error message for the
+  // original characters.
+  AdbcLoadDriver(utf8_path.c_str(), nullptr, ADBC_VERSION_1_1_0, &driver, &error);
+  ASSERT_TRUE(error.message != nullptr);
+  std::string error_msg(error.message);
+
+  // Assert on the error message. Should contain the UTF-8 bytes for 项目 and not "é¡¹ç›®"
+  EXPECT_TRUE(error_msg.find("\xe9\xa1\xb9\xe7\x9b\xae") != std::string::npos)
+      << "UTF-8 path with Chinese characters (项目) was not properly decoded.\n"
+      << "Expected path to contain UTF-8 bytes \\xe9\\xa1\\xb9\\xe7\\x9b\\xae (项目)\n"
+      << "Full error message: " << error_msg;
+}
+
 TEST_F(DriverManifest, DisallowEnvConfig) {
   std::ofstream test_manifest_file(temp_dir / "sqlite.toml");
   ASSERT_TRUE(test_manifest_file.is_open());
