@@ -137,6 +137,7 @@ Show-Header "Verify C/C++ Sources"
 $CppBuildDir = Join-Path $ArrowTempDir cpp-build
 New-Item -ItemType Directory -Force -Path $CppBuildDir | Out-Null
 
+$env:_ADBC_IS_CONDA = "1"
 # XXX(apache/arrow-adbc#634): not working on Windows due to it picking
 # up MSVC as the C compiler, which then blows up when /Werror gets
 # passed in by some package

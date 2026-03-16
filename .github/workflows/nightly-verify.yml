@@ -242,7 +242,7 @@ jobs:
           # printing a loop of DEADLYSIGNAL
           sudo sysctl vm.mmap_rnd_bits=28
           pushd arrow-adbc
-          docker compose run -e PYTHON=3.13 --rm python-debug
+          docker compose run -e PYTHON=3.14 --rm python-debug
 
   source-verify-docker:
     name: "Verify Source (OS)/${{ matrix.os }} ${{ matrix.version }}"
