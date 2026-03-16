@@ -575,6 +575,7 @@ test_python() {
     CMAKE_PREFIX_PATH="${CONDA_BACKUP_CMAKE_PREFIX_PATH}:${CMAKE_PREFIX_PATH}"
     # The CMake setup forces RPATH to be the Conda prefix
     local -r install_prefix="${CONDA_PREFIX}"
+    export _ADBC_IS_CONDA=1
   else
     local -r install_prefix="${ARROW_TMPDIR}/local"
   fi
