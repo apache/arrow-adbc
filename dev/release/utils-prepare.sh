@@ -23,6 +23,7 @@ update_versions() {
 
   local conda_version="${VERSION_NATIVE}"
   local csharp_version="${VERSION_CSHARP}"
+  local js_version="${VERSION_JS}"
   local linux_version="${RELEASE}"
   local rust_version="${VERSION_CSHARP}"
   case ${type} in
@@ -34,6 +35,7 @@ update_versions() {
       local java_version="${VERSION_JAVA}"
       local py_version="${VERSION_NATIVE}"
       local r_version="${VERSION_R}"
+      local latest_release_version="${RELEASE}"
       ;;
     snapshot)
       local c_version="${VERSION_NATIVE}-SNAPSHOT"
@@ -43,6 +45,7 @@ update_versions() {
       local java_version="${VERSION_JAVA}-SNAPSHOT"
       local py_version="${VERSION_NATIVE}dev"
       local r_version="${PREVIOUS_VERSION_R}.9000"
+      local latest_release_version="${PREVIOUS_RELEASE}"
       ;;
     *)
       echo "Unknown type: ${type}"
@@ -65,6 +68,7 @@ update_versions() {
   echo "GLib/Ruby: ${glib_version}"
   echo "Java: ${java_version}"
   echo "Linux: ${linux_version}"
+  echo "JavaScript: ${js_version}"
   echo "Python: ${py_version}"
   echo "R: ${r_version}"
   echo "Rust: ${rust_version}"
@@ -97,6 +101,8 @@ update_versions() {
   git add "${ADBC_DIR}/csharp/Directory.Build.props"
 
   sed -i.bak -E "s/release = \".+\"/release = \"${docs_version}\"/g" "${ADBC_DIR}/docs/source/conf.py"
+  rm "${ADBC_DIR}/docs/source/conf.py.bak"
+  sed -i.bak -E "s/latest_release = \".+\"/latest_release = \"${latest_release_version}\"/g" "${ADBC_DIR}/docs/source/conf.py"
   rm "${ADBC_DIR}/docs/source/conf.py.bak"
   git add "${ADBC_DIR}/docs/source/conf.py"
 
@@ -148,6 +154,18 @@ update_versions() {
   # Update Cargo.lock file
   cargo check --manifest-path "${ADBC_DIR}/rust/Cargo.toml"
   git add "${ADBC_DIR}/rust/Cargo.lock"
+
+  pushd "${ADBC_DIR}/javascript"
+  sed -i.bak -E \
+    -e "s/^  \"version\": \".+\"/  \"version\": \"${js_version}\"/" \
+    -e "s/(\"@apache-arrow\/adbc-driver-manager[^\"]*\"): \".+\"/\1: \"${js_version}\"/g" \
+    package.json
+  rm package.json.bak
+  npx --yes napi version
+  sed -i.bak -E "s/^version = \".+\"/version = \"${js_version}\"/" Cargo.toml
+  rm Cargo.toml.bak
+  git add package.json package-lock.json Cargo.toml npm/*/package.json
+  popd
 
   if [ ${type} = "release" ]; then
     pushd "${ADBC_DIR}/ci/linux-packages"

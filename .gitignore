@@ -83,6 +83,9 @@ local/
 
 site/
 
+# Design plans
+docs/plans/
+
 # Python
 dist/
 .hypothesis/
@@ -128,3 +131,10 @@ target/
 # Meson subproject support
 /c/subprojects/*
 !/c/subprojects/*.wrap
+
+# Node.js specific ignores
+javascript/**/node_modules/
+javascript/**/target/
+javascript/**/dist/
+javascript/native/*.node
+javascript/native/build/

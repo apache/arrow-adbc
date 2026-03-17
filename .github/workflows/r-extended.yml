@@ -45,6 +45,8 @@ jobs:
         rversion: [oldrel, release, devel]
         os: [macOS, windows, ubuntu]
         pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql]
+      # ASF allows max 20 concurrent jobs across entire file
+      max-parallel: 5
       fail-fast: false
 
     uses: ./.github/workflows/r-check.yml
@@ -60,6 +62,7 @@ jobs:
         rversion: [oldrel, release, devel]
         os: [macOS, windows, ubuntu]
         pkg: [adbcflightsql, adbcsnowflake, adbcbigquery]
+      max-parallel: 5
       fail-fast: false
 
     uses: ./.github/workflows/r-check.yml
@@ -81,6 +84,7 @@ jobs:
         rversion: ["3.6", "4.0", "4.1"]
         os: [ubuntu]
         pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql]
+      max-parallel: 4
       fail-fast: false
 
     uses: ./.github/workflows/r-check.yml
@@ -100,6 +104,7 @@ jobs:
         rversion: ["4.1"]
         os: [windows]
         pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql]
+      max-parallel: 3
       fail-fast: false
 
     uses: ./.github/workflows/r-check.yml
@@ -119,6 +124,7 @@ jobs:
         rversion: [release]
         os: [ubuntu]
         pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql]
+      max-parallel: 3
       fail-fast: false
 
     steps:

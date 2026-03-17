@@ -39,7 +39,7 @@
 //! [export_driver] macro.
 
 pub mod driver_exporter;
-mod utils;
+pub mod options;
 #[doc(hidden)]
 pub use driver_exporter::FFIDriver;
 pub mod methods;

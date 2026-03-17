@@ -82,6 +82,14 @@ pkgconfig.generate(
     version: meson.project_version(),
 )
 
+if arrow_glib.version().version_compare('>=23.0.0')
+    components = arrow_glib.version().split('.')
+    major = components[0]
+    minor = components[1]
+    arrow_glib_gir_api_version = f'@major@.@minor@'
+else
+    arrow_glib_gir_api_version = '1.0'
+endif
 adbc_arrow_glib_gir = \
     gnome.generate_gir(
     libadbc_arrow_glib,
@@ -91,7 +99,7 @@ adbc_arrow_glib_gir = \
     fatal_warnings: gi_fatal_warnings,
     header: 'adbc-arrow-glib/adbc-arrow-glib.h',
     identifier_prefix: 'GADBCArrow',
-    includes: ['ADBC-1.0', 'Arrow-1.0'],
+    includes: ['ADBC-1.0', f'Arrow-@arrow_glib_gir_api_version@'],
     install: true,
     namespace: 'ADBCArrow',
     nsversion: api_version,

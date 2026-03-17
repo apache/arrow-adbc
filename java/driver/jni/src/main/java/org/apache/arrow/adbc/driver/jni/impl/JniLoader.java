@@ -105,4 +105,58 @@ public enum JniLoader {
     NativeAdbc.statementBind(
         statement.getStatementHandle(), batch.memoryAddress(), schema.memoryAddress());
   }
+
+  public long statementExecuteUpdate(NativeStatementHandle statement) throws AdbcException {
+    return NativeAdbc.statementExecuteUpdate(statement.getStatementHandle());
+  }
+
+  public void statementPrepare(NativeStatementHandle statement) throws AdbcException {
+    NativeAdbc.statementPrepare(statement.getStatementHandle());
+  }
+
+  public void statementSetOption(NativeStatementHandle statement, String key, String value)
+      throws AdbcException {
+    NativeAdbc.statementSetOption(statement.getStatementHandle(), key, value);
+  }
+
+  public NativeSchemaResult statementExecuteSchema(NativeStatementHandle statement)
+      throws AdbcException {
+    return NativeAdbc.statementExecuteSchema(statement.getStatementHandle());
+  }
+
+  public NativeQueryResult connectionGetObjects(
+      NativeConnectionHandle connection,
+      int depth,
+      String catalog,
+      String dbSchema,
+      String tableName,
+      String[] tableTypes,
+      String columnName)
+      throws AdbcException {
+    return NativeAdbc.connectionGetObjects(
+        connection.getConnectionHandle(),
+        depth,
+        catalog,
+        dbSchema,
+        tableName,
+        tableTypes,
+        columnName);
+  }
+
+  public NativeQueryResult connectionGetInfo(NativeConnectionHandle connection, int[] infoCodes)
+      throws AdbcException {
+    return NativeAdbc.connectionGetInfo(connection.getConnectionHandle(), infoCodes);
+  }
+
+  public NativeSchemaResult connectionGetTableSchema(
+      NativeConnectionHandle connection, String catalog, String dbSchema, String tableName)
+      throws AdbcException {
+    return NativeAdbc.connectionGetTableSchema(
+        connection.getConnectionHandle(), catalog, dbSchema, tableName);
+  }
+
+  public NativeQueryResult connectionGetTableTypes(NativeConnectionHandle connection)
+      throws AdbcException {
+    return NativeAdbc.connectionGetTableTypes(connection.getConnectionHandle());
+  }
 }

@@ -23,7 +23,8 @@ nodejs
 numpydoc
 polars
 pytest
-sphinx>=8.2
+# https://github.com/apache/arrow-adbc/issues/3976
+sphinx>=8.2,<9
 sphinx-autobuild
 sphinx-copybutton
 sphinx-design

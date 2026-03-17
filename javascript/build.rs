@@ -15,16 +15,6 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use adbc_core::options::OptionValue;
-
-#[allow(unknown_lints)]
-#[warn(non_exhaustive_omitted_patterns)]
-pub(crate) fn get_opt_name(value: &OptionValue) -> &str {
-    match value {
-        OptionValue::String(_) => "String",
-        OptionValue::Bytes(_) => "Bytes",
-        OptionValue::Int(_) => "Int",
-        OptionValue::Double(_) => "Double",
-        _ => unreachable!(),
-    }
+fn main() {
+  napi_build::setup();
 }

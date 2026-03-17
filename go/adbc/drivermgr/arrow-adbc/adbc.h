@@ -1300,6 +1300,11 @@ AdbcStatusCode AdbcDatabaseGetOptionInt(struct AdbcDatabase* database, const cha
 /// Options may be set before AdbcDatabaseInit.  Some drivers may
 /// support setting options after initialization as well.
 ///
+/// Driver managers may treat some option keys as manager-reserved and
+/// handle them without forwarding them to the underlying driver.  In
+/// particular, the option key "profile" is reserved for connection
+/// profiles and must not be implemented or interpreted by drivers.
+///
 /// \param[in] database The database.
 /// \param[in] key The option to set.
 /// \param[in] value The option value.

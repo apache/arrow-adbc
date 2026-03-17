@@ -69,7 +69,7 @@ NANOARROW_CXX_NAMESPACE_BEGIN
 class Exception : public std::exception {
  public:
   Exception(const std::string& msg) : msg_(msg) {}
-  const char* what() const noexcept { return msg_.c_str(); }
+  const char* what() const noexcept override { return msg_.c_str(); }
 
  private:
   std::string msg_;
@@ -98,9 +98,9 @@ class Exception : public std::exception {
   } while (0)
 #endif
 
-#define NANOARROW_THROW_NOT_OK(EXPR)                                                   \
-  _NANOARROW_THROW_NOT_OK_IMPL(_NANOARROW_MAKE_NAME(errno_status_, __COUNTER__), EXPR, \
-                               #EXPR)
+#define NANOARROW_THROW_NOT_OK(EXPR) \
+  _NANOARROW_THROW_NOT_OK_IMPL(      \
+      _NANOARROW_MAKE_NAME(errno_status_, _NANOARROW_UNIQUE_SUFFIX), EXPR, #EXPR)
 
 /// @}
 

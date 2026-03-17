@@ -34,12 +34,12 @@ def _make_reader():
     return AdbcRecordBatchReader._import_from_c(exported.address)
 
 
-def test_reader():
+def test_reader() -> None:
     wrapped = _make_reader()
     assert wrapped.read_next_batch() == batches[0]
 
 
-def test_reader_error():
+def test_reader_error() -> None:
     schema = pyarrow.schema([("ints", "int32")])
 
     def batches():
@@ -56,7 +56,7 @@ def test_reader_error():
         wrapped.read_next_batch()
 
 
-def test_reader_methods():
+def test_reader_methods() -> None:
     with _make_reader() as reader:
         assert reader.read_all() == pyarrow.Table.from_batches(batches, schema)
 

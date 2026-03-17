@@ -42,7 +42,7 @@
 
 namespace adbc {
 
-const std::string& CurrentArch() {
+inline const std::string& CurrentArch() {
 #if defined(_WIN32)
   static const std::string platform = "windows";
 #elif defined(__APPLE__)

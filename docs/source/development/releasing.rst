@@ -70,16 +70,23 @@ Some steps of the release require being a committer or a PMC member.
 Before creating a Release Candidate
 ===================================
 
-Regenerate the LICENSE.txt (see CONTRIBUTING.md) and create a pull request if
-any changes were needed.
+1. Regenerate the LICENSE.txt (see CONTRIBUTING.md) and create a pull request if any changes were needed.
 
-.. code-block::
+2. Set up your shell environment:
 
-   # Setup gpg agent for signing artifacts
-   source dev/release/setup-gpg-agent.sh
+   .. code-block::
 
-   # Activate conda environment
-   mamba activate adbc
+      # Setup gpg agent for signing artifacts
+      source dev/release/setup-gpg-agent.sh
+
+      # Activate conda environment
+      mamba activate adbc
+
+3. Ensure merged pull requests and closed issues have their milestone set appropriately:
+
+   .. code-block::
+
+      ./dev/release/assign-milestone.sh
 
 Check Nightly Verification Job
 ------------------------------
@@ -222,6 +229,7 @@ How to Verify Release Candidates
       - the javadoc command must also be accessible
    - Go
    - CMake, ninja-build, libpq (with headers), SQLite (with headers)
+   - Node.js 22+
 
    Alternatively, you can have the verification script download and install dependencies automatically via Conda.
    See the environment variables below.
@@ -404,6 +412,25 @@ Be sure to go through on the following checklist:
       # dev/release/post-08-rust.sh
       dev/release/post-08-rust.sh
 
+.. dropdown:: Upload Node.js packages to npm
+   :class-title: sd-fs-5
+   :class-container: sd-shadow-md
+
+   You must have publish access to the `apache-arrow npm organization
+   <https://www.npmjs.com/org/apache-arrow>`_.  If you don't have access
+   yet, an existing org admin can add you.
+
+   You will need to `create an access token <https://docs.npmjs.com/creating-and-viewing-access-tokens>`_.
+
+   An owner can upload:
+
+   .. code-block:: bash
+
+      export NPM_TOKEN=<your access token here>
+
+      # dev/release/post-09-npm.sh
+      dev/release/post-09-npm.sh
+
 .. dropdown:: Update conda-forge packages
    :class-title: sd-fs-5
    :class-container: sd-shadow-md
@@ -412,22 +439,6 @@ Be sure to go through on the following checklist:
    https://github.com/conda-forge/arrow-adbc-split-feedstock
 
    A conda-forge or feedstock maintainer can review and merge.
-
-.. dropdown:: Announce the new release
-   :class-title: sd-fs-5
-   :class-container: sd-shadow-md
-
-   Write a release announcement and send to announce@apache.org and
-   dev@arrow.apache.org.
-
-   The announcement to announce@apache.org must be sent from your apache.org
-   e-mail address to be accepted.
-
-   Template:
-
-   .. code-block:: Bash
-
-      dev/release/post-09-announce.sh
 
 .. dropdown:: Remove old artifacts
    :class-title: sd-fs-5
@@ -447,8 +458,8 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      # dev/release/post-11-bump-versions.sh ../arrow
-      dev/release/post-11-bump-versions.sh <arrow-dir>
+      # dev/release/post-12-bump-versions.sh ../arrow
+      dev/release/post-12-bump-versions.sh <arrow-dir>
 
 .. dropdown:: Publish release blog post
    :class-title: sd-fs-5
@@ -460,7 +471,26 @@ Be sure to go through on the following checklist:
 
    .. code-block:: Bash
 
-      # dev/release/post-12-website.sh ../arrow-site
-      dev/release/post-12-website.sh <arrow-site-dir>
+      # dev/release/post-13-website.sh ../arrow-site
+      dev/release/post-13-website.sh <arrow-site-dir>
+
+.. dropdown:: Announce the new release
+   :class-title: sd-fs-5
+   :class-container: sd-shadow-md
+
+   Write a release announcement and send to announce@apache.org and
+   dev@arrow.apache.org.  The script below will generate an announcement.  It
+   requires you to provide the URL of the blog post above, so this cannot be
+   sent until the blog post is published.  Also, it expects to be run from the
+   *release branch* and not ``main``.
+
+   The announcement to announce@apache.org must be sent from your apache.org
+   e-mail address to be accepted.
+
+   Template:
+
+   .. code-block:: Bash
+
+      dev/release/post-11-announce.sh
 
 .. _nightly-website.yml: https://github.com/apache/arrow-adbc/actions/workflows/nightly-website.yml

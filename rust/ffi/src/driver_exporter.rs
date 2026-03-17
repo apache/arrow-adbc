@@ -26,7 +26,7 @@ use arrow_array::StructArray;
 use arrow_schema::DataType;
 
 use super::{
-    types::ErrorPrivateData, utils::get_opt_name, FFI_AdbcConnection, FFI_AdbcDatabase,
+    options::get_opt_name, types::ErrorPrivateData, FFI_AdbcConnection, FFI_AdbcDatabase,
     FFI_AdbcDriver, FFI_AdbcError, FFI_AdbcErrorDetail, FFI_AdbcPartitions, FFI_AdbcStatement,
 };
 use adbc_core::constants::ADBC_STATUS_OK;
@@ -1888,19 +1888,15 @@ extern "C" fn statement_get_parameter_schema<DriverType: Driver>(
 
 unsafe extern "C" fn error_get_detail_count(error: *const FFI_AdbcError) -> c_int {
     match error.as_ref() {
-        None => 0,
-        Some(error) => {
-            if !error.private_data.is_null() {
-                let private_data = error.private_data as *const ErrorPrivateData;
-                (*private_data)
-                    .keys
-                    .len()
-                    .try_into()
-                    .expect("Overflow with error detail count")
-            } else {
-                0
-            }
+        Some(error) if !error.private_data.is_null() => {
+            let private_data = error.private_data as *const ErrorPrivateData;
+            (*private_data)
+                .keys
+                .len()
+                .try_into()
+                .expect("Overflow with error detail count")
         }
+        _ => 0,
     }
 }
 

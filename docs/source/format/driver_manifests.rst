@@ -438,6 +438,13 @@ to control which directories will be searched for manifests, with the behavior b
        * ``LOAD_FLAG_ALLOW_RELATIVE_PATHS`` - allow a relative path to be used
        * ``LOAD_FLAG_DEFAULT`` - default value with all flags set
 
+.. warning:: A driver manifest file must not be named ``profile.toml``.
+             The name ``profile`` is reserved for
+             :doc:`connection profiles <connection_profiles>`.
+             Using it as the basename of a driver manifest conflicts with how
+             driver managers interpret URIs beginning with the
+             ``profile://`` scheme.
+
 Unix-like Platforms
 ^^^^^^^^^^^^^^^^^^^
 
@@ -492,7 +499,7 @@ would happen for ODBC drivers. The search for a manifest on Windows would be the
      * ``entrypoint`` - the entrypoint to use for the driver if a non-default entrypoint is needed
      * ``driver`` - the path to the driver shared library
 
-   * If no registry key is found, then the directory ``%LOCAL_APPDATA%\ADBC\Drivers`` is searched
+   * If no registry key is found, then the directory ``%LOCALAPPDATA%\ADBC\Drivers`` is searched
 
 #. If the ``LOAD_FLAG_SEARCH_SYSTEM`` load option is set, the driver manager will search for a system-level configuration
 

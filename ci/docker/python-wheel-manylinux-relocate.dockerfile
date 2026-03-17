@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 
 RUN apt update \
   && apt install -y \

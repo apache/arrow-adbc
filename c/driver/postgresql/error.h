@@ -99,7 +99,9 @@ Status MakeStatus(PGresult* result, const char* format_string, Args&&... args) {
   }
 
   Status status(code, message);
-  status.SetSqlState(sqlstate);
+  if (sqlstate) {
+    status.SetSqlState(sqlstate);
+  }
   for (const auto& field : kDetailFields) {
     const char* value = PQresultErrorField(result, field.code);
     if (value) {

@@ -68,7 +68,7 @@ a particular system; or 2) could be used to implement such access.
   with application-specific extension points but without any higher
   level semantics.
 
-:external+arrow:doc:`Arrow JDBC <java/jdbc>`
+:external+arrowjava:doc:`Arrow JDBC <jdbc>`
   A Java submodule, part of Arrow/Java, that uses the JDBC API to
   produce Arrow data. Internally, it can read data only row-at-a-time.
 

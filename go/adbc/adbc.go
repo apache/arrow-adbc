@@ -33,6 +33,18 @@
 // safely from multiple goroutines, but not necessarily concurrent
 // access. Specific implementations may allow concurrent access.
 //
+// # Context Support
+//
+// Context-aware interfaces are available:
+// DatabaseWithContext, ConnectionWithContext, and StatementWithContext. These interfaces
+// require context.Context for all methods to enable uniform OpenTelemetry
+// instrumentation, cancellation, and deadline propagation.
+//
+// Applications can use adapter functions (AsDatabaseContext, AsConnectionContext,
+// AsStatementContext) to wrap non-context implementations, allowing gradual
+// migration without breaking changes. New drivers should implement the Context
+// interfaces directly.
+//
 // EXPERIMENTAL. Interface subject to change.
 package adbc
 
@@ -341,12 +353,41 @@ type Driver interface {
 	NewDatabase(opts map[string]string) (Database, error)
 }
 
+// DriverWithContext is an extension interface to allow the creation of a database
+// by providing an existing [context.Context] to initialize OpenTelemetry tracing.
+// It is similar to [database/sql.Driver] taking a map of keys and values as options
+// to initialize a [Connection] to the database. Any common connection
+// state can live in the Driver itself, for example an in-memory database
+// can place ownership of the actual database in this driver.
+//
+// Any connection specific options should be set using SetOptions before
+// calling Open.
+type DriverWithContext interface {
+	NewDatabaseWithContext(ctx context.Context, opts map[string]string) (Database, error)
+}
+
 type Database interface {
 	SetOptions(map[string]string) error
 	Open(ctx context.Context) (Connection, error)
 
 	// Close closes this database and releases any associated resources.
 	Close() error
+}
+
+// DatabaseWithContext is a Database that supports context.Context for all operations.
+//
+// This interface mirrors Database but requires context.Context for all methods
+// that may perform I/O or long-running operations. This enables uniform
+// OpenTelemetry instrumentation, cancellation, and deadline propagation.
+type DatabaseWithContext interface {
+	// SetOptions sets options for the database.
+	SetOptions(ctx context.Context, opts map[string]string) error
+
+	// Open opens a connection to the database.
+	Open(ctx context.Context) (ConnectionWithContext, error)
+
+	// Close closes the database and releases associated resources.
+	Close(ctx context.Context) error
 }
 
 type InfoCode uint32
@@ -581,6 +622,30 @@ type Connection interface {
 	ReadPartition(ctx context.Context, serializedPartition []byte) (array.RecordReader, error)
 }
 
+// ConnectionWithContext is a Connection that supports context.Context for all operations.
+//
+// This interface mirrors Connection but requires context.Context for all methods
+// that may perform I/O or long-running operations. Methods that already accepted
+// context in Connection maintain their signatures here.
+type ConnectionWithContext interface {
+	// Metadata methods (these already accept context in Connection)
+	GetInfo(ctx context.Context, infoCodes []InfoCode) (array.RecordReader, error)
+	GetObjects(ctx context.Context, depth ObjectDepth, catalog, dbSchema, tableName, columnName *string, tableType []string) (array.RecordReader, error)
+	GetTableSchema(ctx context.Context, catalog, dbSchema *string, tableName string) (*arrow.Schema, error)
+	GetTableTypes(ctx context.Context) (array.RecordReader, error)
+
+	// Transaction methods (these already accept context in Connection)
+	Commit(ctx context.Context) error
+	Rollback(ctx context.Context) error
+
+	// Methods that now require context
+	NewStatement(ctx context.Context) (StatementWithContext, error)
+	Close(ctx context.Context) error
+
+	// Partition method (already accepts context in Connection)
+	ReadPartition(ctx context.Context, serializedPartition []byte) (array.RecordReader, error)
+}
+
 // PostInitOptions is an optional interface which can be implemented by
 // drivers which allow modifying and setting options after initializing
 // a connection or statement.
@@ -721,6 +786,30 @@ type Statement interface {
 	ExecutePartitions(context.Context) (*arrow.Schema, Partitions, int64, error)
 }
 
+// StatementWithContext is a Statement that supports context.Context for all operations.
+//
+// This interface mirrors Statement but requires context.Context for all methods
+// that may perform I/O or long-running operations. Methods that already accepted
+// context in Statement maintain their signatures here.
+type StatementWithContext interface {
+	// Methods that now require context
+	Close(ctx context.Context) error
+	SetOption(ctx context.Context, key, val string) error
+	SetSqlQuery(ctx context.Context, query string) error
+	SetSubstraitPlan(ctx context.Context, plan []byte) error
+	GetParameterSchema(ctx context.Context) (*arrow.Schema, error)
+
+	// Execute methods (these already accept context in Statement)
+	ExecuteQuery(ctx context.Context) (array.RecordReader, int64, error)
+	ExecuteUpdate(ctx context.Context) (int64, error)
+	Prepare(ctx context.Context) error
+	ExecutePartitions(ctx context.Context) (*arrow.Schema, Partitions, int64, error)
+
+	// Bind methods (these already accept context in Statement)
+	Bind(ctx context.Context, values arrow.RecordBatch) error
+	BindStream(ctx context.Context, stream array.RecordReader) error
+}
+
 // ConnectionGetStatistics is a Connection that supports getting
 // statistics on data in the database.
 //
@@ -817,4 +906,30 @@ type GetSetOptions interface {
 	GetOptionBytes(key string) ([]byte, error)
 	GetOptionInt(key string) (int64, error)
 	GetOptionDouble(key string) (float64, error)
+}
+
+// GetSetOptionsWithContext is a GetSetOptions that supports context.Context for all operations.
+//
+// GetOption functions should return an error with StatusNotFound for unsupported options.
+// SetOption functions should return an error with StatusNotImplemented for unsupported options.
+type GetSetOptionsWithContext interface {
+	SetOption(ctx context.Context, key, value string) error
+	SetOptionBytes(ctx context.Context, key string, value []byte) error
+	SetOptionInt(ctx context.Context, key string, value int64) error
+	SetOptionDouble(ctx context.Context, key string, value float64) error
+	GetOption(ctx context.Context, key string) (string, error)
+	GetOptionBytes(ctx context.Context, key string) ([]byte, error)
+	GetOptionInt(ctx context.Context, key string) (int64, error)
+	GetOptionDouble(ctx context.Context, key string) (float64, error)
+}
+
+// ConnectionGetStatisticsWithContext is a ConnectionGetStatistics that supports context.Context.
+type ConnectionGetStatisticsWithContext interface {
+	GetStatistics(ctx context.Context, catalog, dbSchema, tableName *string, approximate bool) (array.RecordReader, error)
+	GetStatisticNames(ctx context.Context) (array.RecordReader, error)
+}
+
+// StatementExecuteSchemaWithContext is a StatementExecuteSchema that supports context.Context.
+type StatementExecuteSchemaWithContext interface {
+	ExecuteSchema(ctx context.Context) (*arrow.Schema, error)
 }

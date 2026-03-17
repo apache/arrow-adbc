@@ -2398,7 +2398,7 @@ func (srv *GetObjectsTestServer) DoGetTables(ctx context.Context, cmd flightsql.
 	ch := make(chan flight.StreamChunk)
 
 	rdr, err := array.NewRecordReader(schema_ref.TablesWithIncludedSchema, []arrow.RecordBatch{tablesRecordWithSchema})
-	go flight.StreamChunksFromReader(rdr, ch)
+	go flight.StreamChunksFromReader(ctx, rdr, ch)
 	return schema_ref.TablesWithIncludedSchema, ch, err
 }
 

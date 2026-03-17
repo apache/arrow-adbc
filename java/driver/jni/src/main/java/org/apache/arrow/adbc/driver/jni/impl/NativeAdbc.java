@@ -45,4 +45,30 @@ class NativeAdbc {
   // isn't a very general interface)
   @SuppressWarnings("unused")
   static native void statementBindStream(long handle, long stream) throws AdbcException;
+
+  static native long statementExecuteUpdate(long handle) throws AdbcException;
+
+  static native void statementPrepare(long handle) throws AdbcException;
+
+  static native void statementSetOption(long handle, String key, String value) throws AdbcException;
+
+  static native NativeSchemaResult statementExecuteSchema(long handle) throws AdbcException;
+
+  static native NativeQueryResult connectionGetObjects(
+      long handle,
+      int depth,
+      String catalog,
+      String dbSchema,
+      String tableName,
+      String[] tableTypes,
+      String columnName)
+      throws AdbcException;
+
+  static native NativeQueryResult connectionGetInfo(long handle, int[] infoCodes)
+      throws AdbcException;
+
+  static native NativeSchemaResult connectionGetTableSchema(
+      long handle, String catalog, String dbSchema, String tableName) throws AdbcException;
+
+  static native NativeQueryResult connectionGetTableTypes(long handle) throws AdbcException;
 }

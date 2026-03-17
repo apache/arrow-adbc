@@ -20,10 +20,13 @@ package org.apache.arrow.adbc.driver.jni;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
+import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.adbc.driver.jni.impl.JniLoader;
 import org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle;
+import org.apache.arrow.adbc.driver.jni.impl.NativeStatementHandle;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.ipc.ArrowReader;
+import org.apache.arrow.vector.types.pojo.Schema;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 public class JniConnection implements AdbcConnection {
@@ -41,8 +44,76 @@ public class JniConnection implements AdbcConnection {
   }
 
   @Override
+  public AdbcStatement bulkIngest(String targetTableName, BulkIngestMode mode)
+      throws AdbcException {
+    NativeStatementHandle stmtHandle = JniLoader.INSTANCE.openStatement(handle);
+    try {
+      String modeValue;
+      switch (mode) {
+        case CREATE:
+          modeValue = "adbc.ingest.mode.create";
+          break;
+        case APPEND:
+          modeValue = "adbc.ingest.mode.append";
+          break;
+        case REPLACE:
+          modeValue = "adbc.ingest.mode.replace";
+          break;
+        case CREATE_APPEND:
+          modeValue = "adbc.ingest.mode.create_append";
+          break;
+        default:
+          throw new IllegalArgumentException("Unknown bulk ingest mode: " + mode);
+      }
+
+      JniLoader.INSTANCE.statementSetOption(
+          stmtHandle, "adbc.ingest.target_table", targetTableName);
+      JniLoader.INSTANCE.statementSetOption(stmtHandle, "adbc.ingest.mode", modeValue);
+
+      return new JniStatement(allocator, stmtHandle);
+    } catch (Exception e) {
+      stmtHandle.close();
+      throw e;
+    }
+  }
+
+  @Override
   public ArrowReader getInfo(int @Nullable [] infoCodes) throws AdbcException {
-    throw new UnsupportedOperationException();
+    return JniLoader.INSTANCE.connectionGetInfo(handle, infoCodes).importStream(allocator);
+  }
+
+  @Override
+  public ArrowReader getObjects(
+      GetObjectsDepth depth,
+      String catalogPattern,
+      String dbSchemaPattern,
+      String tableNamePattern,
+      String[] tableTypes,
+      String columnNamePattern)
+      throws AdbcException {
+    return JniLoader.INSTANCE
+        .connectionGetObjects(
+            handle,
+            depth.ordinal(),
+            catalogPattern,
+            dbSchemaPattern,
+            tableNamePattern,
+            tableTypes,
+            columnNamePattern)
+        .importStream(allocator);
+  }
+
+  @Override
+  public Schema getTableSchema(String catalog, String dbSchema, String tableName)
+      throws AdbcException {
+    return JniLoader.INSTANCE
+        .connectionGetTableSchema(handle, catalog, dbSchema, tableName)
+        .importSchema(allocator);
+  }
+
+  @Override
+  public ArrowReader getTableTypes() throws AdbcException {
+    return JniLoader.INSTANCE.connectionGetTableTypes(handle).importStream(allocator);
   }
 
   @Override

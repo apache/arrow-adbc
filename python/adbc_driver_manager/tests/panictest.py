@@ -22,7 +22,7 @@ import argparse
 import adbc_driver_manager
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("driver_path")
     args = parser.parse_args()

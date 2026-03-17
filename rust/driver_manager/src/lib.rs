@@ -101,50 +101,41 @@
 // would prevent any parallelism between driver calls, which is not desirable.
 
 pub mod error;
+pub mod profile;
+pub mod search;
 
 use std::collections::HashSet;
-use std::env;
-use std::ffi::{CStr, CString, OsStr};
-use std::fs;
+use std::ffi::{CString, OsStr};
 use std::ops::DerefMut;
-use std::os::raw::{c_char, c_void};
-use std::path::{Path, PathBuf};
+use std::os::raw::c_char;
+use std::path::PathBuf;
 use std::pin::Pin;
 use std::ptr::{null, null_mut};
 use std::sync::{Arc, Mutex};
 
+use adbc_ffi::options::{
+    check_status, get_option_bytes, get_option_string, set_option_connection, set_option_database,
+    set_option_statement,
+};
 use arrow_array::ffi::{to_ffi, FFI_ArrowSchema};
 use arrow_array::ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream};
 use arrow_array::{Array, RecordBatch, RecordBatchReader, StructArray};
-use toml::de::DeTable;
 
 use adbc_core::{
-    constants,
-    error::{AdbcStatusCode, Error, Result, Status},
+    error::{Error, Result, Status},
     options::{self, AdbcVersion, InfoCode, OptionDatabase, OptionValue},
     Connection, Database, Driver, LoadFlags, Optionable, PartitionedResult, Statement,
-    LOAD_FLAG_ALLOW_RELATIVE_PATHS, LOAD_FLAG_SEARCH_ENV, LOAD_FLAG_SEARCH_SYSTEM,
-    LOAD_FLAG_SEARCH_USER,
 };
 use adbc_ffi::driver_method;
 
-use crate::error::libloading_error_to_adbc_error;
+use self::search::{parse_driver_uri, DriverLibrary, DriverLocator};
+use crate::profile::{
+    process_profile_value, ConnectionProfile, ConnectionProfileProvider, FilesystemProfileProvider,
+};
 
-const ERR_ONLY_STRING_OPT: &str = "Only string option value are supported with ADBC 1.0.0";
 const ERR_CANCEL_UNSUPPORTED: &str =
     "Canceling connection or statement is not supported with ADBC 1.0.0";
 const ERR_STATISTICS_UNSUPPORTED: &str = "Statistics are not supported with ADBC 1.0.0";
-
-fn check_status(status: AdbcStatusCode, error: adbc_ffi::FFI_AdbcError) -> Result<()> {
-    match status {
-        constants::ADBC_STATUS_OK => Ok(()),
-        _ => {
-            let mut error: Error = error.try_into()?;
-            error.status = status.try_into()?;
-            Err(error)
-        }
-    }
-}
 
 #[derive(Debug)]
 struct ManagedDriverInner {
@@ -158,124 +149,6 @@ struct ManagedDriverInner {
     // function pointers.
     // See: https://doc.rust-lang.org/std/ops/trait.Drop.html#drop-order
     _library: Option<libloading::Library>,
-}
-
-#[derive(Debug, Default)]
-struct DriverInfo {
-    lib_path: std::path::PathBuf,
-    entrypoint: Option<Vec<u8>>,
-    // TODO: until we add more logging these are unused so we'll leave
-    // them out until such time that we do so.
-    // driver_name: String,
-    // version: String,
-    // source: String,
-}
-
-impl DriverInfo {
-    fn load_driver_manifest(manifest_file: &Path, entrypoint: Option<&[u8]>) -> Result<Self> {
-        let contents = fs::read_to_string(manifest_file).map_err(|e| {
-            Error::with_message_and_status(
-                format!("Could not read manifest '{}': {e}", manifest_file.display()),
-                Status::InvalidArguments,
-            )
-        })?;
-
-        let manifest = DeTable::parse(&contents)
-            .map_err(|e| Error::with_message_and_status(e.to_string(), Status::InvalidArguments))?;
-
-        let manifest_version = manifest
-            .get_ref()
-            .get("manifest_version")
-            .and_then(|v| v.get_ref().as_integer())
-            .map(|v| v.as_str())
-            .unwrap_or("1");
-
-        if manifest_version != "1" {
-            return Err(Error::with_message_and_status(
-                format!("Unsupported manifest version: {manifest_version}"),
-                Status::InvalidArguments,
-            ));
-        }
-
-        // leave these out until we add logging that would actually utilize them
-        // let driver_name = get_optional_key(&manifest, "name");
-        // let version = get_optional_key(&manifest, "version");
-        // let source = get_optional_key(&manifest, "source");
-        let (os, arch, extra) = arch_triplet();
-
-        let lib_path = match manifest
-            .get_ref()
-            .get("Driver")
-            .and_then(|v| v.get_ref().get("shared"))
-            .map(|v| v.get_ref())
-        {
-            Some(driver) => {
-                if driver.is_str() {
-                    // If the value is a string, we assume it is the path to the shared library.
-                    Ok(PathBuf::from(driver.as_str().unwrap_or_default()))
-                } else if driver.is_table() {
-                    // If the value is a table, we look for the specific key for this OS and architecture.
-                    Ok(PathBuf::from(
-                        driver
-                            .get(format!("{os}_{arch}{extra}"))
-                            .and_then(|v| v.get_ref().as_str())
-                            .unwrap_or_default(),
-                    ))
-                } else {
-                    Err(Error::with_message_and_status(
-                        format!(
-                            "Driver.shared must be a string or a table, found '{}'",
-                            driver.type_str()
-                        ),
-                        Status::InvalidArguments,
-                    ))
-                }
-            }
-            None => Err(Error::with_message_and_status(
-                format!(
-                    "Manifest '{}' missing Driver.shared key",
-                    manifest_file.display()
-                ),
-                Status::InvalidArguments,
-            )),
-        }?;
-
-        if lib_path.as_os_str().is_empty() {
-            return Err(Error::with_message_and_status(
-                format!(
-                    "Manifest '{}' found empty string for library path of Driver.shared.{os}_{arch}{extra}",
-                    lib_path.display()
-                ),
-                Status::InvalidArguments,
-            ));
-        }
-
-        let entrypoint_val = manifest
-            .get_ref()
-            .get("Driver")
-            .and_then(|v| v.get_ref().as_table())
-            .and_then(|t| t.get("entrypoint"))
-            .map(|v| v.get_ref());
-
-        if let Some(entry) = entrypoint_val {
-            if !entry.is_str() {
-                return Err(Error::with_message_and_status(
-                    "Driver entrypoint must be a string".to_string(),
-                    Status::InvalidArguments,
-                ));
-            }
-        }
-
-        let entrypoint = match entrypoint_val.and_then(|v| v.as_str()) {
-            Some(s) => Some(s.as_bytes().to_vec()),
-            None => entrypoint.map(|s| s.to_vec()),
-        };
-
-        Ok(DriverInfo {
-            lib_path,
-            entrypoint,
-        })
-    }
 }
 
 /// Implementation of [Driver].
@@ -295,7 +168,7 @@ impl ManagedDriver {
         init: &adbc_ffi::FFI_AdbcDriverInitFunc,
         version: AdbcVersion,
     ) -> Result<Self> {
-        let driver = Self::load_impl(init, version)?;
+        let driver = DriverLibrary::from_static_init(init).init_driver(version)?;
         let inner = Arc::pin(ManagedDriverInner {
             driver,
             version,
@@ -315,14 +188,14 @@ impl ManagedDriver {
     ///  - if `name` has an extension: it is treated as a filename. If the load_flags does not
     ///    contain `LOAD_FLAG_ALLOW_RELATIVE_PATHS`, then relative paths will be rejected.
     ///    - if the extension is `toml` then we attempt to load the Driver Manifest, otherwise
-    ///      we defer to the previous logic in [`Self::load_dynamic_from_filename`] which will attempt to
-    ///      load the library
+    ///      we defer to the previous logic in [`Self::load_dynamic_from_filename`] which will
+    ///      attempt to load the library
     ///  - if `name` does not have an extension but is an absolute path: we first check to see
     ///    if there is an existing file with the same name that *does* have a "toml" extension,
     ///    attempting to load that if it exists. Otherwise we just pass it to load_dynamic_from_filename.
     ///  - Finally, if there's no extension and it is not an absolute path, we will search through
-    ///    the relevant directories (based on the set load flags) for a manifest file with this name, and
-    ///    if one is not found we see if the name refers to a library on the LD_LIBRARY_PATH etc.
+    ///    the relevant directories (based on the set load flags) for a manifest file with this name,
+    ///    and if one is not found we see if the name refers to a library on the LD_LIBRARY_PATH etc.
     pub fn load_from_name(
         name: impl AsRef<OsStr>,
         entrypoint: Option<&[u8]>,
@@ -330,37 +203,10 @@ impl ManagedDriver {
         load_flags: LoadFlags,
         additional_search_paths: Option<Vec<PathBuf>>,
     ) -> Result<Self> {
-        let driver_path = Path::new(name.as_ref());
-        let allow_relative = load_flags & LOAD_FLAG_ALLOW_RELATIVE_PATHS != 0;
-        if let Some(ext) = driver_path.extension() {
-            if !allow_relative && driver_path.is_relative() {
-                return Err(Error::with_message_and_status(
-                    "Relative paths are not allowed",
-                    Status::InvalidArguments,
-                ));
-            }
+        let search_hit = DriverLibrary::search(name, load_flags, additional_search_paths)?;
 
-            if ext == "toml" {
-                Self::load_from_manifest(driver_path, entrypoint, version)
-            } else {
-                Self::load_dynamic_from_filename(driver_path, entrypoint, version)
-            }
-        } else if driver_path.is_absolute() {
-            let toml_path = driver_path.with_extension("toml");
-            if toml_path.is_file() {
-                return Self::load_from_manifest(&toml_path, entrypoint, version);
-            }
-
-            Self::load_dynamic_from_filename(driver_path, entrypoint, version)
-        } else {
-            Self::find_driver(
-                driver_path,
-                entrypoint,
-                version,
-                load_flags,
-                additional_search_paths,
-            )
-        }
+        let entrypoint = search_hit.resolve_entrypoint(entrypoint).to_vec();
+        Self::load_from_library(search_hit.library, entrypoint.as_ref(), version)
     }
 
     /// Load a driver from a dynamic library filename.
@@ -378,70 +224,18 @@ impl ManagedDriver {
         entrypoint: Option<&[u8]>,
         version: AdbcVersion,
     ) -> Result<Self> {
-        let default_entrypoint = get_default_entrypoint(filename.as_ref());
+        let entrypoint = DriverLibrary::derive_entrypoint(entrypoint, filename.as_ref());
+        let library = DriverLibrary::load_library(filename)?;
+        Self::load_from_library(library, entrypoint.as_ref(), version)
+    }
 
-        let entrypoint = entrypoint.unwrap_or(default_entrypoint.as_bytes());
-        // By default, go builds the libraries with '-Wl -z nodelete' which does not
-        // unload the go runtime. This isn't respected on mac ( https://github.com/golang/go/issues/11100#issuecomment-932638093 )
-        // so we need to explicitly load the library with RTLD_NODELETE( which prevents unloading )
-        #[cfg(unix)]
-        let library: libloading::Library = unsafe {
-            use std::os::raw::c_int;
-
-            const RTLD_NODELETE: c_int = if cfg!(any(
-                target_os = "macos",
-                target_os = "ios",
-                target_os = "tvos",
-                target_os = "visionos",
-                target_os = "watchos",
-            )) {
-                0x80
-            } else if cfg!(any(
-                target_os = "linux",
-                target_os = "android",
-                target_os = "emscripten",
-                target_os = "freebsd",
-                target_os = "dragonfly",
-                target_os = "openbsd",
-                target_os = "haiku",
-                target_os = "solaris",
-                target_os = "illumos",
-                target_env = "uclibc",
-                target_env = "newlib",
-                target_os = "fuchsia",
-                target_os = "redox",
-                target_os = "hurd",
-                target_os = "cygwin",
-            )) {
-                0x1000
-            } else {
-                0x0
-            };
-
-            libloading::os::unix::Library::open(
-                Some(filename.as_ref()),
-                libloading::os::unix::RTLD_LAZY | libloading::os::unix::RTLD_LOCAL | RTLD_NODELETE,
-            )
-            .map(Into::into)
-            .map_err(libloading_error_to_adbc_error)?
-        };
-        // on windows, we emulate the same behaviour by using the GET_MODULE_HANDLE_EX_FLAG_PIN. The `.pin()`
-        // function implements this.
-        #[cfg(windows)]
-        let library: libloading::Library = unsafe {
-            let library: libloading::os::windows::Library =
-                libloading::os::windows::Library::new(filename.as_ref())
-                    .map_err(libloading_error_to_adbc_error)?;
-            library.pin().map_err(libloading_error_to_adbc_error)?;
-            library.into()
-        };
-        let init: libloading::Symbol<adbc_ffi::FFI_AdbcDriverInitFunc> = unsafe {
-            library
-                .get(entrypoint)
-                .or_else(|_| library.get(b"AdbcDriverInit"))
-                .map_err(libloading_error_to_adbc_error)?
-        };
-        let driver = Self::load_impl(&init, version)?;
+    fn load_from_library(
+        library: libloading::Library,
+        entrypoint: &[u8],
+        version: AdbcVersion,
+    ) -> Result<ManagedDriver> {
+        let driver =
+            DriverLibrary::try_from_dynamic_library(&library, entrypoint)?.init_driver(version)?;
         let inner = Arc::pin(ManagedDriverInner {
             driver,
             version,
@@ -463,25 +257,9 @@ impl ManagedDriver {
         entrypoint: Option<&[u8]>,
         version: AdbcVersion,
     ) -> Result<Self> {
-        let filename = libloading::library_filename(name.as_ref());
-        Self::load_dynamic_from_filename(filename, entrypoint, version)
-    }
-
-    fn load_impl(
-        init: &adbc_ffi::FFI_AdbcDriverInitFunc,
-        version: AdbcVersion,
-    ) -> Result<adbc_ffi::FFI_AdbcDriver> {
-        let mut error = adbc_ffi::FFI_AdbcError::default();
-        let mut driver = adbc_ffi::FFI_AdbcDriver::default();
-        let status = unsafe {
-            init(
-                version.into(),
-                &mut driver as *mut adbc_ffi::FFI_AdbcDriver as *mut c_void,
-                &mut error,
-            )
-        };
-        check_status(status, error)?;
-        Ok(driver)
+        let entrypoint = DriverLibrary::derive_entrypoint_from_name(entrypoint, name.as_ref());
+        let library = DriverLibrary::load_library_from_name(name.as_ref())?;
+        Self::load_from_library(library, entrypoint.as_ref(), version)
     }
 
     fn inner_ffi_driver(&self) -> &adbc_ffi::FFI_AdbcDriver {
@@ -491,7 +269,10 @@ impl ManagedDriver {
     /// Returns a new database using the loaded driver.
     fn database_new(&self) -> Result<adbc_ffi::FFI_AdbcDatabase> {
         let driver = self.inner_ffi_driver();
-        let mut database = adbc_ffi::FFI_AdbcDatabase::default();
+        let mut database = adbc_ffi::FFI_AdbcDatabase {
+            private_driver: driver,
+            ..Default::default()
+        };
 
         // DatabaseNew
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
@@ -516,172 +297,6 @@ impl ManagedDriver {
         check_status(status, error)?;
 
         Ok(database)
-    }
-
-    fn load_from_manifest(
-        driver_path: &Path,
-        entrypoint: Option<&[u8]>,
-        version: AdbcVersion,
-    ) -> Result<Self> {
-        let info = DriverInfo::load_driver_manifest(driver_path, entrypoint)?;
-        Self::load_dynamic_from_filename(info.lib_path, info.entrypoint.as_deref(), version)
-    }
-
-    fn search_path_list(
-        driver_path: &Path,
-        path_list: Vec<PathBuf>,
-        entrypoint: Option<&[u8]>,
-        version: AdbcVersion,
-    ) -> Result<Self> {
-        for path in path_list {
-            let mut full_path = path.join(driver_path);
-            full_path.set_extension("toml");
-            if full_path.is_file() {
-                if let Ok(result) = Self::load_from_manifest(&full_path, entrypoint, version) {
-                    return Ok(result);
-                }
-            }
-
-            full_path.set_extension(""); // Remove the extension to try loading as a dynamic library.
-            if let Ok(result) = Self::load_dynamic_from_filename(full_path, entrypoint, version) {
-                return Ok(result);
-            }
-        }
-
-        Err(Error::with_message_and_status(
-            format!("Driver not found: {}", driver_path.display()),
-            Status::NotFound,
-        ))
-    }
-
-    #[cfg(target_os = "windows")]
-    fn find_driver(
-        driver_path: &Path,
-        entrypoint: Option<&[u8]>,
-        version: AdbcVersion,
-        load_flags: LoadFlags,
-        additional_search_paths: Option<Vec<PathBuf>>,
-    ) -> Result<Self> {
-        if load_flags & LOAD_FLAG_SEARCH_ENV != 0 {
-            if let Ok(result) = Self::search_path_list(
-                driver_path,
-                get_search_paths(LOAD_FLAG_SEARCH_ENV),
-                entrypoint,
-                version,
-            ) {
-                return Ok(result);
-            }
-        }
-
-        // the logic we want is that we first search ADBC_DRIVER_PATH if set,
-        // then we search the additional search paths if they exist. Finally,
-        // we will search CONDA_PREFIX if built with conda_build before moving on.
-        if let Some(additional_search_paths) = additional_search_paths {
-            if let Ok(result) =
-                Self::search_path_list(driver_path, additional_search_paths, entrypoint, version)
-            {
-                return Ok(result);
-            }
-        }
-
-        #[cfg(conda_build)]
-        if load_flags & LOAD_FLAG_SEARCH_ENV != 0 {
-            if let Some(conda_prefix) = env::var_os("CONDA_PREFIX") {
-                let conda_path = PathBuf::from(conda_prefix)
-                    .join("etc")
-                    .join("adbc")
-                    .join("drivers");
-                if let Ok(result) =
-                    Self::search_path_list(driver_path, vec![conda_path], entrypoint, version)
-                {
-                    return Ok(result);
-                }
-            }
-        }
-
-        if load_flags & LOAD_FLAG_SEARCH_USER != 0 {
-            // first check registry for the driver, then check the user config path
-            if let Ok(result) = load_driver_from_registry(
-                windows_registry::CURRENT_USER,
-                driver_path.as_os_str(),
-                entrypoint,
-            ) {
-                return Self::load_dynamic_from_filename(result.lib_path, entrypoint, version);
-            }
-
-            if let Ok(result) = Self::search_path_list(
-                driver_path,
-                get_search_paths(LOAD_FLAG_SEARCH_USER),
-                entrypoint,
-                version,
-            ) {
-                return Ok(result);
-            }
-        }
-
-        if load_flags & LOAD_FLAG_SEARCH_SYSTEM != 0 {
-            if let Ok(result) = load_driver_from_registry(
-                windows_registry::LOCAL_MACHINE,
-                driver_path.as_os_str(),
-                entrypoint,
-            ) {
-                return Self::load_dynamic_from_filename(result.lib_path, entrypoint, version);
-            }
-
-            if let Ok(result) = Self::search_path_list(
-                driver_path,
-                get_search_paths(LOAD_FLAG_SEARCH_SYSTEM),
-                entrypoint,
-                version,
-            ) {
-                return Ok(result);
-            }
-        }
-
-        let driver_name = driver_path.as_os_str().to_string_lossy().into_owned();
-        Self::load_dynamic_from_name(driver_name, entrypoint, version)
-    }
-
-    #[cfg(not(windows))]
-    fn find_driver(
-        driver_path: &Path,
-        entrypoint: Option<&[u8]>,
-        version: AdbcVersion,
-        load_flags: LoadFlags,
-        additional_search_paths: Option<Vec<PathBuf>>,
-    ) -> Result<Self> {
-        let mut path_list = get_search_paths(load_flags & LOAD_FLAG_SEARCH_ENV);
-
-        if let Some(additional_search_paths) = additional_search_paths {
-            path_list.extend(additional_search_paths);
-        }
-
-        #[cfg(conda_build)]
-        if load_flags & LOAD_FLAG_SEARCH_ENV != 0 {
-            if let Some(conda_prefix) = env::var_os("CONDA_PREFIX") {
-                let conda_path = PathBuf::from(conda_prefix)
-                    .join("etc")
-                    .join("adbc")
-                    .join("drivers");
-                path_list.push(conda_path);
-            }
-        }
-
-        path_list.extend(get_search_paths(load_flags & !LOAD_FLAG_SEARCH_ENV));
-        if let Ok(result) = Self::search_path_list(driver_path, path_list, entrypoint, version) {
-            return Ok(result);
-        }
-
-        // Convert OsStr to String before passing to load_dynamic_from_name
-        let driver_name = driver_path.as_os_str().to_string_lossy().into_owned();
-        if let Ok(driver) = Self::load_dynamic_from_name(driver_name, entrypoint, version) {
-            return Ok(driver);
-        }
-
-        Err(Error::with_message_and_status(
-            format!("Driver not found: {}", driver_path.display()),
-            Status::NotFound,
-        ))
     }
 }
 
@@ -723,201 +338,6 @@ impl Driver for ManagedDriver {
     }
 }
 
-#[cfg(target_os = "windows")]
-fn load_driver_from_registry(
-    root: &windows_registry::Key,
-    driver_name: &OsStr,
-    entrypoint: Option<&[u8]>,
-) -> Result<DriverInfo> {
-    const ADBC_DRIVER_REGISTRY: &str = "SOFTWARE\\ADBC\\Drivers";
-    let drivers_key = root
-        .open(ADBC_DRIVER_REGISTRY)
-        .and_then(|k| k.open(driver_name.to_str().unwrap_or_default()))
-        .map_err(|e| {
-            Error::with_message_and_status(
-                format!("Failed to open registry key: {e}"),
-                Status::NotFound,
-            )
-        })?;
-
-    let manifest_version = drivers_key.get_u32("manifest_version").unwrap_or(1);
-
-    if manifest_version != 1 {
-        return Err(Error::with_message_and_status(
-            format!("Unsupported manifest version: {manifest_version}"),
-            Status::InvalidArguments,
-        ));
-    }
-
-    let entrypoint_val = drivers_key
-        .get_string("entrypoint")
-        .ok()
-        .map(|s| s.into_bytes());
-
-    Ok(DriverInfo {
-        lib_path: PathBuf::from(drivers_key.get_string("driver").unwrap_or_default()),
-        entrypoint: entrypoint_val.or_else(|| entrypoint.map(|s| s.to_vec())),
-    })
-}
-
-// construct default entrypoint from the library name
-fn get_default_entrypoint(driver_path: impl AsRef<OsStr>) -> String {
-    // - libadbc_driver_sqlite.so.2.0.0 -> AdbcDriverSqliteInit
-    // - adbc_driver_sqlite.dll -> AdbcDriverSqliteInit
-    // - proprietary_driver.dll -> AdbcProprietaryDriverInit
-
-    // potential path -> filename
-    let mut filename = driver_path.as_ref().to_str().unwrap_or_default();
-    if let Some(pos) = filename.rfind(['/', '\\']) {
-        filename = &filename[pos + 1..];
-    }
-
-    // remove all extensions
-    filename = filename
-        .find('.')
-        .map_or_else(|| filename, |pos| &filename[..pos]);
-
-    let mut entrypoint = filename
-        .to_string()
-        .strip_prefix(env::consts::DLL_PREFIX)
-        .unwrap_or(filename)
-        .split(&['-', '_'][..])
-        .map(|s| {
-            // uppercase first character of a string
-            // https://stackoverflow.com/questions/38406793/why-is-capitalizing-the-first-letter-of-a-string-so-convoluted-in-rust
-            let mut c = s.chars();
-            match c.next() {
-                None => String::new(),
-                Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
-            }
-        })
-        .collect::<Vec<_>>()
-        .join("");
-
-    if !entrypoint.starts_with("Adbc") {
-        entrypoint = format!("Adbc{entrypoint}");
-    }
-
-    entrypoint.push_str("Init");
-    entrypoint
-}
-
-fn set_option_database(
-    driver: &adbc_ffi::FFI_AdbcDriver,
-    database: &mut adbc_ffi::FFI_AdbcDatabase,
-    version: AdbcVersion,
-    key: impl AsRef<str>,
-    value: OptionValue,
-) -> Result<()> {
-    let key = CString::new(key.as_ref())?;
-    let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
-    #[allow(unknown_lints)]
-    #[warn(non_exhaustive_omitted_patterns)]
-    let status = match (version, value) {
-        (_, OptionValue::String(value)) => {
-            let value = CString::new(value)?;
-            let method = driver_method!(driver, DatabaseSetOption);
-            unsafe { method(database, key.as_ptr(), value.as_ptr(), &mut error) }
-        }
-        (AdbcVersion::V110, OptionValue::Bytes(value)) => {
-            let method = driver_method!(driver, DatabaseSetOptionBytes);
-            unsafe {
-                method(
-                    database,
-                    key.as_ptr(),
-                    value.as_ptr(),
-                    value.len(),
-                    &mut error,
-                )
-            }
-        }
-        (AdbcVersion::V110, OptionValue::Int(value)) => {
-            let method = driver_method!(driver, DatabaseSetOptionInt);
-            unsafe { method(database, key.as_ptr(), value, &mut error) }
-        }
-        (AdbcVersion::V110, OptionValue::Double(value)) => {
-            let method = driver_method!(driver, DatabaseSetOptionDouble);
-            unsafe { method(database, key.as_ptr(), value, &mut error) }
-        }
-        (AdbcVersion::V100, _) => Err(Error::with_message_and_status(
-            ERR_ONLY_STRING_OPT,
-            Status::NotImplemented,
-        ))?,
-        (_, _) => unreachable!(),
-    };
-    check_status(status, error)
-}
-
-// Utility function to implement `*GetOption` and `*GetOptionBytes`. Basically,
-// it allocates a fixed-sized buffer to store the option's value, call the driver's
-// `*GetOption`/`*GetOptionBytes` method that will fill this buffer and finally
-// we return the option's value as a `Vec`. Note that if the fixed-size buffer
-// is too small, we retry the same operation with a bigger buffer (the size of
-// which is obtained via the out parameter `length` of `*GetOption`/`*GetOptionBytes`).
-fn get_option_buffer<F, T>(
-    key: impl AsRef<str>,
-    mut populate: F,
-    driver: &adbc_ffi::FFI_AdbcDriver,
-) -> Result<Vec<T>>
-where
-    F: FnMut(*const c_char, *mut T, *mut usize, *mut adbc_ffi::FFI_AdbcError) -> AdbcStatusCode,
-    T: Default + Clone,
-{
-    const DEFAULT_LENGTH: usize = 128;
-    let key = CString::new(key.as_ref())?;
-    let mut run = |length| {
-        let mut value = vec![T::default(); length];
-        let mut length: usize = core::mem::size_of::<T>() * value.len();
-        let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
-        (
-            populate(key.as_ptr(), value.as_mut_ptr(), &mut length, &mut error),
-            length,
-            value,
-            error,
-        )
-    };
-
-    let (status, length, value, error) = run(DEFAULT_LENGTH);
-    check_status(status, error)?;
-
-    if length <= DEFAULT_LENGTH {
-        Ok(value[..length].to_vec())
-    } else {
-        let (status, _, value, error) = run(length);
-        check_status(status, error)?;
-        Ok(value)
-    }
-}
-
-fn get_option_bytes<F>(
-    key: impl AsRef<str>,
-    populate: F,
-    driver: &adbc_ffi::FFI_AdbcDriver,
-) -> Result<Vec<u8>>
-where
-    F: FnMut(*const c_char, *mut u8, *mut usize, *mut adbc_ffi::FFI_AdbcError) -> AdbcStatusCode,
-{
-    get_option_buffer(key, populate, driver)
-}
-
-fn get_option_string<F>(
-    key: impl AsRef<str>,
-    populate: F,
-    driver: &adbc_ffi::FFI_AdbcDriver,
-) -> Result<String>
-where
-    F: FnMut(
-        *const c_char,
-        *mut c_char,
-        *mut usize,
-        *mut adbc_ffi::FFI_AdbcError,
-    ) -> AdbcStatusCode,
-{
-    let value = get_option_buffer(key, populate, driver)?;
-    let value = unsafe { CStr::from_ptr(value.as_ptr()) };
-    Ok(value.to_string_lossy().to_string())
-}
-
 struct ManagedDatabaseInner {
     database: Mutex<adbc_ffi::FFI_AdbcDatabase>,
     driver: Pin<Arc<ManagedDriverInner>>,
@@ -941,6 +361,67 @@ pub struct ManagedDatabase {
 }
 
 impl ManagedDatabase {
+    /// Creates a new database connection from a URI string.
+    ///
+    /// This method supports both direct driver URIs and profile references.
+    ///
+    /// # URI Formats
+    ///
+    /// ## Direct Driver Connection
+    /// - `"driver_name:connection_string"` - Loads the specified driver and connects
+    /// - `"driver_name://host:port/database"` - Standard database URI format
+    ///
+    /// ## Profile Reference
+    /// - `"profile://name"` - Loads connection configuration from a profile file
+    /// - `"profile:///absolute/path/to/profile.toml"` - Absolute path to profile
+    /// - `"profile://relative/path/to/profile.toml"` - Relative path to profile
+    ///
+    /// # Arguments
+    ///
+    /// * `uri` - The connection URI or profile reference
+    /// * `entrypoint` - Optional driver entrypoint name (uses default if `None`)
+    /// * `version` - ADBC version to use
+    /// * `load_flags` - Flags controlling driver loading behavior
+    /// * `additional_search_paths` - Optional paths to search for drivers or profiles
+    ///
+    /// # Returns
+    ///
+    /// A configured `ManagedDatabase` ready for creating connections.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The URI format is invalid
+    /// - The driver cannot be loaded
+    /// - The profile cannot be found or parsed
+    /// - Database initialization fails
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use adbc_core::options::AdbcVersion;
+    /// use adbc_driver_manager::ManagedDatabase;
+    /// use adbc_core::LOAD_FLAG_DEFAULT;
+    ///
+    /// // Direct connection
+    /// let db = ManagedDatabase::from_uri(
+    ///     "sqlite::memory:",
+    ///     None,
+    ///     AdbcVersion::V100,
+    ///     LOAD_FLAG_DEFAULT,
+    ///     None
+    /// )?;
+    ///
+    /// // Profile connection
+    /// let db = ManagedDatabase::from_uri(
+    ///     "profile://my_database",
+    ///     None,
+    ///     AdbcVersion::V100,
+    ///     LOAD_FLAG_DEFAULT,
+    ///     None
+    /// )?;
+    /// # Ok::<(), adbc_core::error::Error>(())
+    /// ```
     pub fn from_uri(
         uri: &str,
         entrypoint: Option<&[u8]>,
@@ -958,6 +439,53 @@ impl ManagedDatabase {
         )
     }
 
+    /// Creates a new database connection from a URI with additional options.
+    ///
+    /// This is similar to [`from_uri`](Self::from_uri), but allows passing additional
+    /// database options that override any options from profiles.
+    ///
+    /// # Arguments
+    ///
+    /// * `uri` - The connection URI or profile reference
+    /// * `entrypoint` - Optional driver entrypoint name
+    /// * `version` - ADBC version to use
+    /// * `load_flags` - Flags controlling driver loading behavior
+    /// * `additional_search_paths` - Optional paths to search for drivers or profiles
+    /// * `opts` - Database options to apply (override profile options)
+    ///
+    /// # Returns
+    ///
+    /// A configured `ManagedDatabase` with the specified options applied.
+    ///
+    /// # Option Priority
+    ///
+    /// Options are applied in this order (later values override earlier ones):
+    /// 1. Profile options (if using a profile URI)
+    /// 2. Options provided via `opts` parameter
+    /// 3. URI connection string (for direct driver URIs)
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use adbc_core::options::{AdbcVersion, OptionDatabase, OptionValue};
+    /// use adbc_driver_manager::ManagedDatabase;
+    /// use adbc_core::LOAD_FLAG_DEFAULT;
+    ///
+    /// let opts = vec![
+    ///     (OptionDatabase::Username, OptionValue::String("user".to_string())),
+    ///     (OptionDatabase::Password, OptionValue::String("pass".to_string())),
+    /// ];
+    ///
+    /// let db = ManagedDatabase::from_uri_with_opts(
+    ///     "profile://my_database",
+    ///     None,
+    ///     AdbcVersion::V100,
+    ///     LOAD_FLAG_DEFAULT,
+    ///     None,
+    ///     opts,
+    /// )?;
+    /// # Ok::<(), adbc_core::error::Error>(())
+    /// ```
     pub fn from_uri_with_opts(
         uri: &str,
         entrypoint: Option<&[u8]>,
@@ -966,20 +494,121 @@ impl ManagedDatabase {
         additional_search_paths: Option<Vec<PathBuf>>,
         opts: impl IntoIterator<Item = (<Self as Optionable>::Option, OptionValue)>,
     ) -> Result<Self> {
-        let (driver, final_uri) = parse_driver_uri(uri)?;
-
-        let mut drv = ManagedDriver::load_from_name(
-            driver,
+        let profile_provider = FilesystemProfileProvider;
+        Self::from_uri_with_profile_provider(
+            uri,
             entrypoint,
             version,
             load_flags,
             additional_search_paths,
-        )?;
+            profile_provider,
+            opts,
+        )
+    }
 
-        drv.new_database_with_opts(opts.into_iter().chain(std::iter::once((
-            OptionDatabase::Uri,
-            OptionValue::String(final_uri.to_string()),
-        ))))
+    /// Creates a new database connection from a URI with a custom profile provider.
+    ///
+    /// This advanced method allows using a custom implementation of
+    /// [`ConnectionProfileProvider`] to load profiles from alternative sources
+    /// (e.g., remote configuration services, encrypted storage, etc.).
+    ///
+    /// # Arguments
+    ///
+    /// * `uri` - The connection URI or profile reference
+    /// * `entrypoint` - Optional driver entrypoint name
+    /// * `version` - ADBC version to use
+    /// * `load_flags` - Flags controlling driver loading behavior
+    /// * `additional_search_paths` - Optional paths to search for drivers or profiles
+    /// * `profile_provider` - Custom profile provider implementation
+    /// * `opts` - Database options to apply (override profile options)
+    ///
+    /// # Returns
+    ///
+    /// A configured `ManagedDatabase` using the custom profile provider.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use adbc_core::options::{AdbcVersion, OptionDatabase, OptionValue};
+    /// use adbc_driver_manager::ManagedDatabase;
+    /// use adbc_driver_manager::profile::FilesystemProfileProvider;
+    /// use adbc_core::LOAD_FLAG_DEFAULT;
+    ///
+    /// let provider = FilesystemProfileProvider;
+    /// let opts = vec![(OptionDatabase::Username, OptionValue::String("admin".to_string()))];
+    ///
+    /// let db = ManagedDatabase::from_uri_with_profile_provider(
+    ///     "profile://my_database",
+    ///     None,
+    ///     AdbcVersion::V100,
+    ///     LOAD_FLAG_DEFAULT,
+    ///     None,
+    ///     provider,
+    ///     opts,
+    /// )?;
+    /// # Ok::<(), adbc_core::error::Error>(())
+    /// ```
+    pub fn from_uri_with_profile_provider(
+        uri: &str,
+        entrypoint: Option<&[u8]>,
+        version: AdbcVersion,
+        load_flags: LoadFlags,
+        additional_search_paths: Option<Vec<PathBuf>>,
+        profile_provider: impl ConnectionProfileProvider,
+        opts: impl IntoIterator<Item = (<Self as Optionable>::Option, OptionValue)>,
+    ) -> Result<Self> {
+        let result = parse_driver_uri(uri)?;
+        let (mut drv, default_opts) = match result {
+            DriverLocator::Uri(driver, final_uri) => {
+                let drv = ManagedDriver::load_from_name(
+                    driver,
+                    entrypoint,
+                    version,
+                    load_flags,
+                    additional_search_paths,
+                )?;
+
+                let final_opts = vec![(
+                    OptionDatabase::Uri,
+                    OptionValue::String(final_uri.to_string()),
+                )];
+                (drv, final_opts)
+            }
+            DriverLocator::Profile(profile) => {
+                let profile =
+                    profile_provider.get_profile(profile, additional_search_paths.clone())?;
+                let (driver_name, init_func) = profile.get_driver_name()?;
+
+                let drv: ManagedDriver;
+                if let Some(init_fn) = init_func {
+                    drv = ManagedDriver::load_static(init_fn, version)?;
+                } else {
+                    drv = ManagedDriver::load_from_name(
+                        driver_name,
+                        entrypoint,
+                        version,
+                        load_flags,
+                        additional_search_paths,
+                    )?;
+                }
+
+                let profile_opts: Vec<(OptionDatabase, OptionValue)> = profile
+                    .get_options()?
+                    .into_iter()
+                    .map(|(k, v)| -> Result<(OptionDatabase, OptionValue)> {
+                        if let OptionValue::String(s) = v {
+                            let result = process_profile_value(&s)?;
+                            Ok((k, result))
+                        } else {
+                            Ok((k, v))
+                        }
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+                (drv, profile_opts)
+            }
+        };
+
+        drv.new_database_with_opts(default_opts.into_iter().chain(opts))
     }
 
     fn ffi_driver(&self) -> &adbc_ffi::FFI_AdbcDriver {
@@ -1128,52 +757,6 @@ impl Database for ManagedDatabase {
             inner: Arc::new(inner),
         })
     }
-}
-
-fn set_option_connection(
-    driver: &adbc_ffi::FFI_AdbcDriver,
-    connection: &mut adbc_ffi::FFI_AdbcConnection,
-    version: AdbcVersion,
-    key: impl AsRef<str>,
-    value: OptionValue,
-) -> Result<()> {
-    let key = CString::new(key.as_ref())?;
-    let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
-    #[allow(unknown_lints)]
-    #[warn(non_exhaustive_omitted_patterns)]
-    let status = match (version, value) {
-        (_, OptionValue::String(value)) => {
-            let value = CString::new(value)?;
-            let method = driver_method!(driver, ConnectionSetOption);
-            unsafe { method(connection, key.as_ptr(), value.as_ptr(), &mut error) }
-        }
-        (AdbcVersion::V110, OptionValue::Bytes(value)) => {
-            let method = driver_method!(driver, ConnectionSetOptionBytes);
-            unsafe {
-                method(
-                    connection,
-                    key.as_ptr(),
-                    value.as_ptr(),
-                    value.len(),
-                    &mut error,
-                )
-            }
-        }
-        (AdbcVersion::V110, OptionValue::Int(value)) => {
-            let method = driver_method!(driver, ConnectionSetOptionInt);
-            unsafe { method(connection, key.as_ptr(), value, &mut error) }
-        }
-        (AdbcVersion::V110, OptionValue::Double(value)) => {
-            let method = driver_method!(driver, ConnectionSetOptionDouble);
-            unsafe { method(connection, key.as_ptr(), value, &mut error) }
-        }
-        (AdbcVersion::V100, _) => Err(Error::with_message_and_status(
-            ERR_ONLY_STRING_OPT,
-            Status::NotImplemented,
-        ))?,
-        (_, _) => unreachable!(),
-    };
-    check_status(status, error)
 }
 
 struct ManagedConnectionInner {
@@ -1329,7 +912,10 @@ impl Connection for ManagedConnection {
         check_status(status, error)
     }
 
-    fn get_info(&self, codes: Option<HashSet<InfoCode>>) -> Result<impl RecordBatchReader> {
+    fn get_info(
+        &self,
+        codes: Option<HashSet<InfoCode>>,
+    ) -> Result<Box<dyn RecordBatchReader + Send + 'static>> {
         let mut stream = FFI_ArrowArrayStream::empty();
         let codes: Option<Vec<u32>> =
             codes.map(|codes| codes.iter().map(|code| code.into()).collect());
@@ -1352,7 +938,7 @@ impl Connection for ManagedConnection {
         };
         check_status(status, error)?;
         let reader = ArrowArrayStreamReader::try_new(stream)?;
-        Ok(reader)
+        Ok(Box::new(reader))
     }
 
     fn get_objects(
@@ -1363,7 +949,7 @@ impl Connection for ManagedConnection {
         table_name: Option<&str>,
         table_type: Option<Vec<&str>>,
         column_name: Option<&str>,
-    ) -> Result<impl RecordBatchReader> {
+    ) -> Result<Box<dyn RecordBatchReader + Send + 'static>> {
         let catalog = catalog.map(CString::new).transpose()?;
         let db_schema = db_schema.map(CString::new).transpose()?;
         let table_name = table_name.map(CString::new).transpose()?;
@@ -1415,7 +1001,7 @@ impl Connection for ManagedConnection {
         check_status(status, error)?;
 
         let reader = ArrowArrayStreamReader::try_new(stream)?;
-        Ok(reader)
+        Ok(Box::new(reader))
     }
 
     fn get_statistics(
@@ -1424,7 +1010,7 @@ impl Connection for ManagedConnection {
         db_schema: Option<&str>,
         table_name: Option<&str>,
         approximate: bool,
-    ) -> Result<impl RecordBatchReader> {
+    ) -> Result<Box<dyn RecordBatchReader + Send + 'static>> {
         if let AdbcVersion::V100 = self.driver_version() {
             return Err(Error::with_message_and_status(
                 ERR_STATISTICS_UNSUPPORTED,
@@ -1458,10 +1044,10 @@ impl Connection for ManagedConnection {
         };
         check_status(status, error)?;
         let reader = ArrowArrayStreamReader::try_new(stream)?;
-        Ok(reader)
+        Ok(Box::new(reader))
     }
 
-    fn get_statistic_names(&self) -> Result<impl RecordBatchReader> {
+    fn get_statistic_names(&self) -> Result<Box<dyn RecordBatchReader + Send + 'static>> {
         if let AdbcVersion::V100 = self.driver_version() {
             return Err(Error::with_message_and_status(
                 ERR_STATISTICS_UNSUPPORTED,
@@ -1476,7 +1062,7 @@ impl Connection for ManagedConnection {
         let status = unsafe { method(connection.deref_mut(), &mut stream, &mut error) };
         check_status(status, error)?;
         let reader = ArrowArrayStreamReader::try_new(stream)?;
-        Ok(reader)
+        Ok(Box::new(reader))
     }
 
     fn get_table_schema(
@@ -1512,7 +1098,7 @@ impl Connection for ManagedConnection {
         Ok((&schema).try_into()?)
     }
 
-    fn get_table_types(&self) -> Result<impl RecordBatchReader> {
+    fn get_table_types(&self) -> Result<Box<dyn RecordBatchReader + Send + 'static>> {
         let mut stream = FFI_ArrowArrayStream::empty();
         let driver = self.ffi_driver();
         let mut connection = self.inner.connection.lock().unwrap();
@@ -1521,10 +1107,13 @@ impl Connection for ManagedConnection {
         let status = unsafe { method(connection.deref_mut(), &mut stream, &mut error) };
         check_status(status, error)?;
         let reader = ArrowArrayStreamReader::try_new(stream)?;
-        Ok(reader)
+        Ok(Box::new(reader))
     }
 
-    fn read_partition(&self, partition: impl AsRef<[u8]>) -> Result<impl RecordBatchReader> {
+    fn read_partition(
+        &self,
+        partition: impl AsRef<[u8]>,
+    ) -> Result<Box<dyn RecordBatchReader + Send + 'static>> {
         let mut stream = FFI_ArrowArrayStream::empty();
         let driver = self.ffi_driver();
         let mut connection = self.inner.connection.lock().unwrap();
@@ -1542,54 +1131,8 @@ impl Connection for ManagedConnection {
         };
         check_status(status, error)?;
         let reader = ArrowArrayStreamReader::try_new(stream)?;
-        Ok(reader)
+        Ok(Box::new(reader))
     }
-}
-
-fn set_option_statement(
-    driver: &adbc_ffi::FFI_AdbcDriver,
-    statement: &mut adbc_ffi::FFI_AdbcStatement,
-    version: AdbcVersion,
-    key: impl AsRef<str>,
-    value: OptionValue,
-) -> Result<()> {
-    let key = CString::new(key.as_ref())?;
-    let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
-    #[allow(unknown_lints)]
-    #[warn(non_exhaustive_omitted_patterns)]
-    let status = match (version, value) {
-        (_, OptionValue::String(value)) => {
-            let value = CString::new(value)?;
-            let method = driver_method!(driver, StatementSetOption);
-            unsafe { method(statement, key.as_ptr(), value.as_ptr(), &mut error) }
-        }
-        (AdbcVersion::V110, OptionValue::Bytes(value)) => {
-            let method = driver_method!(driver, StatementSetOptionBytes);
-            unsafe {
-                method(
-                    statement,
-                    key.as_ptr(),
-                    value.as_ptr(),
-                    value.len(),
-                    &mut error,
-                )
-            }
-        }
-        (AdbcVersion::V110, OptionValue::Int(value)) => {
-            let method = driver_method!(driver, StatementSetOptionInt);
-            unsafe { method(statement, key.as_ptr(), value, &mut error) }
-        }
-        (AdbcVersion::V110, OptionValue::Double(value)) => {
-            let method = driver_method!(driver, StatementSetOptionDouble);
-            unsafe { method(statement, key.as_ptr(), value, &mut error) }
-        }
-        (AdbcVersion::V100, _) => Err(Error::with_message_and_status(
-            ERR_ONLY_STRING_OPT,
-            Status::NotImplemented,
-        ))?,
-        (_, _) => unreachable!(),
-    };
-    check_status(status, error)
 }
 
 struct ManagedStatementInner {
@@ -1651,7 +1194,7 @@ impl Statement for ManagedStatement {
         check_status(status, error)
     }
 
-    fn execute(&mut self) -> Result<impl RecordBatchReader> {
+    fn execute(&mut self) -> Result<Box<dyn RecordBatchReader + Send + 'static>> {
         let driver = self.ffi_driver();
         let mut statement = self.inner.statement.lock().unwrap();
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
@@ -1660,7 +1203,7 @@ impl Statement for ManagedStatement {
         let status = unsafe { method(statement.deref_mut(), &mut stream, null_mut(), &mut error) };
         check_status(status, error)?;
         let reader = ArrowArrayStreamReader::try_new(stream)?;
-        Ok(reader)
+        Ok(Box::new(reader))
     }
 
     fn execute_schema(&mut self) -> Result<arrow_schema::Schema> {
@@ -1839,737 +1382,5 @@ impl Drop for ManagedStatement {
         // TODO(alexandreyc): how should we handle `StatementRelease` failing?
         // See: https://github.com/apache/arrow-adbc/pull/1742#discussion_r1574388409
         unsafe { method(statement.deref_mut(), null_mut()) };
-    }
-}
-
-#[cfg(target_os = "windows")]
-mod target_windows {
-    use windows_sys as windows;
-
-    use std::ffi::c_void;
-    use std::ffi::OsString;
-    use std::os::windows::ffi::OsStringExt;
-    use std::path::PathBuf;
-    use std::slice;
-
-    use windows::Win32::UI::Shell;
-
-    // adapted from https://github.com/dirs-dev/dirs-sys-rs/blob/main/src/lib.rs#L150
-    pub fn user_config_dir() -> Option<PathBuf> {
-        unsafe {
-            let mut path_ptr: windows::core::PWSTR = std::ptr::null_mut();
-            let result = Shell::SHGetKnownFolderPath(
-                &Shell::FOLDERID_LocalAppData,
-                0,
-                std::ptr::null_mut(),
-                &mut path_ptr,
-            );
-
-            if result == 0 {
-                let len = windows::Win32::Globalization::lstrlenW(path_ptr) as usize;
-                let path = slice::from_raw_parts(path_ptr, len);
-                let ostr: OsString = OsStringExt::from_wide(path);
-                windows::Win32::System::Com::CoTaskMemFree(path_ptr as *const c_void);
-                Some(PathBuf::from(ostr))
-            } else {
-                windows::Win32::System::Com::CoTaskMemFree(path_ptr as *const c_void);
-                None
-            }
-        }
-    }
-}
-
-fn user_config_dir() -> Option<PathBuf> {
-    #[cfg(target_os = "windows")]
-    {
-        use target_windows::user_config_dir;
-        user_config_dir().map(|mut path| {
-            path.push("ADBC");
-            path.push("Drivers");
-            path
-        })
-    }
-
-    #[cfg(target_os = "macos")]
-    {
-        env::var_os("HOME").map(PathBuf::from).map(|mut path| {
-            path.push("Library");
-            path.push("Application Support");
-            path.push("ADBC");
-            path.push("Drivers");
-            path
-        })
-    }
-
-    #[cfg(all(unix, not(target_os = "macos")))]
-    {
-        env::var_os("XDG_CONFIG_HOME")
-            .map(PathBuf::from)
-            .or_else(|| {
-                env::var_os("HOME").map(|home| {
-                    let mut path = PathBuf::from(home);
-                    path.push(".config");
-                    path
-                })
-            })
-            .map(|mut path| {
-                path.push("adbc");
-                path.push("drivers");
-                path
-            })
-    }
-}
-
-fn system_config_dir() -> Option<PathBuf> {
-    #[cfg(target_os = "macos")]
-    {
-        Some(PathBuf::from("/Library/Application Support/ADBC/Drivers"))
-    }
-
-    #[cfg(all(unix, not(target_os = "macos")))]
-    {
-        Some(PathBuf::from("/etc/adbc/drivers"))
-    }
-
-    #[cfg(not(unix))]
-    {
-        None
-    }
-}
-
-fn get_search_paths(lvls: LoadFlags) -> Vec<PathBuf> {
-    let mut result = Vec::new();
-    if lvls & LOAD_FLAG_SEARCH_ENV != 0 {
-        if let Some(paths) = env::var_os("ADBC_DRIVER_PATH") {
-            for p in env::split_paths(&paths) {
-                result.push(p);
-            }
-        }
-    }
-
-    if lvls & LOAD_FLAG_SEARCH_USER != 0 {
-        if let Some(path) = user_config_dir() {
-            if path.exists() {
-                result.push(path);
-            }
-        }
-    }
-
-    // system level for windows is to search the registry keys
-    #[cfg(not(windows))]
-    if lvls & LOAD_FLAG_SEARCH_SYSTEM != 0 {
-        if let Some(path) = system_config_dir() {
-            if path.exists() {
-                result.push(path);
-            }
-        }
-    }
-
-    result
-}
-
-fn parse_driver_uri(uri: &str) -> Result<(&str, &str)> {
-    let idx = uri.find(":").ok_or(Error::with_message_and_status(
-        format!("Invalid URI: {uri}"),
-        Status::InvalidArguments,
-    ))?;
-
-    let driver = &uri[..idx];
-    if uri.len() <= idx + 2 {
-        return Ok((driver, uri));
-    }
-
-    #[cfg(target_os = "windows")]
-    if let Ok(true) = std::fs::exists(uri) {
-        return Ok((uri, ""));
-    }
-
-    if &uri[idx..idx + 2] == ":/" {
-        // scheme is also driver
-        return Ok((driver, uri));
-    }
-
-    Ok((driver, &uri[idx + 1..]))
-}
-
-const fn arch_triplet() -> (&'static str, &'static str, &'static str) {
-    #[cfg(target_arch = "x86_64")]
-    const ARCH: &str = "amd64";
-    #[cfg(all(target_arch = "aarch64", target_endian = "big"))]
-    const ARCH: &str = "arm64be";
-    #[cfg(all(target_arch = "aarch64", target_endian = "little"))]
-    const ARCH: &str = "arm64";
-    #[cfg(all(target_arch = "powerpc64", target_endian = "little"))]
-    const ARCH: &str = "powerpc64le";
-    #[cfg(all(target_arch = "powerpc64", target_endian = "big"))]
-    const ARCH: &str = "powerpc64";
-    #[cfg(target_arch = "riscv32")]
-    const ARCH: &str = "riscv";
-    #[cfg(not(any(
-        target_arch = "x86_64",
-        target_arch = "aarch64",
-        target_arch = "powerpc64",
-        target_arch = "riscv32",
-    )))]
-    const ARCH: &str = std::env::consts::ARCH;
-
-    const OS: &str = std::env::consts::OS;
-
-    #[cfg(target_env = "musl")]
-    const EXTRA: &str = "_musl";
-    #[cfg(all(target_os = "windows", target_env = "gnu"))]
-    const EXTRA: &str = "_mingw";
-    #[cfg(not(any(target_env = "musl", all(target_os = "windows", target_env = "gnu"))))]
-    const EXTRA: &str = "";
-
-    (OS, ARCH, EXTRA)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    use adbc_core::LOAD_FLAG_DEFAULT;
-    use temp_env::{with_var, with_var_unset};
-    use tempfile::Builder;
-
-    fn manifest_without_driver() -> &'static str {
-        r#"
-        manifest_version = 1
-
-        name = 'SQLite3'
-        publisher = 'arrow-adbc'
-        version = '1.0.0'
-
-        [ADBC]
-        version = '1.1.0'
-        "#
-    }
-
-    fn simple_manifest() -> String {
-        // if this test is enabled, we expect the env var ADBC_DRIVER_MANAGER_TEST_LIB
-        // to be defined.
-        let driver_path =
-            PathBuf::from(env::var_os("ADBC_DRIVER_MANAGER_TEST_LIB").expect(
-                "ADBC_DRIVER_MANAGER_TEST_LIB must be set for driver manager manifest tests",
-            ));
-
-        assert!(
-            driver_path.exists(),
-            "ADBC_DRIVER_MANAGER_TEST_LIB path does not exist: {}",
-            driver_path.display()
-        );
-
-        let (os, arch, extra) = arch_triplet();
-        format!(
-            r#"
-    {}
-
-    [Driver]
-    [Driver.shared]
-    {os}_{arch}{extra} = {driver_path:?}
-    "#,
-            manifest_without_driver()
-        )
-    }
-
-    fn write_manifest_to_tempfile(p: PathBuf, tbl: String) -> (tempfile::TempDir, PathBuf) {
-        let tmp_dir = Builder::new()
-            .prefix("adbc_tests")
-            .tempdir()
-            .expect("Failed to create temporary directory for driver manager manifest test");
-
-        let manifest_path = tmp_dir.path().join(p);
-        if let Some(parent) = manifest_path.parent() {
-            std::fs::create_dir_all(parent)
-                .expect("Failed to create parent directory for manifest");
-        }
-
-        std::fs::write(&manifest_path, tbl.as_str())
-            .expect("Failed to write driver manager manifest to temporary file");
-
-        (tmp_dir, manifest_path)
-    }
-
-    #[cfg_attr(target_os = "windows", ignore)] // TODO: remove this line after fixing
-    #[test]
-    fn test_default_entrypoint() {
-        for driver in [
-            "adbc_driver_sqlite",
-            "adbc_driver_sqlite.dll",
-            "driver_sqlite",
-            "libadbc_driver_sqlite",
-            "libadbc_driver_sqlite.so",
-            "libadbc_driver_sqlite.so.6.0.0",
-            "/usr/lib/libadbc_driver_sqlite.so",
-            "/usr/lib/libadbc_driver_sqlite.so.6.0.0",
-            "C:\\System32\\adbc_driver_sqlite.dll",
-        ] {
-            assert_eq!(get_default_entrypoint(driver), "AdbcDriverSqliteInit");
-        }
-
-        for driver in [
-            "adbc_sqlite",
-            "sqlite",
-            "/usr/lib/sqlite.so",
-            "C:\\System32\\sqlite.dll",
-        ] {
-            assert_eq!(get_default_entrypoint(driver), "AdbcSqliteInit");
-        }
-
-        for driver in [
-            "proprietary_engine",
-            "libproprietary_engine.so.6.0.0",
-            "/usr/lib/proprietary_engine.so",
-            "C:\\System32\\proprietary_engine.dll",
-        ] {
-            assert_eq!(get_default_entrypoint(driver), "AdbcProprietaryEngineInit");
-        }
-
-        for driver in ["driver_example", "libdriver_example.so"] {
-            assert_eq!(get_default_entrypoint(driver), "AdbcDriverExampleInit");
-        }
-    }
-
-    /// Regression test for https://github.com/apache/arrow-adbc/pull/3693
-    /// Ensures driver manager tests for Windows pull in Windows crates. This
-    /// can be removed/replace when more complete tests are added.
-    #[test]
-    fn test_user_config_dir() {
-        let _ = user_config_dir().unwrap();
-    }
-
-    /// Regression test for https://github.com/apache/arrow-adbc/pull/3693
-    /// Ensures driver manager tests for Windows pull in Windows crates. This
-    /// can be removed/replace when more complete tests are added.
-    #[test]
-    #[cfg(target_os = "windows")]
-    fn test_load_driver_from_registry() {
-        use std::ffi::OsStr;
-        let result = load_driver_from_registry(
-            windows_registry::CURRENT_USER,
-            OsStr::new("nonexistent_test_driver"),
-            None,
-        );
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err().status, Status::NotFound);
-    }
-
-    #[test]
-    #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
-    #[cfg_attr(target_os = "windows", ignore)] // TODO: remove this line after fixing
-    fn test_load_driver_env() {
-        // ensure that we fail without the env var set
-        with_var_unset("ADBC_DRIVER_PATH", || {
-            let err = ManagedDriver::load_from_name(
-                "sqlite",
-                None,
-                AdbcVersion::V100,
-                LOAD_FLAG_SEARCH_ENV,
-                None,
-            )
-            .unwrap_err();
-            assert_eq!(err.status, Status::NotFound);
-        });
-
-        let (tmp_dir, manifest_path) =
-            write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
-
-        with_var(
-            "ADBC_DRIVER_PATH",
-            Some(manifest_path.parent().unwrap().as_os_str()),
-            || {
-                ManagedDriver::load_from_name(
-                    "sqlite",
-                    None,
-                    AdbcVersion::V100,
-                    LOAD_FLAG_SEARCH_ENV,
-                    None,
-                )
-                .unwrap();
-            },
-        );
-
-        tmp_dir
-            .close()
-            .expect("Failed to close/remove temporary directory");
-    }
-
-    #[test]
-    #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
-    fn test_load_driver_env_multiple_paths() {
-        let (tmp_dir, manifest_path) =
-            write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
-
-        let path_os_string = env::join_paths([
-            Path::new("/home"),
-            Path::new(""),
-            manifest_path.parent().unwrap(),
-        ])
-        .unwrap();
-
-        with_var("ADBC_DRIVER_PATH", Some(&path_os_string), || {
-            ManagedDriver::load_from_name(
-                "sqlite",
-                None,
-                AdbcVersion::V100,
-                LOAD_FLAG_SEARCH_ENV,
-                None,
-            )
-            .unwrap();
-        });
-
-        tmp_dir
-            .close()
-            .expect("Failed to close/remove temporary directory");
-    }
-
-    #[test]
-    #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
-    fn test_load_non_ascii_path() {
-        let p = PathBuf::from("majestik møøse/sqlite.toml");
-        let (tmp_dir, manifest_path) = write_manifest_to_tempfile(p, simple_manifest());
-
-        with_var(
-            "ADBC_DRIVER_PATH",
-            Some(manifest_path.parent().unwrap().as_os_str()),
-            || {
-                ManagedDriver::load_from_name(
-                    "sqlite",
-                    None,
-                    AdbcVersion::V100,
-                    LOAD_FLAG_SEARCH_ENV,
-                    None,
-                )
-                .unwrap();
-            },
-        );
-
-        tmp_dir
-            .close()
-            .expect("Failed to close/remove temporary directory");
-    }
-
-    #[test]
-    #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
-    #[cfg_attr(target_os = "windows", ignore)] // TODO: remove this line after fixing
-    fn test_disallow_env_config() {
-        let (tmp_dir, manifest_path) =
-            write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
-
-        with_var(
-            "ADBC_DRIVER_PATH",
-            Some(manifest_path.parent().unwrap().as_os_str()),
-            || {
-                let load_flags = LOAD_FLAG_DEFAULT & !LOAD_FLAG_SEARCH_ENV;
-                let err = ManagedDriver::load_from_name(
-                    "sqlite",
-                    None,
-                    AdbcVersion::V100,
-                    load_flags,
-                    None,
-                )
-                .unwrap_err();
-                assert_eq!(err.status, Status::NotFound);
-            },
-        );
-
-        tmp_dir
-            .close()
-            .expect("Failed to close/remove temporary directory");
-    }
-
-    #[test]
-    #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
-    fn test_load_additional_path() {
-        let p = PathBuf::from("majestik møøse/sqlite.toml");
-        let (tmp_dir, manifest_path) = write_manifest_to_tempfile(p, simple_manifest());
-
-        ManagedDriver::load_from_name(
-            "sqlite",
-            None,
-            AdbcVersion::V100,
-            LOAD_FLAG_SEARCH_ENV,
-            Some(vec![manifest_path.parent().unwrap().to_path_buf()]),
-        )
-        .unwrap();
-
-        tmp_dir
-            .close()
-            .expect("Failed to close/remove temporary directory");
-    }
-
-    #[test]
-    #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
-    fn test_load_absolute_path() {
-        let (tmp_dir, manifest_path) =
-            write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
-
-        ManagedDriver::load_from_name(
-            manifest_path,
-            None,
-            AdbcVersion::V100,
-            LOAD_FLAG_DEFAULT,
-            None,
-        )
-        .unwrap();
-
-        tmp_dir
-            .close()
-            .expect("Failed to close/remove temporary directory");
-    }
-
-    #[test]
-    #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
-    fn test_load_absolute_path_no_ext() {
-        let (tmp_dir, mut manifest_path) =
-            write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
-
-        manifest_path.set_extension("");
-        ManagedDriver::load_from_name(
-            manifest_path,
-            None,
-            AdbcVersion::V100,
-            LOAD_FLAG_DEFAULT,
-            None,
-        )
-        .unwrap();
-
-        tmp_dir
-            .close()
-            .expect("Failed to close/remove temporary directory");
-    }
-
-    #[test]
-    #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
-    fn test_load_relative_path() {
-        std::fs::write(PathBuf::from("sqlite.toml"), simple_manifest())
-            .expect("Failed to write driver manager manifest to file");
-
-        let err = ManagedDriver::load_from_name("sqlite.toml", None, AdbcVersion::V100, 0, None)
-            .unwrap_err();
-        assert_eq!(err.status, Status::InvalidArguments);
-
-        ManagedDriver::load_from_name(
-            "sqlite.toml",
-            None,
-            AdbcVersion::V100,
-            LOAD_FLAG_ALLOW_RELATIVE_PATHS,
-            None,
-        )
-        .unwrap();
-
-        std::fs::remove_file("sqlite.toml")
-            .expect("Failed to remove temporary driver manifest file");
-    }
-
-    #[test]
-    #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
-    fn test_manifest_missing_driver() {
-        let (tmp_dir, manifest_path) = write_manifest_to_tempfile(
-            PathBuf::from("sqlite.toml"),
-            manifest_without_driver().to_string(),
-        );
-
-        let err = ManagedDriver::load_from_name(
-            manifest_path,
-            None,
-            AdbcVersion::V100,
-            LOAD_FLAG_DEFAULT,
-            None,
-        )
-        .unwrap_err();
-        assert_eq!(err.status, Status::InvalidArguments);
-
-        tmp_dir
-            .close()
-            .expect("Failed to close/remove temporary directory");
-    }
-
-    #[test]
-    #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
-    fn test_manifest_bad_version() {
-        let manifest = "manifest_version = 2\n".to_owned() + &simple_manifest().to_owned();
-        let (tmp_dir, manifest_path) =
-            write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), manifest);
-
-        let err = ManagedDriver::load_from_name(
-            manifest_path,
-            None,
-            AdbcVersion::V100,
-            LOAD_FLAG_DEFAULT,
-            None,
-        )
-        .unwrap_err();
-        assert_eq!(err.status, Status::InvalidArguments);
-
-        tmp_dir
-            .close()
-            .expect("Failed to close/remove temporary directory");
-    }
-
-    #[test]
-    #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
-    fn test_manifest_wrong_arch() {
-        let manifest_wrong_arch = format!(
-            r#"
-    {}
-
-    [Driver]
-    [Driver.shared]
-    non-existing = 'path/to/bad/driver.so'
-    "#,
-            manifest_without_driver()
-        );
-
-        let (tmp_dir, manifest_path) =
-            write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), manifest_wrong_arch);
-
-        let err = ManagedDriver::load_from_name(
-            manifest_path,
-            None,
-            AdbcVersion::V100,
-            LOAD_FLAG_DEFAULT,
-            None,
-        )
-        .unwrap_err();
-        assert_eq!(err.status, Status::InvalidArguments);
-
-        tmp_dir
-            .close()
-            .expect("Failed to close/remove temporary directory");
-    }
-
-    #[test]
-    #[cfg_attr(
-        not(all(
-            feature = "driver_manager_test_lib",
-            feature = "driver_manager_test_manifest_user"
-        )),
-        ignore
-    )]
-    #[cfg_attr(target_os = "windows", ignore)] // TODO: remove this line after fixing
-    fn test_manifest_user_config() {
-        let err = ManagedDriver::load_from_name(
-            "adbc-test-sqlite",
-            None,
-            AdbcVersion::V110,
-            LOAD_FLAG_DEFAULT,
-            None,
-        )
-        .unwrap_err();
-        assert_eq!(err.status, Status::NotFound);
-
-        let usercfg_dir = user_config_dir().unwrap();
-        let mut created = false;
-        if !usercfg_dir.exists() {
-            std::fs::create_dir_all(&usercfg_dir)
-                .expect("Failed to create user config directory for driver manager test");
-            created = true;
-        }
-
-        let manifest_path = usercfg_dir.join("adbc-test-sqlite.toml");
-        std::fs::write(&manifest_path, simple_manifest())
-            .expect("Failed to write driver manager manifest to user config directory");
-
-        // fail to load if the load flag doesn't have LOAD_FLAG_SEARCH_USER
-        let err = ManagedDriver::load_from_name(
-            "adbc-test-sqlite",
-            None,
-            AdbcVersion::V110,
-            LOAD_FLAG_DEFAULT & !LOAD_FLAG_SEARCH_USER,
-            None,
-        )
-        .unwrap_err();
-        assert_eq!(err.status, Status::NotFound);
-
-        // succeed loading if LOAD_FLAG_SEARCH_USER flag is set
-        ManagedDriver::load_from_name(
-            "adbc-test-sqlite",
-            None,
-            AdbcVersion::V110,
-            LOAD_FLAG_SEARCH_USER,
-            None,
-        )
-        .unwrap();
-
-        std::fs::remove_file(&manifest_path)
-            .expect("Failed to remove driver manager manifest from user config directory");
-        if created {
-            std::fs::remove_dir(usercfg_dir).unwrap();
-        }
-    }
-
-    #[test]
-    #[cfg_attr(not(windows), ignore)]
-    fn test_get_search_paths() {
-        #[cfg(target_os = "macos")]
-        let system_path = PathBuf::from("/Library/Application Support/ADBC/Drivers");
-        #[cfg(not(target_os = "macos"))]
-        let system_path = PathBuf::from("/etc/adbc/drivers");
-
-        let search_paths = get_search_paths(LOAD_FLAG_SEARCH_SYSTEM);
-        if system_path.exists() {
-            assert_eq!(search_paths, vec![system_path]);
-        } else {
-            assert_eq!(search_paths, Vec::<PathBuf>::new());
-        }
-    }
-
-    #[test]
-    fn test_parse_driver_uri() {
-        let cases = vec![
-            ("sqlite", Err(Status::InvalidArguments)),
-            ("sqlite:", Ok(("sqlite", "sqlite:"))),
-            ("sqlite:file::memory:", Ok(("sqlite", "file::memory:"))),
-            (
-                "sqlite:file::memory:?cache=shared",
-                Ok(("sqlite", "file::memory:?cache=shared")),
-            ),
-            (
-                "postgresql://a:b@localhost:9999/nonexistent",
-                Ok(("postgresql", "postgresql://a:b@localhost:9999/nonexistent")),
-            ),
-        ];
-
-        for (input, expected) in cases {
-            let result = parse_driver_uri(input);
-            match expected {
-                Ok((exp_driver, exp_conn)) => {
-                    let (driver, conn) = result.expect("Expected Ok result");
-                    assert_eq!(driver, exp_driver);
-                    assert_eq!(conn, exp_conn);
-                }
-                Err(exp_status) => {
-                    let err = result.expect_err("Expected Err result");
-                    assert_eq!(err.status, exp_status);
-                }
-            }
-        }
-    }
-
-    #[cfg(target_os = "windows")]
-    #[test]
-    fn test_parse_driver_uri_windows_file() {
-        let tmp_dir = Builder::new()
-            .prefix("adbc_tests")
-            .tempdir()
-            .expect("Failed to create temporary directory for driver manager manifest test");
-
-        let temp_db_path = tmp_dir.path().join("test.dll");
-        if let Some(parent) = temp_db_path.parent() {
-            std::fs::create_dir_all(parent)
-                .expect("Failed to create parent directory for manifest");
-        }
-        std::fs::write(&temp_db_path, b"").expect("Failed to create temporary database file");
-
-        let (driver, conn) = parse_driver_uri(temp_db_path.to_str().unwrap()).unwrap();
-
-        assert_eq!(driver, temp_db_path.to_str().unwrap());
-        assert_eq!(conn, "");
-
-        tmp_dir
-            .close()
-            .expect("Failed to close/remove temporary directory");
     }
 }

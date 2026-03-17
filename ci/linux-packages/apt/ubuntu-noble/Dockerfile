@@ -18,7 +18,7 @@
 ARG FROM=ubuntu:noble
 FROM ${FROM}
 
-ENV IMAGE_VERSION=2025-10-31
+ENV IMAGE_VERSION=2026-01-27
 
 RUN \
   echo "debconf debconf/frontend select Noninteractive" | \
