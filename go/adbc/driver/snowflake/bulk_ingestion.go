@@ -117,6 +117,13 @@ type ingestOptions struct {
 	//
 	// Default is true.
 	vectorizedScanner bool
+	// Snowflake type to use for geoarrow columns (geoarrow.wkb, geoarrow.wkt).
+	//
+	// Valid values are "geography" (default) and "geometry".
+	// GEOGRAPHY is always WGS84 (SRID 4326). GEOMETRY supports any SRID;
+	// the SRID is extracted from geoarrow extension metadata and applied
+	// via ST_SETSRID after COPY INTO.
+	geoType string
 }
 
 func DefaultIngestOptions() *ingestOptions {
@@ -128,6 +135,7 @@ func DefaultIngestOptions() *ingestOptions {
 		compressionCodec:  defaultCompressionCodec,
 		compressionLevel:  defaultCompressionLevel,
 		vectorizedScanner: defaultVectorizedScanner,
+		geoType:           "geography",
 	}
 }
 
