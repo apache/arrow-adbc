@@ -59,4 +59,4 @@ windows-registry = { version = ">= 0.5.3" }
 arrow-select.workspace = true
 serial_test = "3.4.0"
 temp-env = "0.3"
-tempfile = "3.26"
+tempfile = "3.27"
