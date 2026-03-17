@@ -142,7 +142,7 @@ class PostgresCopyFieldTupleWriter : public PostgresCopyFieldWriter {
         constexpr int32_t field_size_bytes = -1;
         NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, field_size_bytes, error));
       } else {
-        children_[i]->Write(buffer, index, error);
+        NANOARROW_RETURN_NOT_OK(children_[i]->Write(buffer, index, error));
       }
     }
 

@@ -246,8 +246,8 @@ struct BindStream {
       // Safety check: NA type arrays should only contain nulls
       if (bind_schema_fields[col].type == NANOARROW_TYPE_NA && !is_null_param[col]) {
         return Status::InvalidArgument(
-            "Parameter ", col, " has null type but contains a non-null value at row ",
-            current_row);
+            "Parameter $", col + 1,
+            " has null type but contains a non-null value at row ", current_row);
       }
 
       if (!is_null_param[col]) {
