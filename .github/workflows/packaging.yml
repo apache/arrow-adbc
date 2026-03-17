@@ -283,7 +283,7 @@ jobs:
           ADBC_USE_UBSAN: OFF
           BUILD_ALL: 0
           BUILD_DRIVER_MANAGER: 1
-          CMAKE_BUILD_TYPE: release
+          CMAKE_BUILD_TYPE: Release
         run: |
           ./ci/scripts/cpp_build.sh $(pwd) $(pwd)/build_driver_manager
           ./ci/scripts/java_build.sh $(pwd)

@@ -37,7 +37,7 @@ main() {
         -DCMAKE_PREFIX_PATH="${install_dir}/lib/cmake/"
     set +x
 
-    cmake --build . --target install -j
+    cmake --build . --config ${CMAKE_BUILD_TYPE} --target install -j
 
     popd
 }
