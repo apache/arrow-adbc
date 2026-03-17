@@ -29,7 +29,7 @@ support browser or Deno environments. Bun is not officially tested.
 ## Installation
 
 ```bash
-npm install adbc-driver-manager apache-arrow
+npm install @apache-arrow/adbc-driver-manager apache-arrow
 ```
 
 ## Usage
@@ -39,7 +39,7 @@ name. When using a short name, the driver manager searches system and user
 paths for a matching ADBC driver manifest or library.
 
 ```typescript
-import { AdbcDatabase } from 'adbc-driver-manager'
+import { AdbcDatabase } from '@apache-arrow/adbc-driver-manager'
 
 // Short name (resolves from system/user paths)
 const db = new AdbcDatabase({ driver: 'sqlite' })

@@ -32,6 +32,7 @@ main() {
     local packages_dir
     packages_dir="$(realpath "$1")"
     local registry="${NPM_REGISTRY:-https://registry.npmjs.org}"
+    local registry_key="${registry%/}"  # strip trailing slash for .npmrc key construction
     local dry_run_flag=""
     if [[ "${DRY_RUN:-0}" == "1" ]]; then
         dry_run_flag="--dry-run"
@@ -41,22 +42,26 @@ main() {
         tag_flag="--tag ${NPM_TAG}"
     fi
 
+    if [[ -z "${NPM_TOKEN:-}" ]]; then
+        echo "Error: NPM_TOKEN is required" >&2
+        exit 1
+    fi
+
     # Write a temp .npmrc with the auth token for the target registry
     local npmrc
     npmrc=$(mktemp)
     trap "rm -f ${npmrc}" EXIT
-    echo "//${registry#*://}/:_authToken=${NPM_TOKEN:-}" > "${npmrc}"
-    export NPM_CONFIG_USERCONFIG="${npmrc}"
+    echo "//${registry_key#*://}/:_authToken=${NPM_TOKEN}" > "${npmrc}"
 
     # Publish platform-specific packages first, then the main package
     for pkg in "${packages_dir}"/apache-arrow-adbc-driver-manager-*-*.tgz; do
         echo "==== Publishing ${pkg}"
-        npm publish "${pkg}" --access public --registry "${registry}" ${tag_flag} ${dry_run_flag}
+        npm publish "${pkg}" --access public --registry "${registry}" --userconfig "${npmrc}" ${tag_flag} ${dry_run_flag}
     done
 
     echo "==== Publishing main package"
     npm publish "${packages_dir}"/apache-arrow-adbc-driver-manager-[0-9]*.tgz \
-        --access public --registry "${registry}" ${tag_flag} ${dry_run_flag}
+        --access public --registry "${registry}" --userconfig "${npmrc}" ${tag_flag} ${dry_run_flag}
 }
 
 main "$@"
