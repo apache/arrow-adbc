@@ -615,6 +615,7 @@ def test_bind_null_update(postgres: dbapi.Connection) -> None:
     with postgres.cursor() as cur:
         cur.execute("SELECT a, b FROM test_null_binding WHERE a='hello'")
         result = cur.fetchone()
+        assert result is not None
         assert result[0] == "hello"
         assert result[1] is None
 
@@ -636,7 +637,9 @@ def test_executemany_all_nulls(postgres: dbapi.Connection) -> None:
 
     with postgres.cursor() as cur:
         cur.execute("SELECT COUNT(*) FROM test_null_binding WHERE b IS NULL")
-        count = cur.fetchone()[0]
+        row = cur.fetchone()
+        assert row is not None
+        count = row[0]
         assert count == 2
 
 
@@ -657,6 +660,7 @@ def test_bind_multiple_null_parameters(postgres: dbapi.Connection) -> None:
     with postgres.cursor() as cur:
         cur.execute("SELECT * FROM test_null_binding")
         result = cur.fetchone()
+        assert result is not None
         assert result[0] is None
         assert result[1] is None
         assert result[2] is None
@@ -667,4 +671,5 @@ def test_bind_null_unknown_inference(postgres: dbapi.Connection) -> None:
     with postgres.cursor() as cur:
         cur.execute("SELECT $1", (None,))
         result = cur.fetchone()
+        assert result is not None
         assert result[0] is None
