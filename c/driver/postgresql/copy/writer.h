@@ -111,6 +111,17 @@ class PostgresCopyFieldWriter {
   std::vector<std::unique_ptr<PostgresCopyFieldWriter>> children_;
 };
 
+class PostgresCopyNullFieldWriter : public PostgresCopyFieldWriter {
+ public:
+  ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
+    (void)buffer;
+    ArrowErrorSet(error,
+                  "[libpq] Unexpected non-null value for Arrow null type at row %" PRId64,
+                  index);
+    return EINVAL;
+  }
+};
+
 class PostgresCopyFieldTupleWriter : public PostgresCopyFieldWriter {
  public:
   void AppendChild(std::unique_ptr<PostgresCopyFieldWriter> child) {
@@ -743,6 +754,9 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
   NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema, error));
 
   switch (schema_view.type) {
+    case NANOARROW_TYPE_NA:
+      *out = PostgresCopyFieldWriter::Create<PostgresCopyNullFieldWriter>(array_view);
+      return NANOARROW_OK;
     case NANOARROW_TYPE_BOOL:
       using T = PostgresCopyBooleanFieldWriter;
       *out = T::Create<T>(array_view);

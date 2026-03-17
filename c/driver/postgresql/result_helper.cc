@@ -147,13 +147,15 @@ Status PqResultHelper::ResolveParamTypes(PostgresTypeResolver& type_resolver,
   for (int i = 0; i < num_params; i++) {
     const Oid pg_oid = PQparamtype(result_, i);
     PostgresType pg_type;
-    if (type_resolver.Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
-      std::string param_name = "$" + std::to_string(i + 1);
-      Status status =
-          Status::NotImplemented("[libpq] Parameter #", i + 1, " (\"", param_name,
-                                 "\") has unknown type code ", pg_oid);
-      ClearResult();
-      return status;
+    if (pg_oid == 0) {
+      // PostgreSQL didn't infer a type (can happen in ambiguous contexts).
+      pg_type = PostgresType(PostgresTypeId::kUnknown).WithPgTypeInfo(0, "unknown");
+    } else if (type_resolver.Find(pg_oid, &pg_type, &na_error) != NANOARROW_OK) {
+      // Don't fail preparation just because we can't resolve an expected parameter
+      // type. We'll fall back to Arrow-derived mapping.
+      pg_type =
+          PostgresType(PostgresTypeId::kUnknown)
+              .WithPgTypeInfo(pg_oid, "unknown<oid:" + std::to_string(pg_oid) + ">");
     }
 
     std::string param_name = "$" + std::to_string(i + 1);

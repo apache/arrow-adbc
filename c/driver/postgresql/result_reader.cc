@@ -148,8 +148,23 @@ Status PqResultArrayReader::Initialize(int64_t* rows_affected) {
   if (bind_stream_) {
     UNWRAP_STATUS(bind_stream_->Begin([] { return Status::Ok(); }));
 
+    // First, prepare WITHOUT parameter types to let PostgreSQL infer them
+    UNWRAP_STATUS(helper_.Prepare());
+
+    // Get PostgreSQL's expected parameter types
+    UNWRAP_STATUS(helper_.DescribePrepared());
+    PostgresType expected_types;
+    UNWRAP_STATUS(helper_.ResolveParamTypes(*type_resolver_, &expected_types));
+
+    // Reconcile Arrow schema with expected types
+    UNWRAP_STATUS(bind_stream_->ReconcileWithExpectedTypes(expected_types));
+
+    // Now set parameter types (will use reconciled types for NA fields)
     UNWRAP_STATUS(bind_stream_->SetParamTypes(conn_, *type_resolver_, autocommit_));
+
+    // Re-prepare with the actual parameter types
     UNWRAP_STATUS(helper_.Prepare(bind_stream_->param_types));
+
     UNWRAP_STATUS(BindNextAndExecute(nullptr));
 
     // If there were no arrays in the bind stream, we still need a result
@@ -252,6 +267,15 @@ Status PqResultArrayReader::ExecuteAll(int64_t* affected_rows) {
   // stream (if there is one) or execute the query without binding.
   if (bind_stream_) {
     UNWRAP_STATUS(bind_stream_->Begin([] { return Status::Ok(); }));
+
+    // Prepare without parameter types so PostgreSQL can infer them. This is required
+    // to resolve Arrow NA (all-null) parameters to the expected PostgreSQL types.
+    UNWRAP_STATUS(helper_.Prepare());
+    UNWRAP_STATUS(helper_.DescribePrepared());
+    PostgresType expected_types;
+    UNWRAP_STATUS(helper_.ResolveParamTypes(*type_resolver_, &expected_types));
+    UNWRAP_STATUS(bind_stream_->ReconcileWithExpectedTypes(expected_types));
+
     UNWRAP_STATUS(bind_stream_->SetParamTypes(conn_, *type_resolver_, autocommit_));
     UNWRAP_STATUS(helper_.Prepare(bind_stream_->param_types));
 
