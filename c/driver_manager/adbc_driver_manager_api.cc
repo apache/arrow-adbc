@@ -543,6 +543,18 @@ AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* 
     args->driver = value;
   } else if (std::strcmp(key, "entrypoint") == 0) {
     args->entrypoint = value;
+  } else if (std::strcmp(key, "additional_manifest_search_path_list") == 0) {
+    if (value) {
+      args->additional_manifest_search_path_list = value;
+    } else {
+      args->additional_manifest_search_path_list.clear();
+    }
+  } else if (std::strcmp(key, "additional_profile_search_path_list") == 0) {
+    if (value) {
+      args->additional_profile_search_path_list = value;
+    } else {
+      args->additional_profile_search_path_list.clear();
+    }
   } else {
     args->options[key] = value;
   }
@@ -619,9 +631,9 @@ AdbcStatusCode AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
 
   TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
   if (additional_search_path_list) {
-    args->additional_search_path_list = additional_search_path_list;
+    args->additional_manifest_search_path_list = additional_search_path_list;
   } else {
-    args->additional_search_path_list.clear();
+    args->additional_manifest_search_path_list.clear();
   }
   return ADBC_STATUS_OK;
 }
@@ -666,9 +678,10 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
   } else {
     const char* entrypoint =
         args->entrypoint.empty() ? nullptr : args->entrypoint.c_str();
-    const char* additional_paths = args->additional_search_path_list.empty()
-                                       ? nullptr
-                                       : args->additional_search_path_list.c_str();
+    const char* additional_paths =
+        args->additional_manifest_search_path_list.empty()
+            ? nullptr
+            : args->additional_manifest_search_path_list.c_str();
 
     status = AdbcFindLoadDriver(args->driver.c_str(), entrypoint, ADBC_VERSION_1_1_0,
                                 args->load_flags, additional_paths,

@@ -1542,9 +1542,11 @@ TEST_F(ConnectionProfiles, SetProfileOption) {
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
               IsOkStatus(&error));
-  ASSERT_THAT(AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
-                  &database.value, temp_dir.string().c_str(), &error),
-              IsOkStatus(&error));
+  auto search_path = temp_dir.string();
+  ASSERT_THAT(
+      AdbcDatabaseSetOption(&database.value, "additional_profile_search_path_list",
+                            search_path.c_str(), &error),
+      IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
 

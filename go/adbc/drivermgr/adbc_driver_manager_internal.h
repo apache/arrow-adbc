@@ -203,7 +203,8 @@ struct TempDatabase {
   std::string entrypoint;
   AdbcDriverInitFunc init_func = nullptr;
   AdbcLoadFlags load_flags = ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS;
-  std::string additional_search_path_list;
+  std::string additional_manifest_search_path_list;
+  std::string additional_profile_search_path_list;
   AdbcConnectionProfileProvider profile_provider = nullptr;
 };
 
