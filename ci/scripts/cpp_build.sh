@@ -74,7 +74,7 @@ build_subproject() {
           -DADBC_DRIVER_MANAGER_TEST_MANIFEST_SYSTEM_LEVEL="${BUILD_DRIVER_MANAGER_SYSTEM_CONFIG_TEST}" \
           -DADBC_DRIVER_MANAGER_TEST_MANIFEST_USER_LEVEL="${BUILD_DRIVER_MANAGER_USER_CONFIG_TEST}"
     set +x
-    cmake --build . --target install -j
+    cmake --build . --config ${CMAKE_BUILD_TYPE} --target install -j
 
     popd
 }
