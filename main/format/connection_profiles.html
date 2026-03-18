@@ -661,6 +661,15 @@ but this may be extended in the future to support other types of dynamic content
 <span class="c1">// Result: warehouse = &quot;ANALYTICS_WH&quot;</span>
 </pre></div>
 </div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Options of different types are set separately. For example, if the
+profile defines an option with an integer value, and the application
+sets the same option but with a string value, it is
+implementation-defined as to which value will take precedence.  If
+the application were to use an integer value instead, then the
+application value would take precedence as expected.</p>
+</div>
 </section>
 </section>
 <section id="custom-profile-providers">
