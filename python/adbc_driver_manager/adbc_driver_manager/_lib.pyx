@@ -554,6 +554,9 @@ cdef class AdbcDatabase(_AdbcHandle):
         cdef CAdbcStatusCode status
         cdef const char* c_key
         cdef const char* c_value
+        cdef int64_t c_value_int
+        cdef double c_value_double
+        cdef size_t c_value_len = 0
         memset(&self.database, 0, cython.sizeof(CAdbcDatabase))
 
         with nogil:
@@ -582,13 +585,41 @@ cdef class AdbcDatabase(_AdbcHandle):
                 raise ValueError(f"value for key '{key}' cannot be None")
             else:
                 key = _to_bytes(key, "key")
+                c_key = key
+
                 if isinstance(value, pathlib.Path):
                     value = str(value)
-                value = _to_bytes(value, "value")
-                c_key = key
-                c_value = value
-                status = AdbcDatabaseSetOption(
-                    &self.database, c_key, c_value, &c_error)
+                elif isinstance(value, enum.Enum):
+                    value = value.value
+
+                if isinstance(value, bool):
+                    if value:
+                        value = ADBC_OPTION_VALUE_ENABLED
+                    else:
+                        value = ADBC_OPTION_VALUE_DISABLED
+                    value = _to_bytes(value, "option value")
+                    c_value = value
+                    status = AdbcDatabaseSetOption(
+                        &self.database, c_key, c_value, &c_error)
+                elif isinstance(value, int):
+                    c_value_int = value
+                    status = AdbcDatabaseSetOptionInt(
+                        &self.database, c_key, c_value_int, &c_error)
+                elif isinstance(value, float):
+                    c_value_double = value
+                    status = AdbcDatabaseSetOptionDouble(
+                        &self.database, c_key, c_value_double, &c_error)
+                elif isinstance(value, bytes):
+                    c_value = value
+                    c_value_len = len(value)
+                    status = AdbcDatabaseSetOptionBytes(
+                        &self.database, c_key, <const uint8_t*> c_value,
+                        c_value_len, &c_error)
+                else:
+                    value = _to_bytes(value, "value")
+                    c_value = value
+                    status = AdbcDatabaseSetOption(
+                        &self.database, c_key, c_value, &c_error)
             check_error(status, &c_error)
 
         # check if we're running in a venv
@@ -816,6 +847,9 @@ cdef class AdbcConnection(_AdbcHandle):
         cdef CAdbcStatusCode status
         cdef const char* c_key
         cdef const char* c_value
+        cdef int64_t c_value_int
+        cdef double c_value_double
+        cdef size_t c_value_len = 0
 
         self.database = database
         memset(&self.connection, 0, cython.sizeof(CAdbcConnection))
@@ -825,15 +859,57 @@ cdef class AdbcConnection(_AdbcHandle):
         check_error(status, &c_error)
 
         for key, value in kwargs.items():
-            key = key.encode("utf-8")
-            value = value.encode("utf-8")
+            key = _to_bytes(key, "key")
             c_key = key
-            c_value = value
-            with nogil:
-                status = AdbcConnectionSetOption(
-                    &self.connection, c_key, c_value, &c_error)
-                if status != ADBC_STATUS_OK:
-                    AdbcConnectionRelease(&self.connection, NULL)
+
+            if isinstance(value, pathlib.Path):
+                value = str(value)
+            elif isinstance(value, enum.Enum):
+                value = value.value
+
+            if isinstance(value, bool):
+                if value:
+                    value = ADBC_OPTION_VALUE_ENABLED
+                else:
+                    value = ADBC_OPTION_VALUE_DISABLED
+                value = _to_bytes(value, "option value")
+                c_value = value
+                with nogil:
+                    status = AdbcConnectionSetOption(
+                        &self.connection, c_key, c_value, &c_error)
+                    if status != ADBC_STATUS_OK:
+                        AdbcConnectionRelease(&self.connection, NULL)
+            if isinstance(value, int):
+                c_value_int = value
+                with nogil:
+                    status = AdbcConnectionSetOptionInt(
+                        &self.connection, c_key, c_value_int, &c_error)
+                    if status != ADBC_STATUS_OK:
+                        AdbcConnectionRelease(&self.connection, NULL)
+            elif isinstance(value, float):
+                c_value_double = value
+                with nogil:
+                    status = AdbcConnectionSetOptionDouble(
+                        &self.connection, c_key, c_value_double, &c_error)
+                    if status != ADBC_STATUS_OK:
+                        AdbcConnectionRelease(&self.connection, NULL)
+            elif isinstance(value, bytes):
+                c_value = value
+                c_value_len = len(value)
+                with nogil:
+                    status = AdbcConnectionSetOptionBytes(
+                        &self.connection, c_key, <const uint8_t*> c_value,
+                        c_value_len, &c_error)
+                    if status != ADBC_STATUS_OK:
+                        AdbcConnectionRelease(&self.connection, NULL)
+            else:
+                value = _to_bytes(value, "value")
+                c_value = value
+                with nogil:
+                    status = AdbcConnectionSetOption(
+                        &self.connection, c_key, c_value, &c_error)
+                    if status != ADBC_STATUS_OK:
+                        AdbcConnectionRelease(&self.connection, NULL)
             check_error(status, &c_error)
 
         with nogil:

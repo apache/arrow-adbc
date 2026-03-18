@@ -701,7 +701,9 @@ class SqliteConnection : public driver::Connection<SqliteConnection> {
   Status InitImpl(void* parent) {
     auto& db = *reinterpret_cast<SqliteDatabase*>(parent);
     UNWRAP_RESULT(conn_, db.OpenConnection());
-    batch_size_ = db.batch_size_;
+    if (!batch_size_.has_value()) {
+      batch_size_ = db.batch_size_;
+    }
     return status::Ok();
   }
 
@@ -725,7 +727,8 @@ class SqliteConnection : public driver::Connection<SqliteConnection> {
 
   Result<driver::Option> GetOption(std::string_view key) override {
     if (key == kStatementOptionBatchRows) {
-      return driver::Option(static_cast<int64_t>(batch_size_));
+      return driver::Option(
+          static_cast<int64_t>(batch_size_.value_or(kDefaultBatchSize)));
     }
     return Base::GetOption(key);
   }
@@ -783,6 +786,23 @@ class SqliteConnection : public driver::Connection<SqliteConnection> {
       return status::NotImplemented(
           "this driver build does not support extension loading");
 #endif
+    } else if (key == kStatementOptionBatchRows) {
+      if (lifecycle_state_ != driver::LifecycleState::kUninitialized) {
+        return status::fmt::InvalidState(
+            "{} cannot set {} after AdbcConnectionInit, set it directly on the statement "
+            "instead",
+            kErrorPrefix, key);
+      }
+      int64_t batch_size;
+      UNWRAP_RESULT(batch_size, value.AsInt());
+      if (batch_size <= 0 || batch_size > std::numeric_limits<int>::max()) {
+        return status::fmt::InvalidArgument(
+            "{} Invalid statement option value {}={} (value is non-positive or out of "
+            "range of int)",
+            kErrorPrefix, key, value.Format());
+      }
+      batch_size_ = static_cast<int>(batch_size);
+      return status::Ok();
     }
     return Base::SetOptionImpl(key, value);
   }
@@ -811,7 +831,7 @@ class SqliteConnection : public driver::Connection<SqliteConnection> {
   // Temporarily hold the extension path (since the path and entrypoint need
   // to be set separately)
   std::string extension_path_;
-  int batch_size_ = kDefaultBatchSize;
+  std::optional<int> batch_size_;
 };
 
 class SqliteStatement : public driver::Statement<SqliteStatement> {
@@ -1153,7 +1173,9 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
   Status InitImpl(void* parent) {
     auto& conn = *reinterpret_cast<SqliteConnection*>(parent);
     conn_ = conn.conn();
-    batch_size_ = conn.batch_size_;
+    if (conn.batch_size_) {
+      batch_size_ = conn.batch_size_.value();
+    }
     return Statement::InitImpl(parent);
   }
 

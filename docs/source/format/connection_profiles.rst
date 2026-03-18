@@ -322,6 +322,13 @@ Example:
    AdbcDatabaseInit(&database, &error);
    // Result: warehouse = "ANALYTICS_WH"
 
+.. note:: Options of different types are set separately. For example, if the
+          profile defines an option with an integer value, and the application
+          sets the same option but with a string value, it is
+          implementation-defined as to which value will take precedence.  If
+          the application were to use an integer value instead, then the
+          application value would take precedence as expected.
+
 Custom Profile Providers
 =========================
 
