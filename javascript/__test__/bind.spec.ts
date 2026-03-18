@@ -70,17 +70,40 @@ test('statement: bind and query data', async () => {
   assert.strictEqual(rowCount, 1)
 })
 
-test('statement: bind multi-batch table throws descriptive error', async () => {
-  // Both batches must share the same schema instance for Table to accept them
+test('statement: bind empty table inserts 0 rows', async () => {
+  const empty = tableFromArrays({ id: [] as number[], name: [] as string[] })
+  assert.strictEqual(empty.numRows, 0)
+
+  const stmt2 = await conn.createStatement()
+  await stmt2.setSqlQuery('INSERT INTO bind_test (id, name) VALUES (?, ?)')
+  await stmt2.bind(empty)
+  const affected = await stmt2.executeUpdate()
+  assert.strictEqual(affected, 0)
+  await stmt2.close()
+})
+
+test('statement: bind single-batch table', async () => {
+  const data = tableFromArrays({ id: [100], name: ['single'] })
+  assert.strictEqual(data.batches.length, 1)
+
+  const stmt2 = await conn.createStatement()
+  await stmt2.setSqlQuery('INSERT INTO bind_test (id, name) VALUES (?, ?)')
+  await stmt2.bind(data)
+  const affected = await stmt2.executeUpdate()
+  assert.strictEqual(affected, 1)
+  await stmt2.close()
+})
+
+test('statement: bind multi-batch table', async () => {
   const base = tableFromArrays({ id: [10], name: ['first'] })
   const batch1 = base.batches[0]
-  const batch2 = base.batches[0] // same schema, reused to construct a multi-batch Table
-  const multiTable = new Table([batch1, batch2])
+  const multiTable = new Table([batch1, batch1])
   assert.strictEqual(multiTable.batches.length, 2)
 
   const stmt2 = await conn.createStatement()
-  const error = await stmt2.bind(multiTable).catch((e) => e)
-  assert.ok(error instanceof Error)
-  assert.match(error.message, /bind\(\).*batches|batches.*bind\(\)/i)
+  await stmt2.setSqlQuery('INSERT INTO bind_test (id, name) VALUES (?, ?)')
+  await stmt2.bind(multiTable)
+  const affected = await stmt2.executeUpdate()
+  assert.strictEqual(affected, 2)
   await stmt2.close()
 })

@@ -23,10 +23,11 @@ import type {
   AdbcStatement as AdbcStatementInterface,
   ConnectOptions,
   GetObjectsOptions,
+  IngestOptions,
 } from './types.js'
-import { LoadFlags, ObjectDepth, InfoCode } from './types.js'
+import { LoadFlags, ObjectDepth, InfoCode, IngestMode } from './types.js'
 
-import { RecordBatchReader, RecordBatch, Table, tableToIPC, Schema } from 'apache-arrow'
+import { RecordBatch, RecordBatchReader, Table, tableToIPC, Schema } from 'apache-arrow'
 import { AdbcError } from './error.js'
 
 // Safely define Symbol.asyncDispose for compatibility with Node.js environments older than v21.
@@ -75,8 +76,8 @@ async function iteratorToReader(iterator: NativeIterator): Promise<RecordBatchRe
 }
 
 // Export Options types, constants, and Error class
-export type { ConnectOptions, GetObjectsOptions }
-export { AdbcError, LoadFlags, ObjectDepth, InfoCode }
+export type { ConnectOptions, GetObjectsOptions, IngestOptions }
+export { AdbcError, LoadFlags, ObjectDepth, InfoCode, IngestMode }
 
 /**
  * Represents an ADBC Database.
@@ -214,6 +215,27 @@ export class AdbcConnection implements AdbcConnectionInterface {
     }
   }
 
+  async ingest(tableName: string, data: Table, options?: IngestOptions): Promise<number> {
+    const stmt = await this.createStatement()
+    try {
+      stmt.setOption('adbc.ingest.target_table', tableName)
+      stmt.setOption('adbc.ingest.mode', options?.mode ?? IngestMode.Create)
+      if (options?.catalog !== undefined) {
+        stmt.setOption('adbc.ingest.target_catalog', options.catalog)
+      }
+      if (options?.dbSchema !== undefined) {
+        stmt.setOption('adbc.ingest.target_db_schema', options.dbSchema)
+      }
+      if (options?.temporary === true) {
+        stmt.setOption('adbc.ingest.temporary', 'true')
+      }
+      await stmt.bind(data)
+      return await stmt.executeUpdate()
+    } finally {
+      await stmt.close()
+    }
+  }
+
   async execute(sql: string, params?: Table): Promise<number> {
     const stmt = await this.createStatement()
     try {
@@ -306,23 +328,9 @@ export class AdbcStatement implements AdbcStatementInterface {
     }
   }
 
-  async bind(data: RecordBatch | Table): Promise<void> {
+  async bind(data: Table): Promise<void> {
     try {
-      let table: Table
-      if (data instanceof Table) {
-        table = data
-      } else {
-        table = new Table(data)
-      }
-
-      if (table.batches.length > 1) {
-        throw new Error(
-          `bind() requires a single-batch Table or RecordBatch, but received ${table.batches.length} batches. ` +
-            `Concatenate the table into one batch first (e.g. tableFromArrays(...)).`,
-        )
-      }
-
-      const ipcBytes = tableToIPC(table, 'stream')
+      const ipcBytes = tableToIPC(data, 'stream')
       await this._inner.bind(Buffer.from(ipcBytes))
     } catch (e) {
       throw AdbcError.fromError(e)

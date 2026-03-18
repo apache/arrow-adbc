@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { RecordBatch, RecordBatchReader, Table, Schema } from 'apache-arrow'
+import { RecordBatchReader, Table, Schema } from 'apache-arrow'
 
 /**
  * Bitmask flags controlling how the driver manager resolves a driver name.
@@ -142,6 +142,41 @@ export interface ConnectOptions {
    * Key-value pairs passed to the driver during database initialization (e.g., "uri", "username").
    */
   databaseOptions?: Record<string, string>
+}
+
+/**
+ * Ingestion modes for the `ingest` convenience method.
+ *
+ * These correspond to the `adbc.ingest.mode.*` option values in the ADBC spec.
+ *
+ * @example
+ * await conn.ingest('my_table', data, { mode: IngestMode.Append })
+ */
+export const IngestMode = {
+  /** Append to an existing table. Fails if the table does not exist. */
+  Append: 'adbc.ingest.mode.append',
+  /** Create a new table and insert. Fails if the table already exists. */
+  Create: 'adbc.ingest.mode.create',
+  /** Create the table if it does not exist, then append. */
+  CreateAppend: 'adbc.ingest.mode.create_append',
+  /** Drop the existing table (if any) and recreate it, then insert. */
+  Replace: 'adbc.ingest.mode.replace',
+} as const
+export type IngestMode = (typeof IngestMode)[keyof typeof IngestMode]
+
+/** Options for the `ingest` convenience method. */
+export interface IngestOptions {
+  /**
+   * How to handle an existing table.
+   * Defaults to {@link IngestMode.Create}.
+   */
+  mode?: IngestMode
+  /** The catalog to create/locate the target table in (optional). */
+  catalog?: string
+  /** The database schema to create/locate the target table in (optional). */
+  dbSchema?: string
+  /** Whether to ingest into a temporary table (optional). */
+  temporary?: boolean
 }
 
 /** Options for getObjects metadata call. */
@@ -283,6 +318,20 @@ export interface AdbcConnection {
   queryStream(sql: string, params?: Table): Promise<RecordBatchReader>
 
   /**
+   * Ingest Arrow data into a database table.
+   *
+   * Convenience method that sets the ingestion options, binds the data, and
+   * calls executeUpdate. Depending on the driver, this can avoid per-row
+   * overhead compared to a prepare-bind-insert loop.
+   *
+   * @param tableName The target table name.
+   * @param data Arrow Table to ingest.
+   * @param options Ingestion options (mode, catalog, dbSchema, temporary).
+   * @returns A Promise resolving to the number of rows ingested, or -1 if unknown.
+   */
+  ingest(tableName: string, data: Table, options?: IngestOptions): Promise<number>
+
+  /**
    * Execute a SQL statement (INSERT, UPDATE, DELETE, DDL) and return the row count.
    *
    * Convenience method that creates a statement, sets the SQL, optionally binds
@@ -352,12 +401,11 @@ export interface AdbcStatement {
   /**
    * Bind parameters or data for ingestion.
    *
-   * This binds an Arrow RecordBatch or Table to the statement.
    * This is used for bulk ingestion or parameterized queries.
    *
-   * @param data Arrow RecordBatch or Table containing the data to bind.
+   * @param data Arrow Table containing the data to bind.
    */
-  bind(data: RecordBatch | Table): Promise<void>
+  bind(data: Table): Promise<void>
 
   /**
    * Close the statement and release resources.

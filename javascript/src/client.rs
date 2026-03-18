@@ -282,23 +282,9 @@ impl AdbcStatementCore {
   }
 
   pub fn bind(&mut self, c_data: Vec<u8>) -> Result<()> {
-    let mut reader =
+    let reader =
       StreamReader::try_new(std::io::Cursor::new(c_data), None).map_err(ClientError::Arrow)?;
-    let batch = match reader.next() {
-      Some(Ok(b)) => b,
-      Some(Err(e)) => return Err(ClientError::Arrow(e)),
-      None => {
-        return Err(ClientError::Other(
-          "bind() received an empty record batch stream".to_string(),
-        ))
-      }
-    };
-    if reader.next().is_some() {
-      return Err(ClientError::Other(
-        "bind() received multiple record batches; concatenate into one batch first".to_string(),
-      ));
-    }
-    self.inner.bind(batch)?;
+    self.inner.bind_stream(Box::new(reader))?;
     Ok(())
   }
 }
