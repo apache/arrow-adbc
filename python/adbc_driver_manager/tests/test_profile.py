@@ -57,6 +57,17 @@ def test_profile_option(sqlitedev) -> None:
             assert cursor.fetchone() is not None
 
 
+def test_profile_redundant(sqlitedev) -> None:
+    # Test that proving the profile twice is rejected
+    with pytest.raises(dbapi.ProgrammingError, match="Multiple profiles specified"):
+        with dbapi.connect(uri=f"profile://{sqlitedev}", profile=sqlitedev):
+            pass
+
+    with pytest.raises(dbapi.ProgrammingError, match="Multiple profiles specified"):
+        with dbapi.connect(driver=f"profile://{sqlitedev}", profile=sqlitedev):
+            pass
+
+
 def test_option_env_var(subtests, tmp_path, monkeypatch) -> None:
     # Test a profile that uses env var substitution for option values
     monkeypatch.setenv("ADBC_PROFILE_PATH", str(tmp_path))
@@ -230,12 +241,11 @@ profile_version = 1
             with dbapi.connect("profile://nodriver"):
                 pass
 
-    # TODO(https://github.com/apache/arrow-adbc/issues/4085): do we want to allow this?
-    # with subtests.test(msg="uri"):
-    #     with dbapi.connect("adbc_driver_sqlite", uri="profile://nodriver") as conn:
-    #         with conn.cursor() as cursor:
-    #             cursor.execute("SELECT sqlite_version()")
-    #             assert cursor.fetchone() is not None
+    with subtests.test(msg="uri"):
+        with dbapi.connect("adbc_driver_sqlite", uri="profile://nodriver") as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT sqlite_version()")
+                assert cursor.fetchone() is not None
 
     with subtests.test(msg="profile"):
         with dbapi.connect("adbc_driver_sqlite", profile="nodriver") as conn:
@@ -244,23 +254,47 @@ profile_version = 1
                 assert cursor.fetchone() is not None
 
 
-# TODO(https://github.com/apache/arrow-adbc/issues/4085): do we want to allow this?
+def test_driver_override(subtests, tmp_path, monkeypatch) -> None:
+    # Test that the driver cannot be overridden by an option
+    monkeypatch.setenv("ADBC_PROFILE_PATH", str(tmp_path))
 
-# @pytest.mark.xfail
-# def test_driver_override(subtests, tmp_path, monkeypatch) -> None:
-#     # Test that the driver can be overridden by an option
-#     monkeypatch.setenv("ADBC_PROFILE_PATH", str(tmp_path))
-#     with subtests.test(msg="with override (URI)"):
-#         with dbapi.connect("adbc_driver_sqlite", "profile://nonexistent") as conn:
-#             with conn.cursor() as cursor:
-#                 cursor.execute("SELECT sqlite_version()")
-#                 assert cursor.fetchone() is not None
+    with (tmp_path / "foo.toml").open("w") as sink:
+        sink.write("""
+profile_version = 1
+driver = "adbc_driver_sqlite"
+[Options]
+""")
 
-#     with subtests.test(msg="with override (profile)"):
-#         with dbapi.connect("adbc_driver_sqlite", profile="nonexistent") as conn:
-#             with conn.cursor() as cursor:
-#                 cursor.execute("SELECT sqlite_version()")
-#                 assert cursor.fetchone() is not None
+    monkeypatch.setenv("ADBC_PROFILE_PATH", str(tmp_path))
+    with subtests.test(msg="with redundant (URI)"):
+        with dbapi.connect("adbc_driver_sqlite", "profile://foo") as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT sqlite_version()")
+                assert cursor.fetchone() is not None
+
+    with subtests.test(msg="with redundant (profile)"):
+        with dbapi.connect("adbc_driver_sqlite", profile="foo") as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT sqlite_version()")
+                assert cursor.fetchone() is not None
+
+    with subtests.test(msg="with override (URI)"):
+        with pytest.raises(
+            dbapi.ProgrammingError,
+            match="Profile `foo` specifies driver `adbc_driver_sqlite`"
+            " which does not match requested driver `adbc_driver_somethingelse`",
+        ):
+            with dbapi.connect("adbc_driver_somethingelse", "profile://foo"):
+                pass
+
+    with subtests.test(msg="with override (profile)"):
+        with pytest.raises(
+            dbapi.ProgrammingError,
+            match="Profile `foo` specifies driver `adbc_driver_sqlite`"
+            " which does not match requested driver `adbc_driver_somethingelse`",
+        ):
+            with dbapi.connect("adbc_driver_somethingelse", profile="foo"):
+                pass
 
 
 def test_driver_invalid(subtests, tmp_path, monkeypatch) -> None:

@@ -108,6 +108,14 @@ static void ErrorArrayStreamInit(struct ArrowArrayStream* out,
 // ADBC Error API implementations
 // =============================================================================
 
+int AdbcErrorGetDetailCount(const struct AdbcError* error) {
+  if (error->vendor_code == ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA && error->private_data &&
+      error->private_driver && error->private_driver->ErrorGetDetailCount) {
+    return error->private_driver->ErrorGetDetailCount(error);
+  }
+  return 0;
+}
+
 struct AdbcErrorDetail AdbcErrorGetDetail(const struct AdbcError* error, int index) {
   if (error->vendor_code == ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA && error->private_data &&
       error->private_driver && error->private_driver->ErrorGetDetail) {
@@ -639,55 +647,9 @@ AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError*
     return ADBC_STATUS_INVALID_STATE;
   }
   TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
-  const auto profile_in_use = args->options.find("profile");
-  if (profile_in_use != args->options.end()) {
-    std::string_view profile = profile_in_use->second;
-    auto status = InternalInitializeProfile(args, profile, error);
-    if (status != ADBC_STATUS_OK) {
-      return status;
-    }
-    args->options.erase("profile");
-  }
 
-  if (!args->init_func) {
-    const auto uri = args->options.find("uri");
-    if (args->driver.empty() && uri != args->options.end()) {
-      std::string owned_uri = uri->second;
-      auto result = InternalAdbcParseDriverUri(owned_uri);
-      if (result) {
-        if (result->uri) {
-          args->driver = std::string{result->driver};
-          args->options["uri"] = std::string{*result->uri};
-        } else if (result->profile) {
-          args->options.erase("uri");
-          auto status = InternalInitializeProfile(args, *result->profile, error);
-          if (status != ADBC_STATUS_OK) {
-            return status;
-          }
-        }
-      } else if (args->driver.empty()) {
-        args->driver = owned_uri;
-      }
-    } else if (!args->driver.empty() && uri == args->options.end()) {
-      std::string owned_driver = args->driver;
-      auto result = InternalAdbcParseDriverUri(owned_driver);
-      if (result) {
-        args->driver = std::string{result->driver};
-        if (result->uri) {
-          args->options["uri"] = std::string{*result->uri};
-        } else if (result->profile) {
-          auto status = InternalInitializeProfile(args, *result->profile, error);
-          if (status != ADBC_STATUS_OK) {
-            return status;
-          }
-        }
-      }
-    }
-
-    if (args->driver.empty()) {
-      SetError(error, "Must set 'driver' option before AdbcDatabaseInit");
-      return ADBC_STATUS_INVALID_ARGUMENT;
-    }
+  if (auto status = InternalAdbcParseOptions(args, error); status != ADBC_STATUS_OK) {
+    return status;
   }
 
   // Allocate the underlying driver
