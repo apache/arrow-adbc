@@ -75,6 +75,10 @@ const (
 	// Auth: PAT
 	OptionAccessToken = "databricks.access_token"
 
+	// Session parameters passed to the Databricks SQL session at connection time.
+	// Use with a parameter name suffix, e.g. "databricks.session_param.QUERY_TAGS".
+	OptionSessionParamPrefix = "databricks.session_param."
+
 	// Default values
 	DefaultPort                   = 443
 	DefaultSSLMode                = "require"

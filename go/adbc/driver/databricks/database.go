@@ -80,6 +80,10 @@ type databaseImpl struct {
 	oauthClientSecret string
 	oauthRefreshToken string
 	oauthU2MTimeout   time.Duration
+
+	// Session parameters passed to the Databricks SQL session at connection time.
+	// Keys are parameter names (e.g. "QUERY_TAGS"), values are parameter values.
+	sessionParams map[string]string
 }
 
 func (d *databaseImpl) resolveConnectionOptions() ([]dbsql.ConnOption, error) {
@@ -197,6 +201,10 @@ func (d *databaseImpl) resolveConnectionOptions() ([]dbsql.ConnOption, error) {
 			TLSClientConfig: tlsConfig,
 		}
 		opts = append(opts, dbsql.WithTransport(transport))
+	}
+
+	if len(d.sessionParams) > 0 {
+		opts = append(opts, dbsql.WithSessionParams(d.sessionParams))
 	}
 
 	return opts, nil
@@ -327,6 +335,18 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 	case OptionOAuthRefreshToken:
 		return d.oauthRefreshToken, nil
 	default:
+		if strings.HasPrefix(key, OptionSessionParamPrefix) {
+			paramKey := strings.TrimPrefix(key, OptionSessionParamPrefix)
+			if d.sessionParams != nil {
+				if v, ok := d.sessionParams[paramKey]; ok {
+					return v, nil
+				}
+			}
+			return "", adbc.Error{
+				Code: adbc.StatusNotFound,
+				Msg:  fmt.Sprintf("session parameter not set: %s", paramKey),
+			}
+		}
 		return d.DatabaseImplBase.GetOption(key)
 	}
 }
@@ -479,6 +499,14 @@ func (d *databaseImpl) SetOption(key, value string) error {
 			d.oauthU2MTimeout = timeout
 		}
 	default:
+		if strings.HasPrefix(key, OptionSessionParamPrefix) {
+			paramKey := strings.TrimPrefix(key, OptionSessionParamPrefix)
+			if d.sessionParams == nil {
+				d.sessionParams = make(map[string]string)
+			}
+			d.sessionParams[paramKey] = value
+			return nil
+		}
 		return d.DatabaseImplBase.SetOption(key, value)
 	}
 	return nil
