@@ -65,6 +65,11 @@ jobs:
       - name: Install dependencies
         working-directory: javascript
         run: npm ci
+      - name: Verify package-lock.json is up to date
+        working-directory: javascript
+        run: |
+          npm install --package-lock-only
+          git diff --exit-code package-lock.json
       - name: Check JS
         working-directory: javascript
         run: npm run check:js
