@@ -262,15 +262,20 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
       # Follow libname.version.dylib convention on macOS
       if(APPLE)
         set(LIBOUT_VERSIONED
-            "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_SHARED_LIBRARY_PREFIX}${GO_LIBNAME}.${ADBC_FULL_SO_VERSION}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+            "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_SHARED_LIBRARY_PREFIX}${GO_LIBNAME}.${ADBC_FULL_SO_VERSION}${CMAKE_SHARED_LIBRARY_SUFFIX}"
+        )
         set(LIBOUT_SOVERSION
-            "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_SHARED_LIBRARY_PREFIX}${GO_LIBNAME}.${ADBC_SO_VERSION}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+            "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_SHARED_LIBRARY_PREFIX}${GO_LIBNAME}.${ADBC_SO_VERSION}${CMAKE_SHARED_LIBRARY_SUFFIX}"
+        )
         set(LIBOUT_SHARED
-            "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_SHARED_LIBRARY_PREFIX}${GO_LIBNAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+            "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_SHARED_LIBRARY_PREFIX}${GO_LIBNAME}${CMAKE_SHARED_LIBRARY_SUFFIX}"
+        )
         set(LIB_NAME_VERSIONED
-            "${CMAKE_SHARED_LIBRARY_PREFIX}${GO_LIBNAME}.${ADBC_FULL_SO_VERSION}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+            "${CMAKE_SHARED_LIBRARY_PREFIX}${GO_LIBNAME}.${ADBC_FULL_SO_VERSION}${CMAKE_SHARED_LIBRARY_SUFFIX}"
+        )
         set(LIB_NAME_SOVERSION
-            "${CMAKE_SHARED_LIBRARY_PREFIX}${GO_LIBNAME}.${ADBC_SO_VERSION}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+            "${CMAKE_SHARED_LIBRARY_PREFIX}${GO_LIBNAME}.${ADBC_SO_VERSION}${CMAKE_SHARED_LIBRARY_SUFFIX}"
+        )
         set(LIB_NAME_SHARED
             "${CMAKE_SHARED_LIBRARY_PREFIX}${GO_LIBNAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
       else()
@@ -285,10 +290,8 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
                          DEPENDS ${ARG_SOURCES}
                          COMMAND ${CMAKE_COMMAND} -E env ${GO_ENV_VARS} ${GO_BIN} build
                                  ${GO_BUILD_TAGS} "${GO_BUILD_FLAGS}" -o
-                                 ${LIBOUT_VERSIONED}
-                                 -buildmode=c-shared ${GO_LDFLAGS} .
-                         COMMAND ${CMAKE_COMMAND} -E remove -f
-                                 "${LIBOUT_VERSIONED}.h"
+                                 ${LIBOUT_VERSIONED} -buildmode=c-shared ${GO_LDFLAGS} .
+                         COMMAND ${CMAKE_COMMAND} -E remove -f "${LIBOUT_VERSIONED}.h"
                          COMMENT "Building Go Shared lib ${GO_LIBNAME}"
                          COMMAND_EXPAND_LISTS)
 
@@ -296,19 +299,16 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
                          DEPENDS "${LIBOUT_VERSIONED}"
                          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
                          COMMAND ${CMAKE_COMMAND} -E create_symlink
-                                 "${LIB_NAME_VERSIONED}"
-                                 "${LIB_NAME_SOVERSION}"
+                                 "${LIB_NAME_VERSIONED}" "${LIB_NAME_SOVERSION}"
                          COMMAND ${CMAKE_COMMAND} -E create_symlink
-                                 "${LIB_NAME_SOVERSION}"
-                                 "${LIB_NAME_SHARED}")
+                                 "${LIB_NAME_SOVERSION}" "${LIB_NAME_SHARED}")
 
       add_custom_target(${GO_LIBNAME}_target ALL
-                        DEPENDS "${LIBOUT_VERSIONED}"
-                                "${LIBOUT_SOVERSION}" "${LIBOUT_SHARED}")
+                        DEPENDS "${LIBOUT_VERSIONED}" "${LIBOUT_SOVERSION}"
+                                "${LIBOUT_SHARED}")
       add_library(${GO_LIBNAME}_shared SHARED IMPORTED GLOBAL)
       set_target_properties(${GO_LIBNAME}_shared
-                            PROPERTIES IMPORTED_LOCATION
-                                       "${LIBOUT_VERSIONED}"
+                            PROPERTIES IMPORTED_LOCATION "${LIBOUT_VERSIONED}"
                                        IMPORTED_SONAME "${LIB_NAME_SHARED}")
     endif()
     add_dependencies(${GO_LIBNAME}_shared ${GO_LIBNAME}_target)
