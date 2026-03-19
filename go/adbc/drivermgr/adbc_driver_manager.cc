@@ -535,8 +535,9 @@ AdbcStatusCode InternalInitializeProfile(TempDatabase* args,
   }
 
   ProfileGuard guard{};
-  CHECK_STATUS(args->profile_provider(
-      profile.data(), args->additional_search_path_list.c_str(), &guard.profile, error));
+  CHECK_STATUS(args->profile_provider(profile.data(),
+                                      args->additional_profile_search_path_list.c_str(),
+                                      &guard.profile, error));
 
   const char* driver_name = nullptr;
   AdbcDriverInitFunc init_func = nullptr;

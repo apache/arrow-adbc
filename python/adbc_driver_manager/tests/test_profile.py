@@ -576,3 +576,53 @@ driver = "adbc_driver_sqlite"
 
 
 # For virtualenv tests: see Compose job python-venv
+
+
+def test_separate_profile_manifest_paths(tmp_path) -> None:
+    # Test that we can have separate paths for profiles and manifests
+    manifest_path = tmp_path / "manifest"
+    profile_path = tmp_path / "profile"
+    manifest_path.mkdir()
+    profile_path.mkdir()
+
+    manifest = """
+    manifest_version = 1
+    [Driver]
+    shared = "adbc_driver_sqlite"
+    """
+
+    profile = """
+    profile_version = 1
+    driver = "adbc_driver_sqlite"
+    [Options]
+    """
+
+    with (manifest_path / "mani.toml").open("w") as sink:
+        sink.write(manifest)
+    with (manifest_path / "prof.toml").open("w") as sink:
+        sink.write(profile)
+
+    with (profile_path / "manifest.toml").open("w") as sink:
+        sink.write(manifest)
+    with (profile_path / "profile.toml").open("w") as sink:
+        sink.write(profile)
+
+    kwargs = {
+        "additional_manifest_search_path_list": str(manifest_path),
+        "additional_profile_search_path_list": str(profile_path),
+    }
+    with dbapi.connect("mani", db_kwargs=kwargs) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT sqlite_version()")
+            assert cursor.fetchone() is not None
+    with dbapi.connect("profile://profile", db_kwargs=kwargs) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT sqlite_version()")
+            assert cursor.fetchone() is not None
+
+    with pytest.raises(dbapi.ProgrammingError):
+        with dbapi.connect("manifest", db_kwargs=kwargs):
+            pass
+    with pytest.raises(dbapi.ProgrammingError):
+        with dbapi.connect("profile://prof", db_kwargs=kwargs):
+            pass

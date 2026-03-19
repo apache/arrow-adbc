@@ -47,7 +47,7 @@ import time
 import typing
 import warnings
 import weakref
-from typing import Any, Dict, List, Literal, NoReturn, Optional, Tuple, Union
+from typing import Any, Dict, List, Literal, Mapping, NoReturn, Optional, Tuple, Union
 
 try:
     import pyarrow
@@ -188,8 +188,8 @@ def connect(
     *,
     profile: Optional[str] = None,
     entrypoint: Optional[str] = None,
-    db_kwargs: Optional[Dict[str, Union[str, pathlib.Path]]] = None,
-    conn_kwargs: Optional[Dict[str, str]] = None,
+    db_kwargs: Optional[Mapping[str, Union[str, pathlib.Path]]] = None,
+    conn_kwargs: Optional[Mapping[str, str]] = None,
     autocommit=False,
 ) -> "Connection":
     """
@@ -340,7 +340,7 @@ class Connection(_Closeable):
         self,
         db: Union[_lib.AdbcDatabase, _SharedDatabase],
         conn: _lib.AdbcConnection,
-        conn_kwargs: Optional[Dict[str, str]] = None,
+        conn_kwargs: Optional[Mapping[str, str]] = None,
         *,
         autocommit=False,
         backend: Optional[_dbapi_backend.DbapiBackend] = None,
@@ -413,7 +413,7 @@ class Connection(_Closeable):
     def cursor(
         self,
         *,
-        adbc_stmt_kwargs: Optional[Dict[str, Any]] = None,
+        adbc_stmt_kwargs: Optional[Mapping[str, Any]] = None,
     ) -> "Cursor":
         """
         Create a new cursor for querying the database.
@@ -446,7 +446,7 @@ class Connection(_Closeable):
         operation: Union[bytes, str],
         parameters=None,
         *,
-        adbc_stmt_kwargs: Optional[Dict[str, Any]] = None,
+        adbc_stmt_kwargs: Optional[Mapping[str, Any]] = None,
     ) -> "Cursor":
         """
         Execute a query on a new cursor.
@@ -678,7 +678,7 @@ class Cursor(_Closeable):
     def __init__(
         self,
         conn: Connection,
-        adbc_stmt_kwargs: Optional[Dict[str, Any]] = None,
+        adbc_stmt_kwargs: Optional[Mapping[str, Any]] = None,
         *,
         dbapi_backend: Optional[_dbapi_backend.DbapiBackend] = None,
     ) -> None:

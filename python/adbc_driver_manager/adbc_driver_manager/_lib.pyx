@@ -631,6 +631,15 @@ cdef class AdbcDatabase(_AdbcHandle):
                 &c_error)
             check_error(status, &c_error)
 
+            profile_path = _to_bytes(
+                os.path.join(sys.prefix, "etc/adbc/profiles"),
+                "sys.prefix")
+            c_value = profile_path
+            status = AdbcDatabaseSetOption(
+                &self.database, "additional_profile_search_path_list", c_value,
+                &c_error)
+            check_error(status, &c_error)
+
         with nogil:
             status = AdbcDatabaseInit(&self.database, &c_error)
         check_error(status, &c_error)
