@@ -18,6 +18,8 @@
 use std::env;
 use std::path::PathBuf;
 
+mod common;
+
 use adbc_core::options::AdbcVersion;
 use adbc_core::{error::Status, LOAD_FLAG_DEFAULT};
 use adbc_driver_manager::ManagedDatabase;
@@ -37,8 +39,7 @@ fn test_env_var_replacement_basic() {
         .expect("Failed to create temporary directory");
 
     // Set a test environment variable
-    let prev_value = env::var_os("ADBC_TEST_ENV_VAR");
-    env::set_var("ADBC_TEST_ENV_VAR", ":memory:");
+    let _guard = common::SetEnv::new("ADBC_TEST_ENV_VAR", ":memory:");
 
     let profile_content = r#"
 profile_version = 1
@@ -52,12 +53,6 @@ uri = "{{ env_var(ADBC_TEST_ENV_VAR) }}"
     let uri = format!("profile://{}", profile_path.display());
 
     let result = ManagedDatabase::from_uri(&uri, None, AdbcVersion::V100, LOAD_FLAG_DEFAULT, None);
-
-    // Restore environment variable
-    match prev_value {
-        Some(val) => env::set_var("ADBC_TEST_ENV_VAR", val),
-        None => env::remove_var("ADBC_TEST_ENV_VAR"),
-    }
 
     match result {
         Ok(_db) => {
@@ -198,8 +193,7 @@ fn test_env_var_replacement_interpolation() {
         .expect("Failed to create temporary directory");
 
     // Set a test environment variable
-    let prev_value = env::var_os("ADBC_TEST_INTERPOLATE");
-    env::set_var("ADBC_TEST_INTERPOLATE", "middle_value");
+    let _guard = common::SetEnv::new("ADBC_TEST_INTERPOLATE", "middle_value");
 
     let profile_content = r#"
 profile_version = 1
@@ -214,12 +208,6 @@ test_option = "prefix_{{ env_var(ADBC_TEST_INTERPOLATE) }}_suffix"
     let uri = format!("profile://{}", profile_path.display());
 
     let result = ManagedDatabase::from_uri(&uri, None, AdbcVersion::V100, LOAD_FLAG_DEFAULT, None);
-
-    // Restore environment variable
-    match prev_value {
-        Some(val) => env::set_var("ADBC_TEST_INTERPOLATE", val),
-        None => env::remove_var("ADBC_TEST_INTERPOLATE"),
-    }
 
     assert!(result.is_err(), "Expected error for malformed env_var");
     if let Err(err) = result {
@@ -243,10 +231,8 @@ fn test_env_var_replacement_multiple() {
         .expect("Failed to create temporary directory");
 
     // Set test environment variables
-    let prev_var1 = env::var_os("ADBC_TEST_VAR1");
-    let prev_var2 = env::var_os("ADBC_TEST_VAR2");
-    env::set_var("ADBC_TEST_VAR1", "first");
-    env::set_var("ADBC_TEST_VAR2", "second");
+    let _guard1 = common::SetEnv::new("ADBC_TEST_VAR1", "first");
+    let _guard2 = common::SetEnv::new("ADBC_TEST_VAR2", "second");
 
     let profile_content = r#"
 profile_version = 1
@@ -261,16 +247,6 @@ test_option = "{{ env_var(ADBC_TEST_VAR1) }}_and_{{ env_var(ADBC_TEST_VAR2) }}"
     let uri = format!("profile://{}", profile_path.display());
 
     let result = ManagedDatabase::from_uri(&uri, None, AdbcVersion::V100, LOAD_FLAG_DEFAULT, None);
-
-    // Restore environment variables
-    match prev_var1 {
-        Some(val) => env::set_var("ADBC_TEST_VAR1", val),
-        None => env::remove_var("ADBC_TEST_VAR1"),
-    }
-    match prev_var2 {
-        Some(val) => env::set_var("ADBC_TEST_VAR2", val),
-        None => env::remove_var("ADBC_TEST_VAR2"),
-    }
 
     assert!(result.is_err(), "Expected error for malformed env_var");
     if let Err(err) = result {
@@ -294,8 +270,7 @@ fn test_env_var_replacement_whitespace() {
         .expect("Failed to create temporary directory");
 
     // Set a test environment variable
-    let prev_value = env::var_os("ADBC_TEST_WHITESPACE");
-    env::set_var("ADBC_TEST_WHITESPACE", "value");
+    let _guard = common::SetEnv::new("ADBC_TEST_WHITESPACE", "value");
 
     let profile_content = r#"
 profile_version = 1
@@ -310,12 +285,6 @@ test_option = "{{   env_var(  ADBC_TEST_WHITESPACE  )   }}"
     let uri = format!("profile://{}", profile_path.display());
 
     let result = ManagedDatabase::from_uri(&uri, None, AdbcVersion::V100, LOAD_FLAG_DEFAULT, None);
-
-    // Restore environment variable
-    match prev_value {
-        Some(val) => env::set_var("ADBC_TEST_WHITESPACE", val),
-        None => env::remove_var("ADBC_TEST_WHITESPACE"),
-    }
 
     assert!(result.is_err(), "Expected error for malformed env_var");
     if let Err(err) = result {

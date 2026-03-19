@@ -16,6 +16,7 @@
 // under the License.
 
 use std::collections::HashSet;
+use std::ffi::{OsStr, OsString};
 use std::ops::Deref;
 use std::sync::Arc;
 
@@ -339,4 +340,30 @@ pub fn test_ingestion_roundtrip(connection: &mut ManagedConnection) {
     assert_eq!(batch, batch_got);
 
     connection.rollback().unwrap();
+}
+
+pub struct SetEnv {
+    env_var: &'static str,
+    original_value: Option<OsString>,
+}
+
+impl SetEnv {
+    pub fn new(env_var: &'static str, new_value: impl AsRef<OsStr>) -> Self {
+        let original_value = std::env::var_os(env_var);
+        std::env::set_var(env_var, new_value);
+        Self {
+            env_var,
+            original_value,
+        }
+    }
+}
+
+impl Drop for SetEnv {
+    fn drop(&mut self) {
+        if let Some(original_value) = &self.original_value {
+            std::env::set_var(self.env_var, original_value);
+        } else {
+            std::env::remove_var(self.env_var);
+        }
+    }
 }

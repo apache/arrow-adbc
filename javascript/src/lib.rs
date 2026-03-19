@@ -144,7 +144,8 @@ pub fn default_load_flags() -> u32 {
 pub struct ConnectOptions {
   pub driver: String,
   pub entrypoint: Option<String>,
-  pub search_paths: Option<Vec<String>>,
+  pub manifest_search_paths: Option<Vec<String>>,
+  pub profile_search_paths: Option<Vec<String>>,
   pub load_flags: Option<u32>,
   pub database_options: Option<HashMap<String, String>>,
 }
@@ -154,7 +155,8 @@ impl From<ConnectOptions> for CoreConnectOptions {
     Self {
       driver: opts.driver,
       entrypoint: opts.entrypoint,
-      search_paths: opts.search_paths,
+      manifest_search_paths: opts.manifest_search_paths,
+      profile_search_paths: opts.profile_search_paths,
       load_flags: opts.load_flags,
       database_options: opts.database_options,
     }

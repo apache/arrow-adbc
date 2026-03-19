@@ -118,7 +118,7 @@ export interface ConnectOptions {
    * - URI-style string: `"sqlite:file::memory:"`, `"postgresql://user:pass@host/db"` — the
    *   driver name is the URI scheme and the remainder is passed as the connection URI.
    * - Connection profile URI: `"profile://my_profile"` — loads a named profile from a
-   *   `.toml` file found in {@link searchPaths} or the default search directories.
+   *   `.toml` file found in {@link profileSearchPaths} or the default search directories.
    */
   driver: string
   /**
@@ -127,10 +127,15 @@ export interface ConnectOptions {
    */
   entrypoint?: string
   /**
-   * Additional directories to search for drivers and driver manifest (`.toml`) profile files (optional).
+   * Additional directories to search for drivers and driver manifest (`.toml`) files (optional).
    * Searched before the default system and user configuration directories.
    */
-  searchPaths?: string[]
+  manifestSearchPaths?: string[]
+  /**
+   * Additional directories to search for connection profile (`.toml`) files (optional).
+   * Searched before the default system and user configuration directories.
+   */
+  profileSearchPaths?: string[]
   /**
    * Bitmask controlling how the driver name is resolved (optional).
    * Use the {@link LoadFlags} constants to compose a value.

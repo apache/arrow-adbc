@@ -48,7 +48,8 @@ pub type Result<T> = std::result::Result<T, ClientError>;
 pub struct ConnectOptions {
   pub driver: String,
   pub entrypoint: Option<String>,
-  pub search_paths: Option<Vec<String>>,
+  pub manifest_search_paths: Option<Vec<String>>,
+  pub profile_search_paths: Option<Vec<String>>,
   pub load_flags: Option<u32>,
   pub database_options: Option<HashMap<String, String>>,
 }
@@ -78,20 +79,28 @@ impl AdbcDatabaseCore {
     let load_flags = opts.load_flags.unwrap_or(LOAD_FLAG_DEFAULT);
     let entrypoint = opts.entrypoint.as_ref().map(|s| s.as_bytes().to_vec());
 
-    let search_paths: Option<Vec<PathBuf>> = opts
-      .search_paths
+    let manifest_search_paths: Option<Vec<PathBuf>> = opts
+      .manifest_search_paths
+      .map(|paths| paths.into_iter().map(PathBuf::from).collect());
+
+    let profile_search_paths: Option<Vec<PathBuf>> = opts
+      .profile_search_paths
       .map(|paths| paths.into_iter().map(PathBuf::from).collect());
 
     let database_opts = opts.database_options.map(map_database_options);
 
     let database = if opts.driver.contains(':') {
+      let provider = adbc_driver_manager::profile::FilesystemProfileProvider::new_with_search_paths(
+        profile_search_paths,
+      );
       // URI-style ("sqlite:file::memory:") or profile URI ("profile://my_profile")
-      ManagedDatabase::from_uri_with_opts(
+      ManagedDatabase::from_uri_with_profile_provider(
         &opts.driver,
         entrypoint.as_deref(),
         version,
         load_flags,
-        search_paths,
+        manifest_search_paths,
+        provider,
         database_opts.into_iter().flatten(),
       )?
     } else {
@@ -101,7 +110,7 @@ impl AdbcDatabaseCore {
         entrypoint.as_deref(),
         version,
         load_flags,
-        search_paths,
+        manifest_search_paths,
       )?;
       match database_opts {
         Some(db_opts) => driver.new_database_with_opts(db_opts)?,

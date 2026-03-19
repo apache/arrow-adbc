@@ -126,12 +126,10 @@ uri = ":memory:"
 fn test_filesystem_profile_load_simple() {
     let (tmp_dir, profile_path) = write_profile_to_tempfile("simple", &simple_profile());
 
-    let provider = FilesystemProfileProvider;
+    let search_paths = Some(vec![tmp_dir.path().to_path_buf()]);
+    let provider = FilesystemProfileProvider::new_with_search_paths(search_paths);
     let profile = provider
-        .get_profile(
-            profile_path.to_str().unwrap(),
-            Some(vec![tmp_dir.path().to_path_buf()]),
-        )
+        .get_profile(profile_path.to_str().unwrap())
         .unwrap();
 
     let (driver_name, init_func) = profile.get_driver_name().unwrap();
@@ -158,12 +156,10 @@ fn test_filesystem_profile_nested_options() {
     let (tmp_dir, profile_path) =
         write_profile_to_tempfile("nested", &profile_with_nested_options());
 
-    let provider = FilesystemProfileProvider;
+    let search_paths = Some(vec![tmp_dir.path().to_path_buf()]);
+    let provider = FilesystemProfileProvider::new_with_search_paths(search_paths);
     let profile = provider
-        .get_profile(
-            profile_path.to_str().unwrap(),
-            Some(vec![tmp_dir.path().to_path_buf()]),
-        )
+        .get_profile(profile_path.to_str().unwrap())
         .unwrap();
 
     let options: Vec<_> = profile.get_options().unwrap().into_iter().collect();
@@ -194,12 +190,10 @@ fn test_filesystem_profile_nested_options() {
 fn test_filesystem_profile_all_option_types() {
     let (tmp_dir, profile_path) = write_profile_to_tempfile("all_types", &profile_with_all_types());
 
-    let provider = FilesystemProfileProvider;
+    let provider =
+        FilesystemProfileProvider::new_with_search_paths(Some(vec![tmp_dir.path().to_path_buf()]));
     let profile = provider
-        .get_profile(
-            profile_path.to_str().unwrap(),
-            Some(vec![tmp_dir.path().to_path_buf()]),
-        )
+        .get_profile(profile_path.to_str().unwrap())
         .unwrap();
 
     let options: Vec<_> = profile.get_options().unwrap().into_iter().collect();
@@ -252,21 +246,84 @@ fn test_filesystem_profile_error_cases() {
             "unsupported profile version",
         ),
         (
+            "no version",
+            r#"
+driver = "adbc_driver_sqlite"
+[Options]
+"#
+            .to_string(),
+            Status::InvalidArguments,
+            "missing 'profile_version' in profile",
+        ),
+        (
+            "bad version",
+            r#"
+profile_version = "1"
+driver = "adbc_driver_sqlite"
+[Options]
+"#
+            .to_string(),
+            Status::InvalidArguments,
+            "invalid 'profile_version' in profile",
+        ),
+        (
             "invalid toml",
             invalid_toml().to_string(),
             Status::InvalidArguments,
-            "",
+            "TOML parse error",
+        ),
+        (
+            "no driver",
+            r#"
+profile_version = 1
+[Options]
+"#
+            .to_string(),
+            Status::InvalidArguments,
+            "missing or invalid 'driver' field in profile",
+        ),
+        (
+            "numeric driver",
+            r#"
+profile_version = 1
+driver = 2
+[Options]
+"#
+            .to_string(),
+            Status::InvalidArguments,
+            "missing or invalid 'driver' field in profile",
+        ),
+        (
+            "table driver",
+            r#"
+profile_version = 1
+[driver]
+foo = "bar"
+[Options]
+"#
+            .to_string(),
+            Status::InvalidArguments,
+            "missing or invalid 'driver' field in profile",
+        ),
+        (
+            "no options",
+            r#"
+profile_version = 1
+driver = "foo"
+"#
+            .to_string(),
+            Status::InvalidArguments,
+            "missing or invalid 'Options' table in profile",
         ),
     ];
 
     for (name, profile_content, expected_status, expected_msg_fragment) in test_cases {
         let (tmp_dir, profile_path) = write_profile_to_tempfile(name, &profile_content);
 
-        let provider = FilesystemProfileProvider;
-        let result = provider.get_profile(
-            profile_path.to_str().unwrap(),
-            Some(vec![tmp_dir.path().to_path_buf()]),
-        );
+        let provider = FilesystemProfileProvider::new_with_search_paths(Some(vec![tmp_dir
+            .path()
+            .to_path_buf()]));
+        let result = provider.get_profile(profile_path.to_str().unwrap());
 
         assert!(result.is_err(), "Test case '{}': expected error", name);
         let err = result.unwrap_err();
@@ -293,34 +350,13 @@ fn test_filesystem_profile_error_cases() {
 
 #[test]
 fn test_filesystem_profile_not_found() {
-    let provider = FilesystemProfileProvider;
-    let result = provider.get_profile("nonexistent_profile", None);
+    let provider = FilesystemProfileProvider::default();
+    let result = provider.get_profile("nonexistent_profile");
 
     assert!(result.is_err());
     let err = result.unwrap_err();
     assert_eq!(err.status, Status::NotFound);
     assert!(err.message.contains("Profile not found"));
-}
-
-#[test]
-fn test_filesystem_profile_without_driver() {
-    let (tmp_dir, profile_path) = write_profile_to_tempfile("no_driver", &profile_without_driver());
-
-    let provider = FilesystemProfileProvider;
-    let profile = provider
-        .get_profile(
-            profile_path.to_str().unwrap(),
-            Some(vec![tmp_dir.path().to_path_buf()]),
-        )
-        .unwrap();
-
-    let (driver_name, _) = profile.get_driver_name().unwrap();
-    // Should get empty string for missing driver
-    assert_eq!(driver_name, "");
-
-    tmp_dir
-        .close()
-        .expect("Failed to close/remove temporary directory");
 }
 
 #[test]
@@ -385,12 +421,12 @@ fn test_profile_loading_scenarios() {
     for (name, profile_name, profile_content, use_search_path, use_absolute) in test_cases {
         let (tmp_dir, profile_path) = write_profile_to_tempfile(profile_name, &profile_content);
 
-        let provider = FilesystemProfileProvider;
         let search_paths = if use_search_path {
             Some(vec![tmp_dir.path().to_path_buf()])
         } else {
             None
         };
+        let provider = FilesystemProfileProvider::new_with_search_paths(search_paths);
 
         let profile_arg = if use_absolute {
             profile_path.to_str().unwrap()
@@ -399,7 +435,7 @@ fn test_profile_loading_scenarios() {
         };
 
         let profile = provider
-            .get_profile(profile_arg, search_paths)
+            .get_profile(profile_arg)
             .unwrap_or_else(|e| panic!("Test case '{}' failed: {:?}", name, e));
 
         let (driver_name, _) = profile.get_driver_name().unwrap();
@@ -419,9 +455,9 @@ fn test_profile_loading_scenarios() {
 fn test_profile_display() {
     let (tmp_dir, profile_path) = write_profile_to_tempfile("display", &simple_profile());
 
-    let provider = FilesystemProfileProvider;
+    let provider = FilesystemProfileProvider::default();
     let profile = provider
-        .get_profile(profile_path.to_str().unwrap(), None)
+        .get_profile(profile_path.to_str().unwrap())
         .unwrap();
 
     let display_str = format!("{}", profile);
@@ -460,8 +496,7 @@ fn test_profile_hierarchical_path_via_env_var() {
     );
 
     // Set ADBC_PROFILE_PATH to the parent directory
-    let prev_value = env::var_os("ADBC_PROFILE_PATH");
-    env::set_var("ADBC_PROFILE_PATH", tmp_dir.path());
+    let _guard = common::SetEnv::new("ADBC_PROFILE_PATH", tmp_dir.path());
 
     // Verify the environment variable is set correctly
     assert_eq!(
@@ -470,14 +505,8 @@ fn test_profile_hierarchical_path_via_env_var() {
     );
 
     // Try to load the profile using hierarchical relative path
-    let provider = FilesystemProfileProvider;
-    let result = provider.get_profile("databases/postgres/production", None);
-
-    // Restore the original environment variable
-    match prev_value {
-        Some(val) => env::set_var("ADBC_PROFILE_PATH", val),
-        None => env::remove_var("ADBC_PROFILE_PATH"),
-    }
+    let provider = FilesystemProfileProvider::default();
+    let result = provider.get_profile("databases/postgres/production");
 
     // Verify the profile was loaded successfully
     let profile = result.expect("Failed to load profile from hierarchical path");
@@ -501,8 +530,6 @@ fn test_profile_hierarchical_path_via_env_var() {
 #[test]
 #[serial]
 fn test_profile_hierarchical_path_with_extension_via_env_var() {
-    use std::env;
-
     let tmp_dir = tempfile::Builder::new()
         .prefix("adbc_profile_env_test2")
         .tempdir()
@@ -518,18 +545,11 @@ fn test_profile_hierarchical_path_with_extension_via_env_var() {
     std::fs::write(&profile_path, simple_profile()).expect("Failed to write profile");
 
     // Set ADBC_PROFILE_PATH to the parent directory
-    let prev_value = env::var_os("ADBC_PROFILE_PATH");
-    env::set_var("ADBC_PROFILE_PATH", tmp_dir.path());
+    let _guard = common::SetEnv::new("ADBC_PROFILE_PATH", tmp_dir.path());
 
     // Try to load the profile using hierarchical relative path with .toml extension
-    let provider = FilesystemProfileProvider;
-    let result = provider.get_profile("configs/dev/database.toml", None);
-
-    // Restore the original environment variable
-    match prev_value {
-        Some(val) => env::set_var("ADBC_PROFILE_PATH", val),
-        None => env::remove_var("ADBC_PROFILE_PATH"),
-    }
+    let provider = FilesystemProfileProvider::default();
+    let result = provider.get_profile("configs/dev/database.toml");
 
     // Verify the profile was loaded successfully
     let profile = result.expect("Failed to load profile from hierarchical path with extension");
@@ -558,11 +578,9 @@ fn test_profile_hierarchical_path_additional_search_paths() {
     std::fs::write(&profile_path, simple_profile()).expect("Failed to write profile");
 
     // Load profile using hierarchical path via additional_search_paths
-    let provider = FilesystemProfileProvider;
-    let result = provider.get_profile(
-        "projects/myapp/local",
-        Some(vec![tmp_dir.path().to_path_buf()]),
-    );
+    let provider =
+        FilesystemProfileProvider::new_with_search_paths(Some(vec![tmp_dir.path().to_path_buf()]));
+    let result = provider.get_profile("projects/myapp/local");
 
     // Verify the profile was loaded successfully
     let profile = result.expect("Failed to load profile from hierarchical path");
@@ -606,17 +624,10 @@ fn test_profile_conda_prefix() {
     std::fs::write(&filepath, simple_profile()).expect("Failed to write profile");
 
     // Set CONDA_PREFIX environment variable
-    let prev_value = env::var("CONDA_PREFIX").ok();
-    env::set_var("CONDA_PREFIX", tmp_dir.path());
+    let _guard = common::SetEnv::new("CONDA_PREFIX", tmp_dir.path());
 
     let uri = "profile://sqlite-profile";
     let result = ManagedDatabase::from_uri(uri, None, AdbcVersion::V100, LOAD_FLAG_DEFAULT, None);
-
-    // Restore environment variable
-    match prev_value {
-        Some(val) => env::set_var("CONDA_PREFIX", val),
-        None => env::remove_var("CONDA_PREFIX"),
-    }
 
     if is_conda_build {
         assert!(result.is_ok(), "Expected success for conda build");
@@ -634,4 +645,104 @@ fn test_profile_conda_prefix() {
     tmp_dir
         .close()
         .expect("Failed to close/remove temporary directory")
+}
+
+#[test]
+#[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
+fn test_profile_load_manifest() {
+    let driver_path = PathBuf::from(
+        env::var_os("ADBC_DRIVER_MANAGER_TEST_LIB")
+            .expect("ADBC_DRIVER_MANAGER_TEST_LIB must be set for driver manager manifest tests"),
+    )
+    .to_string_lossy()
+    .to_string()
+    .replace("\\", "\\\\");
+    let manifest_dir = tempfile::Builder::new()
+        .prefix("adbc-test-manifest")
+        .tempdir()
+        .unwrap();
+    let profile_dir = tempfile::Builder::new()
+        .prefix("adbc-test-profile")
+        .tempdir()
+        .unwrap();
+
+    let manifest_contents = format!(
+        r#"
+manifest_version = 1
+[Driver]
+shared = "{driver_path}"
+"#
+    );
+
+    let manifest_path = manifest_dir.path().join("sqlite.toml");
+    std::fs::write(&manifest_path, &manifest_contents).unwrap();
+
+    let manifest_path = profile_dir.path().join("sqlitemani.toml");
+    std::fs::write(&manifest_path, &manifest_contents).unwrap();
+
+    let profile_contents = r#"
+profile_version = 1
+driver = "sqlite"
+[Options]
+uri = ":memory:"
+"#;
+
+    let profile_path = profile_dir.path().join("sqlitedev.toml");
+    std::fs::write(&profile_path, profile_contents).unwrap();
+    let profile_path = manifest_dir.path().join("sqliteprof.toml");
+    std::fs::write(&profile_path, profile_contents).unwrap();
+
+    let provider = FilesystemProfileProvider::new_with_search_paths(Some(vec![profile_dir
+        .path()
+        .to_path_buf()]));
+    let database = ManagedDatabase::from_uri_with_profile_provider(
+        "profile://sqlitedev",
+        None,
+        AdbcVersion::V100,
+        LOAD_FLAG_DEFAULT,
+        Some(vec![manifest_dir.path().to_path_buf()]),
+        provider.clone(),
+        std::iter::empty(),
+    )
+    .unwrap();
+
+    common::test_database(&database);
+
+    // should not be able to load a profile from manifest dir or vice versa
+    let result = ManagedDatabase::from_uri_with_profile_provider(
+        "profile://sqliteprof",
+        None,
+        AdbcVersion::V100,
+        LOAD_FLAG_DEFAULT,
+        Some(vec![manifest_dir.path().to_path_buf()]),
+        provider.clone(),
+        std::iter::empty(),
+    );
+    assert!(result.is_err());
+    let err = result.err().unwrap();
+    assert!(
+        err.message.contains("Profile not found: sqliteprof"),
+        "{}",
+        err.message
+    );
+
+    let result = ManagedDatabase::from_uri_with_profile_provider(
+        "sqlitemani://",
+        None,
+        AdbcVersion::V100,
+        LOAD_FLAG_DEFAULT,
+        Some(vec![manifest_dir.path().to_path_buf()]),
+        provider.clone(),
+        std::iter::empty(),
+    );
+    assert!(result.is_err());
+    #[cfg(not(windows))]
+    {
+        // The Windows error just says 'LoadLibraryExW failed'
+        let err = result.err().unwrap();
+        assert!(err.message.contains("sqlitemani"), "{}", err.message);
+    }
+
+    manifest_dir.close().unwrap();
+    profile_dir.close().unwrap();
 }

@@ -43,7 +43,8 @@ export type _NativeAdbcStatement = NativeAdbcStatement
 export interface ConnectOptions {
   driver: string
   entrypoint?: string
-  searchPaths?: Array<string>
+  manifestSearchPaths?: Array<string>
+  profileSearchPaths?: Array<string>
   loadFlags?: number
   databaseOptions?: Record<string, string>
 }

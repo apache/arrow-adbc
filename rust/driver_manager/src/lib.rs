@@ -494,14 +494,13 @@ impl ManagedDatabase {
         additional_search_paths: Option<Vec<PathBuf>>,
         opts: impl IntoIterator<Item = (<Self as Optionable>::Option, OptionValue)>,
     ) -> Result<Self> {
-        let profile_provider = FilesystemProfileProvider;
         Self::from_uri_with_profile_provider(
             uri,
             entrypoint,
             version,
             load_flags,
             additional_search_paths,
-            profile_provider,
+            FilesystemProfileProvider::default(),
             opts,
         )
     }
@@ -534,7 +533,7 @@ impl ManagedDatabase {
     /// use adbc_driver_manager::profile::FilesystemProfileProvider;
     /// use adbc_core::LOAD_FLAG_DEFAULT;
     ///
-    /// let provider = FilesystemProfileProvider;
+    /// let provider = FilesystemProfileProvider::default();
     /// let opts = vec![(OptionDatabase::Username, OptionValue::String("admin".to_string()))];
     ///
     /// let db = ManagedDatabase::from_uri_with_profile_provider(
@@ -575,8 +574,7 @@ impl ManagedDatabase {
                 (drv, final_opts)
             }
             DriverLocator::Profile(profile) => {
-                let profile =
-                    profile_provider.get_profile(profile, additional_search_paths.clone())?;
+                let profile = profile_provider.get_profile(profile)?;
                 let (driver_name, init_func) = profile.get_driver_name()?;
 
                 let drv: ManagedDriver;

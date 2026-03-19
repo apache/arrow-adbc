@@ -28,9 +28,9 @@ ADBC Driver Manager and Manifests
 
 There are two ways to load a driver with the driver manager:
 
-1. Directly specifying the dynamic library to load
-2. Referring to a driver manifest file which contains metadata along with the
-   location of the dynamic library to be loaded
+1. Directly specifying the dynamic library to load.
+2. Referring to a :term:`driver manifest` file which contains metadata along
+   with the location of the dynamic library to be loaded.
 
 With either method, you specify the dynamic library or driver manifest as the
 ``driver`` option to the driver manager or you can use an explicit function for

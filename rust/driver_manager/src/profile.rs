@@ -76,7 +76,6 @@ pub trait ConnectionProfileProvider {
     /// # Arguments
     ///
     /// * `name` - The profile name or path to locate
-    /// * `additional_path_list` - Optional additional directories to search for profiles
     ///
     /// # Returns
     ///
@@ -88,11 +87,7 @@ pub trait ConnectionProfileProvider {
     /// - The profile cannot be found
     /// - The profile file is malformed
     /// - The profile version is unsupported
-    fn get_profile(
-        &self,
-        name: &str,
-        additional_path_list: Option<Vec<PathBuf>>,
-    ) -> Result<Self::Profile>;
+    fn get_profile(&self, name: &str) -> Result<Self::Profile>;
 }
 
 /// Provides connection profiles from TOML files on the filesystem.
@@ -104,7 +99,7 @@ pub trait ConnectionProfileProvider {
 /// # Search Order
 ///
 /// Profiles are searched in the following order:
-/// 1. Additional paths provided via `get_profile()`
+/// 1. Additional paths provided via `new_with_search_paths`
 /// 2. `ADBC_PROFILE_PATH` environment variable paths
 /// 3. User configuration directory (`~/.config/adbc/profiles` on Linux,
 ///    `~/Library/Application Support/ADBC/Profiles` on macOS,
@@ -117,21 +112,27 @@ pub trait ConnectionProfileProvider {
 ///     ConnectionProfileProvider, FilesystemProfileProvider
 /// };
 ///
-/// let provider = FilesystemProfileProvider;
-/// let profile = provider.get_profile("my_database", None)?;
+/// let provider = FilesystemProfileProvider::default();
+/// let profile = provider.get_profile("my_database")?;
 /// # Ok::<(), adbc_core::error::Error>(())
 /// ```
-pub struct FilesystemProfileProvider;
+#[derive(Clone, Default)]
+pub struct FilesystemProfileProvider {
+    additional_paths: Option<Vec<PathBuf>>,
+}
+
+impl FilesystemProfileProvider {
+    /// Search the given paths (if any) for profiles.
+    pub fn new_with_search_paths(additional_paths: Option<Vec<PathBuf>>) -> Self {
+        Self { additional_paths }
+    }
+}
 
 impl ConnectionProfileProvider for FilesystemProfileProvider {
     type Profile = FilesystemProfile;
 
-    fn get_profile(
-        &self,
-        name: &str,
-        additional_path_list: Option<Vec<PathBuf>>,
-    ) -> Result<Self::Profile> {
-        let profile_path = find_filesystem_profile(name, additional_path_list)?;
+    fn get_profile(&self, name: &str) -> Result<Self::Profile> {
+        let profile_path = find_filesystem_profile(name, &self.additional_paths)?;
         FilesystemProfile::from_path(profile_path)
     }
 }
@@ -266,14 +267,28 @@ impl FilesystemProfile {
         let profile = DeTable::parse(&contents)
             .map_err(|e| Error::with_message_and_status(e.to_string(), Status::InvalidArguments))?;
 
-        let profile_version = profile
-            .get_ref()
-            .get("profile_version")
-            .and_then(|v| v.get_ref().as_integer())
-            .map(|v| v.as_str())
-            .unwrap_or("1");
+        let raw_profile_version = profile.get_ref().get("profile_version").ok_or_else(|| {
+            Error::with_message_and_status(
+                "missing 'profile_version' in profile".to_string(),
+                Status::InvalidArguments,
+            )
+        })?;
 
-        if profile_version != "1" {
+        let profile_version = raw_profile_version
+            .as_ref()
+            .as_integer()
+            .and_then(|i| i64::from_str_radix(i.as_str(), i.radix()).ok())
+            .ok_or_else(|| {
+                Error::with_message_and_status(
+                    format!(
+                        "invalid 'profile_version' in profile: {:?}",
+                        raw_profile_version.as_ref()
+                    ),
+                    Status::InvalidArguments,
+                )
+            })?;
+
+        if profile_version != 1 {
             return Err(Error::with_message_and_status(
                 format!(
                     "unsupported profile version '{}', expected '1'",
@@ -287,7 +302,12 @@ impl FilesystemProfile {
             .get_ref()
             .get("driver")
             .and_then(|v| v.get_ref().as_str())
-            .unwrap_or("")
+            .ok_or_else(|| {
+                Error::with_message_and_status(
+                    "missing or invalid 'driver' field in profile".to_string(),
+                    Status::InvalidArguments,
+                )
+            })?
             .to_string();
 
         let options_table = profile
@@ -708,6 +728,24 @@ key = "value"
                 Ok("just a plain string"),
             ),
             TestCase(
+                "not actually a substitution",
+                vec![],
+                "{{ env_var(NONEXISTENT)",
+                Ok("{{ env_var(NONEXISTENT)"),
+            ),
+            TestCase(
+                "not actually a substitution (2)",
+                vec![],
+                "{{ env_var(NONEXISTENT) }",
+                Ok("{{ env_var(NONEXISTENT) }"),
+            ),
+            TestCase(
+                "not actually a substitution (3)",
+                vec![],
+                "{ env_var(NONEXISTENT) }",
+                Ok("{ env_var(NONEXISTENT) }"),
+            ),
+            TestCase(
                 "string with special chars but no templates",
                 vec![],
                 "host=localhost port=5432",
@@ -732,6 +770,30 @@ key = "value"
                 Ok("foobar"),
             ),
             TestCase(
+                "env var not set interpolates the empty string (2)",
+                vec![],
+                "foo{{ env_var(ADBC_TEST_PPV_NONEXISTENT_XYZ) }}",
+                Ok("foo"),
+            ),
+            TestCase(
+                "env var not set interpolates the empty string (3)",
+                vec![],
+                "{{ env_var(ADBC_TEST_PPV_NONEXISTENT_XYZ) }}bar",
+                Ok("bar"),
+            ),
+            TestCase(
+                "env var not set interpolates the empty string (4)",
+                vec![],
+                "foo{{ env_var(ADBC_TEST_PPV_NONEXISTENT_XYZ) }}bar{{ env_var(ADBC_TEST_PPV_NONEXISTENT_XYZ2) }}baz",
+                Ok("foobarbaz"),
+            ),
+            TestCase(
+                "env var not set interpolates the empty string (5)",
+                vec![],
+                "{{ env_var(ADBC_TEST_PPV_NONEXISTENT_XYZ) }}foobarbaz{{ env_var(ADBC_TEST_PPV_NONEXISTENT_XYZ2) }}",
+                Ok("foobarbaz"),
+            ),
+            TestCase(
                 "mixed literal text and env var",
                 vec![("ADBC_TEST_PPV_PORT", "5432")],
                 "host=localhost port={{ env_var(ADBC_TEST_PPV_PORT) }}",
@@ -750,6 +812,12 @@ key = "value"
                 "extra whitespace inside braces",
                 vec![("ADBC_TEST_PPV_DB", "mydb")],
                 "{{  env_var(ADBC_TEST_PPV_DB)  }}",
+                Ok("mydb"),
+            ),
+            TestCase(
+                "no whitespace inside braces",
+                vec![("ADBC_TEST_PPV_DB", "mydb")],
+                "{{env_var(ADBC_TEST_PPV_DB)}}",
                 Ok("mydb"),
             ),
             TestCase(
@@ -859,11 +927,11 @@ test_key = "test_value"
             });
             std::fs::write(&profile_path, profile_content).unwrap();
 
-            let provider = FilesystemProfileProvider;
             let search_paths = search_paths_opt.map(|mut paths| {
                 paths.push(tmp_dir.path().to_path_buf());
                 paths
             });
+            let provider = FilesystemProfileProvider::new_with_search_paths(search_paths);
 
             let profile_arg = if name.contains("absolute") {
                 profile_path.to_str().unwrap().to_string()
@@ -871,7 +939,7 @@ test_key = "test_value"
                 profile_name.to_string()
             };
 
-            let result = provider.get_profile(&profile_arg, search_paths);
+            let result = provider.get_profile(&profile_arg);
 
             if should_succeed {
                 let profile =

@@ -845,7 +845,7 @@ fn get_search_paths(lvls: LoadFlags) -> Vec<PathBuf> {
 /// Returns `Status::NotFound` if the profile cannot be located in any search path.
 pub(crate) fn find_filesystem_profile(
     name: &str,
-    additional_path_list: Option<Vec<PathBuf>>,
+    additional_path_list: &Option<Vec<PathBuf>>,
 ) -> Result<PathBuf> {
     // Convert the name to a PathBuf to ensure proper platform-specific path handling.
     // This normalizes forward slashes to backslashes on Windows.
@@ -905,8 +905,8 @@ pub(crate) fn find_filesystem_profile(
 /// # Returns
 ///
 /// A vector of paths to search for profiles, in priority order.
-fn get_profile_search_paths(additional_path_list: Option<Vec<PathBuf>>) -> Vec<PathBuf> {
-    let mut result = additional_path_list.unwrap_or_default();
+fn get_profile_search_paths(additional_path_list: &Option<Vec<PathBuf>>) -> Vec<PathBuf> {
+    let mut result = additional_path_list.clone().unwrap_or_default();
 
     // Add ADBC_PROFILE_PATH environment variable paths
     if let Some(paths) = env::var_os("ADBC_PROFILE_PATH") {
@@ -1741,7 +1741,7 @@ mod tests {
                 profile_name.to_string()
             };
 
-            let result = find_filesystem_profile(&profile_arg, search_paths);
+            let result = find_filesystem_profile(&profile_arg, &search_paths);
 
             if should_succeed {
                 assert!(
@@ -1793,7 +1793,7 @@ mod tests {
 
         let result = find_filesystem_profile(
             "searched_profile",
-            Some(vec![
+            &Some(vec![
                 tmp_dir1.path().to_path_buf(),
                 tmp_dir2.path().to_path_buf(),
             ]),
@@ -1813,7 +1813,7 @@ mod tests {
             .tempdir()
             .unwrap();
 
-        let paths = get_profile_search_paths(Some(vec![tmp_dir.path().to_path_buf()]));
+        let paths = get_profile_search_paths(&Some(vec![tmp_dir.path().to_path_buf()]));
 
         assert!(paths.contains(&tmp_dir.path().to_path_buf()));
         assert!(!paths.is_empty());
@@ -1823,7 +1823,7 @@ mod tests {
 
     #[test]
     fn test_get_profile_search_paths_empty() {
-        let paths = get_profile_search_paths(None);
+        let paths = get_profile_search_paths(&None);
         // Should still return some paths (env vars, user config, etc.)
         assert!(!paths.is_empty() || paths.is_empty()); // Just verify it doesn't panic
     }
