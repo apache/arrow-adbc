@@ -95,6 +95,9 @@ const (
 	// Enable a heartbeat in the background to keep the connection session alive.
 	// Uses the client_session_keep_alive DSN parameter internally.
 	OptionKeepSessionAlive = "adbc.snowflake.sql.client_option.keep_session_alive"
+	// Retry a non-transactional statement after reconnecting on Snowflake 390114.
+	// This is intended for rare master-token expiry recovery paths.
+	OptionRetryOnMasterTokenExpired = "adbc.snowflake.sql.client_option.retry_on_master_token_expired"
 	// specify the RSA private key to use to sign the JWT
 	// this should point to a file containing a PKCS1 private key to be
 	// loaded. Commonly encoded in PEM blocks of type "RSA PRIVATE KEY"

@@ -20,6 +20,7 @@ package snowflake
 import (
 	"context"
 	"database/sql/driver"
+	"errors"
 	"fmt"
 	"io"
 	"strconv"
@@ -486,10 +487,13 @@ func (st *statement) executeIngest(ctx context.Context) (int64, error) {
 // of rows affected if known, otherwise it will be -1.
 //
 // This invalidates any prior result sets on this statement.
-func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReader, nRows int64, err error) {
-	nRows = -1
+func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int64, error) {
+	nRows := int64(-1)
 
-	var span trace.Span
+	var (
+		err  error
+		span trace.Span
+	)
 	ctx, span = internal.StartSpan(ctx, "statement.ExecuteQuery", st)
 	defer func() {
 		span.SetAttributes(semconv.DBResponseReturnedRowsKey.Int64(nRows))
@@ -500,7 +504,7 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 
 	if st.targetTable != "" {
 		nRows, err = st.executeIngest(ctx)
-		return
+		return nil, nRows, err
 	}
 
 	if st.query == "" {
@@ -508,7 +512,7 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 			Msg:  "cannot execute without a query",
 			Code: adbc.StatusInvalidState,
 		}
-		return
+		return nil, nRows, err
 	}
 
 	// for a bound stream reader we'd need to implement something to
@@ -517,15 +521,11 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 	if st.streamBind != nil || st.bound != nil {
 		bind := snowflakeBindReader{
 			doQuery: func(params []driver.NamedValue) (array.RecordReader, error) {
-				var loader gosnowflake.ArrowStreamLoader
-				loader, err = st.cnxn.cn.QueryArrowStream(ctx, st.query, params...)
-				if err != nil {
-					err = errToAdbcErr(adbc.StatusInternal, err)
-					return nil, err
+				boundReader, _, queryErr := st.executeQueryOnce(ctx, params)
+				if queryErr != nil {
+					return nil, errToAdbcErr(adbc.StatusInternal, queryErr)
 				}
-
-				reader, err = newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision, st.maxTimestampPrecision)
-				return reader, err
+				return boundReader, nil
 			},
 			currentBatch: st.bound,
 			stream:       st.streamBind,
@@ -536,22 +536,170 @@ func (st *statement) ExecuteQuery(ctx context.Context) (reader array.RecordReade
 		rdr := concatReader{}
 		err = rdr.Init(&bind)
 		if err != nil {
-			return
+			return nil, nRows, err
 		}
-		reader = &rdr
-		return
+		return &rdr, nRows, nil
 	}
 
-	var loader gosnowflake.ArrowStreamLoader
-	loader, err = st.cnxn.cn.QueryArrowStream(ctx, st.query)
+	reader, nRows, err := st.executeQueryOnce(ctx, nil)
 	if err != nil {
 		err = errToAdbcErr(adbc.StatusInternal, err)
-		return
+	}
+	return reader, nRows, err
+}
+
+func releaseFetchedRecords(records []arrow.RecordBatch) {
+	for _, rec := range records {
+		rec.Release()
+	}
+}
+
+func recordReaderFromFetchedBatches(ctx context.Context, batches []*gosnowflake.ArrowBatch) (array.RecordReader, int64, error) {
+	records := make([]arrow.RecordBatch, 0, len(batches))
+	var totalRows int64
+
+	for _, batch := range batches {
+		fetched, err := batch.WithContext(ctx).Fetch()
+		if err != nil {
+			releaseFetchedRecords(records)
+			return nil, -1, err
+		}
+
+		for _, rec := range *fetched {
+			rec.Retain()
+			records = append(records, rec)
+			totalRows += rec.NumRows()
+		}
 	}
 
-	reader, err = newRecordReader(ctx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision, st.maxTimestampPrecision)
-	nRows = loader.TotalRows()
-	return
+	if len(records) == 0 {
+		return nil, 0, adbc.Error{
+			Msg:  "[Snowflake] recovered query returned no Arrow batches",
+			Code: adbc.StatusInternal,
+		}
+	}
+
+	reader, err := array.NewRecordReader(records[0].Schema(), records)
+	releaseFetchedRecords(records)
+	if err != nil {
+		return nil, -1, err
+	}
+	return reader, totalRows, nil
+}
+
+func (st *statement) recoveredQueryContext(ctx context.Context, queryID string) context.Context {
+	ctx = gosnowflake.WithFetchResultByID(
+		gosnowflake.WithArrowAllocator(gosnowflake.WithArrowBatches(ctx), st.alloc),
+		queryID,
+	)
+	if st.useHighPrecision {
+		ctx = gosnowflake.WithHigherPrecision(ctx)
+	}
+
+	// gosnowflake's fetch-by-query-id Arrow batches do not expose a
+	// nanoseconds-with-overflow-check mode. In this rare 390114 recovery path,
+	// mirror the closest available timestamp setting.
+	switch st.maxTimestampPrecision {
+	case Microseconds:
+		return gosnowflake.WithArrowBatchesTimestampOption(ctx, gosnowflake.UseMicrosecondTimestamp)
+	default:
+		return gosnowflake.WithArrowBatchesTimestampOption(ctx, gosnowflake.UseNanosecondTimestamp)
+	}
+}
+
+func (st *statement) fetchRecoveredQueryByID(ctx context.Context, queryID string) (array.RecordReader, int64, error) {
+	fetchCtx := st.recoveredQueryContext(ctx, queryID)
+
+	rows, err := st.cnxn.cn.QueryContext(fetchCtx, "", nil)
+	if err != nil {
+		return nil, -1, err
+	}
+	defer func() {
+		err = errors.Join(err, rows.Close())
+	}()
+
+	sfRows, ok := rows.(gosnowflake.SnowflakeRows)
+	if !ok {
+		return nil, -1, adbc.Error{
+			Msg:  fmt.Sprintf("[Snowflake] expected SnowflakeRows when recovering query %s, got %T", queryID, rows),
+			Code: adbc.StatusInternal,
+		}
+	}
+
+	batches, err := sfRows.GetArrowBatches()
+	if err != nil {
+		return nil, -1, err
+	}
+	return recordReaderFromFetchedBatches(fetchCtx, batches)
+}
+
+func (st *statement) withRecoverableQueryID(ctx context.Context) (context.Context, <-chan string) {
+	queryIDCh := make(chan string, 1)
+	return gosnowflake.WithQueryIDChan(ctx, queryIDCh), queryIDCh
+}
+
+func (st *statement) executeQueryOnce(ctx context.Context, params []driver.NamedValue) (array.RecordReader, int64, error) {
+	execCtx, queryIDCh := st.withRecoverableQueryID(ctx)
+
+	loader, err := st.cnxn.cn.QueryArrowStream(execCtx, st.query, params...)
+	if err == nil {
+		reader, readerErr := newRecordReader(execCtx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision, st.maxTimestampPrecision)
+		if readerErr != nil {
+			return nil, -1, readerErr
+		}
+		return reader, loader.TotalRows(), nil
+	}
+
+	if !st.cnxn.shouldRecoverExpiredMasterToken(err) {
+		return nil, -1, err
+	}
+
+	queryID := drainQueryID(queryIDCh)
+
+	// QueryArrowStream has no fetch-by-query-id API. On rare 390114 failures,
+	// reconnect once and reuse the completed result by query ID when possible.
+	if reconnectErr := st.cnxn.reconnect(execCtx); reconnectErr != nil {
+		return nil, -1, fmt.Errorf("reconnect after 390114: %w", reconnectErr)
+	}
+
+	if queryID != "" {
+		state, statusErr := st.cnxn.resolveRecoveredQueryStatus(execCtx, queryID)
+		if state != recoveredQuerySucceeded {
+			return nil, -1, statusErr
+		}
+
+		reader, nRows, fetchErr := st.fetchRecoveredQueryByID(execCtx, queryID)
+		if fetchErr == nil {
+			return reader, nRows, nil
+		}
+		// If we cannot materialize the completed result set by query ID, replaying
+		// a read is safer than abandoning the recovered connection.
+	}
+
+	loader, err = st.cnxn.cn.QueryArrowStream(execCtx, st.query, params...)
+	if err != nil {
+		return nil, -1, err
+	}
+	reader, readerErr := newRecordReader(execCtx, st.alloc, loader, st.queueSize, st.prefetchConcurrency, st.useHighPrecision, st.maxTimestampPrecision)
+	if readerErr != nil {
+		return nil, -1, readerErr
+	}
+	return reader, loader.TotalRows(), nil
+}
+
+func (st *statement) executeUpdateOnce(ctx context.Context, params []driver.NamedValue) (driver.Result, bool, error) {
+	execCtx, queryIDCh := st.withRecoverableQueryID(ctx)
+
+	result, err := st.cnxn.cn.ExecContext(execCtx, st.query, params)
+	if err == nil {
+		return result, false, nil
+	}
+
+	recovery := st.cnxn.recoverExpiredMasterToken(execCtx, st.query, params, drainQueryID(queryIDCh), err)
+	if recovery.handled {
+		return recovery.result, recovery.rowsAffectedUnknown, recovery.err
+	}
+	return nil, false, err
 }
 
 // ExecuteUpdate executes a statement that does not generate a result
@@ -597,11 +745,15 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (numRows int64, err erro
 				numRows = -1
 				return numRows, err
 			}
-			r, err := st.cnxn.cn.ExecContext(ctx, st.query, params)
+			r, rowsAffectedUnknown, err := st.executeUpdateOnce(ctx, params)
 			if err != nil {
 				err = errToAdbcErr(adbc.StatusInternal, err)
 				numRows = -1
 				return numRows, err
+			}
+			if rowsAffectedUnknown {
+				numRows = -1
+				continue
 			}
 			n, err := r.RowsAffected()
 			if err != nil {
@@ -614,11 +766,14 @@ func (st *statement) ExecuteUpdate(ctx context.Context) (numRows int64, err erro
 		return numRows, err
 	}
 
-	r, err := st.cnxn.cn.ExecContext(ctx, st.query, nil)
+	r, rowsAffectedUnknown, err := st.executeUpdateOnce(ctx, nil)
 	if err != nil {
 		numRows = -1
 		err = errToAdbcErr(adbc.StatusIO, err)
 		return numRows, err
+	}
+	if rowsAffectedUnknown {
+		return -1, nil
 	}
 
 	numRows, err = r.RowsAffected()

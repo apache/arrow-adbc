@@ -30,6 +30,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
@@ -70,9 +71,158 @@ type connectionImpl struct {
 	db   *databaseImpl
 	ctor driver.Connector
 
+	retryOnMasterTokenExpired bool
 	activeTransaction     bool
 	useHighPrecision      bool
 	maxTimestampPrecision MaxTimestampPrecision
+}
+
+const masterTokenExpiredVendorCode = 390114
+const recoveredQueryStatusMaxAttempts = 4
+
+func isMasterTokenExpired(err error) bool {
+	var sfErr *gosnowflake.SnowflakeError
+	return errors.As(err, &sfErr) && sfErr.Number == masterTokenExpiredVendorCode
+}
+
+func drainQueryID(queryIDCh <-chan string) string {
+	select {
+	case queryID := <-queryIDCh:
+		return queryID
+	default:
+		return ""
+	}
+}
+
+func (c *connectionImpl) shouldRecoverExpiredMasterToken(err error) bool {
+	return c.retryOnMasterTokenExpired && !c.activeTransaction && isMasterTokenExpired(err)
+}
+
+func (c *connectionImpl) reconnect(ctx context.Context) error {
+	connectCtx := gosnowflake.WithArrowAllocator(
+		gosnowflake.WithArrowBatches(ctx), c.db.Alloc)
+
+	cn, err := c.ctor.Connect(connectCtx)
+	if err != nil {
+		return err
+	}
+
+	oldConn := c.cn
+	c.cn = cn.(snowflakeConn)
+	if oldConn != nil {
+		_ = oldConn.Close()
+	}
+	return nil
+}
+
+func (c *connectionImpl) queryStatus(ctx context.Context, queryID string) (*gosnowflake.SnowflakeQueryStatus, error) {
+	statusConn, ok := c.cn.(gosnowflake.SnowflakeConnection)
+	if !ok {
+		return nil, adbc.Error{
+			Msg:  "[Snowflake] connection does not expose query status",
+			Code: adbc.StatusNotImplemented,
+		}
+	}
+	return statusConn.GetQueryStatus(ctx, queryID)
+}
+
+type recoveredQueryState int
+
+const (
+	recoveredQuerySucceeded recoveredQueryState = iota
+	recoveredQueryFailed
+	recoveredQueryUnresolved
+)
+
+func (c *connectionImpl) resolveRecoveredQueryStatus(ctx context.Context, queryID string) (recoveredQueryState, error) {
+	wait := 250 * time.Millisecond
+
+	for attempt := 0; attempt < recoveredQueryStatusMaxAttempts; attempt++ {
+		_, err := c.queryStatus(ctx, queryID)
+		if err == nil {
+			return recoveredQuerySucceeded, nil
+		}
+
+		var sfErr *gosnowflake.SnowflakeError
+		if !errors.As(err, &sfErr) {
+			return recoveredQueryUnresolved, err
+		}
+
+		switch sfErr.Number {
+		case gosnowflake.ErrQueryReportedError:
+			return recoveredQueryFailed, err
+		case gosnowflake.ErrQueryIsRunning, gosnowflake.ErrQueryStatus:
+			if attempt == recoveredQueryStatusMaxAttempts-1 {
+				return recoveredQueryUnresolved, fmt.Errorf("reconnected after 390114 but query %s final state is still unresolved: %w", queryID, err)
+			}
+
+			select {
+			case <-ctx.Done():
+				return recoveredQueryUnresolved, ctx.Err()
+			case <-time.After(wait):
+			}
+			wait *= 2
+		default:
+			return recoveredQueryUnresolved, err
+		}
+	}
+
+	return recoveredQueryUnresolved, fmt.Errorf("reconnected after 390114 but query %s final state is still unresolved", queryID)
+}
+
+type execRecovery struct {
+	handled             bool
+	result              driver.Result
+	rowsAffectedUnknown bool
+	err                 error
+}
+
+func (c *connectionImpl) recoverExpiredMasterToken(
+	ctx context.Context,
+	query string,
+	params []driver.NamedValue,
+	queryID string,
+	execErr error,
+) execRecovery {
+	if !c.shouldRecoverExpiredMasterToken(execErr) {
+		return execRecovery{}
+	}
+
+	// 390114 is a rare master-token expiry path. Keep the steady-state execute
+	// path simple and only pay the reconnect/status lookup cost when Snowflake
+	// tells us the current connection can no longer renew itself.
+	if err := c.reconnect(ctx); err != nil {
+		return execRecovery{
+			handled: true,
+			err:     fmt.Errorf("reconnect after 390114: %w", err),
+		}
+	}
+
+	if queryID != "" {
+		state, err := c.resolveRecoveredQueryStatus(ctx, queryID)
+		if state == recoveredQuerySucceeded {
+			// The server already finished the original statement. Avoid replaying a
+			// write we cannot prove is safe to run twice and report an unknown rowcount.
+			return execRecovery{
+				handled:             true,
+				rowsAffectedUnknown: true,
+			}
+		}
+		return execRecovery{
+			handled: true,
+			err:     err,
+		}
+	}
+
+	// We were unable to capture a query ID before the connection failed.
+	// Replaying may duplicate side effects, but without a query ID we have no
+	// safer server-side recovery path to inspect the original statement.
+	replayed, err := c.cn.ExecContext(ctx, query, params)
+	return execRecovery{
+		handled: true,
+		result:  replayed,
+		err:     err,
+	}
 }
 
 func escapeSingleQuoteForLike(arg string) string {
