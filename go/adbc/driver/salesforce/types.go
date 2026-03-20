@@ -2,15 +2,15 @@ package salesforce
 
 import (
 	"fmt"
-	"log"
+	"strings"
 
-	api "github.com/apache/arrow-adbc/go/adbc/driver/salesforce/gosalesforce/api"
+	sftypes "github.com/apache/arrow-adbc/go/adbc/driver/salesforce/api/types"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 )
 
 // buildArrowSchema builds Arrow schema from SQL Query API metadata
-func (s *statement) buildArrowSchema(metadata []api.SqlQueryMetadata) *arrow.Schema {
+func (s *statement) buildArrowSchema(metadata []sftypes.SqlQueryMetadata) *arrow.Schema {
 	fields := make([]arrow.Field, len(metadata))
 
 	for i, col := range metadata {
@@ -27,9 +27,9 @@ func (s *statement) buildArrowSchema(metadata []api.SqlQueryMetadata) *arrow.Sch
 }
 
 // buildArrowRecords converts the raw data to Arrow records
-func (s *statement) buildArrowRecords(schema *arrow.Schema, data [][]interface{}) ([]arrow.Record, error) {
+func (s *statement) buildArrowRecords(schema *arrow.Schema, data [][]any) ([]arrow.RecordBatch, error) {
 	if len(data) == 0 {
-		return []arrow.Record{}, nil
+		return []arrow.RecordBatch{}, nil
 	}
 
 	// For now, create a simple single record
@@ -66,18 +66,18 @@ func (s *statement) buildArrowRecords(schema *arrow.Schema, data [][]interface{}
 	}
 
 	// Create record
-	record := array.NewRecord(schema, arrays, int64(len(data)))
+	record := array.NewRecordBatch(schema, arrays, int64(len(data)))
 
 	// Release arrays
 	for _, arr := range arrays {
 		arr.Release()
 	}
 
-	return []arrow.Record{record}, nil
+	return []arrow.RecordBatch{record}, nil
 }
 
 // appendValueToBuilder appends a value to the appropriate builder type using the dataType
-func appendValueToBuilder(builder array.Builder, value interface{}, dataType arrow.DataType) {
+func appendValueToBuilder(builder array.Builder, value any, dataType arrow.DataType) {
 	// Convert value based on the target Arrow data type
 	switch dataType.ID() {
 	case arrow.STRING:
@@ -93,7 +93,7 @@ func appendValueToBuilder(builder array.Builder, value interface{}, dataType arr
 		if convertedValue, ok := convertToInt64(value); ok {
 			b.Append(convertedValue)
 		} else {
-			log.Printf("DEBUG: Failed to convert %T(%v) to int64\n", value, value)
+			// log.Printf("DEBUG: Failed to convert %T(%v) to int64\n", value, value)
 			b.AppendNull()
 		}
 
@@ -102,7 +102,7 @@ func appendValueToBuilder(builder array.Builder, value interface{}, dataType arr
 		if convertedValue, ok := convertToInt32(value); ok {
 			b.Append(convertedValue)
 		} else {
-			log.Printf("DEBUG: Failed to convert %T(%v) to int32\n", value, value)
+			// log.Printf("DEBUG: Failed to convert %T(%v) to int32\n", value, value)
 			b.AppendNull()
 		}
 
@@ -111,7 +111,7 @@ func appendValueToBuilder(builder array.Builder, value interface{}, dataType arr
 		if convertedValue, ok := convertToInt16(value); ok {
 			b.Append(convertedValue)
 		} else {
-			log.Printf("DEBUG: Failed to convert %T(%v) to int16\n", value, value)
+			// log.Printf("DEBUG: Failed to convert %T(%v) to int16\n", value, value)
 			b.AppendNull()
 		}
 
@@ -120,7 +120,7 @@ func appendValueToBuilder(builder array.Builder, value interface{}, dataType arr
 		if convertedValue, ok := convertToFloat64(value); ok {
 			b.Append(convertedValue)
 		} else {
-			log.Printf("DEBUG: Failed to convert %T(%v) to float64\n", value, value)
+			// log.Printf("DEBUG: Failed to convert %T(%v) to float64\n", value, value)
 			b.AppendNull()
 		}
 
@@ -129,7 +129,7 @@ func appendValueToBuilder(builder array.Builder, value interface{}, dataType arr
 		if convertedValue, ok := convertToFloat32(value); ok {
 			b.Append(convertedValue)
 		} else {
-			log.Printf("DEBUG: Failed to convert %T(%v) to float32\n", value, value)
+			// log.Printf("DEBUG: Failed to convert %T(%v) to float32\n", value, value)
 			b.AppendNull()
 		}
 
@@ -138,7 +138,7 @@ func appendValueToBuilder(builder array.Builder, value interface{}, dataType arr
 		if convertedValue, ok := value.(bool); ok {
 			b.Append(convertedValue)
 		} else {
-			log.Printf("DEBUG: Failed to convert %T(%v) to bool\n", value, value)
+			// log.Printf("DEBUG: Failed to convert %T(%v) to bool\n", value, value)
 			b.AppendNull()
 		}
 	case arrow.TIMESTAMP:
@@ -146,17 +146,17 @@ func appendValueToBuilder(builder array.Builder, value interface{}, dataType arr
 		if convertedValue, ok := convertToTimestamp(value); ok {
 			b.Append(convertedValue)
 		} else {
-			log.Printf("DEBUG: Failed to convert %T(%v) to timestamp\n", value, value)
+			// log.Printf("DEBUG: Failed to convert %T(%v) to timestamp\n", value, value)
 			b.AppendNull()
 		}
 
 	default:
-		log.Printf("DEBUG: Unsupported data type %v for value type %T with value %v\n", dataType, value, value)
+		// log.Printf("DEBUG: Unsupported data type %v for value type %T with value %v\n", dataType, value, value)
 		builder.AppendNull()
 	}
 }
 
-func convertToTimestamp(value interface{}) (arrow.Timestamp, bool) {
+func convertToTimestamp(value any) (arrow.Timestamp, bool) {
 	switch v := value.(type) {
 	case string:
 		timestamp, err := arrow.TimestampFromString(v, arrow.Microsecond)
@@ -168,7 +168,7 @@ func convertToTimestamp(value interface{}) (arrow.Timestamp, bool) {
 }
 
 // Helper functions for type conversion
-func convertToInt64(value interface{}) (int64, bool) {
+func convertToInt64(value any) (int64, bool) {
 	switch v := value.(type) {
 	case int64:
 		return v, true
@@ -184,7 +184,7 @@ func convertToInt64(value interface{}) (int64, bool) {
 	return 0, false
 }
 
-func convertToInt32(value interface{}) (int32, bool) {
+func convertToInt32(value any) (int32, bool) {
 	switch v := value.(type) {
 	case int32:
 		return v, true
@@ -198,7 +198,7 @@ func convertToInt32(value interface{}) (int32, bool) {
 	return 0, false
 }
 
-func convertToInt16(value interface{}) (int16, bool) {
+func convertToInt16(value any) (int16, bool) {
 	switch v := value.(type) {
 	case int16:
 		return v, true
@@ -210,7 +210,7 @@ func convertToInt16(value interface{}) (int16, bool) {
 	return 0, false
 }
 
-func convertToFloat64(value interface{}) (float64, bool) {
+func convertToFloat64(value any) (float64, bool) {
 	switch v := value.(type) {
 	case float64:
 		return v, true
@@ -220,7 +220,7 @@ func convertToFloat64(value interface{}) (float64, bool) {
 	return 0, false
 }
 
-func convertToFloat32(value interface{}) (float32, bool) {
+func convertToFloat32(value any) (float32, bool) {
 	switch v := value.(type) {
 	case float32:
 		return v, true
@@ -232,31 +232,31 @@ func convertToFloat32(value interface{}) (float32, bool) {
 
 // SalesforceSqlTypeToArrowType converts a Salesforce type to an Arrow type
 // reference: https://developer.salesforce.com/docs/data/connectapi/references/spec?meta=createSqlQuery
-func SalesforceSqlTypeToArrowType(sfType api.SqlType) arrow.DataType {
+func SalesforceSqlTypeToArrowType(sfType sftypes.SqlType) arrow.DataType {
 	switch sfType {
-	case api.SqlTypeVarchar, api.SqlTypeChar:
+	case sftypes.SqlTypeVarchar, sftypes.SqlTypeChar:
 		return arrow.BinaryTypes.String
-	case api.SqlTypeBigInt:
+	case sftypes.SqlTypeBigInt:
 		return arrow.PrimitiveTypes.Int64
-	case api.SqlTypeInteger:
+	case sftypes.SqlTypeInteger:
 		return arrow.PrimitiveTypes.Int32
-	case api.SqlTypeSmallInt:
+	case sftypes.SqlTypeSmallInt:
 		return arrow.PrimitiveTypes.Int16
-	case api.SqlTypeDouble:
+	case sftypes.SqlTypeDouble:
 		return arrow.PrimitiveTypes.Float64
-	case api.SqlTypeNumeric, api.SqlTypeFloat:
+	case sftypes.SqlTypeNumeric, sftypes.SqlTypeFloat:
 		return arrow.PrimitiveTypes.Float32
-	case api.SqlTypeBool:
+	case sftypes.SqlTypeBool:
 		return arrow.FixedWidthTypes.Boolean
-	case api.SqlTypeDate:
+	case sftypes.SqlTypeDate:
 		return arrow.FixedWidthTypes.Date32
-	case api.SqlTypeTime:
+	case sftypes.SqlTypeTime:
 		return arrow.FixedWidthTypes.Time32ms
-	case api.SqlTypeTimestamp, api.SqlTypeTimestampTZ:
+	case sftypes.SqlTypeTimestamp, sftypes.SqlTypeTimestampTZ:
 		return arrow.FixedWidthTypes.Timestamp_ms
-	case api.SqlTypeOid:
+	case sftypes.SqlTypeOid:
 		return arrow.PrimitiveTypes.Uint32
-	case api.SqlTypeUnspecified:
+	case sftypes.SqlTypeUnspecified:
 		return arrow.Null
 	default:
 		// Handle ArrayOfX types
@@ -266,6 +266,26 @@ func SalesforceSqlTypeToArrowType(sfType api.SqlType) arrow.DataType {
 			return arrow.ListOf(elementArrowType)
 		}
 		// Default to string for unknown types
+		return arrow.BinaryTypes.String
+	}
+}
+
+// SalesforceDLOTypeToArrowType converts a Salesforce DLO field type to an Arrow type.
+// This is distinct from SalesforceSqlTypeToArrowType which maps SQL response types.
+// DLO field types come from DataTransformOutputField.Type in validation responses.
+func SalesforceDLOTypeToArrowType(sfType string) arrow.DataType {
+	switch strings.ToLower(sfType) {
+	case "text", "email", "phone", "url":
+		return arrow.BinaryTypes.String
+	case "number", "currency", "percent":
+		return arrow.PrimitiveTypes.Float64
+	case "boolean":
+		return arrow.FixedWidthTypes.Boolean
+	case "date", "dateonly":
+		return arrow.FixedWidthTypes.Date32
+	case "datetime":
+		return arrow.FixedWidthTypes.Timestamp_ms
+	default:
 		return arrow.BinaryTypes.String
 	}
 }

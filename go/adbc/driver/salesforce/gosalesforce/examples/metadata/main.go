@@ -40,10 +40,7 @@ func demonstrateMetadata(client *api.Client) {
 	// Display a summary of entities
 	if len(metadataResp.Metadata) > 0 {
 		fmt.Printf("\nFirst 10 entities:\n")
-		maxDisplay := len(metadataResp.Metadata)
-		if maxDisplay > 10 {
-			maxDisplay = 10
-		}
+		maxDisplay := min(len(metadataResp.Metadata), 10)
 
 		for i := 0; i < maxDisplay; i++ {
 			entity := metadataResp.Metadata[i]
@@ -84,10 +81,7 @@ func demonstrateMetadata(client *api.Client) {
 
 		if len(firstEntity.Fields) > 0 {
 			fmt.Printf("\nFields (%d):\n", len(firstEntity.Fields))
-			maxFields := len(firstEntity.Fields)
-			if maxFields > 5 {
-				maxFields = 5
-			}
+			maxFields := min(len(firstEntity.Fields), 5)
 			for i := 0; i < maxFields; i++ {
 				field := firstEntity.Fields[i]
 				nullable := "NOT NULL"
@@ -107,10 +101,7 @@ func demonstrateMetadata(client *api.Client) {
 
 		if len(firstEntity.Relationships) > 0 {
 			fmt.Printf("\nRelationships (%d):\n", len(firstEntity.Relationships))
-			maxRels := len(firstEntity.Relationships)
-			if maxRels > 3 {
-				maxRels = 3
-			}
+			maxRels := min(len(firstEntity.Relationships), 3)
 			for i := 0; i < maxRels; i++ {
 				rel := firstEntity.Relationships[i]
 				fmt.Printf("   %s.%s -> %s.%s (%s)\n",

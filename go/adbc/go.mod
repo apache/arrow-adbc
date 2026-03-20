@@ -65,6 +65,9 @@ require (
 	github.com/zeebo/errs v1.4.0 // indirect
 	go.opentelemetry.io/contrib/detectors/gcp v1.36.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.38.0 // indirect
+	go.yaml.in/yaml/v4 v4.0.0-rc.3 // indirect
+	gopkg.in/dnaeon/go-vcr.v4 v4.0.6 // indirect
+	resty.dev/v3 v3.0.0-beta.6 // indirect
 )
 
 replace github.com/snowflakedb/gosnowflake => github.com/dbt-labs/gosnowflake v1.17.6

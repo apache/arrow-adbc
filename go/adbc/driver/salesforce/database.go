@@ -23,7 +23,6 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
-	api "github.com/apache/arrow-adbc/go/adbc/driver/salesforce/gosalesforce/api"
 )
 
 type databaseImpl struct {
@@ -147,7 +146,7 @@ func (d *databaseImpl) SetOption(key string, value string) error {
 		d.version = value
 	case OptionStringDataSpace:
 		if value == "" {
-			d.dataSpace = api.DATASPACE_DEFAULT
+			d.dataSpace = "default"
 		} else {
 			d.dataSpace = value
 		}

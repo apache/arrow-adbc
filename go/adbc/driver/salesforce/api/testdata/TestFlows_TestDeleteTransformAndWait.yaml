@@ -1,0 +1,3622 @@
+---
+version: 2
+interactions:
+    - id: 0
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/cancel
+        method: POST
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            {
+              "errors": [
+                {
+                  "errorCode": "NOT_FOUND",
+                  "message": "Transform flow_test_delete_transform not found.If the transform is present in a non-default dataspace, search the transform in this way - [dataspace&#39;s prefix]_[transform&#39;s API name]."
+                }
+              ],
+              "success": false
+            }
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:26:48 GMT
+            Server:
+                - sfdcedge
+            Set-Cookie:
+                - CookieConsentPolicy=0:1; path=/; expires=Tue, 16-Mar-2027 18:26:48 GMT; Max-Age=31536000; secure
+                - LSKey-c$CookieConsentPolicy=0:1; path=/; expires=Tue, 16-Mar-2027 18:26:48 GMT; Max-Age=31536000; secure
+                - BrowserId=seQrriFlEfGyPh9BcRGEwg; domain=.salesforce.com; path=/; expires=Tue, 16-Mar-2027 18:26:48 GMT; Max-Age=31536000; secure; SameSite=None
+            Sforce-Limit-Info:
+                - api-usage=251/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - f4e015f4404821befff0839cd3ddaf12
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Request-Id:
+                - f4e015f4404821befff0839cd3ddaf12
+        status: 201 Created
+        code: 201
+        duration: 245.24275ms
+    - id: 1
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform
+        method: DELETE
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            [
+              {
+                "errorCode": "ITEM_NOT_FOUND",
+                "message": "Transform flow_test_delete_transform not found.If the transform is present in a non-default dataspace, search the transform in this way - [dataspace's prefix]_[transform's API name]."
+              }
+            ]
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:26:48 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=249/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - 8ed79bcd0abce688dfe5994ded8ce295
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Request-Id:
+                - 8ed79bcd0abce688dfe5994ded8ce295
+        status: 404 Not Found
+        code: 404
+        duration: 190.873166ms
+    - id: 2
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-lake-objects/flow_test_delete__dll
+        method: DELETE
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            [
+              {
+                "errorCode": "INVALID_INPUT",
+                "message": "Please provide a valid recordId of type DataLakeObjectInstance or a valid developerName for a Data Lake Object."
+              }
+            ]
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:26:49 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=249/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - 161562c1764237fee4eadcf6ab5f5c76
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Request-Id:
+                - 161562c1764237fee4eadcf6ab5f5c76
+        status: 404 Not Found
+        code: 404
+        duration: 175.852708ms
+    - id: 3
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 416
+        host: storm-050b6314da1346.my.salesforce.com
+        body: |
+            {
+              "name": "flow_test_delete_transform",
+              "label": "flow_test_delete_transform",
+              "type": "BATCH",
+              "definition": {
+                "type": "DCSQL",
+                "version": "1.0",
+                "manifest": {
+                  "nodes": {
+                    "node_flow_test_delete__dll": {
+                      "name": "flow_test_delete__dll",
+                      "relation_name": "flow_test_delete__dll",
+                      "config": {
+                        "materialized": "table",
+                        "writeMode": "OVERWRITE"
+                      },
+                      "compiled_code": "SELECT primary_key__c FROM test_all_field_types__dll"
+                    }
+                  }
+                }
+              },
+              "dataSpaceName": "default"
+            }
+        headers:
+            Accept-Encoding:
+                - identity
+            Content-Type:
+                - application/json
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-transforms-validation
+        method: POST
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            {
+              "issues": [
+                {
+                  "errorCode": "TARGET_DLO_NOT_FOUND",
+                  "errorMessage": "Target Dlo not found.",
+                  "errorSeverity": "ERROR"
+                }
+              ],
+              "outputDataObjects": {
+                "flow_test_delete_transform": [
+                  {
+                    "fields": [
+                      {
+                        "isPrimaryKey": false,
+                        "name": "primary_key__c",
+                        "type": "Text"
+                      }
+                    ],
+                    "name": "flow_test_delete__dll",
+                    "type": "dataLakeObject"
+                  }
+                ]
+              }
+            }
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:26:50 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=249/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - 7618146efc99ac01922631b53f57126d
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Request-Id:
+                - 7618146efc99ac01922631b53f57126d
+        status: 201 Created
+        code: 201
+        duration: 1.279136958s
+    - id: 4
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 644
+        host: storm-050b6314da1346.my.salesforce.com
+        body: |
+            {
+              "name": "flow_test_delete_transform",
+              "label": "flow_test_delete_transform",
+              "type": "BATCH",
+              "definition": {
+                "type": "DCSQL",
+                "version": "1.0",
+                "manifest": {
+                  "nodes": {
+                    "node_flow_test_delete__dll": {
+                      "name": "flow_test_delete__dll",
+                      "relation_name": "flow_test_delete__dll",
+                      "config": {
+                        "materialized": "table",
+                        "writeMode": "OVERWRITE"
+                      },
+                      "compiled_code": "SELECT primary_key__c FROM test_all_field_types__dll"
+                    }
+                  }
+                },
+                "outputDataObjects": [
+                  {
+                    "type": "dataLakeObject",
+                    "name": "flow_test_delete__dll",
+                    "label": "flow_test_delete__dll",
+                    "category": "Profile",
+                    "fields": [
+                      {
+                        "name": "primary_key__c",
+                        "label": "primary_key__c",
+                        "type": "Text",
+                        "isPrimaryKey": true
+                      }
+                    ]
+                  }
+                ]
+              },
+              "dataSpaceName": "default"
+            }
+        headers:
+            Accept-Encoding:
+                - identity
+            Content-Type:
+                - application/json
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-transforms
+        method: POST
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            {
+              "actionUrls": {
+                "action": "DcSqlBatchAction",
+                "cancelAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/cancel",
+                "refreshStatusAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/refresh-status",
+                "retryAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/retry",
+                "runAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/run"
+              },
+              "createdBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "createdDate": "2026-03-16T18:26:52.000Z",
+              "creationType": "CUSTOM",
+              "dataSpaceName": "default",
+              "definition": {
+                "manifest": {
+                  "macros": {},
+                  "nodes": {
+                    "node_flow_test_delete__dll": {
+                      "compiled_code": "SELECT primary_key__c FROM test_all_field_types__dll",
+                      "config": {
+                        "materialized": "table",
+                        "writeMode": "OVERWRITE"
+                      },
+                      "name": "flow_test_delete__dll",
+                      "relation_name": "flow_test_delete__dll"
+                    }
+                  },
+                  "sources": {}
+                },
+                "outputDataObjects": [
+                  {
+                    "category": "Profile",
+                    "createdDate": "2026-03-16T18:26:50.000Z",
+                    "fields": [
+                      {
+                        "isPrimaryKey": true,
+                        "keyQualifierField": "KQ_primary_key",
+                        "label": "primary_key__c",
+                        "name": "primary_key__c",
+                        "type": "Text"
+                      }
+                    ],
+                    "id": "0gOWt000000eIB7MAM",
+                    "label": "flow_test_delete__dll",
+                    "lastModifiedDate": "2026-03-16T18:26:51.000Z",
+                    "name": "flow_test_delete__dll",
+                    "status": "processing",
+                    "type": "dataLakeObject"
+                  }
+                ],
+                "type": "DCSQL"
+              },
+              "id": "1dtWt000000q5gLIAQ",
+              "label": "flow_test_delete_transform",
+              "lastModifiedBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "lastModifiedDate": "2026-03-16T18:26:52.000Z",
+              "lastRunStatus": "NONE",
+              "name": "flow_test_delete_transform",
+              "status": "PROCESSING",
+              "type": "BATCH",
+              "url": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform"
+            }
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:26:54 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=250/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - b2a24e280e11d6b0bcb9a518dc077072
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Request-Id:
+                - b2a24e280e11d6b0bcb9a518dc077072
+        status: 201 Created
+        code: 201
+        duration: 3.778575125s
+    - id: 5
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            {
+              "actionUrls": {
+                "action": "DcSqlBatchAction",
+                "cancelAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/cancel",
+                "refreshStatusAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/refresh-status",
+                "retryAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/retry",
+                "runAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/run"
+              },
+              "createdBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "createdDate": "2026-03-16T18:26:52.000Z",
+              "creationType": "CUSTOM",
+              "dataSpaceName": "default",
+              "definition": {
+                "manifest": {
+                  "macros": {},
+                  "nodes": {
+                    "node_flow_test_delete__dll": {
+                      "compiled_code": "SELECT primary_key__c FROM test_all_field_types__dll",
+                      "config": {
+                        "materialized": "table",
+                        "writeMode": "OVERWRITE"
+                      },
+                      "name": "flow_test_delete__dll",
+                      "relation_name": "flow_test_delete__dll"
+                    }
+                  },
+                  "sources": {}
+                },
+                "outputDataObjects": [
+                  {
+                    "category": "Profile",
+                    "createdDate": "2026-03-16T18:26:50.000Z",
+                    "fields": [
+                      {
+                        "isPrimaryKey": true,
+                        "keyQualifierField": "KQ_primary_key",
+                        "label": "primary_key__c",
+                        "name": "primary_key__c",
+                        "type": "Text"
+                      }
+                    ],
+                    "id": "0gOWt000000eIB7MAM",
+                    "label": "flow_test_delete__dll",
+                    "lastModifiedDate": "2026-03-16T18:26:51.000Z",
+                    "name": "flow_test_delete__dll",
+                    "status": "processing",
+                    "type": "dataLakeObject"
+                  }
+                ],
+                "type": "DCSQL"
+              },
+              "id": "1dtWt000000q5gLIAQ",
+              "label": "flow_test_delete_transform",
+              "lastModifiedBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "lastModifiedDate": "2026-03-16T18:26:52.000Z",
+              "lastRunStatus": "NONE",
+              "name": "flow_test_delete_transform",
+              "status": "PROCESSING",
+              "type": "BATCH",
+              "url": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform"
+            }
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:26:54 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=250/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - 20622ce9333399290382158f62dc0896
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Edge-Cache:
+                - MISS
+            X-Sfdc-Request-Id:
+                - 20622ce9333399290382158f62dc0896
+        status: 200 OK
+        code: 200
+        duration: 497.28975ms
+    - id: 6
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            {
+              "actionUrls": {
+                "action": "DcSqlBatchAction",
+                "cancelAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/cancel",
+                "refreshStatusAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/refresh-status",
+                "retryAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/retry",
+                "runAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/run"
+              },
+              "createdBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "createdDate": "2026-03-16T18:26:52.000Z",
+              "creationType": "CUSTOM",
+              "dataSpaceName": "default",
+              "definition": {
+                "manifest": {
+                  "macros": {},
+                  "nodes": {
+                    "node_flow_test_delete__dll": {
+                      "compiled_code": "SELECT primary_key__c FROM test_all_field_types__dll",
+                      "config": {
+                        "materialized": "table",
+                        "writeMode": "OVERWRITE"
+                      },
+                      "name": "flow_test_delete__dll",
+                      "relation_name": "flow_test_delete__dll"
+                    }
+                  },
+                  "sources": {}
+                },
+                "outputDataObjects": [
+                  {
+                    "category": "Profile",
+                    "createdDate": "2026-03-16T18:26:50.000Z",
+                    "fields": [
+                      {
+                        "isPrimaryKey": true,
+                        "keyQualifierField": "KQ_primary_key",
+                        "label": "primary_key__c",
+                        "name": "primary_key__c",
+                        "type": "Text"
+                      }
+                    ],
+                    "id": "0gOWt000000eIB7MAM",
+                    "label": "flow_test_delete__dll",
+                    "lastModifiedDate": "2026-03-16T18:26:51.000Z",
+                    "name": "flow_test_delete__dll",
+                    "status": "processing",
+                    "type": "dataLakeObject"
+                  }
+                ],
+                "type": "DCSQL"
+              },
+              "id": "1dtWt000000q5gLIAQ",
+              "label": "flow_test_delete_transform",
+              "lastModifiedBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "lastModifiedDate": "2026-03-16T18:26:52.000Z",
+              "lastRunStatus": "NONE",
+              "name": "flow_test_delete_transform",
+              "status": "PROCESSING",
+              "type": "BATCH",
+              "url": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform"
+            }
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:26:55 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=249/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - 069d09db7b6c1f2339955335d730ffba
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Edge-Cache:
+                - MISS
+            X-Sfdc-Request-Id:
+                - 069d09db7b6c1f2339955335d730ffba
+        status: 200 OK
+        code: 200
+        duration: 500.986083ms
+    - id: 7
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            {
+              "actionUrls": {
+                "action": "DcSqlBatchAction",
+                "cancelAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/cancel",
+                "refreshStatusAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/refresh-status",
+                "retryAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/retry",
+                "runAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/run"
+              },
+              "createdBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "createdDate": "2026-03-16T18:26:52.000Z",
+              "creationType": "CUSTOM",
+              "dataSpaceName": "default",
+              "definition": {
+                "manifest": {
+                  "macros": {},
+                  "nodes": {
+                    "node_flow_test_delete__dll": {
+                      "compiled_code": "SELECT primary_key__c FROM test_all_field_types__dll",
+                      "config": {
+                        "materialized": "table",
+                        "writeMode": "OVERWRITE"
+                      },
+                      "name": "flow_test_delete__dll",
+                      "relation_name": "flow_test_delete__dll"
+                    }
+                  },
+                  "sources": {}
+                },
+                "outputDataObjects": [
+                  {
+                    "category": "Profile",
+                    "createdDate": "2026-03-16T18:26:50.000Z",
+                    "fields": [
+                      {
+                        "isPrimaryKey": true,
+                        "keyQualifierField": "KQ_primary_key",
+                        "label": "primary_key__c",
+                        "name": "primary_key__c",
+                        "type": "Text"
+                      }
+                    ],
+                    "id": "0gOWt000000eIB7MAM",
+                    "label": "flow_test_delete__dll",
+                    "lastModifiedDate": "2026-03-16T18:26:51.000Z",
+                    "name": "flow_test_delete__dll",
+                    "status": "processing",
+                    "type": "dataLakeObject"
+                  }
+                ],
+                "type": "DCSQL"
+              },
+              "id": "1dtWt000000q5gLIAQ",
+              "label": "flow_test_delete_transform",
+              "lastModifiedBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "lastModifiedDate": "2026-03-16T18:26:52.000Z",
+              "lastRunStatus": "NONE",
+              "name": "flow_test_delete_transform",
+              "status": "PROCESSING",
+              "type": "BATCH",
+              "url": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform"
+            }
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:26:56 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=249/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - 86415b42939899a86c64901f37821334
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Edge-Cache:
+                - MISS
+            X-Sfdc-Request-Id:
+                - 86415b42939899a86c64901f37821334
+        status: 200 OK
+        code: 200
+        duration: 409.56075ms
+    - id: 8
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            {
+              "actionUrls": {
+                "action": "DcSqlBatchAction",
+                "cancelAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/cancel",
+                "refreshStatusAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/refresh-status",
+                "retryAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/retry",
+                "runAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/run"
+              },
+              "createdBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "createdDate": "2026-03-16T18:26:52.000Z",
+              "creationType": "CUSTOM",
+              "dataSpaceName": "default",
+              "definition": {
+                "manifest": {
+                  "macros": {},
+                  "nodes": {
+                    "node_flow_test_delete__dll": {
+                      "compiled_code": "SELECT primary_key__c FROM test_all_field_types__dll",
+                      "config": {
+                        "materialized": "table",
+                        "writeMode": "OVERWRITE"
+                      },
+                      "name": "flow_test_delete__dll",
+                      "relation_name": "flow_test_delete__dll"
+                    }
+                  },
+                  "sources": {}
+                },
+                "outputDataObjects": [
+                  {
+                    "category": "Profile",
+                    "createdDate": "2026-03-16T18:26:50.000Z",
+                    "fields": [
+                      {
+                        "isPrimaryKey": true,
+                        "keyQualifierField": "KQ_primary_key",
+                        "label": "primary_key__c",
+                        "name": "primary_key__c",
+                        "type": "Text"
+                      }
+                    ],
+                    "id": "0gOWt000000eIB7MAM",
+                    "label": "flow_test_delete__dll",
+                    "lastModifiedDate": "2026-03-16T18:26:51.000Z",
+                    "name": "flow_test_delete__dll",
+                    "status": "processing",
+                    "type": "dataLakeObject"
+                  }
+                ],
+                "type": "DCSQL"
+              },
+              "id": "1dtWt000000q5gLIAQ",
+              "label": "flow_test_delete_transform",
+              "lastModifiedBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "lastModifiedDate": "2026-03-16T18:26:52.000Z",
+              "lastRunStatus": "NONE",
+              "name": "flow_test_delete_transform",
+              "status": "PROCESSING",
+              "type": "BATCH",
+              "url": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform"
+            }
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:26:57 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=250/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - dbbd77ba38c4c01a1f301605e69f34fa
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Edge-Cache:
+                - MISS
+            X-Sfdc-Request-Id:
+                - dbbd77ba38c4c01a1f301605e69f34fa
+        status: 200 OK
+        code: 200
+        duration: 385.303917ms
+    - id: 9
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            {
+              "actionUrls": {
+                "action": "DcSqlBatchAction",
+                "cancelAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/cancel",
+                "refreshStatusAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/refresh-status",
+                "retryAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/retry",
+                "runAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/run"
+              },
+              "createdBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "createdDate": "2026-03-16T18:26:52.000Z",
+              "creationType": "CUSTOM",
+              "dataSpaceName": "default",
+              "definition": {
+                "manifest": {
+                  "macros": {},
+                  "nodes": {
+                    "node_flow_test_delete__dll": {
+                      "compiled_code": "SELECT primary_key__c FROM test_all_field_types__dll",
+                      "config": {
+                        "materialized": "table",
+                        "writeMode": "OVERWRITE"
+                      },
+                      "name": "flow_test_delete__dll",
+                      "relation_name": "flow_test_delete__dll"
+                    }
+                  },
+                  "sources": {}
+                },
+                "outputDataObjects": [
+                  {
+                    "category": "Profile",
+                    "createdDate": "2026-03-16T18:26:50.000Z",
+                    "fields": [
+                      {
+                        "isPrimaryKey": true,
+                        "keyQualifierField": "KQ_primary_key",
+                        "label": "primary_key__c",
+                        "name": "primary_key__c",
+                        "type": "Text"
+                      }
+                    ],
+                    "id": "0gOWt000000eIB7MAM",
+                    "label": "flow_test_delete__dll",
+                    "lastModifiedDate": "2026-03-16T18:26:51.000Z",
+                    "name": "flow_test_delete__dll",
+                    "status": "processing",
+                    "type": "dataLakeObject"
+                  }
+                ],
+                "type": "DCSQL"
+              },
+              "id": "1dtWt000000q5gLIAQ",
+              "label": "flow_test_delete_transform",
+              "lastModifiedBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "lastModifiedDate": "2026-03-16T18:26:52.000Z",
+              "lastRunStatus": "NONE",
+              "name": "flow_test_delete_transform",
+              "status": "PROCESSING",
+              "type": "BATCH",
+              "url": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform"
+            }
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:27:00 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=249/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - e4bad8d146cca001d89464cddc4b2456
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Edge-Cache:
+                - MISS
+            X-Sfdc-Request-Id:
+                - e4bad8d146cca001d89464cddc4b2456
+        status: 200 OK
+        code: 200
+        duration: 434.671375ms
+    - id: 10
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            {
+              "actionUrls": {
+                "action": "DcSqlBatchAction",
+                "cancelAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/cancel",
+                "refreshStatusAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/refresh-status",
+                "retryAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/retry",
+                "runAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/run"
+              },
+              "createdBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "createdDate": "2026-03-16T18:26:52.000Z",
+              "creationType": "CUSTOM",
+              "dataSpaceName": "default",
+              "definition": {
+                "manifest": {
+                  "macros": {},
+                  "nodes": {
+                    "node_flow_test_delete__dll": {
+                      "compiled_code": "SELECT primary_key__c FROM test_all_field_types__dll",
+                      "config": {
+                        "materialized": "table",
+                        "writeMode": "OVERWRITE"
+                      },
+                      "name": "flow_test_delete__dll",
+                      "relation_name": "flow_test_delete__dll"
+                    }
+                  },
+                  "sources": {}
+                },
+                "outputDataObjects": [
+                  {
+                    "category": "Profile",
+                    "createdDate": "2026-03-16T18:26:50.000Z",
+                    "fields": [
+                      {
+                        "isPrimaryKey": true,
+                        "keyQualifierField": "KQ_primary_key",
+                        "label": "primary_key__c",
+                        "name": "primary_key__c",
+                        "type": "Text"
+                      }
+                    ],
+                    "id": "0gOWt000000eIB7MAM",
+                    "label": "flow_test_delete__dll",
+                    "lastModifiedDate": "2026-03-16T18:26:51.000Z",
+                    "name": "flow_test_delete__dll",
+                    "status": "processing",
+                    "type": "dataLakeObject"
+                  }
+                ],
+                "type": "DCSQL"
+              },
+              "id": "1dtWt000000q5gLIAQ",
+              "label": "flow_test_delete_transform",
+              "lastModifiedBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "lastModifiedDate": "2026-03-16T18:26:52.000Z",
+              "lastRunStatus": "NONE",
+              "name": "flow_test_delete_transform",
+              "status": "PROCESSING",
+              "type": "BATCH",
+              "url": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform"
+            }
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:27:03 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=249/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - 8063d07889fb249f17243b4ae1a28519
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Edge-Cache:
+                - MISS
+            X-Sfdc-Request-Id:
+                - 8063d07889fb249f17243b4ae1a28519
+        status: 200 OK
+        code: 200
+        duration: 666.872834ms
+    - id: 11
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            {
+              "actionUrls": {
+                "action": "DcSqlBatchAction",
+                "cancelAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/cancel",
+                "refreshStatusAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/refresh-status",
+                "retryAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/retry",
+                "runAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/run"
+              },
+              "createdBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "createdDate": "2026-03-16T18:26:52.000Z",
+              "creationType": "CUSTOM",
+              "dataSpaceName": "default",
+              "definition": {
+                "manifest": {
+                  "macros": {},
+                  "nodes": {
+                    "node_flow_test_delete__dll": {
+                      "compiled_code": "SELECT primary_key__c FROM test_all_field_types__dll",
+                      "config": {
+                        "materialized": "table",
+                        "writeMode": "OVERWRITE"
+                      },
+                      "name": "flow_test_delete__dll",
+                      "relation_name": "flow_test_delete__dll"
+                    }
+                  },
+                  "sources": {}
+                },
+                "outputDataObjects": [
+                  {
+                    "category": "Profile",
+                    "createdDate": "2026-03-16T18:26:50.000Z",
+                    "fields": [
+                      {
+                        "isPrimaryKey": true,
+                        "keyQualifierField": "KQ_primary_key",
+                        "label": "primary_key__c",
+                        "name": "primary_key__c",
+                        "type": "Text"
+                      }
+                    ],
+                    "id": "0gOWt000000eIB7MAM",
+                    "label": "flow_test_delete__dll",
+                    "lastModifiedDate": "2026-03-16T18:27:05.000Z",
+                    "name": "flow_test_delete__dll",
+                    "status": "active",
+                    "type": "dataLakeObject"
+                  }
+                ],
+                "type": "DCSQL"
+              },
+              "id": "1dtWt000000q5gLIAQ",
+              "label": "flow_test_delete_transform",
+              "lastModifiedBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "lastModifiedDate": "2026-03-16T18:26:52.000Z",
+              "lastRunStatus": "NONE",
+              "name": "flow_test_delete_transform",
+              "status": "PROCESSING",
+              "type": "BATCH",
+              "url": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform"
+            }
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:27:09 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=252/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - fa735a7e7ed51ecaa697c2b6d6f938a0
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Edge-Cache:
+                - MISS
+            X-Sfdc-Request-Id:
+                - fa735a7e7ed51ecaa697c2b6d6f938a0
+        status: 200 OK
+        code: 200
+        duration: 487.57025ms
+    - id: 12
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            {
+              "actionUrls": {
+                "action": "DcSqlBatchAction",
+                "cancelAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/cancel",
+                "refreshStatusAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/refresh-status",
+                "retryAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/retry",
+                "runAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/run"
+              },
+              "createdBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "createdDate": "2026-03-16T18:26:52.000Z",
+              "creationType": "CUSTOM",
+              "dataSpaceName": "default",
+              "definition": {
+                "manifest": {
+                  "macros": {},
+                  "nodes": {
+                    "node_flow_test_delete__dll": {
+                      "compiled_code": "SELECT primary_key__c FROM test_all_field_types__dll",
+                      "config": {
+                        "materialized": "table",
+                        "writeMode": "OVERWRITE"
+                      },
+                      "name": "flow_test_delete__dll",
+                      "relation_name": "flow_test_delete__dll"
+                    }
+                  },
+                  "sources": {}
+                },
+                "outputDataObjects": [
+                  {
+                    "category": "Profile",
+                    "createdDate": "2026-03-16T18:26:50.000Z",
+                    "fields": [
+                      {
+                        "isPrimaryKey": true,
+                        "keyQualifierField": "KQ_primary_key",
+                        "label": "primary_key__c",
+                        "name": "primary_key__c",
+                        "type": "Text"
+                      }
+                    ],
+                    "id": "0gOWt000000eIB7MAM",
+                    "label": "flow_test_delete__dll",
+                    "lastModifiedDate": "2026-03-16T18:27:05.000Z",
+                    "name": "flow_test_delete__dll",
+                    "status": "active",
+                    "type": "dataLakeObject"
+                  }
+                ],
+                "type": "DCSQL"
+              },
+              "id": "1dtWt000000q5gLIAQ",
+              "label": "flow_test_delete_transform",
+              "lastModifiedBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "lastModifiedDate": "2026-03-16T18:26:52.000Z",
+              "lastRunStatus": "NONE",
+              "name": "flow_test_delete_transform",
+              "status": "PROCESSING",
+              "type": "BATCH",
+              "url": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform"
+            }
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:27:17 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=255/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - 5937cf7e9d14839ad645226d1beaaf19
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Edge-Cache:
+                - MISS
+            X-Sfdc-Request-Id:
+                - 5937cf7e9d14839ad645226d1beaaf19
+        status: 200 OK
+        code: 200
+        duration: 525.38975ms
+    - id: 13
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            {
+              "actionUrls": {
+                "action": "DcSqlBatchAction",
+                "cancelAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/cancel",
+                "refreshStatusAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/refresh-status",
+                "retryAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/retry",
+                "runAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/run"
+              },
+              "createdBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "createdDate": "2026-03-16T18:26:52.000Z",
+              "creationType": "CUSTOM",
+              "dataSpaceName": "default",
+              "definition": {
+                "manifest": {
+                  "macros": {},
+                  "nodes": {
+                    "node_flow_test_delete__dll": {
+                      "compiled_code": "SELECT primary_key__c FROM test_all_field_types__dll",
+                      "config": {
+                        "materialized": "table",
+                        "writeMode": "OVERWRITE"
+                      },
+                      "name": "flow_test_delete__dll",
+                      "relation_name": "flow_test_delete__dll"
+                    }
+                  },
+                  "sources": {}
+                },
+                "outputDataObjects": [
+                  {
+                    "category": "Profile",
+                    "createdDate": "2026-03-16T18:26:50.000Z",
+                    "fields": [
+                      {
+                        "isPrimaryKey": true,
+                        "keyQualifierField": "KQ_primary_key",
+                        "label": "primary_key__c",
+                        "name": "primary_key__c",
+                        "type": "Text"
+                      }
+                    ],
+                    "id": "0gOWt000000eIB7MAM",
+                    "label": "flow_test_delete__dll",
+                    "lastModifiedDate": "2026-03-16T18:27:05.000Z",
+                    "name": "flow_test_delete__dll",
+                    "status": "active",
+                    "type": "dataLakeObject"
+                  }
+                ],
+                "type": "DCSQL"
+              },
+              "id": "1dtWt000000q5gLIAQ",
+              "label": "flow_test_delete_transform",
+              "lastModifiedBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "lastModifiedDate": "2026-03-16T18:26:52.000Z",
+              "lastRunStatus": "NONE",
+              "name": "flow_test_delete_transform",
+              "status": "PROCESSING",
+              "type": "BATCH",
+              "url": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform"
+            }
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:27:25 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=256/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - 2e41847ee630678b8720d6c7bbf26e4f
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Edge-Cache:
+                - MISS
+            X-Sfdc-Request-Id:
+                - 2e41847ee630678b8720d6c7bbf26e4f
+        status: 200 OK
+        code: 200
+        duration: 421.310833ms
+    - id: 14
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            {
+              "actionUrls": {
+                "action": "DcSqlBatchAction",
+                "cancelAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/cancel",
+                "refreshStatusAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/refresh-status",
+                "retryAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/retry",
+                "runAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/run"
+              },
+              "createdBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "createdDate": "2026-03-16T18:26:52.000Z",
+              "creationType": "CUSTOM",
+              "dataSpaceName": "default",
+              "definition": {
+                "manifest": {
+                  "macros": {},
+                  "nodes": {
+                    "node_flow_test_delete__dll": {
+                      "compiled_code": "SELECT primary_key__c FROM test_all_field_types__dll",
+                      "config": {
+                        "materialized": "table",
+                        "writeMode": "OVERWRITE"
+                      },
+                      "name": "flow_test_delete__dll",
+                      "relation_name": "flow_test_delete__dll"
+                    }
+                  },
+                  "sources": {}
+                },
+                "outputDataObjects": [
+                  {
+                    "category": "Profile",
+                    "createdDate": "2026-03-16T18:26:50.000Z",
+                    "fields": [
+                      {
+                        "isPrimaryKey": true,
+                        "keyQualifierField": "KQ_primary_key",
+                        "label": "primary_key__c",
+                        "name": "primary_key__c",
+                        "type": "Text"
+                      }
+                    ],
+                    "id": "0gOWt000000eIB7MAM",
+                    "label": "flow_test_delete__dll",
+                    "lastModifiedDate": "2026-03-16T18:27:05.000Z",
+                    "name": "flow_test_delete__dll",
+                    "status": "active",
+                    "type": "dataLakeObject"
+                  }
+                ],
+                "type": "DCSQL"
+              },
+              "id": "1dtWt000000q5gLIAQ",
+              "label": "flow_test_delete_transform",
+              "lastModifiedBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "lastModifiedDate": "2026-03-16T18:26:52.000Z",
+              "lastRunStatus": "NONE",
+              "name": "flow_test_delete_transform",
+              "status": "PROCESSING",
+              "type": "BATCH",
+              "url": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform"
+            }
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:27:44 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=266/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - 4ed040b226f769b418f33212ef546ec8
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Edge-Cache:
+                - MISS
+            X-Sfdc-Request-Id:
+                - 4ed040b226f769b418f33212ef546ec8
+        status: 200 OK
+        code: 200
+        duration: 407.39075ms
+    - id: 15
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            {
+              "actionUrls": {
+                "action": "DcSqlBatchAction",
+                "cancelAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/cancel",
+                "refreshStatusAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/refresh-status",
+                "retryAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/retry",
+                "runAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/run"
+              },
+              "createdBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "createdDate": "2026-03-16T18:26:52.000Z",
+              "creationType": "CUSTOM",
+              "dataSpaceName": "default",
+              "definition": {
+                "manifest": {
+                  "macros": {},
+                  "nodes": {
+                    "node_flow_test_delete__dll": {
+                      "compiled_code": "SELECT primary_key__c FROM test_all_field_types__dll",
+                      "config": {
+                        "materialized": "table",
+                        "writeMode": "OVERWRITE"
+                      },
+                      "name": "flow_test_delete__dll",
+                      "relation_name": "flow_test_delete__dll"
+                    }
+                  },
+                  "sources": {}
+                },
+                "outputDataObjects": [
+                  {
+                    "category": "Profile",
+                    "createdDate": "2026-03-16T18:26:50.000Z",
+                    "fields": [
+                      {
+                        "isPrimaryKey": true,
+                        "keyQualifierField": "KQ_primary_key",
+                        "label": "primary_key__c",
+                        "name": "primary_key__c",
+                        "type": "Text"
+                      }
+                    ],
+                    "id": "0gOWt000000eIB7MAM",
+                    "label": "flow_test_delete__dll",
+                    "lastModifiedDate": "2026-03-16T18:27:05.000Z",
+                    "name": "flow_test_delete__dll",
+                    "status": "active",
+                    "type": "dataLakeObject"
+                  }
+                ],
+                "type": "DCSQL"
+              },
+              "id": "1dtWt000000q5gLIAQ",
+              "label": "flow_test_delete_transform",
+              "lastModifiedBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "lastModifiedDate": "2026-03-16T18:26:52.000Z",
+              "lastRunStatus": "NONE",
+              "name": "flow_test_delete_transform",
+              "status": "PROCESSING",
+              "type": "BATCH",
+              "url": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform"
+            }
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:27:58 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=272/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - 3807a748cd4166c976bd2e0e0ebe88fa
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Edge-Cache:
+                - MISS
+            X-Sfdc-Request-Id:
+                - 3807a748cd4166c976bd2e0e0ebe88fa
+        status: 200 OK
+        code: 200
+        duration: 450.318292ms
+    - id: 16
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            {
+              "actionUrls": {
+                "action": "DcSqlBatchAction",
+                "cancelAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/cancel",
+                "refreshStatusAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/refresh-status",
+                "retryAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/retry",
+                "runAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/run"
+              },
+              "createdBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "createdDate": "2026-03-16T18:26:52.000Z",
+              "creationType": "CUSTOM",
+              "dataSpaceName": "default",
+              "definition": {
+                "manifest": {
+                  "macros": {},
+                  "nodes": {
+                    "node_flow_test_delete__dll": {
+                      "compiled_code": "SELECT primary_key__c FROM test_all_field_types__dll",
+                      "config": {
+                        "materialized": "table",
+                        "writeMode": "OVERWRITE"
+                      },
+                      "name": "flow_test_delete__dll",
+                      "relation_name": "flow_test_delete__dll"
+                    }
+                  },
+                  "sources": {}
+                },
+                "outputDataObjects": [
+                  {
+                    "category": "Profile",
+                    "createdDate": "2026-03-16T18:26:50.000Z",
+                    "fields": [
+                      {
+                        "isPrimaryKey": true,
+                        "keyQualifierField": "KQ_primary_key",
+                        "label": "primary_key__c",
+                        "name": "primary_key__c",
+                        "type": "Text"
+                      }
+                    ],
+                    "id": "0gOWt000000eIB7MAM",
+                    "label": "flow_test_delete__dll",
+                    "lastModifiedDate": "2026-03-16T18:27:05.000Z",
+                    "name": "flow_test_delete__dll",
+                    "status": "active",
+                    "type": "dataLakeObject"
+                  }
+                ],
+                "type": "DCSQL"
+              },
+              "id": "1dtWt000000q5gLIAQ",
+              "label": "flow_test_delete_transform",
+              "lastModifiedBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "lastModifiedDate": "2026-03-16T18:26:52.000Z",
+              "lastRunStatus": "NONE",
+              "name": "flow_test_delete_transform",
+              "status": "PROCESSING",
+              "type": "BATCH",
+              "url": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform"
+            }
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:28:39 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=276/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - 30e1b8131154206b40b2963d0df61817
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Edge-Cache:
+                - MISS
+            X-Sfdc-Request-Id:
+                - 30e1b8131154206b40b2963d0df61817
+        status: 200 OK
+        code: 200
+        duration: 430.898916ms
+    - id: 17
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            {
+              "actionUrls": {
+                "action": "DcSqlBatchAction",
+                "cancelAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/cancel",
+                "refreshStatusAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/refresh-status",
+                "retryAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/retry",
+                "runAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/run"
+              },
+              "createdBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "createdDate": "2026-03-16T18:26:52.000Z",
+              "creationType": "CUSTOM",
+              "dataSpaceName": "default",
+              "definition": {
+                "manifest": {
+                  "macros": {},
+                  "nodes": {
+                    "node_flow_test_delete__dll": {
+                      "compiled_code": "SELECT primary_key__c FROM test_all_field_types__dll",
+                      "config": {
+                        "materialized": "table",
+                        "writeMode": "OVERWRITE"
+                      },
+                      "name": "flow_test_delete__dll",
+                      "relation_name": "flow_test_delete__dll"
+                    }
+                  },
+                  "sources": {}
+                },
+                "outputDataObjects": [
+                  {
+                    "category": "Profile",
+                    "createdDate": "2026-03-16T18:26:50.000Z",
+                    "fields": [
+                      {
+                        "isPrimaryKey": true,
+                        "keyQualifierField": "KQ_primary_key",
+                        "label": "primary_key__c",
+                        "name": "primary_key__c",
+                        "type": "Text"
+                      }
+                    ],
+                    "id": "0gOWt000000eIB7MAM",
+                    "label": "flow_test_delete__dll",
+                    "lastModifiedDate": "2026-03-16T18:27:05.000Z",
+                    "name": "flow_test_delete__dll",
+                    "status": "active",
+                    "type": "dataLakeObject"
+                  }
+                ],
+                "type": "DCSQL"
+              },
+              "id": "1dtWt000000q5gLIAQ",
+              "label": "flow_test_delete_transform",
+              "lastModifiedBy": {
+                "id": "005Wt0000045LOFIA2",
+                "name": "Automated Process",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "lastModifiedDate": "2026-03-16T18:29:00.000Z",
+              "lastRunStatus": "NONE",
+              "name": "flow_test_delete_transform",
+              "status": "ACTIVE",
+              "type": "BATCH",
+              "url": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform"
+            }
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:29:20 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=279/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - 93ea9e818b606ab4f241c3d407235aec
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Edge-Cache:
+                - MISS
+            X-Sfdc-Request-Id:
+                - 93ea9e818b606ab4f241c3d407235aec
+        status: 200 OK
+        code: 200
+        duration: 428.969458ms
+    - id: 18
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/cancel
+        method: POST
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            {
+              "errors": [
+                {
+                  "errorCode": "BAD_REQUEST",
+                  "message": "Unable to cancel data transform that is in NONE status"
+                }
+              ],
+              "success": false
+            }
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:29:20 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=279/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - 782967f3231e0d65f424e9ef4c569c03
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Request-Id:
+                - 782967f3231e0d65f424e9ef4c569c03
+        status: 201 Created
+        code: 201
+        duration: 285.351958ms
+    - id: 19
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform
+        method: DELETE
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: 0
+        body: ""
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Security-Policy:
+                - upgrade-insecure-requests
+            Date:
+                - Mon, 16 Mar 2026 18:29:20 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=279/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - b265dacc8ad0f4f83e5780cd1567cee7
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Request-Id:
+                - b265dacc8ad0f4f83e5780cd1567cee7
+        status: 204 No Content
+        code: 204
+        duration: 362.678083ms
+    - id: 20
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            {
+              "actionUrls": {
+                "action": "DcSqlBatchAction",
+                "cancelAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/cancel",
+                "refreshStatusAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/refresh-status",
+                "retryAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/retry",
+                "runAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/run"
+              },
+              "createdBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "createdDate": "2026-03-16T18:26:52.000Z",
+              "creationType": "CUSTOM",
+              "dataSpaceName": "default",
+              "definition": {
+                "manifest": {
+                  "macros": {},
+                  "nodes": {
+                    "node_flow_test_delete__dll": {
+                      "compiled_code": "SELECT primary_key__c FROM test_all_field_types__dll",
+                      "config": {
+                        "materialized": "table",
+                        "writeMode": "OVERWRITE"
+                      },
+                      "name": "flow_test_delete__dll",
+                      "relation_name": "flow_test_delete__dll"
+                    }
+                  },
+                  "sources": {}
+                },
+                "outputDataObjects": [
+                  {
+                    "category": "Profile",
+                    "createdDate": "2026-03-16T18:26:50.000Z",
+                    "fields": [
+                      {
+                        "isPrimaryKey": true,
+                        "keyQualifierField": "KQ_primary_key",
+                        "label": "primary_key__c",
+                        "name": "primary_key__c",
+                        "type": "Text"
+                      }
+                    ],
+                    "id": "0gOWt000000eIB7MAM",
+                    "label": "flow_test_delete__dll",
+                    "lastModifiedDate": "2026-03-16T18:27:05.000Z",
+                    "name": "flow_test_delete__dll",
+                    "status": "active",
+                    "type": "dataLakeObject"
+                  }
+                ],
+                "type": "DCSQL"
+              },
+              "id": "1dtWt000000q5gLIAQ",
+              "label": "flow_test_delete_transform",
+              "lastModifiedBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "lastModifiedDate": "2026-03-16T18:29:20.000Z",
+              "lastRunStatus": "NONE",
+              "name": "flow_test_delete_transform",
+              "status": "DELETING",
+              "type": "BATCH",
+              "url": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform"
+            }
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:29:21 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=279/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - 6bc2a085e8bbd508529f6277845a91da
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Edge-Cache:
+                - MISS
+            X-Sfdc-Request-Id:
+                - 6bc2a085e8bbd508529f6277845a91da
+        status: 200 OK
+        code: 200
+        duration: 421.84975ms
+    - id: 21
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            {
+              "actionUrls": {
+                "action": "DcSqlBatchAction",
+                "cancelAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/cancel",
+                "refreshStatusAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/refresh-status",
+                "retryAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/retry",
+                "runAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/run"
+              },
+              "createdBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "createdDate": "2026-03-16T18:26:52.000Z",
+              "creationType": "CUSTOM",
+              "dataSpaceName": "default",
+              "definition": {
+                "manifest": {
+                  "macros": {},
+                  "nodes": {
+                    "node_flow_test_delete__dll": {
+                      "compiled_code": "SELECT primary_key__c FROM test_all_field_types__dll",
+                      "config": {
+                        "materialized": "table",
+                        "writeMode": "OVERWRITE"
+                      },
+                      "name": "flow_test_delete__dll",
+                      "relation_name": "flow_test_delete__dll"
+                    }
+                  },
+                  "sources": {}
+                },
+                "outputDataObjects": [
+                  {
+                    "category": "Profile",
+                    "createdDate": "2026-03-16T18:26:50.000Z",
+                    "fields": [
+                      {
+                        "isPrimaryKey": true,
+                        "keyQualifierField": "KQ_primary_key",
+                        "label": "primary_key__c",
+                        "name": "primary_key__c",
+                        "type": "Text"
+                      }
+                    ],
+                    "id": "0gOWt000000eIB7MAM",
+                    "label": "flow_test_delete__dll",
+                    "lastModifiedDate": "2026-03-16T18:27:05.000Z",
+                    "name": "flow_test_delete__dll",
+                    "status": "active",
+                    "type": "dataLakeObject"
+                  }
+                ],
+                "type": "DCSQL"
+              },
+              "id": "1dtWt000000q5gLIAQ",
+              "label": "flow_test_delete_transform",
+              "lastModifiedBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "lastModifiedDate": "2026-03-16T18:29:20.000Z",
+              "lastRunStatus": "NONE",
+              "name": "flow_test_delete_transform",
+              "status": "DELETING",
+              "type": "BATCH",
+              "url": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform"
+            }
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:29:22 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=279/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - 380e81ddc19fb6f1bc28c45de150a80a
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Edge-Cache:
+                - MISS
+            X-Sfdc-Request-Id:
+                - 380e81ddc19fb6f1bc28c45de150a80a
+        status: 200 OK
+        code: 200
+        duration: 666.918541ms
+    - id: 22
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            {
+              "actionUrls": {
+                "action": "DcSqlBatchAction",
+                "cancelAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/cancel",
+                "refreshStatusAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/refresh-status",
+                "retryAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/retry",
+                "runAction": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform/actions/run"
+              },
+              "createdBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "createdDate": "2026-03-16T18:26:52.000Z",
+              "creationType": "CUSTOM",
+              "dataSpaceName": "default",
+              "definition": {
+                "manifest": {
+                  "macros": {},
+                  "nodes": {
+                    "node_flow_test_delete__dll": {
+                      "compiled_code": "SELECT primary_key__c FROM test_all_field_types__dll",
+                      "config": {
+                        "materialized": "table",
+                        "writeMode": "OVERWRITE"
+                      },
+                      "name": "flow_test_delete__dll",
+                      "relation_name": "flow_test_delete__dll"
+                    }
+                  },
+                  "sources": {}
+                },
+                "outputDataObjects": [
+                  {
+                    "category": "Profile",
+                    "createdDate": "2026-03-16T18:26:50.000Z",
+                    "fields": [
+                      {
+                        "isPrimaryKey": true,
+                        "keyQualifierField": "KQ_primary_key",
+                        "label": "primary_key__c",
+                        "name": "primary_key__c",
+                        "type": "Text"
+                      }
+                    ],
+                    "id": "0gOWt000000eIB7MAM",
+                    "label": "flow_test_delete__dll",
+                    "lastModifiedDate": "2026-03-16T18:27:05.000Z",
+                    "name": "flow_test_delete__dll",
+                    "status": "active",
+                    "type": "dataLakeObject"
+                  }
+                ],
+                "type": "DCSQL"
+              },
+              "id": "1dtWt000000q5gLIAQ",
+              "label": "flow_test_delete_transform",
+              "lastModifiedBy": {
+                "id": "005Wt000004lBfIIAU",
+                "name": "Chase Walden",
+                "profilePhotoUrl": "https://storm-050b6314da1346.file.force.com/profilephoto/005/T"
+              },
+              "lastModifiedDate": "2026-03-16T18:29:20.000Z",
+              "lastRunStatus": "NONE",
+              "name": "flow_test_delete_transform",
+              "status": "DELETING",
+              "type": "BATCH",
+              "url": "/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform"
+            }
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:29:23 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=281/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - c20a8c0a06b5ca33c2f86159ce6b734a
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Edge-Cache:
+                - MISS
+            X-Sfdc-Request-Id:
+                - c20a8c0a06b5ca33c2f86159ce6b734a
+        status: 200 OK
+        code: 200
+        duration: 407.832708ms
+    - id: 23
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            [
+              {
+                "errorCode": "ITEM_NOT_FOUND",
+                "message": "Transform flow_test_delete_transform not found.If the transform is present in a non-default dataspace, search the transform in this way - [dataspace's prefix]_[transform's API name]."
+              }
+            ]
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:29:24 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=279/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - 468370ce41b2e3eee8fac9cacad6f069
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Request-Id:
+                - 468370ce41b2e3eee8fac9cacad6f069
+        status: 404 Not Found
+        code: 404
+        duration: 257.286708ms
+    - id: 24
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-transforms/flow_test_delete_transform
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            [
+              {
+                "errorCode": "ITEM_NOT_FOUND",
+                "message": "Transform flow_test_delete_transform not found.If the transform is present in a non-default dataspace, search the transform in this way - [dataspace's prefix]_[transform's API name]."
+              }
+            ]
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:29:24 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=279/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - 1e2fecc6020397e6dd60ea9aad32fdd0
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Request-Id:
+                - 1e2fecc6020397e6dd60ea9aad32fdd0
+        status: 404 Not Found
+        code: 404
+        duration: 232.00775ms
+    - id: 25
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-lake-objects/flow_test_delete__dll
+        method: DELETE
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: 0
+        body: ""
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Security-Policy:
+                - upgrade-insecure-requests
+            Date:
+                - Mon, 16 Mar 2026 18:29:26 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=279/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - e0a17a249f95d3764e8edb49d2c1a68a
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Request-Id:
+                - e0a17a249f95d3764e8edb49d2c1a68a
+        status: 204 No Content
+        code: 204
+        duration: 1.846890166s
+    - id: 26
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-lake-objects/flow_test_delete__dll
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            {
+              "dataLakeObjects": [
+                {
+                  "capabilities": {},
+                  "category": "Profile",
+                  "createdDate": "2026-03-16T18:26:50.000Z",
+                  "dataLakeFieldInfoRepresentation": [
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "KQ_primary_key",
+                      "name": "KQ_primary_key__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": true,
+                      "label": "primary_key__c",
+                      "name": "primary_key__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "cdp_sys_SourceVersion",
+                      "name": "cdp_sys_SourceVersion__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Data Source",
+                      "name": "DataSource__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Data Source Object",
+                      "name": "DataSourceObject__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Internal Organization",
+                      "name": "InternalOrganization__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "cdp_sys_record_currency",
+                      "name": "cdp_sys_record_currency__c"
+                    }
+                  ],
+                  "dataSpaceInfo": [],
+                  "fields": [
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "KQ_primary_key",
+                      "name": "KQ_primary_key__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": true,
+                      "label": "primary_key__c",
+                      "name": "primary_key__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "cdp_sys_SourceVersion",
+                      "name": "cdp_sys_SourceVersion__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Data Source",
+                      "name": "DataSource__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Data Source Object",
+                      "name": "DataSourceObject__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Internal Organization",
+                      "name": "InternalOrganization__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "cdp_sys_record_currency",
+                      "name": "cdp_sys_record_currency__c"
+                    }
+                  ],
+                  "id": "1dlWt000000nuFZIAY",
+                  "label": "flow_test_delete__dll",
+                  "name": "flow_test_delete__dll",
+                  "namespace": "",
+                  "status": "DELETING"
+                }
+              ]
+            }
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:29:27 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=280/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - 1766dac9975d76569bc5e18621828447
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Edge-Cache:
+                - MISS
+            X-Sfdc-Request-Id:
+                - 1766dac9975d76569bc5e18621828447
+        status: 200 OK
+        code: 200
+        duration: 735.107ms
+    - id: 27
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-lake-objects/flow_test_delete__dll
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            {
+              "dataLakeObjects": [
+                {
+                  "capabilities": {},
+                  "category": "Profile",
+                  "createdDate": "2026-03-16T18:26:50.000Z",
+                  "dataLakeFieldInfoRepresentation": [
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "KQ_primary_key",
+                      "name": "KQ_primary_key__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": true,
+                      "label": "primary_key__c",
+                      "name": "primary_key__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "cdp_sys_SourceVersion",
+                      "name": "cdp_sys_SourceVersion__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Data Source",
+                      "name": "DataSource__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Data Source Object",
+                      "name": "DataSourceObject__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Internal Organization",
+                      "name": "InternalOrganization__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "cdp_sys_record_currency",
+                      "name": "cdp_sys_record_currency__c"
+                    }
+                  ],
+                  "dataSpaceInfo": [],
+                  "fields": [
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "KQ_primary_key",
+                      "name": "KQ_primary_key__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": true,
+                      "label": "primary_key__c",
+                      "name": "primary_key__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "cdp_sys_SourceVersion",
+                      "name": "cdp_sys_SourceVersion__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Data Source",
+                      "name": "DataSource__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Data Source Object",
+                      "name": "DataSourceObject__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Internal Organization",
+                      "name": "InternalOrganization__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "cdp_sys_record_currency",
+                      "name": "cdp_sys_record_currency__c"
+                    }
+                  ],
+                  "id": "1dlWt000000nuFZIAY",
+                  "label": "flow_test_delete__dll",
+                  "name": "flow_test_delete__dll",
+                  "namespace": "",
+                  "status": "DELETING"
+                }
+              ]
+            }
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:29:28 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=279/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - 8c90cb92d5c7ddfae84e9227d89f8022
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Edge-Cache:
+                - MISS
+            X-Sfdc-Request-Id:
+                - 8c90cb92d5c7ddfae84e9227d89f8022
+        status: 200 OK
+        code: 200
+        duration: 638.453709ms
+    - id: 28
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-lake-objects/flow_test_delete__dll
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            {
+              "dataLakeObjects": [
+                {
+                  "capabilities": {},
+                  "category": "Profile",
+                  "createdDate": "2026-03-16T18:26:50.000Z",
+                  "dataLakeFieldInfoRepresentation": [
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "KQ_primary_key",
+                      "name": "KQ_primary_key__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": true,
+                      "label": "primary_key__c",
+                      "name": "primary_key__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "cdp_sys_SourceVersion",
+                      "name": "cdp_sys_SourceVersion__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Data Source",
+                      "name": "DataSource__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Data Source Object",
+                      "name": "DataSourceObject__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Internal Organization",
+                      "name": "InternalOrganization__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "cdp_sys_record_currency",
+                      "name": "cdp_sys_record_currency__c"
+                    }
+                  ],
+                  "dataSpaceInfo": [],
+                  "fields": [
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "KQ_primary_key",
+                      "name": "KQ_primary_key__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": true,
+                      "label": "primary_key__c",
+                      "name": "primary_key__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "cdp_sys_SourceVersion",
+                      "name": "cdp_sys_SourceVersion__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Data Source",
+                      "name": "DataSource__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Data Source Object",
+                      "name": "DataSourceObject__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Internal Organization",
+                      "name": "InternalOrganization__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "cdp_sys_record_currency",
+                      "name": "cdp_sys_record_currency__c"
+                    }
+                  ],
+                  "id": "1dlWt000000nuFZIAY",
+                  "label": "flow_test_delete__dll",
+                  "name": "flow_test_delete__dll",
+                  "namespace": "",
+                  "status": "DELETING"
+                }
+              ]
+            }
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:29:29 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=280/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - 119bfd85a108d671b890e553db6ac20f
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Edge-Cache:
+                - MISS
+            X-Sfdc-Request-Id:
+                - 119bfd85a108d671b890e553db6ac20f
+        status: 200 OK
+        code: 200
+        duration: 535.393709ms
+    - id: 29
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-lake-objects/flow_test_delete__dll
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            {
+              "dataLakeObjects": [
+                {
+                  "capabilities": {},
+                  "category": "Profile",
+                  "createdDate": "2026-03-16T18:26:50.000Z",
+                  "dataLakeFieldInfoRepresentation": [
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "KQ_primary_key",
+                      "name": "KQ_primary_key__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": true,
+                      "label": "primary_key__c",
+                      "name": "primary_key__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "cdp_sys_SourceVersion",
+                      "name": "cdp_sys_SourceVersion__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Data Source",
+                      "name": "DataSource__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Data Source Object",
+                      "name": "DataSourceObject__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Internal Organization",
+                      "name": "InternalOrganization__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "cdp_sys_record_currency",
+                      "name": "cdp_sys_record_currency__c"
+                    }
+                  ],
+                  "dataSpaceInfo": [],
+                  "fields": [
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "KQ_primary_key",
+                      "name": "KQ_primary_key__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": true,
+                      "label": "primary_key__c",
+                      "name": "primary_key__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "cdp_sys_SourceVersion",
+                      "name": "cdp_sys_SourceVersion__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Data Source",
+                      "name": "DataSource__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Data Source Object",
+                      "name": "DataSourceObject__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Internal Organization",
+                      "name": "InternalOrganization__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "cdp_sys_record_currency",
+                      "name": "cdp_sys_record_currency__c"
+                    }
+                  ],
+                  "id": "1dlWt000000nuFZIAY",
+                  "label": "flow_test_delete__dll",
+                  "name": "flow_test_delete__dll",
+                  "namespace": "",
+                  "status": "DELETING"
+                }
+              ]
+            }
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:29:31 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=279/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - 3593010002f1c5a32d443b81689a1b0e
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Edge-Cache:
+                - MISS
+            X-Sfdc-Request-Id:
+                - 3593010002f1c5a32d443b81689a1b0e
+        status: 200 OK
+        code: 200
+        duration: 408.913584ms
+    - id: 30
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-lake-objects/flow_test_delete__dll
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            {
+              "dataLakeObjects": [
+                {
+                  "capabilities": {},
+                  "category": "Profile",
+                  "createdDate": "2026-03-16T18:26:50.000Z",
+                  "dataLakeFieldInfoRepresentation": [
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "KQ_primary_key",
+                      "name": "KQ_primary_key__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": true,
+                      "label": "primary_key__c",
+                      "name": "primary_key__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "cdp_sys_SourceVersion",
+                      "name": "cdp_sys_SourceVersion__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Data Source",
+                      "name": "DataSource__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Data Source Object",
+                      "name": "DataSourceObject__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Internal Organization",
+                      "name": "InternalOrganization__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "cdp_sys_record_currency",
+                      "name": "cdp_sys_record_currency__c"
+                    }
+                  ],
+                  "dataSpaceInfo": [],
+                  "fields": [
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "KQ_primary_key",
+                      "name": "KQ_primary_key__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": true,
+                      "label": "primary_key__c",
+                      "name": "primary_key__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "cdp_sys_SourceVersion",
+                      "name": "cdp_sys_SourceVersion__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Data Source",
+                      "name": "DataSource__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Data Source Object",
+                      "name": "DataSourceObject__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Internal Organization",
+                      "name": "InternalOrganization__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "cdp_sys_record_currency",
+                      "name": "cdp_sys_record_currency__c"
+                    }
+                  ],
+                  "id": "1dlWt000000nuFZIAY",
+                  "label": "flow_test_delete__dll",
+                  "name": "flow_test_delete__dll",
+                  "namespace": "",
+                  "status": "DELETING"
+                }
+              ]
+            }
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:29:32 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=283/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - e6609dd2e796aedcc69287cb33c3c5e8
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Edge-Cache:
+                - MISS
+            X-Sfdc-Request-Id:
+                - e6609dd2e796aedcc69287cb33c3c5e8
+        status: 200 OK
+        code: 200
+        duration: 393.200708ms
+    - id: 31
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-lake-objects/flow_test_delete__dll
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            {
+              "dataLakeObjects": [
+                {
+                  "capabilities": {},
+                  "category": "Profile",
+                  "createdDate": "2026-03-16T18:26:50.000Z",
+                  "dataLakeFieldInfoRepresentation": [
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "KQ_primary_key",
+                      "name": "KQ_primary_key__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": true,
+                      "label": "primary_key__c",
+                      "name": "primary_key__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "cdp_sys_SourceVersion",
+                      "name": "cdp_sys_SourceVersion__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Data Source",
+                      "name": "DataSource__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Data Source Object",
+                      "name": "DataSourceObject__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Internal Organization",
+                      "name": "InternalOrganization__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "cdp_sys_record_currency",
+                      "name": "cdp_sys_record_currency__c"
+                    }
+                  ],
+                  "dataSpaceInfo": [],
+                  "fields": [
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "KQ_primary_key",
+                      "name": "KQ_primary_key__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": true,
+                      "label": "primary_key__c",
+                      "name": "primary_key__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "cdp_sys_SourceVersion",
+                      "name": "cdp_sys_SourceVersion__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Data Source",
+                      "name": "DataSource__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Data Source Object",
+                      "name": "DataSourceObject__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "Internal Organization",
+                      "name": "InternalOrganization__c"
+                    },
+                    {
+                      "dataType": "Text",
+                      "isPrimaryKey": false,
+                      "label": "cdp_sys_record_currency",
+                      "name": "cdp_sys_record_currency__c"
+                    }
+                  ],
+                  "id": "1dlWt000000nuFZIAY",
+                  "label": "flow_test_delete__dll",
+                  "name": "flow_test_delete__dll",
+                  "namespace": "",
+                  "status": "DELETING"
+                }
+              ]
+            }
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:29:36 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=283/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - ccf46e64095f4db0d06119156656728c
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Edge-Cache:
+                - MISS
+            X-Sfdc-Request-Id:
+                - ccf46e64095f4db0d06119156656728c
+        status: 200 OK
+        code: 200
+        duration: 583.428667ms
+    - id: 32
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=seQrriFlEfGyPh9BcRGEwg
+            User-Agent:
+                - sf-d360-api/dev (go)
+            X-Salesforce-Partner-Name:
+                - dbt_labs
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-lake-objects/flow_test_delete__dll
+        method: GET
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: |-
+            [
+              {
+                "errorCode": "INVALID_INPUT",
+                "message": "Please provide a valid recordId of type DataLakeObjectInstance or a valid developerName for a Data Lake Object."
+              }
+            ]
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Mon, 16 Mar 2026 18:29:40 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=284/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - 502b047e7cf7be2d56dd8bf16adb8bbc
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Request-Id:
+                - 502b047e7cf7be2d56dd8bf16adb8bbc
+        status: 404 Not Found
+        code: 404
+        duration: 169.148459ms

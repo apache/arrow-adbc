@@ -41,7 +41,7 @@ func (client *Client) DeleteIfDloExists(ctx context.Context, name string) error 
 	exponentialBackOff.InitialInterval = INITIAL_INTERVAL
 	exponentialBackOff.MaxInterval = MAX_INTERVAL
 
-	operation := func() (interface{}, error) {
+	operation := func() (any, error) {
 		_, err := client.GetDataLakeObjectByName(ctx, name)
 		if err != nil {
 			return nil, nil
@@ -84,7 +84,7 @@ func (client *Client) DeleteDataTransformIfExists(ctx context.Context, name stri
 	exponentialBackOff.InitialInterval = INITIAL_INTERVAL
 	exponentialBackOff.MaxInterval = MAX_INTERVAL
 
-	operation := func() (interface{}, error) {
+	operation := func() (any, error) {
 		_, err := client.GetDataTransform(ctx, name)
 		if err != nil {
 			// Data Transform doesn't exist, deletion complete or not needed
@@ -166,7 +166,7 @@ func (client *Client) CreateDataLakeObjectWithInferredSchema(ctx context.Context
 	exponentialBackOff.InitialInterval = INITIAL_INTERVAL
 	exponentialBackOff.MaxInterval = MAX_INTERVAL
 
-	waitForActiveOp := func() (interface{}, error) {
+	waitForActiveOp := func() (any, error) {
 		currentDLO, err := client.GetDataLakeObject(ctx, dataLakeObject.Name, nil, nil, "")
 		if err != nil {
 			return nil, fmt.Errorf("failed to get DLO status: %w", err)
@@ -236,7 +236,7 @@ func (client *Client) TriggerDbtBatchDataTransform(ctx context.Context, targetDl
 	exponentialBackOff := backoff.NewExponentialBackOff()
 
 	// Waits for the data transform to be active
-	waitForActiveOp := func() (interface{}, error) {
+	waitForActiveOp := func() (any, error) {
 		// Eagerly refreshes status, otherwise `client.GetDataTransform` may respond with a stale status
 		refreshStatusResponse, err := client.RefreshDataTransformStatus(ctx, dataTransform.Name)
 		if err != nil {
@@ -279,7 +279,7 @@ func (client *Client) TriggerDbtBatchDataTransform(ctx context.Context, targetDl
 	}
 
 	// Waits for the data transform run to be success
-	waitForRunOp := func() (interface{}, error) {
+	waitForRunOp := func() (any, error) {
 		refreshStatusResponse, err := client.RefreshDataTransformStatus(ctx, dataTransform.Name)
 		if !refreshStatusResponse.Success {
 			return nil, fmt.Errorf("failed to refresh the data transform status [%v]", refreshStatusResponse.Errors)
@@ -321,6 +321,126 @@ func (client *Client) TriggerDbtBatchDataTransform(ctx context.Context, targetDl
 	}
 
 	return dataTransform, nil
+}
+
+// Polls the data transform status until it is no longer processing.
+// Returns the latest data transform received from the server.
+func (client *Client) WaitForDataTransform(ctx context.Context, dt *DataTransform) (*DataTransform, error) {
+	client.logger.DebugContext(ctx, "WaitForDataTransform")
+
+	op := func() (*DataTransform, error) {
+		ndt, err := client.GetDataTransform(ctx, dt.Name)
+		if err != nil {
+			return nil, backoff.Permanent(err)
+		}
+
+		if ndt.Status.IsProcessing() {
+			return ndt, fmt.Errorf("still processing")
+		}
+
+		return ndt, nil
+	}
+
+	policy := backoff.NewExponentialBackOff()
+	policy.InitialInterval = 1 * time.Second
+	policy.MaxInterval = 15 * time.Second
+
+	return backoff.Retry(
+		ctx,
+		op,
+		backoff.WithBackOff(policy),
+		backoff.WithMaxElapsedTime(MAX_ELAPSED_TIME),
+		backoff.WithNotify(func(err error, duration time.Duration) {
+			client.logger.DebugContext(ctx, "waiting", "err", err, "duration", duration)
+		}),
+	)
+}
+
+// Polls the data transform last run status until it is no longer pending or in-progress.
+// Returns the latest data transform received from the server.
+func (client *Client) WaitForDataTransformRun(ctx context.Context, dt *DataTransform, runTimeout time.Duration) (*DataTransform, error) {
+	client.logger.DebugContext(ctx, "WaitForDataTransformRun", "timeout", runTimeout)
+	op := func() (*DataTransform, error) {
+		err := client.MustRefreshDataTransformStatus(ctx, dt.Name)
+		if err != nil {
+			// return nil, backoff.Permanent(err)
+			return nil, err
+		}
+
+		ndt, err := client.GetDataTransform(ctx, dt.Name)
+		if err != nil {
+			return nil, backoff.Permanent(err)
+		}
+
+		switch {
+		case ndt.LastRunStatus.IsPending():
+			return ndt, fmt.Errorf("run pending")
+		case ndt.LastRunStatus.IsInProgress():
+			return ndt, fmt.Errorf("run in progress")
+		}
+
+		return ndt, nil
+	}
+
+	policy := backoff.NewExponentialBackOff()
+	policy.InitialInterval = 30 * time.Second
+	policy.MaxInterval = 15 * time.Second
+
+	return backoff.Retry(
+		ctx,
+		op,
+		backoff.WithBackOff(policy),
+		backoff.WithMaxElapsedTime(runTimeout),
+	)
+}
+
+func (client *Client) CreateOrUpdateDataTransform(ctx context.Context, req *CreateDataTransformRequest) (*DataTransform, error) {
+	l := client.logger.With("operation", "CreateOrUpdateDataTransform")
+
+	l.DebugContext(ctx, "checking DT exists")
+
+	// naively check if the data-transform already exists
+	// TODO: There there are errors that can occur if the data transform exists (i.e. rate limiting, transient server issue, etc)
+	if _, err := client.GetDataTransform(ctx, req.Name); err != nil {
+		// TODO: What if existing.Status == DELETING | PROGRESSING
+		l.DebugContext(ctx, "creating data transform", "name", req.Name)
+		return client.CreateDataTransform(ctx, req)
+	} else {
+		l.DebugContext(ctx, "updating data transform", "name", req.Name)
+		return client.UpdateDataTransform(ctx, req)
+	}
+
+}
+
+type DataSpaceMember struct {
+	Name   string        `json:"memberName"`
+	Filter *FilterConfig `json:"filter,omitzero"`
+}
+
+func (client *Client) UpsertDataSpaceMembers(ctx context.Context, dataSpace string, members []DataSpaceMember) (*DataCloudActionResponse, error) {
+	type upsertDataspaceMemberBody struct {
+		Members struct {
+			Members []DataSpaceMember `json:"members"`
+		} `json:"members"`
+	}
+
+	type upsertDataspaceMemberResp struct {
+		*DataCloudActionResponse
+		Members struct {
+			Members []DataSpaceMember `json:"members"`
+		} `json:"dataSpaceMembers"`
+	}
+
+	var reqBody upsertDataspaceMemberBody
+	reqBody.Members.Members = members
+
+	path := fmt.Sprintf("data-spoaces/%s/members", dataSpace)
+	resp, err := PutJSON[upsertDataspaceMemberBody, upsertDataspaceMemberResp](client, ctx, path, &reqBody)
+	if err != nil {
+		return nil, err
+	}
+
+	return resp.DataCloudActionResponse, nil
 }
 
 // NewClientWithJWT creates a new client using JWT authentication

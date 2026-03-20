@@ -1,0 +1,63 @@
+{
+  "name": "sampleDBTExample", // REQUIRED: a "developer" name for the resource (unsure of format restrictions; probably no whitespace?)
+  "label": "DBT Example DT", // REQUIRED: a "human-friendly" name for the resource
+  "description": "Creates a DBT transform", // REQUIRED?: a description of the resource (can be empty string, but key must be present)
+  "type": "BATCH", // REQUIRED: a discriminant for how to interpret the `definition`. enum:(BATCH|STREAMING), but we only will use BATCH for now. seems to be case-insensitive, uppercase canonical.
+  "definition": /* REQUIRED: if `type` == "BATCH" */ {
+    "type": "DCSQL", // REQUIRED: a discriminant for how to interpret the `manifest`. enum:(SQL|STL|DCSQL), but we only use DCSQL for now. seems to be case-insensitive, uppercase canonical.
+    "version": "1.0", // REQUIRED: a version of the `definition`, for future schema evolution, but we'll only use "1.0" for now
+    "manifest": {
+      "nodes": /* REQUIRED */ {
+        // A key-value dict, where the keys are "node ids".
+        // The key is used to define dependencies between the nodes, and doesn't necessarily have to be the same as value.name
+        "src1": {
+          "name": "src1", // REQUIRED: the name of the "intermediate" data object that dependant nodes use in the SQL query
+          "compiled_code": "SELECT \"CustomerId__c\" FROM \"customers_raw__dll\"", // REQUIRED: the SQL to run
+          "config": /* OPTIONAL */ {
+            "materialized": "ephemeral", // enum:(table|ephemeral) default:table, defines how the output is stored. seems to be case-insensitive, lowercase canonical.
+          },
+        },
+        "nodeName2": {
+          "name": "nodeName2", // REQUIRED: the name of the "intermediate" data object that dependant nodes use in the SQL query
+          "relation_name": "customers_stg_1__dll", // OPTIONAL: name of the "output" data object that will be written to (can be "auto-created/updated" if using `outputDataObjects` with a matching `name`, otherwide must be created ahead of time)
+          "config": /* OPTIONAL */ {
+            "materialized": "table", // enum:(table|ephemeral) default:table, defines how the output is stored. seems to be case-insensitive, lowercase canonical.
+            "writeMode": "OVERWRITE", // enum:(OVERWRITE|APPEND|MERGE) default:OVERWRITE, defines how the output of the query is written to the table if it already exists. seems to be case-insensitive, uppercase canonical?
+          },
+          "compiled_code": "SELECT \"CustomerId__c\" FROM src1", // REQUIRED: the SQL to run
+          "depends_on": /* OPTIONAL */ {
+            "nodes": ["src1"], // list of "node ids" (aka the key in the `nodes` dict, we expect to see manifest.nodes[<key>].name referenced in the `compiled_code`)
+          },
+        },
+      },
+      "sources": /* we can ignore this for now */ {
+        "src1": {
+          "relation_name": "customers_raw__dll",
+        },
+      },
+    },
+    "outputDataObjects": /*OPTIONAL*/ [
+      // List of Data Objects (Either DLO or DMO) that will be created
+      // in practice, there is only 1 entry, if any
+      {
+        "type": "dataLakeObject", // REQUIRED: enum(dataLakeObject|dataModelObject)
+        "name": "stg_orders_output3__dll", // REQUIRED: a "developer" name for the data object (unsure of format restrictions; probably no whitespace?)
+        "label": "stg_orders_output3__dll", // REQUIRED: a "human-friendly" name for the data object
+        "fields": /* REQUIRED? */ [
+          // List of fields/column objects
+          {
+            // schema tbd for now ...
+          },
+        ],
+        // ...
+      },
+    ],
+  },
+  "definition": /* REQUIRED: if `type` == "STREAMING" */ {
+    "type": "DCSQL", // REQUIRED: a discriminant for how to interpret the `manifest`. enum:(SQL|STL). Maybe theres a DCSQL option, but we don't use STREAMING yet. seems to be case-insensitive, uppercase canonical.
+    "version": "1.0", // REQUIRED: a version of the `definition`. Doesn't matter currently.
+    "expression": "...", // a SQL expression
+    "targetDLO": "...", // name of DLO to write to (mutually exclusive with `targetDMO`)
+    "targetDMO": "...", // name of DMO to write to (mutually exclusive with `targetDLO`)
+  },
+}

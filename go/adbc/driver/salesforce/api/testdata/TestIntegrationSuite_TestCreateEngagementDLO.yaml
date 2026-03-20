@@ -1,0 +1,153 @@
+---
+version: 2
+interactions:
+    - id: 0
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Content-Type:
+                - application/json
+            User-Agent:
+                - go-resty/3.0.0-beta.6 (https://resty.dev)
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-lake-objects/sftest_events__dll
+        method: DELETE
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: '[{"errorCode":"INVALID_INPUT","message":"Please provide a valid recordId of type DataLakeObjectInstance or a valid developerName for a Data Lake Object."}]'
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Wed, 11 Mar 2026 12:47:49 GMT
+            Server:
+                - sfdcedge
+            Set-Cookie:
+                - CookieConsentPolicy=0:1; path=/; expires=Thu, 11-Mar-2027 12:47:49 GMT; Max-Age=31536000; secure
+                - LSKey-c$CookieConsentPolicy=0:1; path=/; expires=Thu, 11-Mar-2027 12:47:49 GMT; Max-Age=31536000; secure
+                - BrowserId=grcvXh1IEfGhFGcs0CRAtQ; domain=.salesforce.com; path=/; expires=Thu, 11-Mar-2027 12:47:49 GMT; Max-Age=31536000; secure; SameSite=None
+            Sforce-Limit-Info:
+                - api-usage=4/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - cee8e61f9cd18f7d7e3f2c37fdb3f23c
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Request-Id:
+                - cee8e61f9cd18f7d7e3f2c37fdb3f23c
+        status: 404 Not Found
+        code: 404
+        duration: 311.218875ms
+    - id: 1
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 593
+        host: storm-050b6314da1346.my.salesforce.com
+        body: |
+            {"name":"sftest_events__dll","label":"sftest Events DLO","category":"Engagement","dataLakeFieldInputRepresentations":[{"name":"event_id__c","label":"Event ID","dataType":"Text","isPrimaryKey":"true"},{"name":"customer_id__c","label":"Customer ID","dataType":"Text","isPrimaryKey":"false"},{"name":"event_type__c","label":"Event Type","dataType":"Text","isPrimaryKey":"false"},{"name":"event_ts__c","label":"Event Timestamp","dataType":"DateTime","isPrimaryKey":"false"}],"dataspaceInfo":null,"orgUnitIdentifierFieldName":"","recordModifiedFieldName":"","eventDateTimeFieldName":"event_ts__c"}
+        headers:
+            Accept-Encoding:
+                - identity
+            Content-Type:
+                - application/json
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=grcvXh1IEfGhFGcs0CRAtQ
+            User-Agent:
+                - go-resty/3.0.0-beta.6 (https://resty.dev)
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-lake-objects
+        method: POST
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: '{"capabilities":{},"category":"Engagement","createdDate":"2026-03-11T12:47:49.000Z","dataLakeFieldInfoRepresentation":[{"dataType":"Text","isPrimaryKey":false,"label":"KQ_event_id","name":"KQ_event_id__c"},{"dataType":"Text","isPrimaryKey":true,"label":"Event ID","name":"event_id__c"},{"dataType":"Text","isPrimaryKey":false,"label":"Customer ID","name":"customer_id__c"},{"dataType":"Text","isPrimaryKey":false,"label":"Event Type","name":"event_type__c"},{"dataType":"DateTime","isPrimaryKey":false,"label":"cdp_sys_PartitionDate","name":"cdp_sys_PartitionDate__c"},{"dataType":"DateTime","isPrimaryKey":false,"label":"Event Timestamp","name":"event_ts__c"},{"dataType":"Text","isPrimaryKey":false,"label":"cdp_sys_SourceVersion","name":"cdp_sys_SourceVersion__c"},{"dataType":"Text","isPrimaryKey":false,"label":"Data Source","name":"DataSource__c"},{"dataType":"Text","isPrimaryKey":false,"label":"Data Source Object","name":"DataSourceObject__c"},{"dataType":"Text","isPrimaryKey":false,"label":"Internal Organization","name":"InternalOrganization__c"}],"dataSpaceInfo":[],"eventDateTimeFieldName":"event_ts__c","fields":[{"dataType":"Text","isPrimaryKey":false,"label":"KQ_event_id","name":"KQ_event_id__c"},{"dataType":"Text","isPrimaryKey":true,"label":"Event ID","name":"event_id__c"},{"dataType":"Text","isPrimaryKey":false,"label":"Customer ID","name":"customer_id__c"},{"dataType":"Text","isPrimaryKey":false,"label":"Event Type","name":"event_type__c"},{"dataType":"DateTime","isPrimaryKey":false,"label":"cdp_sys_PartitionDate","name":"cdp_sys_PartitionDate__c"},{"dataType":"DateTime","isPrimaryKey":false,"label":"Event Timestamp","name":"event_ts__c"},{"dataType":"Text","isPrimaryKey":false,"label":"cdp_sys_SourceVersion","name":"cdp_sys_SourceVersion__c"},{"dataType":"Text","isPrimaryKey":false,"label":"Data Source","name":"DataSource__c"},{"dataType":"Text","isPrimaryKey":false,"label":"Data Source Object","name":"DataSourceObject__c"},{"dataType":"Text","isPrimaryKey":false,"label":"Internal Organization","name":"InternalOrganization__c"}],"id":"1dlWt000000nUubIAE","label":"sftest Events DLO","name":"sftest_events__dll","namespace":"","status":"PROCESSING"}'
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Wed, 11 Mar 2026 12:47:52 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=4/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            Vary:
+                - Accept-Encoding
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - cef186a76b4029f0bd1be85ac14cb00c
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Request-Id:
+                - cef186a76b4029f0bd1be85ac14cb00c
+        status: 201 Created
+        code: 201
+        duration: 3.174561708s
+    - id: 2
+      request:
+        proto: HTTP/1.1
+        proto_major: 1
+        proto_minor: 1
+        content_length: 0
+        host: storm-050b6314da1346.my.salesforce.com
+        headers:
+            Accept-Encoding:
+                - identity
+            Content-Type:
+                - application/json
+            Cookie:
+                - CookieConsentPolicy=0:1; LSKey-c$CookieConsentPolicy=0:1; BrowserId=grcvXh1IEfGhFGcs0CRAtQ
+            User-Agent:
+                - go-resty/3.0.0-beta.6 (https://resty.dev)
+        url: https://storm-050b6314da1346.my.salesforce.com/services/data/v64.0/ssot/data-lake-objects/sftest_events__dll
+        method: DELETE
+      response:
+        proto: HTTP/2.0
+        proto_major: 2
+        proto_minor: 0
+        content_length: -1
+        body: '[{"errorCode":"INVALID_INPUT","message":" Data Lake Object: sftest_events__dll is currently in processing or deleting cannot be updated or deleted. Please try again later."}]'
+        headers:
+            Cache-Control:
+                - no-cache,must-revalidate,max-age=0,no-store,private
+            Content-Type:
+                - application/json;charset=UTF-8
+            Date:
+                - Wed, 11 Mar 2026 12:47:53 GMT
+            Server:
+                - sfdcedge
+            Sforce-Limit-Info:
+                - api-usage=4/441450
+            Strict-Transport-Security:
+                - max-age=63072000; includeSubDomains
+            X-Content-Type-Options:
+                - nosniff
+            X-Request-Id:
+                - 30b879faa27105e7d25a1191234dc97b
+            X-Robots-Tag:
+                - none
+            X-Sfdc-Request-Id:
+                - 30b879faa27105e7d25a1191234dc97b
+        status: 400 Bad Request
+        code: 400
+        duration: 511.165667ms

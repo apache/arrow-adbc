@@ -49,6 +49,40 @@ func PostJSON[RequestType any, ResponseType any](c *Client, ctx context.Context,
 	return executeJSONRequest[ResponseType](c, ctx, req)
 }
 
+// PutJSON performs a PUT request with JSON request/response handling
+// RequestType is the request payload type, ResponseType is the response payload type
+func PutJSON[RequestType any, ResponseType any](c *Client, ctx context.Context, path string, request *RequestType) (*ResponseType, error) {
+	// Marshal request to JSON
+	reqBody, err := json.Marshal(request)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := createRequest(c, ctx, "PUT", path, strings.NewReader(string(reqBody)))
+	if err != nil {
+		return nil, err
+	}
+
+	return executeJSONRequest[ResponseType](c, ctx, req)
+}
+
+// PatchJSON performs a PATCH request with JSON request/response handling
+// RequestType is the request payload type, ResponseType is the response payload type
+func PatchJSON[RequestType any, ResponseType any](c *Client, ctx context.Context, path string, request *RequestType) (*ResponseType, error) {
+	// Marshal request to JSON
+	reqBody, err := json.Marshal(request)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := createRequest(c, ctx, "PATCH", path, strings.NewReader(string(reqBody)))
+	if err != nil {
+		return nil, err
+	}
+
+	return executeJSONRequest[ResponseType](c, ctx, req)
+}
+
 // DeleteJSON performs a DELETE request
 func DeleteJSON(c *Client, ctx context.Context, path string) error {
 	req, err := createRequest(c, ctx, "DELETE", path, nil)
