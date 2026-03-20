@@ -375,6 +375,7 @@ impl Task for CreateStatementTask {
   fn resolve(&mut self, _env: Env, output: Self::Output) -> Result<Self::JsValue> {
     Ok(_NativeAdbcStatement {
       inner: Some(Arc::new(Mutex::new(output))),
+      stream_sender: None,
     })
   }
 
@@ -536,6 +537,7 @@ impl Task for RollbackTask {
 #[napi]
 pub struct _NativeAdbcStatement {
   inner: Option<Arc<Mutex<CoreStatement>>>,
+  stream_sender: Option<std::sync::mpsc::Sender<Vec<u8>>>,
 }
 
 #[napi]
@@ -591,9 +593,125 @@ impl _NativeAdbcStatement {
   }
 
   #[napi]
+  pub fn start_bind_stream_execute(
+    &mut self,
+    schema_bytes: Buffer,
+  ) -> Result<AsyncTask<BindStreamExecuteTask>> {
+    let mutex = self.inner.as_ref().ok_or_else(closed_err)?;
+    // Unbounded channel: a bounded channel would block the JS main thread.
+    let (sender, receiver) = std::sync::mpsc::channel::<Vec<u8>>();
+    self.stream_sender = Some(sender);
+    Ok(AsyncTask::new(BindStreamExecuteTask {
+      statement: mutex.clone(),
+      schema_bytes: schema_bytes.to_vec(),
+      receiver: Some(receiver),
+      adbc_err: None,
+    }))
+  }
+
+  #[napi]
+  pub fn start_bind_stream(&mut self, schema_bytes: Buffer) -> Result<AsyncTask<BindStreamTask>> {
+    let mutex = self.inner.as_ref().ok_or_else(closed_err)?;
+    // Unbounded channel: a bounded channel would block the JS main thread.
+    let (sender, receiver) = std::sync::mpsc::channel::<Vec<u8>>();
+    self.stream_sender = Some(sender);
+    Ok(AsyncTask::new(BindStreamTask {
+      statement: mutex.clone(),
+      schema_bytes: schema_bytes.to_vec(),
+      receiver: Some(receiver),
+      adbc_err: None,
+    }))
+  }
+
+  #[napi]
+  pub fn push_batch(&self, data: Buffer) -> Result<()> {
+    let sender = self
+      .stream_sender
+      .as_ref()
+      .ok_or_else(|| Error::new(Status::GenericFailure, "No active bind stream"))?;
+    sender
+      .send(data.to_vec())
+      .map_err(|_| Error::new(Status::GenericFailure, "Stream channel closed"))?;
+    Ok(())
+  }
+
+  #[napi]
+  pub fn end_stream(&mut self) -> Result<()> {
+    self.stream_sender.take();
+    Ok(())
+  }
+
+  #[napi]
   pub fn close(&mut self) -> Result<()> {
     self.inner.take();
+    self.stream_sender.take();
     Ok(())
+  }
+}
+
+pub struct BindStreamExecuteTask {
+  statement: Arc<Mutex<CoreStatement>>,
+  schema_bytes: Vec<u8>,
+  receiver: Option<std::sync::mpsc::Receiver<Vec<u8>>>,
+  adbc_err: Option<adbc_core::error::Error>,
+}
+
+impl Task for BindStreamExecuteTask {
+  type Output = i64;
+  type JsValue = i64;
+
+  fn compute(&mut self) -> Result<Self::Output> {
+    let mut stmt = self
+      .statement
+      .lock()
+      .map_err(|e| Error::from_reason(e.to_string()))?;
+    let receiver = self.receiver.take().expect("compute called twice");
+    let schema_bytes = std::mem::take(&mut self.schema_bytes);
+    capture_adbc_err(
+      stmt.bind_stream_and_execute(schema_bytes, receiver),
+      &mut self.adbc_err,
+    )
+  }
+
+  fn resolve(&mut self, _env: Env, output: Self::Output) -> Result<Self::JsValue> {
+    Ok(output)
+  }
+
+  fn reject(&mut self, env: Env, err: Error) -> Result<Self::JsValue> {
+    reject_adbc(env, &mut self.adbc_err, err)
+  }
+}
+
+pub struct BindStreamTask {
+  statement: Arc<Mutex<CoreStatement>>,
+  schema_bytes: Vec<u8>,
+  receiver: Option<std::sync::mpsc::Receiver<Vec<u8>>>,
+  adbc_err: Option<adbc_core::error::Error>,
+}
+
+impl Task for BindStreamTask {
+  type Output = ();
+  type JsValue = ();
+
+  fn compute(&mut self) -> Result<Self::Output> {
+    let mut stmt = self
+      .statement
+      .lock()
+      .map_err(|e| Error::from_reason(e.to_string()))?;
+    let receiver = self.receiver.take().expect("compute called twice");
+    let schema_bytes = std::mem::take(&mut self.schema_bytes);
+    capture_adbc_err(
+      stmt.bind_channel_stream(schema_bytes, receiver),
+      &mut self.adbc_err,
+    )
+  }
+
+  fn resolve(&mut self, _env: Env, _output: Self::Output) -> Result<Self::JsValue> {
+    Ok(())
+  }
+
+  fn reject(&mut self, env: Env, err: Error) -> Result<Self::JsValue> {
+    reject_adbc(env, &mut self.adbc_err, err)
   }
 }
 

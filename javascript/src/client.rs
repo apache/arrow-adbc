@@ -17,6 +17,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
+use std::sync::mpsc;
 use std::sync::Mutex;
 
 use adbc_core::{
@@ -30,6 +31,7 @@ use adbc_driver_manager::{ManagedConnection, ManagedDatabase, ManagedDriver, Man
 use arrow_array::RecordBatchReader;
 use arrow_ipc::reader::StreamReader;
 use arrow_ipc::writer::StreamWriter;
+use arrow_schema::SchemaRef;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ClientError {
@@ -287,6 +289,26 @@ impl AdbcStatementCore {
     self.inner.bind_stream(Box::new(reader))?;
     Ok(())
   }
+
+  pub fn bind_channel_stream(
+    &mut self,
+    schema_bytes: Vec<u8>,
+    receiver: mpsc::Receiver<Vec<u8>>,
+  ) -> Result<()> {
+    let reader = ChannelBatchReader::new(schema_bytes, receiver)?;
+    self.inner.bind_stream(Box::new(reader))?;
+    Ok(())
+  }
+
+  pub fn bind_stream_and_execute(
+    &mut self,
+    schema_bytes: Vec<u8>,
+    receiver: mpsc::Receiver<Vec<u8>>,
+  ) -> Result<i64> {
+    self.bind_channel_stream(schema_bytes, receiver)?;
+    let rows = self.inner.execute_update()?;
+    Ok(rows.unwrap_or(-1))
+  }
 }
 
 pub struct AdbcResultIteratorCore {
@@ -309,6 +331,46 @@ impl AdbcResultIteratorCore {
     }
     writer.finish()?;
     Ok(Some(output))
+  }
+}
+
+/// A `RecordBatchReader` backed by a channel. Batches arrive as IPC bytes
+/// from the JS main thread and are deserialized on demand by the thread pool.
+pub struct ChannelBatchReader {
+  schema: SchemaRef,
+  receiver: mpsc::Receiver<Vec<u8>>,
+}
+
+impl ChannelBatchReader {
+  pub fn new(schema_bytes: Vec<u8>, receiver: mpsc::Receiver<Vec<u8>>) -> Result<Self> {
+    let ipc_reader = StreamReader::try_new(std::io::Cursor::new(schema_bytes), None)
+      .map_err(ClientError::Arrow)?;
+    let schema = ipc_reader.schema();
+    Ok(Self { schema, receiver })
+  }
+}
+
+impl Iterator for ChannelBatchReader {
+  type Item = std::result::Result<arrow_array::RecordBatch, arrow_schema::ArrowError>;
+
+  fn next(&mut self) -> Option<Self::Item> {
+    let bytes = self.receiver.recv().ok()?;
+    let mut ipc_reader = match StreamReader::try_new(std::io::Cursor::new(bytes), None) {
+      Ok(r) => r,
+      Err(e) => return Some(Err(e)),
+    };
+    match ipc_reader.next() {
+      Some(result) => Some(result),
+      None => Some(Err(arrow_schema::ArrowError::IpcError(
+        "Received IPC stream with no record batches".to_string(),
+      ))),
+    }
+  }
+}
+
+impl RecordBatchReader for ChannelBatchReader {
+  fn schema(&self) -> SchemaRef {
+    self.schema.clone()
   }
 }
 

@@ -215,24 +215,64 @@ export class AdbcConnection implements AdbcConnectionInterface {
     }
   }
 
+  private setIngestOptions(
+    stmt: { setOption(key: string, value: string): void },
+    tableName: string,
+    options?: IngestOptions,
+  ): void {
+    stmt.setOption('adbc.ingest.target_table', tableName)
+    stmt.setOption('adbc.ingest.mode', options?.mode ?? IngestMode.Create)
+    if (options?.catalog !== undefined) {
+      stmt.setOption('adbc.ingest.target_catalog', options.catalog)
+    }
+    if (options?.dbSchema !== undefined) {
+      stmt.setOption('adbc.ingest.target_db_schema', options.dbSchema)
+    }
+    if (options?.temporary === true) {
+      stmt.setOption('adbc.ingest.temporary', 'true')
+    }
+  }
+
   async ingest(tableName: string, data: Table, options?: IngestOptions): Promise<number> {
     const stmt = await this.createStatement()
     try {
-      stmt.setOption('adbc.ingest.target_table', tableName)
-      stmt.setOption('adbc.ingest.mode', options?.mode ?? IngestMode.Create)
-      if (options?.catalog !== undefined) {
-        stmt.setOption('adbc.ingest.target_catalog', options.catalog)
-      }
-      if (options?.dbSchema !== undefined) {
-        stmt.setOption('adbc.ingest.target_db_schema', options.dbSchema)
-      }
-      if (options?.temporary === true) {
-        stmt.setOption('adbc.ingest.temporary', 'true')
-      }
+      this.setIngestOptions(stmt, tableName, options)
       await stmt.bind(data)
       return await stmt.executeUpdate()
     } finally {
       await stmt.close()
+    }
+  }
+
+  async ingestStream(tableName: string, reader: RecordBatchReader, options?: IngestOptions): Promise<number> {
+    const nativeStmt = (await this._inner.createStatement()) as NativeAdbcStatement
+    try {
+      this.setIngestOptions(nativeStmt, tableName, options)
+
+      await reader.open()
+      const schemaTable = new Table(reader.schema, [])
+      const schemaBytes = tableToIPC(schemaTable, 'stream')
+      const promise = nativeStmt.startBindStreamExecute(Buffer.from(schemaBytes))
+
+      let pushError: unknown
+      try {
+        for await (const batch of reader) {
+          const batchBytes = tableToIPC(new Table([batch]), 'stream')
+          nativeStmt.pushBatch(Buffer.from(batchBytes))
+        }
+      } catch (e) {
+        pushError = e
+      } finally {
+        nativeStmt.endStream()
+      }
+
+      const result = (await promise) as number
+      if (pushError) throw pushError
+      return result
+    } catch (e) {
+      throw AdbcError.fromError(e)
+    } finally {
+      nativeStmt.close()
     }
   }
 
@@ -332,6 +372,32 @@ export class AdbcStatement implements AdbcStatementInterface {
     try {
       const ipcBytes = tableToIPC(data, 'stream')
       await this._inner.bind(Buffer.from(ipcBytes))
+    } catch (e) {
+      throw AdbcError.fromError(e)
+    }
+  }
+
+  async bindStream(reader: RecordBatchReader): Promise<void> {
+    try {
+      await reader.open()
+      const schemaTable = new Table(reader.schema, [])
+      const schemaBytes = tableToIPC(schemaTable, 'stream')
+      const bindPromise = this._inner.startBindStream(Buffer.from(schemaBytes))
+
+      let pushError: unknown
+      try {
+        for await (const batch of reader) {
+          const batchBytes = tableToIPC(new Table([batch]), 'stream')
+          this._inner.pushBatch(Buffer.from(batchBytes))
+        }
+      } catch (e) {
+        pushError = e
+      } finally {
+        this._inner.endStream()
+      }
+
+      await bindPromise
+      if (pushError) throw pushError
     } catch (e) {
       throw AdbcError.fromError(e)
     }

@@ -332,6 +332,20 @@ export interface AdbcConnection {
   ingest(tableName: string, data: Table, options?: IngestOptions): Promise<number>
 
   /**
+   * Ingest Arrow data from a stream into a database table.
+   *
+   * Unlike {@link ingest}, this method streams data batch-by-batch, avoiding
+   * full materialization in memory. Use this for large datasets that should
+   * not be buffered entirely.
+   *
+   * @param tableName The target table name.
+   * @param reader Arrow RecordBatchReader to stream.
+   * @param options Ingestion options (mode, catalog, dbSchema, temporary).
+   * @returns A Promise resolving to the number of rows ingested, or -1 if unknown.
+   */
+  ingestStream(tableName: string, reader: RecordBatchReader, options?: IngestOptions): Promise<number>
+
+  /**
    * Execute a SQL statement (INSERT, UPDATE, DELETE, DDL) and return the row count.
    *
    * Convenience method that creates a statement, sets the SQL, optionally binds
@@ -406,6 +420,16 @@ export interface AdbcStatement {
    * @param data Arrow Table containing the data to bind.
    */
   bind(data: Table): Promise<void>
+
+  /**
+   * Bind a stream of data for ingestion or parameterized queries.
+   *
+   * Streams batches one at a time to the driver, avoiding full
+   * materialization of the reader in memory.
+   *
+   * @param reader Arrow RecordBatchReader to bind.
+   */
+  bindStream(reader: RecordBatchReader): Promise<void>
 
   /**
    * Close the statement and release resources.

@@ -18,8 +18,8 @@
 import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
 import { createSqliteDatabase } from './test_utils'
-import { AdbcDatabase, AdbcConnection, IngestMode } from '../lib/index.js'
-import { tableFromArrays, Table } from 'apache-arrow'
+import { AdbcDatabase, AdbcConnection, AdbcError, IngestMode } from '../lib/index.js'
+import { tableFromArrays, Table, RecordBatchReader, tableToIPC } from 'apache-arrow'
 
 let db: AdbcDatabase
 let conn: AdbcConnection
@@ -89,6 +89,99 @@ test('ingest: multi-batch table inserts all batches', async () => {
 
   const result = await conn.query('SELECT id FROM ingest_multi_batch')
   assert.strictEqual(result.numRows, 2)
+})
+
+test('ingestStream: streams batches into a new table', async () => {
+  const data = tableFromArrays({ id: [1, 2, 3], name: ['alice', 'bob', 'carol'] })
+  const reader = RecordBatchReader.from(tableToIPC(data, 'stream'))
+  const rowCount = await conn.ingestStream('ingest_stream_basic', reader)
+  assert.strictEqual(rowCount, 3)
+
+  const result = await conn.query('SELECT id, name FROM ingest_stream_basic ORDER BY id')
+  assert.strictEqual(result.numRows, 3)
+  assert.strictEqual(result.getChildAt(0)?.get(0), 1)
+  assert.strictEqual(result.getChildAt(1)?.get(2), 'carol')
+})
+
+test('ingestStream: streams multi-batch data', async () => {
+  const batch = tableFromArrays({ id: [1], name: ['alice'] }).batches[0]
+  const multiTable = new Table([batch, batch, batch])
+  const reader = RecordBatchReader.from(tableToIPC(multiTable, 'stream'))
+  const rowCount = await conn.ingestStream('ingest_stream_multi', reader)
+  assert.strictEqual(rowCount, 3)
+
+  const result = await conn.query('SELECT id FROM ingest_stream_multi')
+  assert.strictEqual(result.numRows, 3)
+})
+
+test('ingestStream: append mode with stream', async () => {
+  const initial = tableFromArrays({ id: [1] })
+  await conn.ingest('ingest_stream_append', initial)
+
+  const more = tableFromArrays({ id: [2] })
+  const reader = RecordBatchReader.from(tableToIPC(more, 'stream'))
+  const rowCount = await conn.ingestStream('ingest_stream_append', reader, {
+    mode: IngestMode.Append,
+  })
+  assert.strictEqual(rowCount, 1)
+
+  const result = await conn.query('SELECT id FROM ingest_stream_append ORDER BY id')
+  assert.strictEqual(result.numRows, 2)
+})
+
+test('ingestStream: empty reader creates table with no rows', async () => {
+  const empty = tableFromArrays({ id: [] as number[] })
+  const reader = RecordBatchReader.from(tableToIPC(empty, 'stream'))
+  const rowCount = await conn.ingestStream('ingest_stream_empty', reader)
+  assert.strictEqual(rowCount, 0)
+
+  const result = await conn.query('SELECT id FROM ingest_stream_empty')
+  assert.strictEqual(result.numRows, 0)
+})
+
+test('ingestStream: schema mismatch on append surfaces AdbcError', async () => {
+  const initial = tableFromArrays({ id: [1] })
+  await conn.ingest('ingest_stream_mismatch', initial)
+
+  const bad = tableFromArrays({ id: [2], extra: ['oops'] })
+  const reader = RecordBatchReader.from(tableToIPC(bad, 'stream'))
+  await assert.rejects(
+    () => conn.ingestStream('ingest_stream_mismatch', reader, { mode: IngestMode.Append }),
+    (e: unknown) => {
+      assert.ok(e instanceof AdbcError)
+      assert.match(e.message, /no column named extra/i)
+      return true
+    },
+  )
+})
+
+test('ingestStream: many small batches', async () => {
+  const oneBatch = tableFromArrays({ id: [1] }).batches[0]
+  const batches = Array.from({ length: 100 }, () => oneBatch)
+  const bigTable = new Table(batches)
+  const reader = RecordBatchReader.from(tableToIPC(bigTable, 'stream'))
+  const rowCount = await conn.ingestStream('ingest_stream_many', reader)
+  assert.strictEqual(rowCount, 100)
+
+  const result = await conn.query('SELECT count(*) as cnt FROM ingest_stream_many')
+  assert.strictEqual(result.getChildAt(0)?.get(0), 100n)
+})
+
+test('ingestStream: reader error mid-iteration propagates', async () => {
+  async function* failingGenerator() {
+    yield tableToIPC(tableFromArrays({ id: [1] }), 'stream')
+    throw new Error('reader exploded')
+  }
+  const reader = await RecordBatchReader.from(failingGenerator())
+
+  await assert.rejects(
+    () => conn.ingestStream('ingest_stream_fail', reader),
+    (e: unknown) => {
+      assert.ok(e instanceof Error)
+      assert.match(e.message, /reader exploded/)
+      return true
+    },
+  )
 })
 
 test('ingest: create_append mode creates table if not exists then appends', async () => {
