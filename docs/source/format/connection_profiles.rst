@@ -83,7 +83,7 @@ Filesystem-based profiles use TOML format with the following structure:
 
    # The version is required.
    profile_version = 1
-   # It is optional to provide the driver.
+   # The driver is optional, but if not provided it must be set by the application.
    driver = "snowflake"
 
    # The Options table is required, even if empty
