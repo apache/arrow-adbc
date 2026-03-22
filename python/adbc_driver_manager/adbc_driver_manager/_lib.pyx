@@ -1135,6 +1135,99 @@ cdef class AdbcConnection(_AdbcHandle):
         check_error(status, &c_error)
         return c_value
 
+    def get_statistics(
+        self,
+        catalog=None,
+        db_schema=None,
+        table_name=None,
+        approximate=True
+    ) -> ArrowArrayStreamHandle:
+        """
+        Get statistics about data distribution in table(s).
+
+        Parameters
+        ----------
+        catalog : str, optional
+            The catalog to filter by. May be a search pattern or None.
+        db_schema : str, optional
+            The database schema to filter by. May be a search pattern or None.
+        table_name : str, optional
+            The table name to filter by. May be a search pattern or None.
+        approximate : bool, default True
+            If True, allow approximate or cached statistics. If False, request
+            exact statistics (may be expensive or unsupported).
+
+        Returns
+        -------
+        ArrowArrayStreamHandle
+            A stream of statistics data with nested structure.
+
+        Notes
+        -----
+        Available since ADBC API revision 1.1.0. Drivers may return
+        approximate values even when exact values are requested, as
+        indicated in the result's statistic_is_approximate column.
+        """
+        cdef CAdbcError c_error = empty_error()
+        cdef CAdbcStatusCode status
+        cdef ArrowArrayStreamHandle stream = ArrowArrayStreamHandle()
+
+        cdef char* c_catalog = NULL
+        if catalog is not None:
+            catalog = _to_bytes(catalog, "catalog")
+            c_catalog = catalog
+
+        cdef char* c_db_schema = NULL
+        if db_schema is not None:
+            db_schema = _to_bytes(db_schema, "db_schema")
+            c_db_schema = db_schema
+
+        cdef char* c_table_name = NULL
+        if table_name is not None:
+            table_name = _to_bytes(table_name, "table_name")
+            c_table_name = table_name
+
+        cdef char c_approximate = 1 if approximate else 0
+
+        with nogil:
+            status = AdbcConnectionGetStatistics(
+                &self.connection,
+                c_catalog,
+                c_db_schema,
+                c_table_name,
+                c_approximate,
+                &stream.stream,
+                &c_error)
+        check_error(status, &c_error)
+        return stream
+
+    def get_statistic_names(self) -> ArrowArrayStreamHandle:
+        """
+        Get custom statistic names defined by this driver.
+
+        Returns
+        -------
+        ArrowArrayStreamHandle
+            A stream with columns: statistic_name (utf8), statistic_key (int16).
+
+        Notes
+        -----
+        Available since ADBC API revision 1.1.0. Returns driver-specific
+        statistic names and their keys. Standard ADBC statistics (keys 0-1023)
+        are not included - only driver-specific statistics.
+        """
+        cdef CAdbcError c_error = empty_error()
+        cdef CAdbcStatusCode status
+        cdef ArrowArrayStreamHandle stream = ArrowArrayStreamHandle()
+
+        with nogil:
+            status = AdbcConnectionGetStatisticNames(
+                &self.connection,
+                &stream.stream,
+                &c_error)
+        check_error(status, &c_error)
+        return stream
+
     def get_table_schema(self, catalog, db_schema, table_name) -> ArrowSchemaHandle:
         """
         Get the Arrow schema of a table.
