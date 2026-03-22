@@ -26,7 +26,7 @@ ADBC Driver Manager and Connection Profiles
           a single application. For more information on how the driver manager
           works see :doc:`how_manager`.
 
-There are two ways to pass driver options through the driver manager:
+There are two ways to pass database options through the driver manager:
 
 1. Directly specifying all options as arguments to the driver manager in your
    application code (see the `SetOption` family of functions in
@@ -35,7 +35,7 @@ There are two ways to pass driver options through the driver manager:
    optionally overriding some options by setting them through the above
    method.
 
-Connection profiles combine a driver and driver options in a reusable
+Connection profiles combine a driver and database options in a reusable
 configuration. This allows users to:
 
 - Define connection information in files or environment variables
@@ -133,7 +133,7 @@ For more detils, see :doc:`driver_manifests`.
 Options Section
 ---------------
 
-The ``[Options]`` section contains driver-specific configuration options. This section must be present, even if empty. Options can be of the following types:
+The ``[Options]`` section contains driver-specific configuration options to apply to the ``AdbcDatabase`` upon creation. This section must be present, even if empty. Options can be of the following types:
 
 **String values**
    Applied using ``AdbcDatabaseSetOption()``
