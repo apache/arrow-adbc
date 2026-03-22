@@ -572,11 +572,12 @@ class Connection(_Closeable):
 
         - catalog_name (utf8)
         - catalog_db_schemas (list of structs)
+
           - db_schema_name (utf8)
           - db_schema_statistics (list of structs)
+
             - table_name (utf8)
-            - column_name (utf8, nullable) - null means statistic applies to
-              entire table
+            - column_name (utf8, nullable) - null if applies to entire table
             - statistic_key (int16) - dictionary-encoded statistic name
             - statistic_value (dense union) - int64, uint64, float64, or binary
             - statistic_is_approximate (bool)
