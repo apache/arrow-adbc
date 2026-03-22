@@ -607,20 +607,6 @@ class Connection(_Closeable):
 
         Available since ADBC API revision 1.1.0. Not all drivers support
         this method. If unsupported, a NotSupportedError will be raised.
-
-        Examples
-        --------
-        Get all statistics (approximate values allowed):
-
-        >>> reader = conn.adbc_get_statistics()
-        >>> table = reader.read_all()
-
-        Get exact statistics for a specific table:
-
-        >>> reader = conn.adbc_get_statistics(
-        ...     table_name_filter="my_table",
-        ...     approximate=False
-        ... )
         """
         handle = _blocking_call(
             self._conn.get_statistics,
@@ -655,12 +641,6 @@ class Connection(_Closeable):
         Available since ADBC API revision 1.1.0. Standard ADBC statistics
         (keys 0-1023) are not included in this result - only driver-specific
         statistics.
-
-        Examples
-        --------
-        >>> reader = conn.adbc_get_statistic_names()
-        >>> names = reader.read_all()
-        >>> print(names.to_pandas())
         """
         handle = _blocking_call(
             self._conn.get_statistic_names,
