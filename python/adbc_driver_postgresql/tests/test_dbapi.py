@@ -598,6 +598,13 @@ def test_bind_null_insert(postgres: dbapi.Connection) -> None:
         cur.execute("INSERT INTO test_null_binding VALUES ($1, $2)", ("hello", None))
     postgres.commit()
 
+    with postgres.cursor() as cur:
+        cur.execute("SELECT a, b FROM test_null_binding")
+        result = cur.fetchone()
+        assert result is not None
+        assert result[0] == "hello"
+        assert result[1] is None
+
 
 def test_bind_null_update(postgres: dbapi.Connection) -> None:
     """Test UPDATE with None parameter (issue #3549)."""
@@ -636,11 +643,11 @@ def test_executemany_all_nulls(postgres: dbapi.Connection) -> None:
     postgres.commit()
 
     with postgres.cursor() as cur:
-        cur.execute("SELECT COUNT(*) FROM test_null_binding WHERE b IS NULL")
-        row = cur.fetchone()
-        assert row is not None
-        count = row[0]
-        assert count == 2
+        cur.execute("SELECT a, b FROM test_null_binding ORDER BY a")
+        rows = cur.fetchall()
+        assert len(rows) == 2
+        assert rows[0] == ("hello", None)
+        assert rows[1] == ("world", None)
 
 
 def test_bind_multiple_null_parameters(postgres: dbapi.Connection) -> None:
