@@ -338,7 +338,7 @@
 <li class="toctree-l1"><a class="reference internal" href="format/comparison.html">Comparison with Other APIs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="format/how_manager.html">How Drivers and the Driver Manager Work Together</a></li>
 <li class="toctree-l1"><a class="reference internal" href="format/driver_manifests.html">ADBC Driver Manager and Manifests</a></li>
-<li class="toctree-l1"><a class="reference internal" href="format/connection_profiles.html">Driver Manager Connection Profiles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="format/connection_profiles.html">ADBC Driver Manager and Connection Profiles</a></li>
 <li class="toctree-l1"><a class="reference internal" href="format/related_work.html">Related Work</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Development</span></p>
@@ -401,6 +401,10 @@ For example, ADBC, JDBC, ODBC.</p>
 </dd>
 <dt id="term-connection">connection<a class="headerlink" href="#term-connection" title="Link to this term">¶</a></dt><dd><p>In ADBC, the connection object/struct represents a single connection to a
 database.  Multiple connections may be created from one <a class="reference internal" href="#term-database"><span class="xref std std-term">database</span></a>.</p>
+</dd>
+<dt id="term-connection-profile">connection profile<a class="headerlink" href="#term-connection-profile" title="Link to this term">¶</a></dt><dd><p>A preconfigured driver and options that can be loaded by the
+<a class="reference internal" href="#term-driver-manager"><span class="xref std std-term">driver manager</span></a> for convenience.  Specified via a TOML file.  See
+<a class="reference internal" href="format/connection_profiles.html"><span class="doc">ADBC Driver Manager and Connection Profiles</span></a>.</p>
 </dd>
 <dt id="term-database">database<a class="headerlink" href="#term-database" title="Link to this term">¶</a></dt><dd><p>In ADBC, the database object/struct holds state that is shared across
 connections.</p>

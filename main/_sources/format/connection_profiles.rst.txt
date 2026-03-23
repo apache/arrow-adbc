@@ -15,30 +15,37 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-==================================
-Driver Manager Connection Profiles
-==================================
+===========================================
+ADBC Driver Manager and Connection Profiles
+===========================================
 
-Overview
-========
+.. note:: This document describes using the :term:`driver manager` to load
+          drivers.  The driver manager is not required to use ADBC in general
+          but it allows loading drivers written in a different language from the
+          application and improves the experience when using multiple drivers in
+          a single application. For more information on how the driver manager
+          works see :doc:`how_manager`.
 
-There are two ways to pass connection options to driver managers:
+There are two ways to pass database options through the driver manager:
 
-1. Directly specifying all connection options as arguments to driver manager functions in your
-   application code. (see the `SetOption` family of functions in :doc:`specification` for details)
-2. Referring to a **connection profile** which contains connection options, and optionally overriding
-   some options in your application code.
+1. Directly specifying all options as arguments to the driver manager in your
+   application code (see the `SetOption` family of functions in
+   :doc:`specification` for details).
+2. Referring to a :term:`connection profile` which contains options, and
+   optionally overriding some options by setting them through the above
+   method.
 
-The ADBC driver manager supports **connection profiles** that specify a driver and connection options
-in a reusable configuration. This allows users to:
+Connection profiles combine a driver and database options in a reusable
+configuration. This allows users to:
 
 - Define connection information in files or environment variables
 - Share connection configurations across applications
 - Distribute standardized connection settings
 - Avoid hardcoding driver names and credentials in application code
 
-Profiles are loaded during ``AdbcDatabaseInit()`` before initializing the driver. Options
-from the profile are applied automatically but do not override options already set via ``AdbcDatabaseSetOption()``.
+Profiles are loaded during ``AdbcDatabaseInit()`` before initializing the
+driver. Options from the profile are applied automatically but do not override
+options already set via ``AdbcDatabaseSetOption()``.
 
 Quick Start
 ===========
@@ -74,9 +81,12 @@ Filesystem-based profiles use TOML format with the following structure:
 
 .. code-block:: toml
 
+   # The version is required.
    profile_version = 1
+   # The driver is optional, but if not provided it must be set by the application.
    driver = "snowflake"
 
+   # The Options table is required, even if empty
    [Options]
    # String options
    adbc.snowflake.sql.account = "mycompany"
@@ -111,18 +121,19 @@ driver
 
 The ``driver`` field specifies which ADBC driver to load. This can be:
 
-- A driver name (e.g., ``"snowflake"``)
+- A driver or driver manifest name (e.g., ``"snowflake"``)
 - A path to a shared library (e.g., ``"/usr/local/lib/libadbc_driver_snowflake.so"``)
 - A path to a driver manifest (e.g., ``"/etc/adbc/drivers/snowflake.toml"``)
 
 If omitted, the driver must be specified through other means (e.g., the ``driver`` option or ``uri`` parameter).
+If the application specifies a driver, and specifies a profile that itself references a driver, the two must match exactly, or it is an error.
 The driver will be loaded identically to if it was specified via ``AdbcDatabaseSetOption("driver", "<driver>")``.
 For more detils, see :doc:`driver_manifests`.
 
 Options Section
 ---------------
 
-The ``[Options]`` section contains driver-specific configuration options. Options can be of the following types:
+The ``[Options]`` section contains driver-specific configuration options to apply to the ``AdbcDatabase`` upon creation. This section must be present, even if empty. Options can be of the following types:
 
 **String values**
    Applied using ``AdbcDatabaseSetOption()``
@@ -152,6 +163,10 @@ The ``[Options]`` section contains driver-specific configuration options. Option
    .. code-block:: toml
 
       adbc.snowflake.sql.client_session_keep_alive = true
+
+.. warning:: If the application overrides option values but uses a different
+             type for the value than the profile does, it is undefined which
+             will take effect.
 
 Value Substitution
 ------------------
@@ -190,7 +205,7 @@ Profile Search Locations
 
 When using a profile name (not an absolute path), the driver manager searches for ``<profile_name>.toml`` in the following locations:
 
-1. **Additional Search Paths** (if configured via ``AdbcDriverManagerDatabaseSetAdditionalSearchPathList()``)
+1. **Additional Search Paths** (if configured via ``additional_profile_search_path_list`` option)
 2. **ADBC_PROFILE_PATH** environment variable (colon-separated on Unix, semicolon-separated on Windows)
 3. **Conda Environment** (if built with Conda support and ``CONDA_PREFIX`` is set):
 
@@ -561,34 +576,28 @@ Sets a custom connection profile provider. Must be called before ``AdbcDatabaseI
 Setting Additional Search Paths
 --------------------------------
 
-.. code-block:: c
-
-   AdbcStatusCode AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
-       struct AdbcDatabase* database,
-       const char* path_list,
-       struct AdbcError* error);
-
-Adds additional directories to search for profiles. Must be called before ``AdbcDatabaseInit()``.
-
-**Parameters:**
-
-- ``database``: Database object to configure
-- ``path_list``: OS-specific path separator delimited list (``:``) on Unix, ``;`` on Windows), or ``NULL`` to clear
-- ``error``: Optional error output
-
-**Returns:** ``ADBC_STATUS_OK`` on success, error code otherwise.
+This can be done via the ``additional_profile_search_path_list`` option. It
+must be set before ``AdbcDatabaseInit()``. The value of this option is an
+OS-specific delimited list (``:`` on Unix, ``;`` on Windows), or ``NULL`` to
+clear.
 
 **Example:**
 
 .. code-block:: c
 
    // Unix/Linux/macOS
-   AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
-       &database, "/opt/app/profiles:/etc/app/profiles", &error);
+   AdbcDatabaseSetOption(
+       &database,
+       "additional_profile_search_path_list",
+       "/opt/app/profiles:/etc/app/profiles",
+       &error);
 
    // Windows
-   AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
-       &database, "C:\\App\\Profiles;C:\\ProgramData\\App\\Profiles", &error);
+   AdbcDatabaseSetOption(
+       &database,
+       "additional_profile_search_path_list",
+       "C:\\App\\Profiles;C:\\ProgramData\\App\\Profiles",
+       &error);
 
 
 See Also

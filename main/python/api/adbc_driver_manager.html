@@ -338,7 +338,7 @@
 <li class="toctree-l1"><a class="reference internal" href="../../format/comparison.html">Comparison with Other APIs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../format/how_manager.html">How Drivers and the Driver Manager Work Together</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../format/driver_manifests.html">ADBC Driver Manager and Manifests</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../format/connection_profiles.html">Driver Manager Connection Profiles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../format/connection_profiles.html">ADBC Driver Manager and Connection Profiles</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../format/related_work.html">Related Work</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Development</span></p>
@@ -1481,7 +1481,7 @@ where the scheme happens to be the same as the driver name (so
 PostgreSQL works, but not SQLite, for example, as SQLite uses
 <code class="docutils literal notranslate"><span class="pre">file:</span></code> URIs).</p></li>
 <li><p>If the URI begins with <code class="docutils literal notranslate"><span class="pre">profile://</span></code>, then a connection profile
-will be loaded instead. See <a class="reference internal" href="../../format/connection_profiles.html"><span class="doc">Driver Manager Connection Profiles</span></a>.</p></li>
+will be loaded instead. See <a class="reference internal" href="../../format/connection_profiles.html"><span class="doc">ADBC Driver Manager and Connection Profiles</span></a>.</p></li>
 </ul>
 </dd>
 <dt><strong>uri</strong></dt><dd><p>The “uri” parameter to the database (if applicable).  This is
@@ -1490,7 +1490,7 @@ If given, takes precedence over any value in <code class="docutils literal notra
 </dd>
 <dt><strong>profile</strong></dt><dd><p>A connection profile to load. Loading <code class="docutils literal notranslate"><span class="pre">profile=&quot;profile-name&quot;</span></code> is
 the same as loading the URI <code class="docutils literal notranslate"><span class="pre">profile://profile-name</span></code>. See
-<a class="reference internal" href="../../format/connection_profiles.html"><span class="doc">Driver Manager Connection Profiles</span></a>.</p>
+<a class="reference internal" href="../../format/connection_profiles.html"><span class="doc">ADBC Driver Manager and Connection Profiles</span></a>.</p>
 </dd>
 <dt><strong>entrypoint</strong></dt><dd><p>The driver-specific entrypoint, if different than the default.</p>
 </dd>

@@ -5,20 +5,20 @@
   <head><meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<meta property="og:title" content="Driver Manager Connection Profiles" />
+<meta property="og:title" content="ADBC Driver Manager and Connection Profiles" />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://arrow.apache.org/adbc/main/format/connection_profiles.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="Overview: There are two ways to pass connection options to driver managers: Directly specifying all connection options as arguments to driver manager functions in your application code. (see the Se..." />
+<meta property="og:description" content="There are two ways to pass database options through the driver manager: Directly specifying all options as arguments to the driver manager in your application code (see the SetOption family of func..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="Overview: There are two ways to pass connection options to driver managers: Directly specifying all connection options as arguments to driver manager functions in your application code. (see the Se..." />
+<meta name="description" content="There are two ways to pass database options through the driver manager: Directly specifying all options as arguments to the driver manager in your application code (see the SetOption family of func..." />
 <link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Related Work" href="related_work.html"><link rel="prev" title="ADBC Driver Manager and Manifests" href="driver_manifests.html">
         <link rel="prefetch" href="../_static/logo-light.png" as="image">
         <link rel="prefetch" href="../_static/logo-dark.png" as="image">
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>Driver Manager Connection Profiles - ADBC 23 (dev) documentation</title>
+        <title>ADBC Driver Manager and Connection Profiles - ADBC 23 (dev) documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
@@ -338,7 +338,7 @@
 <li class="toctree-l1"><a class="reference internal" href="comparison.html">Comparison with Other APIs</a></li>
 <li class="toctree-l1"><a class="reference internal" href="how_manager.html">How Drivers and the Driver Manager Work Together</a></li>
 <li class="toctree-l1"><a class="reference internal" href="driver_manifests.html">ADBC Driver Manager and Manifests</a></li>
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Driver Manager Connection Profiles</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">ADBC Driver Manager and Connection Profiles</a></li>
 <li class="toctree-l1"><a class="reference internal" href="related_work.html">Related Work</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Development</span></p>
@@ -389,28 +389,37 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="driver-manager-connection-profiles">
-<h1>Driver Manager Connection Profiles<a class="headerlink" href="#driver-manager-connection-profiles" title="Link to this heading">¶</a></h1>
-<section id="overview">
-<h2>Overview<a class="headerlink" href="#overview" title="Link to this heading">¶</a></h2>
-<p>There are two ways to pass connection options to driver managers:</p>
+          <section id="adbc-driver-manager-and-connection-profiles">
+<h1>ADBC Driver Manager and Connection Profiles<a class="headerlink" href="#adbc-driver-manager-and-connection-profiles" title="Link to this heading">¶</a></h1>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This document describes using the <a class="reference internal" href="../glossary.html#term-driver-manager"><span class="xref std std-term">driver manager</span></a> to load
+drivers.  The driver manager is not required to use ADBC in general
+but it allows loading drivers written in a different language from the
+application and improves the experience when using multiple drivers in
+a single application. For more information on how the driver manager
+works see <a class="reference internal" href="how_manager.html"><span class="doc">How Drivers and the Driver Manager Work Together</span></a>.</p>
+</div>
+<p>There are two ways to pass database options through the driver manager:</p>
 <ol class="arabic simple">
-<li><p>Directly specifying all connection options as arguments to driver manager functions in your
-application code. (see the <cite>SetOption</cite> family of functions in <a class="reference internal" href="specification.html"><span class="doc">ADBC API Standard</span></a> for details)</p></li>
-<li><p>Referring to a <strong>connection profile</strong> which contains connection options, and optionally overriding
-some options in your application code.</p></li>
+<li><p>Directly specifying all options as arguments to the driver manager in your
+application code (see the <cite>SetOption</cite> family of functions in
+<a class="reference internal" href="specification.html"><span class="doc">ADBC API Standard</span></a> for details).</p></li>
+<li><p>Referring to a <a class="reference internal" href="../glossary.html#term-connection-profile"><span class="xref std std-term">connection profile</span></a> which contains options, and
+optionally overriding some options by setting them through the above
+method.</p></li>
 </ol>
-<p>The ADBC driver manager supports <strong>connection profiles</strong> that specify a driver and connection options
-in a reusable configuration. This allows users to:</p>
+<p>Connection profiles combine a driver and database options in a reusable
+configuration. This allows users to:</p>
 <ul class="simple">
 <li><p>Define connection information in files or environment variables</p></li>
 <li><p>Share connection configurations across applications</p></li>
 <li><p>Distribute standardized connection settings</p></li>
 <li><p>Avoid hardcoding driver names and credentials in application code</p></li>
 </ul>
-<p>Profiles are loaded during <code class="docutils literal notranslate"><span class="pre">AdbcDatabaseInit()</span></code> before initializing the driver. Options
-from the profile are applied automatically but do not override options already set via <code class="docutils literal notranslate"><span class="pre">AdbcDatabaseSetOption()</span></code>.</p>
-</section>
+<p>Profiles are loaded during <code class="docutils literal notranslate"><span class="pre">AdbcDatabaseInit()</span></code> before initializing the
+driver. Options from the profile are applied automatically but do not override
+options already set via <code class="docutils literal notranslate"><span class="pre">AdbcDatabaseSetOption()</span></code>.</p>
 <section id="quick-start">
 <h2>Quick Start<a class="headerlink" href="#quick-start" title="Link to this heading">¶</a></h2>
 <section id="using-a-profile-via-uri">
@@ -437,9 +446,12 @@ from the profile are applied automatically but do not override options already s
 <section id="profile-file-format">
 <h2>Profile File Format<a class="headerlink" href="#profile-file-format" title="Link to this heading">¶</a></h2>
 <p>Filesystem-based profiles use TOML format with the following structure:</p>
-<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">profile_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="c1"># The version is required.</span>
+<span class="n">profile_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
+<span class="c1"># The driver is optional, but if not provided it must be set by the application.</span>
 <span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;snowflake&quot;</span>
 
+<span class="c1"># The Options table is required, even if empty</span>
 <span class="k">[Options]</span>
 <span class="c1"># String options</span>
 <span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">account</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;mycompany&quot;</span>
@@ -475,17 +487,18 @@ This will enable future changes while maintaining backward compatibility.</p>
 </ul>
 <p>The <code class="docutils literal notranslate"><span class="pre">driver</span></code> field specifies which ADBC driver to load. This can be:</p>
 <ul class="simple">
-<li><p>A driver name (e.g., <code class="docutils literal notranslate"><span class="pre">&quot;snowflake&quot;</span></code>)</p></li>
+<li><p>A driver or driver manifest name (e.g., <code class="docutils literal notranslate"><span class="pre">&quot;snowflake&quot;</span></code>)</p></li>
 <li><p>A path to a shared library (e.g., <code class="docutils literal notranslate"><span class="pre">&quot;/usr/local/lib/libadbc_driver_snowflake.so&quot;</span></code>)</p></li>
 <li><p>A path to a driver manifest (e.g., <code class="docutils literal notranslate"><span class="pre">&quot;/etc/adbc/drivers/snowflake.toml&quot;</span></code>)</p></li>
 </ul>
 <p>If omitted, the driver must be specified through other means (e.g., the <code class="docutils literal notranslate"><span class="pre">driver</span></code> option or <code class="docutils literal notranslate"><span class="pre">uri</span></code> parameter).
+If the application specifies a driver, and specifies a profile that itself references a driver, the two must match exactly, or it is an error.
 The driver will be loaded identically to if it was specified via <code class="docutils literal notranslate"><span class="pre">AdbcDatabaseSetOption(&quot;driver&quot;,</span> <span class="pre">&quot;&lt;driver&gt;&quot;)</span></code>.
 For more detils, see <a class="reference internal" href="driver_manifests.html"><span class="doc">ADBC Driver Manager and Manifests</span></a>.</p>
 </section>
 <section id="options-section">
 <h3>Options Section<a class="headerlink" href="#options-section" title="Link to this heading">¶</a></h3>
-<p>The <code class="docutils literal notranslate"><span class="pre">[Options]</span></code> section contains driver-specific configuration options. Options can be of the following types:</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">[Options]</span></code> section contains driver-specific configuration options to apply to the <code class="docutils literal notranslate"><span class="pre">AdbcDatabase</span></code> upon creation. This section must be present, even if empty. Options can be of the following types:</p>
 <dl>
 <dt><strong>String values</strong></dt><dd><p>Applied using <code class="docutils literal notranslate"><span class="pre">AdbcDatabaseSetOption()</span></code></p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">account</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;mycompany&quot;</span>
@@ -509,6 +522,12 @@ For more detils, see <a class="reference internal" href="driver_manifests.html">
 </div>
 </dd>
 </dl>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>If the application overrides option values but uses a different
+type for the value than the profile does, it is undefined which
+will take effect.</p>
+</div>
 </section>
 <section id="value-substitution">
 <h3>Value Substitution<a class="headerlink" href="#value-substitution" title="Link to this heading">¶</a></h3>
@@ -543,7 +562,7 @@ but this may be extended in the future to support other types of dynamic content
 <h2>Profile Search Locations<a class="headerlink" href="#profile-search-locations" title="Link to this heading">¶</a></h2>
 <p>When using a profile name (not an absolute path), the driver manager searches for <code class="docutils literal notranslate"><span class="pre">&lt;profile_name&gt;.toml</span></code> in the following locations:</p>
 <ol class="arabic simple">
-<li><p><strong>Additional Search Paths</strong> (if configured via <code class="docutils literal notranslate"><span class="pre">AdbcDriverManagerDatabaseSetAdditionalSearchPathList()</span></code>)</p></li>
+<li><p><strong>Additional Search Paths</strong> (if configured via <code class="docutils literal notranslate"><span class="pre">additional_profile_search_path_list</span></code> option)</p></li>
 <li><p><strong>ADBC_PROFILE_PATH</strong> environment variable (colon-separated on Unix, semicolon-separated on Windows)</p></li>
 <li><p><strong>Conda Environment</strong> (if built with Conda support and <code class="docutils literal notranslate"><span class="pre">CONDA_PREFIX</span></code> is set):</p>
 <ul class="simple">
@@ -871,28 +890,24 @@ Profile: /home/user/.config/adbc/profiles/my_profile.toml
 </section>
 <section id="setting-additional-search-paths">
 <h3>Setting Additional Search Paths<a class="headerlink" href="#setting-additional-search-paths" title="Link to this heading">¶</a></h3>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">AdbcStatusCode</span><span class="w"> </span><span class="nf">AdbcDriverManagerDatabaseSetAdditionalSearchPathList</span><span class="p">(</span>
-<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">AdbcDatabase</span><span class="o">*</span><span class="w"> </span><span class="n">database</span><span class="p">,</span>
-<span class="w">    </span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">path_list</span><span class="p">,</span>
-<span class="w">    </span><span class="k">struct</span><span class="w"> </span><span class="nc">AdbcError</span><span class="o">*</span><span class="w"> </span><span class="n">error</span><span class="p">);</span>
-</pre></div>
-</div>
-<p>Adds additional directories to search for profiles. Must be called before <code class="docutils literal notranslate"><span class="pre">AdbcDatabaseInit()</span></code>.</p>
-<p><strong>Parameters:</strong></p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">database</span></code>: Database object to configure</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">path_list</span></code>: OS-specific path separator delimited list (<code class="docutils literal notranslate"><span class="pre">:</span></code>) on Unix, <code class="docutils literal notranslate"><span class="pre">;</span></code> on Windows), or <code class="docutils literal notranslate"><span class="pre">NULL</span></code> to clear</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">error</span></code>: Optional error output</p></li>
-</ul>
-<p><strong>Returns:</strong> <code class="docutils literal notranslate"><span class="pre">ADBC_STATUS_OK</span></code> on success, error code otherwise.</p>
+<p>This can be done via the <code class="docutils literal notranslate"><span class="pre">additional_profile_search_path_list</span></code> option. It
+must be set before <code class="docutils literal notranslate"><span class="pre">AdbcDatabaseInit()</span></code>. The value of this option is an
+OS-specific delimited list (<code class="docutils literal notranslate"><span class="pre">:</span></code> on Unix, <code class="docutils literal notranslate"><span class="pre">;</span></code> on Windows), or <code class="docutils literal notranslate"><span class="pre">NULL</span></code> to
+clear.</p>
 <p><strong>Example:</strong></p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="c1">// Unix/Linux/macOS</span>
-<span class="n">AdbcDriverManagerDatabaseSetAdditionalSearchPathList</span><span class="p">(</span>
-<span class="w">    </span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;/opt/app/profiles:/etc/app/profiles&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
+<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span>
+<span class="w">    </span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;additional_profile_search_path_list&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;/opt/app/profiles:/etc/app/profiles&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 
 <span class="c1">// Windows</span>
-<span class="n">AdbcDriverManagerDatabaseSetAdditionalSearchPathList</span><span class="p">(</span>
-<span class="w">    </span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;C:</span><span class="se">\\</span><span class="s">App</span><span class="se">\\</span><span class="s">Profiles;C:</span><span class="se">\\</span><span class="s">ProgramData</span><span class="se">\\</span><span class="s">App</span><span class="se">\\</span><span class="s">Profiles&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
+<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span>
+<span class="w">    </span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;additional_profile_search_path_list&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s">&quot;C:</span><span class="se">\\</span><span class="s">App</span><span class="se">\\</span><span class="s">Profiles;C:</span><span class="se">\\</span><span class="s">ProgramData</span><span class="se">\\</span><span class="s">App</span><span class="se">\\</span><span class="s">Profiles&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 </pre></div>
 </div>
 </section>
@@ -965,8 +980,7 @@ United States and other countries.
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">Driver Manager Connection Profiles</a><ul>
-<li><a class="reference internal" href="#overview">Overview</a></li>
+<li><a class="reference internal" href="#">ADBC Driver Manager and Connection Profiles</a><ul>
 <li><a class="reference internal" href="#quick-start">Quick Start</a><ul>
 <li><a class="reference internal" href="#using-a-profile-via-uri">Using a Profile via URI</a></li>
 <li><a class="reference internal" href="#using-a-profile-via-option">Using a Profile via Option</a></li>

@@ -34,6 +34,11 @@ Glossary
      In ADBC, the connection object/struct represents a single connection to a
      database.  Multiple connections may be created from one :term:`database`.
 
+   connection profile
+     A preconfigured driver and options that can be loaded by the
+     :term:`driver manager` for convenience.  Specified via a TOML file.  See
+     :doc:`format/connection_profiles`.
+
    database
      In ADBC, the database object/struct holds state that is shared across
      connections.
