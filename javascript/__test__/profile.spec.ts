@@ -47,7 +47,7 @@ test('profile: load database from profile:// URI', async () => {
 
     const db = new AdbcDatabase({
       driver: 'profile://test_sqlite',
-      searchPaths: [tmpDir],
+      profileSearchPaths: [tmpDir],
     })
     const conn = await db.connect()
 
