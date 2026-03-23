@@ -18,6 +18,7 @@
 #define R_NO_REMAP
 #include <R.h>
 #include <Rinternals.h>
+#include <Rversion.h>
 
 #include <cstring>
 #include <string>
@@ -53,7 +54,12 @@ static int adbc_update_parent_child_count(SEXP xptr, int delta) {
     return NA_INTEGER;
   }
 
-  SEXP child_count_sexp = Rf_findVarInFrame(parent_env, Rf_install(".child_count"));
+  SEXP child_count_sym = Rf_install(".child_count");
+#if defined(R_VERSION) && R_VERSION >= R_Version(4, 5, 0)
+  SEXP child_count_sexp = R_getVarEx(child_count_sym, parent_env, FALSE, R_UnboundValue);
+#else
+  SEXP child_count_sexp = Rf_findVarInFrame(parent_env, child_count_sym);
+#endif
   int* child_count = INTEGER(child_count_sexp);
   int old_value = child_count[0];
   child_count[0] = child_count[0] + delta;
