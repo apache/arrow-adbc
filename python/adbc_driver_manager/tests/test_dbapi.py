@@ -132,31 +132,17 @@ def test_get_table_types(sqlite) -> None:
 
 
 @pytest.mark.sqlite
-def test_get_statistics(sqlite) -> None:
-    """Test get_statistics returns valid data or raises NotSupportedError."""
-    try:
-        reader = sqlite.adbc_get_statistics()
-        assert reader is not None
-        table = reader.read_all()
-        # Verify schema has expected top-level columns
-        assert "catalog_name" in table.schema.names
-        assert "catalog_db_schemas" in table.schema.names
-    except dbapi.NotSupportedError:
-        pytest.skip("Driver does not support GetStatistics")
+def test_get_statistics_not_supported(sqlite) -> None:
+    """SQLite does not support GetStatistics."""
+    with pytest.raises(dbapi.NotSupportedError):
+        sqlite.adbc_get_statistics()
 
 
 @pytest.mark.sqlite
-def test_get_statistic_names(sqlite) -> None:
-    """Test get_statistic_names returns valid data or raises NotSupportedError."""
-    try:
-        reader = sqlite.adbc_get_statistic_names()
-        assert reader is not None
-        table = reader.read_all()
-        # Verify schema
-        assert "statistic_name" in table.schema.names
-        assert "statistic_key" in table.schema.names
-    except dbapi.NotSupportedError:
-        pytest.skip("Driver does not support GetStatisticNames")
+def test_get_statistic_names_not_supported(sqlite) -> None:
+    """SQLite does not support GetStatisticNames."""
+    with pytest.raises(dbapi.NotSupportedError):
+        sqlite.adbc_get_statistic_names()
 
 
 class ArrayWrapper:

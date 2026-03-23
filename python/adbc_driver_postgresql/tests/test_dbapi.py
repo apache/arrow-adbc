@@ -102,6 +102,49 @@ def test_conn_get_info(postgres: dbapi.Connection) -> None:
     assert info["vendor_name"] == "PostgreSQL"
 
 
+def test_get_statistics(postgres: dbapi.Connection) -> None:
+    with postgres.cursor() as cur:
+        cur.execute("DROP TABLE IF EXISTS test_statistics")
+        cur.execute("CREATE TABLE test_statistics (id INT PRIMARY KEY, value TEXT)")
+        cur.execute("INSERT INTO test_statistics VALUES (1, 'a'), (2, 'b'), (3, 'c')")
+        cur.execute("ANALYZE test_statistics")
+    postgres.commit()
+
+    # PostgreSQL requires db_schema to be specified and only supports approximate stats
+    reader = postgres.adbc_get_statistics(
+        db_schema_filter="public", table_name_filter="test_statistics", approximate=True
+    )
+    assert reader is not None
+    table = reader.read_all()
+
+    # Verify schema is correct
+    assert "catalog_name" in table.schema.names
+    assert "catalog_db_schemas" in table.schema.names
+
+    # Verify we got actual statistics for our table
+    result_list = table.to_pylist()
+    found_test_table = False
+    for catalog in result_list:
+        for schema in catalog["catalog_db_schemas"]:
+            assert schema["db_schema_name"] == "public"
+            found_test_table = found_test_table or any(
+                stat["table_name"] == "test_statistics"
+                for stat in schema["db_schema_statistics"]
+            )
+
+    assert found_test_table, "Expected statistics for 'test_statistics'"
+
+
+def test_get_statistic_names(postgres: dbapi.Connection) -> None:
+    reader = postgres.adbc_get_statistic_names()
+    assert reader is not None
+    table = reader.read_all()
+
+    # Verify schema
+    assert "statistic_name" in table.schema.names
+    assert "statistic_key" in table.schema.names
+
+
 def test_query_batch_size(postgres: dbapi.Connection):
     with postgres.cursor() as cur:
         cur.execute("DROP TABLE IF EXISTS test_batch_size")
