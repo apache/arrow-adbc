@@ -556,6 +556,100 @@ class Connection(_Closeable):
         )
         return self._backend.import_array_stream(handle)
 
+    def adbc_get_statistics(
+        self,
+        *,
+        catalog_filter: Optional[str] = None,
+        db_schema_filter: Optional[str] = None,
+        table_name_filter: Optional[str] = None,
+        approximate: bool = True,
+    ) -> "pyarrow.RecordBatchReader":
+        """
+        Get statistics about the data distribution of table(s).
+
+        The result is an Arrow dataset with a nested structure containing
+        table statistics. The schema includes:
+
+        - catalog_name (utf8)
+        - catalog_db_schemas (list of structs)
+
+          - db_schema_name (utf8)
+          - db_schema_statistics (list of structs)
+
+            - table_name (utf8)
+            - column_name (utf8, nullable) - null if applies to entire table
+            - statistic_key (int16) - dictionary-encoded statistic name
+            - statistic_value (dense union) - int64, uint64, float64, or binary
+            - statistic_is_approximate (bool)
+
+        Parameters
+        ----------
+        catalog_filter
+            An optional filter on the catalog names. May be a search pattern.
+        db_schema_filter
+            An optional filter on the database schema names. May be a search pattern.
+        table_name_filter
+            An optional filter on the table names. May be a search pattern.
+        approximate
+            If True (default), allow approximate or cached statistics.
+            If False, request exact statistics, which may be expensive or
+            unsupported. Note that drivers may still return approximate values
+            as indicated by the statistic_is_approximate column.
+
+        Returns
+        -------
+        pyarrow.RecordBatchReader
+            A reader for the statistics data.
+
+        Notes
+        -----
+        This is an extension and not part of the DBAPI standard.
+
+        Available since ADBC API revision 1.1.0. Not all drivers support
+        this method. If unsupported, a NotSupportedError will be raised.
+        """
+        handle = _blocking_call(
+            self._conn.get_statistics,
+            (),
+            dict(
+                catalog=catalog_filter,
+                db_schema=db_schema_filter,
+                table_name=table_name_filter,
+                approximate=approximate,
+            ),
+            self._conn.cancel,
+        )
+        return self._backend.import_array_stream(handle)
+
+    def adbc_get_statistic_names(self) -> "pyarrow.RecordBatchReader":
+        """
+        Get a list of custom statistic names defined by this driver.
+
+        The result contains two columns:
+        - statistic_name (utf8): The human-readable name of the statistic
+        - statistic_key (int16): The numeric key used in get_statistics results
+
+        Returns
+        -------
+        pyarrow.RecordBatchReader
+            A reader for the statistic names.
+
+        Notes
+        -----
+        This is an extension and not part of the DBAPI standard.
+
+        Available since ADBC API revision 1.1.0. Standard ADBC statistics
+        (keys 0-1023) are not included in this result - only driver-specific
+        statistics.
+        """
+        handle = _blocking_call(
+            self._conn.get_statistic_names,
+            (),
+            {},
+            self._conn.cancel,
+        )
+        return self._backend.import_array_stream(handle)
+
     def adbc_get_table_schema(
         self,
         table_name: str,

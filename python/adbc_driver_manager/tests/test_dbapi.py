@@ -131,6 +131,20 @@ def test_get_table_types(sqlite) -> None:
     assert sqlite.adbc_get_table_types() == ["table", "view"]
 
 
+@pytest.mark.sqlite
+def test_get_statistics_not_supported(sqlite) -> None:
+    """SQLite does not support GetStatistics."""
+    with pytest.raises(dbapi.NotSupportedError):
+        sqlite.adbc_get_statistics()
+
+
+@pytest.mark.sqlite
+def test_get_statistic_names_not_supported(sqlite) -> None:
+    """SQLite does not support GetStatisticNames."""
+    with pytest.raises(dbapi.NotSupportedError):
+        sqlite.adbc_get_statistic_names()
+
+
 class ArrayWrapper:
     def __init__(self, array) -> None:
         self.array = array
