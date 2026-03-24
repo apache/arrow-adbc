@@ -335,6 +335,11 @@ namespace Apache.Arrow.Adbc.Client
                 return true;
             }
 
+            // Clear the previous batch before fetching the next one.
+            // If ReadNextRecordBatchAsync throws (e.g. server error mid-stream),
+            // callers that retry Read() must not re-read stale rows from the
+            // old batch — they must see the exception again immediately.
+            this.recordBatch = null;
             this.recordBatch = ReadNextRecordBatchAsync().Result;
 
             return this.recordBatch != null;
