@@ -699,6 +699,12 @@ serialize accesses to a connection.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.get_option_int" title="adbc_driver_manager.AdbcConnection.get_option_int"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_option_int</span></code></a>(key)</p></td>
 <td><p>Get the value of an integer option.</p></td>
 </tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.get_statistic_names" title="adbc_driver_manager.AdbcConnection.get_statistic_names"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_statistic_names</span></code></a>()</p></td>
+<td><p>Get custom statistic names defined by this driver.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.get_statistics" title="adbc_driver_manager.AdbcConnection.get_statistics"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_statistics</span></code></a>([catalog, db_schema, ...])</p></td>
+<td><p>Get statistics about data distribution in table(s).</p></td>
+</tr>
 <tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.get_table_schema" title="adbc_driver_manager.AdbcConnection.get_table_schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">get_table_schema</span></code></a>(catalog, db_schema, table_name)</p></td>
 <td><p>Get the Arrow schema of a table.</p></td>
 </tr>
@@ -786,6 +792,55 @@ always be UTF-8.</p>
 <dt class="sig sig-object py" id="adbc_driver_manager.AdbcConnection.get_option_int">
 <span class="sig-name descname"><span class="pre">get_option_int</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.14)"><span class="pre">int</span></a></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcConnection.get_option_int" title="Link to this definition">¶</a></dt>
 <dd><p>Get the value of an integer option.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="adbc_driver_manager.AdbcConnection.get_statistic_names">
+<span class="sig-name descname"><span class="pre">get_statistic_names</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#adbc_driver_manager.ArrowArrayStreamHandle" title="adbc_driver_manager._lib.ArrowArrayStreamHandle"><span class="pre">ArrowArrayStreamHandle</span></a></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcConnection.get_statistic_names" title="Link to this definition">¶</a></dt>
+<dd><p>Get custom statistic names defined by this driver.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>ArrowArrayStreamHandle</dt><dd><p>A stream with columns: statistic_name (utf8), statistic_key (int16).</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Available since ADBC API revision 1.1.0. Returns driver-specific
+statistic names and their keys. Standard ADBC statistics (keys 0-1023)
+are not included - only driver-specific statistics.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="adbc_driver_manager.AdbcConnection.get_statistics">
+<span class="sig-name descname"><span class="pre">get_statistics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">catalog</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">db_schema</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">approximate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#adbc_driver_manager.ArrowArrayStreamHandle" title="adbc_driver_manager._lib.ArrowArrayStreamHandle"><span class="pre">ArrowArrayStreamHandle</span></a></span></span><a class="headerlink" href="#adbc_driver_manager.AdbcConnection.get_statistics" title="Link to this definition">¶</a></dt>
+<dd><p>Get statistics about data distribution in table(s).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>catalog</strong><span class="classifier">str, optional</span></dt><dd><p>The catalog to filter by. May be a search pattern or None.</p>
+</dd>
+<dt><strong>db_schema</strong><span class="classifier">str, optional</span></dt><dd><p>The database schema to filter by. May be a search pattern or None.</p>
+</dd>
+<dt><strong>table_name</strong><span class="classifier">str, optional</span></dt><dd><p>The table name to filter by. May be a search pattern or None.</p>
+</dd>
+<dt><strong>approximate</strong><span class="classifier">bool, default True</span></dt><dd><p>If True, allow approximate or cached statistics. If False, request
+exact statistics (may be expensive or unsupported).</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>ArrowArrayStreamHandle</dt><dd><p>A stream of statistics data with nested structure.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>Available since ADBC API revision 1.1.0. Drivers may return
+approximate values even when exact values are requested, as
+indicated in the result’s statistic_is_approximate column.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -1566,6 +1621,12 @@ cannot be disabled.</p>
 <tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection.adbc_get_objects" title="adbc_driver_manager.dbapi.Connection.adbc_get_objects"><code class="xref py py-obj docutils literal notranslate"><span class="pre">adbc_get_objects</span></code></a>(*[, depth, catalog_filter, ...])</p></td>
 <td><p>List catalogs, schemas, tables, etc.</p></td>
 </tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection.adbc_get_statistic_names" title="adbc_driver_manager.dbapi.Connection.adbc_get_statistic_names"><code class="xref py py-obj docutils literal notranslate"><span class="pre">adbc_get_statistic_names</span></code></a>()</p></td>
+<td><p>Get a list of custom statistic names defined by this driver.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection.adbc_get_statistics" title="adbc_driver_manager.dbapi.Connection.adbc_get_statistics"><code class="xref py py-obj docutils literal notranslate"><span class="pre">adbc_get_statistics</span></code></a>(*[, catalog_filter, ...])</p></td>
+<td><p>Get statistics about the data distribution of table(s).</p></td>
+</tr>
 <tr class="row-odd"><td><p><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection.adbc_get_table_schema" title="adbc_driver_manager.dbapi.Connection.adbc_get_table_schema"><code class="xref py py-obj docutils literal notranslate"><span class="pre">adbc_get_table_schema</span></code></a>(table_name, *[, ...])</p></td>
 <td><p>Get the Arrow schema of a table by name.</p></td>
 </tr>
@@ -1670,6 +1731,80 @@ cannot be disabled.</p>
 </dl>
 <p class="rubric">Notes</p>
 <p>This is an extension and not part of the DBAPI standard.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="adbc_driver_manager.dbapi.Connection.adbc_get_statistic_names">
+<span class="sig-name descname"><span class="pre">adbc_get_statistic_names</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatchReader.html#pyarrow.RecordBatchReader" title="(in Apache Arrow v23.0.1)"><span class="pre">RecordBatchReader</span></a></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Connection.adbc_get_statistic_names" title="Link to this definition">¶</a></dt>
+<dd><p>Get a list of custom statistic names defined by this driver.</p>
+<p>The result contains two columns:
+- statistic_name (utf8): The human-readable name of the statistic
+- statistic_key (int16): The numeric key used in get_statistics results</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt>pyarrow.RecordBatchReader</dt><dd><p>A reader for the statistic names.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>This is an extension and not part of the DBAPI standard.</p>
+<p>Available since ADBC API revision 1.1.0. Standard ADBC statistics
+(keys 0-1023) are not included in this result - only driver-specific
+statistics.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="adbc_driver_manager.dbapi.Connection.adbc_get_statistics">
+<span class="sig-name descname"><span class="pre">adbc_get_statistics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="keyword-only-separator o"><abbr title="Keyword-only parameters separator (PEP 3102)"><span class="pre">*</span></abbr></span></em>, <em class="sig-param"><span class="n"><span class="pre">catalog_filter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">db_schema_filter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">table_name_filter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.14)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.14)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">approximate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.14)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatchReader.html#pyarrow.RecordBatchReader" title="(in Apache Arrow v23.0.1)"><span class="pre">RecordBatchReader</span></a></span></span><a class="headerlink" href="#adbc_driver_manager.dbapi.Connection.adbc_get_statistics" title="Link to this definition">¶</a></dt>
+<dd><p>Get statistics about the data distribution of table(s).</p>
+<p>The result is an Arrow dataset with a nested structure containing
+table statistics. The schema includes:</p>
+<ul class="simple">
+<li><p>catalog_name (utf8)</p></li>
+<li><p>catalog_db_schemas (list of structs)</p>
+<ul>
+<li><p>db_schema_name (utf8)</p></li>
+<li><p>db_schema_statistics (list of structs)</p>
+<ul>
+<li><p>table_name (utf8)</p></li>
+<li><p>column_name (utf8, nullable) - null if applies to entire table</p></li>
+<li><p>statistic_key (int16) - dictionary-encoded statistic name</p></li>
+<li><p>statistic_value (dense union) - int64, uint64, float64, or binary</p></li>
+<li><p>statistic_is_approximate (bool)</p></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><dl class="simple">
+<dt><strong>catalog_filter</strong></dt><dd><p>An optional filter on the catalog names. May be a search pattern.</p>
+</dd>
+<dt><strong>db_schema_filter</strong></dt><dd><p>An optional filter on the database schema names. May be a search pattern.</p>
+</dd>
+<dt><strong>table_name_filter</strong></dt><dd><p>An optional filter on the table names. May be a search pattern.</p>
+</dd>
+<dt><strong>approximate</strong></dt><dd><p>If True (default), allow approximate or cached statistics.
+If False, request exact statistics, which may be expensive or
+unsupported. Note that drivers may still return approximate values
+as indicated by the statistic_is_approximate column.</p>
+</dd>
+</dl>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><dl class="simple">
+<dt>pyarrow.RecordBatchReader</dt><dd><p>A reader for the statistics data.</p>
+</dd>
+</dl>
+</dd>
+</dl>
+<p class="rubric">Notes</p>
+<p>This is an extension and not part of the DBAPI standard.</p>
+<p>Available since ADBC API revision 1.1.0. Not all drivers support
+this method. If unsupported, a NotSupportedError will be raised.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -2433,6 +2568,8 @@ United States and other countries.
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.get_option_bytes"><code class="docutils literal notranslate"><span class="pre">AdbcConnection.get_option_bytes()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.get_option_float"><code class="docutils literal notranslate"><span class="pre">AdbcConnection.get_option_float()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.get_option_int"><code class="docutils literal notranslate"><span class="pre">AdbcConnection.get_option_int()</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.get_statistic_names"><code class="docutils literal notranslate"><span class="pre">AdbcConnection.get_statistic_names()</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.get_statistics"><code class="docutils literal notranslate"><span class="pre">AdbcConnection.get_statistics()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.get_table_schema"><code class="docutils literal notranslate"><span class="pre">AdbcConnection.get_table_schema()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.get_table_types"><code class="docutils literal notranslate"><span class="pre">AdbcConnection.get_table_types()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.AdbcConnection.read_partition"><code class="docutils literal notranslate"><span class="pre">AdbcConnection.read_partition()</span></code></a></li>
@@ -2526,6 +2663,8 @@ United States and other countries.
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection.adbc_database"><code class="docutils literal notranslate"><span class="pre">Connection.adbc_database</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection.adbc_get_info"><code class="docutils literal notranslate"><span class="pre">Connection.adbc_get_info()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection.adbc_get_objects"><code class="docutils literal notranslate"><span class="pre">Connection.adbc_get_objects()</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection.adbc_get_statistic_names"><code class="docutils literal notranslate"><span class="pre">Connection.adbc_get_statistic_names()</span></code></a></li>
+<li><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection.adbc_get_statistics"><code class="docutils literal notranslate"><span class="pre">Connection.adbc_get_statistics()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection.adbc_get_table_schema"><code class="docutils literal notranslate"><span class="pre">Connection.adbc_get_table_schema()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection.adbc_get_table_types"><code class="docutils literal notranslate"><span class="pre">Connection.adbc_get_table_types()</span></code></a></li>
 <li><a class="reference internal" href="#adbc_driver_manager.dbapi.Connection.close"><code class="docutils literal notranslate"><span class="pre">Connection.close()</span></code></a></li>
