@@ -313,10 +313,10 @@ namespace Apache.Arrow.Adbc.Client
         {
             if (disposing)
             {
-                this.adbcQueryResult.Stream?.Dispose();
-                this.adbcQueryResult.Stream = null;
                 this.recordBatch?.Dispose();
                 this.recordBatch = null;
+                this.adbcQueryResult.Stream?.Dispose();
+                this.adbcQueryResult.Stream = null;
                 this.isClosed = true;
             }
         }
