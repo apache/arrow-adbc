@@ -1081,6 +1081,35 @@ func arrowFieldToBigQueryField(f arrow.Field) (*bigquery.FieldSchema, error) {
 		Required: !f.Nullable,
 	}
 
+	// Use metadata field in ipc to convey extra differentation information about timestamps
+	if v, ok := f.Metadata.GetValue("BIGQUERY:type"); ok {
+		switch t := strings.ToUpper(strings.TrimSpace(v)); t {
+		case "DATE":
+			bq.Type = bigquery.DateFieldType
+		case "DATETIME":
+			bq.Type = bigquery.DateTimeFieldType
+		case "TIMESTAMP":
+			bq.Type = bigquery.TimestampFieldType
+		case "INTEGER", "INT64":
+			bq.Type = bigquery.IntegerFieldType
+		case "FLOAT", "FLOAT64":
+			bq.Type = bigquery.FloatFieldType
+		case "BOOL", "BOOLEAN":
+			bq.Type = bigquery.BooleanFieldType
+		case "STRING":
+			bq.Type = bigquery.StringFieldType
+		case "BYTES":
+			bq.Type = bigquery.BytesFieldType
+		case "NUMERIC":
+			bq.Type = bigquery.NumericFieldType
+		case "BIGNUMERIC":
+			bq.Type = bigquery.BigNumericFieldType
+		default:
+			return nil, fmt.Errorf("unknown bq_type metadata: %q", v)
+		}
+		return bq, nil
+	}
+
 	switch dt := f.Type.(type) {
 
 	//
@@ -1120,8 +1149,18 @@ func arrowFieldToBigQueryField(f arrow.Field) (*bigquery.FieldSchema, error) {
 	case *arrow.Date32Type, *arrow.Date64Type:
 		bq.Type = bigquery.DateFieldType
 
+
+	// Follow upstream ADBC BigQuery heuristic for Arrow timestamps:
+	// tz == "" -> DATETIME, tz != "" -> TIMESTAMP.
+	// See: https://github.com/adbc-drivers/bigquery/blob/bf36f2da447d1c51221556be18e7aa95bb75e17a/go/statement.go#L556-L565
+	//
+	// Treat only as a fallback since it's intent lossy.
 	case *arrow.TimestampType:
-		bq.Type = bigquery.TimestampFieldType
+		if dt.TimeZone == "" {
+			bq.Type = bigquery.DateTimeFieldType
+		} else {
+			bq.Type = bigquery.TimestampFieldType
+		}
 
 	//
 	// DECIMAL
