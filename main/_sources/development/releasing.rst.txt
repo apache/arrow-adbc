@@ -440,6 +440,17 @@ Be sure to go through on the following checklist:
 
    A conda-forge or feedstock maintainer can review and merge.
 
+.. dropdown:: Update Homebrew formulae
+   :class-title: sd-fs-5
+   :class-container: sd-shadow-md
+
+   File separate PRs to update each formula for the new release:
+
+   - apache-arrow-adbc
+   - apache-arrow-adbc-glib
+
+   See https://docs.brew.sh/Formula-Cookbook#updating-formulae.
+
 .. dropdown:: Remove old artifacts
    :class-title: sd-fs-5
    :class-container: sd-shadow-md
