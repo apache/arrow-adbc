@@ -138,9 +138,7 @@ namespace Apache.Arrow.Adbc.Client
             {
                 this.adbcCommand?.Connection?.Close();
             }
-            this.adbcQueryResult.Stream?.Dispose();
-            this.adbcQueryResult.Stream = null;
-            this.isClosed = true;
+            this.Dispose(disposing: true);
         }
 
         public override bool GetBoolean(int ordinal)
@@ -308,13 +306,6 @@ namespace Apache.Arrow.Adbc.Client
 
         public override bool NextResult()
         {
-            this.recordBatch = ReadNextRecordBatchAsync().Result;
-
-            if (this.recordBatch != null)
-            {
-                return true;
-            }
-
             return false;
         }
 
@@ -322,8 +313,11 @@ namespace Apache.Arrow.Adbc.Client
         {
             if (disposing)
             {
+                this.adbcQueryResult.Stream?.Dispose();
+                this.adbcQueryResult.Stream = null;
                 this.recordBatch?.Dispose();
                 this.recordBatch = null;
+                this.isClosed = true;
             }
         }
 
@@ -339,6 +333,7 @@ namespace Apache.Arrow.Adbc.Client
             // If ReadNextRecordBatchAsync throws (e.g. server error mid-stream),
             // callers that retry Read() must not re-read stale rows from the
             // old batch — they must see the exception again immediately.
+            this.recordBatch?.Dispose();
             this.recordBatch = null;
             this.recordBatch = ReadNextRecordBatchAsync().Result;
 
