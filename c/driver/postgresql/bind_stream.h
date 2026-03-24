@@ -59,6 +59,10 @@ struct BindStream {
   bool autocommit = false;
   std::string tz_setting;
 
+  // Expected types from PostgreSQL (after DESCRIBE); used to resolve NA params
+  PostgresType expected_param_types;
+  bool has_expected_types = false;
+
   struct ArrowError na_error;
 
   BindStream() {
@@ -69,6 +73,20 @@ struct BindStream {
   void SetBind(struct ArrowArrayStream* stream) {
     this->bind.reset();
     ArrowArrayStreamMove(stream, &bind.value);
+  }
+
+  Status ReconcileWithExpectedTypes(const PostgresType& expected_types) {
+    if (bind_schema->release == nullptr) {
+      return Status::InvalidState("[libpq] Bind stream schema not initialized");
+    }
+    if (expected_types.n_children() != bind_schema->n_children) {
+      return Status::InvalidState("[libpq] Expected ", expected_types.n_children(),
+                                  " parameters but bind stream has ",
+                                  bind_schema->n_children);
+    }
+    expected_param_types = expected_types;
+    has_expected_types = true;
+    return Status::Ok();
   }
 
   template <typename Callback>
@@ -111,9 +129,28 @@ struct BindStream {
 
     for (size_t i = 0; i < bind_field_writers.size(); i++) {
       PostgresType type;
-      UNWRAP_NANOARROW(na_error, Internal,
-                       PostgresType::FromSchema(type_resolver, bind_schema->children[i],
-                                                &type, &na_error));
+
+      // Handle NA type by using expected parameter type from PostgreSQL
+      if (has_expected_types && bind_schema_fields[i].type == NANOARROW_TYPE_NA &&
+          i < static_cast<size_t>(expected_param_types.n_children())) {
+        const auto& expected_type = expected_param_types.child(i);
+        // If PostgreSQL couldn't infer a concrete type (e.g., SELECT $1), don't
+        // force an "expected" type; fall back to Arrow-derived mapping.
+        if (expected_type.oid() != 0 &&
+            expected_type.type_id() != PostgresTypeId::kUnknown) {
+          type = expected_type;
+        } else {
+          UNWRAP_NANOARROW(
+              na_error, Internal,
+              PostgresType::FromSchema(type_resolver, bind_schema->children[i], &type,
+                                       &na_error));
+        }
+      } else {
+        // Normal case: derive type from Arrow schema
+        UNWRAP_NANOARROW(na_error, Internal,
+                         PostgresType::FromSchema(type_resolver, bind_schema->children[i],
+                                                  &type, &na_error));
+      }
 
       // tz-aware timestamps require special handling to set the timezone to UTC
       // prior to sending over the binary protocol; must be reset after execute
@@ -205,6 +242,14 @@ struct BindStream {
 
     for (int64_t col = 0; col < array_view->n_children; col++) {
       is_null_param[col] = ArrowArrayViewIsNull(array_view->children[col], current_row);
+
+      // Safety check: NA type arrays should only contain nulls
+      if (bind_schema_fields[col].type == NANOARROW_TYPE_NA && !is_null_param[col]) {
+        return Status::InvalidArgument(
+            "Parameter $", col + 1,
+            " has null type but contains a non-null value at row ", current_row);
+      }
+
       if (!is_null_param[col]) {
         // Note that this Write() call currently writes the (int32_t) byte size of the
         // field in addition to the serialized value.
