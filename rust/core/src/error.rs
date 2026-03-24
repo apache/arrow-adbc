@@ -79,7 +79,8 @@ pub struct Error {
     /// A vendor-specific error code, if applicable.
     pub vendor_code: i32,
     /// A SQLSTATE error code, if provided, as defined by the SQL:2003 standard.
-    /// If not set, it should be set to `\0\0\0\0\0`.
+    ///
+    /// If not set, it should be set to `"\0\0\0\0\0"` (all zeroes) or `"00000"` (48 ASCII).
     pub sqlstate: [c_char; 5], // TODO(alexandreyc): should we move to something else than c_char? (see https://github.com/apache/arrow-adbc/pull/1725#discussion_r1567531539)
     /// Additional metadata. Introduced in ADBC 1.1.0.
     pub details: Option<Vec<(String, Vec<u8>)>>,
@@ -102,10 +103,26 @@ impl Error {
 
 impl Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let safe_ascii = |c: c_char| -> char {
+            if c == 0 {
+                '0'
+            } else if (32..=126).contains(&c) {
+                char::from(c as u8)
+            } else {
+                '\u{FFFD}'
+            }
+        };
         write!(
             f,
-            "{:?}: {} (sqlstate: {:?}, vendor_code: {})",
-            self.status, self.message, self.sqlstate, self.vendor_code
+            "{:?}: {} (sqlstate: {}{}{}{}{}, vendor_code: {})",
+            self.status,
+            self.message,
+            safe_ascii(self.sqlstate[0]),
+            safe_ascii(self.sqlstate[1]),
+            safe_ascii(self.sqlstate[2]),
+            safe_ascii(self.sqlstate[3]),
+            safe_ascii(self.sqlstate[4]),
+            self.vendor_code
         )
     }
 }
@@ -205,5 +222,68 @@ impl From<Status> for AdbcStatusCode {
             Status::Unauthenticated => constants::ADBC_STATUS_UNAUTHENTICATED,
             Status::Unauthorized => constants::ADBC_STATUS_UNAUTHORIZED,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn display_unset_sqlstate() {
+        let err = Error::with_message_and_status("something failed", Status::Unknown);
+        let msg = err.to_string();
+        assert_eq!(
+            msg,
+            "Unknown: something failed (sqlstate: 00000, vendor_code: 0)"
+        );
+    }
+
+    #[test]
+    fn display_ascii_sqlstate() {
+        let err = Error {
+            message: "constraint violation".into(),
+            status: Status::Integrity,
+            vendor_code: 42,
+            sqlstate: [
+                b'2' as c_char,
+                b'3' as c_char,
+                b'5' as c_char,
+                b'0' as c_char,
+                b'5' as c_char,
+            ],
+            details: None,
+        };
+        let msg = err.to_string();
+        assert_eq!(
+            msg,
+            "Integrity: constraint violation (sqlstate: 23505, vendor_code: 42)"
+        );
+    }
+
+    #[test]
+    fn display_non_printable_sqlstate() {
+        let err = Error {
+            message: "bad state".into(),
+            status: Status::Internal,
+            vendor_code: 0,
+            sqlstate: [1, 2, 3, 4, 5],
+            details: None,
+        };
+        let msg = err.to_string();
+        assert_eq!(msg, "Internal: bad state (sqlstate: �����, vendor_code: 0)");
+    }
+
+    #[test]
+    fn display_mixed_sqlstate() {
+        let err = Error {
+            message: "mixed".into(),
+            status: Status::InvalidData,
+            vendor_code: 7,
+            sqlstate: [b'H' as c_char, b'V' as c_char, 0, 0, 1],
+            details: None,
+        };
+        let msg = err.to_string();
+        assert_eq!(msg, "InvalidData: mixed (sqlstate: HV00�, vendor_code: 7)");
     }
 }
