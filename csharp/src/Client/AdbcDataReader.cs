@@ -134,10 +134,6 @@ namespace Apache.Arrow.Adbc.Client
 
         public override void Close()
         {
-            if (this.closeConnection)
-            {
-                this.adbcCommand?.Connection?.Close();
-            }
             this.Dispose(disposing: true);
         }
 
@@ -313,6 +309,11 @@ namespace Apache.Arrow.Adbc.Client
         {
             if (disposing)
             {
+                if (this.closeConnection)
+                {
+                    this.adbcCommand?.Connection?.Close();
+                }
+
                 this.recordBatch?.Dispose();
                 this.recordBatch = null;
                 this.adbcQueryResult.Stream?.Dispose();
