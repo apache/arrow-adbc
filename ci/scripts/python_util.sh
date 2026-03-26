@@ -135,10 +135,8 @@ function setup_build_vars {
     fi
     # No PyPy, no Python 3.8, no Python 3.9
     export CIBW_SKIP="pp* cp38-* cp39-* ${CIBW_SKIP}"
-    # Make sure our manylinux version doesn't creep up (this only matters for
-    # the driver manager)
-    export CIBW_MANYLINUX_X86_64_IMAGE="manylinux2014"
-    export CIBW_MANYLINUX_AARCH64_IMAGE="manylinux2014"
+    export CIBW_MANYLINUX_X86_64_IMAGE="manylinux_2_28"
+    export CIBW_MANYLINUX_AARCH64_IMAGE="manylinux_2_28"
 }
 
 function test_packages {
