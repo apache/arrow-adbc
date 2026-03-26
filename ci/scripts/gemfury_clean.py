@@ -52,7 +52,7 @@ def main():
 
             # npm registries don't allow re-uploading an existing version, so all
             # existing versions must be removed to allow the nightly re-upload
-            if package.get("kind") == "npm":
+            if package.get("kind_key") == "js":
                 to_delete = [version["id"] for version in versions]
             else:
                 # Always keep at least 1 version
