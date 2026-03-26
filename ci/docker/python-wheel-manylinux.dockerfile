@@ -16,11 +16,11 @@
 # under the License.
 
 ARG MANYLINUX
-FROM quay.io/pypa/manylinux${MANYLINUX}:latest
+FROM quay.io/pypa/manylinux_${MANYLINUX}:latest
 
-ARG CMAKE=4.1.2
+ARG CMAKE=4.3.0
 ARG GO
-ARG NINJA=1.13.1
+ARG NINJA=1.13.2
 ARG PYTHON
 ARG VCPKG
 ARG TARGETPLATFORM
@@ -35,7 +35,7 @@ RUN ulimit -n 1024 && yum install -y autoconf curl git flex perl-IPC-Cmd unzip w
 # (podman is just too different)
 RUN ulimit -n 1024 && yum remove -y docker
 RUN yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-RUN ulimit -n 1024 && yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+RUN ulimit -n 1024 && yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin perl-Time-Piece
 
 # -------------------- Python --------------------
 RUN PYTHON_ROOT=$(find /opt/python -name cp${PYTHON/./}-cp${PYTHON/./}) && \
