@@ -125,3 +125,21 @@ def test_extension() -> None:
 
         with pytest.raises(conn.OperationalError):
             conn.load_extension("nonexistent", entrypoint="entrypoint")
+
+
+@pytest.mark.parametrize(
+    "feature",
+    [
+        "ENABLE_FTS3",
+        "ENABLE_FTS4",
+        "ENABLE_FTS5",
+        "ENABLE_GEOPOLY",
+        "ENABLE_MATH_FUNCTIONS",
+        "ENABLE_RTREE",
+    ],
+)
+def test_enabled_features(feature: str) -> None:
+    # Regression test for https://github.com/apache/arrow-adbc/issues/4143
+    with dbapi.connect() as conn:
+        options = {row[0] for row in conn.execute("PRAGMA compile_options").fetchall()}
+    assert feature in options
