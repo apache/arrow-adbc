@@ -71,7 +71,7 @@ function build_drivers {
     echo "=== Setup VCPKG ==="
 
     # Need to install sqlite3 to make CMake be able to find it below
-    "${VCPKG_ROOT}/vcpkg" install libpq sqlite3 \
+    "${VCPKG_ROOT}/vcpkg" install libpq 'sqlite3[dbstat,fts3,fts4,fts5,geopoly,json1,limit,math,rtree,session,snapshot,soundex]' \
           --overlay-triplets "${VCPKG_OVERLAY_TRIPLETS}" \
           --triplet "${VCPKG_DEFAULT_TRIPLET}"
 

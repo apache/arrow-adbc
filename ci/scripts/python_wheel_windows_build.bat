@@ -31,7 +31,7 @@ set VCPKG_TARGET_TRIPLET=x64-windows-static
 
 IF NOT DEFINED VCPKG_ROOT (echo "Must set VCPKG_ROOT" && exit /B 1)
 
-%VCPKG_ROOT%\vcpkg install --triplet=%VCPKG_TARGET_TRIPLET% libpq sqlite3
+%VCPKG_ROOT%\vcpkg install --triplet=%VCPKG_TARGET_TRIPLET% libpq "sqlite3[dbstat,fts3,fts4,fts5,geopoly,json1,limit,math,rtree,session,snapshot,soundex]"
 IF %errorlevel% NEQ 0 EXIT /B %errorlevel%
 
 mkdir %build_dir%

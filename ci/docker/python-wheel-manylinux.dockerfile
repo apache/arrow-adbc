@@ -30,12 +30,12 @@ ENTRYPOINT ["/bin/bash", "-i", "-c"]
 
 # -------------------- System Dependencies --------------------
 # Some of these dependencies are needed to build things like OpenSSL in vcpkg
-RUN ulimit -n 1024 && yum install -y autoconf curl git flex perl-IPC-Cmd unzip wget yum-utils zip
+RUN ulimit -n 1024 && yum install -y autoconf autoconf-archive curl git flex perl-IPC-Cmd perl-Time-Piece unzip wget yum-utils zip
 # docker is aliased to podman by AlmaLinux, but we want real Docker
 # (podman is just too different)
 RUN ulimit -n 1024 && yum remove -y docker
 RUN yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-RUN ulimit -n 1024 && yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin perl-Time-Piece
+RUN ulimit -n 1024 && yum install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 
 # -------------------- Python --------------------
 RUN PYTHON_ROOT=$(find /opt/python -name cp${PYTHON/./}-cp${PYTHON/./}) && \
