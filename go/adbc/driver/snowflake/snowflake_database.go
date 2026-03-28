@@ -82,7 +82,6 @@ type databaseImpl struct {
 	clientSecret string
 	refreshToken string
 
-	retryOnMasterTokenExpired bool
 	useHighPrecision      bool
 	maxTimestampPrecision MaxTimestampPrecision
 	defaultAppName        string
@@ -137,11 +136,6 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 		return d.cfg.OktaURL.String(), nil
 	case OptionKeepSessionAlive:
 		if v, ok := d.cfg.Params["client_session_keep_alive"]; ok && v != nil && strings.ToLower(*v) == adbc.OptionValueEnabled {
-			return adbc.OptionValueEnabled, nil
-		}
-		return adbc.OptionValueDisabled, nil
-	case OptionRetryOnMasterTokenExpired:
-		if d.retryOnMasterTokenExpired {
 			return adbc.OptionValueEnabled, nil
 		}
 		return adbc.OptionValueDisabled, nil
@@ -379,18 +373,6 @@ func (d *databaseImpl) SetOptionInternal(k string, v string, cnOptions *map[stri
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
-	case OptionRetryOnMasterTokenExpired:
-		switch strings.ToLower(v) {
-		case adbc.OptionValueEnabled, "enabled":
-			d.retryOnMasterTokenExpired = true
-		case adbc.OptionValueDisabled, "disabled":
-			d.retryOnMasterTokenExpired = false
-		default:
-			return adbc.Error{
-				Msg:  fmt.Sprintf("Invalid value for database option '%s': '%s'", OptionRetryOnMasterTokenExpired, v),
-				Code: adbc.StatusInvalidArgument,
-			}
-		}
 	case OptionDisableTelemetry:
 		switch v {
 		case adbc.OptionValueEnabled:
@@ -569,7 +551,6 @@ func (d *databaseImpl) Open(ctx context.Context) (adbcConnection adbc.Connection
 	conn := &connectionImpl{
 		cn: cn.(snowflakeConn),
 		db: d, ctor: connector,
-		retryOnMasterTokenExpired: d.retryOnMasterTokenExpired,
 		// default enable high precision
 		// SetOption(OptionUseHighPrecision, adbc.OptionValueDisabled) to
 		// get Int64/Float64 instead

@@ -70,7 +70,7 @@ require (
 	resty.dev/v3 v3.0.0-beta.6 // indirect
 )
 
-replace github.com/snowflakedb/gosnowflake => github.com/dbt-labs/gosnowflake v1.17.6
+replace github.com/snowflakedb/gosnowflake => github.com/dbt-labs/gosnowflake v1.17.7
 
 replace github.com/databricks/databricks-sql-go => github.com/dbt-labs/databricks-sql-go v1.19.1
 
