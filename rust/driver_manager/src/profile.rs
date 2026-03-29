@@ -848,7 +848,9 @@ key = "value"
 
         for TestCase(name, env_vars, input, expected) in test_cases {
             for (k, v) in &env_vars {
-                std::env::set_var(k, v);
+                unsafe {
+                    std::env::set_var(k, v);
+                }
             }
 
             let result = process_profile_value(input);
@@ -889,7 +891,9 @@ key = "value"
             }
 
             for (k, _) in &env_vars {
-                std::env::remove_var(k);
+                unsafe {
+                    std::env::remove_var(k);
+                }
             }
         }
     }
