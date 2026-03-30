@@ -50,17 +50,12 @@ def main():
             print(versions)
             versions.sort(key=lambda v: v["created_at"], reverse=True)
 
-            # npm registries don't allow re-uploading an existing version, so all
-            # existing versions must be removed to allow the nightly re-upload
-            if package.get("kind_key") == "js":
-                to_delete = [version["id"] for version in versions]
-            else:
-                # Always keep at least 1 version
-                to_delete = [
-                    version["id"]
-                    for version in versions[1:]
-                    if version["created_at"] < cutoff.isoformat()
-                ]
+            # Always keep at least 1 version
+            to_delete = [
+                version["id"]
+                for version in versions[1:]
+                if version["created_at"] < cutoff.isoformat()
+            ]
             print("Removing", len(to_delete), "version(s) of", len(versions))
 
             for version_id in to_delete:
