@@ -31,6 +31,7 @@ import (
 
 const (
 	OptionStringAuthType  = "adbc.bigquery.sql.auth_type"
+	OptionStringAPIEndpoint = "adbc.bigquery.sql.api_endpoint"
 	OptionStringLocation  = "adbc.bigquery.sql.location"
 	OptionStringProjectID = "adbc.bigquery.sql.project_id"
 	OptionStringDatasetID = "adbc.bigquery.sql.dataset_id"

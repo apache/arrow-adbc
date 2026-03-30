@@ -38,6 +38,7 @@ type databaseImpl struct {
 	refreshToken          string
 	accessTokenEndpoint   string
 	accessTokenServerName string
+	apiEndpoint           string
 	location              string
 	quotaProject          string
 
@@ -68,6 +69,7 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		impersonateLifetime:        d.impersonateLifetime,
 		accessTokenEndpoint:        d.accessTokenEndpoint,
 		accessTokenServerName:      d.accessTokenServerName,
+		apiEndpoint:                d.apiEndpoint,
 		tableID:                    d.tableID,
 		catalog:                    d.projectID,
 		dbSchema:                   d.datasetID,
@@ -108,6 +110,8 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 		return d.refreshToken, nil
 	case OptionStringAuthQuotaProject:
 		return d.quotaProject, nil
+	case OptionStringAPIEndpoint:
+		return d.apiEndpoint, nil
 	case OptionStringLocation:
 		return d.location, nil
 	case OptionStringProjectID:
@@ -182,6 +186,8 @@ func (d *databaseImpl) SetOption(key string, value string) error {
 		d.accessTokenEndpoint = value
 	case OptionStringAuthAccessTokenServerName:
 		d.accessTokenServerName = value
+	case OptionStringAPIEndpoint:
+		d.apiEndpoint = value
 	case OptionStringLocation:
 		d.location = value
 	case OptionStringImpersonateTargetPrincipal:

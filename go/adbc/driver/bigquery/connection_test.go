@@ -25,6 +25,23 @@ import (
 	"cloud.google.com/go/bigquery"
 )
 
+func TestDatabaseAPIEndpointOption(t *testing.T) {
+	db := &databaseImpl{}
+
+	err := db.SetOption(OptionStringAPIEndpoint, "https://bigquery.googleapis.com/bigquery/v2/")
+	if err != nil {
+		t.Fatalf("SetOption returned error: %v", err)
+	}
+
+	got, err := db.GetOption(OptionStringAPIEndpoint)
+	if err != nil {
+		t.Fatalf("GetOption returned error: %v", err)
+	}
+	if got != "https://bigquery.googleapis.com/bigquery/v2/" {
+		t.Fatalf("expected endpoint to round-trip, got %q", got)
+	}
+}
+
 func TestCustomAccessTokenEndpointAndServerName(t *testing.T) {
 	accessTokenEndpoint := "https://example.com/oauth2/token"
 	accessTokenServerName := "example.com"

@@ -61,6 +61,7 @@ type connectionImpl struct {
 	refreshToken          string
 	accessTokenEndpoint   string
 	accessTokenServerName string
+	apiEndpoint           string
 
 	quotaProject string
 
@@ -700,6 +701,10 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 	authOptions, err := c.authOptions(ctx)
 	if err != nil {
 		return err
+	}
+	if c.apiEndpoint != "" {
+		// Safe to append: the default endpoint is already assumed by the client, so this only adds a user-specified override.
+		authOptions = append(authOptions, option.WithEndpoint(c.apiEndpoint))
 	}
 
 	storageReadClient, err := bigquery.NewClient(ctx, c.catalog, authOptions...)
