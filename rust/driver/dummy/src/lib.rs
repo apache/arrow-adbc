@@ -372,9 +372,7 @@ impl Connection for DummyConnection {
             .collect::<ScalarBuffer<i32>>();
 
         let value_array = UnionArray::try_new(
-            #[allow(deprecated)]
-            // TODO: remove this once update the minimum arrow version to 57.2.0
-            UnionFields::new(
+            UnionFields::try_new(
                 [0, 1, 2, 3, 4, 5],
                 [
                     Field::new("string_value", string_value_array.data_type().clone(), true),
@@ -392,7 +390,8 @@ impl Connection for DummyConnection {
                         true,
                     ),
                 ],
-            ),
+            )
+            .expect("must be valid"),
             type_id_buffer,
             Some(value_offsets_buffer),
             vec![
@@ -665,9 +664,7 @@ impl Connection for DummyConnection {
         let type_id_buffer = [1_i8].into_iter().collect::<ScalarBuffer<i8>>();
         let value_offsets_buffer = [0_i32].into_iter().collect::<ScalarBuffer<i32>>();
         let statistic_value_array = UnionArray::try_new(
-            #[allow(deprecated)]
-            // TODO: remove this once update the minimum arrow version to 57.2.0
-            UnionFields::new(
+            UnionFields::try_new(
                 [0, 1, 2, 3],
                 [
                     Field::new("int64", DataType::Int64, true),
@@ -675,7 +672,8 @@ impl Connection for DummyConnection {
                     Field::new("float64", DataType::Float64, true),
                     Field::new("binary", DataType::Binary, true),
                 ],
-            ),
+            )
+            .expect("must be valid"),
             type_id_buffer,
             Some(value_offsets_buffer),
             vec![
