@@ -48,7 +48,9 @@ DRIVERS := $(addsuffix .$(SUFFIX),$(addprefix libadbc_driver_,$(MANAGERS)))
 all: $(DRIVERS)
 
 libadbc_driver_%.$(SUFFIX): % ../driver/% ../go.mod ../go.sum
-	$(GO_BUILD) -buildvcs=true -tags driverlib -o $@ -buildmode=c-shared -ldflags "-s -w -X github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase.infoDriverVersion=$(VERSION)" ./$*
+	$(GO_BUILD) -buildvcs=true -tags driverlib,netgo \
+		-o $@ -buildmode=c-shared \
+		-ldflags "-s -w -X github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase.infoDriverVersion=$(VERSION)" ./$*
 	$(RM) $(basename $@).h
 
 regenerate:
