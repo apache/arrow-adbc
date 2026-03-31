@@ -215,6 +215,14 @@ class ConnectionOptions(enum.Enum):
 class StatementOptions(enum.Enum):
     """Statement options specific to the Flight SQL driver."""
 
+    #: Whether the prepared statement performs an update (DML) rather than
+    #: returning a result set.
+    #:
+    #: Read-only.  Only available after the statement has been prepared.
+    #: Returns "true" or "false".  If the server did not include this hint
+    #: in its CreatePreparedStatement response, reading this option raises
+    #: an error.
+    IS_UPDATE = "adbc.flight.sql.is_update"
     #: The latest FlightInfo value.
     #:
     #: Thread-safe.  Mostly useful when using incremental execution, where an
