@@ -1059,6 +1059,53 @@ func arrowSchemaToBQ(s *arrow.Schema) ([]*bigquery.FieldSchema, error) {
 	return out, nil
 }
 
+// bigQueryFieldTypeFromMetadata maps Arrow types stashedin IPC metadata to Bigquery types.
+// https://github.com/googleapis/google-cloud-go/blob/5b5d20c3e63ceb9078209bd9a61960328c92ea92/bigquery/schema.go#L298
+// Note, these do not align 1:1 with the Standard SQL type names documented here:
+// https://cloud.google.com/bigquery/docs/reference/standard-sql/data-types
+func bigQueryFieldTypeFromMetadata(v string) (bigquery.FieldType, bool) {
+	// Trim numeric types: e.g. NUMERIC(38,9)
+	t := strings.ToUpper(strings.TrimSpace(v))
+	if idx := strings.IndexAny(t, "<("); idx >= 0 {
+		t = t[:idx]
+	}
+
+	switch t {
+	case "STRING":
+		return bigquery.StringFieldType, true
+	case "BYTES":
+		return bigquery.BytesFieldType, true
+	case "INTEGER", "INT64":
+		return bigquery.IntegerFieldType, true
+	case "FLOAT", "FLOAT64":
+		return bigquery.FloatFieldType, true
+	case "BOOL", "BOOLEAN":
+		return bigquery.BooleanFieldType, true
+	case "TIMESTAMP":
+		return bigquery.TimestampFieldType, true
+	case "DATE":
+		return bigquery.DateFieldType, true
+	case "TIME":
+		return bigquery.TimeFieldType, true
+	case "DATETIME":
+		return bigquery.DateTimeFieldType, true
+	case "NUMERIC", "DECIMAL":
+		return bigquery.NumericFieldType, true
+	case "BIGNUMERIC", "BIGDECIMAL":
+		return bigquery.BigNumericFieldType, true
+	case "GEOGRAPHY":
+		return bigquery.GeographyFieldType, true
+	case "INTERVAL":
+		return bigquery.IntervalFieldType, true
+	case "JSON":
+		return bigquery.JSONFieldType, true
+	case "ARRAY", "RECORD", "STRUCT":
+		return "", false // should be unreachable
+	default:
+		return bigquery.StringFieldType, true
+	}
+}
+
 // BigQuery type          Arrow types accepted
 // -----------------------------------------------------
 // INT64                  Int8/16/32/64, UInt8/16/32/64
@@ -1081,33 +1128,13 @@ func arrowFieldToBigQueryField(f arrow.Field) (*bigquery.FieldSchema, error) {
 		Required: !f.Nullable,
 	}
 
-	// Use metadata field in ipc to convey extra differentation information about timestamps
+	// Use metadata field in IPC to convey extra differentiation information about
+	// BigQuery logical types when Arrow's physical type alone is ambiguous.
 	if v, ok := f.Metadata.GetValue("BIGQUERY:type"); ok {
-		switch t := strings.ToUpper(strings.TrimSpace(v)); t {
-		case "DATE":
-			bq.Type = bigquery.DateFieldType
-		case "DATETIME":
-			bq.Type = bigquery.DateTimeFieldType
-		case "TIMESTAMP":
-			bq.Type = bigquery.TimestampFieldType
-		case "INTEGER", "INT64":
-			bq.Type = bigquery.IntegerFieldType
-		case "FLOAT", "FLOAT64":
-			bq.Type = bigquery.FloatFieldType
-		case "BOOL", "BOOLEAN":
-			bq.Type = bigquery.BooleanFieldType
-		case "STRING":
-			bq.Type = bigquery.StringFieldType
-		case "BYTES":
-			bq.Type = bigquery.BytesFieldType
-		case "NUMERIC":
-			bq.Type = bigquery.NumericFieldType
-		case "BIGNUMERIC":
-			bq.Type = bigquery.BigNumericFieldType
-		default:
-			return nil, fmt.Errorf("unknown bq_type metadata: %q", v)
+		if fieldType, ok := bigQueryFieldTypeFromMetadata(v); ok {
+			bq.Type = fieldType
+			return bq, nil
 		}
-		return bq, nil
 	}
 
 	switch dt := f.Type.(type) {
@@ -1148,7 +1175,6 @@ func arrowFieldToBigQueryField(f arrow.Field) (*bigquery.FieldSchema, error) {
 	//
 	case *arrow.Date32Type, *arrow.Date64Type:
 		bq.Type = bigquery.DateFieldType
-
 
 	// Follow upstream ADBC BigQuery heuristic for Arrow timestamps:
 	// tz == "" -> DATETIME, tz != "" -> TIMESTAMP.
