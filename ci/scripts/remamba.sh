@@ -42,6 +42,10 @@ main() {
             echo "Mamba flaked..."
             continue
         fi
+        if echo "$MAMBA_OUTPUT" | grep "Download error" >/dev/null; then
+            echo "Mamba flaked..."
+            continue
+        fi
         echo "Mamba failed, aborting"
         return $exit_code
     done
