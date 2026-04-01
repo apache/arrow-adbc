@@ -133,7 +133,8 @@ def test_extension() -> None:
         "ENABLE_FTS3",
         "ENABLE_FTS4",
         "ENABLE_FTS5",
-        "ENABLE_GEOPOLY",
+        # We enable this in wheel builds but not all CI has it
+        # "ENABLE_GEOPOLY",
         "ENABLE_MATH_FUNCTIONS",
         "ENABLE_RTREE",
     ],
