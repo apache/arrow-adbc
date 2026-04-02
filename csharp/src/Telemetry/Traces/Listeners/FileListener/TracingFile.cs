@@ -127,7 +127,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Listeners.FileListener
             }
             await stream.CopyToAsync(_currentFileStream).ConfigureAwait(false);
             // Flush for robustness to crashing
-            await stream.FlushAsync().ConfigureAwait(false);
+            await _currentFileStream.FlushAsync().ConfigureAwait(false);
         }
 
         private async Task OpenNewTracingFileAsync()
