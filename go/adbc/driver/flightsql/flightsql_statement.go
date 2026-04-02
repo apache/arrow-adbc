@@ -46,12 +46,6 @@ const (
 	// so this is not entirely necessary depending on the version
 	// of substrait and the capabilities of the server.
 	OptionStatementSubstraitVersion = "adbc.flight.sql.substrait.version"
-	// OptionStatementIsUpdate is a read-only option that indicates whether a
-	// prepared statement performs an update (DML) rather than returning a
-	// result set.  The value is "true" or "false".  If the server did not
-	// include the hint in its CreatePreparedStatement response, reading this
-	// option returns StatusNotFound.
-	OptionStatementIsUpdate = "adbc.flight.sql.is_update"
 )
 
 func atomicLoadFloat64(x *float64) float64 {
@@ -259,24 +253,6 @@ func (s *statement) GetOption(key string) (string, error) {
 		return s.timeouts.updateTimeout.String(), nil
 	case adbc.OptionKeyIncremental:
 		if s.incrementalState != nil {
-			return adbc.OptionValueEnabled, nil
-		}
-		return adbc.OptionValueDisabled, nil
-	case OptionStatementIsUpdate:
-		if s.prepared == nil {
-			return "", adbc.Error{
-				Msg:  "[Flight SQL] adbc.flight.sql.is_update is only available after Prepare()",
-				Code: adbc.StatusNotFound,
-			}
-		}
-		isUpdate := s.prepared.IsUpdate()
-		if isUpdate == nil {
-			return "", adbc.Error{
-				Msg:  "[Flight SQL] server did not provide is_update hint for this prepared statement",
-				Code: adbc.StatusNotFound,
-			}
-		}
-		if *isUpdate {
 			return adbc.OptionValueEnabled, nil
 		}
 		return adbc.OptionValueDisabled, nil

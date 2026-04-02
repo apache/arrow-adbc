@@ -40,7 +40,6 @@ under pytest, or when the environment variable
 
 import abc
 import datetime
-import logging
 import os
 import pathlib
 import threading
@@ -72,8 +71,6 @@ if typing.TYPE_CHECKING:
 
 # ----------------------------------------------------------
 # Globals
-
-_logger = logging.getLogger(__name__)
 
 #: The DB-API API level (2.0).
 apilevel = "2.0"
@@ -924,22 +921,10 @@ class Cursor(_Closeable):
         self._clear()
         self._prepare_execute(operation, parameters)
 
-        is_update = False
-        try:
-            val = self._stmt.get_option("adbc.flight.sql.is_update")
-            is_update = val.lower() == "true"
-        except (adbc_driver_manager.NotSupportedError, adbc_driver_manager.ProgrammingError) as e:
-            _logger.debug("adbc.flight.sql.is_update option not available: %s", e)
-
-        if is_update:
-            self._rowcount = _blocking_call(
-                self._stmt.execute_update, (), {}, self._stmt.cancel
-            )
-        else:
-            handle, self._rowcount = _blocking_call(
-                self._stmt.execute_query, (), {}, self._stmt.cancel
-            )
-            self._results = _RowIterator(self._stmt, handle, self._backend)
+        handle, self._rowcount = _blocking_call(
+            self._stmt.execute_query, (), {}, self._stmt.cancel
+        )
+        self._results = _RowIterator(self._stmt, handle, self._backend)
         return self
 
     def executemany(self, operation: Union[bytes, str], seq_of_parameters) -> None:
