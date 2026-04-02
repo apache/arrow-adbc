@@ -26,6 +26,8 @@ on:
       - "rust/**"
       - ".github/workflows/rust.yml"
   push:
+    branches-ignore:
+      - 'dependabot/**'
     paths:
       - "c/**"
       - "rust/**"
