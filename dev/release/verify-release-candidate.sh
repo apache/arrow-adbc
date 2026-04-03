@@ -530,6 +530,7 @@ test_cpp() {
     export CMAKE_PREFIX_PATH="${CONDA_BACKUP_CMAKE_PREFIX_PATH}:${CMAKE_PREFIX_PATH}"
     # The CMake setup forces RPATH to be the Conda prefix
     export CPP_INSTALL_PREFIX="${CONDA_PREFIX}"
+    export CONDA_BUILD=1
   else
     export CPP_INSTALL_PREFIX="${ARROW_TMPDIR}/local"
   fi
