@@ -560,9 +560,12 @@ unsafe extern "C" fn release_ffi_error(error: *mut FFI_AdbcError) {
     match error.as_mut() {
         None => (),
         Some(error) => {
-            // SAFETY: `error.message` was necessarily obtained with `CString::into_raw`.
-            // Additionally, C should not modify the string's length.
-            drop(CString::from_raw(error.message));
+            if !error.message.is_null() {
+                // SAFETY: `error.message` was necessarily obtained with `CString::into_raw`.
+                // Additionally, C should not modify the string's length.
+                drop(CString::from_raw(error.message));
+                error.message = null_mut();
+            }
 
             if !error.private_data.is_null() {
                 // SAFETY: `error.private_data` was necessarily obtained with `Box::into_raw`.
@@ -570,7 +573,9 @@ unsafe extern "C" fn release_ffi_error(error: *mut FFI_AdbcError) {
                 // Finally, C should call the release function only once.
                 let private_data = Box::from_raw(error.private_data as *mut ErrorPrivateData);
                 drop(private_data);
+                error.private_data = null_mut();
             }
+            error.release = None;
         }
     }
 }
