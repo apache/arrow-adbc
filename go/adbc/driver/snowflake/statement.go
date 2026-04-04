@@ -72,12 +72,22 @@ func (st *statement) Base() *driverbase.StatementImplBase {
 	return &st.StatementImplBase
 }
 
-// setQueryContext applies the query tag if present.
+// effectiveTraceParent returns the statement-level traceparent if set, otherwise the connection's.
+func (st *statement) effectiveTraceParent() string {
+	tp := strings.TrimSpace(st.GetTraceParent())
+	if tp != "" {
+		return tp
+	}
+	return strings.TrimSpace(st.cnxn.GetTraceParent())
+}
+
+// setQueryContext applies the query tag if present and aligns the context with
+// adbc.OptionKeyTelemetryTraceParent for gosnowflake HTTP traceparent headers.
 func (st *statement) setQueryContext(ctx context.Context) context.Context {
 	if st.queryTag != "" {
 		ctx = gosnowflake.WithQueryTag(ctx, st.queryTag)
 	}
-	return ctx
+	return contextWithTraceParent(ctx, st.effectiveTraceParent(), traceParentScopeStatement)
 }
 
 // Close releases any relevant resources associated with this statement

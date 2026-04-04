@@ -37,6 +37,8 @@ import (
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/snowflakedb/gosnowflake"
+	"go.opentelemetry.io/otel/propagation"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -73,6 +75,55 @@ type connectionImpl struct {
 	activeTransaction     bool
 	useHighPrecision      bool
 	maxTimestampPrecision MaxTimestampPrecision
+}
+
+type traceParentScope uint8
+
+const (
+	traceParentScopeDatabase traceParentScope = iota
+	traceParentScopeConnection
+	traceParentScopeStatement
+)
+
+type traceParentContextKey struct{}
+
+type traceParentContextState struct {
+	scope traceParentScope
+}
+
+// contextWithTraceParent sets the current span context from the W3C traceparent
+// string so gosnowflake's HTTP client (propagation.TraceContext.Inject) emits that
+// header to Snowflake. This must run after internal.StartSpan when
+// adbc.OptionKeyTelemetryTraceParent is set: StartSpan creates a child span whose
+// SpanContext would otherwise replace Fusion's traceparent on the wire.
+//
+// When ctx already carries a higher-precedence traceparent (statement > connection >
+// database), the existing remote span context is preserved.
+func contextWithTraceParent(ctx context.Context, traceParent string, scope traceParentScope) context.Context {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	traceParent = strings.TrimSpace(traceParent)
+	if traceParent == "" {
+		return ctx
+	}
+	if state, ok := ctx.Value(traceParentContextKey{}).(traceParentContextState); ok {
+		if state.scope > scope {
+			return ctx
+		}
+	}
+	carrier := propagation.MapCarrier{"traceparent": traceParent}
+	extracted := propagation.TraceContext{}.Extract(ctx, carrier)
+	spanCtx := trace.SpanContextFromContext(extracted)
+	if !spanCtx.IsValid() {
+		return ctx
+	}
+	ctx = trace.ContextWithRemoteSpanContext(ctx, spanCtx)
+	return context.WithValue(ctx, traceParentContextKey{}, traceParentContextState{scope: scope})
+}
+
+func (c *connectionImpl) telemetryContext(ctx context.Context) context.Context {
+	return contextWithTraceParent(ctx, c.GetTraceParent(), traceParentScopeConnection)
 }
 
 func escapeSingleQuoteForLike(arg string) string {
@@ -172,6 +223,8 @@ func isWildcardStr(ident string) bool {
 func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog, dbSchema, tableName, columnName *string, tableType []string) (reader array.RecordReader, err error) {
 	ctx, span := internal.StartSpan(ctx, "connectionImpl.GetObjects", c)
 	defer internal.EndSpan(span, err)
+
+	ctx = c.telemetryContext(ctx)
 
 	var (
 		pkQueryID, fkQueryID, uniqueQueryID, terseDbQueryID string
@@ -399,38 +452,41 @@ func (c *connectionImpl) GetCurrentDbSchema() (string, error) {
 
 // SetCurrentCatalog implements driverbase.CurrentNamespacer.
 func (c *connectionImpl) SetCurrentCatalog(value string) error {
-	_, err := c.cn.ExecContext(context.Background(), fmt.Sprintf("USE DATABASE %s;", quoteTblName(value)), nil)
+	ctx := c.telemetryContext(nil)
+	_, err := c.cn.ExecContext(ctx, fmt.Sprintf("USE DATABASE %s;", quoteTblName(value)), nil)
 	return err
 }
 
 // SetCurrentDbSchema implements driverbase.CurrentNamespacer.
 func (c *connectionImpl) SetCurrentDbSchema(value string) error {
-	_, err := c.cn.ExecContext(context.Background(), fmt.Sprintf("USE SCHEMA %s;", quoteTblName(value)), nil)
+	ctx := c.telemetryContext(nil)
+	_, err := c.cn.ExecContext(ctx, fmt.Sprintf("USE SCHEMA %s;", quoteTblName(value)), nil)
 	return err
 }
 
 // SetAutocommit implements driverbase.AutocommitSetter.
 func (c *connectionImpl) SetAutocommit(enabled bool) error {
+	ctx := c.telemetryContext(nil)
 	if enabled {
 		if c.activeTransaction {
-			_, err := c.cn.ExecContext(context.Background(), "COMMIT", nil)
+			_, err := c.cn.ExecContext(ctx, "COMMIT", nil)
 			if err != nil {
 				return errToAdbcErr(adbc.StatusInternal, err)
 			}
 			c.activeTransaction = false
 		}
-		_, err := c.cn.ExecContext(context.Background(), "ALTER SESSION SET AUTOCOMMIT = true", nil)
+		_, err := c.cn.ExecContext(ctx, "ALTER SESSION SET AUTOCOMMIT = true", nil)
 		return err
 	}
 
 	if !c.activeTransaction {
-		_, err := c.cn.ExecContext(context.Background(), "BEGIN", nil)
+		_, err := c.cn.ExecContext(ctx, "BEGIN", nil)
 		if err != nil {
 			return errToAdbcErr(adbc.StatusInternal, err)
 		}
 		c.activeTransaction = true
 	}
-	_, err := c.cn.ExecContext(context.Background(), "ALTER SESSION SET AUTOCOMMIT = false", nil)
+	_, err := c.cn.ExecContext(ctx, "ALTER SESSION SET AUTOCOMMIT = false", nil)
 	return err
 }
 
@@ -598,7 +654,8 @@ func descToField(name, typ, isnull, primary string, comment sql.NullString, maxT
 }
 
 func (c *connectionImpl) getStringQuery(query string) (value string, err error) {
-	result, err := c.cn.QueryContext(context.Background(), query, nil)
+	ctx := c.telemetryContext(nil)
+	result, err := c.cn.QueryContext(ctx, query, nil)
 	if err != nil {
 		return "", errToAdbcErr(adbc.StatusInternal, err)
 	}
@@ -638,6 +695,8 @@ func (c *connectionImpl) getStringQuery(query string) (value string, err error) 
 func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (sc *arrow.Schema, err error) {
 	ctx, span := internal.StartSpan(ctx, "connectionImpl.GetTableSchema", c)
 	defer internal.EndSpan(span, err)
+
+	ctx = c.telemetryContext(ctx)
 
 	tblParts := make([]string, 0, 3)
 	if catalog != nil {
@@ -703,13 +762,14 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 // only be used if autocommit is disabled.
 //
 // Behavior is undefined if this is mixed with SQL transaction statements.
-func (c *connectionImpl) Commit(_ context.Context) error {
-	_, err := c.cn.ExecContext(context.Background(), "COMMIT", nil)
+func (c *connectionImpl) Commit(ctx context.Context) error {
+	ctx = c.telemetryContext(ctx)
+	_, err := c.cn.ExecContext(ctx, "COMMIT", nil)
 	if err != nil {
 		return errToAdbcErr(adbc.StatusInternal, err)
 	}
 
-	_, err = c.cn.ExecContext(context.Background(), "BEGIN", nil)
+	_, err = c.cn.ExecContext(ctx, "BEGIN", nil)
 	return errToAdbcErr(adbc.StatusInternal, err)
 }
 
@@ -717,13 +777,14 @@ func (c *connectionImpl) Commit(_ context.Context) error {
 // is disabled.
 //
 // Behavior is undefined if this is mixed with SQL transaction statements.
-func (c *connectionImpl) Rollback(_ context.Context) error {
-	_, err := c.cn.ExecContext(context.Background(), "ROLLBACK", nil)
+func (c *connectionImpl) Rollback(ctx context.Context) error {
+	ctx = c.telemetryContext(ctx)
+	_, err := c.cn.ExecContext(ctx, "ROLLBACK", nil)
 	if err != nil {
 		return errToAdbcErr(adbc.StatusInternal, err)
 	}
 
-	_, err = c.cn.ExecContext(context.Background(), "BEGIN", nil)
+	_, err = c.cn.ExecContext(ctx, "BEGIN", nil)
 	return errToAdbcErr(adbc.StatusInternal, err)
 }
 

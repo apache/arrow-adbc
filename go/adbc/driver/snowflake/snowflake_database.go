@@ -536,7 +536,10 @@ func (d *databaseImpl) Open(ctx context.Context) (adbcConnection adbc.Connection
 	ctx, span := internal.StartSpan(ctx, "databaseImpl.Open", d)
 	defer internal.EndSpan(span, err)
 
-	connector := gosnowflake.NewConnector(drv, *d.cfg)
+	ctx = contextWithTraceParent(ctx, d.GetTraceParent(), traceParentScopeDatabase)
+
+	cfgCopy := *d.cfg
+	connector := gosnowflake.NewConnector(drv, cfgCopy)
 
 	ctx = gosnowflake.WithArrowAllocator(
 		gosnowflake.WithArrowBatches(ctx), d.Alloc)
