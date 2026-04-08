@@ -318,4 +318,4 @@ For Python wheels, the shipped version of the PostgreSQL client libraries is
 16.9.  For conda-forge packages, the version of libpq is the same as the
 version of libpq in your Conda environment.
 
-The PostgreSQL driver is tested against PostgreSQL versions 11 through 16.
+The PostgreSQL driver is tested against PostgreSQL versions 14 through 18.
