@@ -25,13 +25,13 @@ use std::env;
 use std::{fmt, path::PathBuf, str::FromStr, time::Duration};
 
 use adbc_core::{
+    Driver as _,
     error::{Error, Result, Status},
     options::{OptionDatabase, OptionValue},
-    Driver as _,
 };
 use url::{Host, Url};
 
-use crate::{builder::BuilderIter, Database, Driver};
+use crate::{Database, Driver, builder::BuilderIter};
 #[cfg(feature = "env")]
 use crate::{
     builder::{env_parse, env_parse_map_err},
@@ -1097,7 +1097,9 @@ mod tests {
     #[test]
     fn from_env_parse_error() {
         // Set a value that fails to parse to a LogLevel
-        env::set_var(Builder::LOG_TRACING_ENV, "warning");
+        unsafe {
+            env::set_var(Builder::LOG_TRACING_ENV, "warning");
+        }
         let result = Builder::from_env();
         assert!(result.is_err());
         assert_eq!(
@@ -1108,15 +1110,19 @@ mod tests {
             )
         );
         // Fix it to move on
-        env::set_var(Builder::LOG_TRACING_ENV, "warn");
+
+        unsafe { env::set_var(Builder::LOG_TRACING_ENV, "warn") };
 
         // Set a value that fails to parse to a duration
-        env::set_var(Builder::LOGIN_TIMEOUT_ENV, "forever");
+        unsafe { env::set_var(Builder::LOGIN_TIMEOUT_ENV, "forever") };
         let result = Builder::from_env();
         assert!(result.is_err());
         assert_eq!(
             result.unwrap_err(),
-            Error::with_message_and_status("invalid duration (valid durations are a sequence of decimal numbers, each with optional fraction and a unit suffix, such as 300ms, 1.5h, 2h45m, valid time units are ns, us, ms, s, m, h)", Status::InvalidArguments)
+            Error::with_message_and_status(
+                "invalid duration (valid durations are a sequence of decimal numbers, each with optional fraction and a unit suffix, such as 300ms, 1.5h, 2h45m, valid time units are ns, us, ms, s, m, h)",
+                Status::InvalidArguments
+            )
         );
     }
 }

@@ -22,9 +22,9 @@
 use std::collections::HashSet;
 
 use adbc_core::{
+    Optionable,
     error::Result,
     options::{InfoCode, OptionConnection, OptionValue},
-    Optionable,
 };
 use adbc_driver_manager::ManagedConnection;
 use arrow_array::RecordBatchReader;

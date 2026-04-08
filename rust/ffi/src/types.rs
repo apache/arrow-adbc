@@ -24,9 +24,8 @@ use std::ptr::{null, null_mut};
 
 use super::methods;
 use adbc_core::{
-    constants,
+    Partitions, constants,
     error::{AdbcStatusCode, Error, Status},
-    Partitions,
 };
 
 /// A driver initialization function.

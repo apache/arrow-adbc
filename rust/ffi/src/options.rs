@@ -22,7 +22,7 @@ use adbc_core::constants;
 use adbc_core::error::{AdbcStatusCode, Error, Result, Status};
 use adbc_core::options::{AdbcVersion, OptionValue};
 
-use crate::{driver_method, FFI_AdbcConnection, FFI_AdbcStatement};
+use crate::{FFI_AdbcConnection, FFI_AdbcStatement, driver_method};
 use crate::{FFI_AdbcDatabase, FFI_AdbcDriver, FFI_AdbcError};
 
 const ERR_ONLY_STRING_OPT: &str = "Only string option value are supported with ADBC 1.0.0";

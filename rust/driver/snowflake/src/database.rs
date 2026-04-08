@@ -22,15 +22,15 @@
 use std::{collections::HashSet, ffi::c_int, sync::Arc};
 
 use adbc_core::{
+    Connection as _, Database as _, Optionable,
     error::{Error, Result, Status},
     options::{AdbcVersion, InfoCode, OptionConnection, OptionDatabase, OptionValue},
-    Connection as _, Database as _, Optionable,
 };
 use adbc_driver_manager::ManagedDatabase;
 use arrow_array::{
+    Array,
     cast::AsArray,
     types::{Int64Type, UInt32Type},
-    Array,
 };
 
 use crate::Connection;

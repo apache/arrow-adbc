@@ -15,12 +15,12 @@
 // specific language governing permissions and limitations
 // under the License.
 
-use crate::search::find_filesystem_profile;
 use crate::ManagedDatabase;
+use crate::search::find_filesystem_profile;
 use adbc_core::{
+    Optionable,
     error::{Error, Result, Status},
     options::{OptionDatabase, OptionValue},
-    Optionable,
 };
 use adbc_ffi::FFI_AdbcDriverInitFunc;
 use regex::{Captures, Regex};
@@ -374,7 +374,10 @@ pub fn process_profile_value(value: &str) -> Result<OptionValue> {
         let env_var_name = content[8..content.len() - 1].trim();
         if env_var_name.is_empty() {
             return Err(Error::with_message_and_status(
-                format!("empty environment variable name in profile replacement expression '{{{{ {} }}}}'", content),
+                format!(
+                    "empty environment variable name in profile replacement expression '{{{{ {} }}}}'",
+                    content
+                ),
                 Status::InvalidArguments,
             ));
         }
@@ -383,7 +386,10 @@ pub fn process_profile_value(value: &str) -> Result<OptionValue> {
             Ok(val) => Ok(val),
             Err(env::VarError::NotPresent) => Ok("".to_string()),
             Err(e) => Err(Error::with_message_and_status(
-                format!("error retrieving environment variable '{}' for profile replacement expression '{{{{ {} }}}}': {}", env_var_name, content, e),
+                format!(
+                    "error retrieving environment variable '{}' for profile replacement expression '{{{{ {} }}}}': {}",
+                    env_var_name, content, e
+                ),
                 Status::InvalidArguments,
             )),
         }
@@ -842,7 +848,9 @@ key = "value"
 
         for TestCase(name, env_vars, input, expected) in test_cases {
             for (k, v) in &env_vars {
-                std::env::set_var(k, v);
+                unsafe {
+                    std::env::set_var(k, v);
+                }
             }
 
             let result = process_profile_value(input);
@@ -883,7 +891,9 @@ key = "value"
             }
 
             for (k, _) in &env_vars {
-                std::env::remove_var(k);
+                unsafe {
+                    std::env::remove_var(k);
+                }
             }
         }
     }

@@ -37,11 +37,11 @@ mod tests {
     use std::{collections::HashSet, ops::Deref, sync::LazyLock};
 
     use adbc_core::{
+        Connection as _, Statement as _,
         error::{Error, Result},
         options::AdbcVersion,
-        Connection as _, Statement as _,
     };
-    use adbc_snowflake::{connection, database, driver, Connection, Database, Driver, Statement};
+    use adbc_snowflake::{Connection, Database, Driver, Statement, connection, database, driver};
     use arrow_array::{cast::AsArray, types::Decimal128Type};
 
     const ADBC_VERSION: AdbcVersion = AdbcVersion::V110;
@@ -81,9 +81,11 @@ mod tests {
     fn database_get_info() -> Result<()> {
         with_database(|mut database| {
             assert_eq!(database.vendor_name(), Ok("Snowflake".to_owned()));
-            assert!(database
-                .vendor_version()
-                .is_ok_and(|version| version.starts_with("v")));
+            assert!(
+                database
+                    .vendor_version()
+                    .is_ok_and(|version| version.starts_with("v"))
+            );
             assert!(database.vendor_arrow_version().is_ok());
             assert_eq!(database.vendor_sql(), Ok(true));
             assert_eq!(database.vendor_substrait(), Ok(false));
@@ -92,9 +94,11 @@ mod tests {
                 Ok("ADBC Snowflake Driver - Go".to_owned())
             );
             assert!(database.driver_version().is_ok());
-            assert!(database
-                .driver_arrow_version()
-                .is_ok_and(|version| version.starts_with("v")));
+            assert!(
+                database
+                    .driver_arrow_version()
+                    .is_ok_and(|version| version.starts_with("v"))
+            );
             assert_eq!(database.adbc_version(), Ok(ADBC_VERSION));
             Ok(())
         })

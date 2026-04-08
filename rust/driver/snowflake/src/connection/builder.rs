@@ -22,14 +22,14 @@
 use std::fmt;
 
 use adbc_core::{
+    Database as _,
     error::Result,
     options::{OptionConnection, OptionValue},
-    Database as _,
 };
 
+use crate::{Connection, Database, builder::BuilderIter};
 #[cfg(feature = "env")]
 use crate::{builder::env_parse_map_err, database};
-use crate::{builder::BuilderIter, Connection, Database};
 
 /// A builder for [`Connection`].
 ///
