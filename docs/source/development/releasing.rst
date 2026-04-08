@@ -440,16 +440,27 @@ Be sure to go through on the following checklist:
 
    A conda-forge or feedstock maintainer can review and merge.
 
-.. dropdown:: Update Homebrew formulae
+.. dropdown:: Check Homebrew formulae
    :class-title: sd-fs-5
    :class-container: sd-shadow-md
 
-   File separate PRs to update each formula for the new release:
+   Homebrew automatically updates formulae every 3 hours so the release manager can just check that this happens.
+
+   Visit https://github.com/Homebrew/homebrew-core/pulls?q=is%3Apr+adbc and look for separate PRs from BrewTestBot for each of these formulae:
 
    - apache-arrow-adbc
    - apache-arrow-adbc-glib
 
-   See https://docs.brew.sh/Formula-Cookbook#updating-formulae.
+   If the formulae aren't automatically updated on schedule, run the following to create PRs updating them:
+
+   .. code-block:: Bash
+
+      brew tap homebrew/core
+      cd $(brew --repository homebrew/core)
+      brew bump-formula-pr --version <VERSION> apache-arrow-adbc
+      brew bump-formula-pr --version <VERSION> apache-arrow-adbc-glib
+
+   https://docs.brew.sh/Formula-Cookbook#updating-formulae may be helpful if anything unexpected happens.
 
 .. dropdown:: Remove old artifacts
    :class-title: sd-fs-5
