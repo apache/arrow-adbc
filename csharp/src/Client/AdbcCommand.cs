@@ -129,16 +129,12 @@ namespace Apache.Arrow.Adbc.Client
 
         /// <summary>
         /// Gets or sets the name of the command timeout property for the underlying ADBC driver.
+        /// When set, <see cref="CommandTimeout"/> will propagate the value to the driver via this property.
+        /// When not set, <see cref="CommandTimeout"/> only stores the value locally.
         /// </summary>
-        public string AdbcCommandTimeoutProperty
+        public string? AdbcCommandTimeoutProperty
         {
-            get
-            {
-                if (string.IsNullOrEmpty(_commandTimeoutProperty))
-                    throw new InvalidOperationException("CommandTimeoutProperty is not set.");
-
-                return _commandTimeoutProperty!;
-            }
+            get => _commandTimeoutProperty;
             set => _commandTimeoutProperty = value;
         }
 
@@ -147,9 +143,11 @@ namespace Apache.Arrow.Adbc.Client
             get => _timeout;
             set
             {
-                // ensures the property exists before setting the CommandTimeout value
-                string property = AdbcCommandTimeoutProperty;
-                _adbcStatement.SetOption(property, value.ToString(CultureInfo.InvariantCulture));
+                // if the driver property is set, propagate the timeout value to the driver
+                if (!string.IsNullOrEmpty(_commandTimeoutProperty))
+                {
+                    _adbcStatement.SetOption(_commandTimeoutProperty!, value.ToString(CultureInfo.InvariantCulture));
+                }
                 _timeout = value;
             }
         }
