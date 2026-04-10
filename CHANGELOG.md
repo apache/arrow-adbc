@@ -1297,3 +1297,75 @@
 ### Documentation Improvements
 
 - **rust**: add note about cargo update fix in Rust quickstart (#3689)
+
+## ADBC Libraries 23 (2026-04-03)
+
+### Versions
+
+- C/C++/GLib/Go/Python/Ruby: 1.11.0
+- C#: 0.23.0
+- Java: 0.23.0
+- R: 0.23.0
+- Rust: 0.23.0
+
+### Breaking Changes
+
+- ⚠️ **rust**: return `Box<RecordBatchReader + 'static>` for caller flexibility (#3904)
+
+### New Features
+
+- add convenience API for bulk ingest (#4116)
+- **c/driver/postgresql**: improve conversion of decimal to numeric (#3787)
+- **c/driver_manager**: add connection profile interface (#3876)
+- **c/driver_manager, rust/driver_manager**: improve profile/manifest consistency (#4083)
+- **csharp**: Enable NuGet publishing for Apache.Arrow.Adbc.Testing (#3907)
+- **csharp**: add statement-level trace parent support (#3896)
+- **csharp**: make DriverName virtual in SparkConnection to enable driver-specific identification (#3893)
+- **csharp/src/Drivers/Apache**: increase telemetry instrumentation for Apache drivers (#3794)
+- **csharp/src/Telemetry**: re-enable compile-time JSON serializer context for trace activity (#4013)
+- **csharp/src/Telemetry/Traces/Listeners**: add parameter identifiers for adbcfile options (#4119)
+- **go/adbc**: add context.Context support for uniform OpenTelemetry instrumentation (#4009)
+- **java/driver/jni**: add executeSchema (#4056)
+- **java/driver/jni**: add executeUpdate, prepare, bulkIngest (#3966)
+- **java/driver/jni**: metadata methods, validation suite (#3972)
+- **javascript**: add Node.js ADBC driver manager (#4046)
+- **javascript**: add npm publishing workflow and release scripts (#4076)
+- **javascript**: add support for streaming ingest (#4125)
+- **javascript**: emit ESM instead of CJS (#4159)
+- **javascript**: return Arrow Table by default in AdbcConnection (#4091)
+- **python/adbc_driver_manager**: add GetStatistics support (#4129)
+- **python/adbc_driver_manager**: allow ``connect(profile="foo")`` (#4078)
+- **python/adbc_driver_manager**: allow more types in init (#4088)
+- **rust**: Move setters and getters of options to the adbc_ffi crate (#3927)
+- ⚠️ **rust**: return `Box<RecordBatchReader + 'static>` for caller flexibility (#3904)
+- **rust/core**: derive Copy, Eq, PartialEq (#3716) (#3974)
+- **rust/driver_manager**: Decouple driver search logic from the driver objects themselves (#3930)
+- **rust/driver_manager**: implement connection profiles (#3973)
+- **rust/driver_manager**: make some functions and modules pub instead of pub(crate) (#4052)
+- **rust/driver_manager**: reconcile with C++ driver manager (#4121)
+
+### Bugfixes
+
+- ensure package-lock.json is up to date (#4123)
+- **c/driver/postgresql**: Fix warning when compiling PostgreSQL driver on RTools/msys2 (#3903)
+- **c/driver/postgresql**: bind null parameters (#4098)
+- **c/driver/postgresql**: prevent crash when server terminates connection (#3891)
+- **c/driver_manager**: test and fix bugs in profiles (#4080)
+- **csharp/src/Client**: Fix some resource management in `AdbcDataReader` (#4134)
+- **csharp/src/Client**: clear cached record batch in Read() to prevent stale data on exception (#4133)
+- **csharp/src/Telemetry/Traces/Listeners/FileListener**: ensure to flush to file on each line (#4175)
+- **dev/release**: update how we find .NET download URL (#3978)
+- **go/adbc/driver/snowflake**: fix potential deadlocks in reader (#3870)
+- **python/adbc_driver_manager**: allow overriding search paths (#4173)
+- **python/adbc_driver_manager**: load from venv/etc/adbc/profiles (#4118)
+- **python/adbc_driver_manager**: remove unused typing imports (#4049)
+- **r/adbcdrivermanager**: replace non-API `Rf_findVarInFrame` call for R 4.5.0 or later (#4130)
+- **rust/driver_manager**: fix clippy warning (#4073)
+- **rust/driver_manager**: try to fix flaky test (#4028)
+- **rust/driver_manager**: use platform library filenames in search paths (#4155)
+
+### Documentation Improvements
+
+- fix intersphinx mapping for arrow-java reference (#3908)
+- fix minor issues in profiles and manifests docs (#4007)
+- set up Matomo for website analytics (#4176)

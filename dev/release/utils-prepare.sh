@@ -164,6 +164,7 @@ update_versions() {
   npx --yes napi version
   sed -i.bak -E "s/^version = \".+\"/version = \"${js_version}\"/" Cargo.toml
   rm Cargo.toml.bak
+  npm i --package-lock-only
   git add package.json package-lock.json Cargo.toml npm/*/package.json
   popd
 
