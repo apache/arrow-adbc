@@ -19,6 +19,7 @@
 set -e
 
 : ${BUILD_ALL:=1}
+: ${BUILD_DRIVER_DB2:=${BUILD_ALL}}
 : ${BUILD_DRIVER_MANAGER:=${BUILD_ALL}}
 : ${BUILD_DRIVER_POSTGRESQL:=${BUILD_ALL}}
 : ${BUILD_DRIVER_SQLITE:=${BUILD_ALL}}
@@ -35,6 +36,9 @@ test_project() {
     local labels=""
     if [[ "${BUILD_DRIVER_BIGQUERY}" -gt 0 ]]; then
        labels="${labels}|driver-bigquery"
+    fi
+    if [[ "${BUILD_DRIVER_DB2}" -gt 0 ]]; then
+       labels="${labels}|driver-db2"
     fi
     if [[ "${BUILD_DRIVER_FLIGHTSQL}" -gt 0 ]]; then
        labels="${labels}|driver-flightsql"

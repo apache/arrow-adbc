@@ -26,6 +26,7 @@ set -e
 : ${BUILD_DRIVER_MANAGER:=${BUILD_ALL}}
 : ${BUILD_DRIVER_POSTGRESQL:=${BUILD_ALL}}
 : ${BUILD_DRIVER_SQLITE:=${BUILD_ALL}}
+: ${BUILD_DRIVER_DB2:=${BUILD_ALL}}
 : ${BUILD_DRIVER_SNOWFLAKE:=${BUILD_ALL}}
 : ${CC:=gcc}
 : ${PYTHONDEVMODE:=1}
@@ -75,6 +76,10 @@ main() {
 
     if [[ "${BUILD_DRIVER_BIGQUERY}" -gt 0 ]]; then
         test_subproject "${source_dir}" "${install_dir}" adbc_driver_bigquery
+    fi
+
+    if [[ "${BUILD_DRIVER_DB2}" -gt 0 ]]; then
+        test_subproject "${source_dir}" "${install_dir}" adbc_driver_db2
     fi
 
     if [[ "${BUILD_DRIVER_FLIGHTSQL}" -gt 0 ]]; then

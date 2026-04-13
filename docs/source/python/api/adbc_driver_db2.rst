@@ -15,18 +15,22 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-====================
-Python API Reference
-====================
+.. default-domain:: py
 
-.. toctree::
-   :maxdepth: 1
+==================
+``adbc_driver_db2``
+==================
 
-   adbc_driver_manager
+Low-Level API
+=============
 
-   adbc_driver_bigquery
-   adbc_driver_db2
-   adbc_driver_flightsql
-   adbc_driver_postgresql
-   adbc_driver_snowflake
-   adbc_driver_sqlite
+.. automodule:: adbc_driver_db2
+   :members:
+   :undoc-members:
+
+DBAPI 2.0 API
+=============
+
+.. automodule:: adbc_driver_db2.dbapi
+
+.. autofunction:: adbc_driver_db2.dbapi.connect

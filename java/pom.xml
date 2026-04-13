@@ -65,6 +65,7 @@
     <module>driver/jdbc</module>
     <module>driver/jdbc-validation-derby</module>
     <module>driver/jdbc-validation-mssqlserver</module>
+    <module>driver/jdbc-validation-db2</module>
     <module>driver/jdbc-validation-postgresql</module>
     <module>driver/validation</module>
     <module>driver-manager</module>
@@ -333,6 +334,7 @@
       <id>jni</id>
       <modules>
         <module>driver/jni</module>
+        <module>driver/jni-validation-db2</module>
         <module>driver/jni-validation-sqlite</module>
       </modules>
     </profile>

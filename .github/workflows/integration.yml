@@ -285,6 +285,65 @@ jobs:
           env BUILD_ALL=0 BUILD_DRIVER_POSTGRESQL=1 uv --project=./c/driver/postgresql/validation/ run ci/scripts/validate.sh $(pwd)
           docker compose down
 
+  db2:
+    name: "DB2 Integration Tests"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Get Date
+        id: get-date
+        run: |
+          echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
+      - name: Cache Conda
+        uses: actions/cache/restore@v5
+        with:
+          path: ~/conda_pkgs_dir
+          key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
+      - uses: conda-incubator/setup-miniconda@fc2d68f6413eb2d87b895e92f8584b5b94a10167  # v3.3.0
+        with:
+          miniforge-version: latest
+          use-only-tar-bz2: false
+          use-mamba: true
+      - name: Install Dependencies
+        run: |
+          ./ci/scripts/remamba.sh install -c conda-forge \
+            --file ci/conda_env_cpp.txt \
+            --file ci/conda_env_python.txt
+      - name: Install DB2 CLI Driver
+        run: |
+          pip install ibm_db
+          echo "IBM_DB_HOME=$(python -c 'import importlib, pathlib; p = pathlib.Path(importlib.import_module("ibm_db").__file__).resolve().parent; print(p.parent / "clidriver" if p.name == "ibm_db" else p / "clidriver")')" >> $GITHUB_ENV
+      - name: Build DB2 Driver
+        env:
+          BUILD_ALL: "OFF"
+          BUILD_DRIVER_MANAGER: "ON"
+          BUILD_DRIVER_DB2: "ON"
+        run: |
+          ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
+          ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build"
+      - name: Configure Integration Env Vars
+        run: |
+          pip install python-dotenv[cli]
+          python -m dotenv -f .env list --format simple | tee -a $GITHUB_ENV
+      - name: Start DB2
+        run: |
+          docker compose up --wait --detach db2-test
+      - name: Test DB2 Driver
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_DB2: "1"
+        run: |
+          export LD_LIBRARY_PATH="${IBM_DB_HOME}/lib:${LD_LIBRARY_PATH}"
+          ./ci/scripts/cpp_test.sh "$(pwd)/build"
+          ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
+      - name: Stop DB2
+        run: |
+          docker compose down
+          docker compose rm -fsv
+
   snowflake:
     name: "Snowflake Integration Tests"
     runs-on: ubuntu-latest
