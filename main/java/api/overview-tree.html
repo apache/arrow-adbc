@@ -56,6 +56,8 @@ loadScripts(document, 'script');</script>
 <li><a href="org/apache/arrow/adbc/driver/flightsql/package-tree.html">org.apache.arrow.adbc.driver.flightsql</a>, </li>
 <li><a href="org/apache/arrow/adbc/driver/jdbc/package-tree.html">org.apache.arrow.adbc.driver.jdbc</a>, </li>
 <li><a href="org/apache/arrow/adbc/driver/jdbc/adapter/package-tree.html">org.apache.arrow.adbc.driver.jdbc.adapter</a>, </li>
+<li><a href="org/apache/arrow/adbc/driver/jni/package-tree.html">org.apache.arrow.adbc.driver.jni</a>, </li>
+<li><a href="org/apache/arrow/adbc/driver/jni/impl/package-tree.html">org.apache.arrow.adbc.driver.jni.impl</a>, </li>
 <li><a href="org/apache/arrow/adbc/driver/testsuite/package-tree.html">org.apache.arrow.adbc.driver.testsuite</a>, </li>
 <li><a href="org/apache/arrow/adbc/drivermanager/package-tree.html">org.apache.arrow.adbc.drivermanager</a>, </li>
 <li><a href="org/apache/arrow/adbc/sql/package-tree.html">org.apache.arrow.adbc.sql</a></li>
@@ -111,6 +113,16 @@ loadScripts(document, 'script');</script>
 <li class="circle">org.apache.arrow.adbc.driver.jdbc.<a href="org/apache/arrow/adbc/driver/jdbc/JdbcQuirks.Builder.html" class="type-name-link" title="class in org.apache.arrow.adbc.driver.jdbc">JdbcQuirks.Builder</a></li>
 <li class="circle">org.apache.arrow.adbc.driver.jdbc.<a href="org/apache/arrow/adbc/driver/jdbc/JdbcStatement.html" class="type-name-link" title="class in org.apache.arrow.adbc.driver.jdbc">JdbcStatement</a> (implements org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/AdbcStatement.html" title="interface in org.apache.arrow.adbc.core">AdbcStatement</a>)</li>
 <li class="circle">org.apache.arrow.adbc.driver.jdbc.adapter.<a href="org/apache/arrow/adbc/driver/jdbc/adapter/JdbcToArrowTypeConverters.html" class="type-name-link" title="class in org.apache.arrow.adbc.driver.jdbc.adapter">JdbcToArrowTypeConverters</a></li>
+<li class="circle">org.apache.arrow.adbc.driver.jni.<a href="org/apache/arrow/adbc/driver/jni/JniConnection.html" class="type-name-link" title="class in org.apache.arrow.adbc.driver.jni">JniConnection</a> (implements org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/AdbcConnection.html" title="interface in org.apache.arrow.adbc.core">AdbcConnection</a>)</li>
+<li class="circle">org.apache.arrow.adbc.driver.jni.<a href="org/apache/arrow/adbc/driver/jni/JniDatabase.html" class="type-name-link" title="class in org.apache.arrow.adbc.driver.jni">JniDatabase</a> (implements org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/AdbcDatabase.html" title="interface in org.apache.arrow.adbc.core">AdbcDatabase</a>)</li>
+<li class="circle">org.apache.arrow.adbc.driver.jni.<a href="org/apache/arrow/adbc/driver/jni/JniDriver.html" class="type-name-link" title="class in org.apache.arrow.adbc.driver.jni">JniDriver</a> (implements org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/AdbcDriver.html" title="interface in org.apache.arrow.adbc.core">AdbcDriver</a>)</li>
+<li class="circle">org.apache.arrow.adbc.driver.jni.<a href="org/apache/arrow/adbc/driver/jni/JniDriverFactory.html" class="type-name-link" title="class in org.apache.arrow.adbc.driver.jni">JniDriverFactory</a> (implements org.apache.arrow.adbc.drivermanager.<a href="org/apache/arrow/adbc/drivermanager/AdbcDriverFactory.html" title="interface in org.apache.arrow.adbc.drivermanager">AdbcDriverFactory</a>)</li>
+<li class="circle">org.apache.arrow.adbc.driver.jni.<a href="org/apache/arrow/adbc/driver/jni/JniStatement.html" class="type-name-link" title="class in org.apache.arrow.adbc.driver.jni">JniStatement</a> (implements org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/AdbcStatement.html" title="interface in org.apache.arrow.adbc.core">AdbcStatement</a>)</li>
+<li class="circle">org.apache.arrow.adbc.driver.jni.impl.<a href="org/apache/arrow/adbc/driver/jni/impl/NativeConnectionHandle.html" class="type-name-link" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeConnectionHandle</a></li>
+<li class="circle">org.apache.arrow.adbc.driver.jni.impl.<a href="org/apache/arrow/adbc/driver/jni/impl/NativeDatabaseHandle.html" class="type-name-link" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeDatabaseHandle</a></li>
+<li class="circle">org.apache.arrow.adbc.driver.jni.impl.<a href="org/apache/arrow/adbc/driver/jni/impl/NativeQueryResult.html" class="type-name-link" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeQueryResult</a></li>
+<li class="circle">org.apache.arrow.adbc.driver.jni.impl.<a href="org/apache/arrow/adbc/driver/jni/impl/NativeSchemaResult.html" class="type-name-link" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeSchemaResult</a></li>
+<li class="circle">org.apache.arrow.adbc.driver.jni.impl.<a href="org/apache/arrow/adbc/driver/jni/impl/NativeStatementHandle.html" class="type-name-link" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeStatementHandle</a></li>
 <li class="circle">org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/PartitionDescriptor.html" class="type-name-link" title="class in org.apache.arrow.adbc.core">PartitionDescriptor</a></li>
 <li class="circle">org.apache.arrow.adbc.sql.<a href="org/apache/arrow/adbc/sql/SqlQuirks.html" class="type-name-link" title="class in org.apache.arrow.adbc.sql">SqlQuirks</a></li>
 <li class="circle">org.apache.arrow.adbc.sql.<a href="org/apache/arrow/adbc/sql/SqlQuirks.Builder.html" class="type-name-link" title="class in org.apache.arrow.adbc.sql">SqlQuirks.Builder</a></li>
@@ -171,6 +183,7 @@ loadScripts(document, 'script');</script>
 <li class="circle">org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/AdbcStatusCode.html" class="type-name-link" title="enum in org.apache.arrow.adbc.core">AdbcStatusCode</a></li>
 <li class="circle">org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/BulkIngestMode.html" class="type-name-link" title="enum in org.apache.arrow.adbc.core">BulkIngestMode</a></li>
 <li class="circle">org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/IsolationLevel.html" class="type-name-link" title="enum in org.apache.arrow.adbc.core">IsolationLevel</a></li>
+<li class="circle">org.apache.arrow.adbc.driver.jni.impl.<a href="org/apache/arrow/adbc/driver/jni/impl/JniLoader.html" class="type-name-link" title="enum in org.apache.arrow.adbc.driver.jni.impl">JniLoader</a></li>
 <li class="circle">org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/StandardStatistics.html" class="type-name-link" title="enum in org.apache.arrow.adbc.core">StandardStatistics</a></li>
 </ul>
 </li>

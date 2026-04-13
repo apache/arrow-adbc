@@ -9,11 +9,11 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://arrow.apache.org/adbc/main/java/driver_manager.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="This document describes the installation of the Java driver manager. Installation: To include the ADBC Driver Manager in your Maven project, add the following dependency: API Reference: See the API..." />
+<meta property="og:description" content="This document describes the Java driver manager. Installation: To include the ADBC Driver Manager in your Maven project, add the following dependency: API Reference: See the API reference." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="This document describes the installation of the Java driver manager. Installation: To include the ADBC Driver Manager in your Maven project, add the following dependency: API Reference: See the API..." />
-<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Java API Reference" href="api/index.html"><link rel="prev" title="Quickstart" href="quickstart.html">
+<meta name="description" content="This document describes the Java driver manager. Installation: To include the ADBC Driver Manager in your Maven project, add the following dependency: API Reference: See the API reference." />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="JNI Driver Manager" href="jni.html"><link rel="prev" title="Quickstart" href="quickstart.html">
         <link rel="prefetch" href="../_static/logo-light.png" as="image">
         <link rel="prefetch" href="../_static/logo-dark.png" as="image">
 
@@ -304,6 +304,7 @@
 <li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Java</a><input aria-label="Toggle navigation of Java" checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
 <li class="toctree-l2"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
 <li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Driver Manager</a></li>
+<li class="toctree-l2"><a class="reference internal" href="jni.html">JNI Driver Manager</a></li>
 <li class="toctree-l2"><a class="reference internal" href="api/index.html">Java API Reference</a></li>
 </ul>
 </li>
@@ -409,7 +410,15 @@
         <article role="main" id="furo-main-content">
           <section id="driver-manager">
 <h1>Driver Manager<a class="headerlink" href="#driver-manager" title="Link to this heading">¶</a></h1>
-<p>This document describes the installation of the Java <a class="reference internal" href="../glossary.html#term-driver-manager"><span class="xref std std-term">driver manager</span></a>.</p>
+<p>This document describes the Java <a class="reference internal" href="../glossary.html#term-driver-manager"><span class="xref std std-term">driver manager</span></a>.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This driver manager can only load drivers developed in Java (or
+other JVM languages). The <a class="reference internal" href="jni.html"><span class="doc">JNI Driver Manager</span></a> should be used to load
+drivers from other ecosystems (including drivers developed in C/C++,
+Go, and Rust). Currently, far more drivers are available though JNI
+than are available in pure-Java.</p>
+</div>
 <section id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h2>
 <p>To include the ADBC Driver Manager in your Maven project, add the following dependency:</p>
@@ -432,12 +441,12 @@
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="api/index.html">
+          <a class="next-page" href="jni.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Java API Reference</div>
+                <div class="title">JNI Driver Manager</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>

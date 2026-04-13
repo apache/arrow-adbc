@@ -63,6 +63,10 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color">&nbsp;</div>
 <div class="col-first even-row-color"><a href="#org.apache.arrow.adbc.driver.jdbc">org.apache.arrow.adbc.driver.jdbc</a></div>
 <div class="col-last even-row-color">&nbsp;</div>
+<div class="col-first odd-row-color"><a href="#org.apache.arrow.adbc.driver.jni">org.apache.arrow.adbc.driver.jni</a></div>
+<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-first even-row-color"><a href="#org.apache.arrow.adbc.driver.jni.impl">org.apache.arrow.adbc.driver.jni.impl</a></div>
+<div class="col-last even-row-color">&nbsp;</div>
 <div class="col-first odd-row-color"><a href="#org.apache.arrow.adbc.driver.testsuite">org.apache.arrow.adbc.driver.testsuite</a></div>
 <div class="col-last odd-row-color">&nbsp;</div>
 <div class="col-first even-row-color"><a href="#org.apache.arrow.adbc.drivermanager">org.apache.arrow.adbc.drivermanager</a></div>
@@ -256,6 +260,73 @@ loadScripts(document, 'script');</script>
 <div class="col-first even-row-color"><a href="class-use/IsolationLevel.html#org.apache.arrow.adbc.driver.jdbc">IsolationLevel</a></div>
 <div class="col-last even-row-color">
 <div class="block">The isolation level to use for transactions when autocommit is disabled.</div>
+</div>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="org.apache.arrow.adbc.driver.jni">
+<div class="caption"><span>Classes in <a href="package-summary.html">org.apache.arrow.adbc.core</a> used by <a href="../driver/jni/package-summary.html">org.apache.arrow.adbc.driver.jni</a></span></div>
+<div class="summary-table two-column-summary">
+<div class="table-header col-first">Class</div>
+<div class="table-header col-last">Description</div>
+<div class="col-first even-row-color"><a href="class-use/AdbcConnection.html#org.apache.arrow.adbc.driver.jni">AdbcConnection</a></div>
+<div class="col-last even-row-color">
+<div class="block">A connection to a <a href="AdbcDatabase.html" title="interface in org.apache.arrow.adbc.core"><code>AdbcDatabase</code></a>.</div>
+</div>
+<div class="col-first odd-row-color"><a href="class-use/AdbcConnection.GetObjectsDepth.html#org.apache.arrow.adbc.driver.jni">AdbcConnection.GetObjectsDepth</a></div>
+<div class="col-last odd-row-color">
+<div class="block">The level of nesting to retrieve for <a href="AdbcConnection.html#getObjects(org.apache.arrow.adbc.core.AdbcConnection.GetObjectsDepth,java.lang.String,java.lang.String,java.lang.String,java.lang.String%5B%5D,java.lang.String)"><code>AdbcConnection.getObjects(GetObjectsDepth, String, String, String, String[], String)</code></a>.</div>
+</div>
+<div class="col-first even-row-color"><a href="class-use/AdbcDatabase.html#org.apache.arrow.adbc.driver.jni">AdbcDatabase</a></div>
+<div class="col-last even-row-color">
+<div class="block">An instance of a database (e.g. a handle to an in-memory database).</div>
+</div>
+<div class="col-first odd-row-color"><a href="class-use/AdbcDriver.html#org.apache.arrow.adbc.driver.jni">AdbcDriver</a></div>
+<div class="col-last odd-row-color">
+<div class="block">A handle to an ADBC database driver.</div>
+</div>
+<div class="col-first even-row-color"><a href="class-use/AdbcException.html#org.apache.arrow.adbc.driver.jni">AdbcException</a></div>
+<div class="col-last even-row-color">
+<div class="block">An error in the database or ADBC driver.</div>
+</div>
+<div class="col-first odd-row-color"><a href="class-use/AdbcOptions.html#org.apache.arrow.adbc.driver.jni">AdbcOptions</a></div>
+<div class="col-last odd-row-color">
+<div class="block">An ADBC object that supports getting/setting generic options.</div>
+</div>
+<div class="col-first even-row-color"><a href="class-use/AdbcStatement.html#org.apache.arrow.adbc.driver.jni">AdbcStatement</a></div>
+<div class="col-last even-row-color">
+<div class="block">A container for all state needed to execute a database query, such as the query itself,
+ parameters for prepared statements, driver parameters, etc.</div>
+</div>
+<div class="col-first odd-row-color"><a href="class-use/AdbcStatement.QueryResult.html#org.apache.arrow.adbc.driver.jni">AdbcStatement.QueryResult</a></div>
+<div class="col-last odd-row-color">
+<div class="block">The result of executing a query with a result set.</div>
+</div>
+<div class="col-first even-row-color"><a href="class-use/AdbcStatement.UpdateResult.html#org.apache.arrow.adbc.driver.jni">AdbcStatement.UpdateResult</a></div>
+<div class="col-last even-row-color">
+<div class="block">The result of executing a query without a result set.</div>
+</div>
+<div class="col-first odd-row-color"><a href="class-use/BulkIngestMode.html#org.apache.arrow.adbc.driver.jni">BulkIngestMode</a></div>
+<div class="col-last odd-row-color">
+<div class="block">How to handle already-existing/nonexistent tables for bulk ingest operations.</div>
+</div>
+<div class="col-first even-row-color"><a href="class-use/TypedKey.html#org.apache.arrow.adbc.driver.jni">TypedKey</a></div>
+<div class="col-last even-row-color">
+<div class="block">A typesafe option key.</div>
+</div>
+</div>
+</section>
+</li>
+<li>
+<section class="detail" id="org.apache.arrow.adbc.driver.jni.impl">
+<div class="caption"><span>Classes in <a href="package-summary.html">org.apache.arrow.adbc.core</a> used by <a href="../driver/jni/impl/package-summary.html">org.apache.arrow.adbc.driver.jni.impl</a></span></div>
+<div class="summary-table two-column-summary">
+<div class="table-header col-first">Class</div>
+<div class="table-header col-last">Description</div>
+<div class="col-first even-row-color"><a href="class-use/AdbcException.html#org.apache.arrow.adbc.driver.jni.impl">AdbcException</a></div>
+<div class="col-last even-row-color">
+<div class="block">An error in the database or ADBC driver.</div>
 </div>
 </div>
 </section>
