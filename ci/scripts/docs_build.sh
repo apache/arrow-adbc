@@ -26,7 +26,7 @@ main() {
     popd
 
     pushd "$source_dir/java"
-    mvn --no-transfer-progress site
+    mvn --no-transfer-progress -Pjni site
     popd
 
     pushd "$source_dir/docs"
