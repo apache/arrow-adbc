@@ -21,6 +21,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -30,10 +33,12 @@ import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcDatabase;
+import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.adbc.core.BulkIngestMode;
+import org.apache.arrow.adbc.core.TypedKey;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
 import org.apache.arrow.vector.BigIntVector;
@@ -44,6 +49,7 @@ import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class JniDriverTest {
   @Test
@@ -52,7 +58,63 @@ class JniDriverTest {
       JniDriver driver = new JniDriver(allocator);
       Map<String, Object> parameters = new HashMap<>();
       JniDriver.PARAM_DRIVER.set(parameters, "adbc_driver_sqlite");
+      driver.open(parameters).close();
+    }
+  }
 
+  @Test
+  void loadManifest(@TempDir Path tempDir) throws Exception {
+    Path tempFile = Files.createFile(tempDir.resolve("mydriver.toml"));
+    // TODO(https://github.com/apache/arrow-adbc/issues/3536): use proper multiline string
+    Files.write(
+        tempFile,
+        String.join("\n", "manifest_version = 1", "[Driver]", "shared = \"adbc_driver_sqlite\"")
+            .getBytes(StandardCharsets.UTF_8));
+
+    try (final BufferAllocator allocator = new RootAllocator()) {
+      JniDriver driver = new JniDriver(allocator);
+      Map<String, Object> parameters = new HashMap<>();
+      JniDriver.PARAM_DRIVER.set(parameters, "mydriver");
+      JniDriver.PARAM_MANIFEST_SEARCH_PATH.set(parameters, tempDir.toString());
+      driver.open(parameters).close();
+    }
+  }
+
+  @Test
+  void loadProfile(@TempDir Path tempDir) throws Exception {
+    Path tempFile = Files.createFile(tempDir.resolve("myprofile.toml"));
+    // TODO(https://github.com/apache/arrow-adbc/issues/3536): use proper multiline string
+    Files.write(
+        tempFile,
+        String.join(
+                "\n",
+                "profile_version = 1",
+                "driver = \"adbc_driver_sqlite\"",
+                "[Options]",
+                "adbc.sqlite.query.batch_rows = 1024")
+            .getBytes(StandardCharsets.UTF_8));
+    try (final BufferAllocator allocator = new RootAllocator()) {
+      JniDriver driver = new JniDriver(allocator);
+      Map<String, Object> parameters = new HashMap<>();
+      JniDriver.PARAM_PROFILE.set(parameters, "myprofile");
+      JniDriver.PARAM_PROFILE_SEARCH_PATH.set(parameters, tempDir.toString());
+      try (final AdbcDatabase db = driver.open(parameters)) {
+        // TODO(lidavidm): getOption not implemented
+        AdbcException e =
+            assertThrows(
+                AdbcException.class,
+                () -> db.getOption(new TypedKey<>("adbc.sqlite.query.batch_rows", Long.class)));
+        assertThat(e).hasMessageContaining("Unsupported option");
+      }
+    }
+  }
+
+  @Test
+  void loadUri() throws Exception {
+    try (final BufferAllocator allocator = new RootAllocator()) {
+      JniDriver driver = new JniDriver(allocator);
+      Map<String, Object> parameters = new HashMap<>();
+      AdbcDriver.PARAM_URI.set(parameters, "adbc_driver_sqlite://");
       driver.open(parameters).close();
     }
   }
@@ -191,7 +253,7 @@ class JniDriverTest {
           final AdbcStatement stmt = conn.createStatement();
           final VectorSchemaRoot root = VectorSchemaRoot.create(paramSchema, allocator)) {
         ((BigIntVector) root.getVector(0)).setSafe(0, 41);
-        ((BigIntVector) root.getVector(0)).setNull(1);
+        root.getVector(0).setNull(1);
         root.setRowCount(2);
 
         stmt.setSqlQuery("SELECT 1 + ?");
