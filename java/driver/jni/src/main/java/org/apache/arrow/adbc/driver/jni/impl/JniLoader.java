@@ -33,11 +33,12 @@ import org.apache.arrow.c.ArrowSchema;
 public enum JniLoader {
   INSTANCE;
 
-  static final String LIBRARY_NAME = "adbc_driver_jni";
-  static final String LIBRARY_PATH_PROPERTY = "arrow.adbc.driver.jni.library.path";
-
   JniLoader() {
-    String resolvedPath = resolveLibraryPath(LIBRARY_NAME);
+    final String libraryName = JniLibraryResolver.LIBRARY_NAME;
+
+    // If 'arrow.adbc.driver.jni.library.path' is defined, try to load the native library from
+    // there
+    String resolvedPath = JniLibraryResolver.resolveLibraryPath(libraryName);
     if (resolvedPath != null) {
       System.load(resolvedPath);
       return;
@@ -45,7 +46,7 @@ public enum JniLoader {
 
     // The JAR may contain multiple binaries for different platforms, so load the appropriate one.
     String libraryToLoad =
-        LIBRARY_NAME + "/" + getNormalizedArch() + "/" + System.mapLibraryName(LIBRARY_NAME);
+        libraryName + "/" + getNormalizedArch() + "/" + System.mapLibraryName(libraryName);
 
     try {
       InputStream is = JniLoader.class.getClassLoader().getResourceAsStream(libraryToLoad);
@@ -64,22 +65,6 @@ public enum JniLoader {
     } catch (IOException e) {
       throw new IllegalStateException("Error loading native library " + libraryToLoad, e);
     }
-  }
-
-  /**
-   * Resolve the native library path from the {@code arrow.adbc.driver.jni.library.path} system
-   * property. Returns the absolute path to load, or {@code null} if the property is not set or the
-   * library file does not exist at the specified location.
-   */
-  static String resolveLibraryPath(String libraryName) {
-    String libraryPath = System.getProperty(LIBRARY_PATH_PROPERTY);
-    if (libraryPath != null) {
-      File libraryFile = new File(libraryPath, System.mapLibraryName(libraryName));
-      if (libraryFile.isFile()) {
-        return libraryFile.getAbsolutePath();
-      }
-    }
-    return null;
   }
 
   private String getNormalizedArch() {

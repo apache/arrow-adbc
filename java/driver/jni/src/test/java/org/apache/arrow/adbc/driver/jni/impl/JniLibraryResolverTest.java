@@ -26,41 +26,41 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-class JniLoaderTest {
+class JniLibraryResolverTest {
 
   @AfterEach
   void clearProperty() {
-    System.clearProperty(JniLoader.LIBRARY_PATH_PROPERTY);
+    System.clearProperty(JniLibraryResolver.LIBRARY_PATH_PROPERTY);
   }
 
   @Test
   void resolveLibraryPathPropertyNotSet() {
-    assertThat(JniLoader.resolveLibraryPath(JniLoader.LIBRARY_NAME)).isNull();
+    assertThat(JniLibraryResolver.resolveLibraryPath(JniLibraryResolver.LIBRARY_NAME)).isNull();
   }
 
   @Test
   void resolveLibraryPathFileExists(@TempDir Path tempDir) throws IOException {
-    String libraryFileName = System.mapLibraryName(JniLoader.LIBRARY_NAME);
+    String libraryFileName = System.mapLibraryName(JniLibraryResolver.LIBRARY_NAME);
     File libraryFile = tempDir.resolve(libraryFileName).toFile();
     assertThat(libraryFile.createNewFile()).isTrue();
 
-    System.setProperty(JniLoader.LIBRARY_PATH_PROPERTY, tempDir.toString());
+    System.setProperty(JniLibraryResolver.LIBRARY_PATH_PROPERTY, tempDir.toString());
 
-    String resolved = JniLoader.resolveLibraryPath(JniLoader.LIBRARY_NAME);
+    String resolved = JniLibraryResolver.resolveLibraryPath(JniLibraryResolver.LIBRARY_NAME);
     assertThat(resolved).isEqualTo(libraryFile.getAbsolutePath());
   }
 
   @Test
   void resolveLibraryPathFileMissing(@TempDir Path tempDir) {
-    System.setProperty(JniLoader.LIBRARY_PATH_PROPERTY, tempDir.toString());
+    System.setProperty(JniLibraryResolver.LIBRARY_PATH_PROPERTY, tempDir.toString());
 
-    assertThat(JniLoader.resolveLibraryPath(JniLoader.LIBRARY_NAME)).isNull();
+    assertThat(JniLibraryResolver.resolveLibraryPath(JniLibraryResolver.LIBRARY_NAME)).isNull();
   }
 
   @Test
   void resolveLibraryPathDirectoryDoesNotExist() {
-    System.setProperty(JniLoader.LIBRARY_PATH_PROPERTY, "/nonexistent/path");
+    System.setProperty(JniLibraryResolver.LIBRARY_PATH_PROPERTY, "/nonexistent/path");
 
-    assertThat(JniLoader.resolveLibraryPath(JniLoader.LIBRARY_NAME)).isNull();
+    assertThat(JniLibraryResolver.resolveLibraryPath(JniLibraryResolver.LIBRARY_NAME)).isNull();
   }
 }
