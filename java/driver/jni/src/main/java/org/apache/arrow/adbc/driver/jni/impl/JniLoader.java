@@ -34,8 +34,20 @@ public enum JniLoader {
   INSTANCE;
 
   JniLoader() {
-    // The JAR may contain multiple binaries for different platforms, so load the appropriate one.
     final String libraryName = "adbc_driver_jni";
+
+    // If 'arrow.adbc.driver.jni.library.path' is defined, try to load the native library from
+    // there
+    String libraryPath = System.getProperty("arrow.adbc.driver.jni.library.path");
+    if (libraryPath != null) {
+      File libraryFile = new File(libraryPath, System.mapLibraryName(libraryName));
+      if (libraryFile.isFile()) {
+        System.load(libraryFile.getAbsolutePath());
+        return;
+      }
+    }
+
+    // The JAR may contain multiple binaries for different platforms, so load the appropriate one.
     String libraryToLoad =
         libraryName + "/" + getNormalizedArch() + "/" + System.mapLibraryName(libraryName);
 
