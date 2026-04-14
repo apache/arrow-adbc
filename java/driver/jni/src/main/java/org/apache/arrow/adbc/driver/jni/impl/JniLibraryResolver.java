@@ -18,32 +18,38 @@
 package org.apache.arrow.adbc.driver.jni.impl;
 
 import java.io.File;
+import java.util.Locale;
 
-/**
- * Resolves the JNI native library path from the {@code arrow.adbc.driver.jni.library.path} system
- * property. Separated from {@link JniLoader} so that it can be tested without triggering native
- * library loading.
- */
+/** Resolves the JNI native library location. */
 class JniLibraryResolver {
 
-  static final String LIBRARY_NAME = "adbc_driver_jni";
-  static final String LIBRARY_PATH_PROPERTY = "arrow.adbc.driver.jni.library.path";
+  static final String PROPERTY = "arrow.adbc.driver.jni.library.path";
+  private static final String LIBRARY_NAME = "adbc_driver_jni";
 
-  private JniLibraryResolver() {}
-
-  /**
-   * Resolve the native library path from the {@code arrow.adbc.driver.jni.library.path} system
-   * property. Returns the absolute path to load, or {@code null} if the property is not set or the
-   * library file does not exist at the specified location.
-   */
-  static String resolveLibraryPath(String libraryName) {
-    String libraryPath = System.getProperty(LIBRARY_PATH_PROPERTY);
-    if (libraryPath != null) {
-      File libraryFile = new File(libraryPath, System.mapLibraryName(libraryName));
-      if (libraryFile.isFile()) {
-        return libraryFile.getAbsolutePath();
-      }
+  /** Returns absolute file path if the system property points to an existing library, else null. */
+  static String resolve() {
+    String dir = System.getProperty(PROPERTY);
+    if (dir == null) {
+      return null;
     }
-    return null;
+    File file = new File(dir, System.mapLibraryName(LIBRARY_NAME));
+    return file.isFile() ? file.getAbsolutePath() : null;
+  }
+
+  /** Returns the platform-specific resource path for JAR extraction. */
+  static String resourcePath() {
+    return LIBRARY_NAME + "/" + getNormalizedArch() + "/" + System.mapLibraryName(LIBRARY_NAME);
+  }
+
+  private static String getNormalizedArch() {
+    String arch = System.getProperty("os.arch").toLowerCase(Locale.US);
+    switch (arch) {
+      case "amd64":
+        return "x86_64";
+      case "aarch64":
+        return "aarch_64";
+      default:
+        throw new RuntimeException("ADBC JNI driver not supported on architecture " + arch);
+    }
   }
 }

@@ -23,7 +23,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import java.util.Locale;
 import java.util.Map;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.c.ArrowArray;
@@ -34,19 +33,15 @@ public enum JniLoader {
   INSTANCE;
 
   JniLoader() {
-    final String libraryName = JniLibraryResolver.LIBRARY_NAME;
-
-    // If 'arrow.adbc.driver.jni.library.path' is defined, try to load the native library from
-    // there
-    String resolvedPath = JniLibraryResolver.resolveLibraryPath(libraryName);
+    // If 'arrow.adbc.driver.jni.library.path' is set, load from there instead of the JAR.
+    String resolvedPath = JniLibraryResolver.resolve();
     if (resolvedPath != null) {
       System.load(resolvedPath);
       return;
     }
 
     // The JAR may contain multiple binaries for different platforms, so load the appropriate one.
-    String libraryToLoad =
-        libraryName + "/" + getNormalizedArch() + "/" + System.mapLibraryName(libraryName);
+    String libraryToLoad = JniLibraryResolver.resourcePath();
 
     try {
       InputStream is = JniLoader.class.getClassLoader().getResourceAsStream(libraryToLoad);
@@ -64,19 +59,6 @@ public enum JniLoader {
       Runtime.getRuntime().load(temp.getAbsolutePath());
     } catch (IOException e) {
       throw new IllegalStateException("Error loading native library " + libraryToLoad, e);
-    }
-  }
-
-  private String getNormalizedArch() {
-    // Be consistent with our CMake config
-    String arch = System.getProperty("os.arch").toLowerCase(Locale.US);
-    switch (arch) {
-      case "amd64":
-        return "x86_64";
-      case "aarch64":
-        return "aarch_64";
-      default:
-        throw new RuntimeException("ADBC JNI driver not supported on architecture " + arch);
     }
   }
 

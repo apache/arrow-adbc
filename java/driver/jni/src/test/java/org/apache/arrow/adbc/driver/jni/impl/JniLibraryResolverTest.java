@@ -30,37 +30,40 @@ class JniLibraryResolverTest {
 
   @AfterEach
   void clearProperty() {
-    System.clearProperty(JniLibraryResolver.LIBRARY_PATH_PROPERTY);
+    System.clearProperty(JniLibraryResolver.PROPERTY);
   }
 
   @Test
-  void resolveLibraryPathPropertyNotSet() {
-    assertThat(JniLibraryResolver.resolveLibraryPath(JniLibraryResolver.LIBRARY_NAME)).isNull();
+  void propertyNotSet() {
+    assertThat(JniLibraryResolver.resolve()).isNull();
   }
 
   @Test
-  void resolveLibraryPathFileExists(@TempDir Path tempDir) throws IOException {
-    String libraryFileName = System.mapLibraryName(JniLibraryResolver.LIBRARY_NAME);
-    File libraryFile = tempDir.resolve(libraryFileName).toFile();
-    assertThat(libraryFile.createNewFile()).isTrue();
+  void fileExists(@TempDir Path tempDir) throws IOException {
+    File lib = tempDir.resolve(System.mapLibraryName("adbc_driver_jni")).toFile();
+    assertThat(lib.createNewFile()).isTrue();
 
-    System.setProperty(JniLibraryResolver.LIBRARY_PATH_PROPERTY, tempDir.toString());
-
-    String resolved = JniLibraryResolver.resolveLibraryPath(JniLibraryResolver.LIBRARY_NAME);
-    assertThat(resolved).isEqualTo(libraryFile.getAbsolutePath());
+    System.setProperty(JniLibraryResolver.PROPERTY, tempDir.toString());
+    assertThat(JniLibraryResolver.resolve()).isEqualTo(lib.getAbsolutePath());
   }
 
   @Test
-  void resolveLibraryPathFileMissing(@TempDir Path tempDir) {
-    System.setProperty(JniLibraryResolver.LIBRARY_PATH_PROPERTY, tempDir.toString());
-
-    assertThat(JniLibraryResolver.resolveLibraryPath(JniLibraryResolver.LIBRARY_NAME)).isNull();
+  void fileMissing(@TempDir Path tempDir) {
+    System.setProperty(JniLibraryResolver.PROPERTY, tempDir.toString());
+    assertThat(JniLibraryResolver.resolve()).isNull();
   }
 
   @Test
-  void resolveLibraryPathDirectoryDoesNotExist() {
-    System.setProperty(JniLibraryResolver.LIBRARY_PATH_PROPERTY, "/nonexistent/path");
+  void directoryDoesNotExist() {
+    System.setProperty(JniLibraryResolver.PROPERTY, "/nonexistent/path");
+    assertThat(JniLibraryResolver.resolve()).isNull();
+  }
 
-    assertThat(JniLibraryResolver.resolveLibraryPath(JniLibraryResolver.LIBRARY_NAME)).isNull();
+  @Test
+  void resourcePathContainsLibraryAndArch() {
+    String path = JniLibraryResolver.resourcePath();
+    assertThat(path).startsWith("adbc_driver_jni/");
+    assertThat(path).containsPattern("(x86_64|aarch_64)");
+    assertThat(path).endsWith(System.mapLibraryName("adbc_driver_jni"));
   }
 }
