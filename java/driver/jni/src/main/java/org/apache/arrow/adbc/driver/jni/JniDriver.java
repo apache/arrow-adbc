@@ -48,6 +48,22 @@ public class JniDriver implements AdbcDriver {
   public static final TypedKey<String> PARAM_PROFILE_SEARCH_PATH =
       new TypedKey<>("jni.additional_profile_search_path_list", String.class);
 
+  static final TypedKey<Boolean> AUTOCOMMIT =
+      new TypedKey<>("adbc.connection.autocommit", Boolean.class);
+  static final TypedKey<String> ISOLATION_LEVEL =
+      new TypedKey<>("adbc.connection.transaction.isolation_level", String.class);
+  static final TypedKey<Boolean> READONLY =
+      new TypedKey<>("adbc.connection.readonly", Boolean.class);
+  static final String ISOLATION_LEVEL_READ_UNCOMMITTED =
+      "adbc.connection.transaction.isolation.read_uncommitted";
+  static final String ISOLATION_LEVEL_READ_COMMITTED =
+      "adbc.connection.transaction.isolation.read_committed";
+  static final String ISOLATION_LEVEL_REPEATABLE_READ =
+      "adbc.connection.transaction.isolation.repeatable_read";
+  static final String ISOLATION_LEVEL_SNAPSHOT = "adbc.connection.transaction.isolation.snapshot";
+  static final String ISOLATION_LEVEL_SERIALIZABLE =
+      "adbc.connection.transaction.isolation.serializable";
+
   private final BufferAllocator allocator;
 
   public JniDriver(BufferAllocator allocator) {

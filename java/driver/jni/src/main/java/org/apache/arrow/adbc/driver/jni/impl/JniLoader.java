@@ -186,6 +186,14 @@ public enum JniLoader {
     return NativeAdbc.connectionGetTableTypes(connection.getConnectionHandle());
   }
 
+  public void connectionCommit(NativeConnectionHandle connection) throws AdbcException {
+    NativeAdbc.connectionCommit(connection.getConnectionHandle());
+  }
+
+  public void connectionRollback(NativeConnectionHandle connection) throws AdbcException {
+    NativeAdbc.connectionRollback(connection.getConnectionHandle());
+  }
+
   public byte[] connectionGetOptionBytes(NativeConnectionHandle handle, String key)
       throws AdbcException {
     return NativeAdbc.connectionGetOptionBytes(handle.getConnectionHandle(), key);

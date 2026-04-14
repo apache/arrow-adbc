@@ -400,6 +400,60 @@ class JniDriverTest {
   }
 
   @Test
+  void commit() throws Exception {
+    try (final BufferAllocator allocator = new RootAllocator()) {
+      JniDriver driver = new JniDriver(allocator);
+      Map<String, Object> parameters = new HashMap<>();
+      JniDriver.PARAM_DRIVER.set(parameters, "adbc_driver_sqlite");
+      try (final AdbcDatabase db = driver.open(parameters);
+          final AdbcConnection conn = db.connect()) {
+        try (final AdbcStatement stmt = conn.createStatement()) {
+          stmt.setSqlQuery("DROP TABLE IF EXISTS foobar");
+          stmt.executeUpdate();
+        }
+
+        assertThat(conn.getAutoCommit()).isTrue();
+        // not supported by sqlite driver
+        // assertThat(conn.getIsolationLevel()).isEqualTo(IsolationLevel.SERIALIZABLE);
+        conn.setAutoCommit(false);
+        assertThat(conn.getAutoCommit()).isFalse();
+
+        try (final AdbcStatement stmt = conn.createStatement()) {
+          stmt.setSqlQuery("CREATE TABLE foobar (v)");
+          stmt.executeUpdate();
+
+          stmt.setSqlQuery("SELECT * FROM foobar");
+          try (AdbcStatement.QueryResult result = stmt.executeQuery()) {
+            result.getReader().loadNextBatch();
+          }
+        }
+
+        conn.rollback();
+
+        try (final AdbcStatement stmt = conn.createStatement()) {
+          stmt.setSqlQuery("SELECT * FROM foobar");
+          AdbcException e = assertThrows(AdbcException.class, stmt::executeQuery);
+          assertThat(e).hasMessageContaining("no such table: foobar");
+        }
+
+        try (final AdbcStatement stmt = conn.createStatement()) {
+          stmt.setSqlQuery("CREATE TABLE foobar (v)");
+          stmt.executeUpdate();
+        }
+
+        conn.commit();
+
+        try (final AdbcStatement stmt = conn.createStatement()) {
+          stmt.setSqlQuery("SELECT * FROM foobar");
+          try (AdbcStatement.QueryResult result = stmt.executeQuery()) {
+            result.getReader().loadNextBatch();
+          }
+        }
+      }
+    }
+  }
+
+  @Test
   void getSetOption() throws Exception {
     TypedKey<Integer> batchRowsInt = new TypedKey<>("adbc.sqlite.query.batch_rows", Integer.class);
     TypedKey<Long> batchRowsLong = new TypedKey<>("adbc.sqlite.query.batch_rows", Long.class);

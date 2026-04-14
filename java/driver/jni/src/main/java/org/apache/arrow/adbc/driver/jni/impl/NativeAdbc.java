@@ -90,6 +90,10 @@ class NativeAdbc {
 
   static native NativeQueryResult connectionGetTableTypes(long handle) throws AdbcException;
 
+  static native void connectionCommit(long handle) throws AdbcException;
+
+  static native void connectionRollback(long handle) throws AdbcException;
+
   static native byte[] connectionGetOptionBytes(long handle, String key) throws AdbcException;
 
   static native double connectionGetOptionDouble(long handle, String key) throws AdbcException;
