@@ -461,6 +461,7 @@ class JniDriverTest {
     }
   }
 
+  @SuppressWarnings("unchecked")
   @ParameterizedTest
   @MethodSource("getSetOptionFailProvider")
   void getSetOptionFailDatabase(GetSetOptionFailCase testCase) throws Exception {
@@ -478,6 +479,7 @@ class JniDriverTest {
     }
   }
 
+  @SuppressWarnings("unchecked")
   @ParameterizedTest
   @MethodSource("getSetOptionFailProvider")
   void getSetOptionFailConnection(GetSetOptionFailCase testCase) throws Exception {
@@ -495,6 +497,7 @@ class JniDriverTest {
     }
   }
 
+  @SuppressWarnings("unchecked")
   @ParameterizedTest
   @MethodSource("getSetOptionFailProvider")
   void getSetOptionFailStatement(GetSetOptionFailCase testCase) throws Exception {
