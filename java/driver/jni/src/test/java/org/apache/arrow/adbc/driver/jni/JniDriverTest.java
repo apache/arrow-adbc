@@ -25,12 +25,14 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
+import java.util.stream.Stream;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcDriver;
@@ -50,6 +52,8 @@ import org.apache.arrow.vector.types.pojo.Schema;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class JniDriverTest {
   @Test
@@ -91,7 +95,7 @@ class JniDriverTest {
                 "profile_version = 1",
                 "driver = \"adbc_driver_sqlite\"",
                 "[Options]",
-                "adbc.sqlite.query.batch_rows = 1024")
+                "adbc.sqlite.query.batch_rows = 4242")
             .getBytes(StandardCharsets.UTF_8));
     try (final BufferAllocator allocator = new RootAllocator()) {
       JniDriver driver = new JniDriver(allocator);
@@ -99,12 +103,8 @@ class JniDriverTest {
       JniDriver.PARAM_PROFILE.set(parameters, "myprofile");
       JniDriver.PARAM_PROFILE_SEARCH_PATH.set(parameters, tempDir.toString());
       try (final AdbcDatabase db = driver.open(parameters)) {
-        // TODO(lidavidm): getOption not implemented
-        AdbcException e =
-            assertThrows(
-                AdbcException.class,
-                () -> db.getOption(new TypedKey<>("adbc.sqlite.query.batch_rows", Long.class)));
-        assertThat(e).hasMessageContaining("Unsupported option");
+        assertThat(db.getOption(new TypedKey<>("adbc.sqlite.query.batch_rows", Long.class)))
+            .isEqualTo(4242L);
       }
     }
   }
@@ -397,5 +397,139 @@ class JniDriverTest {
         }
       }
     }
+  }
+
+  @Test
+  void getSetOption() throws Exception {
+    TypedKey<Integer> batchRowsInt = new TypedKey<>("adbc.sqlite.query.batch_rows", Integer.class);
+    TypedKey<Long> batchRowsLong = new TypedKey<>("adbc.sqlite.query.batch_rows", Long.class);
+    TypedKey<Boolean> bindByName = new TypedKey<>("adbc.statement.bind_by_name", Boolean.class);
+    TypedKey<String> bindByNameString = new TypedKey<>("adbc.statement.bind_by_name", String.class);
+    try (final BufferAllocator allocator = new RootAllocator()) {
+      JniDriver driver = new JniDriver(allocator);
+      Map<String, Object> parameters = new HashMap<>();
+      JniDriver.PARAM_DRIVER.set(parameters, "adbc_driver_sqlite");
+      try (final AdbcDatabase db = driver.open(parameters)) {
+        assertThat(db.getOption(batchRowsInt)).isEqualTo(1024);
+        assertThat(db.getOption(batchRowsLong)).isEqualTo(1024L);
+        assertThat(db.getOption(AdbcDriver.PARAM_URI))
+            .isEqualTo("file:adbc_driver_sqlite?mode=memory&cache=shared");
+
+        try (final AdbcConnection conn = db.connect();
+            final AdbcStatement stmt = conn.createStatement()) {
+          assertThat(conn.getOption(batchRowsInt)).isEqualTo(1024);
+          assertThat(conn.getOption(batchRowsLong)).isEqualTo(1024L);
+
+          assertThat(stmt.getOption(batchRowsInt)).isEqualTo(1024);
+          assertThat(stmt.getOption(batchRowsLong)).isEqualTo(1024L);
+          stmt.setOption(batchRowsLong, 42L);
+          assertThat(stmt.getOption(batchRowsLong)).isEqualTo(42L);
+          assertThat(stmt.getOption(bindByName)).isFalse();
+          assertThat(stmt.getOption(bindByNameString)).isEqualTo("false");
+          stmt.setOption(bindByName, true);
+          assertThat(stmt.getOption(bindByName)).isTrue();
+          assertThat(stmt.getOption(bindByNameString)).isEqualTo("true");
+        }
+      }
+    }
+  }
+
+  static class GetSetOptionFailCase {
+    @SuppressWarnings("rawtypes")
+    final TypedKey key;
+
+    final Object value;
+    final String message;
+
+    GetSetOptionFailCase(TypedKey<?> key, Object value, String message) {
+      this.key = key;
+      this.value = value;
+      this.message = message;
+    }
+
+    @Override
+    public String toString() {
+      String v;
+      if (value == null) {
+        v = "(NULL)";
+      } else if (value instanceof byte[]) {
+        v = Arrays.toString((byte[]) value);
+      } else {
+        v = value.toString();
+      }
+      return "key=" + key.getKey() + ", value=" + v;
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  @ParameterizedTest
+  @MethodSource("getSetOptionFailProvider")
+  void getSetOptionFailDatabase(GetSetOptionFailCase testCase) throws Exception {
+    // These will fail; we don't have a driver that supports an example of every type
+    try (final BufferAllocator allocator = new RootAllocator()) {
+      JniDriver driver = new JniDriver(allocator);
+      Map<String, Object> parameters = new HashMap<>();
+      JniDriver.PARAM_DRIVER.set(parameters, "adbc_driver_sqlite");
+      try (final AdbcDatabase db = driver.open(parameters)) {
+        AdbcException e;
+        //noinspection unchecked
+        e = assertThrows(AdbcException.class, () -> db.setOption(testCase.key, testCase.value));
+        assertThat(e).hasMessageContaining(testCase.message);
+      }
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  @ParameterizedTest
+  @MethodSource("getSetOptionFailProvider")
+  void getSetOptionFailConnection(GetSetOptionFailCase testCase) throws Exception {
+    try (final BufferAllocator allocator = new RootAllocator()) {
+      JniDriver driver = new JniDriver(allocator);
+      Map<String, Object> parameters = new HashMap<>();
+      JniDriver.PARAM_DRIVER.set(parameters, "adbc_driver_sqlite");
+      try (final AdbcDatabase db = driver.open(parameters);
+          final AdbcConnection conn = db.connect()) {
+        AdbcException e;
+        //noinspection unchecked
+        e = assertThrows(AdbcException.class, () -> conn.setOption(testCase.key, testCase.value));
+        assertThat(e).hasMessageContaining(testCase.message);
+      }
+    }
+  }
+
+  @SuppressWarnings("unchecked")
+  @ParameterizedTest
+  @MethodSource("getSetOptionFailProvider")
+  void getSetOptionFailStatement(GetSetOptionFailCase testCase) throws Exception {
+    try (final BufferAllocator allocator = new RootAllocator()) {
+      JniDriver driver = new JniDriver(allocator);
+      Map<String, Object> parameters = new HashMap<>();
+      JniDriver.PARAM_DRIVER.set(parameters, "adbc_driver_sqlite");
+      try (final AdbcDatabase db = driver.open(parameters);
+          final AdbcConnection conn = db.connect();
+          final AdbcStatement stmt = conn.createStatement()) {
+        AdbcException e;
+        //noinspection unchecked
+        e = assertThrows(AdbcException.class, () -> stmt.setOption(testCase.key, testCase.value));
+        assertThat(e).hasMessageContaining(testCase.message);
+      }
+    }
+  }
+
+  static Stream<GetSetOptionFailCase> getSetOptionFailProvider() {
+    return Stream.of(
+        new GetSetOptionFailCase(new TypedKey<>("unknown", Integer.class), 2048, "unknown=2048"),
+        new GetSetOptionFailCase(new TypedKey<>("unknown", Long.class), 2048L, "unknown=2048"),
+        new GetSetOptionFailCase(new TypedKey<>("unknown", Float.class), 2048f, "unknown=2048.0"),
+        new GetSetOptionFailCase(new TypedKey<>("unknown", Double.class), 2048d, "unknown=2048.0"),
+        new GetSetOptionFailCase(
+            new TypedKey<>("unknown", String.class), "foobar", "unknown='foobar'"),
+        new GetSetOptionFailCase(new TypedKey<>("unknown", String.class), null, "unknown=(NULL)"),
+        new GetSetOptionFailCase(
+            new TypedKey<>("unknown", Boolean.class), false, "unknown='false'"),
+        new GetSetOptionFailCase(new TypedKey<>("unknown", Boolean.class), true, "unknown='true'"),
+        new GetSetOptionFailCase(
+            new TypedKey<>("unknown", byte[].class), new byte[] {0, 42, 0}, "unknown=(3 bytes)"),
+        new GetSetOptionFailCase(new TypedKey<>("unknown", byte[].class), null, "unknown=(NULL)"));
   }
 }

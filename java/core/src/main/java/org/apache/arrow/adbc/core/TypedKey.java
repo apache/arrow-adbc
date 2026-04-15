@@ -42,6 +42,14 @@ public final class TypedKey<T> {
     return key;
   }
 
+  public Class<T> getType() {
+    return type;
+  }
+
+  public T cast(Object value) {
+    return type.cast(value);
+  }
+
   /**
    * Get the option value (if it was set) and check the type.
    *
