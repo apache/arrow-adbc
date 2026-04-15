@@ -150,17 +150,28 @@ implements <a href="../../core/AdbcConnection.html" title="interface in org.apac
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get a hierarchical view of all catalogs, database schemas, tables, and columns.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/pojo/Schema.html" title="class or interface in org.apache.arrow.vector.types.pojo" class="external-link">Schema</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getTableSchema(java.lang.String,java.lang.String,java.lang.String)" class="member-name-link">getTableSchema</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;catalog,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>&lt;T&gt;&nbsp;T</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getOption(org.apache.arrow.adbc.core.TypedKey)" class="member-name-link">getOption</a><wbr>(<a href="../../core/TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Get a generic option.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/pojo/Schema.html" title="class or interface in org.apache.arrow.vector.types.pojo" class="external-link">Schema</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getTableSchema(java.lang.String,java.lang.String,java.lang.String)" class="member-name-link">getTableSchema</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;catalog,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;dbSchema,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;tableName)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get the Arrow schema of a database table.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getTableTypes()" class="member-name-link">getTableTypes</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getTableTypes()" class="member-name-link">getTableTypes</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get a list of table types supported by the database.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>&lt;T&gt;&nbsp;void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#setOption(org.apache.arrow.adbc.core.TypedKey,T)" class="member-name-link">setOption</a><wbr>(<a href="../../core/TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key,
+ T&nbsp;value)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Set a generic option.</div>
 </div>
 </div>
 </div>
@@ -171,9 +182,6 @@ implements <a href="../../core/AdbcConnection.html" title="interface in org.apac
 <div class="inherited-list">
 <h3 id="methods-inherited-from-class-org.apache.arrow.adbc.core.AdbcConnection">Methods inherited from interface&nbsp;org.apache.arrow.adbc.core.<a href="../../core/AdbcConnection.html" title="interface in org.apache.arrow.adbc.core">AdbcConnection</a></h3>
 <code><a href="../../core/AdbcConnection.html#cancel()">cancel</a>, <a href="../../core/AdbcConnection.html#commit()">commit</a>, <a href="../../core/AdbcConnection.html#getAutoCommit()">getAutoCommit</a>, <a href="../../core/AdbcConnection.html#getCurrentCatalog()">getCurrentCatalog</a>, <a href="../../core/AdbcConnection.html#getCurrentDbSchema()">getCurrentDbSchema</a>, <a href="../../core/AdbcConnection.html#getInfo()">getInfo</a>, <a href="../../core/AdbcConnection.html#getInfo(org.apache.arrow.adbc.core.AdbcInfoCode%5B%5D)">getInfo</a>, <a href="../../core/AdbcConnection.html#getIsolationLevel()">getIsolationLevel</a>, <a href="../../core/AdbcConnection.html#getReadOnly()">getReadOnly</a>, <a href="../../core/AdbcConnection.html#getStatisticNames()">getStatisticNames</a>, <a href="../../core/AdbcConnection.html#getStatistics(java.lang.String,java.lang.String,java.lang.String,boolean)">getStatistics</a>, <a href="../../core/AdbcConnection.html#readPartition(java.nio.ByteBuffer)">readPartition</a>, <a href="../../core/AdbcConnection.html#rollback()">rollback</a>, <a href="../../core/AdbcConnection.html#setAutoCommit(boolean)">setAutoCommit</a>, <a href="../../core/AdbcConnection.html#setCurrentCatalog(java.lang.String)">setCurrentCatalog</a>, <a href="../../core/AdbcConnection.html#setCurrentDbSchema(java.lang.String)">setCurrentDbSchema</a>, <a href="../../core/AdbcConnection.html#setIsolationLevel(org.apache.arrow.adbc.core.IsolationLevel)">setIsolationLevel</a>, <a href="../../core/AdbcConnection.html#setReadOnly(boolean)">setReadOnly</a></code></div>
-<div class="inherited-list">
-<h3 id="methods-inherited-from-class-org.apache.arrow.adbc.core.AdbcOptions">Methods inherited from interface&nbsp;org.apache.arrow.adbc.core.<a href="../../core/AdbcOptions.html" title="interface in org.apache.arrow.adbc.core">AdbcOptions</a></h3>
-<code><a href="../../core/AdbcOptions.html#getOption(org.apache.arrow.adbc.core.TypedKey)">getOption</a>, <a href="../../core/AdbcOptions.html#setOption(org.apache.arrow.adbc.core.TypedKey,T)">setOption</a></code></div>
 </section>
 </li>
 </ul>
@@ -437,6 +445,48 @@ implements <a href="../../core/AdbcConnection.html" title="interface in org.apac
 <dl class="notes">
 <dt>Specified by:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/AutoCloseable.html#close()" title="class or interface in java.lang" class="external-link">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/AutoCloseable.html" title="class or interface in java.lang" class="external-link">AutoCloseable</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="getOption(org.apache.arrow.adbc.core.TypedKey)">
+<h3>getOption</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="type-parameters">&lt;T&gt;</span>&nbsp;<span class="return-type">T</span>&nbsp;<span class="element-name">getOption</span><wbr><span class="parameters">(<a href="../../core/TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key)</span>
+                throws <span class="exceptions"><a href="../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></span></div>
+<div class="block"><span class="descfrm-type-label">Description copied from interface:&nbsp;<code><a href="../../core/AdbcOptions.html#getOption(org.apache.arrow.adbc.core.TypedKey)">AdbcOptions</a></code></span></div>
+<div class="block">Get a generic option.</div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="../../core/AdbcOptions.html#getOption(org.apache.arrow.adbc.core.TypedKey)">getOption</a></code>&nbsp;in interface&nbsp;<code><a href="../../core/AdbcOptions.html" title="interface in org.apache.arrow.adbc.core">AdbcOptions</a></code></dd>
+<dt>Type Parameters:</dt>
+<dd><code>T</code> - The option value type.</dd>
+<dt>Parameters:</dt>
+<dd><code>key</code> - The option to retrieve.</dd>
+<dt>Returns:</dt>
+<dd>The option value.</dd>
+<dt>Throws:</dt>
+<dd><code><a href="../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="setOption(org.apache.arrow.adbc.core.TypedKey,T)">
+<h3 id="setOption(org.apache.arrow.adbc.core.TypedKey,java.lang.Object)">setOption</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="type-parameters">&lt;T&gt;</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">setOption</span><wbr><span class="parameters">(<a href="../../core/TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key,
+ T&nbsp;value)</span>
+                   throws <span class="exceptions"><a href="../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></span></div>
+<div class="block"><span class="descfrm-type-label">Description copied from interface:&nbsp;<code><a href="../../core/AdbcOptions.html#setOption(org.apache.arrow.adbc.core.TypedKey,T)">AdbcOptions</a></code></span></div>
+<div class="block">Set a generic option.</div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="../../core/AdbcOptions.html#setOption(org.apache.arrow.adbc.core.TypedKey,T)">setOption</a></code>&nbsp;in interface&nbsp;<code><a href="../../core/AdbcOptions.html" title="interface in org.apache.arrow.adbc.core">AdbcOptions</a></code></dd>
+<dt>Type Parameters:</dt>
+<dd><code>T</code> - The option value type.</dd>
+<dt>Parameters:</dt>
+<dd><code>key</code> - The option to set.</dd>
+<dd><code>value</code> - The option value.</dd>
+<dt>Throws:</dt>
+<dd><code><a href="../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></code></dd>
 </dl>
 </section>
 </li>
