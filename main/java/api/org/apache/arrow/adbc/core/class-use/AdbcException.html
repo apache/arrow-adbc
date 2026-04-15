@@ -538,40 +538,52 @@ loadScripts(document, 'script');</script>
 <div class="col-second odd-row-color"><span class="type-name-label">JniConnection.</span><code><a href="../../driver/jni/JniConnection.html#bulkIngest(java.lang.String,org.apache.arrow.adbc.core.BulkIngestMode)" class="member-name-link">bulkIngest</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;targetTableName,
  <a href="../BulkIngestMode.html" title="enum in org.apache.arrow.adbc.core">BulkIngestMode</a>&nbsp;mode)</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
-<div class="col-first even-row-color"><code><a href="../AdbcConnection.html" title="interface in org.apache.arrow.adbc.core">AdbcConnection</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">JniDatabase.</span><code><a href="../../driver/jni/JniDatabase.html#connect()" class="member-name-link">connect</a>()</code></div>
+<div class="col-first even-row-color"><code>void</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">JniConnection.</span><code><a href="../../driver/jni/JniConnection.html#commit()" class="member-name-link">commit</a>()</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
-<div class="col-first odd-row-color"><code><a href="../AdbcStatement.html" title="interface in org.apache.arrow.adbc.core">AdbcStatement</a></code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">JniConnection.</span><code><a href="../../driver/jni/JniConnection.html#createStatement()" class="member-name-link">createStatement</a>()</code></div>
+<div class="col-first odd-row-color"><code><a href="../AdbcConnection.html" title="interface in org.apache.arrow.adbc.core">AdbcConnection</a></code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">JniDatabase.</span><code><a href="../../driver/jni/JniDatabase.html#connect()" class="member-name-link">connect</a>()</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
-<div class="col-first even-row-color"><code><a href="../AdbcStatement.QueryResult.html" title="class in org.apache.arrow.adbc.core">AdbcStatement.QueryResult</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">JniStatement.</span><code><a href="../../driver/jni/JniStatement.html#executeQuery()" class="member-name-link">executeQuery</a>()</code></div>
+<div class="col-first even-row-color"><code><a href="../AdbcStatement.html" title="interface in org.apache.arrow.adbc.core">AdbcStatement</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">JniConnection.</span><code><a href="../../driver/jni/JniConnection.html#createStatement()" class="member-name-link">createStatement</a>()</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
-<div class="col-first odd-row-color"><code><a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/pojo/Schema.html" title="class or interface in org.apache.arrow.vector.types.pojo" class="external-link">Schema</a></code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">JniStatement.</span><code><a href="../../driver/jni/JniStatement.html#executeSchema()" class="member-name-link">executeSchema</a>()</code></div>
+<div class="col-first odd-row-color"><code><a href="../AdbcStatement.QueryResult.html" title="class in org.apache.arrow.adbc.core">AdbcStatement.QueryResult</a></code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">JniStatement.</span><code><a href="../../driver/jni/JniStatement.html#executeQuery()" class="member-name-link">executeQuery</a>()</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
-<div class="col-first even-row-color"><code><a href="../AdbcStatement.UpdateResult.html" title="class in org.apache.arrow.adbc.core">AdbcStatement.UpdateResult</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">JniStatement.</span><code><a href="../../driver/jni/JniStatement.html#executeUpdate()" class="member-name-link">executeUpdate</a>()</code></div>
+<div class="col-first even-row-color"><code><a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/pojo/Schema.html" title="class or interface in org.apache.arrow.vector.types.pojo" class="external-link">Schema</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">JniStatement.</span><code><a href="../../driver/jni/JniStatement.html#executeSchema()" class="member-name-link">executeSchema</a>()</code></div>
+<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-first odd-row-color"><code><a href="../AdbcStatement.UpdateResult.html" title="class in org.apache.arrow.adbc.core">AdbcStatement.UpdateResult</a></code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">JniStatement.</span><code><a href="../../driver/jni/JniStatement.html#executeUpdate()" class="member-name-link">executeUpdate</a>()</code></div>
+<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-first even-row-color"><code>boolean</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">JniConnection.</span><code><a href="../../driver/jni/JniConnection.html#getAutoCommit()" class="member-name-link">getAutoCommit</a>()</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
 <div class="col-first odd-row-color"><code><a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a></code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">JniConnection.</span><code><a href="../../driver/jni/JniConnection.html#getInfo(int%5B%5D)" class="member-name-link">getInfo</a><wbr>(int @Nullable []&nbsp;infoCodes)</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
-<div class="col-first even-row-color"><code><a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">JniConnection.</span><code><a href="../../driver/jni/JniConnection.html#getObjects(org.apache.arrow.adbc.core.AdbcConnection.GetObjectsDepth,java.lang.String,java.lang.String,java.lang.String,java.lang.String%5B%5D,java.lang.String)" class="member-name-link">getObjects</a><wbr>(<a href="../AdbcConnection.GetObjectsDepth.html" title="enum in org.apache.arrow.adbc.core">AdbcConnection.GetObjectsDepth</a>&nbsp;depth,
+<div class="col-first even-row-color"><code><a href="../IsolationLevel.html" title="enum in org.apache.arrow.adbc.core">IsolationLevel</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">JniConnection.</span><code><a href="../../driver/jni/JniConnection.html#getIsolationLevel()" class="member-name-link">getIsolationLevel</a>()</code></div>
+<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-first odd-row-color"><code><a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a></code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">JniConnection.</span><code><a href="../../driver/jni/JniConnection.html#getObjects(org.apache.arrow.adbc.core.AdbcConnection.GetObjectsDepth,java.lang.String,java.lang.String,java.lang.String,java.lang.String%5B%5D,java.lang.String)" class="member-name-link">getObjects</a><wbr>(<a href="../AdbcConnection.GetObjectsDepth.html" title="enum in org.apache.arrow.adbc.core">AdbcConnection.GetObjectsDepth</a>&nbsp;depth,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;catalogPattern,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;dbSchemaPattern,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;tableNamePattern,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;tableTypes,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;columnNamePattern)</code></div>
-<div class="col-last even-row-color">&nbsp;</div>
-<div class="col-first odd-row-color"><code>&lt;T&gt;&nbsp;T</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">JniConnection.</span><code><a href="../../driver/jni/JniConnection.html#getOption(org.apache.arrow.adbc.core.TypedKey)" class="member-name-link">getOption</a><wbr>(<a href="../TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key)</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
 <div class="col-first even-row-color"><code>&lt;T&gt;&nbsp;T</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">JniDatabase.</span><code><a href="../../driver/jni/JniDatabase.html#getOption(org.apache.arrow.adbc.core.TypedKey)" class="member-name-link">getOption</a><wbr>(<a href="../TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key)</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">JniConnection.</span><code><a href="../../driver/jni/JniConnection.html#getOption(org.apache.arrow.adbc.core.TypedKey)" class="member-name-link">getOption</a><wbr>(<a href="../TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key)</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
 <div class="col-first odd-row-color"><code>&lt;T&gt;&nbsp;T</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">JniStatement.</span><code><a href="../../driver/jni/JniStatement.html#getOption(org.apache.arrow.adbc.core.TypedKey)" class="member-name-link">getOption</a><wbr>(<a href="../TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key)</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">JniDatabase.</span><code><a href="../../driver/jni/JniDatabase.html#getOption(org.apache.arrow.adbc.core.TypedKey)" class="member-name-link">getOption</a><wbr>(<a href="../TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key)</code></div>
+<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-first even-row-color"><code>&lt;T&gt;&nbsp;T</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">JniStatement.</span><code><a href="../../driver/jni/JniStatement.html#getOption(org.apache.arrow.adbc.core.TypedKey)" class="member-name-link">getOption</a><wbr>(<a href="../TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key)</code></div>
+<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-first odd-row-color"><code>boolean</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">JniConnection.</span><code><a href="../../driver/jni/JniConnection.html#getReadOnly()" class="member-name-link">getReadOnly</a>()</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
 <div class="col-first even-row-color"><code><a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/pojo/Schema.html" title="class or interface in org.apache.arrow.vector.types.pojo" class="external-link">Schema</a></code></div>
 <div class="col-second even-row-color"><span class="type-name-label">JniConnection.</span><code><a href="../../driver/jni/JniConnection.html#getTableSchema(java.lang.String,java.lang.String,java.lang.String)" class="member-name-link">getTableSchema</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;catalog,
@@ -587,17 +599,29 @@ loadScripts(document, 'script');</script>
 <div class="col-first odd-row-color"><code>void</code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">JniStatement.</span><code><a href="../../driver/jni/JniStatement.html#prepare()" class="member-name-link">prepare</a>()</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
-<div class="col-first even-row-color"><code>&lt;T&gt;&nbsp;void</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">JniConnection.</span><code><a href="../../driver/jni/JniConnection.html#setOption(org.apache.arrow.adbc.core.TypedKey,T)" class="member-name-link">setOption</a><wbr>(<a href="../TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key,
- T&nbsp;value)</code></div>
+<div class="col-first even-row-color"><code>void</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">JniConnection.</span><code><a href="../../driver/jni/JniConnection.html#rollback()" class="member-name-link">rollback</a>()</code></div>
+<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-first odd-row-color"><code>void</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">JniConnection.</span><code><a href="../../driver/jni/JniConnection.html#setAutoCommit(boolean)" class="member-name-link">setAutoCommit</a><wbr>(boolean&nbsp;enableAutoCommit)</code></div>
+<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-first even-row-color"><code>void</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">JniConnection.</span><code><a href="../../driver/jni/JniConnection.html#setIsolationLevel(org.apache.arrow.adbc.core.IsolationLevel)" class="member-name-link">setIsolationLevel</a><wbr>(<a href="../IsolationLevel.html" title="enum in org.apache.arrow.adbc.core">IsolationLevel</a>&nbsp;level)</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
 <div class="col-first odd-row-color"><code>&lt;T&gt;&nbsp;void</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">JniDatabase.</span><code><a href="../../driver/jni/JniDatabase.html#setOption(org.apache.arrow.adbc.core.TypedKey,T)" class="member-name-link">setOption</a><wbr>(<a href="../TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key,
+<div class="col-second odd-row-color"><span class="type-name-label">JniConnection.</span><code><a href="../../driver/jni/JniConnection.html#setOption(org.apache.arrow.adbc.core.TypedKey,T)" class="member-name-link">setOption</a><wbr>(<a href="../TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key,
  T&nbsp;value)</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
 <div class="col-first even-row-color"><code>&lt;T&gt;&nbsp;void</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">JniStatement.</span><code><a href="../../driver/jni/JniStatement.html#setOption(org.apache.arrow.adbc.core.TypedKey,T)" class="member-name-link">setOption</a><wbr>(<a href="../TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key,
+<div class="col-second even-row-color"><span class="type-name-label">JniDatabase.</span><code><a href="../../driver/jni/JniDatabase.html#setOption(org.apache.arrow.adbc.core.TypedKey,T)" class="member-name-link">setOption</a><wbr>(<a href="../TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key,
  T&nbsp;value)</code></div>
+<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-first odd-row-color"><code>&lt;T&gt;&nbsp;void</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">JniStatement.</span><code><a href="../../driver/jni/JniStatement.html#setOption(org.apache.arrow.adbc.core.TypedKey,T)" class="member-name-link">setOption</a><wbr>(<a href="../TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key,
+ T&nbsp;value)</code></div>
+<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-first even-row-color"><code>void</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">JniConnection.</span><code><a href="../../driver/jni/JniConnection.html#setReadOnly(boolean)" class="member-name-link">setReadOnly</a><wbr>(boolean&nbsp;isReadOnly)</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
 <div class="col-first odd-row-color"><code>void</code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">JniStatement.</span><code><a href="../../driver/jni/JniStatement.html#setSqlQuery(java.lang.String)" class="member-name-link">setSqlQuery</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query)</code></div>
@@ -613,43 +637,49 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
-<div class="col-first even-row-color"><code><a href="../../driver/jni/impl/NativeQueryResult.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeQueryResult</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">JniLoader.</span><code><a href="../../driver/jni/impl/JniLoader.html#connectionGetInfo(org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle,int%5B%5D)" class="member-name-link">connectionGetInfo</a><wbr>(<a href="../../driver/jni/impl/NativeConnectionHandle.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeConnectionHandle</a>&nbsp;connection,
- int[]&nbsp;infoCodes)</code></div>
+<div class="col-first even-row-color"><code>void</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">JniLoader.</span><code><a href="../../driver/jni/impl/JniLoader.html#connectionCommit(org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle)" class="member-name-link">connectionCommit</a><wbr>(<a href="../../driver/jni/impl/NativeConnectionHandle.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeConnectionHandle</a>&nbsp;connection)</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
 <div class="col-first odd-row-color"><code><a href="../../driver/jni/impl/NativeQueryResult.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeQueryResult</a></code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">JniLoader.</span><code><a href="../../driver/jni/impl/JniLoader.html#connectionGetObjects(org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle,int,java.lang.String,java.lang.String,java.lang.String,java.lang.String%5B%5D,java.lang.String)" class="member-name-link">connectionGetObjects</a><wbr>(<a href="../../driver/jni/impl/NativeConnectionHandle.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeConnectionHandle</a>&nbsp;connection,
+<div class="col-second odd-row-color"><span class="type-name-label">JniLoader.</span><code><a href="../../driver/jni/impl/JniLoader.html#connectionGetInfo(org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle,int%5B%5D)" class="member-name-link">connectionGetInfo</a><wbr>(<a href="../../driver/jni/impl/NativeConnectionHandle.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeConnectionHandle</a>&nbsp;connection,
+ int[]&nbsp;infoCodes)</code></div>
+<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-first even-row-color"><code><a href="../../driver/jni/impl/NativeQueryResult.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeQueryResult</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">JniLoader.</span><code><a href="../../driver/jni/impl/JniLoader.html#connectionGetObjects(org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle,int,java.lang.String,java.lang.String,java.lang.String,java.lang.String%5B%5D,java.lang.String)" class="member-name-link">connectionGetObjects</a><wbr>(<a href="../../driver/jni/impl/NativeConnectionHandle.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeConnectionHandle</a>&nbsp;connection,
  int&nbsp;depth,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;catalog,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;dbSchema,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;tableName,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;tableTypes,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;columnName)</code></div>
+<div class="col-last even-row-color">&nbsp;</div>
+<div class="col-first odd-row-color"><code>byte[]</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">JniLoader.</span><code><a href="../../driver/jni/impl/JniLoader.html#connectionGetOptionBytes(org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle,java.lang.String)" class="member-name-link">connectionGetOptionBytes</a><wbr>(<a href="../../driver/jni/impl/NativeConnectionHandle.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeConnectionHandle</a>&nbsp;handle,
+ <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;key)</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
-<div class="col-first even-row-color"><code>byte[]</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">JniLoader.</span><code><a href="../../driver/jni/impl/JniLoader.html#connectionGetOptionBytes(org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle,java.lang.String)" class="member-name-link">connectionGetOptionBytes</a><wbr>(<a href="../../driver/jni/impl/NativeConnectionHandle.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeConnectionHandle</a>&nbsp;handle,
+<div class="col-first even-row-color"><code>double</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">JniLoader.</span><code><a href="../../driver/jni/impl/JniLoader.html#connectionGetOptionDouble(org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle,java.lang.String)" class="member-name-link">connectionGetOptionDouble</a><wbr>(<a href="../../driver/jni/impl/NativeConnectionHandle.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeConnectionHandle</a>&nbsp;handle,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;key)</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
-<div class="col-first odd-row-color"><code>double</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">JniLoader.</span><code><a href="../../driver/jni/impl/JniLoader.html#connectionGetOptionDouble(org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle,java.lang.String)" class="member-name-link">connectionGetOptionDouble</a><wbr>(<a href="../../driver/jni/impl/NativeConnectionHandle.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeConnectionHandle</a>&nbsp;handle,
+<div class="col-first odd-row-color"><code>long</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">JniLoader.</span><code><a href="../../driver/jni/impl/JniLoader.html#connectionGetOptionLong(org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle,java.lang.String)" class="member-name-link">connectionGetOptionLong</a><wbr>(<a href="../../driver/jni/impl/NativeConnectionHandle.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeConnectionHandle</a>&nbsp;handle,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;key)</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
-<div class="col-first even-row-color"><code>long</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">JniLoader.</span><code><a href="../../driver/jni/impl/JniLoader.html#connectionGetOptionLong(org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle,java.lang.String)" class="member-name-link">connectionGetOptionLong</a><wbr>(<a href="../../driver/jni/impl/NativeConnectionHandle.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeConnectionHandle</a>&nbsp;handle,
+<div class="col-first even-row-color"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">JniLoader.</span><code><a href="../../driver/jni/impl/JniLoader.html#connectionGetOptionString(org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle,java.lang.String)" class="member-name-link">connectionGetOptionString</a><wbr>(<a href="../../driver/jni/impl/NativeConnectionHandle.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeConnectionHandle</a>&nbsp;handle,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;key)</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
-<div class="col-first odd-row-color"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">JniLoader.</span><code><a href="../../driver/jni/impl/JniLoader.html#connectionGetOptionString(org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle,java.lang.String)" class="member-name-link">connectionGetOptionString</a><wbr>(<a href="../../driver/jni/impl/NativeConnectionHandle.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeConnectionHandle</a>&nbsp;handle,
- <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;key)</code></div>
-<div class="col-last odd-row-color">&nbsp;</div>
-<div class="col-first even-row-color"><code><a href="../../driver/jni/impl/NativeSchemaResult.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeSchemaResult</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">JniLoader.</span><code><a href="../../driver/jni/impl/JniLoader.html#connectionGetTableSchema(org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle,java.lang.String,java.lang.String,java.lang.String)" class="member-name-link">connectionGetTableSchema</a><wbr>(<a href="../../driver/jni/impl/NativeConnectionHandle.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeConnectionHandle</a>&nbsp;connection,
+<div class="col-first odd-row-color"><code><a href="../../driver/jni/impl/NativeSchemaResult.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeSchemaResult</a></code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">JniLoader.</span><code><a href="../../driver/jni/impl/JniLoader.html#connectionGetTableSchema(org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle,java.lang.String,java.lang.String,java.lang.String)" class="member-name-link">connectionGetTableSchema</a><wbr>(<a href="../../driver/jni/impl/NativeConnectionHandle.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeConnectionHandle</a>&nbsp;connection,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;catalog,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;dbSchema,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;tableName)</code></div>
+<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-first even-row-color"><code><a href="../../driver/jni/impl/NativeQueryResult.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeQueryResult</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">JniLoader.</span><code><a href="../../driver/jni/impl/JniLoader.html#connectionGetTableTypes(org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle)" class="member-name-link">connectionGetTableTypes</a><wbr>(<a href="../../driver/jni/impl/NativeConnectionHandle.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeConnectionHandle</a>&nbsp;connection)</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
-<div class="col-first odd-row-color"><code><a href="../../driver/jni/impl/NativeQueryResult.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeQueryResult</a></code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">JniLoader.</span><code><a href="../../driver/jni/impl/JniLoader.html#connectionGetTableTypes(org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle)" class="member-name-link">connectionGetTableTypes</a><wbr>(<a href="../../driver/jni/impl/NativeConnectionHandle.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeConnectionHandle</a>&nbsp;connection)</code></div>
+<div class="col-first odd-row-color"><code>void</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">JniLoader.</span><code><a href="../../driver/jni/impl/JniLoader.html#connectionRollback(org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle)" class="member-name-link">connectionRollback</a><wbr>(<a href="../../driver/jni/impl/NativeConnectionHandle.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeConnectionHandle</a>&nbsp;connection)</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
 <div class="col-first even-row-color"><code>void</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">JniLoader.</span><code><a href="../../driver/jni/impl/JniLoader.html#connectionSetOptionBytes(org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle,java.lang.String,byte%5B%5D)" class="member-name-link">connectionSetOptionBytes</a><wbr>(<a href="../../driver/jni/impl/NativeConnectionHandle.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeConnectionHandle</a>&nbsp;handle,
