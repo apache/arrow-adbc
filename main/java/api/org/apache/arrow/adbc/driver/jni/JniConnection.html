@@ -145,6 +145,16 @@ implements <a href="../../core/AdbcConnection.html" title="interface in org.apac
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get the autocommit state.</div>
 </div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getCurrentCatalog()" class="member-name-link">getCurrentCatalog</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Get the current catalog.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getCurrentDbSchema()" class="member-name-link">getCurrentDbSchema</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Get the current schema.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getInfo(int%5B%5D)" class="member-name-link">getInfo</a><wbr>(int @Nullable []&nbsp;infoCodes)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
@@ -198,6 +208,16 @@ implements <a href="../../core/AdbcConnection.html" title="interface in org.apac
 <div class="block">Toggle whether autocommit is enabled.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#setCurrentCatalog(java.lang.String)" class="member-name-link">setCurrentCatalog</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;catalog)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Set the current catalog.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#setCurrentDbSchema(java.lang.String)" class="member-name-link">setCurrentDbSchema</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;dbSchema)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Set the current schema.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#setIsolationLevel(org.apache.arrow.adbc.core.IsolationLevel)" class="member-name-link">setIsolationLevel</a><wbr>(<a href="../../core/IsolationLevel.html" title="enum in org.apache.arrow.adbc.core">IsolationLevel</a>&nbsp;level)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Change the isolation level used by transactions.</div>
@@ -221,7 +241,7 @@ implements <a href="../../core/AdbcConnection.html" title="interface in org.apac
 <code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#equals(java.lang.Object)" title="class or interface in java.lang" class="external-link">equals</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#getClass()" title="class or interface in java.lang" class="external-link">getClass</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#hashCode()" title="class or interface in java.lang" class="external-link">hashCode</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#notify()" title="class or interface in java.lang" class="external-link">notify</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#notifyAll()" title="class or interface in java.lang" class="external-link">notifyAll</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#toString()" title="class or interface in java.lang" class="external-link">toString</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#wait()" title="class or interface in java.lang" class="external-link">wait</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#wait(long)" title="class or interface in java.lang" class="external-link">wait</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#wait(long,int)" title="class or interface in java.lang" class="external-link">wait</a></code></div>
 <div class="inherited-list">
 <h3 id="methods-inherited-from-class-org.apache.arrow.adbc.core.AdbcConnection">Methods inherited from interface&nbsp;org.apache.arrow.adbc.core.<a href="../../core/AdbcConnection.html" title="interface in org.apache.arrow.adbc.core">AdbcConnection</a></h3>
-<code><a href="../../core/AdbcConnection.html#cancel()">cancel</a>, <a href="../../core/AdbcConnection.html#getCurrentCatalog()">getCurrentCatalog</a>, <a href="../../core/AdbcConnection.html#getCurrentDbSchema()">getCurrentDbSchema</a>, <a href="../../core/AdbcConnection.html#getInfo()">getInfo</a>, <a href="../../core/AdbcConnection.html#getInfo(org.apache.arrow.adbc.core.AdbcInfoCode%5B%5D)">getInfo</a>, <a href="../../core/AdbcConnection.html#getStatisticNames()">getStatisticNames</a>, <a href="../../core/AdbcConnection.html#getStatistics(java.lang.String,java.lang.String,java.lang.String,boolean)">getStatistics</a>, <a href="../../core/AdbcConnection.html#readPartition(java.nio.ByteBuffer)">readPartition</a>, <a href="../../core/AdbcConnection.html#setCurrentCatalog(java.lang.String)">setCurrentCatalog</a>, <a href="../../core/AdbcConnection.html#setCurrentDbSchema(java.lang.String)">setCurrentDbSchema</a></code></div>
+<code><a href="../../core/AdbcConnection.html#cancel()">cancel</a>, <a href="../../core/AdbcConnection.html#getInfo()">getInfo</a>, <a href="../../core/AdbcConnection.html#getInfo(org.apache.arrow.adbc.core.AdbcInfoCode%5B%5D)">getInfo</a>, <a href="../../core/AdbcConnection.html#getStatisticNames()">getStatisticNames</a>, <a href="../../core/AdbcConnection.html#getStatistics(java.lang.String,java.lang.String,java.lang.String,boolean)">getStatistics</a>, <a href="../../core/AdbcConnection.html#readPartition(java.nio.ByteBuffer)">readPartition</a></code></div>
 </section>
 </li>
 </ul>
@@ -599,6 +619,66 @@ implements <a href="../../core/AdbcConnection.html" title="interface in org.apac
 <dd><code><a href="../../core/AdbcConnection.html#rollback()">rollback</a></code>&nbsp;in interface&nbsp;<code><a href="../../core/AdbcConnection.html" title="interface in org.apache.arrow.adbc.core">AdbcConnection</a></code></dd>
 <dt>Throws:</dt>
 <dd><code><a href="../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></code> - if a database error occurs</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="getCurrentCatalog()">
+<h3>getCurrentCatalog</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">getCurrentCatalog</span>()
+                         throws <span class="exceptions"><a href="../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></span></div>
+<div class="block"><span class="descfrm-type-label">Description copied from interface:&nbsp;<code><a href="../../core/AdbcConnection.html#getCurrentCatalog()">AdbcConnection</a></code></span></div>
+<div class="block">Get the current catalog.</div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="../../core/AdbcConnection.html#getCurrentCatalog()">getCurrentCatalog</a></code>&nbsp;in interface&nbsp;<code><a href="../../core/AdbcConnection.html" title="interface in org.apache.arrow.adbc.core">AdbcConnection</a></code></dd>
+<dt>Throws:</dt>
+<dd><code><a href="../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="getCurrentDbSchema()">
+<h3>getCurrentDbSchema</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">getCurrentDbSchema</span>()
+                          throws <span class="exceptions"><a href="../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></span></div>
+<div class="block"><span class="descfrm-type-label">Description copied from interface:&nbsp;<code><a href="../../core/AdbcConnection.html#getCurrentDbSchema()">AdbcConnection</a></code></span></div>
+<div class="block">Get the current schema.</div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="../../core/AdbcConnection.html#getCurrentDbSchema()">getCurrentDbSchema</a></code>&nbsp;in interface&nbsp;<code><a href="../../core/AdbcConnection.html" title="interface in org.apache.arrow.adbc.core">AdbcConnection</a></code></dd>
+<dt>Throws:</dt>
+<dd><code><a href="../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="setCurrentCatalog(java.lang.String)">
+<h3>setCurrentCatalog</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">setCurrentCatalog</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;catalog)</span>
+                       throws <span class="exceptions"><a href="../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></span></div>
+<div class="block"><span class="descfrm-type-label">Description copied from interface:&nbsp;<code><a href="../../core/AdbcConnection.html#setCurrentCatalog(java.lang.String)">AdbcConnection</a></code></span></div>
+<div class="block">Set the current catalog.</div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="../../core/AdbcConnection.html#setCurrentCatalog(java.lang.String)">setCurrentCatalog</a></code>&nbsp;in interface&nbsp;<code><a href="../../core/AdbcConnection.html" title="interface in org.apache.arrow.adbc.core">AdbcConnection</a></code></dd>
+<dt>Throws:</dt>
+<dd><code><a href="../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="setCurrentDbSchema(java.lang.String)">
+<h3>setCurrentDbSchema</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">setCurrentDbSchema</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;dbSchema)</span>
+                        throws <span class="exceptions"><a href="../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></span></div>
+<div class="block"><span class="descfrm-type-label">Description copied from interface:&nbsp;<code><a href="../../core/AdbcConnection.html#setCurrentDbSchema(java.lang.String)">AdbcConnection</a></code></span></div>
+<div class="block">Set the current schema.</div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="../../core/AdbcConnection.html#setCurrentDbSchema(java.lang.String)">setCurrentDbSchema</a></code>&nbsp;in interface&nbsp;<code><a href="../../core/AdbcConnection.html" title="interface in org.apache.arrow.adbc.core">AdbcConnection</a></code></dd>
+<dt>Throws:</dt>
+<dd><code><a href="../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></code></dd>
 </dl>
 </section>
 </li>
