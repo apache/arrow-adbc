@@ -21,6 +21,7 @@ import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.BulkIngestMode;
+import org.apache.arrow.adbc.core.IsolationLevel;
 import org.apache.arrow.adbc.core.TypedKey;
 import org.apache.arrow.adbc.driver.jni.impl.JniLoader;
 import org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle;
@@ -115,6 +116,87 @@ public class JniConnection implements AdbcConnection {
   @Override
   public ArrowReader getTableTypes() throws AdbcException {
     return JniLoader.INSTANCE.connectionGetTableTypes(handle).importStream(allocator);
+  }
+
+  @Override
+  public boolean getReadOnly() throws AdbcException {
+    return getOption(JniDriver.READONLY);
+  }
+
+  @Override
+  public void setReadOnly(boolean isReadOnly) throws AdbcException {
+    setOption(JniDriver.READONLY, isReadOnly);
+  }
+
+  @Override
+  public boolean getAutoCommit() throws AdbcException {
+    return getOption(JniDriver.AUTOCOMMIT);
+  }
+
+  @Override
+  public void setAutoCommit(boolean enableAutoCommit) throws AdbcException {
+    setOption(JniDriver.AUTOCOMMIT, enableAutoCommit);
+  }
+
+  @Override
+  public IsolationLevel getIsolationLevel() throws AdbcException {
+    String level = getOption(JniDriver.ISOLATION_LEVEL);
+    if (level == null) {
+      return null;
+    }
+    switch (level) {
+      case JniDriver.ISOLATION_LEVEL_READ_UNCOMMITTED:
+        return IsolationLevel.READ_UNCOMMITTED;
+      case JniDriver.ISOLATION_LEVEL_READ_COMMITTED:
+        return IsolationLevel.READ_COMMITTED;
+      case JniDriver.ISOLATION_LEVEL_REPEATABLE_READ:
+        return IsolationLevel.REPEATABLE_READ;
+      case JniDriver.ISOLATION_LEVEL_SNAPSHOT:
+        return IsolationLevel.SNAPSHOT;
+      case JniDriver.ISOLATION_LEVEL_SERIALIZABLE:
+        return IsolationLevel.SERIALIZABLE;
+      default:
+        throw AdbcException.invalidArgument("[jni] invalid isolation level value: " + level);
+    }
+  }
+
+  @Override
+  public void setIsolationLevel(IsolationLevel level) throws AdbcException {
+    if (level == null) {
+      setOption(JniDriver.ISOLATION_LEVEL, (String) null);
+    } else {
+      String levelValue;
+      switch (level) {
+        case READ_UNCOMMITTED:
+          levelValue = JniDriver.ISOLATION_LEVEL_READ_UNCOMMITTED;
+          break;
+        case READ_COMMITTED:
+          levelValue = JniDriver.ISOLATION_LEVEL_READ_COMMITTED;
+          break;
+        case REPEATABLE_READ:
+          levelValue = JniDriver.ISOLATION_LEVEL_REPEATABLE_READ;
+          break;
+        case SNAPSHOT:
+          levelValue = JniDriver.ISOLATION_LEVEL_SNAPSHOT;
+          break;
+        case SERIALIZABLE:
+          levelValue = JniDriver.ISOLATION_LEVEL_SERIALIZABLE;
+          break;
+        default:
+          throw new IllegalArgumentException("Unknown isolation level: " + level);
+      }
+      setOption(JniDriver.ISOLATION_LEVEL, levelValue);
+    }
+  }
+
+  @Override
+  public void commit() throws AdbcException {
+    JniLoader.INSTANCE.connectionCommit(handle);
+  }
+
+  @Override
+  public void rollback() throws AdbcException {
+    JniLoader.INSTANCE.connectionRollback(handle);
   }
 
   @Override

@@ -914,6 +914,30 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionSetOptionString(
   }
 }
 
+JNIEXPORT void JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionCommit(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
+  try {
+    CHECK_ADBC_ERROR(AdbcConnectionCommit(conn, &error), error);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+}
+
+JNIEXPORT void JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionRollback(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
+  try {
+    CHECK_ADBC_ERROR(AdbcConnectionRollback(conn, &error), error);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+}
+
 JNIEXPORT jbyteArray JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseGetOptionBytes(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key) {
