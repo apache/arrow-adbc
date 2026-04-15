@@ -64,6 +64,11 @@ public class JniDriver implements AdbcDriver {
   static final String ISOLATION_LEVEL_SERIALIZABLE =
       "adbc.connection.transaction.isolation.serializable";
 
+  static final TypedKey<String> CURRENT_CATALOG =
+      new TypedKey<>("adbc.connection.catalog", String.class);
+  static final TypedKey<String> CURRENT_DB_SCHEMA =
+      new TypedKey<>("adbc.connection.db_schema", String.class);
+
   private final BufferAllocator allocator;
 
   public JniDriver(BufferAllocator allocator) {

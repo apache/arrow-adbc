@@ -200,6 +200,26 @@ public class JniConnection implements AdbcConnection {
   }
 
   @Override
+  public String getCurrentCatalog() throws AdbcException {
+    return getOption(JniDriver.CURRENT_CATALOG);
+  }
+
+  @Override
+  public String getCurrentDbSchema() throws AdbcException {
+    return getOption(JniDriver.CURRENT_DB_SCHEMA);
+  }
+
+  @Override
+  public void setCurrentCatalog(String catalog) throws AdbcException {
+    setOption(JniDriver.CURRENT_CATALOG, catalog);
+  }
+
+  @Override
+  public void setCurrentDbSchema(String dbSchema) throws AdbcException {
+    setOption(JniDriver.CURRENT_DB_SCHEMA, dbSchema);
+  }
+
+  @Override
   public void close() {
     handle.close();
   }
