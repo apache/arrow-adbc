@@ -121,6 +121,7 @@ export class AdbcDatabase implements AdbcDatabaseInterface {
 export class AdbcConnection implements AdbcConnectionInterface {
   private _inner: NativeAdbcConnection
 
+  /** @internal */
   constructor(inner: NativeAdbcConnection) {
     this._inner = inner
   }
@@ -324,6 +325,7 @@ export class AdbcConnection implements AdbcConnectionInterface {
 export class AdbcStatement implements AdbcStatementInterface {
   private _inner: NativeAdbcStatement
 
+  /** @internal */
   constructor(inner: NativeAdbcStatement) {
     this._inner = inner
   }

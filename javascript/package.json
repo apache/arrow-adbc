@@ -46,6 +46,7 @@
     "check": "npm run check:js && npm run check:rust",
     "check:js": "prettier --check . && oxlint . && tsc --noEmit",
     "check:rust": "cargo fmt -- --check && cargo clippy -- -D warnings",
+    "docs": "typedoc",
     "test": "tsx --test __test__/*.spec.ts",
     "preversion": "napi build --platform --esm && git add .",
     "version": "napi version",
@@ -53,6 +54,7 @@
   },
   "devDependencies": {
     "@napi-rs/cli": "^3.2.0",
+    "typedoc": "^0.28.0",
     "@taplo/cli": "^0.7.0",
     "tsx": "^4.0.0",
     "husky": "^9.1.7",

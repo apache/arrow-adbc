@@ -49,6 +49,8 @@ extensions = [
     "sphinx_recipe",
     # generic directives to enable intersphinx for java
     "adbc_java_domain",
+    # generic directives to enable intersphinx for javascript
+    "adbc_js_domain",
     "numpydoc",
     "sphinx.ext.autodoc",
     "sphinx.ext.doctest",
