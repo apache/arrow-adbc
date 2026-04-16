@@ -69,7 +69,7 @@ func TestProfileByNameViaSearchPath(t *testing.T) {
 
 	var drv drivermgr.Driver
 	db, err := drv.NewDatabase(map[string]string{
-		"profile":                            "myprofile",
+		"profile":                             "myprofile",
 		"additional_profile_search_path_list": dir,
 	})
 	require.NoError(t, err)
