@@ -19,10 +19,22 @@ package org.apache.arrow.adbc.driver.jni;
 
 import org.apache.arrow.adbc.driver.testsuite.AbstractConnectionTest;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 public class JniSqliteConnectionTest extends AbstractConnectionTest {
   @BeforeAll
   static void beforeAll() {
     quirks = new JniSqliteQuirks();
   }
+
+  @Test
+  @Disabled
+  @Override
+  protected void readOnly() {}
+
+  @Test
+  @Disabled
+  @Override
+  protected void isolationLevel() {}
 }

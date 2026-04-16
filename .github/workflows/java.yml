@@ -219,7 +219,7 @@ jobs:
           cache: "maven"
           distribution: "temurin"
           java-version: 11
-      - name: Build/Test
+      - name: Build
         run: |
           set -x
           pushd artifacts
@@ -228,10 +228,34 @@ jobs:
           done
           popd
           cp -r artifacts/*/jni/adbc_driver_jni java/driver/jni/src/main/resources
+          env BUILD_JNI=ON ./ci/scripts/java_build.sh $(pwd)
+
+      - name: Start Dependencies
+        if: matrix.os == 'Linux' && matrix.arch == 'amd64'
+        run: |
+          docker compose up --detach --wait mssql-test postgres-test
+          cat .env | grep -v -e '^#' | grep -e '^ADBC_' | awk NF | sed 's/"//g' | tee -a $GITHUB_ENV
+
+      - name: Download thirdparty driver
+        if: matrix.os == 'Linux' && matrix.arch == 'amd64'
+        run: |
+          wget https://dbc-cdn.columnar.tech/mssql/v1.3.1/mssql_linux_amd64_v1.3.1.tar.gz
+          echo "e6723cf417403f313fb75c1ac03aea9b9ff857d4a947608c8ae44eacc1aa22b3  mssql_linux_amd64_v1.3.1.tar.gz" > mssql_linux_amd64_v1.3.1.tar.gz.sha256
+          sha256sum -c mssql_linux_amd64_v1.3.1.tar.gz.sha256
+
+          tar xvf mssql_linux_amd64_v1.3.1.tar.gz
+          mkdir -p ~/.config/adbc/drivers/
+          mv libadbc_driver_mssql.so ~/.config/adbc/drivers/
+          echo "manifest_version = 1" > ~/.config/adbc/drivers/mssql.toml
+          echo "[Driver]" >> ~/.config/adbc/drivers/mssql.toml
+          echo "shared = '$HOME/.config/adbc/drivers/libadbc_driver_mssql.so'" >> ~/.config/adbc/drivers/mssql.toml
+          cat ~/.config/adbc/drivers/mssql.toml
+
+      - name: Test
+        run: |
           for driver in artifacts/*/driver; do
             export LD_LIBRARY_PATH=$(pwd)/$driver:${LD_LIBRARY_PATH:-}
             export DYLD_LIBRARY_PATH=$(pwd)/$driver:${DYLD_LIBRARY_PATH:-}
           done
-          env BUILD_JNI=ON ./ci/scripts/java_build.sh $(pwd)
           cd java
-          mvn -B -Pjni test -pl :adbc-driver-jni
+          mvn -B -Pjni test -pl :adbc-driver-jni -pl :adbc-driver-jni-validation

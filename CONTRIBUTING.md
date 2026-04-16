@@ -361,6 +361,7 @@ export ADBC_USE_ASAN=OFF
 export ADBC_USE_UBSAN=OFF
 export BUILD_ALL=OFF
 export BUILD_DRIVER_MANAGER=ON
+export BUILD_DRIVER_POSTGRESQL=ON
 export BUILD_DRIVER_SQLITE=ON
 ./ci/scripts/cpp_build.sh $(pwd) $(pwd)/build $(pwd)/local
 

@@ -26,7 +26,7 @@
     <relativePath>../../pom.xml</relativePath>
   </parent>
 
-  <artifactId>adbc-driver-jni-validation-sqlite</artifactId>
+  <artifactId>adbc-driver-jni-validation</artifactId>
   <packaging>jar</packaging>
   <name>Arrow ADBC Driver JNI Validation with SQLite</name>
   <description>Tests validating the JNI driver against SQLite.</description>

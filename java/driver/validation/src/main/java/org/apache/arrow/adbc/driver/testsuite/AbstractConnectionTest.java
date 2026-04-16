@@ -50,7 +50,7 @@ public abstract class AbstractConnectionTest {
   }
 
   @Test
-  void currentCatalog() throws Exception {
+  protected void currentCatalog() throws Exception {
     assumeThat(quirks.supportsCurrentCatalog()).isTrue();
 
     assertThat(connection.getCurrentCatalog()).isEqualTo(quirks.defaultCatalog());
@@ -63,17 +63,17 @@ public abstract class AbstractConnectionTest {
   }
 
   @Test
-  void multipleConnections() throws Exception {
+  protected void multipleConnections() throws Exception {
     try (final AdbcConnection ignored = database.connect()) {}
   }
 
   @Test
-  void readOnly() throws Exception {
+  protected void readOnly() throws Exception {
     assertThat(connection.getReadOnly()).isFalse();
   }
 
   @Test
-  void isolationLevel() throws Exception {
+  protected void isolationLevel() throws Exception {
     connection.getIsolationLevel();
   }
 }
