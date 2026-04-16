@@ -71,11 +71,11 @@ search paths) or absolute path to a driver shared library:
 
 .. code-block:: javascript
 
-   import { AdbcDatabase } from '@apache-arrow/adbc-driver-manager'
+   import { AdbcDatabase } from '@apache-arrow/adbc-driver-manager';
 
    // Open a connection to an in-memory SQLite database.
-   const db = new AdbcDatabase({ driver: 'sqlite' })
-   const conn = await db.connect()
+   const db = new AdbcDatabase({ driver: 'sqlite' });
+   const conn = await db.connect();
 
 Executing a Query
 =================
@@ -85,8 +85,8 @@ To run a query, use ``AdbcConnection.query``, which returns an Apache Arrow
 
 .. code-block:: javascript
 
-   const table = await conn.query("SELECT 1 AS id, 'hello' AS greeting")
-   console.log(table.getChild('greeting')?.get(0))  // "hello"
+   const table = await conn.query("SELECT 1 AS id, 'hello' AS greeting");
+   console.log(table.getChild('greeting')?.get(0));  // "hello"
 
 For large result sets, use ``AdbcConnection.queryStream`` instead. It
 returns a ``RecordBatchReader`` that yields results one batch at a time without
@@ -94,9 +94,9 @@ loading the entire result into memory:
 
 .. code-block:: javascript
 
-   const reader = await conn.queryStream('SELECT * FROM large_table')
+   const reader = await conn.queryStream('SELECT * FROM large_table');
    for await (const batch of reader) {
-     console.log(`Processing batch of ${batch.numRows} rows`)
+     console.log(`Processing batch of ${batch.numRows} rows`);
    }
 
 Executing Updates
@@ -107,11 +107,11 @@ Use ``AdbcConnection.execute`` to execute statements that do not return rows
 
 .. code-block:: javascript
 
-   await conn.execute('CREATE TABLE users (id INTEGER, name TEXT)')
+   await conn.execute('CREATE TABLE users (id INTEGER, name TEXT)');
    const affected = await conn.execute(
      "INSERT INTO users VALUES (1, 'Alice'), (2, 'Bob')"
-   )
-   console.log(affected) // 2
+   );
+   console.log(affected); // 2
 
 Parameterized Queries
 =====================
@@ -121,19 +121,19 @@ the bind parameters (``?`` placeholders) in the SQL statement:
 
 .. code-block:: javascript
 
-   import { tableFromArrays } from 'apache-arrow'
+   import { tableFromArrays } from 'apache-arrow';
 
    // Bind a single row of parameters.
-   const params = tableFromArrays({ id: [1] })
-   const result = await conn.query('SELECT name FROM users WHERE id = ?', params)
-   console.log(result.getChild('name')?.get(0))  // "Alice"
+   const params = tableFromArrays({ id: [1] });
+   const result = await conn.query('SELECT name FROM users WHERE id = ?', params);
+   console.log(result.getChild('name')?.get(0));  // "Alice"
 
 The same approach works with ``AdbcConnection.execute`` for DML:
 
 .. code-block:: javascript
 
-   const params = tableFromArrays({ id: [2], name: ['Charlie'] })
-   await conn.execute('INSERT INTO users VALUES (?, ?)', params)
+   const params = tableFromArrays({ id: [2], name: ['Charlie'] });
+   await conn.execute('INSERT INTO users VALUES (?, ?)', params);
 
 Ingesting Bulk Data
 ===================
@@ -143,31 +143,31 @@ table in a single call, avoiding per-row overhead:
 
 .. code-block:: javascript
 
-   import { tableFromArrays } from 'apache-arrow'
-   import { IngestMode } from '@apache-arrow/adbc-driver-manager'
+   import { tableFromArrays } from 'apache-arrow';
+   import { IngestMode } from '@apache-arrow/adbc-driver-manager';
 
    const data = tableFromArrays({
      id: [1, 2, 3],
      name: ['alice', 'bob', 'carol'],
-   })
+   });
 
    // Create a new table and insert the data.
-   await conn.ingest('sample', data)
+   await conn.ingest('sample', data);
 
    // Append more rows to the existing table.
-   const more = tableFromArrays({ id: [4], name: ['dave'] })
-   await conn.ingest('sample', more, { mode: IngestMode.Append })
+   const more = tableFromArrays({ id: [4], name: ['dave'] });
+   await conn.ingest('sample', more, { mode: IngestMode.Append });
 
 For datasets that do not fit in memory use ``AdbcConnection.ingestStream`` with
 a ``RecordBatchReader``:
 
 .. code-block:: javascript
 
-   import { RecordBatchReader, tableToIPC, tableFromArrays } from 'apache-arrow'
+   import { RecordBatchReader, tableToIPC, tableFromArrays } from 'apache-arrow';
 
-   const data = tableFromArrays({ id: [1, 2, 3] })
-   const reader = RecordBatchReader.from(tableToIPC(data, 'stream'))
-   await conn.ingestStream('streaming_table', reader)
+   const data = tableFromArrays({ id: [1, 2, 3] });
+   const reader = RecordBatchReader.from(tableToIPC(data, 'stream'));
+   await conn.ingestStream('streaming_table', reader);
 
 Getting Database Metadata
 =========================
@@ -177,30 +177,30 @@ catalogs, schemas, and tables in the database:
 
 .. code-block:: javascript
 
-   const objects = await conn.getObjects({ depth: 3, tableName: 'sample' })
+   const objects = await conn.getObjects({ depth: 3, tableName: 'sample' });
 
-   const dbSchemas = objects.getChild('catalog_db_schemas')?.get(0)
-   const tables = dbSchemas?.get(0)?.db_schema_tables
-   console.log(tables?.get(0)?.table_name)  // "sample"
+   const dbSchemas = objects.getChild('catalog_db_schemas')?.get(0);
+   const tables = dbSchemas?.get(0)?.db_schema_tables;
+   console.log(tables?.get(0)?.table_name);  // "sample"
 
 ``AdbcConnection.getTableSchema`` returns the Arrow schema for a specific table:
 
 .. code-block:: javascript
 
-   const schema = await conn.getTableSchema({ tableName: 'sample' })
-   console.log(schema.fields.map(f => f.name))  // ["id", "name"]
+   const schema = await conn.getTableSchema({ tableName: 'sample' });
+   console.log(schema.fields.map(f => f.name));  // ["id", "name"]
 
 ``AdbcConnection.getTableTypes`` lists the types of table objects supported by
 the database:
 
 .. code-block:: javascript
 
-   const types = await conn.getTableTypes()
+   const types = await conn.getTableTypes();
    const typeNames = Array.from(
      { length: types.numRows },
      (_, i) => types.getChild('table_type')?.get(i)
-   )
-   console.log(typeNames)  // ["table", "view"]
+   );
+   console.log(typeNames);  // ["table", "view"]
 
 Transactions
 ============
@@ -210,13 +210,13 @@ manage transactions manually:
 
 .. code-block:: javascript
 
-   conn.setAutoCommit(false)
+   conn.setAutoCommit(false);
 
-   await conn.execute("INSERT INTO users VALUES (99, 'temp')")
-   await conn.rollback()  // row is not persisted
+   await conn.execute("INSERT INTO users VALUES (99, 'temp')");
+   await conn.rollback();  // row is not persisted
 
-   await conn.execute("INSERT INTO users VALUES (100, 'permanent')")
-   await conn.commit()   // row is persisted
+   await conn.execute("INSERT INTO users VALUES (100, 'permanent')");
+   await conn.commit();   // row is persisted
 
 Low-Level Statement API
 =======================
@@ -227,15 +227,15 @@ execution or reusing a statement across multiple queries:
 
 .. code-block:: javascript
 
-   const stmt = await conn.createStatement()
+   const stmt = await conn.createStatement();
 
-   await stmt.setSqlQuery('SELECT id, name FROM users WHERE id = ?')
-   const params = tableFromArrays({ id: [1] })
-   await stmt.bind(params)
+   await stmt.setSqlQuery('SELECT id, name FROM users WHERE id = ?');
+   const params = tableFromArrays({ id: [1] });
+   await stmt.bind(params);
 
-   const reader = await stmt.executeQuery()
+   const reader = await stmt.executeQuery();
    for await (const batch of reader) {
-     console.log(batch.numRows)
+     console.log(batch.numRows);
    }
 
-   await stmt.close()
+   await stmt.close();
