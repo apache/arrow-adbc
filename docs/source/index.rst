@@ -82,6 +82,13 @@ make it more convenient to build analytical applications.
 
             Java
 
+         .. button-ref:: javascript/index
+            :ref-type: doc
+            :color: secondary
+            :expand:
+
+            JavaScript
+
          .. button-ref:: python/quickstart
             :ref-type: doc
             :color: secondary
@@ -227,6 +234,7 @@ Why ADBC?
    C#/.NET <csharp/index>
    Go <https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc>
    Java <java/index>
+   JavaScript <javascript/index>
    Python <python/index>
    R <r/index>
    Rust <rust/index>
