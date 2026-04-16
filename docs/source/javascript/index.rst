@@ -21,8 +21,8 @@ JavaScript
 
 Experimental JavaScript/TypeScript bindings to the :doc:`Rust driver manager
 </rust/driver_manager>`. Built with `NAPI-RS <https://napi.rs/>`_. Compatible
-with `Node.js <https://nodejs.org/en>`_, `Deno <https://deno.com/>`_, and `Bun
-<https://bun.sh/>`_.
+with `Node.js <https://nodejs.org/en>`_ 22+, `Deno <https://deno.com/>`_ 2.0+, and `Bun
+<https://bun.sh/>`_ 1.1+.
 
 .. toctree::
    :maxdepth: 2

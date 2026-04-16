@@ -36,7 +36,7 @@ Installation
 
 .. note::
 
-   Node.js 22 or later is required.
+   Node.js 22+, Deno 2.0+, or Bun 1.1+ are required.
 
 To use any driver with the JavaScript driver manager, you'll need install the
 appropriate driver shared library for your platform separately and pass the
