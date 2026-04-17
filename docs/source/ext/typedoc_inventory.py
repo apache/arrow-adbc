@@ -100,7 +100,14 @@ def _walk(
     if kind == _KIND_MODULE:
         # Descend into the module, passing its name as context
         for child in reflection.get("children", []):
-            _walk(child, base_url, objects, module_name=name, parent_page="", parent_name="")
+            _walk(
+                child,
+                base_url,
+                objects,
+                module_name=name,
+                parent_page="",
+                parent_name="",
+            )
         return
 
     if kind_info is None:
@@ -133,7 +140,9 @@ def _walk(
     )
 
     # Recurse into children (class/interface members, enum members, etc.)
-    child_page = page if subdir is None else f"{base_url}{subdir}/{module_name}.{name}.html"
+    child_page = (
+        page if subdir is None else f"{base_url}{subdir}/{module_name}.{name}.html"
+    )
     for child in reflection.get("children", []):
         _walk(child, base_url, objects, module_name, child_page, full_name)
 

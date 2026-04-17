@@ -28,7 +28,9 @@ def setup(app: Sphinx) -> dict[str, typing.Any]:
     app.add_object_type("jsclass", "jsclass", objname="JavaScript Class")
     app.add_object_type("jsinterface", "jsinterface", objname="JavaScript Interface")
     app.add_object_type("jsenum", "jsenum", objname="JavaScript Enum")
-    app.add_object_type("jsenummember", "jsenummember", objname="JavaScript Enum Member")
+    app.add_object_type(
+        "jsenummember", "jsenummember", objname="JavaScript Enum Member"
+    )
     app.add_object_type("jsvariable", "jsvariable", objname="JavaScript Variable")
     app.add_object_type("jsfunction", "jsfunction", objname="JavaScript Function")
     app.add_object_type("jstypealias", "jstypealias", objname="JavaScript Type Alias")
@@ -36,7 +38,9 @@ def setup(app: Sphinx) -> dict[str, typing.Any]:
     app.add_object_type("jsmodule", "jsmodule", objname="JavaScript Module")
     app.add_object_type("jsproperty", "jsproperty", objname="JavaScript Property")
     app.add_object_type("jsmethod", "jsmethod", objname="JavaScript Method")
-    app.add_object_type("jsconstructor", "jsconstructor", objname="JavaScript Constructor")
+    app.add_object_type(
+        "jsconstructor", "jsconstructor", objname="JavaScript Constructor"
+    )
     app.add_object_type("jsaccessor", "jsaccessor", objname="JavaScript Accessor")
     return {
         "version": "0.1",
