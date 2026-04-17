@@ -80,7 +80,17 @@ main() {
       # Python's documentation build can run without installing the R
       # packages). Packages are installed in ci/scripts/r_build.sh
       if Rscript -e "loadNamespace('$pkg_name')" ; then
-        R -e "pkgdown::build_site(pkg = '$pkg', override = list(destination = '$source_dir/docs/build/html/r/$pkg_name'), new_process = FALSE, preview = FALSE)"
+        # The steps below, aside from the pkgdown::build_site call are to work
+        # around a macOS-specific Docker quirk: build_site internally calls
+        # chmod on `destination` and this fails on macOS with "permission
+        # denied". This is a CI script but it's useful for developers to be able
+        # to run `docker compose run docs` to test the site build locally.
+        local tmp_dest
+        tmp_dest=$(mktemp -d)
+        R -e "pkgdown::build_site(pkg = '$pkg', override = list(destination = '$tmp_dest'), new_process = FALSE, preview = FALSE)"
+        rm -rf "$source_dir/docs/build/html/r/$pkg_name"
+        cp -r "$tmp_dest" "$source_dir/docs/build/html/r/$pkg_name"
+        rm -rf "$tmp_dest"
       fi
     done
 
