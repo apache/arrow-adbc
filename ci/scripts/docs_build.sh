@@ -31,7 +31,7 @@ main() {
 
     pushd "$source_dir/javascript"
     npm install --ignore-scripts
-    npx typedoc
+    npm run docs
     popd
 
     pushd "$source_dir/docs"
