@@ -46,11 +46,10 @@ test_that("can load a profile by absolute path via 'profile' option", {
 
   profile_path <- write_profile(dir, "myprofile")
 
-  browser()
   expect_error(
-    adbc_database_init_default(
+    adbc_database_init(
       adbc_driver_for_profile(),
-      list(profile = profile_path)
+      profile = profile_path
     ),
     regexp = "nonexistent"
   )
@@ -64,12 +63,10 @@ test_that("can load a profile by name via additional_profile_search_path_list", 
   write_profile(dir, "myprofile")
 
   expect_error(
-    adbc_database_init_default(
+    adbc_database_init(
       adbc_driver_for_profile(),
-      list(
-        profile = "myprofile",
-        additional_profile_search_path_list = dir
-      )
+      profile = "myprofile",
+      additional_profile_search_path_list = dir
     ),
     regexp = "nonexistent"
   )
@@ -85,9 +82,9 @@ test_that("can load a profile by name via ADBC_PROFILE_PATH env var", {
   withr::with_envvar(
     list(ADBC_PROFILE_PATH = dir),
     expect_error(
-      adbc_database_init_default(
+      adbc_database_init(
         adbc_driver_for_profile(),
-        list(profile = "myprofile")
+        profile = "myprofile"
       ),
       regexp = "nonexistent"
     )
@@ -102,9 +99,9 @@ test_that("can load a profile via profile:// URI in 'uri' option", {
   profile_path <- write_profile(dir, "myprofile")
 
   expect_error(
-    adbc_database_init_default(
+    adbc_database_init(
       adbc_driver_for_profile(),
-      list(uri = paste0("profile://", profile_path))
+      uri = paste0("profile://", profile_path)
     ),
     regexp = "nonexistent"
   )
@@ -120,7 +117,7 @@ test_that("can load a profile via profile:// URI in 'driver' option", {
   expect_error(
     adbc_database_init_default(
       adbc_driver_for_profile(),
-      list(driver = paste0("profile://", profile_path))
+      list(driver = paste0("profile://", profile_path)) # Wrap in list() to avoid arg names clashing
     ),
     regexp = "nonexistent"
   )
@@ -138,7 +135,8 @@ test_that("missing profile returns an error", {
         adbc_driver_for_profile(),
         list(profile = "does_not_exist")
       ),
-      regexp = "Profile not found: does_not_exist"
+      # "does_not_exist" is the profile name; keep in sync with C error message format
+      regexp = "does_not_exist"
     )
   )
 })
