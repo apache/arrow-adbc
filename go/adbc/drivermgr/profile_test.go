@@ -45,7 +45,7 @@ func writeProfile(t *testing.T, dir, name, content string) string {
 	return path
 }
 
-// TestProfileAbsolutePath loads a profile via the absolute path in the "profile" option.
+// loads a profile via the absolute path in the "profile" option.
 func TestProfileAbsolutePath(t *testing.T) {
 	dir := t.TempDir()
 	profilePath := writeProfile(t, dir, "myprofile", simpleProfile)
@@ -57,8 +57,7 @@ func TestProfileAbsolutePath(t *testing.T) {
 	require.ErrorContains(t, err, "nonexistent")
 }
 
-// TestProfileByNameViaSearchPath loads a profile by name using
-// additional_profile_search_path_list.
+// loads a profile by name using additional_profile_search_path_list.
 func TestProfileByNameViaSearchPath(t *testing.T) {
 	dir := t.TempDir()
 	writeProfile(t, dir, "myprofile", simpleProfile)
@@ -71,7 +70,7 @@ func TestProfileByNameViaSearchPath(t *testing.T) {
 	require.ErrorContains(t, err, "nonexistent")
 }
 
-// TestProfileByNameViaEnvVar loads a profile by name with ADBC_PROFILE_PATH set.
+// loads a profile by name with ADBC_PROFILE_PATH set.
 func TestProfileByNameViaEnvVar(t *testing.T) {
 	dir := t.TempDir()
 	writeProfile(t, dir, "myprofile", simpleProfile)
@@ -85,7 +84,7 @@ func TestProfileByNameViaEnvVar(t *testing.T) {
 	require.ErrorContains(t, err, "nonexistent")
 }
 
-// TestProfileViaURIOption loads a profile using a profile:// URI in the "uri" key.
+// loads a profile using a profile:// URI in the "uri" key.
 func TestProfileViaURIOption(t *testing.T) {
 	dir := t.TempDir()
 	profilePath := writeProfile(t, dir, "myprofile", simpleProfile)
@@ -97,7 +96,7 @@ func TestProfileViaURIOption(t *testing.T) {
 	require.ErrorContains(t, err, "nonexistent")
 }
 
-// TestProfileViaDriverOption loads a profile using a profile:// URI in the "driver" key.
+// loads a profile using a profile:// URI in the "driver" key.
 func TestProfileViaDriverOption(t *testing.T) {
 	dir := t.TempDir()
 	profilePath := writeProfile(t, dir, "myprofile", simpleProfile)
@@ -109,7 +108,7 @@ func TestProfileViaDriverOption(t *testing.T) {
 	require.ErrorContains(t, err, "nonexistent")
 }
 
-// TestProfileNotFound verifies that a missing profile returns an error.
+// verifies that a missing profile returns an error.
 func TestProfileNotFound(t *testing.T) {
 	dir := t.TempDir()
 	t.Setenv("ADBC_PROFILE_PATH", dir)
@@ -118,5 +117,5 @@ func TestProfileNotFound(t *testing.T) {
 	_, err := drv.NewDatabase(map[string]string{
 		"profile": "does_not_exist",
 	})
-	require.ErrorContains(t, err, "does_not_exist")
+	require.ErrorContains(t, err, "Profile not found: does_not_exist")
 }
