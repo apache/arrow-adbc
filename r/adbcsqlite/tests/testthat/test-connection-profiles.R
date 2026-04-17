@@ -16,6 +16,14 @@
 # under the License.
 
 adbcsqlite_shared <- function() {
+  path <- system.file(
+    "libs",
+    paste0("adbcsqlite", .Platform$dynlib.ext),
+    package = "adbcsqlite"
+  )
+  if (nzchar(path)) {
+    return(path)
+  }
   system.file(
     "src",
     paste0("adbcsqlite", .Platform$dynlib.ext),
