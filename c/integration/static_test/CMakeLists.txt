@@ -42,7 +42,7 @@ target_link_libraries(static_test
                               AdbcDriverPostgreSQL::adbc_driver_postgresql_static
                               AdbcDriverSQLite::adbc_driver_sqlite_static
                               PostgreSQL::PostgreSQL
-                              SQLite::SQLite3
+                              SQLite3::SQLite3
                               fmt::fmt
                               nanoarrow::nanoarrow
                               AdbcDriverCommon::adbc_driver_common
