@@ -144,7 +144,7 @@ Ingesting Bulk Data
 
 :external+js_adbc:jsmethod:`AdbcConnection.ingest` inserts an Arrow ``Table``
 into a database table in a single call, avoiding per-row overhead.  Pass a
-``mode`` option using :external+js_adbc:jsenum:`IngestMode` to control whether
+``mode`` option using :external+js_adbc:jsvariable:`IngestMode` to control whether
 to create a new table or append to an existing one:
 
 .. code-block:: javascript
