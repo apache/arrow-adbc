@@ -80,7 +80,7 @@ main() {
       # Python's documentation build can run without installing the R
       # packages). Packages are installed in ci/scripts/r_build.sh
       if Rscript -e "loadNamespace('$pkg_name')" ; then
-        R -e "pkgdown::build_site(pkg = '$pkg', dest_dir = '$source_dir/docs/build/html/r/$pkg_name', new_process = FALSE, preview = FALSE)"
+        R -e "pkgdown::build_site(pkg = '$pkg', override = list(destination = '$source_dir/docs/build/html/r/$pkg_name'), new_process = FALSE, preview = FALSE)"
       fi
     done
 
