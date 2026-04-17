@@ -20,7 +20,6 @@
 package drivermgr_test
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -29,12 +28,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// simpleProfile references a nonexistent driver. These tests only verify that
+// the profile mechanism routes correctly — i.e., the error comes from failing
+// to load the driver, not from failing to find or parse the profile.
 const simpleProfile = `
 profile_version = 1
-driver = "adbc_driver_sqlite"
+driver = "/nonexistent/driver.so"
 
 [Options]
-uri = ":memory:"
 `
 
 func writeProfile(t *testing.T, dir, name, content string) string {
@@ -50,15 +51,10 @@ func TestProfileAbsolutePath(t *testing.T) {
 	profilePath := writeProfile(t, dir, "myprofile", simpleProfile)
 
 	var drv drivermgr.Driver
-	db, err := drv.NewDatabase(map[string]string{
+	_, err := drv.NewDatabase(map[string]string{
 		"profile": profilePath,
 	})
-	require.NoError(t, err)
-
-	conn, err := db.Open(context.Background())
-	require.NoError(t, err)
-	require.NoError(t, conn.Close())
-	require.NoError(t, db.Close())
+	require.ErrorContains(t, err, "nonexistent")
 }
 
 // TestProfileByNameViaSearchPath loads a profile by name using
@@ -68,16 +64,11 @@ func TestProfileByNameViaSearchPath(t *testing.T) {
 	writeProfile(t, dir, "myprofile", simpleProfile)
 
 	var drv drivermgr.Driver
-	db, err := drv.NewDatabase(map[string]string{
+	_, err := drv.NewDatabase(map[string]string{
 		"profile":                             "myprofile",
 		"additional_profile_search_path_list": dir,
 	})
-	require.NoError(t, err)
-
-	conn, err := db.Open(context.Background())
-	require.NoError(t, err)
-	require.NoError(t, conn.Close())
-	require.NoError(t, db.Close())
+	require.ErrorContains(t, err, "nonexistent")
 }
 
 // TestProfileByNameViaEnvVar loads a profile by name with ADBC_PROFILE_PATH set.
@@ -88,15 +79,10 @@ func TestProfileByNameViaEnvVar(t *testing.T) {
 	t.Setenv("ADBC_PROFILE_PATH", dir)
 
 	var drv drivermgr.Driver
-	db, err := drv.NewDatabase(map[string]string{
+	_, err := drv.NewDatabase(map[string]string{
 		"profile": "myprofile",
 	})
-	require.NoError(t, err)
-
-	conn, err := db.Open(context.Background())
-	require.NoError(t, err)
-	require.NoError(t, conn.Close())
-	require.NoError(t, db.Close())
+	require.ErrorContains(t, err, "nonexistent")
 }
 
 // TestProfileViaURIOption loads a profile using a profile:// URI in the "uri" key.
@@ -105,15 +91,10 @@ func TestProfileViaURIOption(t *testing.T) {
 	profilePath := writeProfile(t, dir, "myprofile", simpleProfile)
 
 	var drv drivermgr.Driver
-	db, err := drv.NewDatabase(map[string]string{
+	_, err := drv.NewDatabase(map[string]string{
 		"uri": "profile://" + profilePath,
 	})
-	require.NoError(t, err)
-
-	conn, err := db.Open(context.Background())
-	require.NoError(t, err)
-	require.NoError(t, conn.Close())
-	require.NoError(t, db.Close())
+	require.ErrorContains(t, err, "nonexistent")
 }
 
 // TestProfileViaDriverOption loads a profile using a profile:// URI in the "driver" key.
@@ -122,15 +103,10 @@ func TestProfileViaDriverOption(t *testing.T) {
 	profilePath := writeProfile(t, dir, "myprofile", simpleProfile)
 
 	var drv drivermgr.Driver
-	db, err := drv.NewDatabase(map[string]string{
+	_, err := drv.NewDatabase(map[string]string{
 		"driver": "profile://" + profilePath,
 	})
-	require.NoError(t, err)
-
-	conn, err := db.Open(context.Background())
-	require.NoError(t, err)
-	require.NoError(t, conn.Close())
-	require.NoError(t, db.Close())
+	require.ErrorContains(t, err, "nonexistent")
 }
 
 // TestProfileNotFound verifies that a missing profile returns an error.
@@ -142,5 +118,5 @@ func TestProfileNotFound(t *testing.T) {
 	_, err := drv.NewDatabase(map[string]string{
 		"profile": "does_not_exist",
 	})
-	require.Error(t, err)
+	require.ErrorContains(t, err, "does_not_exist")
 }

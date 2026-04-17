@@ -15,33 +15,11 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# Profile tests require adbcsqlite to be installed so we have a real driver
-# to reference from profile TOML files.
-skip_if_not(
-  nzchar(system.file(package = "adbcsqlite")),
-  "adbcsqlite package not installed"
-)
+# This suite is just a smoke test to make sure connection profiles are hooked
+# up. We make a fake driver and a broken connection profile just to test that
+# the driver manager is producing the right error message as proof connection
+# profiles are hooked up.
 
-# Return the path to the adbcsqlite shared library so profiles can reference it.
-adbcsqlite_shared <- function() {
-  shared <- system.file(
-    "libs",
-    .Platform$r_arch,
-    paste0("adbcsqlite", .Platform$dynlib.ext),
-    package = "adbcsqlite"
-  )
-  if (!identical(shared, "")) return(shared)
-
-  system.file(
-    "src",
-    paste0("adbcsqlite", .Platform$dynlib.ext),
-    package = "adbcsqlite"
-  )
-}
-
-# Build a minimal driver object that carries no pre-loaded init func or name.
-# This lets adbc_database_init_default call RAdbcDatabaseNew(NULL, load_flags),
-# leaving the driver manager free to load the driver specified in the profile.
 adbc_driver_for_profile <- function() {
   driver <- new.env(parent = emptyenv())
   driver$load_flags <- adbc_load_flags()
@@ -49,14 +27,12 @@ adbc_driver_for_profile <- function() {
   driver
 }
 
-# Write a simple profile TOML that loads the sqlite driver with an in-memory db.
 write_profile <- function(dir, name) {
   content <- paste0(
     'profile_version = 1\n',
-    'driver = "', adbcsqlite_shared(), '"\n',
+    'driver = "/nonexistent/driver.so"\n',
     '\n',
-    '[Options]\n',
-    'uri = ":memory:"\n'
+    '[Options]\n'
   )
   path <- file.path(dir, paste0(name, ".toml"))
   writeLines(content, path)
@@ -70,16 +46,14 @@ test_that("can load a profile by absolute path via 'profile' option", {
 
   profile_path <- write_profile(dir, "myprofile")
 
-  db <- adbc_database_init_default(
-    adbc_driver_for_profile(),
-    list(profile = profile_path)
+  browser()
+  expect_error(
+    adbc_database_init_default(
+      adbc_driver_for_profile(),
+      list(profile = profile_path)
+    ),
+    regexp = "nonexistent"
   )
-  expect_s3_class(db, "adbc_database")
-
-  con <- adbc_connection_init(db)
-  expect_s3_class(con, "adbc_connection")
-  adbc_connection_release(con)
-  adbc_database_release(db)
 })
 
 test_that("can load a profile by name via additional_profile_search_path_list", {
@@ -89,18 +63,16 @@ test_that("can load a profile by name via additional_profile_search_path_list", 
 
   write_profile(dir, "myprofile")
 
-  db <- adbc_database_init_default(
-    adbc_driver_for_profile(),
-    list(
-      profile = "myprofile",
-      additional_profile_search_path_list = dir
-    )
+  expect_error(
+    adbc_database_init_default(
+      adbc_driver_for_profile(),
+      list(
+        profile = "myprofile",
+        additional_profile_search_path_list = dir
+      )
+    ),
+    regexp = "nonexistent"
   )
-  expect_s3_class(db, "adbc_database")
-
-  con <- adbc_connection_init(db)
-  adbc_connection_release(con)
-  adbc_database_release(db)
 })
 
 test_that("can load a profile by name via ADBC_PROFILE_PATH env var", {
@@ -112,17 +84,13 @@ test_that("can load a profile by name via ADBC_PROFILE_PATH env var", {
 
   withr::with_envvar(
     list(ADBC_PROFILE_PATH = dir),
-    {
-      db <- adbc_database_init_default(
+    expect_error(
+      adbc_database_init_default(
         adbc_driver_for_profile(),
         list(profile = "myprofile")
-      )
-      expect_s3_class(db, "adbc_database")
-
-      con <- adbc_connection_init(db)
-      adbc_connection_release(con)
-      adbc_database_release(db)
-    }
+      ),
+      regexp = "nonexistent"
+    )
   )
 })
 
@@ -133,15 +101,13 @@ test_that("can load a profile via profile:// URI in 'uri' option", {
 
   profile_path <- write_profile(dir, "myprofile")
 
-  db <- adbc_database_init_default(
-    adbc_driver_for_profile(),
-    list(uri = paste0("profile://", profile_path))
+  expect_error(
+    adbc_database_init_default(
+      adbc_driver_for_profile(),
+      list(uri = paste0("profile://", profile_path))
+    ),
+    regexp = "nonexistent"
   )
-  expect_s3_class(db, "adbc_database")
-
-  con <- adbc_connection_init(db)
-  adbc_connection_release(con)
-  adbc_database_release(db)
 })
 
 test_that("can load a profile via profile:// URI in 'driver' option", {
@@ -151,15 +117,13 @@ test_that("can load a profile via profile:// URI in 'driver' option", {
 
   profile_path <- write_profile(dir, "myprofile")
 
-  db <- adbc_database_init_default(
-    adbc_driver_for_profile(),
-    list(driver = paste0("profile://", profile_path))
+  expect_error(
+    adbc_database_init_default(
+      adbc_driver_for_profile(),
+      list(driver = paste0("profile://", profile_path))
+    ),
+    regexp = "nonexistent"
   )
-  expect_s3_class(db, "adbc_database")
-
-  con <- adbc_connection_init(db)
-  adbc_connection_release(con)
-  adbc_database_release(db)
 })
 
 test_that("missing profile returns an error", {
@@ -169,13 +133,12 @@ test_that("missing profile returns an error", {
 
   withr::with_envvar(
     list(ADBC_PROFILE_PATH = dir),
-    {
-      expect_error(
-        adbc_database_init_default(
-          adbc_driver_for_profile(),
-          list(profile = "does_not_exist")
-        )
-      )
-    }
+    expect_error(
+      adbc_database_init_default(
+        adbc_driver_for_profile(),
+        list(profile = "does_not_exist")
+      ),
+      regexp = "Profile not found: does_not_exist"
+    )
   )
 })
