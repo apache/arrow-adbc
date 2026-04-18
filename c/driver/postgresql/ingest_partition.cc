@@ -509,14 +509,27 @@ AdbcStatusCode PostgresConnection::CommitIngestPartitions(
       return ADBC_STATUS_INVALID_STATE;
   }
 
-  static const char kSavepointName[] = "adbc_ingest_commit";
+  // Derive a unique savepoint name from the handle's ingest_id so the driver
+  // cannot collide with a caller-managed savepoint of the same name. Only used
+  // when use_savepoint is true, but cheap to compute unconditionally.
+  const std::string savepoint_name = "adbc_ingest_commit_" + HexId(handle.ingest_id);
   const std::string open_sql =
-      use_savepoint ? std::string("SAVEPOINT ") + kSavepointName : "BEGIN";
-  const std::string commit_sql = use_savepoint
-                                     ? std::string("RELEASE SAVEPOINT ") + kSavepointName
-                                     : "COMMIT";
-  const std::string rollback_sql =
-      use_savepoint ? std::string("ROLLBACK TO SAVEPOINT ") + kSavepointName : "ROLLBACK";
+      use_savepoint ? std::string("SAVEPOINT ") + savepoint_name : "BEGIN";
+  const std::string commit_sql =
+      use_savepoint ? std::string("RELEASE SAVEPOINT ") + savepoint_name : "COMMIT";
+  const std::string rollback_sql = use_savepoint ? std::string("ROLLBACK TO SAVEPOINT ") +
+                                                       savepoint_name
+                                                 : "ROLLBACK";
+
+  // ROLLBACK TO SAVEPOINT leaves the savepoint on the stack in PG, so also
+  // RELEASE it after rollback to restore the caller's savepoint stack to its
+  // pre-call shape. Best-effort — errors are ignored.
+  auto abort_ingest = [&]() {
+    ExecSimple(conn_, rollback_sql, nullptr);
+    if (use_savepoint) {
+      ExecSimple(conn_, std::string("RELEASE SAVEPOINT ") + savepoint_name, nullptr);
+    }
+  };
 
   code = ExecSimple(conn_, open_sql, error);
   if (code != ADBC_STATUS_OK) return code;
@@ -525,12 +538,12 @@ AdbcStatusCode PostgresConnection::CommitIngestPartitions(
   for (const auto& r : parsed) {
     std::string esc_sch = EscapeIdent(conn_, r.staging_schema, error, &code);
     if (code != ADBC_STATUS_OK) {
-      ExecSimple(conn_, rollback_sql, nullptr);
+      abort_ingest();
       return code;
     }
     std::string esc_tbl = EscapeIdent(conn_, r.staging_table, error, &code);
     if (code != ADBC_STATUS_OK) {
-      ExecSimple(conn_, rollback_sql, nullptr);
+      abort_ingest();
       return code;
     }
     std::string qualified_staging = esc_sch + "." + esc_tbl;
@@ -539,12 +552,12 @@ AdbcStatusCode PostgresConnection::CommitIngestPartitions(
                          ") SELECT " + r.escaped_columns + " FROM " + qualified_staging;
     code = ExecSimple(conn_, insert, error);
     if (code != ADBC_STATUS_OK) {
-      ExecSimple(conn_, rollback_sql, nullptr);
+      abort_ingest();
       return code;
     }
     code = ExecSimple(conn_, "DROP TABLE " + qualified_staging, error);
     if (code != ADBC_STATUS_OK) {
-      ExecSimple(conn_, rollback_sql, nullptr);
+      abort_ingest();
       return code;
     }
     total_rows += r.row_count;
@@ -552,7 +565,7 @@ AdbcStatusCode PostgresConnection::CommitIngestPartitions(
 
   code = ExecSimple(conn_, commit_sql, error);
   if (code != ADBC_STATUS_OK) {
-    ExecSimple(conn_, rollback_sql, nullptr);
+    abort_ingest();
     return code;
   }
 

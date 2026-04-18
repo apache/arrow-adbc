@@ -305,3 +305,151 @@ TEST_F(PostgresPartitionedIngestTest, AbortDropsAllStagingIncludingOrphans) {
   Cleanup(&c, table, &error);
   CloseConn(&c, &error);
 }
+
+// With the coordinator connection already inside an outer transaction,
+// CommitIngestPartitions must take the SAVEPOINT path: the ingest rows become
+// visible to in-transaction SELECTs, and the lifetime of the ingest is tied to
+// the outer transaction (persists on COMMIT, rolls back on ROLLBACK).
+TEST_F(PostgresPartitionedIngestTest, CommitInsideOuterTransactionUsesSavepoint) {
+  const char* uri = RequireUri();
+  if (!uri) return;
+  const std::string table = "adbc_partitioned_ingest_savepoint_test";
+
+  AdbcError error = ADBC_ERROR_INIT;
+  ConnPair coordinator;
+  OpenConn(&coordinator, &error, uri);
+  Cleanup(&coordinator, table, &error);
+
+  ArrowSchema ingest_schema{};
+  MakeIngestSchema(&ingest_schema);
+
+  AdbcIngestHandle handle{};
+  ASSERT_EQ(AdbcConnectionBeginIngestPartitions(
+                &coordinator.conn, nullptr, nullptr, table.c_str(),
+                ADBC_INGEST_OPTION_MODE_CREATE, &ingest_schema, &handle, &error),
+            ADBC_STATUS_OK)
+      << error.message;
+  ingest_schema.release(&ingest_schema);
+
+  // One worker writes one partition on a separate connection.
+  constexpr int32_t kRows = 25;
+  ConnPair worker;
+  OpenConn(&worker, &error, uri);
+  ArrowArrayStream stream{};
+  MakeBatchStream(&stream, /*start_id=*/0, kRows);
+  AdbcIngestReceipt rec{};
+  ASSERT_EQ(AdbcConnectionWriteIngestPartition(&worker.conn, handle.bytes, handle.length,
+                                               &stream, &rec, &error),
+            ADBC_STATUS_OK)
+      << error.message;
+  std::vector<uint8_t> receipt_bytes(rec.bytes, rec.bytes + rec.length);
+  rec.release(&rec);
+  CloseConn(&worker, &error);
+
+  // Put the coordinator connection into an outer transaction so Commit must
+  // take the SAVEPOINT branch.
+  ASSERT_EQ(AdbcConnectionSetOption(&coordinator.conn, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
+                                    ADBC_OPTION_VALUE_DISABLED, &error),
+            ADBC_STATUS_OK)
+      << error.message;
+
+  const uint8_t* rec_ptr = receipt_bytes.data();
+  size_t rec_len = receipt_bytes.size();
+  int64_t rows_committed = 0;
+  ASSERT_EQ(AdbcConnectionCommitIngestPartitions(&coordinator.conn, handle.bytes,
+                                                 handle.length, 1, &rec_ptr, &rec_len,
+                                                 &rows_committed, &error),
+            ADBC_STATUS_OK)
+      << error.message;
+  EXPECT_EQ(rows_committed, kRows);
+
+  // (a) Rows visible to in-transaction SELECT on the same connection.
+  EXPECT_EQ(SelectCount(&coordinator, table, &error), kRows);
+
+  // (b) A caller-driven ROLLBACK undoes the ingest: RELEASE SAVEPOINT merges
+  // the ingest work into the outer transaction, and rolling back the outer
+  // transaction rolls back everything in it.
+  ASSERT_EQ(AdbcConnectionRollback(&coordinator.conn, &error), ADBC_STATUS_OK)
+      << error.message;
+  ASSERT_EQ(AdbcConnectionSetOption(&coordinator.conn, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
+                                    "true", &error),
+            ADBC_STATUS_OK)
+      << error.message;
+  EXPECT_EQ(SelectCount(&coordinator, table, &error), 0);
+
+  handle.release(&handle);
+  Cleanup(&coordinator, table, &error);
+  CloseConn(&coordinator, &error);
+}
+
+// Calling CommitIngestPartitions while the connection is in an aborted
+// transaction must fail cleanly with ADBC_STATUS_INVALID_STATE instead of
+// issuing SQL that would further mutate caller transaction state.
+TEST_F(PostgresPartitionedIngestTest, CommitRejectsAbortedTransaction) {
+  const char* uri = RequireUri();
+  if (!uri) return;
+  const std::string table = "adbc_partitioned_ingest_inerror_test";
+
+  AdbcError error = ADBC_ERROR_INIT;
+  ConnPair c;
+  OpenConn(&c, &error, uri);
+  Cleanup(&c, table, &error);
+
+  ArrowSchema ingest_schema{};
+  MakeIngestSchema(&ingest_schema);
+
+  AdbcIngestHandle handle{};
+  ASSERT_EQ(AdbcConnectionBeginIngestPartitions(
+                &c.conn, nullptr, nullptr, table.c_str(),
+                ADBC_INGEST_OPTION_MODE_CREATE, &ingest_schema, &handle, &error),
+            ADBC_STATUS_OK)
+      << error.message;
+  ingest_schema.release(&ingest_schema);
+
+  ArrowArrayStream stream{};
+  MakeBatchStream(&stream, 0, 5);
+  AdbcIngestReceipt rec{};
+  ASSERT_EQ(AdbcConnectionWriteIngestPartition(&c.conn, handle.bytes, handle.length,
+                                               &stream, &rec, &error),
+            ADBC_STATUS_OK)
+      << error.message;
+  std::vector<uint8_t> receipt_bytes(rec.bytes, rec.bytes + rec.length);
+  rec.release(&rec);
+
+  // Put the connection in an aborted-transaction state: disable autocommit,
+  // then issue a statement that errors (SELECT from a missing relation).
+  ASSERT_EQ(AdbcConnectionSetOption(&c.conn, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
+                                    ADBC_OPTION_VALUE_DISABLED, &error),
+            ADBC_STATUS_OK)
+      << error.message;
+  {
+    AdbcStatement stmt{};
+    ASSERT_EQ(AdbcStatementNew(&c.conn, &stmt, &error), ADBC_STATUS_OK);
+    ASSERT_EQ(AdbcStatementSetSqlQuery(
+                  &stmt, "SELECT * FROM nonexistent_relation_adbc_x", &error),
+              ADBC_STATUS_OK);
+    AdbcStatementExecuteQuery(&stmt, nullptr, nullptr, &error);
+    AdbcStatementRelease(&stmt, &error);
+  }
+
+  const uint8_t* rec_ptr = receipt_bytes.data();
+  size_t rec_len = receipt_bytes.size();
+  AdbcError commit_err = ADBC_ERROR_INIT;
+  AdbcStatusCode rc = AdbcConnectionCommitIngestPartitions(
+      &c.conn, handle.bytes, handle.length, 1, &rec_ptr, &rec_len,
+      /*rows_affected=*/nullptr, &commit_err);
+  EXPECT_EQ(rc, ADBC_STATUS_INVALID_STATE) << (commit_err.message ? commit_err.message : "");
+  if (commit_err.release) commit_err.release(&commit_err);
+
+  // Restore autocommit so Cleanup can drop the table.
+  AdbcConnectionRollback(&c.conn, &error);
+  AdbcConnectionSetOption(&c.conn, ADBC_CONNECTION_OPTION_AUTOCOMMIT, "true", &error);
+
+  // Best-effort cleanup of staging tables left behind by the failed commit.
+  AdbcConnectionAbortIngestPartitions(&c.conn, handle.bytes, handle.length, 0, nullptr,
+                                      nullptr, &error);
+
+  handle.release(&handle);
+  Cleanup(&c, table, &error);
+  CloseConn(&c, &error);
+}
