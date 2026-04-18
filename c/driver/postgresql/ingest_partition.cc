@@ -12,6 +12,7 @@
 
 #include <cstring>
 #include <random>
+#include <tuple>
 #include <vector>
 
 #include <libpq-fe.h>
@@ -66,16 +67,6 @@ bool ReadString(const uint8_t** p, const uint8_t* end, std::string* out) {
   return true;
 }
 
-std::string HexId(const std::array<uint8_t, 16>& id) {
-  static const char kHex[] = "0123456789abcdef";
-  std::string s(32, '0');
-  for (size_t i = 0; i < 16; i++) {
-    s[2 * i] = kHex[id[i] >> 4];
-    s[2 * i + 1] = kHex[id[i] & 0x0F];
-  }
-  return s;
-}
-
 }  // namespace
 
 void IngestHandle::GenerateId(std::array<uint8_t, 16>* out) {
@@ -99,19 +90,19 @@ static_assert(kStagingPrefixLen + kStagingSuffixLen <= kIdentMaxLen,
               "staging table name would exceed PostgreSQL NAMEDATALEN-1 and be "
               "silently truncated");
 
-// Commit savepoint name is IngestHandle::kCommitSavepointPrefix + 32-hex
-// handle id. Guard against truncation for the same reason: a truncated name
-// would alias across concurrent ingest handles on the same connection. The
-// assert references the same constant CommitSavepointName() builds from, so a
-// future rename cannot drift past the assert.
-constexpr size_t kHexIdLen = 32;
+// Commit savepoint name is IngestHandle::kCommitSavepointPrefix + a hex-
+// encoded ingest_id. Guard against truncation for the same reason: a truncated
+// name would alias across concurrent ingest handles on the same connection.
+// The assert references the same constants CommitSavepointName() builds from,
+// so a future rename or width change cannot drift past the assert.
+constexpr size_t kHexIdLen = 2 * std::tuple_size_v<decltype(IngestHandle::ingest_id)>;
 static_assert(IngestHandle::kCommitSavepointPrefix.size() + kHexIdLen <= kIdentMaxLen,
               "ingest commit savepoint name would exceed PostgreSQL "
               "NAMEDATALEN-1 and be silently truncated");
 }  // namespace
 
 std::string IngestHandle::StagingPrefix() const {
-  return "adbc_stg_" + HexId(ingest_id) + "_";
+  return "adbc_stg_" + internal::HexId16(ingest_id) + "_";
 }
 
 size_t IngestHandle::SerializedSize() const {
