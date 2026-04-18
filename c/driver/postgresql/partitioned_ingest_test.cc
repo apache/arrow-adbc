@@ -262,16 +262,28 @@ TEST_F(PostgresPartitionedIngestTest, AbortDropsAllStagingIncludingOrphans) {
             ADBC_STATUS_OK)
       << error.message;
 
+  // Derive the handle's staging prefix from the wire format (4-byte magic
+  // "PIH1" + 16-byte id) so the verification query is scoped to this test's
+  // handle and not to every ingest ever run against the database.
+  ASSERT_GE(handle.length, static_cast<size_t>(4 + 16));
+  std::string handle_prefix = "adbc_stg_";
+  static const char kHex[] = "0123456789abcdef";
+  for (size_t i = 0; i < 16; i++) {
+    uint8_t b = handle.bytes[4 + i];
+    handle_prefix += kHex[b >> 4];
+    handle_prefix += kHex[b & 0x0F];
+  }
+  handle_prefix += '_';
+
   // Verify no staging tables left under the handle's prefix.
   AdbcStatement stmt{};
   ASSERT_EQ(AdbcStatementNew(&c.conn, &stmt, &error), ADBC_STATUS_OK);
-  ASSERT_EQ(AdbcStatementSetSqlQuery(
-                &stmt,
-                "SELECT COUNT(*) FROM information_schema.tables "
-                "WHERE table_schema = current_schema() "
-                "AND table_name LIKE 'adbc_stg_%'",
-                &error),
-            ADBC_STATUS_OK);
+  std::string count_sql =
+      "SELECT COUNT(*) FROM information_schema.tables "
+      "WHERE table_schema = current_schema() "
+      "AND table_name LIKE '" +
+      handle_prefix + "%'";
+  ASSERT_EQ(AdbcStatementSetSqlQuery(&stmt, count_sql.c_str(), &error), ADBC_STATUS_OK);
   ArrowArrayStream stream{};
   ASSERT_EQ(AdbcStatementExecuteQuery(&stmt, &stream, nullptr, &error), ADBC_STATUS_OK);
   ArrowSchema schema{};

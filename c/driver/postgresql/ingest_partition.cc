@@ -87,6 +87,19 @@ void IngestHandle::GenerateId(std::array<uint8_t, 16>* out) {
   std::memcpy(out->data() + 8, &b, 8);
 }
 
+namespace {
+// Staging table name is "adbc_stg_" (9) + 32-hex handle id + "_" (1) + 16-hex
+// suffix. Postgres' default NAMEDATALEN is 64, giving a 63-char identifier
+// limit before silent truncation — which would cause name collisions and miss
+// staging tables during Abort.
+constexpr size_t kStagingPrefixLen = 9 + 32 + 1;
+constexpr size_t kStagingSuffixLen = 16;
+constexpr size_t kStagingMaxIdentLen = 63;
+static_assert(kStagingPrefixLen + kStagingSuffixLen <= kStagingMaxIdentLen,
+              "staging table name would exceed PostgreSQL NAMEDATALEN-1 and be "
+              "silently truncated");
+}  // namespace
+
 std::string IngestHandle::StagingPrefix() const {
   return "adbc_stg_" + HexId(ingest_id) + "_";
 }
@@ -474,19 +487,50 @@ AdbcStatusCode PostgresConnection::CommitIngestPartitions(
   if (code != ADBC_STATUS_OK) return code;
   std::string qualified_target = escaped_target_schema + "." + escaped_target_table;
 
-  code = ExecSimple(conn_, "BEGIN", error);
+  // Decide how to scope the commit to avoid silently mutating caller transaction
+  // state: when no outer transaction is open, use BEGIN/COMMIT; when one is
+  // already active, use a SAVEPOINT so we only release ingest-local work and
+  // leave the caller's outer transaction intact. Reject error/unknown states.
+  PGTransactionStatusType txn_status = PQtransactionStatus(conn_);
+  bool use_savepoint;
+  switch (txn_status) {
+    case PQTRANS_IDLE:
+      use_savepoint = false;
+      break;
+    case PQTRANS_INTRANS:
+      use_savepoint = true;
+      break;
+    default:
+      InternalAdbcSetError(
+          error,
+          "[libpq] cannot commit partitioned ingest: connection transaction state "
+          "is not idle or in-transaction (status=%d)",
+          static_cast<int>(txn_status));
+      return ADBC_STATUS_INVALID_STATE;
+  }
+
+  static const char kSavepointName[] = "adbc_ingest_commit";
+  const std::string open_sql =
+      use_savepoint ? std::string("SAVEPOINT ") + kSavepointName : "BEGIN";
+  const std::string commit_sql = use_savepoint
+                                     ? std::string("RELEASE SAVEPOINT ") + kSavepointName
+                                     : "COMMIT";
+  const std::string rollback_sql =
+      use_savepoint ? std::string("ROLLBACK TO SAVEPOINT ") + kSavepointName : "ROLLBACK";
+
+  code = ExecSimple(conn_, open_sql, error);
   if (code != ADBC_STATUS_OK) return code;
 
   int64_t total_rows = 0;
   for (const auto& r : parsed) {
     std::string esc_sch = EscapeIdent(conn_, r.staging_schema, error, &code);
     if (code != ADBC_STATUS_OK) {
-      ExecSimple(conn_, "ROLLBACK", nullptr);
+      ExecSimple(conn_, rollback_sql, nullptr);
       return code;
     }
     std::string esc_tbl = EscapeIdent(conn_, r.staging_table, error, &code);
     if (code != ADBC_STATUS_OK) {
-      ExecSimple(conn_, "ROLLBACK", nullptr);
+      ExecSimple(conn_, rollback_sql, nullptr);
       return code;
     }
     std::string qualified_staging = esc_sch + "." + esc_tbl;
@@ -495,20 +539,20 @@ AdbcStatusCode PostgresConnection::CommitIngestPartitions(
                          ") SELECT " + r.escaped_columns + " FROM " + qualified_staging;
     code = ExecSimple(conn_, insert, error);
     if (code != ADBC_STATUS_OK) {
-      ExecSimple(conn_, "ROLLBACK", nullptr);
+      ExecSimple(conn_, rollback_sql, nullptr);
       return code;
     }
     code = ExecSimple(conn_, "DROP TABLE " + qualified_staging, error);
     if (code != ADBC_STATUS_OK) {
-      ExecSimple(conn_, "ROLLBACK", nullptr);
+      ExecSimple(conn_, rollback_sql, nullptr);
       return code;
     }
     total_rows += r.row_count;
   }
 
-  code = ExecSimple(conn_, "COMMIT", error);
+  code = ExecSimple(conn_, commit_sql, error);
   if (code != ADBC_STATUS_OK) {
-    ExecSimple(conn_, "ROLLBACK", nullptr);
+    ExecSimple(conn_, rollback_sql, nullptr);
     return code;
   }
 
