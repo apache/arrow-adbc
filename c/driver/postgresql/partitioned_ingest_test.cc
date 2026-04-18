@@ -268,7 +268,8 @@ TEST_F(PostgresPartitionedIngestTest, AbortDropsAllStagingIncludingOrphans) {
   ASSERT_EQ(AdbcStatementSetSqlQuery(
                 &stmt,
                 "SELECT COUNT(*) FROM information_schema.tables "
-                "WHERE table_name LIKE 'adbc_stg_%'",
+                "WHERE table_schema = current_schema() "
+                "AND table_name LIKE 'adbc_stg_%'",
                 &error),
             ADBC_STATUS_OK);
   ArrowArrayStream stream{};

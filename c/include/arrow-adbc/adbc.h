@@ -2543,9 +2543,11 @@ AdbcStatusCode AdbcConnectionBeginIngestPartitions(
 /// — never shared across concurrent writes), and returns an opaque
 /// receipt.
 ///
-/// The stream's schema is validated against the schema recorded in
-/// the handle.  On mismatch, returns ADBC_STATUS_INVALID_ARGUMENT
-/// and produces no receipt.
+/// The stream's schema should be compatible with the target table's
+/// schema.  Drivers may validate this at any point during the write;
+/// on mismatch the call fails and produces no receipt.  The exact
+/// validation mechanism is driver-specific (e.g., RDBMS drivers may
+/// rely on the staging table DDL to enforce compatibility).
 ///
 /// On error of any kind, `out_receipt` is left with `release ==
 /// NULL` and the caller should retry the whole partition.  Partial

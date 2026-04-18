@@ -415,6 +415,36 @@ AdbcStatusCode StatementSetSubstraitPlan(struct AdbcStatement*, const uint8_t*, 
   SetError(error, "AdbcStatementSetSubstraitPlan not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
+
+AdbcStatusCode ConnectionBeginIngestPartitions(
+    struct AdbcConnection*, const char*, const char*, const char*, const char*,
+    struct ArrowSchema*, struct AdbcIngestHandle*, struct AdbcError* error) {
+  SetError(error, "AdbcConnectionBeginIngestPartitions not implemented");
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode ConnectionWriteIngestPartition(struct AdbcConnection*, const uint8_t*,
+                                              size_t, struct ArrowArrayStream*,
+                                              struct AdbcIngestReceipt*,
+                                              struct AdbcError* error) {
+  SetError(error, "AdbcConnectionWriteIngestPartition not implemented");
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode ConnectionCommitIngestPartitions(struct AdbcConnection*, const uint8_t*,
+                                                size_t, size_t, const uint8_t**,
+                                                const size_t*, int64_t*,
+                                                struct AdbcError* error) {
+  SetError(error, "AdbcConnectionCommitIngestPartitions not implemented");
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+AdbcStatusCode ConnectionAbortIngestPartitions(struct AdbcConnection*, const uint8_t*,
+                                               size_t, size_t, const uint8_t**,
+                                               const size_t*, struct AdbcError* error) {
+  SetError(error, "AdbcConnectionAbortIngestPartitions not implemented");
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
 }  // namespace
 
 // =============================================================================
@@ -1063,6 +1093,65 @@ AdbcStatusCode AdbcConnectionReadPartition(struct AdbcConnection* connection,
               out, connection);
 }
 
+AdbcStatusCode AdbcConnectionBeginIngestPartitions(
+    struct AdbcConnection* connection, const char* target_catalog,
+    const char* target_db_schema, const char* target_table, const char* mode,
+    struct ArrowSchema* schema, struct AdbcIngestHandle* out_handle,
+    struct AdbcError* error) {
+  if (!connection->private_driver) {
+    SetError(error,
+             "AdbcConnectionBeginIngestPartitions: must call AdbcConnectionNew first");
+    return ADBC_STATUS_INVALID_STATE;
+  }
+  INIT_ERROR(error, connection);
+  return connection->private_driver->ConnectionBeginIngestPartitions(
+      connection, target_catalog, target_db_schema, target_table, mode, schema, out_handle,
+      error);
+}
+
+AdbcStatusCode AdbcConnectionWriteIngestPartition(
+    struct AdbcConnection* connection, const uint8_t* handle, size_t handle_len,
+    struct ArrowArrayStream* data, struct AdbcIngestReceipt* out_receipt,
+    struct AdbcError* error) {
+  if (!connection->private_driver) {
+    SetError(error,
+             "AdbcConnectionWriteIngestPartition: must call AdbcConnectionNew first");
+    return ADBC_STATUS_INVALID_STATE;
+  }
+  INIT_ERROR(error, connection);
+  return connection->private_driver->ConnectionWriteIngestPartition(
+      connection, handle, handle_len, data, out_receipt, error);
+}
+
+AdbcStatusCode AdbcConnectionCommitIngestPartitions(
+    struct AdbcConnection* connection, const uint8_t* handle, size_t handle_len,
+    size_t num_receipts, const uint8_t** receipts, const size_t* receipt_lens,
+    int64_t* rows_affected, struct AdbcError* error) {
+  if (!connection->private_driver) {
+    SetError(error,
+             "AdbcConnectionCommitIngestPartitions: must call AdbcConnectionNew first");
+    return ADBC_STATUS_INVALID_STATE;
+  }
+  INIT_ERROR(error, connection);
+  return connection->private_driver->ConnectionCommitIngestPartitions(
+      connection, handle, handle_len, num_receipts, receipts, receipt_lens, rows_affected,
+      error);
+}
+
+AdbcStatusCode AdbcConnectionAbortIngestPartitions(
+    struct AdbcConnection* connection, const uint8_t* handle, size_t handle_len,
+    size_t num_receipts, const uint8_t** receipts, const size_t* receipt_lens,
+    struct AdbcError* error) {
+  if (!connection->private_driver) {
+    SetError(error,
+             "AdbcConnectionAbortIngestPartitions: must call AdbcConnectionNew first");
+    return ADBC_STATUS_INVALID_STATE;
+  }
+  INIT_ERROR(error, connection);
+  return connection->private_driver->ConnectionAbortIngestPartitions(
+      connection, handle, handle_len, num_receipts, receipts, receipt_lens, error);
+}
+
 AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
                                      struct AdbcError* error) {
   if (!connection->private_driver) {
@@ -1442,7 +1531,8 @@ AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
 
 AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, int version,
                                           void* raw_driver, struct AdbcError* error) {
-  constexpr std::array<int, 2> kSupportedVersions = {
+  constexpr std::array<int, 3> kSupportedVersions = {
+      ADBC_VERSION_1_2_0,
       ADBC_VERSION_1_1_0,
       ADBC_VERSION_1_0_0,
   };
@@ -1455,9 +1545,10 @@ AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, int vers
   switch (version) {
     case ADBC_VERSION_1_0_0:
     case ADBC_VERSION_1_1_0:
+    case ADBC_VERSION_1_2_0:
       break;
     default:
-      SetError(error, "Only ADBC 1.0.0 and 1.1.0 are supported");
+      SetError(error, "Only ADBC 1.0.0, 1.1.0, and 1.2.0 are supported");
       return ADBC_STATUS_NOT_IMPLEMENTED;
   }
 
@@ -1549,6 +1640,13 @@ AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, int vers
     FILL_DEFAULT(driver, StatementSetOptionBytes);
     FILL_DEFAULT(driver, StatementSetOptionDouble);
     FILL_DEFAULT(driver, StatementSetOptionInt);
+  }
+  if (version >= ADBC_VERSION_1_2_0) {
+    auto* driver = reinterpret_cast<struct AdbcDriver*>(raw_driver);
+    FILL_DEFAULT(driver, ConnectionBeginIngestPartitions);
+    FILL_DEFAULT(driver, ConnectionWriteIngestPartition);
+    FILL_DEFAULT(driver, ConnectionCommitIngestPartitions);
+    FILL_DEFAULT(driver, ConnectionAbortIngestPartitions);
   }
 
   return ADBC_STATUS_OK;
