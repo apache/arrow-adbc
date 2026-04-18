@@ -17,6 +17,7 @@
 
 // ADBC API implementations
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cerrno>
@@ -1098,6 +1099,14 @@ AdbcStatusCode AdbcConnectionBeginIngestPartitions(
     const char* target_db_schema, const char* target_table, const char* mode,
     struct ArrowSchema* schema, struct AdbcIngestHandle* out_handle,
     struct AdbcError* error) {
+  if (!connection) {
+    SetError(error, "AdbcConnectionBeginIngestPartitions: connection is NULL");
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+  if (!out_handle) {
+    SetError(error, "AdbcConnectionBeginIngestPartitions: out_handle is NULL");
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
   if (!connection->private_driver) {
     SetError(error,
              "AdbcConnectionBeginIngestPartitions: must call AdbcConnectionNew first");
@@ -1113,6 +1122,14 @@ AdbcStatusCode AdbcConnectionWriteIngestPartition(
     struct AdbcConnection* connection, const uint8_t* handle, size_t handle_len,
     struct ArrowArrayStream* data, struct AdbcIngestReceipt* out_receipt,
     struct AdbcError* error) {
+  if (!connection) {
+    SetError(error, "AdbcConnectionWriteIngestPartition: connection is NULL");
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+  if (!out_receipt) {
+    SetError(error, "AdbcConnectionWriteIngestPartition: out_receipt is NULL");
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
   if (!connection->private_driver) {
     SetError(error,
              "AdbcConnectionWriteIngestPartition: must call AdbcConnectionNew first");
@@ -1127,6 +1144,10 @@ AdbcStatusCode AdbcConnectionCommitIngestPartitions(
     struct AdbcConnection* connection, const uint8_t* handle, size_t handle_len,
     size_t num_receipts, const uint8_t** receipts, const size_t* receipt_lens,
     int64_t* rows_affected, struct AdbcError* error) {
+  if (!connection) {
+    SetError(error, "AdbcConnectionCommitIngestPartitions: connection is NULL");
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
   if (!connection->private_driver) {
     SetError(error,
              "AdbcConnectionCommitIngestPartitions: must call AdbcConnectionNew first");
@@ -1142,6 +1163,10 @@ AdbcStatusCode AdbcConnectionAbortIngestPartitions(
     struct AdbcConnection* connection, const uint8_t* handle, size_t handle_len,
     size_t num_receipts, const uint8_t** receipts, const size_t* receipt_lens,
     struct AdbcError* error) {
+  if (!connection) {
+    SetError(error, "AdbcConnectionAbortIngestPartitions: connection is NULL");
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
   if (!connection->private_driver) {
     SetError(error,
              "AdbcConnectionAbortIngestPartitions: must call AdbcConnectionNew first");
@@ -1542,14 +1567,10 @@ AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, int vers
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
 
-  switch (version) {
-    case ADBC_VERSION_1_0_0:
-    case ADBC_VERSION_1_1_0:
-    case ADBC_VERSION_1_2_0:
-      break;
-    default:
-      SetError(error, "Only ADBC 1.0.0, 1.1.0, and 1.2.0 are supported");
-      return ADBC_STATUS_NOT_IMPLEMENTED;
+  if (std::find(kSupportedVersions.begin(), kSupportedVersions.end(), version) ==
+      kSupportedVersions.end()) {
+    SetError(error, "Only ADBC 1.0.0, 1.1.0, and 1.2.0 are supported");
+    return ADBC_STATUS_NOT_IMPLEMENTED;
   }
 
 #define FILL_DEFAULT(DRIVER, STUB) \

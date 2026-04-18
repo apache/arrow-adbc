@@ -2551,9 +2551,11 @@ AdbcStatusCode AdbcConnectionBeginIngestPartitions(
 ///
 /// On error of any kind, `out_receipt` is left with `release ==
 /// NULL` and the caller should retry the whole partition.  Partial
-/// receipts are never produced.  Staging data the driver wrote
-/// before the failure becomes orphaned and will be cleaned up by
-/// Abort or by driver housekeeping.
+/// receipts are never produced.  The driver may, however, leave
+/// partial server-side state (for example, a per-call staging
+/// table); the caller must still call `AbortIngestPartitions` for
+/// the handle (with no receipt for this failed write) to release
+/// any staging resources, or rely on driver housekeeping.
 ///
 /// This call is safe to invoke concurrently from many connections
 /// using the same handle.

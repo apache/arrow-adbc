@@ -107,6 +107,44 @@ TEST_F(AdbcVersion, OldDriverNewManager) {
   EXPECT_NE(driver.StatementSetOptionDouble, nullptr);
 }
 
+// When a pre-1.2.0 driver is loaded at ADBC_VERSION_1_2_0, the new
+// partitioned-ingest entry points must be populated with default stubs that
+// return ADBC_STATUS_NOT_IMPLEMENTED, so the driver-manager wrappers do not
+// dereference null function pointers.
+TEST_F(AdbcVersion, OldDriverNewManagerPartitionedIngest) {
+  ASSERT_THAT(AdbcLoadDriverFromInitFunc(&Version100DriverInit, ADBC_VERSION_1_2_0,
+                                         &driver, &error),
+              IsOkStatus(&error));
+
+  ASSERT_NE(driver.ConnectionBeginIngestPartitions, nullptr);
+  ASSERT_NE(driver.ConnectionWriteIngestPartition, nullptr);
+  ASSERT_NE(driver.ConnectionCommitIngestPartitions, nullptr);
+  ASSERT_NE(driver.ConnectionAbortIngestPartitions, nullptr);
+
+  struct AdbcError stub_error = {};
+
+  EXPECT_THAT(driver.ConnectionBeginIngestPartitions(nullptr, nullptr, nullptr, nullptr,
+                                                     nullptr, nullptr, nullptr,
+                                                     &stub_error),
+              IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &stub_error));
+  if (stub_error.release) stub_error.release(&stub_error);
+
+  EXPECT_THAT(driver.ConnectionWriteIngestPartition(nullptr, nullptr, 0, nullptr, nullptr,
+                                                    &stub_error),
+              IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &stub_error));
+  if (stub_error.release) stub_error.release(&stub_error);
+
+  EXPECT_THAT(driver.ConnectionCommitIngestPartitions(nullptr, nullptr, 0, 0, nullptr,
+                                                      nullptr, nullptr, &stub_error),
+              IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &stub_error));
+  if (stub_error.release) stub_error.release(&stub_error);
+
+  EXPECT_THAT(driver.ConnectionAbortIngestPartitions(nullptr, nullptr, 0, 0, nullptr,
+                                                     nullptr, &stub_error),
+              IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &stub_error));
+  if (stub_error.release) stub_error.release(&stub_error);
+}
+
 // N.B. see postgresql_test.cc for backwards compatibility test of AdbcError
 // N.B. see postgresql_test.cc for backwards compatibility test of AdbcDriver
 
