@@ -1126,6 +1126,14 @@ AdbcStatusCode AdbcConnectionWriteIngestPartition(
     SetError(error, "AdbcConnectionWriteIngestPartition: connection is NULL");
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
+  if (!handle) {
+    SetError(error, "AdbcConnectionWriteIngestPartition: handle is NULL");
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+  if (!data) {
+    SetError(error, "AdbcConnectionWriteIngestPartition: data is NULL");
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
   if (!out_receipt) {
     SetError(error, "AdbcConnectionWriteIngestPartition: out_receipt is NULL");
     return ADBC_STATUS_INVALID_ARGUMENT;
@@ -1148,6 +1156,15 @@ AdbcStatusCode AdbcConnectionCommitIngestPartitions(
     SetError(error, "AdbcConnectionCommitIngestPartitions: connection is NULL");
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
+  if (!handle) {
+    SetError(error, "AdbcConnectionCommitIngestPartitions: handle is NULL");
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+  if (num_receipts > 0 && (!receipts || !receipt_lens)) {
+    SetError(error,
+             "AdbcConnectionCommitIngestPartitions: receipts/receipt_lens are NULL");
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
   if (!connection->private_driver) {
     SetError(error,
              "AdbcConnectionCommitIngestPartitions: must call AdbcConnectionNew first");
@@ -1165,6 +1182,15 @@ AdbcStatusCode AdbcConnectionAbortIngestPartitions(
     struct AdbcError* error) {
   if (!connection) {
     SetError(error, "AdbcConnectionAbortIngestPartitions: connection is NULL");
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+  if (!handle) {
+    SetError(error, "AdbcConnectionAbortIngestPartitions: handle is NULL");
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+  if (num_receipts > 0 && (!receipts || !receipt_lens)) {
+    SetError(error,
+             "AdbcConnectionAbortIngestPartitions: receipts/receipt_lens are NULL");
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
   if (!connection->private_driver) {

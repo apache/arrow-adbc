@@ -145,6 +145,94 @@ TEST_F(AdbcVersion, OldDriverNewManagerPartitionedIngest) {
   if (stub_error.release) stub_error.release(&stub_error);
 }
 
+// The public AdbcConnection*IngestPartitions wrappers must reject a NULL
+// connection with ADBC_STATUS_INVALID_ARGUMENT instead of dereferencing it.
+TEST_F(AdbcVersion, IngestPartitionsWrappersRejectNullConnection) {
+  uint8_t handle_bytes[1] = {0};
+  struct ArrowArrayStream stream = {};
+  struct ArrowSchema schema = {};
+  struct AdbcIngestHandle out_handle = {};
+  struct AdbcIngestReceipt out_receipt = {};
+  int64_t rows_affected = 0;
+  struct AdbcError local_error = {};
+
+  EXPECT_THAT(
+      AdbcConnectionBeginIngestPartitions(nullptr, nullptr, nullptr, "t",
+                                          ADBC_INGEST_OPTION_MODE_CREATE, &schema,
+                                          &out_handle, &local_error),
+      IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &local_error));
+  if (local_error.release) local_error.release(&local_error);
+
+  EXPECT_THAT(AdbcConnectionWriteIngestPartition(nullptr, handle_bytes, 1, &stream,
+                                                 &out_receipt, &local_error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &local_error));
+  if (local_error.release) local_error.release(&local_error);
+
+  EXPECT_THAT(AdbcConnectionCommitIngestPartitions(nullptr, handle_bytes, 1, 0, nullptr,
+                                                   nullptr, &rows_affected, &local_error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &local_error));
+  if (local_error.release) local_error.release(&local_error);
+
+  EXPECT_THAT(AdbcConnectionAbortIngestPartitions(nullptr, handle_bytes, 1, 0, nullptr,
+                                                  nullptr, &local_error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &local_error));
+  if (local_error.release) local_error.release(&local_error);
+}
+
+// With a real connection wired to a 1.2.0-loaded driver, the public wrappers
+// must dispatch to the FILL_DEFAULT stubs and surface NOT_IMPLEMENTED.
+TEST_F(AdbcVersion, IngestPartitionsWrappersDispatchToStubs) {
+  ASSERT_THAT(AdbcLoadDriverFromInitFunc(&Version100DriverInit, ADBC_VERSION_1_2_0,
+                                         &driver, &error),
+              IsOkStatus(&error));
+
+  struct AdbcConnection connection = {};
+  connection.private_driver = &driver;
+
+  uint8_t handle_bytes[1] = {0};
+  struct ArrowArrayStream stream = {};
+  struct ArrowSchema schema = {};
+  struct AdbcIngestHandle out_handle = {};
+  struct AdbcIngestReceipt out_receipt = {};
+  int64_t rows_affected = 0;
+  struct AdbcError local_error = {};
+
+  EXPECT_THAT(AdbcConnectionBeginIngestPartitions(&connection, nullptr, nullptr, "t",
+                                                  ADBC_INGEST_OPTION_MODE_CREATE, &schema,
+                                                  &out_handle, &local_error),
+              IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &local_error));
+  if (local_error.release) local_error.release(&local_error);
+
+  EXPECT_THAT(AdbcConnectionWriteIngestPartition(&connection, handle_bytes, 1, &stream,
+                                                 &out_receipt, &local_error),
+              IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &local_error));
+  if (local_error.release) local_error.release(&local_error);
+
+  EXPECT_THAT(
+      AdbcConnectionCommitIngestPartitions(&connection, handle_bytes, 1, 0, nullptr,
+                                           nullptr, &rows_affected, &local_error),
+      IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &local_error));
+  if (local_error.release) local_error.release(&local_error);
+
+  EXPECT_THAT(AdbcConnectionAbortIngestPartitions(&connection, handle_bytes, 1, 0,
+                                                  nullptr, nullptr, &local_error),
+              IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &local_error));
+  if (local_error.release) local_error.release(&local_error);
+
+  // Don't let TearDown observe a borrowed driver pointer.
+  connection.private_driver = nullptr;
+}
+
+// AdbcLoadDriverFromInitFunc must reject unrecognized version constants with
+// ADBC_STATUS_NOT_IMPLEMENTED so a typo in kSupportedVersions cannot silently
+// regress version gating.
+TEST_F(AdbcVersion, LoadDriverFromInitFuncRejectsUnknownVersion) {
+  ASSERT_THAT(AdbcLoadDriverFromInitFunc(&Version100DriverInit, /*bogus*/ 0x12345678,
+                                         &driver, &error),
+              IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
+  ASSERT_EQ(driver.release, nullptr);
+}
+
 // N.B. see postgresql_test.cc for backwards compatibility test of AdbcError
 // N.B. see postgresql_test.cc for backwards compatibility test of AdbcDriver
 
