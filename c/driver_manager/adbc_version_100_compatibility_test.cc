@@ -223,6 +223,83 @@ TEST_F(AdbcVersion, IngestPartitionsWrappersDispatchToStubs) {
   connection.private_driver = nullptr;
 }
 
+// With a valid connection, the public wrappers must still reject NULL
+// handle/data/out_handle/out_receipt and (when num_receipts > 0) NULL
+// receipts/receipt_lens with ADBC_STATUS_INVALID_ARGUMENT, so a future reorder
+// that hides these guards behind the connection check is caught here.
+TEST_F(AdbcVersion, IngestPartitionsWrappersGuardNullArgsWithValidConnection) {
+  ASSERT_THAT(AdbcLoadDriverFromInitFunc(&Version100DriverInit, ADBC_VERSION_1_2_0,
+                                         &driver, &error),
+              IsOkStatus(&error));
+
+  struct AdbcConnection connection = {};
+  connection.private_driver = &driver;
+
+  uint8_t handle_bytes[1] = {0};
+  struct ArrowArrayStream stream = {};
+  struct ArrowSchema schema = {};
+  struct AdbcIngestReceipt out_receipt = {};
+  int64_t rows_affected = 0;
+  struct AdbcError local_error = {};
+
+  // Begin: NULL out_handle.
+  EXPECT_THAT(AdbcConnectionBeginIngestPartitions(&connection, nullptr, nullptr, "t",
+                                                  ADBC_INGEST_OPTION_MODE_CREATE, &schema,
+                                                  /*out_handle=*/nullptr, &local_error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &local_error));
+  if (local_error.release) local_error.release(&local_error);
+
+  // Write: NULL handle.
+  EXPECT_THAT(AdbcConnectionWriteIngestPartition(&connection, /*handle=*/nullptr, 0,
+                                                 &stream, &out_receipt, &local_error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &local_error));
+  if (local_error.release) local_error.release(&local_error);
+
+  // Write: NULL data.
+  EXPECT_THAT(AdbcConnectionWriteIngestPartition(&connection, handle_bytes, 1,
+                                                 /*data=*/nullptr, &out_receipt,
+                                                 &local_error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &local_error));
+  if (local_error.release) local_error.release(&local_error);
+
+  // Write: NULL out_receipt.
+  EXPECT_THAT(AdbcConnectionWriteIngestPartition(&connection, handle_bytes, 1, &stream,
+                                                 /*out_receipt=*/nullptr, &local_error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &local_error));
+  if (local_error.release) local_error.release(&local_error);
+
+  // Commit: NULL handle.
+  EXPECT_THAT(
+      AdbcConnectionCommitIngestPartitions(&connection, /*handle=*/nullptr, 0, 0, nullptr,
+                                           nullptr, &rows_affected, &local_error),
+      IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &local_error));
+  if (local_error.release) local_error.release(&local_error);
+
+  // Commit: num_receipts > 0 with NULL receipts/receipt_lens.
+  EXPECT_THAT(
+      AdbcConnectionCommitIngestPartitions(&connection, handle_bytes, 1, /*num=*/1,
+                                           /*receipts=*/nullptr, /*lens=*/nullptr,
+                                           &rows_affected, &local_error),
+      IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &local_error));
+  if (local_error.release) local_error.release(&local_error);
+
+  // Abort: NULL handle.
+  EXPECT_THAT(AdbcConnectionAbortIngestPartitions(&connection, /*handle=*/nullptr, 0, 0,
+                                                  nullptr, nullptr, &local_error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &local_error));
+  if (local_error.release) local_error.release(&local_error);
+
+  // Abort: num_receipts > 0 with NULL receipts/receipt_lens.
+  EXPECT_THAT(AdbcConnectionAbortIngestPartitions(&connection, handle_bytes, 1, /*num=*/1,
+                                                  /*receipts=*/nullptr,
+                                                  /*lens=*/nullptr, &local_error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &local_error));
+  if (local_error.release) local_error.release(&local_error);
+
+  // Don't let TearDown observe a borrowed driver pointer.
+  connection.private_driver = nullptr;
+}
+
 // AdbcLoadDriverFromInitFunc must reject unrecognized version constants with
 // ADBC_STATUS_NOT_IMPLEMENTED so a typo in kSupportedVersions cannot silently
 // regress version gating.
