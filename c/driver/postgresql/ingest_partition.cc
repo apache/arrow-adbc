@@ -94,10 +94,19 @@ namespace {
 // staging tables during Abort.
 constexpr size_t kStagingPrefixLen = 9 + 32 + 1;
 constexpr size_t kStagingSuffixLen = 16;
-constexpr size_t kStagingMaxIdentLen = 63;
-static_assert(kStagingPrefixLen + kStagingSuffixLen <= kStagingMaxIdentLen,
+constexpr size_t kIdentMaxLen = 63;
+static_assert(kStagingPrefixLen + kStagingSuffixLen <= kIdentMaxLen,
               "staging table name would exceed PostgreSQL NAMEDATALEN-1 and be "
               "silently truncated");
+
+// Commit savepoint name is "adbc_ingest_commit_" (19) + 32-hex handle id.
+// Guard against truncation for the same reason: a truncated name would alias
+// across concurrent ingest handles on the same connection.
+constexpr size_t kCommitSavepointPrefixLen = 19;
+constexpr size_t kHexIdLen = 32;
+static_assert(kCommitSavepointPrefixLen + kHexIdLen <= kIdentMaxLen,
+              "ingest commit savepoint name would exceed PostgreSQL "
+              "NAMEDATALEN-1 and be silently truncated");
 }  // namespace
 
 std::string IngestHandle::StagingPrefix() const {
@@ -523,7 +532,10 @@ AdbcStatusCode PostgresConnection::CommitIngestPartitions(
 
   // ROLLBACK TO SAVEPOINT leaves the savepoint on the stack in PG, so also
   // RELEASE it after rollback to restore the caller's savepoint stack to its
-  // pre-call shape. Best-effort — errors are ignored.
+  // pre-call shape. Errors from these cleanup statements are intentionally
+  // discarded (nullptr error sink): the caller's `error` already holds the
+  // first-cause message from the failing step, and surfacing a secondary
+  // cleanup failure would overwrite it with a less useful diagnostic.
   auto abort_ingest = [&]() {
     ExecSimple(conn_, rollback_sql, nullptr);
     if (use_savepoint) {
