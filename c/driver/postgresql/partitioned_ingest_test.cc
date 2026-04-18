@@ -23,6 +23,7 @@
 #include <nanoarrow/nanoarrow.h>
 #include <nanoarrow/nanoarrow.hpp>
 
+#include "postgresql/ingest_partition.h"
 #include "validation/adbc_validation_util.h"
 
 namespace {
@@ -444,16 +445,25 @@ TEST_F(PostgresPartitionedIngestTest, CommitFailureInOuterTxnReleasesSavepoint) 
 
   // Derive the staging table name from the receipt wire format (4-byte
   // "PIR1" magic + u32 schema len + schema + u32 table len + table + ...).
+  // The production wire format uses host-endian u32 (see WriteU32/ReadU32 in
+  // ingest_partition.cc) — match that here, with strict bounds checks so a
+  // malformed length cannot run rp past the end of the buffer.
+  auto receipt_remaining = [&](const uint8_t* rp) -> size_t {
+    return receipt_bytes.size() - static_cast<size_t>(rp - receipt_bytes.data());
+  };
   ASSERT_GE(receipt_bytes.size(), static_cast<size_t>(4 + 4));
   const uint8_t* rp = receipt_bytes.data() + 4;
   uint32_t schema_len = 0;
   std::memcpy(&schema_len, rp, sizeof(schema_len));
-  rp += 4;
+  rp += sizeof(schema_len);
+  ASSERT_LE(schema_len, receipt_remaining(rp));
   std::string staging_schema(reinterpret_cast<const char*>(rp), schema_len);
   rp += schema_len;
+  ASSERT_GE(receipt_remaining(rp), sizeof(uint32_t));
   uint32_t tbl_len = 0;
   std::memcpy(&tbl_len, rp, sizeof(tbl_len));
-  rp += 4;
+  rp += sizeof(tbl_len);
+  ASSERT_LE(tbl_len, receipt_remaining(rp));
   std::string staging_table(reinterpret_cast<const char*>(rp), tbl_len);
   std::string qualified_staging =
       "\"" + staging_schema + "\".\"" + staging_table + "\"";
@@ -522,16 +532,17 @@ TEST_F(PostgresPartitionedIngestTest, CommitFailureInOuterTxnReleasesSavepoint) 
   // if it were still live, a caller SAVEPOINT of the same name would still
   // work, so instead prove release by issuing a ROLLBACK TO on the driver's
   // savepoint name and expecting it to fail ("savepoint does not exist").
-  // That asserts the savepoint is no longer on the stack after abort.
+  // That asserts the savepoint is no longer on the stack after abort. Build
+  // the name from IngestHandle::kCommitSavepointPrefix and the inline HexId16
+  // helper so the probe shares the literal and the encoding with the driver
+  // — a future rename forces this test to update too.
+  ASSERT_GE(handle.length, static_cast<size_t>(4 + 16));
+  std::array<uint8_t, 16> ingest_id{};
+  std::memcpy(ingest_id.data(), handle.bytes + 4, ingest_id.size());
+  const std::string driver_savepoint =
+      std::string(adbcpq::IngestHandle::kCommitSavepointPrefix) +
+      adbcpq::internal::HexId16(ingest_id);
   {
-    ASSERT_GE(handle.length, static_cast<size_t>(4 + 16));
-    std::string driver_savepoint = "adbc_ingest_commit_";
-    static const char kHex[] = "0123456789abcdef";
-    for (size_t i = 0; i < 16; i++) {
-      uint8_t b = handle.bytes[4 + i];
-      driver_savepoint += kHex[b >> 4];
-      driver_savepoint += kHex[b & 0x0F];
-    }
     AdbcStatement stmt{};
     ASSERT_EQ(AdbcStatementNew(&coordinator.conn, &stmt, &error), ADBC_STATUS_OK);
     std::string sql = "ROLLBACK TO SAVEPOINT " + driver_savepoint;
@@ -545,14 +556,25 @@ TEST_F(PostgresPartitionedIngestTest, CommitFailureInOuterTxnReleasesSavepoint) 
     AdbcStatementRelease(&stmt, &error);
   }
 
-  // Cleanly commit the (now empty) outer transaction.
-  AdbcConnectionRollback(&coordinator.conn, &error);
-  AdbcConnectionSetOption(&coordinator.conn, ADBC_CONNECTION_OPTION_AUTOCOMMIT, "true",
-                          &error);
+  // The failed ROLLBACK TO above pushed libpq into PQTRANS_INERROR. Recover by
+  // explicitly rolling back the outer transaction; the rollback must succeed
+  // for AbortIngestPartitions below to operate on a clean connection.
+  ASSERT_EQ(AdbcConnectionRollback(&coordinator.conn, &error), ADBC_STATUS_OK)
+      << error.message;
+  ASSERT_EQ(AdbcConnectionSetOption(&coordinator.conn, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
+                                    "true", &error),
+            ADBC_STATUS_OK)
+      << error.message;
 
-  // Best-effort cleanup of any remaining staging tables.
-  AdbcConnectionAbortIngestPartitions(&coordinator.conn, handle.bytes, handle.length, 0,
-                                      nullptr, nullptr, &error);
+  // Best-effort cleanup of any remaining staging tables. The saboteur dropped
+  // the only staging table out-of-band, so this should find nothing — but call
+  // it anyway to exercise the abort path on a connection that just unwound an
+  // error.
+  ASSERT_EQ(AdbcConnectionAbortIngestPartitions(&coordinator.conn, handle.bytes,
+                                                handle.length, 0, nullptr, nullptr,
+                                                &error),
+            ADBC_STATUS_OK)
+      << error.message;
 
   handle.release(&handle);
   Cleanup(&coordinator, table, &error);

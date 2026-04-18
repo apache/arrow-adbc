@@ -99,12 +99,13 @@ static_assert(kStagingPrefixLen + kStagingSuffixLen <= kIdentMaxLen,
               "staging table name would exceed PostgreSQL NAMEDATALEN-1 and be "
               "silently truncated");
 
-// Commit savepoint name is "adbc_ingest_commit_" (19) + 32-hex handle id.
-// Guard against truncation for the same reason: a truncated name would alias
-// across concurrent ingest handles on the same connection.
-constexpr size_t kCommitSavepointPrefixLen = 19;
+// Commit savepoint name is IngestHandle::kCommitSavepointPrefix + 32-hex
+// handle id. Guard against truncation for the same reason: a truncated name
+// would alias across concurrent ingest handles on the same connection. The
+// assert references the same constant CommitSavepointName() builds from, so a
+// future rename cannot drift past the assert.
 constexpr size_t kHexIdLen = 32;
-static_assert(kCommitSavepointPrefixLen + kHexIdLen <= kIdentMaxLen,
+static_assert(IngestHandle::kCommitSavepointPrefix.size() + kHexIdLen <= kIdentMaxLen,
               "ingest commit savepoint name would exceed PostgreSQL "
               "NAMEDATALEN-1 and be silently truncated");
 }  // namespace
@@ -521,7 +522,7 @@ AdbcStatusCode PostgresConnection::CommitIngestPartitions(
   // Derive a unique savepoint name from the handle's ingest_id so the driver
   // cannot collide with a caller-managed savepoint of the same name. Only used
   // when use_savepoint is true, but cheap to compute unconditionally.
-  const std::string savepoint_name = "adbc_ingest_commit_" + HexId(handle.ingest_id);
+  const std::string savepoint_name = handle.CommitSavepointName();
   const std::string open_sql =
       use_savepoint ? std::string("SAVEPOINT ") + savepoint_name : "BEGIN";
   const std::string commit_sql =
