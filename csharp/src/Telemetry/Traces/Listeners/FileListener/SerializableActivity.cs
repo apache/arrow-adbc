@@ -122,6 +122,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Listeners.FileListener
         public string? ParentSpanId { get; set; }
         public string? IdFormat { get; set; }
 
+        [JsonConverter(typeof(OtelAttributesDictionaryConverter))]
         public IReadOnlyDictionary<string, object?> TagObjects { get; set; } = new Dictionary<string, object?>();
         public IReadOnlyList<SerializableActivityEvent> Events { get; set; } = [];
         public IReadOnlyList<SerializableActivityLink> Links { get; set; } = [];
@@ -140,6 +141,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Listeners.FileListener
         /// </summary>
         public DateTimeOffset Timestamp { get; set; }
 
+        [JsonConverter(typeof(OtelAttributesListConverter))]
         public IReadOnlyList<KeyValuePair<string, object?>> Tags { get; set; } = [];
 
         public static implicit operator SerializableActivityEvent(ActivityEvent source)
@@ -157,6 +159,7 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Listeners.FileListener
     {
         public SerializableActivityContext? Context { get; set; }
 
+        [JsonConverter(typeof(OtelAttributesListConverter))]
         public IReadOnlyList<KeyValuePair<string, object?>>? Tags { get; set; } = [];
 
         public static implicit operator SerializableActivityLink(ActivityLink source)

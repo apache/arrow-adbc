@@ -89,9 +89,17 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Listeners.FileListener
 
                     stream.SetLength(0);
                     SerializableActivity serializableActivity = new(activity);
+#if NET6_0_OR_GREATER
+                    await JsonSerializer.SerializeAsync(
+                        stream,
+                        serializableActivity,
+                        TraceJsonContext.Default.SerializableActivity,
+                        cancellationToken).ConfigureAwait(false);
+#else
                     await JsonSerializer.SerializeAsync(
                         stream,
                         serializableActivity, cancellationToken: cancellationToken).ConfigureAwait(false);
+#endif
                     stream.Write(s_newLine, 0, s_newLine.Length);
                     stream.Position = 0;
 

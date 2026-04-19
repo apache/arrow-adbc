@@ -317,7 +317,121 @@ namespace Apache.Arrow.Adbc.Extensions
         {
             Dictionary<string, object?>? obj = ParseStructArray(structArray, index);
 
-            return JsonSerializer.Serialize(obj);
+            using MemoryStream ms = new();
+            using (Utf8JsonWriter writer = new(ms))
+            {
+                WriteJsonValue(writer, obj);
+            }
+            return System.Text.Encoding.UTF8.GetString(ms.ToArray());
+        }
+
+        private static void WriteJsonValue(Utf8JsonWriter writer, object? value)
+        {
+            switch (value)
+            {
+                case null:
+                    writer.WriteNullValue();
+                    return;
+                case string s:
+                    writer.WriteStringValue(s);
+                    return;
+                case bool b:
+                    writer.WriteBooleanValue(b);
+                    return;
+                case int i:
+                    writer.WriteNumberValue(i);
+                    return;
+                case long l:
+                    writer.WriteNumberValue(l);
+                    return;
+                case short sh:
+                    writer.WriteNumberValue(sh);
+                    return;
+                case byte by:
+                    writer.WriteNumberValue(by);
+                    return;
+                case sbyte sb:
+                    writer.WriteNumberValue(sb);
+                    return;
+                case uint ui:
+                    writer.WriteNumberValue(ui);
+                    return;
+                case ulong ul:
+                    writer.WriteNumberValue(ul);
+                    return;
+                case ushort us:
+                    writer.WriteNumberValue(us);
+                    return;
+                case float f:
+                    writer.WriteNumberValue(f);
+                    return;
+                case double d:
+                    writer.WriteNumberValue(d);
+                    return;
+                case decimal dec:
+                    writer.WriteNumberValue(dec);
+                    return;
+                case SqlDecimal sqlDec:
+                    // Decimal32/Decimal64 come back as plain `decimal` and are handled above.
+                    // Decimal128 values arrive here; SqlDecimal.Precision reflects the column's
+                    // declared precision (every row from the same column shares it, so schema
+                    // stays stable). Any decimal that fits in 15 significant digits round-trips
+                    // cleanly through double, so it's safe to emit as a JSON number. Wider
+                    // columns are emitted as strings — consumers must parse them deliberately.
+                    if (sqlDec.Precision <= 15)
+                    {
+                        writer.WriteNumberValue(sqlDec.Value);
+                    }
+                    else
+                    {
+                        // SqlDecimal.ToString() formats from the Data array, so it handles
+                        // precisions that would overflow SqlDecimal.Value (>28 digits).
+                        writer.WriteStringValue(sqlDec.ToString());
+                    }
+                    return;
+                case DateTime dt:
+                    writer.WriteStringValue(dt);
+                    return;
+                case DateTimeOffset dto:
+                    writer.WriteStringValue(dto);
+                    return;
+#if NET6_0_OR_GREATER
+                case TimeOnly time:
+                    // Match System.Text.Json's ISO-ish "HH:mm:ss[.fraction]" format.
+                    // FFFFFFF elides trailing zeros and the decimal point when zero.
+                    writer.WriteStringValue(time.ToString("HH:mm:ss.FFFFFFF", System.Globalization.CultureInfo.InvariantCulture));
+                    return;
+                case DateOnly date:
+                    writer.WriteStringValue(date.ToString("yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture));
+                    return;
+#endif
+                case Guid g:
+                    writer.WriteStringValue(g);
+                    return;
+                case byte[] bytes:
+                    writer.WriteBase64StringValue(bytes);
+                    return;
+                case IDictionary<string, object?> dict:
+                    writer.WriteStartObject();
+                    foreach (KeyValuePair<string, object?> kv in dict)
+                    {
+                        writer.WritePropertyName(kv.Key);
+                        WriteJsonValue(writer, kv.Value);
+                    }
+                    writer.WriteEndObject();
+                    return;
+                case IEnumerable enumerable:
+                    writer.WriteStartArray();
+                    foreach (object? item in enumerable)
+                    {
+                        WriteJsonValue(writer, item);
+                    }
+                    writer.WriteEndArray();
+                    return;
+                default:
+                    writer.WriteStringValue(value.ToString());
+                    return;
+            }
         }
 
         /// <summary>
