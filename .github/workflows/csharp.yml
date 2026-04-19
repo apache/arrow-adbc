@@ -98,8 +98,8 @@ jobs:
         # Third-party action; activates vcvars64 so ilc's downstream
         # link.exe step can find link.exe/lib.exe and the Windows SDK.
         # The existing workflow only uses first-party actions, so flag
-        # this for review before merging.
-        uses: ilammy/msvc-dev-cmd@v1
+        # this for review before enabling.
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756  # v1
       - name: Publish NativeAOT driver
         shell: bash
         run: |
