@@ -29,3 +29,4 @@ with `Node.js <https://nodejs.org/en>`_ 22+, `Deno <https://deno.com/>`_ 2.0+, a
 
    quickstart
    driver_manager
+   api/index

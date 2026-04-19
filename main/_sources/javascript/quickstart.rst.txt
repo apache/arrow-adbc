@@ -65,9 +65,10 @@ For apt and dnf packages, see :doc:`/driver/installation`.
 Creating a Database and Connection
 ==================================
 
-The entry point is ``AdbcDatabase``.  Pass a ``driver`` option to identify the
-backend — either a short name (resolved via :doc:`/format/driver_manifests`
-search paths) or absolute path to a driver shared library:
+The entry point is :external+js_adbc:jsclass:`AdbcDatabase`.  Pass a ``driver``
+option to identify the backend — either a short name (resolved via
+:doc:`/format/driver_manifests` search paths) or absolute path to a driver
+shared library:
 
 .. code-block:: javascript
 
@@ -80,17 +81,18 @@ search paths) or absolute path to a driver shared library:
 Executing a Query
 =================
 
-To run a query, use ``AdbcConnection.query``, which returns an Apache Arrow
-``Table`` containing the full result:
+To run a query, use :external+js_adbc:jsmethod:`AdbcConnection.query`, which
+returns an Apache Arrow ``Table`` containing the full result:
 
 .. code-block:: javascript
 
    const table = await conn.query("SELECT 1 AS id, 'hello' AS greeting");
    console.log(table.getChild('greeting')?.get(0));  // "hello"
 
-For large result sets, use ``AdbcConnection.queryStream`` instead. It
-returns a ``RecordBatchReader`` that yields results one batch at a time without
-loading the entire result into memory:
+For large result sets, use
+:external+js_adbc:jsmethod:`AdbcConnection.queryStream` instead. It returns a
+``RecordBatchReader`` that yields results one batch at a time without loading
+the entire result into memory:
 
 .. code-block:: javascript
 
@@ -102,8 +104,9 @@ loading the entire result into memory:
 Executing Updates
 =================
 
-Use ``AdbcConnection.execute`` to execute statements that do not return rows
-(INSERT, UPDATE, DELETE, DDL).  It returns the number of rows affected:
+Use :external+js_adbc:jsmethod:`AdbcConnection.execute` to execute statements
+that do not return rows (INSERT, UPDATE, DELETE, DDL).  It returns the number of
+rows affected:
 
 .. code-block:: javascript
 
@@ -128,7 +131,8 @@ the bind parameters (``?`` placeholders) in the SQL statement:
    const result = await conn.query('SELECT name FROM users WHERE id = ?', params);
    console.log(result.getChild('name')?.get(0));  // "Alice"
 
-The same approach works with ``AdbcConnection.execute`` for DML:
+The same approach works with :external+js_adbc:jsmethod:`AdbcConnection.execute`
+for DML:
 
 .. code-block:: javascript
 
@@ -138,8 +142,10 @@ The same approach works with ``AdbcConnection.execute`` for DML:
 Ingesting Bulk Data
 ===================
 
-``AdbcConnection.ingest`` inserts an Arrow ``Table`` into a database
-table in a single call, avoiding per-row overhead:
+:external+js_adbc:jsmethod:`AdbcConnection.ingest` inserts an Arrow ``Table``
+into a database table in a single call, avoiding per-row overhead.  Pass a
+``mode`` option using :external+js_adbc:jsvariable:`IngestMode` to control whether
+to create a new table or append to an existing one:
 
 .. code-block:: javascript
 
@@ -158,8 +164,9 @@ table in a single call, avoiding per-row overhead:
    const more = tableFromArrays({ id: [4], name: ['dave'] });
    await conn.ingest('sample', more, { mode: IngestMode.Append });
 
-For datasets that do not fit in memory use ``AdbcConnection.ingestStream`` with
-a ``RecordBatchReader``:
+For datasets that do not fit in memory use
+:external+js_adbc:jsmethod:`AdbcConnection.ingestStream` with a
+``RecordBatchReader``:
 
 .. code-block:: javascript
 
@@ -172,8 +179,8 @@ a ``RecordBatchReader``:
 Getting Database Metadata
 =========================
 
-``AdbcConnection.getObjects`` returns a nested Arrow structure describing all
-catalogs, schemas, and tables in the database:
+:external+js_adbc:jsmethod:`AdbcConnection.getObjects` returns a nested Arrow
+structure describing all catalogs, schemas, and tables in the database:
 
 .. code-block:: javascript
 
@@ -183,15 +190,16 @@ catalogs, schemas, and tables in the database:
    const tables = dbSchemas?.get(0)?.db_schema_tables;
    console.log(tables?.get(0)?.table_name);  // "sample"
 
-``AdbcConnection.getTableSchema`` returns the Arrow schema for a specific table:
+:external+js_adbc:jsmethod:`AdbcConnection.getTableSchema` returns the Arrow
+schema for a specific table:
 
 .. code-block:: javascript
 
    const schema = await conn.getTableSchema({ tableName: 'sample' });
    console.log(schema.fields.map(f => f.name));  // ["id", "name"]
 
-``AdbcConnection.getTableTypes`` lists the types of table objects supported by
-the database:
+:external+js_adbc:jsmethod:`AdbcConnection.getTableTypes` lists the types of
+table objects supported by the database:
 
 .. code-block:: javascript
 
@@ -205,8 +213,11 @@ the database:
 Transactions
 ============
 
-By default, connections operate in autocommit mode.  Disable autocommit to
-manage transactions manually:
+By default, connections operate in autocommit mode.  Call
+:external+js_adbc:jsmethod:`AdbcConnection.setAutoCommit` with ``false`` to
+manage transactions manually, then use
+:external+js_adbc:jsmethod:`AdbcConnection.commit` or
+:external+js_adbc:jsmethod:`AdbcConnection.rollback`:
 
 .. code-block:: javascript
 
@@ -221,9 +232,10 @@ manage transactions manually:
 Low-Level Statement API
 =======================
 
-``AdbcStatement`` gives direct access to ADBC's statement lifecycle for use
-cases that require more control, such as binding parameters separately from
-execution or reusing a statement across multiple queries:
+:external+js_adbc:jsclass:`AdbcStatement` gives direct access to ADBC's
+statement lifecycle for use cases that require more control, such as binding
+parameters separately from execution or reusing a statement across multiple
+queries:
 
 .. code-block:: javascript
 

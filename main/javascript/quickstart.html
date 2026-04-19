@@ -311,6 +311,7 @@
 <li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">JavaScript</a><input aria-label="Toggle navigation of JavaScript" checked="" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
 <li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Quickstart</a></li>
 <li class="toctree-l2"><a class="reference internal" href="driver_manager.html">Driver Manager</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/index.html">JavaScript API Reference</a></li>
 </ul>
 </li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../python/index.html">Python</a><input aria-label="Toggle navigation of Python" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
@@ -451,9 +452,10 @@ python<span class="w"> </span>-c<span class="w"> </span><span class="s2">&quot;i
 </section>
 <section id="creating-a-database-and-connection">
 <h2>Creating a Database and Connection<a class="headerlink" href="#creating-a-database-and-connection" title="Link to this heading">¶</a></h2>
-<p>The entry point is <code class="docutils literal notranslate"><span class="pre">AdbcDatabase</span></code>.  Pass a <code class="docutils literal notranslate"><span class="pre">driver</span></code> option to identify the
-backend — either a short name (resolved via <a class="reference internal" href="../format/driver_manifests.html"><span class="doc">ADBC Driver Manager and Manifests</span></a>
-search paths) or absolute path to a driver shared library:</p>
+<p>The entry point is <a class="reference external" href="https://arrow.apache.org/adbc/main/javascript/api/classes/index.AdbcDatabase.html" title="(in ADBC JavaScript vversion)"><code class="xref std std-jsclass docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>.  Pass a <code class="docutils literal notranslate"><span class="pre">driver</span></code>
+option to identify the backend — either a short name (resolved via
+<a class="reference internal" href="../format/driver_manifests.html"><span class="doc">ADBC Driver Manager and Manifests</span></a> search paths) or absolute path to a driver
+shared library:</p>
 <div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">AdbcDatabase</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@apache-arrow/adbc-driver-manager&#39;</span><span class="p">;</span>
 
 <span class="c1">// Open a connection to an in-memory SQLite database.</span>
@@ -464,15 +466,16 @@ search paths) or absolute path to a driver shared library:</p>
 </section>
 <section id="executing-a-query">
 <h2>Executing a Query<a class="headerlink" href="#executing-a-query" title="Link to this heading">¶</a></h2>
-<p>To run a query, use <code class="docutils literal notranslate"><span class="pre">AdbcConnection.query</span></code>, which returns an Apache Arrow
-<code class="docutils literal notranslate"><span class="pre">Table</span></code> containing the full result:</p>
+<p>To run a query, use <a class="reference external" href="https://arrow.apache.org/adbc/main/javascript/api/interfaces/types.AdbcConnection.html#query" title="(in ADBC JavaScript vversion)"><code class="xref std std-jsmethod docutils literal notranslate"><span class="pre">AdbcConnection.query</span></code></a>, which
+returns an Apache Arrow <code class="docutils literal notranslate"><span class="pre">Table</span></code> containing the full result:</p>
 <div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">const</span><span class="w"> </span><span class="nx">table</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">conn</span><span class="p">.</span><span class="nx">query</span><span class="p">(</span><span class="s2">&quot;SELECT 1 AS id, &#39;hello&#39; AS greeting&quot;</span><span class="p">);</span>
 <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">table</span><span class="p">.</span><span class="nx">getChild</span><span class="p">(</span><span class="s1">&#39;greeting&#39;</span><span class="p">)</span><span class="o">?</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="mf">0</span><span class="p">));</span><span class="w">  </span><span class="c1">// &quot;hello&quot;</span>
 </pre></div>
 </div>
-<p>For large result sets, use <code class="docutils literal notranslate"><span class="pre">AdbcConnection.queryStream</span></code> instead. It
-returns a <code class="docutils literal notranslate"><span class="pre">RecordBatchReader</span></code> that yields results one batch at a time without
-loading the entire result into memory:</p>
+<p>For large result sets, use
+<a class="reference external" href="https://arrow.apache.org/adbc/main/javascript/api/interfaces/types.AdbcConnection.html#querystream" title="(in ADBC JavaScript vversion)"><code class="xref std std-jsmethod docutils literal notranslate"><span class="pre">AdbcConnection.queryStream</span></code></a> instead. It returns a
+<code class="docutils literal notranslate"><span class="pre">RecordBatchReader</span></code> that yields results one batch at a time without loading
+the entire result into memory:</p>
 <div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">const</span><span class="w"> </span><span class="nx">reader</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">conn</span><span class="p">.</span><span class="nx">queryStream</span><span class="p">(</span><span class="s1">&#39;SELECT * FROM large_table&#39;</span><span class="p">);</span>
 <span class="k">for</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="p">(</span><span class="kd">const</span><span class="w"> </span><span class="nx">batch</span><span class="w"> </span><span class="k">of</span><span class="w"> </span><span class="nx">reader</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="sb">`Processing batch of </span><span class="si">${</span><span class="nx">batch</span><span class="p">.</span><span class="nx">numRows</span><span class="si">}</span><span class="sb"> rows`</span><span class="p">);</span>
@@ -482,8 +485,9 @@ loading the entire result into memory:</p>
 </section>
 <section id="executing-updates">
 <h2>Executing Updates<a class="headerlink" href="#executing-updates" title="Link to this heading">¶</a></h2>
-<p>Use <code class="docutils literal notranslate"><span class="pre">AdbcConnection.execute</span></code> to execute statements that do not return rows
-(INSERT, UPDATE, DELETE, DDL).  It returns the number of rows affected:</p>
+<p>Use <a class="reference external" href="https://arrow.apache.org/adbc/main/javascript/api/interfaces/types.AdbcConnection.html#execute" title="(in ADBC JavaScript vversion)"><code class="xref std std-jsmethod docutils literal notranslate"><span class="pre">AdbcConnection.execute</span></code></a> to execute statements
+that do not return rows (INSERT, UPDATE, DELETE, DDL).  It returns the number of
+rows affected:</p>
 <div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="k">await</span><span class="w"> </span><span class="nx">conn</span><span class="p">.</span><span class="nx">execute</span><span class="p">(</span><span class="s1">&#39;CREATE TABLE users (id INTEGER, name TEXT)&#39;</span><span class="p">);</span>
 <span class="kd">const</span><span class="w"> </span><span class="nx">affected</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">conn</span><span class="p">.</span><span class="nx">execute</span><span class="p">(</span>
 <span class="w">  </span><span class="s2">&quot;INSERT INTO users VALUES (1, &#39;Alice&#39;), (2, &#39;Bob&#39;)&quot;</span>
@@ -504,7 +508,8 @@ the bind parameters (<code class="docutils literal notranslate"><span class="pre
 <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">result</span><span class="p">.</span><span class="nx">getChild</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span><span class="o">?</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="mf">0</span><span class="p">));</span><span class="w">  </span><span class="c1">// &quot;Alice&quot;</span>
 </pre></div>
 </div>
-<p>The same approach works with <code class="docutils literal notranslate"><span class="pre">AdbcConnection.execute</span></code> for DML:</p>
+<p>The same approach works with <a class="reference external" href="https://arrow.apache.org/adbc/main/javascript/api/interfaces/types.AdbcConnection.html#execute" title="(in ADBC JavaScript vversion)"><code class="xref std std-jsmethod docutils literal notranslate"><span class="pre">AdbcConnection.execute</span></code></a>
+for DML:</p>
 <div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">const</span><span class="w"> </span><span class="nx">params</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">tableFromArrays</span><span class="p">({</span><span class="w"> </span><span class="nx">id</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="mf">2</span><span class="p">],</span><span class="w"> </span><span class="nx">name</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="s1">&#39;Charlie&#39;</span><span class="p">]</span><span class="w"> </span><span class="p">});</span>
 <span class="k">await</span><span class="w"> </span><span class="nx">conn</span><span class="p">.</span><span class="nx">execute</span><span class="p">(</span><span class="s1">&#39;INSERT INTO users VALUES (?, ?)&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">params</span><span class="p">);</span>
 </pre></div>
@@ -512,8 +517,10 @@ the bind parameters (<code class="docutils literal notranslate"><span class="pre
 </section>
 <section id="ingesting-bulk-data">
 <h2>Ingesting Bulk Data<a class="headerlink" href="#ingesting-bulk-data" title="Link to this heading">¶</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">AdbcConnection.ingest</span></code> inserts an Arrow <code class="docutils literal notranslate"><span class="pre">Table</span></code> into a database
-table in a single call, avoiding per-row overhead:</p>
+<p><a class="reference external" href="https://arrow.apache.org/adbc/main/javascript/api/interfaces/types.AdbcConnection.html#ingest" title="(in ADBC JavaScript vversion)"><code class="xref std std-jsmethod docutils literal notranslate"><span class="pre">AdbcConnection.ingest</span></code></a> inserts an Arrow <code class="docutils literal notranslate"><span class="pre">Table</span></code>
+into a database table in a single call, avoiding per-row overhead.  Pass a
+<code class="docutils literal notranslate"><span class="pre">mode</span></code> option using <a class="reference external" href="https://arrow.apache.org/adbc/main/javascript/api/variables/types.IngestMode.html" title="(in ADBC JavaScript vversion)"><code class="xref std std-jsvariable docutils literal notranslate"><span class="pre">IngestMode</span></code></a> to control whether
+to create a new table or append to an existing one:</p>
 <div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">tableFromArrays</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;apache-arrow&#39;</span><span class="p">;</span>
 <span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">IngestMode</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@apache-arrow/adbc-driver-manager&#39;</span><span class="p">;</span>
 
@@ -530,8 +537,9 @@ table in a single call, avoiding per-row overhead:</p>
 <span class="k">await</span><span class="w"> </span><span class="nx">conn</span><span class="p">.</span><span class="nx">ingest</span><span class="p">(</span><span class="s1">&#39;sample&#39;</span><span class="p">,</span><span class="w"> </span><span class="nx">more</span><span class="p">,</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">mode</span><span class="o">:</span><span class="w"> </span><span class="nx">IngestMode</span><span class="p">.</span><span class="nx">Append</span><span class="w"> </span><span class="p">});</span>
 </pre></div>
 </div>
-<p>For datasets that do not fit in memory use <code class="docutils literal notranslate"><span class="pre">AdbcConnection.ingestStream</span></code> with
-a <code class="docutils literal notranslate"><span class="pre">RecordBatchReader</span></code>:</p>
+<p>For datasets that do not fit in memory use
+<a class="reference external" href="https://arrow.apache.org/adbc/main/javascript/api/interfaces/types.AdbcConnection.html#ingeststream" title="(in ADBC JavaScript vversion)"><code class="xref std std-jsmethod docutils literal notranslate"><span class="pre">AdbcConnection.ingestStream</span></code></a> with a
+<code class="docutils literal notranslate"><span class="pre">RecordBatchReader</span></code>:</p>
 <div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">RecordBatchReader</span><span class="p">,</span><span class="w"> </span><span class="nx">tableToIPC</span><span class="p">,</span><span class="w"> </span><span class="nx">tableFromArrays</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;apache-arrow&#39;</span><span class="p">;</span>
 
 <span class="kd">const</span><span class="w"> </span><span class="nx">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">tableFromArrays</span><span class="p">({</span><span class="w"> </span><span class="nx">id</span><span class="o">:</span><span class="w"> </span><span class="p">[</span><span class="mf">1</span><span class="p">,</span><span class="w"> </span><span class="mf">2</span><span class="p">,</span><span class="w"> </span><span class="mf">3</span><span class="p">]</span><span class="w"> </span><span class="p">});</span>
@@ -542,8 +550,8 @@ a <code class="docutils literal notranslate"><span class="pre">RecordBatchReader
 </section>
 <section id="getting-database-metadata">
 <h2>Getting Database Metadata<a class="headerlink" href="#getting-database-metadata" title="Link to this heading">¶</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">AdbcConnection.getObjects</span></code> returns a nested Arrow structure describing all
-catalogs, schemas, and tables in the database:</p>
+<p><a class="reference external" href="https://arrow.apache.org/adbc/main/javascript/api/interfaces/types.AdbcConnection.html#getobjects" title="(in ADBC JavaScript vversion)"><code class="xref std std-jsmethod docutils literal notranslate"><span class="pre">AdbcConnection.getObjects</span></code></a> returns a nested Arrow
+structure describing all catalogs, schemas, and tables in the database:</p>
 <div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">const</span><span class="w"> </span><span class="nx">objects</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">conn</span><span class="p">.</span><span class="nx">getObjects</span><span class="p">({</span><span class="w"> </span><span class="nx">depth</span><span class="o">:</span><span class="w"> </span><span class="mf">3</span><span class="p">,</span><span class="w"> </span><span class="nx">tableName</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;sample&#39;</span><span class="w"> </span><span class="p">});</span>
 
 <span class="kd">const</span><span class="w"> </span><span class="nx">dbSchemas</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nx">objects</span><span class="p">.</span><span class="nx">getChild</span><span class="p">(</span><span class="s1">&#39;catalog_db_schemas&#39;</span><span class="p">)</span><span class="o">?</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="mf">0</span><span class="p">);</span>
@@ -551,13 +559,14 @@ catalogs, schemas, and tables in the database:</p>
 <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">tables</span><span class="o">?</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="mf">0</span><span class="p">)</span><span class="o">?</span><span class="p">.</span><span class="nx">table_name</span><span class="p">);</span><span class="w">  </span><span class="c1">// &quot;sample&quot;</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">AdbcConnection.getTableSchema</span></code> returns the Arrow schema for a specific table:</p>
+<p><a class="reference external" href="https://arrow.apache.org/adbc/main/javascript/api/interfaces/types.AdbcConnection.html#gettableschema" title="(in ADBC JavaScript vversion)"><code class="xref std std-jsmethod docutils literal notranslate"><span class="pre">AdbcConnection.getTableSchema</span></code></a> returns the Arrow
+schema for a specific table:</p>
 <div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">const</span><span class="w"> </span><span class="nx">schema</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">conn</span><span class="p">.</span><span class="nx">getTableSchema</span><span class="p">({</span><span class="w"> </span><span class="nx">tableName</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;sample&#39;</span><span class="w"> </span><span class="p">});</span>
 <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">schema</span><span class="p">.</span><span class="nx">fields</span><span class="p">.</span><span class="nx">map</span><span class="p">(</span><span class="nx">f</span><span class="w"> </span><span class="p">=&gt;</span><span class="w"> </span><span class="nx">f</span><span class="p">.</span><span class="nx">name</span><span class="p">));</span><span class="w">  </span><span class="c1">// [&quot;id&quot;, &quot;name&quot;]</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">AdbcConnection.getTableTypes</span></code> lists the types of table objects supported by
-the database:</p>
+<p><a class="reference external" href="https://arrow.apache.org/adbc/main/javascript/api/interfaces/types.AdbcConnection.html#gettabletypes" title="(in ADBC JavaScript vversion)"><code class="xref std std-jsmethod docutils literal notranslate"><span class="pre">AdbcConnection.getTableTypes</span></code></a> lists the types of
+table objects supported by the database:</p>
 <div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">const</span><span class="w"> </span><span class="nx">types</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">conn</span><span class="p">.</span><span class="nx">getTableTypes</span><span class="p">();</span>
 <span class="kd">const</span><span class="w"> </span><span class="nx">typeNames</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">Array</span><span class="p">.</span><span class="kr">from</span><span class="p">(</span>
 <span class="w">  </span><span class="p">{</span><span class="w"> </span><span class="nx">length</span><span class="o">:</span><span class="w"> </span><span class="nx">types</span><span class="p">.</span><span class="nx">numRows</span><span class="w"> </span><span class="p">},</span>
@@ -569,8 +578,11 @@ the database:</p>
 </section>
 <section id="transactions">
 <h2>Transactions<a class="headerlink" href="#transactions" title="Link to this heading">¶</a></h2>
-<p>By default, connections operate in autocommit mode.  Disable autocommit to
-manage transactions manually:</p>
+<p>By default, connections operate in autocommit mode.  Call
+<a class="reference external" href="https://arrow.apache.org/adbc/main/javascript/api/interfaces/types.AdbcConnection.html#setautocommit" title="(in ADBC JavaScript vversion)"><code class="xref std std-jsmethod docutils literal notranslate"><span class="pre">AdbcConnection.setAutoCommit</span></code></a> with <code class="docutils literal notranslate"><span class="pre">false</span></code> to
+manage transactions manually, then use
+<a class="reference external" href="https://arrow.apache.org/adbc/main/javascript/api/interfaces/types.AdbcConnection.html#commit" title="(in ADBC JavaScript vversion)"><code class="xref std std-jsmethod docutils literal notranslate"><span class="pre">AdbcConnection.commit</span></code></a> or
+<a class="reference external" href="https://arrow.apache.org/adbc/main/javascript/api/interfaces/types.AdbcConnection.html#rollback" title="(in ADBC JavaScript vversion)"><code class="xref std std-jsmethod docutils literal notranslate"><span class="pre">AdbcConnection.rollback</span></code></a>:</p>
 <div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="nx">conn</span><span class="p">.</span><span class="nx">setAutoCommit</span><span class="p">(</span><span class="kc">false</span><span class="p">);</span>
 
 <span class="k">await</span><span class="w"> </span><span class="nx">conn</span><span class="p">.</span><span class="nx">execute</span><span class="p">(</span><span class="s2">&quot;INSERT INTO users VALUES (99, &#39;temp&#39;)&quot;</span><span class="p">);</span>
@@ -583,9 +595,10 @@ manage transactions manually:</p>
 </section>
 <section id="low-level-statement-api">
 <h2>Low-Level Statement API<a class="headerlink" href="#low-level-statement-api" title="Link to this heading">¶</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">AdbcStatement</span></code> gives direct access to ADBC’s statement lifecycle for use
-cases that require more control, such as binding parameters separately from
-execution or reusing a statement across multiple queries:</p>
+<p><a class="reference external" href="https://arrow.apache.org/adbc/main/javascript/api/classes/index.AdbcStatement.html" title="(in ADBC JavaScript vversion)"><code class="xref std std-jsclass docutils literal notranslate"><span class="pre">AdbcStatement</span></code></a> gives direct access to ADBC’s
+statement lifecycle for use cases that require more control, such as binding
+parameters separately from execution or reusing a statement across multiple
+queries:</p>
 <div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="kd">const</span><span class="w"> </span><span class="nx">stmt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">await</span><span class="w"> </span><span class="nx">conn</span><span class="p">.</span><span class="nx">createStatement</span><span class="p">();</span>
 
 <span class="k">await</span><span class="w"> </span><span class="nx">stmt</span><span class="p">.</span><span class="nx">setSqlQuery</span><span class="p">(</span><span class="s1">&#39;SELECT id, name FROM users WHERE id = ?&#39;</span><span class="p">);</span>
