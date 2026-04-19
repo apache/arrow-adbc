@@ -66,19 +66,18 @@ namespace Apache.Arrow.Adbc.C
     internal unsafe delegate AdbcStatusCode StatementExecuteQuery(CAdbcStatement* statement, CArrowArrayStream* stream, long* rows, CAdbcError* error);
     internal unsafe delegate AdbcStatusCode StatementExecutePartitions(CAdbcStatement* statement, CArrowSchema* schema, CAdbcPartitions* partitions, long* rows, CAdbcError* error);
     internal unsafe delegate AdbcStatusCode StatementExecuteSchema(CAdbcStatement* statement, CArrowSchema* stream, CAdbcError* error);
+    internal unsafe delegate AdbcStatusCode StatementFn(CAdbcStatement* statement, CAdbcError* error);
     internal unsafe delegate AdbcStatusCode StatementGetParameterSchema(CAdbcStatement* statement, CArrowSchema* schema, CAdbcError* error);
     internal unsafe delegate AdbcStatusCode StatementGetOption(CAdbcStatement* statement, byte* name, byte* value, nint* length, CAdbcError* error);
     internal unsafe delegate AdbcStatusCode StatementGetOptionBytes(CAdbcStatement* statement, byte* name, byte* value, nint* length, CAdbcError* error);
     internal unsafe delegate AdbcStatusCode StatementGetOptionDouble(CAdbcStatement* statement, byte* name, double* value, CAdbcError* error);
     internal unsafe delegate AdbcStatusCode StatementGetOptionInt(CAdbcStatement* statement, byte* name, long* value, CAdbcError* error);
     internal unsafe delegate AdbcStatusCode StatementNew(CAdbcConnection* connection, CAdbcStatement* statement, CAdbcError* error);
-    internal unsafe delegate AdbcStatusCode StatementPrepare(CAdbcStatement* statement, CAdbcError* error);
     internal unsafe delegate AdbcStatusCode StatementSetOption(CAdbcStatement* statement, byte* name, byte* value, CAdbcError* error);
     internal unsafe delegate AdbcStatusCode StatementSetOptionBytes(CAdbcStatement* statement, byte* name, byte* value, nint length, CAdbcError* error);
     internal unsafe delegate AdbcStatusCode StatementSetOptionDouble(CAdbcStatement* statement, byte* name, double value, CAdbcError* error);
     internal unsafe delegate AdbcStatusCode StatementSetOptionInt(CAdbcStatement* statement, byte* name, long value, CAdbcError* error);
     internal unsafe delegate AdbcStatusCode StatementSetSqlQuery(CAdbcStatement* statement, byte* text, CAdbcError* error);
     internal unsafe delegate AdbcStatusCode StatementSetSubstraitPlan(CAdbcStatement* statement, byte* plan, int length, CAdbcError* error);
-    internal unsafe delegate AdbcStatusCode StatementRelease(CAdbcStatement* statement, CAdbcError* error);
 #endif
 }

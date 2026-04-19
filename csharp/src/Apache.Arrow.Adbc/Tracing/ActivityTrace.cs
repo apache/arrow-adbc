@@ -274,7 +274,7 @@ namespace Apache.Arrow.Adbc.Tracing
             if (versionAttr?.InformationalVersion != null) return versionAttr.InformationalVersion;
 
 #if NET8_0_OR_GREATER
-            if (RuntimeFeature.IsDynamicCodeSupported && type.Assembly.Location != null)
+            if (RuntimeFeature.IsDynamicCodeSupported && !string.IsNullOrEmpty(type.Assembly.Location))
             {
                 var fileVersion = FileVersionInfo.GetVersionInfo(type.Assembly.Location).ProductVersion;
                 if (fileVersion != null) return fileVersion;

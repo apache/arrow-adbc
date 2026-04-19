@@ -95,6 +95,11 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Listeners.FileListener
                 case double[] ds:
                     WriteArray(writer, ds);
                     return;
+                // Non-OTel types: invariant-culture string. This keeps the output
+                // portable across locales for things like DateTime or custom structs.
+                case IFormattable formattable:
+                    writer.WriteStringValue(formattable.ToString(null, CultureInfo.InvariantCulture));
+                    return;
                 // Generic enumerable fallback (covers ImmutableArray, List<T>, etc.) —
                 // each element is dispatched recursively.
                 case IEnumerable enumerable:
@@ -104,11 +109,6 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Listeners.FileListener
                         WriteValue(writer, item);
                     }
                     writer.WriteEndArray();
-                    return;
-                // Non-OTel types: invariant-culture string. This keeps the output
-                // portable across locales for things like DateTime or custom structs.
-                case IFormattable formattable:
-                    writer.WriteStringValue(formattable.ToString(null, CultureInfo.InvariantCulture));
                     return;
                 default:
                     writer.WriteStringValue(value.ToString());
