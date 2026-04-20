@@ -16,19 +16,19 @@
 # under the License.
 
 adbcsqlite_shared <- function() {
-  path <- system.file(
-    "libs",
-    paste0("adbcsqlite", .Platform$dynlib.ext),
-    package = "adbcsqlite"
-  )
+  lib_name <- paste0("adbcsqlite", .Platform$dynlib.ext)
+  r_arch <- .Platform$r_arch
+
+  path <- if (nzchar(r_arch)) {
+    system.file("libs", r_arch, lib_name, package = "adbcsqlite")
+  } else {
+    system.file("libs", lib_name, package = "adbcsqlite")
+  }
+
   if (nzchar(path)) {
     return(path)
   }
-  system.file(
-    "src",
-    paste0("adbcsqlite", .Platform$dynlib.ext),
-    package = "adbcsqlite"
-  )
+  system.file("src", lib_name, package = "adbcsqlite")
 }
 
 adbc_driver_for_profile <- function() {
