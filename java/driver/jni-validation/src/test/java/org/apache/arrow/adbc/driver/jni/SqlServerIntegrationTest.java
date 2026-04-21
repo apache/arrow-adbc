@@ -327,7 +327,7 @@ class SqlServerIntegrationTest {
     }
 
     try (var stmt = conn.createStatement()) {
-      stmt.setSqlQuery("SELECT CAST(@p1 AS NVARCHAR) || 'foo'");
+      stmt.setSqlQuery("SELECT CONCAT(CAST(@p1 AS NVARCHAR), 'foo')");
       assertSchema(stmt.getParameterSchema())
           .isEqualTo(new Schema(List.of(Field.nullable("@p1", Types.MinorType.VARCHAR.getType()))));
     }
