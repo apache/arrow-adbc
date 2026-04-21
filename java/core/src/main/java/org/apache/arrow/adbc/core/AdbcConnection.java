@@ -64,6 +64,18 @@ public interface AdbcConnection extends AutoCloseable, AdbcOptions {
   }
 
   /**
+   * Create a new statement to bulk insert a {@link VectorSchemaRoot} into a table.
+   *
+   * <p>Bind data to the statement, then call {@link AdbcStatement#executeUpdate()}. See {@link
+   * BulkIngestMode} for description of behavior around creating tables.
+   */
+  default AdbcStatement bulkIngest(
+      String targetTableName, BulkIngestMode mode, IngestOption... options) throws AdbcException {
+    throw AdbcException.notImplemented(
+        "Connection does not support bulkIngest(String, BulkIngestMode, IngestOption...)");
+  }
+
+  /**
    * Create a result set from a serialized PartitionDescriptor.
    *
    * @param descriptor The descriptor to load ({@link PartitionDescriptor#getDescriptor()}.
