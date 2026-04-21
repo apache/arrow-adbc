@@ -41,6 +41,11 @@ public class JniStatement implements AdbcStatement {
   }
 
   @Override
+  public void cancel() throws AdbcException {
+    JniLoader.INSTANCE.statementCancel(handle);
+  }
+
+  @Override
   public void setSqlQuery(String query) throws AdbcException {
     JniLoader.INSTANCE.statementSetSqlQuery(handle, query);
   }
@@ -85,6 +90,11 @@ public class JniStatement implements AdbcStatement {
   public Schema executeSchema() throws AdbcException {
     exportBind();
     return JniLoader.INSTANCE.statementExecuteSchema(handle).importSchema(allocator);
+  }
+
+  @Override
+  public Schema getParameterSchema() throws AdbcException {
+    return JniLoader.INSTANCE.statementGetParameterSchema(handle).importSchema(allocator);
   }
 
   @Override
@@ -143,7 +153,7 @@ public class JniStatement implements AdbcStatement {
       JniLoader.INSTANCE.statementSetOptionDouble(handle, key.getKey(), (Double) value);
     } else if (value instanceof Boolean) {
       JniLoader.INSTANCE.statementSetOptionString(
-          handle, key.getKey(), ((Boolean) value) ? "true" : "false");
+          handle, key.getKey(), ((Boolean) value).toString());
     } else if (value instanceof byte[]) {
       JniLoader.INSTANCE.statementSetOptionBytes(handle, key.getKey(), (byte[]) value);
     } else {

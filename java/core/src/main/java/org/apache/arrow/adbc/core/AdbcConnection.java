@@ -40,7 +40,7 @@ public interface AdbcConnection extends AutoCloseable, AdbcOptions {
    * @since ADBC API revision 1.1.0
    */
   default void cancel() throws AdbcException {
-    throw AdbcException.notImplemented("Statement does not support cancel");
+    throw AdbcException.notImplemented("Connection does not support cancel");
   }
 
   /** Commit the pending transaction. */

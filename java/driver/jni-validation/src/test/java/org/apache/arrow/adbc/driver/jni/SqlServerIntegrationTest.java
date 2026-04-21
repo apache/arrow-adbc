@@ -322,8 +322,43 @@ class SqlServerIntegrationTest {
         assertThat(result.getReader().loadNextBatch()).isTrue();
         assertThat(result.getReader().loadNextBatch()).isFalse();
       }
+
+      assertThat(stmt.getParameterSchema().getFields()).isEmpty();
     }
-    // TODO(https://github.com/apache/arrow-adbc/issues/4239): test get parameter schema
+
+    try (var stmt = conn.createStatement()) {
+      stmt.setSqlQuery("SELECT CAST(@p1 AS NVARCHAR) || 'foo'");
+      assertSchema(stmt.getParameterSchema())
+          .isEqualTo(new Schema(List.of(Field.nullable("@p1", Types.MinorType.VARCHAR.getType()))));
+    }
+  }
+
+  @Test
+  void cancelQuery() throws Exception {
+    // There's nothing really we can test reliably (MSSQL driver doesn't react to cancel)
+    Schema schema = new Schema(List.of(Field.nullable("$1", Types.MinorType.VARCHAR.getType())));
+    try (var stmt = conn.createStatement();
+        var vsr = VectorSchemaRoot.create(schema, allocator)) {
+      var vcv = (VarCharVector) vsr.getVector(0);
+      vcv.setSafe(0, "test".getBytes(StandardCharsets.UTF_8));
+      vcv.setSafe(1, "bar".getBytes(StandardCharsets.UTF_8));
+
+      stmt.setSqlQuery("SELECT CAST(@p1 AS NVARCHAR) || 'foo'");
+      stmt.bind(vsr);
+
+      // N.B. the MSSQL driver doesn't appear to react
+      try (AdbcStatement.QueryResult result = stmt.executeQuery()) {
+        stmt.cancel();
+        //noinspection StatementWithEmptyBody
+        while (result.getReader().loadNextBatch()) {}
+      }
+    }
+  }
+
+  @Test
+  void cancelConnection() throws Exception {
+    // There's nothing really we can test reliably
+    conn.cancel();
   }
 
   @Test

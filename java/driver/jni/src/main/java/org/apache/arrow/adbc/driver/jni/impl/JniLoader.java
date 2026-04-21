@@ -81,6 +81,10 @@ public enum JniLoader {
     return NativeAdbc.openStatement(connection.getConnectionHandle());
   }
 
+  public void statementCancel(NativeStatementHandle statement) throws AdbcException {
+    NativeAdbc.statementCancel(statement.getStatementHandle());
+  }
+
   public NativeQueryResult statementExecuteQuery(NativeStatementHandle statement)
       throws AdbcException {
     return NativeAdbc.statementExecuteQuery(statement.getStatementHandle());
@@ -108,6 +112,11 @@ public enum JniLoader {
   public NativeSchemaResult statementExecuteSchema(NativeStatementHandle statement)
       throws AdbcException {
     return NativeAdbc.statementExecuteSchema(statement.getStatementHandle());
+  }
+
+  public NativeSchemaResult statementGetParameterSchema(NativeStatementHandle statement)
+      throws AdbcException {
+    return NativeAdbc.statementGetParameterSchema(statement.getStatementHandle());
   }
 
   public byte[] statementGetOptionBytes(NativeStatementHandle handle, String key)
@@ -148,6 +157,10 @@ public enum JniLoader {
   public void statementSetOptionString(NativeStatementHandle statement, String key, String value)
       throws AdbcException {
     NativeAdbc.statementSetOptionString(statement.getStatementHandle(), key, value);
+  }
+
+  public void connectionCancel(NativeConnectionHandle connection) throws AdbcException {
+    NativeAdbc.connectionCancel(connection.getConnectionHandle());
   }
 
   public NativeQueryResult connectionGetObjects(

@@ -46,6 +46,11 @@ public class JniConnection implements AdbcConnection {
   }
 
   @Override
+  public void cancel() throws AdbcException {
+    JniLoader.INSTANCE.connectionCancel(handle);
+  }
+
+  @Override
   public AdbcStatement bulkIngest(String targetTableName, BulkIngestMode mode)
       throws AdbcException {
     NativeStatementHandle stmtHandle = JniLoader.INSTANCE.openStatement(handle);

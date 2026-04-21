@@ -316,8 +316,43 @@ class PostgresIntegrationTest {
         assertThat(result.getReader().loadNextBatch()).isTrue();
         assertThat(result.getReader().loadNextBatch()).isFalse();
       }
+
+      assertThat(stmt.getParameterSchema().getFields()).isEmpty();
     }
-    // TODO(https://github.com/apache/arrow-adbc/issues/4239): test get parameter schema
+
+    try (var stmt = conn.createStatement()) {
+      stmt.setSqlQuery("SELECT $1 || 'foo'");
+      assertSchema(stmt.getParameterSchema())
+          .isEqualTo(new Schema(List.of(Field.nullable("$1", Types.MinorType.VARCHAR.getType()))));
+    }
+  }
+
+  @Test
+  void cancelQuery() throws Exception {
+    // There's nothing really we can test reliably; it is wired up but we'd need a long-running
+    // query and a reliable way to start the cancel at the right time
+    Schema schema = new Schema(List.of(Field.nullable("$1", Types.MinorType.VARCHAR.getType())));
+    try (var stmt = conn.createStatement();
+        var vsr = VectorSchemaRoot.create(schema, allocator)) {
+      var vcv = (VarCharVector) vsr.getVector(0);
+      vcv.setSafe(0, "test".getBytes(StandardCharsets.UTF_8));
+      vcv.setSafe(1, "bar".getBytes(StandardCharsets.UTF_8));
+
+      stmt.setSqlQuery("SELECT CAST($1 AS VARCHAR) || 'foo'");
+      stmt.bind(vsr);
+
+      try (AdbcStatement.QueryResult result = stmt.executeQuery()) {
+        stmt.cancel();
+        //noinspection StatementWithEmptyBody
+        while (result.getReader().loadNextBatch()) {}
+      }
+    }
+  }
+
+  @Test
+  void cancelConnection() throws Exception {
+    // There's nothing really we can test reliably
+    conn.cancel();
   }
 
   @Test

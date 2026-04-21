@@ -34,10 +34,6 @@ class NativeAdbc {
 
   static native void closeStatement(long handle) throws AdbcException;
 
-  static native NativeQueryResult statementExecuteQuery(long handle) throws AdbcException;
-
-  static native void statementSetSqlQuery(long handle, String query) throws AdbcException;
-
   static native void statementBind(long handle, long values, long schema) throws AdbcException;
 
   // TODO(lidavidm): we need a way to bind an ArrowReader (or some other suitable interface that
@@ -46,11 +42,20 @@ class NativeAdbc {
   @SuppressWarnings("unused")
   static native void statementBindStream(long handle, long stream) throws AdbcException;
 
+  static native void statementCancel(long handle) throws AdbcException;
+
   static native long statementExecuteUpdate(long handle) throws AdbcException;
 
   static native void statementPrepare(long handle) throws AdbcException;
 
+  static native NativeQueryResult statementExecuteQuery(long handle) throws AdbcException;
+
   static native NativeSchemaResult statementExecuteSchema(long handle) throws AdbcException;
+
+  static native NativeSchemaResult statementGetParameterSchema(long statementHandle)
+      throws AdbcException;
+
+  static native void statementSetSqlQuery(long handle, String query) throws AdbcException;
 
   static native byte[] statementGetOptionBytes(long handle, String key) throws AdbcException;
 
@@ -71,6 +76,8 @@ class NativeAdbc {
 
   static native void statementSetOptionString(long handle, String key, String value)
       throws AdbcException;
+
+  static native void connectionCancel(long handle) throws AdbcException;
 
   static native NativeQueryResult connectionGetObjects(
       long handle,

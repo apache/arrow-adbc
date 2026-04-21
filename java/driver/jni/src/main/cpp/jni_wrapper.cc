@@ -353,6 +353,34 @@ jobject MakeNativeSchemaResult(JNIEnv* env, struct ArrowSchema* schema) {
                         static_cast<jlong>(reinterpret_cast<uintptr_t>(schema)));
 }
 
+JNIEXPORT void JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementCancel(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
+  struct ArrowSchema schema = {};
+  try {
+    CHECK_ADBC_ERROR(AdbcStatementCancel(ptr, &error), error);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+}
+
+JNIEXPORT jobject JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementGetParameterSchema(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
+  struct ArrowSchema schema = {};
+  try {
+    CHECK_ADBC_ERROR(AdbcStatementGetParameterSchema(ptr, &schema, &error), error);
+    return MakeNativeSchemaResult(env, &schema);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+  return nullptr;
+}
+
 JNIEXPORT jobject JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementExecuteQuery(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
@@ -616,6 +644,19 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementSetOptionString(
     JniStringView value_str(env, value);
     CHECK_ADBC_ERROR(AdbcStatementSetOption(stmt, key_str.value, value_str.value, &error),
                      error);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+}
+
+JNIEXPORT void JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionCancel(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* ptr = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
+  struct ArrowSchema schema = {};
+  try {
+    CHECK_ADBC_ERROR(AdbcConnectionCancel(ptr, &error), error);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
