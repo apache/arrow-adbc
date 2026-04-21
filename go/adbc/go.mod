@@ -27,7 +27,7 @@ require (
 	cloud.google.com/go/bigquery v1.76.0
 	github.com/apache/arrow-go/v18 v18.5.2
 	github.com/bluele/gcache v0.0.2
-	github.com/databricks/databricks-sql-go v1.10.0
+	github.com/databricks/databricks-sql-go v1.11.0
 	github.com/golang/protobuf v1.5.4
 	github.com/google/uuid v1.6.0
 	github.com/snowflakedb/gosnowflake v1.19.1
