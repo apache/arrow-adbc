@@ -1145,7 +1145,7 @@ func (c *connectionImpl) ReadPartition(ctx context.Context, serializedPartition 
 	var info flight.FlightInfo
 	if err := proto.Unmarshal(serializedPartition, &info); err != nil {
 		return nil, adbc.Error{
-			Msg:  err.Error(),
+			Msg:  fmt.Sprintf("[flightsql] could not unmarshal partition as FlightInfo: %v", err),
 			Code: adbc.StatusInvalidArgument,
 		}
 	}
@@ -1153,7 +1153,7 @@ func (c *connectionImpl) ReadPartition(ctx context.Context, serializedPartition 
 	// The driver only ever returns one endpoint.
 	if len(info.Endpoint) != 1 {
 		return nil, adbc.Error{
-			Msg:  fmt.Sprintf("Invalid partition: expected 1 endpoint, got %d", len(info.Endpoint)),
+			Msg:  fmt.Sprintf("[flightsql] invalid partition: expected 1 endpoint, got %d", len(info.Endpoint)),
 			Code: adbc.StatusInvalidArgument,
 		}
 	}

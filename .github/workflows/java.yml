@@ -233,7 +233,7 @@ jobs:
       - name: Start Dependencies
         if: matrix.os == 'Linux' && matrix.arch == 'amd64'
         run: |
-          docker compose up --detach --wait mssql-test postgres-test
+          docker compose up --detach --wait flightsql-sqlite-test mssql-test postgres-test
           cat .env | grep -v -e '^#' | grep -e '^ADBC_' | awk NF | sed 's/"//g' | tee -a $GITHUB_ENV
 
       - name: Download thirdparty driver

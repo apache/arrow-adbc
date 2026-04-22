@@ -24,6 +24,7 @@ import java.util.List;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.types.pojo.Schema;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /**
  * A container for all state needed to execute a database query, such as the query itself,
@@ -231,19 +232,21 @@ public interface AdbcStatement extends AutoCloseable, AdbcOptions {
 
   /** The partitions of a result set. */
   class PartitionResult {
-    private final Schema schema;
+    private final @Nullable Schema schema;
     private final long affectedRows;
     private final List<PartitionDescriptor> partitionDescriptors;
 
     public PartitionResult(
-        Schema schema, long affectedRows, List<PartitionDescriptor> partitionDescriptors) {
+        @Nullable Schema schema,
+        long affectedRows,
+        List<PartitionDescriptor> partitionDescriptors) {
       this.schema = schema;
       this.affectedRows = affectedRows;
       this.partitionDescriptors = partitionDescriptors;
     }
 
     /** Get the schema of the eventual result set. */
-    public Schema getSchema() {
+    public @Nullable Schema getSchema() {
       return schema;
     }
 

@@ -21,6 +21,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.Map;
@@ -83,6 +84,11 @@ public enum JniLoader {
 
   public void statementCancel(NativeStatementHandle statement) throws AdbcException {
     NativeAdbc.statementCancel(statement.getStatementHandle());
+  }
+
+  public NativePartitionResult statementExecutePartitions(NativeStatementHandle statement)
+      throws AdbcException {
+    return NativeAdbc.statementExecutePartitions(statement.getStatementHandle());
   }
 
   public NativeQueryResult statementExecuteQuery(NativeStatementHandle statement)
@@ -205,6 +211,11 @@ public enum JniLoader {
 
   public void connectionRollback(NativeConnectionHandle connection) throws AdbcException {
     NativeAdbc.connectionRollback(connection.getConnectionHandle());
+  }
+
+  public NativeQueryResult connectionReadPartition(
+      NativeConnectionHandle connection, ByteBuffer partition) throws AdbcException {
+    return NativeAdbc.connectionReadPartition(connection.getConnectionHandle(), partition);
   }
 
   public byte[] connectionGetOptionBytes(NativeConnectionHandle handle, String key)

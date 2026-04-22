@@ -811,7 +811,7 @@ func (s *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.
 		data, err := proto.Marshal(partition)
 		if err != nil {
 			return sc, out, -1, adbc.Error{
-				Msg:  err.Error(),
+				Msg:  fmt.Sprintf("[flightsql] could not marshal partition as FlightInfo: %v", err),
 				Code: adbc.StatusInternal,
 			}
 		}

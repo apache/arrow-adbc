@@ -21,6 +21,7 @@ import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.TypedKey;
 import org.apache.arrow.adbc.driver.jni.impl.JniLoader;
+import org.apache.arrow.adbc.driver.jni.impl.NativePartitionResult;
 import org.apache.arrow.adbc.driver.jni.impl.NativeQueryResult;
 import org.apache.arrow.adbc.driver.jni.impl.NativeStatementHandle;
 import org.apache.arrow.c.ArrowArray;
@@ -70,6 +71,13 @@ public class JniStatement implements AdbcStatement {
 
       JniLoader.INSTANCE.statementBind(handle, batch, schema);
     }
+  }
+
+  @Override
+  public PartitionResult executePartitioned() throws AdbcException {
+    exportBind();
+    NativePartitionResult result = JniLoader.INSTANCE.statementExecutePartitions(handle);
+    return result.importResult(allocator);
   }
 
   @Override

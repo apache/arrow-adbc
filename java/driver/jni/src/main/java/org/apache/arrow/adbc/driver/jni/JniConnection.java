@@ -17,6 +17,7 @@
 
 package org.apache.arrow.adbc.driver.jni;
 
+import java.nio.ByteBuffer;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
@@ -252,6 +253,11 @@ public class JniConnection implements AdbcConnection {
   @Override
   public void setCurrentDbSchema(String dbSchema) throws AdbcException {
     setOption(JniDriver.CURRENT_DB_SCHEMA, dbSchema);
+  }
+
+  @Override
+  public ArrowReader readPartition(ByteBuffer descriptor) throws AdbcException {
+    return JniLoader.INSTANCE.connectionReadPartition(handle, descriptor).importStream(allocator);
   }
 
   @Override

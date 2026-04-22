@@ -17,6 +17,7 @@
 
 package org.apache.arrow.adbc.driver.jni.impl;
 
+import java.nio.ByteBuffer;
 import org.apache.arrow.adbc.core.AdbcException;
 
 /** All the JNI methods. Don't use this directly, prefer {@link JniLoader}. */
@@ -47,6 +48,8 @@ class NativeAdbc {
   static native long statementExecuteUpdate(long handle) throws AdbcException;
 
   static native void statementPrepare(long handle) throws AdbcException;
+
+  static native NativePartitionResult statementExecutePartitions(long handle) throws AdbcException;
 
   static native NativeQueryResult statementExecuteQuery(long handle) throws AdbcException;
 
@@ -100,6 +103,9 @@ class NativeAdbc {
   static native void connectionCommit(long handle) throws AdbcException;
 
   static native void connectionRollback(long handle) throws AdbcException;
+
+  static native NativeQueryResult connectionReadPartition(long handle, ByteBuffer partition)
+      throws AdbcException;
 
   static native byte[] connectionGetOptionBytes(long handle, String key) throws AdbcException;
 

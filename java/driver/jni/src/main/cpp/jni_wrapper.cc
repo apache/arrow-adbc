@@ -34,6 +34,19 @@
 
 namespace {
 
+void ThrowJavaException(JNIEnv* env, const std::string& klass,
+                        const std::string& message) {
+  jclass exception_klass = env->FindClass(klass.c_str());
+  assert(exception_klass != nullptr);
+  jmethodID exception_ctor =
+      env->GetMethodID(exception_klass, "<init>", "(Ljava/lang/String)V");
+  assert(exception_ctor != nullptr);
+  jstring message_jni = env->NewStringUTF(message.c_str());
+  auto exc = static_cast<jthrowable>(
+      env->NewObject(exception_klass, exception_ctor, message_jni));
+  env->Throw(exc);
+}
+
 /// Internal exception.  Meant to be used with RaiseAdbcException and
 ///   CHECK_ADBC_ERROR.
 struct AdbcException {
@@ -112,17 +125,24 @@ void RaiseAdbcException(AdbcStatusCode code, const AdbcError& error) {
   } while (0)
 
 /// Require that a Java class exists or error.
-jclass RequireImplClass(JNIEnv* env, std::string_view name) {
-  static std::string kPrefix = "org/apache/arrow/adbc/driver/jni/impl/";
-  std::string full_name = kPrefix + std::string(name);
-  jclass klass = env->FindClass(full_name.c_str());
+jclass RequireClass(JNIEnv* env, const std::string& name) {
+  jclass klass = env->FindClass(name.c_str());
   if (klass == nullptr) {
+    std::string message = "[JNI] Could not find class ";
+    message += name;
     throw AdbcException{
         .code = ADBC_STATUS_INTERNAL,
-        .message = "[JNI] Could not find class " + full_name,
+        .message = std::move(message),
     };
   }
   return klass;
+}
+
+/// Require that a Java class exists or error.
+jclass RequireImplClass(JNIEnv* env, std::string_view name) {
+  static std::string kPrefix = "org/apache/arrow/adbc/driver/jni/impl/";
+  std::string full_name = kPrefix + std::string(name);
+  return RequireClass(env, full_name);
 }
 
 /// Require that a Java method exists or error.
@@ -377,6 +397,60 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementGetParameterSchem
     return MakeNativeSchemaResult(env, &schema);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
+  }
+  return nullptr;
+}
+
+JNIEXPORT jobject JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementExecutePartitions(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
+  struct ArrowSchema schema = {};
+  struct AdbcPartitions partitions = {};
+  int64_t rows_affected = 0;
+  jobject result = nullptr;
+
+  try {
+    jclass native_result_class = RequireImplClass(env, "NativePartitionResult");
+    jmethodID native_result_ctor =
+        RequireMethod(env, native_result_class, "<init>", "(JJ)V");
+    jmethodID native_result_add_partition =
+        RequireMethod(env, native_result_class, "addPartition", "([B)V");
+
+    CHECK_ADBC_ERROR(
+        AdbcStatementExecutePartitions(ptr, &schema, &partitions, &rows_affected, &error),
+        error);
+
+    result = env->NewObject(native_result_class, native_result_ctor, rows_affected,
+                            static_cast<jlong>(reinterpret_cast<uintptr_t>(&schema)));
+    if (env->ExceptionCheck()) goto cleanupall;
+
+    for (size_t i = 0; i < partitions.num_partitions; i++) {
+      size_t length = partitions.partition_lengths[i];
+      jbyteArray partition = env->NewByteArray(static_cast<jsize>(length));
+      env->SetByteArrayRegion(partition, 0, static_cast<jsize>(length),
+                              reinterpret_cast<const jbyte*>(partitions.partitions[i]));
+      if (env->ExceptionCheck()) goto cleanupall;
+      env->CallObjectMethod(result, native_result_add_partition, partition);
+      if (env->ExceptionCheck()) goto cleanupall;
+    }
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+
+  // We can't release schema, but we copied out the partitions
+  if (partitions.release != nullptr) {
+    partitions.release(&partitions);
+  }
+  return result;
+
+cleanupall:
+  if (schema.release != nullptr) {
+    schema.release(&schema);
+  }
+  if (partitions.release != nullptr) {
+    partitions.release(&partitions);
   }
   return nullptr;
 }
@@ -976,6 +1050,95 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionRollback(
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
+}
+
+JNIEXPORT jobject JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionReadPartition(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jobject partition) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
+  struct ArrowArrayStream out = {};
+  size_t serialized_length = 0;
+  const uint8_t* serialized_partition = nullptr;
+  std::vector<uint8_t> allocated_partition;
+
+  try {
+    jclass bb_class = RequireClass(env, "java/nio/ByteBuffer");
+    jmethodID bb_remaining = RequireMethod(env, bb_class, "remaining", "()I");
+
+    if (!env->IsInstanceOf(partition, bb_class)) {
+      ThrowJavaException(env, "java/lang/IllegalArgumentException",
+                         "Partition must be a ByteBuffer");
+      return nullptr;
+    }
+    jint remaining = env->CallIntMethod(partition, bb_remaining);
+    if (remaining < 0) {
+      ThrowJavaException(env, "java/lang/IllegalArgumentException",
+                         "ByteBuffer remaining() must be non-negative");
+      return nullptr;
+    }
+    serialized_length = static_cast<size_t>(remaining);
+
+    // fast path (if direct buffer)
+    void* buf = env->GetDirectBufferAddress(partition);
+    if (buf) {
+      serialized_partition = static_cast<const uint8_t*>(buf);
+    }
+
+    // middle path (backing array)
+    if (!serialized_partition) {
+      jmethodID bb_has_array = RequireMethod(env, bb_class, "hasArray", "()Z");
+      jmethodID bb_array = RequireMethod(env, bb_class, "array", "()[B");
+      jmethodID bb_array_offset = RequireMethod(env, bb_class, "arrayOffset", "()I");
+      jboolean has_array = env->CallBooleanMethod(partition, bb_has_array);
+      if (env->ExceptionCheck()) return nullptr;
+      if (has_array) {
+        jint array_offset = env->CallIntMethod(partition, bb_array_offset);
+        if (env->ExceptionCheck()) return nullptr;
+
+        auto array =
+            reinterpret_cast<jbyteArray>(env->CallObjectMethod(partition, bb_array));
+        if (env->ExceptionCheck()) return nullptr;
+
+        assert(serialized_length <= static_cast<size_t>(env->GetArrayLength(array)));
+        allocated_partition.resize(serialized_length);
+        env->GetByteArrayRegion(array, array_offset,
+                                static_cast<jsize>(serialized_length),
+                                reinterpret_cast<jbyte*>(allocated_partition.data()));
+        serialized_partition = allocated_partition.data();
+      }
+    }
+
+    // slow path (copy)
+    if (!serialized_partition) {
+      jmethodID bb_get = RequireMethod(env, bb_class, "get", "([B)Ljava/nio/ByteBuffer;");
+      jbyteArray temp = env->NewByteArray(static_cast<jsize>(serialized_length));
+      if (!temp) {
+        ThrowJavaException(env, "java/lang/OutOfMemoryError",
+                           "Failed to allocate byte array for partition");
+        return nullptr;
+      }
+
+      env->CallVoidMethod(partition, bb_get, temp);
+      if (env->ExceptionCheck()) return nullptr;
+
+      allocated_partition.resize(serialized_length);
+      env->GetByteArrayRegion(temp, 0, static_cast<jsize>(serialized_length),
+                              reinterpret_cast<jbyte*>(allocated_partition.data()));
+      serialized_partition = allocated_partition.data();
+    }
+
+    assert(serialized_partition != nullptr);
+
+    CHECK_ADBC_ERROR(AdbcConnectionReadPartition(conn, serialized_partition,
+                                                 serialized_length, &out, &error),
+                     error);
+
+    return MakeNativeQueryResult(env, -1, &out);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+  return nullptr;
 }
 
 JNIEXPORT jbyteArray JNICALL
