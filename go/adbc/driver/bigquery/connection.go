@@ -1112,6 +1112,8 @@ func buildField(schema *bigquery.FieldSchema, level uint) (arrow.Field, error) {
 		field.Type = arrow.PrimitiveTypes.Int64
 	case bigquery.FloatFieldType:
 		field.Type = arrow.PrimitiveTypes.Float64
+		// NOTE: FloatFieldType is "FLOAT", which is invalid as a literal in BigQuery
+		richSqlType = "FLOAT64"
 	case bigquery.BooleanFieldType:
 		field.Type = arrow.FixedWidthTypes.Boolean
 	case bigquery.TimestampFieldType:
