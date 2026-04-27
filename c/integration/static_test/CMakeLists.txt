@@ -30,6 +30,12 @@ find_package(AdbcDriverPostgreSQL REQUIRED)
 find_package(AdbcDriverSQLite REQUIRED)
 find_package(AdbcDriverSnowflake REQUIRED)
 
+# Alias SQLite::SQLite3 to SQLite3::SQLite3 if needed. SQLite::SQLite3 is
+# deprecated in CMake < 4.3. See
+# https://cmake.org/cmake/help/latest/module/FindSQLite3.html.
+if(NOT TARGET SQLite3::SQLite3)
+  add_library(SQLite3::SQLite3 ALIAS SQLite::SQLite3)
+endif()
 find_package(fmt REQUIRED)
 find_package(nanoarrow REQUIRED)
 
