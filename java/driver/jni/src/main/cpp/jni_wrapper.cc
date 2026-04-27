@@ -358,7 +358,6 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementCancel(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
   struct AdbcError error = ADBC_ERROR_INIT;
   auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
-  struct ArrowSchema schema = {};
   try {
     CHECK_ADBC_ERROR(AdbcStatementCancel(ptr, &error), error);
   } catch (const AdbcException& e) {
@@ -654,7 +653,6 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionCancel(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
   struct AdbcError error = ADBC_ERROR_INIT;
   auto* ptr = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
-  struct ArrowSchema schema = {};
   try {
     CHECK_ADBC_ERROR(AdbcConnectionCancel(ptr, &error), error);
   } catch (const AdbcException& e) {
