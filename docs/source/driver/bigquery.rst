@@ -21,7 +21,7 @@ BigQuery Support
 
 .. adbc_driver_status:: ../../../csharp/src/Drivers/BigQuery/readme.md
 
-The C# BigQuery Driver (Beta) is availalbe as a `NuGet package <https://www.nuget.org/packages/Apache.Arrow.Adbc.Drivers.BigQuery>`__
+The C# BigQuery Driver (Beta) is available as a `NuGet package <https://www.nuget.org/packages/Apache.Arrow.Adbc.Drivers.BigQuery>`__
 
 C# BigQuery Driver
 ==================
