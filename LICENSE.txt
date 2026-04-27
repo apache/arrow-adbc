@@ -965,12 +965,6 @@ github.com/coreos/go-oidc/v3/oidc is under the Apache-2.0 license.
 
 --------------------------------------------------------------------------------
 
-3rdparty dependency github.com/databricks/databricks-sql-go
-is statically linked in certain binary distributions, like the Python wheels.
-github.com/databricks/databricks-sql-go is under the Apache-2.0 license.
-
---------------------------------------------------------------------------------
-
 3rdparty dependency github.com/davecgh/go-spew/spew
 is statically linked in certain binary distributions, like the Python wheels.
 github.com/davecgh/go-spew/spew is under the ISC license.
