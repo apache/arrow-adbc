@@ -128,109 +128,114 @@ implements <a href="../../core/AdbcConnection.html" title="interface in org.apac
 <div class="block">Create a new statement to bulk insert a <a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/VectorSchemaRoot.html" title="class or interface in org.apache.arrow.vector" class="external-link"><code>VectorSchemaRoot</code></a> into a table.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#close()" class="member-name-link">close</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#cancel()" class="member-name-link">cancel</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Cancel execution of a query.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#commit()" class="member-name-link">commit</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#close()" class="member-name-link">close</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#commit()" class="member-name-link">commit</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Commit the pending transaction.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../../core/AdbcStatement.html" title="interface in org.apache.arrow.adbc.core">AdbcStatement</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#createStatement()" class="member-name-link">createStatement</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../../core/AdbcStatement.html" title="interface in org.apache.arrow.adbc.core">AdbcStatement</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#createStatement()" class="member-name-link">createStatement</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Create a new statement that can be executed.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getAutoCommit()" class="member-name-link">getAutoCommit</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getAutoCommit()" class="member-name-link">getAutoCommit</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get the autocommit state.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getCurrentCatalog()" class="member-name-link">getCurrentCatalog</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getCurrentCatalog()" class="member-name-link">getCurrentCatalog</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get the current catalog.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getCurrentDbSchema()" class="member-name-link">getCurrentDbSchema</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getCurrentDbSchema()" class="member-name-link">getCurrentDbSchema</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get the current schema.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getInfo(int%5B%5D)" class="member-name-link">getInfo</a><wbr>(int @Nullable []&nbsp;infoCodes)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getInfo(int%5B%5D)" class="member-name-link">getInfo</a><wbr>(int @Nullable []&nbsp;infoCodes)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get metadata about the driver/database.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../../core/IsolationLevel.html" title="enum in org.apache.arrow.adbc.core">IsolationLevel</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getIsolationLevel()" class="member-name-link">getIsolationLevel</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../../core/IsolationLevel.html" title="enum in org.apache.arrow.adbc.core">IsolationLevel</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getIsolationLevel()" class="member-name-link">getIsolationLevel</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get the isolation level used by transactions.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getObjects(org.apache.arrow.adbc.core.AdbcConnection.GetObjectsDepth,java.lang.String,java.lang.String,java.lang.String,java.lang.String%5B%5D,java.lang.String)" class="member-name-link">getObjects</a><wbr>(<a href="../../core/AdbcConnection.GetObjectsDepth.html" title="enum in org.apache.arrow.adbc.core">AdbcConnection.GetObjectsDepth</a>&nbsp;depth,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getObjects(org.apache.arrow.adbc.core.AdbcConnection.GetObjectsDepth,java.lang.String,java.lang.String,java.lang.String,java.lang.String%5B%5D,java.lang.String)" class="member-name-link">getObjects</a><wbr>(<a href="../../core/AdbcConnection.GetObjectsDepth.html" title="enum in org.apache.arrow.adbc.core">AdbcConnection.GetObjectsDepth</a>&nbsp;depth,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;catalogPattern,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;dbSchemaPattern,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;tableNamePattern,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>[]&nbsp;tableTypes,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;columnNamePattern)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get a hierarchical view of all catalogs, database schemas, tables, and columns.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>&lt;T&gt;&nbsp;T</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getOption(org.apache.arrow.adbc.core.TypedKey)" class="member-name-link">getOption</a><wbr>(<a href="../../core/TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>&lt;T&gt;&nbsp;T</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getOption(org.apache.arrow.adbc.core.TypedKey)" class="member-name-link">getOption</a><wbr>(<a href="../../core/TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get a generic option.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getReadOnly()" class="member-name-link">getReadOnly</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getReadOnly()" class="member-name-link">getReadOnly</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get whether the connection is read-only.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/pojo/Schema.html" title="class or interface in org.apache.arrow.vector.types.pojo" class="external-link">Schema</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getTableSchema(java.lang.String,java.lang.String,java.lang.String)" class="member-name-link">getTableSchema</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;catalog,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/pojo/Schema.html" title="class or interface in org.apache.arrow.vector.types.pojo" class="external-link">Schema</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getTableSchema(java.lang.String,java.lang.String,java.lang.String)" class="member-name-link">getTableSchema</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;catalog,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;dbSchema,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;tableName)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get the Arrow schema of a database table.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getTableTypes()" class="member-name-link">getTableTypes</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getTableTypes()" class="member-name-link">getTableTypes</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get a list of table types supported by the database.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#rollback()" class="member-name-link">rollback</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#rollback()" class="member-name-link">rollback</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Rollback the pending transaction.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#setAutoCommit(boolean)" class="member-name-link">setAutoCommit</a><wbr>(boolean&nbsp;enableAutoCommit)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#setAutoCommit(boolean)" class="member-name-link">setAutoCommit</a><wbr>(boolean&nbsp;enableAutoCommit)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Toggle whether autocommit is enabled.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#setCurrentCatalog(java.lang.String)" class="member-name-link">setCurrentCatalog</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;catalog)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#setCurrentCatalog(java.lang.String)" class="member-name-link">setCurrentCatalog</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;catalog)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Set the current catalog.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#setCurrentDbSchema(java.lang.String)" class="member-name-link">setCurrentDbSchema</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;dbSchema)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#setCurrentDbSchema(java.lang.String)" class="member-name-link">setCurrentDbSchema</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;dbSchema)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Set the current schema.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#setIsolationLevel(org.apache.arrow.adbc.core.IsolationLevel)" class="member-name-link">setIsolationLevel</a><wbr>(<a href="../../core/IsolationLevel.html" title="enum in org.apache.arrow.adbc.core">IsolationLevel</a>&nbsp;level)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#setIsolationLevel(org.apache.arrow.adbc.core.IsolationLevel)" class="member-name-link">setIsolationLevel</a><wbr>(<a href="../../core/IsolationLevel.html" title="enum in org.apache.arrow.adbc.core">IsolationLevel</a>&nbsp;level)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Change the isolation level used by transactions.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>&lt;T&gt;&nbsp;void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#setOption(org.apache.arrow.adbc.core.TypedKey,T)" class="member-name-link">setOption</a><wbr>(<a href="../../core/TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>&lt;T&gt;&nbsp;void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#setOption(org.apache.arrow.adbc.core.TypedKey,T)" class="member-name-link">setOption</a><wbr>(<a href="../../core/TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key,
  T&nbsp;value)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Set a generic option.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#setReadOnly(boolean)" class="member-name-link">setReadOnly</a><wbr>(boolean&nbsp;isReadOnly)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#setReadOnly(boolean)" class="member-name-link">setReadOnly</a><wbr>(boolean&nbsp;isReadOnly)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Toggle whether the connection is read-only.</div>
 </div>
 </div>
@@ -241,7 +246,7 @@ implements <a href="../../core/AdbcConnection.html" title="interface in org.apac
 <code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#equals(java.lang.Object)" title="class or interface in java.lang" class="external-link">equals</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#getClass()" title="class or interface in java.lang" class="external-link">getClass</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#hashCode()" title="class or interface in java.lang" class="external-link">hashCode</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#notify()" title="class or interface in java.lang" class="external-link">notify</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#notifyAll()" title="class or interface in java.lang" class="external-link">notifyAll</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#toString()" title="class or interface in java.lang" class="external-link">toString</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#wait()" title="class or interface in java.lang" class="external-link">wait</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#wait(long)" title="class or interface in java.lang" class="external-link">wait</a>, <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html#wait(long,int)" title="class or interface in java.lang" class="external-link">wait</a></code></div>
 <div class="inherited-list">
 <h3 id="methods-inherited-from-class-org.apache.arrow.adbc.core.AdbcConnection">Methods inherited from interface&nbsp;org.apache.arrow.adbc.core.<a href="../../core/AdbcConnection.html" title="interface in org.apache.arrow.adbc.core">AdbcConnection</a></h3>
-<code><a href="../../core/AdbcConnection.html#cancel()">cancel</a>, <a href="../../core/AdbcConnection.html#getInfo()">getInfo</a>, <a href="../../core/AdbcConnection.html#getInfo(org.apache.arrow.adbc.core.AdbcInfoCode%5B%5D)">getInfo</a>, <a href="../../core/AdbcConnection.html#getStatisticNames()">getStatisticNames</a>, <a href="../../core/AdbcConnection.html#getStatistics(java.lang.String,java.lang.String,java.lang.String,boolean)">getStatistics</a>, <a href="../../core/AdbcConnection.html#readPartition(java.nio.ByteBuffer)">readPartition</a></code></div>
+<code><a href="../../core/AdbcConnection.html#getInfo()">getInfo</a>, <a href="../../core/AdbcConnection.html#getInfo(org.apache.arrow.adbc.core.AdbcInfoCode%5B%5D)">getInfo</a>, <a href="../../core/AdbcConnection.html#getStatisticNames()">getStatisticNames</a>, <a href="../../core/AdbcConnection.html#getStatistics(java.lang.String,java.lang.String,java.lang.String,boolean)">getStatistics</a>, <a href="../../core/AdbcConnection.html#readPartition(java.nio.ByteBuffer)">readPartition</a></code></div>
 </section>
 </li>
 </ul>
@@ -278,6 +283,25 @@ implements <a href="../../core/AdbcConnection.html" title="interface in org.apac
 <dl class="notes">
 <dt>Specified by:</dt>
 <dd><code><a href="../../core/AdbcConnection.html#createStatement()">createStatement</a></code>&nbsp;in interface&nbsp;<code><a href="../../core/AdbcConnection.html" title="interface in org.apache.arrow.adbc.core">AdbcConnection</a></code></dd>
+<dt>Throws:</dt>
+<dd><code><a href="../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="cancel()">
+<h3>cancel</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">cancel</span>()
+            throws <span class="exceptions"><a href="../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></span></div>
+<div class="block"><span class="descfrm-type-label">Description copied from interface:&nbsp;<code><a href="../../core/AdbcConnection.html#cancel()">AdbcConnection</a></code></span></div>
+<div class="block">Cancel execution of a query.
+
+ <p>This can be used to interrupt execution of a method like <a href="../../core/AdbcConnection.html#getObjects(org.apache.arrow.adbc.core.AdbcConnection.GetObjectsDepth,java.lang.String,java.lang.String,java.lang.String,java.lang.String%5B%5D,java.lang.String)"><code>AdbcConnection.getObjects(GetObjectsDepth, String, String, String, String[], String)</code></a>}.
+
+ <p>This method must be thread-safe (other method are not necessarily thread-safe).</div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="../../core/AdbcConnection.html#cancel()">cancel</a></code>&nbsp;in interface&nbsp;<code><a href="../../core/AdbcConnection.html" title="interface in org.apache.arrow.adbc.core">AdbcConnection</a></code></dd>
 <dt>Throws:</dt>
 <dd><code><a href="../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></code></dd>
 </dl>
