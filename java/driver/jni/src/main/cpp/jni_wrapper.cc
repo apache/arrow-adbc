@@ -194,7 +194,8 @@ extern "C" {
 
 JNIEXPORT jobject JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_openDatabase(
-    JNIEnv* env, [[maybe_unused]] jclass self, jint version, jobjectArray parameters) {
+    JNIEnv* env, [[maybe_unused]] jclass self, [[maybe_unused]] jint version,
+    jobjectArray parameters) {
   try {
     struct AdbcError error = ADBC_ERROR_INIT;
     auto db = std::make_unique<struct AdbcDatabase>();
