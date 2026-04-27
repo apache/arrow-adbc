@@ -24,11 +24,14 @@ on:
       - created
       - edited
 
+permissions:
+  contents: read
+
 jobs:
   issue_assign:
     name: "Assign issue"
     permissions:
-      issues: write
+      issues: write  # needed to comment on the issue
     if: github.event.comment.body == 'take'
     runs-on: ubuntu-latest
     steps:

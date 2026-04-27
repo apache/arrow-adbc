@@ -54,14 +54,15 @@ jobs:
         os: [ubuntu-latest, windows-2022, macos-15-intel, macos-latest]
     steps:
       - name: Install C#
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
         with:
           dotnet-version: ${{ matrix.dotnet }}
       - name: Checkout ADBC
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           submodules: recursive
+          persist-credentials: false
       - name: Build
         shell: bash
         run: ci/scripts/csharp_build.sh $(pwd)
@@ -84,12 +85,13 @@ jobs:
     timeout-minutes: 30
     steps:
       - name: Checkout ADBC
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           submodules: recursive
+          persist-credentials: false
       - name: Install .NET 10
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
         with:
           # NativeAOT for our producer requires net10. Using 10.0.x selects
           # the latest available SDK; preview tags may be needed until GA.
@@ -107,7 +109,7 @@ jobs:
             csharp/src/Drivers/Apache/Apache.Arrow.Adbc.Drivers.Apache.Native/Apache.Arrow.Adbc.Drivers.Apache.Native.csproj \
             -c Release -r win-x64
       - name: Install Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: '3.11'
       - name: Install Python dependencies

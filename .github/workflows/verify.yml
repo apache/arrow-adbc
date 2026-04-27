@@ -52,7 +52,7 @@ jobs:
       matrix:
         os: ["macos-15-intel", "macos-latest", "ubuntu-latest"]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -72,8 +72,10 @@ jobs:
           VERBOSE: "1"
           # Make this available to download_rc_binaries.py
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUTS_VERSION: ${{ inputs.version }}
+          INPUTS_RC: ${{ inputs.rc }}
         run: |
-          ./dev/release/verify-release-candidate.sh ${{ inputs.version }} ${{ inputs.rc }}
+          ./dev/release/verify-release-candidate.sh ${INPUTS_VERSION} ${INPUTS_RC}
 
   source-conda:
     name: "Verify Source (Conda)/${{ matrix.os }}"
@@ -82,7 +84,7 @@ jobs:
       matrix:
         os: ["macos-15-intel", "macos-latest", "ubuntu-latest", "windows-latest"]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -124,11 +126,13 @@ jobs:
           TEST_SOURCE: "1"
           USE_CONDA: "1"
           VERBOSE: "1"
+          INPUTS_VERSION: ${{ inputs.version }}
+          INPUTS_RC: ${{ inputs.rc }}
         run: |
           # Required for macOS
           export CXXFLAGS="${CXXFLAGS} -D_LIBCPP_DISABLE_AVAILABILITY"
           echo "CXXFLAGS=${CXXFLAGS}"
-          ./dev/release/verify-release-candidate.sh ${{ inputs.version }} ${{ inputs.rc }}
+          ./dev/release/verify-release-candidate.sh ${INPUTS_VERSION} ${INPUTS_RC}
       - name: Verify
         if: matrix.os == 'windows-latest'
         shell: pwsh
@@ -139,5 +143,7 @@ jobs:
           TEST_SOURCE: "1"
           USE_CONDA: "1"
           VERBOSE: "1"
+          INPUTS_VERSION: ${{ inputs.version }}
+          INPUTS_RC: ${{ inputs.rc }}
         run: |
-          .\dev\release\verify-release-candidate.ps1 ${{ inputs.version }} ${{ inputs.rc }}
+          .\dev\release\verify-release-candidate.ps1 $env:INPUTS_VERSION $env:INPUTS_RC

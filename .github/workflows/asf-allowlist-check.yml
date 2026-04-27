@@ -16,7 +16,7 @@
 # under the License.
 
 # See https://github.com/apache/iceberg/blob/main/.github/workflows/asf-allowlist-check.yml
-name: "Check actions are on ASF allowlist"
+name: "GitHub Actions Checks"
 
 on:
   pull_request:
@@ -28,15 +28,28 @@ on:
     paths:
       - ".github/**"
 
+concurrency:
+  group: ${{ github.repository }}-${{ github.head_ref || github.sha }}-${{ github.workflow }}
+  cancel-in-progress: true
+
 permissions:
   contents: read
 
 jobs:
-  asf-allowlist-check:
-    runs-on: ubuntu-slim
+  gha:
+    name: "Analyze Actions"
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         persist-credentials: false
+
+    # Check that actions are pinned and on the ASF allowlist.
     # Intentionally unpinned to always use the latest allowlist from the ASF.
     - uses: apache/infrastructure-actions/allowlist-check@main # zizmor: ignore[unpinned-uses]
+
+    # Analyze workflows with Zizmor
+    - name: Run zizmor 🌈
+      uses: zizmorcore/zizmor-action@b1d7e1fb5de872772f31590499237e7cce841e8e # v0.5.3
+      with:
+        advanced-security: false

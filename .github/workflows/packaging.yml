@@ -55,6 +55,9 @@ defaults:
   run:
     shell: bash
 
+permissions:
+  contents: read
+
 jobs:
   source:
     name: Source
@@ -62,7 +65,7 @@ jobs:
     # For cron: only run on the main repo, not forks
     if: github.event_name != 'schedule' || github.repository == 'apache/arrow-adbc'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -84,7 +87,7 @@ jobs:
             apache-arrow-adbc-${VERSION} \
             $(git log -n 1 --format=%h)
 
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: source
           retention-days: 7
@@ -102,7 +105,7 @@ jobs:
         os: ["ubuntu-latest", "windows-latest", "macos-15-intel"]
 
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: source
 
@@ -120,11 +123,11 @@ jobs:
         run: |
           (. adbc/.env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - name: Setup Go
-        uses: actions/setup-go@v6
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
-          cache: true
+          cache: false
           cache-dependency-path: adbc/go/adbc/go.sum
 
       # run `make -i` because the Windows runs claim they can't delete the .h files, but they are still generated
@@ -135,7 +138,7 @@ jobs:
           popd
 
       - name: Upload Go binaries
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: go-${{ matrix.os }}
           retention-days: 7
@@ -151,7 +154,7 @@ jobs:
       - go-binaries
 
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: source
 
@@ -168,10 +171,12 @@ jobs:
       - name: Show inputs
         run: |
           echo "upload_artifacts: ${{ inputs.upload_artifacts }}" >> $GITHUB_STEP_SUMMARY
-          echo "schedule: ${{ github.event.schedule }}" >> $GITHUB_STEP_SUMMARY
-          echo "ref: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
+          echo "schedule: ${GITHUB_EVENT_SCHEDULE}" >> $GITHUB_STEP_SUMMARY
+          echo "ref: ${GITHUB_REF}" >> $GITHUB_STEP_SUMMARY
+        env:
+          GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
 
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: go-*
           path: adbc/go/adbc/pkg
@@ -192,7 +197,7 @@ jobs:
           popd
 
       - name: Archive nupkg
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: csharp
           retention-days: 7
@@ -206,7 +211,7 @@ jobs:
     needs:
       - source
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: source
 
@@ -223,8 +228,10 @@ jobs:
       - name: Show inputs
         run: |
           echo "upload_artifacts: ${{ inputs.upload_artifacts }}" >> $GITHUB_STEP_SUMMARY
-          echo "schedule: ${{ github.event.schedule }}" >> $GITHUB_STEP_SUMMARY
-          echo "ref: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
+          echo "schedule: ${GITHUB_EVENT_SCHEDULE}" >> $GITHUB_STEP_SUMMARY
+          echo "ref: ${GITHUB_REF}" >> $GITHUB_STEP_SUMMARY
+        env:
+          GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
 
       - name: Build and test
         run: |
@@ -241,7 +248,7 @@ jobs:
           popd
 
       - name: Archive docs
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: docs
           retention-days: 2
@@ -262,7 +269,7 @@ jobs:
           - { os: Windows, arch: amd64, runner: windows-latest }
 
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: source
       - name: Extract source archive
@@ -295,7 +302,7 @@ jobs:
           ls -laR artifacts
           mv artifacts artifacts-${{ matrix.os }}-${{ matrix.arch }}
           tar czf artifacts-${{ matrix.os }}-${{ matrix.arch }}.tgz artifacts-${{ matrix.os }}-${{ matrix.arch }}
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: jni-artifacts-${{ matrix.os }}-${{ matrix.arch }}
           retention-days: 7
@@ -309,11 +316,11 @@ jobs:
       - source
       - java-jni
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: source
 
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: artifacts
           pattern: jni-artifacts-*
@@ -332,8 +339,10 @@ jobs:
       - name: Show inputs
         run: |
           echo "upload_artifacts: ${{ inputs.upload_artifacts }}" >> $GITHUB_STEP_SUMMARY
-          echo "schedule: ${{ github.event.schedule }}" >> $GITHUB_STEP_SUMMARY
-          echo "ref: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
+          echo "schedule: ${GITHUB_EVENT_SCHEDULE}" >> $GITHUB_STEP_SUMMARY
+          echo "ref: ${GITHUB_REF}" >> $GITHUB_STEP_SUMMARY
+        env:
+          GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
 
       - name: Build and test
         run: |
@@ -351,7 +360,7 @@ jobs:
           cp -a adbc/dist/ ./
 
       - name: Archive JARs
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: java
           retention-days: 7
@@ -376,14 +385,15 @@ jobs:
           - ubuntu-jammy
           - ubuntu-noble
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: source
 
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           repository: apache/arrow
           path: arrow
+          persist-credentials: false
 
       - name: Set output variables
         run: |
@@ -421,11 +431,12 @@ jobs:
           ruby-version: ruby
 
       - name: Cache ccache
-        uses: actions/cache@v5
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
         with:
           path: adbc/ci/linux-packages/${{ env.TASK_NAMESPACE }}/build/${{ matrix.target }}/ccache
           key: linux-${{ env.TASK_NAMESPACE }}-ccache-${{ matrix.target }}-{{ "${{ hashFiles('adbc.h', 'c/**', 'glib/**') }}" }}
           restore-keys: linux-${{ env.TASK_NAMESPACE }}-ccache-${{ matrix.target }}-
+          lookup-only: true
 
       - name: Login to GitHub Container registry
         uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121  # v4.1.0
@@ -447,12 +458,12 @@ jobs:
       - name: Prepare artifacts
         run: |
           cp -a \
-            adbc/ci/linux-packages/${{ env.TASK_NAMESPACE }}/repositories/${DISTRIBUTION} \
+            adbc/ci/linux-packages/${TASK_NAMESPACE}/repositories/${DISTRIBUTION} \
             ./
           tar czf ${{ matrix.target }}.tar.gz ${DISTRIBUTION}
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ matrix.target }}
           retention-days: 7
@@ -506,7 +517,7 @@ jobs:
         # TODO: "linux_aarch64_"
         arch: ["linux_64_"]
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: source
 
@@ -523,9 +534,12 @@ jobs:
 
       - name: Show inputs
         run: |
-          echo "upload_artifacts: ${{ github.event.inputs.upload_artifacts }}" >> $GITHUB_STEP_SUMMARY
-          echo "schedule: ${{ github.event.schedule }}" >> GITHUB_STEP_SUMMARY
-          echo "ref: ${{ github.ref }}" >> GITHUB_STEP_SUMMARY
+          echo "upload_artifacts: ${GITHUB_EVENT_INPUTS_UPLOAD_ARTIFACTS}" >> $GITHUB_STEP_SUMMARY
+          echo "schedule: ${GITHUB_EVENT_SCHEDULE}" >> GITHUB_STEP_SUMMARY
+          echo "ref: ${GITHUB_REF}" >> GITHUB_STEP_SUMMARY
+        env:
+          GITHUB_EVENT_INPUTS_UPLOAD_ARTIFACTS: ${{ github.event.inputs.upload_artifacts }}
+          GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
 
       - name: Build Conda package
         env:
@@ -538,7 +552,7 @@ jobs:
           popd
 
       - name: Archive Conda packages
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: python-${{ matrix.arch }}-conda
           retention-days: 7
@@ -572,7 +586,7 @@ jobs:
       run:
         shell: bash -l -eo pipefail {0}
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: source
 
@@ -589,9 +603,12 @@ jobs:
 
       - name: Show inputs
         run: |
-          echo "upload_artifacts: ${{ github.event.inputs.upload_artifacts }}" >> $GITHUB_STEP_SUMMARY
-          echo "schedule: ${{ github.event.schedule }}" >> $GITHUB_STEP_SUMMARY
-          echo "ref: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
+          echo "upload_artifacts: ${GITHUB_EVENT_INPUTS_UPLOAD_ARTIFACTS}" >> $GITHUB_STEP_SUMMARY
+          echo "schedule: ${GITHUB_EVENT_SCHEDULE}" >> $GITHUB_STEP_SUMMARY
+          echo "ref: ${GITHUB_REF}" >> $GITHUB_STEP_SUMMARY
+        env:
+          GITHUB_EVENT_INPUTS_UPLOAD_ARTIFACTS: ${{ github.event.inputs.upload_artifacts }}
+          GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
 
       - uses: conda-incubator/setup-miniconda@fc2d68f6413eb2d87b895e92f8584b5b94a10167  # v3.3.0
         with:
@@ -612,7 +629,7 @@ jobs:
           ./adbc/ci/scripts/python_conda_build.sh $(pwd)/adbc ${ARCH_CONDA_FORGE}.yaml $(pwd)/adbc/build
 
       - name: Archive Conda packages
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: python-${{ matrix.arch }}-conda
           retention-days: 7
@@ -643,7 +660,7 @@ jobs:
             platform: "linux/arm64/v8"
             runs_on: "ubuntu-24.04-arm"
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: source
 
@@ -662,9 +679,12 @@ jobs:
 
       - name: Show inputs
         run: |
-          echo "upload_artifacts: ${{ github.event.inputs.upload_artifacts }}" >> $GITHUB_STEP_SUMMARY
-          echo "schedule: ${{ github.event.schedule }}" >> $GITHUB_STEP_SUMMARY
-          echo "ref: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
+          echo "upload_artifacts: ${GITHUB_EVENT_INPUTS_UPLOAD_ARTIFACTS}" >> $GITHUB_STEP_SUMMARY
+          echo "schedule: ${GITHUB_EVENT_SCHEDULE}" >> $GITHUB_STEP_SUMMARY
+          echo "ref: ${GITHUB_REF}" >> $GITHUB_STEP_SUMMARY
+        env:
+          GITHUB_EVENT_INPUTS_UPLOAD_ARTIFACTS: ${{ github.event.inputs.upload_artifacts }}
+          GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
 
       - name: Build wheel
         env:
@@ -682,7 +702,7 @@ jobs:
           popd
 
       - name: Archive wheels
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: python-${{ matrix.arch }}-manylinux${{ matrix.manylinux_version }}
           retention-days: 7
@@ -761,7 +781,7 @@ jobs:
       # Where to install vcpkg
       VCPKG_ROOT: "${{ github.workspace }}/vcpkg"
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: source
 
@@ -781,9 +801,12 @@ jobs:
 
       - name: Show inputs
         run: |
-          echo "upload_artifacts: ${{ github.event.inputs.upload_artifacts }}" >> $GITHUB_STEP_SUMMARY
-          echo "schedule: ${{ github.event.schedule }}" >> $GITHUB_STEP_SUMMARY
-          echo "ref: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
+          echo "upload_artifacts: ${GITHUB_EVENT_INPUTS_UPLOAD_ARTIFACTS}" >> $GITHUB_STEP_SUMMARY
+          echo "schedule: ${GITHUB_EVENT_SCHEDULE}" >> $GITHUB_STEP_SUMMARY
+          echo "ref: ${GITHUB_REF}" >> $GITHUB_STEP_SUMMARY
+        env:
+          GITHUB_EVENT_INPUTS_UPLOAD_ARTIFACTS: ${{ github.event.inputs.upload_artifacts }}
+          GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
 
       - name: Install Homebrew dependencies
         run: brew install autoconf bash pkg-config ninja
@@ -806,11 +829,11 @@ jobs:
         run: |
           (. adbc/.env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
-          cache: true
+          cache: false
           cache-dependency-path: adbc/go/adbc/go.sum
 
       - name: Downgrade XCode
@@ -831,7 +854,7 @@ jobs:
           popd
 
       - name: Archive wheels
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: python-${{ matrix.arch }}-macos
           retention-days: 7
@@ -920,7 +943,7 @@ jobs:
 
       - name: Upload failure logs
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: vcpkg-logs-${{ matrix.os }}-${{ matrix.arch }}
           retention-days: 7
@@ -940,7 +963,7 @@ jobs:
       # Where to install vcpkg
       VCPKG_ROOT: "${{ github.workspace }}\\vcpkg"
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: source
 
@@ -964,8 +987,10 @@ jobs:
         shell: pwsh
         run: |
           echo "upload_artifacts: ${{ inputs.upload_artifacts }}" >> $GITHUB_STEP_SUMMARY
-          echo "schedule: ${{ github.event.schedule }}" >> $GITHUB_STEP_SUMMARY
-          echo "ref: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
+          echo "schedule: $env:GITHUB_EVENT_SCHEDULE" >> $GITHUB_STEP_SUMMARY
+          echo "ref: $env:GITHUB_REF" >> $GITHUB_STEP_SUMMARY
+        env:
+          GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
 
       - name: Install Chocolatey Dependencies
         shell: pwsh
@@ -989,21 +1014,22 @@ jobs:
           .\bootstrap-vcpkg.bat -disableMetrics
           popd
 
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
-          cache: true
+          cache: false
           cache-dependency-path: adbc/go/adbc/go.sum
 
       - name: Install Python ${{ matrix.python_version }}
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           check-latest: true
           python-version: ${{ matrix.python_version }}
 
       - name: Build wheel
-        shell: cmd
+        # TODO(https://github.com/apache/arrow-adbc/issues/4269): remove cmd.exe usage
+        shell: cmd # zizmor: ignore[misfeature]
         run: |
           where python.exe
           CALL "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
@@ -1013,7 +1039,7 @@ jobs:
           popd
 
       - name: Archive wheels
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: python${{ matrix.python_version }}-windows
           retention-days: 7
@@ -1026,7 +1052,8 @@ jobs:
             adbc/build/**/*.pdb
 
       - name: Test wheel
-        shell: cmd
+        # TODO(https://github.com/apache/arrow-adbc/issues/4269): remove cmd.exe usage
+        shell: cmd # zizmor: ignore[misfeature]
         env:
           PYTHON_VERSION: ${{ matrix.python_version }}
         run: |
@@ -1043,7 +1070,7 @@ jobs:
     needs:
       - source
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: source
 
@@ -1061,9 +1088,12 @@ jobs:
 
       - name: Show inputs
         run: |
-          echo "upload_artifacts: ${{ github.event.inputs.upload_artifacts }}"
-          echo "schedule: ${{ github.event.schedule }}"
-          echo "ref: ${{ github.ref }}"
+          echo "upload_artifacts: ${GITHUB_EVENT_INPUTS_UPLOAD_ARTIFACTS}"
+          echo "schedule: ${GITHUB_EVENT_SCHEDULE}"
+          echo "ref: ${GITHUB_REF}"
+        env:
+          GITHUB_EVENT_INPUTS_UPLOAD_ARTIFACTS: ${{ github.event.inputs.upload_artifacts }}
+          GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
 
       - name: Build sdist
         run: |
@@ -1074,7 +1104,7 @@ jobs:
           popd
 
       - name: Archive sdist
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: python-sdist
           retention-days: 7
@@ -1111,7 +1141,7 @@ jobs:
           - host: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: source
 
@@ -1125,11 +1155,10 @@ jobs:
           mv apache-arrow-adbc-${VERSION} adbc
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 22
-          cache: 'npm'
-          cache-dependency-path: adbc/javascript/package-lock.json
+          package-manager-cache: false
 
       - name: Setup Rust
         run: |
@@ -1152,7 +1181,7 @@ jobs:
         run: codesign --sign - *.node
 
       - name: Upload Node.js binaries
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: bindings-${{ matrix.settings.target }}
           path: adbc/javascript/*.node
@@ -1165,7 +1194,7 @@ jobs:
       - source
       - node-binaries
     steps:
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           name: source
 
@@ -1179,11 +1208,10 @@ jobs:
           mv apache-arrow-adbc-${VERSION} adbc
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: 22
-          cache: 'npm'
-          cache-dependency-path: adbc/javascript/package-lock.json
+          package-manager-cache: false
 
       - name: Setup Rust
         run: |
@@ -1199,7 +1227,7 @@ jobs:
         run: npm run build:ci && npm run build:ts
 
       - name: Download Node.js binaries
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: bindings-*
           path: adbc/javascript/artifacts
@@ -1219,7 +1247,7 @@ jobs:
           done
 
       - name: Upload Node.js packages
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: node-packages
           retention-days: 7
@@ -1244,7 +1272,7 @@ jobs:
       - python-sdist
     steps:
       - name: Get All Artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: release-artifacts
       - name: Release
@@ -1300,13 +1328,13 @@ jobs:
       run:
         shell: bash -l -eo pipefail {0}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           persist-credentials: true
           submodules: recursive
       - name: Get All Artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: conda-packages
       - uses: conda-incubator/setup-miniconda@fc2d68f6413eb2d87b895e92f8584b5b94a10167  # v3.3.0
@@ -1323,14 +1351,14 @@ jobs:
           # Clean all existing packages, OK if we fail
           ./ci/scripts/python_conda_clean.sh
         env:
-          ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_API_TOKEN }}
+          ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_API_TOKEN }} # zizmor: ignore[secrets-outside-env]
       - name: Upload
         run: |
           ls -laR conda-packages
           # Upload fresh packages
           ./ci/scripts/python_conda_upload.sh conda-packages/python-*-conda/*/*.tar.bz2
         env:
-          ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_API_TOKEN }}
+          ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_API_TOKEN }} # zizmor: ignore[secrets-outside-env]
 
   # This takes a while due to sleeping to avoid rate limits, so run it first
   # and in parallel with the builds
@@ -1339,9 +1367,11 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref_name == 'main' && (github.event.schedule || inputs.upload_artifacts)
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
       - name: Install Python
-        uses: actions/setup-python@v6
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
         with:
           python-version: '3.13'
       - name: Clean
@@ -1349,7 +1379,7 @@ jobs:
           pip install requests
           ./ci/scripts/gemfury_clean.py
         env:
-          GEMFURY_API_TOKEN: ${{ secrets.GEMFURY_API_TOKEN }}
+          GEMFURY_API_TOKEN: ${{ secrets.GEMFURY_API_TOKEN }} # zizmor: ignore[secrets-outside-env]
 
   upload-gemfury:
     name: "Upload packages to Gemfury"
@@ -1364,13 +1394,13 @@ jobs:
       - python-windows
       - python-sdist
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           persist-credentials: true
           submodules: recursive
       - name: Get All Artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: nightly-artifacts
       - name: Upload
@@ -1394,6 +1424,6 @@ jobs:
           # Node.js
           ./ci/scripts/node_npm_upload.sh upload-staging
         env:
-          GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
+          GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }} # zizmor: ignore[secrets-outside-env]
           NPM_REGISTRY: https://npm.fury.io/arrow-adbc-nightlies/
-          NPM_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }}
+          NPM_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }} # zizmor: ignore[secrets-outside-env]
