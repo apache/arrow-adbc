@@ -61,12 +61,6 @@ int TryDriver(const char* driver_name) {
 int main(int argc, char** argv) {
   int rc = 0;
 
-  rc = TryDriver("adbc_driver_bigquery");
-  if (rc != EXIT_SUCCESS) {
-    return rc;
-  }
-  printf("Loaded BigQuery driver\n");
-
   rc = TryDriver("adbc_driver_flightsql");
   if (rc != EXIT_SUCCESS) {
     return rc;

@@ -22,7 +22,6 @@ $SourceDir = $Args[0]
 $BuildDir = $Args[1]
 
 $BuildAll = $env:BUILD_ALL -ne "0"
-$BuildDriverBigQuery = ($BuildAll -and (-not ($env:BUILD_DRIVER_BIGQUERY -eq "0"))) -or ($env:BUILD_DRIVER_BIGQUERY -eq "1")
 $BuildDriverFlightSql = ($BuildAll -and (-not ($env:BUILD_DRIVER_FLIGHTSQL -eq "0"))) -or ($env:BUILD_DRIVER_FLIGHTSQL -eq "1")
 $BuildDriverManager = ($BuildAll -and (-not ($env:BUILD_DRIVER_MANAGER -eq "0"))) -or ($env:BUILD_DRIVER_MANAGER -eq "1")
 $BuildDriverPostgreSQL = ($BuildAll -and (-not ($env:BUILD_DRIVER_POSTGRESQL -eq "0"))) -or ($env:BUILD_DRIVER_POSTGRESQL -eq "1")
@@ -31,7 +30,6 @@ $BuildDriverSqlite = ($BuildAll -and (-not ($env:BUILD_DRIVER_SQLITE -eq "0"))) 
 
 cmake -S "$($SourceDir)\c" -B $BuildDir `
     -DADBC_DRIVER_MANAGER=$BuildDriverManager `
-    -DADBC_DRIVER_BIGQUERY=$BuildDriverFlightSql `
     -DADBC_DRIVER_FLIGHTSQL=$BuildDriverFlightSql `
     -DADBC_DRIVER_POSTGRESQL=$BuildDriverPostgreSQL `
     -DADBC_DRIVER_SNOWFLAKE=$BuildDriverSnowflake `

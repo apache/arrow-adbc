@@ -73,10 +73,6 @@ subdir('driver/common')
 subdir('driver/framework')
 subdir('validation')
 
-if get_option('bigquery').enabled()
-    subdir('driver/bigquery')
-endif
-
 if get_option('flightsql').enabled()
     subdir('driver/flightsql')
 endif

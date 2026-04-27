@@ -128,7 +128,6 @@ jobs:
           pushd build
           cmake \
             -DADBC_BUILD_TESTS=OFF \
-            -DADBC_DRIVER_BIGQUERY=ON \
             -DADBC_DRIVER_FLIGHTSQL=ON \
             -DADBC_DRIVER_MANAGER=ON \
             -DADBC_DRIVER_SQLITE=ON \

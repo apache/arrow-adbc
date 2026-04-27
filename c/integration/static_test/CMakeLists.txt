@@ -24,7 +24,6 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 find_package(AdbcDriverCommon REQUIRED)
 find_package(AdbcDriverFramework REQUIRED)
 
-find_package(AdbcDriverBigQuery REQUIRED)
 find_package(AdbcDriverFlightSQL REQUIRED)
 find_package(AdbcDriverPostgreSQL REQUIRED)
 find_package(AdbcDriverSQLite REQUIRED)

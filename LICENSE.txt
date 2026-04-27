@@ -424,12 +424,6 @@ cloud.google.com/go/auth/oauth2adapt is under the Apache-2.0 license.
 
 --------------------------------------------------------------------------------
 
-3rdparty dependency cloud.google.com/go/bigquery
-is statically linked in certain binary distributions, like the Python wheels.
-cloud.google.com/go/bigquery is under the Apache-2.0 license.
-
---------------------------------------------------------------------------------
-
 3rdparty dependency cloud.google.com/go/compute/metadata
 is statically linked in certain binary distributions, like the Python wheels.
 cloud.google.com/go/compute/metadata is under the Apache-2.0 license.

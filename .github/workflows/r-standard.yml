@@ -62,7 +62,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu, macOS, windows]
-        pkg: [adbcflightsql, adbcsnowflake, adbcbigquery]
+        pkg: [adbcflightsql, adbcsnowflake]
 
     uses: ./.github/workflows/r-check.yml
     with:

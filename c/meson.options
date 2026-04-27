@@ -17,7 +17,6 @@
 
 option('tests', type: 'feature', description: 'Build tests')
 option('benchmarks', type: 'feature', description: 'Build benchmarks')
-option('bigquery', type: 'feature', description: 'Build ADBC BigQuery driver')
 option('flightsql', type: 'feature', description: 'Build ADBC FlightSQL driver')
 option('driver_manager', type: 'feature', description: 'Build ADBC Driver Manager')
 option('postgresql', type: 'feature', description: 'Build ADBC PostgreSQL Driver')

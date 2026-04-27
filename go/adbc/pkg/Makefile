@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-MANAGERS = bigquery flightsql panicdummy snowflake
+MANAGERS = flightsql panicdummy snowflake
 
 GO_BUILD := go build
 RM := rm -f
@@ -52,7 +52,6 @@ libadbc_driver_%.$(SUFFIX): % ../driver/% ../go.mod ../go.sum
 	$(RM) $(basename $@).h
 
 regenerate:
-	go run gen/main.go -prefix BigQuery -o ./bigquery/ -driver ../driver/bigquery
 	go run gen/main.go -prefix FlightSQL -o ./flightsql/ -driver ../driver/flightsql
 	go run gen/main.go -prefix PanicDummy -o ./panicdummy/ -driver ../driver/panicdummy
 	go run gen/main.go -prefix Snowflake -o ./snowflake/ -driver ../driver/snowflake

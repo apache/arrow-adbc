@@ -61,7 +61,7 @@ jobs:
       matrix:
         rversion: [oldrel, release, devel]
         os: [macOS, windows, ubuntu]
-        pkg: [adbcflightsql, adbcsnowflake, adbcbigquery]
+        pkg: [adbcflightsql, adbcsnowflake]
       max-parallel: 5
       fail-fast: false
 

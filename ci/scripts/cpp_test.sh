@@ -24,7 +24,6 @@ set -e
 : ${BUILD_DRIVER_SQLITE:=${BUILD_ALL}}
 : ${BUILD_DRIVER_FLIGHTSQL:=${BUILD_ALL}}
 : ${BUILD_DRIVER_SNOWFLAKE:=${BUILD_ALL}}
-: ${BUILD_DRIVER_BIGQUERY:=${BUILD_ALL}}
 : ${BUILD_INTEGRATION_DUCKDB:=${BUILD_ALL}}
 
 test_project() {
@@ -33,9 +32,6 @@ test_project() {
     pushd "${build_dir}/"
 
     local labels=""
-    if [[ "${BUILD_DRIVER_BIGQUERY}" -gt 0 ]]; then
-       labels="${labels}|driver-bigquery"
-    fi
     if [[ "${BUILD_DRIVER_FLIGHTSQL}" -gt 0 ]]; then
        labels="${labels}|driver-flightsql"
     fi

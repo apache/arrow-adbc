@@ -25,7 +25,6 @@ go/adbc/drivermgr/adbc_driver_manager_driver_loading.cc linguist-generated
 go/adbc/drivermgr/adbc_driver_manager_internal.h linguist-generated
 go/adbc/drivermgr/adbc_driver_manager_profiles.cc linguist-generated
 go/adbc/drivermgr/current_arch.h linguist-generated
-go/adbc/pkg/bigquery/* linguist-generated
 go/adbc/pkg/flightsql/* linguist-generated
 go/adbc/pkg/panicdummy/* linguist-generated
 go/adbc/pkg/snowflake/* linguist-generated

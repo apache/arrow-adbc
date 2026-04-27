@@ -687,7 +687,6 @@ jobs:
           name: python-${{ matrix.arch }}-manylinux${{ matrix.manylinux_version }}
           retention-days: 7
           path: |
-            adbc/python/adbc_driver_bigquery/repaired_wheels/*.whl
             adbc/python/adbc_driver_flightsql/repaired_wheels/*.whl
             adbc/python/adbc_driver_manager/repaired_wheels/*.whl
             adbc/python/adbc_driver_postgresql/repaired_wheels/*.whl
@@ -837,7 +836,6 @@ jobs:
           name: python-${{ matrix.arch }}-macos
           retention-days: 7
           path: |
-            adbc/python/adbc_driver_bigquery/repaired_wheels/*.whl
             adbc/python/adbc_driver_flightsql/repaired_wheels/*.whl
             adbc/python/adbc_driver_manager/repaired_wheels/*.whl
             adbc/python/adbc_driver_postgresql/repaired_wheels/*.whl
@@ -1020,7 +1018,6 @@ jobs:
           name: python${{ matrix.python_version }}-windows
           retention-days: 7
           path: |
-            adbc/python/adbc_driver_bigquery/repaired_wheels/*.whl
             adbc/python/adbc_driver_flightsql/repaired_wheels/*.whl
             adbc/python/adbc_driver_manager/repaired_wheels/*.whl
             adbc/python/adbc_driver_postgresql/repaired_wheels/*.whl
@@ -1082,7 +1079,6 @@ jobs:
           name: python-sdist
           retention-days: 7
           path: |
-            adbc/python/adbc_driver_bigquery/dist/*.tar.gz
             adbc/python/adbc_driver_flightsql/dist/*.tar.gz
             adbc/python/adbc_driver_manager/dist/*.tar.gz
             adbc/python/adbc_driver_postgresql/dist/*.tar.gz
