@@ -57,7 +57,6 @@ Package documentation
 ---------------------
 
 - `adbcdrivermanager <adbcdrivermanager/index.html>`_
-- `adbcbigquery <adbcbigquery/index.html>`_
 - `adbcflightsql <adbcflightsql/index.html>`_
 - `adbcpostgresql <adbcpostgresql/index.html>`_
 - `adbcsnowflake <adbcsnowflake/index.html>`_

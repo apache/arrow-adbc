@@ -44,7 +44,6 @@ Feature Support
 
 .. adbc_driver_status_table::
 
-   ../../../c/driver/bigquery/README.md
    ../../../csharp/src/Drivers/Apache/Hive2/README.md
    ../../../csharp/src/Drivers/Apache/Impala/README.md
    ../../../csharp/src/Drivers/Apache/Spark/README.md
