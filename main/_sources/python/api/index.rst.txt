@@ -24,7 +24,6 @@ Python API Reference
 
    adbc_driver_manager
 
-   adbc_driver_bigquery
    adbc_driver_flightsql
    adbc_driver_postgresql
    adbc_driver_snowflake

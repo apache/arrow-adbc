@@ -19,13 +19,9 @@
 BigQuery Support
 ================
 
-.. adbc_driver_status:: ../../../c/driver/bigquery/README.md
 .. adbc_driver_status:: ../../../csharp/src/Drivers/BigQuery/readme.md
 
-There are two official BigQuery drivers in development:
-
-- C# (Beta): Available as a `NuGet package <https://www.nuget.org/packages/Apache.Arrow.Adbc.Drivers.BigQuery>`__
-- Go (Experimental): Available on conda-forge (`adbc-driver-bigquery <https://anaconda.org/conda-forge/adbc-driver-bigquery>`__, `libadbc-driver-bigquery <https://anaconda.org/conda-forge/libadbc-driver-bigquery>`__), `PyPI <https://pypi.org/project/adbc-driver-bigquery/>`__, and `R-multiverse <https://community.r-multiverse.org/adbcbigquery/>`__
+The C# BigQuery Driver (Beta) is available as a `NuGet package <https://www.nuget.org/packages/Apache.Arrow.Adbc.Drivers.BigQuery>`__
 
 C# BigQuery Driver
 ==================
@@ -39,16 +35,3 @@ More Information
 ~~~~~~~~~~~~~~~~
 
 For more information about this driver, please see the `README <https://github.com/apache/arrow-adbc/blob/main/csharp/src/Drivers/BigQuery/readme.md>`__.
-
-Go BigQuery Driver
-==================
-
-Installation
-~~~~~~~~~~~~
-
-.. adbc_driver_installation:: ../../../c/driver/bigquery/README.md
-
-More Information
-~~~~~~~~~~~~~~~~
-
-For more information about this driver, please see the `README <https://github.com/apache/arrow-adbc/blob/main/c/driver/bigquery/README.md>`__ and this `tracking issue <https://github.com/apache/arrow-adbc/issues/1974>`__.

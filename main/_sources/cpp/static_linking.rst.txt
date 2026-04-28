@@ -45,7 +45,7 @@ To statically link and use *multiple* drivers, the following limitations hold:
 
         set_target_properties(myapp PROPERTIES LINKER_LANGUAGE CXX)
 
-   - Go-based drivers (BigQuery, Flight SQL, Snowflake) have no transitive
+   - Go-based drivers (Flight SQL, Snowflake) have no transitive
      dependencies.
 
 #. You cannot link more than a single Go-based driver.  See `golang/go#20639

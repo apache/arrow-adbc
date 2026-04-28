@@ -9,10 +9,10 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://arrow.apache.org/adbc/main/driver/bigquery.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="Language: Go Status: Experimental Language: C# Status: Beta There are two official BigQuery drivers in development: C# (Beta): Available as a NuGet package, Go (Experimental): Available on conda-fo..." />
+<meta property="og:description" content="Language: C# Status: Beta The C# BigQuery Driver (Beta) is available as a NuGet package C# BigQuery Driver: Installation: C# Install Apache.Arrow.Adbc.Drivers.BigQuery from NuGet: Go Install the C/..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="Language: Go Status: Experimental Language: C# Status: Beta There are two official BigQuery drivers in development: C# (Beta): Available as a NuGet package, Go (Experimental): Available on conda-fo..." />
+<meta name="description" content="Language: C# Status: Beta The C# BigQuery Driver (Beta) is available as a NuGet package C# BigQuery Driver: Installation: C# Install Apache.Arrow.Adbc.Drivers.BigQuery from NuGet: Go Install the C/..." />
 <link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="DuckDB Support" href="duckdb.html"><link rel="prev" title="Driver Implementation Status" href="status.html">
         <link rel="prefetch" href="../_static/logo-light.png" as="image">
         <link rel="prefetch" href="../_static/logo-dark.png" as="image">
@@ -319,7 +319,6 @@
 <li class="toctree-l2"><a class="reference internal" href="../python/driver_manager.html">Driver Manager</a></li>
 <li class="toctree-l2 has-children"><a class="reference internal" href="../python/api/index.html">Python API Reference</a><input aria-label="Toggle navigation of Python API Reference" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l3"><a class="reference internal" href="../python/api/adbc_driver_manager.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="../python/api/adbc_driver_bigquery.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_bigquery</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../python/api/adbc_driver_flightsql.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_flightsql</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../python/api/adbc_driver_postgresql.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../python/api/adbc_driver_snowflake.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_snowflake</span></code></a></li>
@@ -416,15 +415,9 @@
         <article role="main" id="furo-main-content">
           <section id="bigquery-support">
 <h1>BigQuery Support<a class="headerlink" href="#bigquery-support" title="Link to this heading">¶</a></h1>
-<p><span class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary">Language: Go</span>
-<a class="sd-sphinx-override sd-badge sd-bg-danger sd-bg-text-danger reference internal" href="status.html#driver-status"><span class="std std-ref">Status: Experimental</span></a></p>
 <p><span class="sd-sphinx-override sd-badge sd-bg-primary sd-bg-text-primary">Language: C#</span>
 <a class="sd-sphinx-override sd-badge sd-bg-warning sd-bg-text-warning reference internal" href="status.html#driver-status"><span class="std std-ref">Status: Beta</span></a></p>
-<p>There are two official BigQuery drivers in development:</p>
-<ul class="simple">
-<li><p>C# (Beta): Available as a <a class="reference external" href="https://www.nuget.org/packages/Apache.Arrow.Adbc.Drivers.BigQuery">NuGet package</a></p></li>
-<li><p>Go (Experimental): Available on conda-forge (<a class="reference external" href="https://anaconda.org/conda-forge/adbc-driver-bigquery">adbc-driver-bigquery</a>, <a class="reference external" href="https://anaconda.org/conda-forge/libadbc-driver-bigquery">libadbc-driver-bigquery</a>), <a class="reference external" href="https://pypi.org/project/adbc-driver-bigquery/">PyPI</a>, and <a class="reference external" href="https://community.r-multiverse.org/adbcbigquery/">R-multiverse</a></p></li>
-</ul>
+<p>The C# BigQuery Driver (Beta) is available as a <a class="reference external" href="https://www.nuget.org/packages/Apache.Arrow.Adbc.Drivers.BigQuery">NuGet package</a></p>
 <section id="c-bigquery-driver">
 <h2>C# BigQuery Driver<a class="headerlink" href="#c-bigquery-driver" title="Link to this heading">¶</a></h2>
 <section id="installation">
@@ -452,55 +445,6 @@ Go</label><div class="sd-tab-content docutils">
 <section id="more-information">
 <h3>More Information<a class="headerlink" href="#more-information" title="Link to this heading">¶</a></h3>
 <p>For more information about this driver, please see the <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/csharp/src/Drivers/BigQuery/readme.md">README</a>.</p>
-</section>
-</section>
-<section id="go-bigquery-driver">
-<h2>Go BigQuery Driver<a class="headerlink" href="#go-bigquery-driver" title="Link to this heading">¶</a></h2>
-<section id="id1">
-<h3>Installation<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h3>
-<div class="sd-tab-set docutils">
-<input checked="checked" id="sd-tab-item-2" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-2">
-C/C++</label><div class="sd-tab-content docutils">
-<p>Install <a class="reference external" href="https://anaconda.org/conda-forge/libadbc-driver-bigquery">libadbc-driver-bigquery</a> from conda-forge:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>mamba<span class="w"> </span>install<span class="w"> </span>libadbc-driver-bigquery
-</pre></div>
-</div>
-</div>
-<input id="sd-tab-item-3" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-3">
-Go</label><div class="sd-tab-content docutils">
-<p>Install the C/C++ driver, then use the Go driver manager.  Requires CGO.</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>go<span class="w"> </span>get<span class="w"> </span>github.com/apache/arrow-adbc/go/adbc/drivermgr
-</pre></div>
-</div>
-</div>
-<input id="sd-tab-item-4" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-4">
-Python</label><div class="sd-tab-content docutils">
-<p>Install <a class="reference external" href="https://anaconda.org/conda-forge/adbc-driver-bigquery">adbc-driver-bigquery</a> from conda-forge:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>mamba<span class="w"> </span>install<span class="w"> </span>adbc-driver-bigquery
-</pre></div>
-</div>
-<p>Install <a class="reference external" href="https://pypi.org/project/adbc-driver-bigquery/">adbc-driver-bigquery</a> from PyPI:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>adbc-driver-bigquery
-</pre></div>
-</div>
-</div>
-<input id="sd-tab-item-5" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="r" for="sd-tab-item-5">
-R</label><div class="sd-tab-content docutils">
-<p>Install <a class="reference external" href="https://community.r-multiverse.org/adbcbigquery/">adbcbigquery</a> from R-multiverse:</p>
-<div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">install.packages</span><span class="p">(</span><span class="s">&quot;adbcbigquery&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">repos</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://community.r-multiverse.org&quot;</span><span class="p">)</span>
-</pre></div>
-</div>
-</div>
-</div>
-<p>Additionally, the driver may be used from C/C++, C#, GLib, Go, R, Ruby, and Rust via the driver manager.</p>
-</section>
-<section id="id2">
-<h3>More Information<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h3>
-<p>For more information about this driver, please see the <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/c/driver/bigquery/README.md">README</a> and this <a class="reference external" href="https://github.com/apache/arrow-adbc/issues/1974">tracking issue</a>.</p>
 </section>
 </section>
 </section>
@@ -567,11 +511,6 @@ United States and other countries.
 <li><a class="reference internal" href="#c-bigquery-driver">C# BigQuery Driver</a><ul>
 <li><a class="reference internal" href="#installation">Installation</a></li>
 <li><a class="reference internal" href="#more-information">More Information</a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#go-bigquery-driver">Go BigQuery Driver</a><ul>
-<li><a class="reference internal" href="#id1">Installation</a></li>
-<li><a class="reference internal" href="#id2">More Information</a></li>
 </ul>
 </li>
 </ul>
