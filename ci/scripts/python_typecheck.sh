@@ -23,7 +23,7 @@ set -e
 : ${BUILD_DRIVER_MANAGER:=${BUILD_ALL}}
 : ${BUILD_DRIVER_POSTGRESQL:=${BUILD_ALL}}
 : ${BUILD_DRIVER_SQLITE:=${BUILD_ALL}}
-: ${BUILD_DRIVER_SNOWFLAKE:=${BUILD_ALL}}
+: ${:=${BUILD_ALL}}
 
 : ${PYRIGHT_OPTIONS:=""}
 
@@ -52,12 +52,6 @@ main() {
 
     if [[ "${BUILD_DRIVER_SQLITE}" -gt 0 ]]; then
         if ! pyright ${PYRIGHT_OPTIONS} "${source_dir}/python/adbc_driver_sqlite"; then
-            status=1
-        fi
-    fi
-
-    if [[ "${BUILD_DRIVER_SNOWFLAKE}" -gt 0 ]]; then
-        if ! pyright ${PYRIGHT_OPTIONS} "${source_dir}/python/adbc_driver_snowflake"; then
             status=1
         fi
     fi

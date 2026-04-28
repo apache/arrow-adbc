@@ -142,7 +142,6 @@ $env:_ADBC_IS_CONDA = "1"
 # up MSVC as the C compiler, which then blows up when /Werror gets
 # passed in by some package
 $env:BUILD_DRIVER_FLIGHTSQL = "0"
-$env:BUILD_DRIVER_SNOWFLAKE = "0"
 
 & $(Join-Path $ArrowSourceDir ci\scripts\cpp_build.ps1) $ArrowSourceDir $CppBuildDir
 if (-not $?) { exit 1 }

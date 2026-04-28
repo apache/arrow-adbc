@@ -26,7 +26,6 @@ $BuildAll = $env:BUILD_ALL -ne "0"
 $BuildDriverManager = ($BuildAll -and (-not ($env:BUILD_DRIVER_MANAGER -eq "0"))) -or ($env:BUILD_DRIVER_MANAGER -eq "1")
 $BuildDriverFlightSql = ($BuildAll -and (-not ($env:BUILD_DRIVER_FLIGHTSQL -eq "0"))) -or ($env:BUILD_DRIVER_FLIGHTSQL -eq "1")
 $BuildDriverPostgreSQL = ($BuildAll -and (-not ($env:BUILD_DRIVER_POSTGRESQL -eq "0"))) -or ($env:BUILD_DRIVER_POSTGRESQL -eq "1")
-$BuildDriverSnowflake = ($BuildAll -and (-not ($env:BUILD_DRIVER_SNOWFLAKE -eq "0"))) -or ($env:BUILD_DRIVER_SNOWFLAKE -eq "1")
 $BuildDriverSqlite = ($BuildAll -and (-not ($env:BUILD_DRIVER_SQLITE -eq "0"))) -or ($env:BUILD_DRIVER_SQLITE -eq "1")
 
 $BuildDriverManagerUserConfigTest = ($env:BUILD_DRIVER_MANAGER_USER_CONFIG_TEST -eq "1")
@@ -44,7 +43,6 @@ function Build-Subproject {
       -DADBC_DRIVER_MANAGER="$($BuildDriverManager)" `
       -DADBC_DRIVER_FLIGHTSQL="$($BuildDriverFlightSql)" `
       -DADBC_DRIVER_POSTGRESQL="$($BuildDriverPostgreSQL)" `
-      -DADBC_DRIVER_SNOWFLAKE="$($BuildDriverSnowflake)" `
       -DADBC_DRIVER_SQLITE="$($BuildDriverSqlite)" `
       -DCMAKE_BUILD_TYPE=Release `
       -DCMAKE_INSTALL_PREFIX="$($InstallDir)" `

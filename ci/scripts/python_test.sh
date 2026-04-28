@@ -25,7 +25,6 @@ set -e
 : ${BUILD_DRIVER_MANAGER:=${BUILD_ALL}}
 : ${BUILD_DRIVER_POSTGRESQL:=${BUILD_ALL}}
 : ${BUILD_DRIVER_SQLITE:=${BUILD_ALL}}
-: ${BUILD_DRIVER_SNOWFLAKE:=${BUILD_ALL}}
 : ${CC:=gcc}
 : ${PYTHONDEVMODE:=1}
 
@@ -86,10 +85,6 @@ main() {
 
     if [[ "${BUILD_DRIVER_SQLITE}" -gt 0 ]]; then
         test_subproject "${source_dir}" "${install_dir}" adbc_driver_sqlite
-    fi
-
-    if [[ "${BUILD_DRIVER_SNOWFLAKE}" -gt 0 ]]; then
-        test_subproject "${source_dir}" "${install_dir}" adbc_driver_snowflake
     fi
 }
 

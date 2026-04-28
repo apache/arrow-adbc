@@ -131,7 +131,6 @@ jobs:
             -DADBC_DRIVER_FLIGHTSQL=ON \
             -DADBC_DRIVER_MANAGER=ON \
             -DADBC_DRIVER_SQLITE=ON \
-            -DADBC_DRIVER_SNOWFLAKE=ON \
             -DADBC_USE_ASAN=OFF \
             -DADBC_USE_UBSAN=OFF \
             -DADBC_SQLITE_COMPILE_DEFINES=-DADBC_SQLITE_WITH_NO_LOAD_EXTENSION \
@@ -160,8 +159,6 @@ jobs:
         run: |
           echo "PATH=${{ github.workspace }}/local/bin;${{ github.workspace }}/local/lib;$PATH" >> "$GITHUB_ENV"
           echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/local/bin/adbc_driver_sqlite.dll" >> "$GITHUB_ENV"
-      - name: Set search dir for Snowflake Go lib
-        run: echo "ADBC_SNOWFLAKE_GO_LIB_DIR=${{ github.workspace }}/local/lib" >> "$GITHUB_ENV"
       - name: Clippy
         if: runner.os != 'Linux' && ! matrix.minimal-versions
         working-directory: rust
@@ -182,36 +179,24 @@ jobs:
             -Zcrate-attr='allow(unused_features)'
       - name: Test (Default Features)
         working-directory: rust
-        # TODO: enable snowflake tests on windows
         run: >
           cargo test --all-targets --workspace
           ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
-          ${{ runner.os == 'Windows' && '--exclude adbc_snowflake' || '' }}
       - name: Test (All Features)
         working-directory: rust
-        # TODO: enable snowflake tests on windows
         run: >
           cargo test --all-targets --all-features --workspace
           ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
-          ${{ runner.os == 'Windows' && '--exclude adbc_snowflake' || '' }}
-        # env:
-        # ADBC_SNOWFLAKE_TESTS: 1
-        # ADBC_SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
-        # ADBC_SNOWFLAKE_SQL_DB: ARROW_OSS_DB
       - name: Doctests
         working-directory: rust
-        # TODO: enable snowflake tests on windows
         run: >
           cargo test --doc --all-features --workspace
           ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
-          ${{ runner.os == 'Windows' && '--exclude adbc_snowflake' || '' }}
       - name: Check docs
         working-directory: rust
-        # TODO: enable snowflake tests on windows
         run: >
           cargo doc --all-features --workspace
           ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
-          ${{ runner.os == 'Windows' && '--exclude adbc_snowflake' || '' }}
       - name: Install cargo-msrv
         if: matrix.os == 'ubuntu-latest'
         run: |

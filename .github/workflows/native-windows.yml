@@ -97,7 +97,6 @@ jobs:
           BUILD_ALL: "1"
           # TODO(apache/arrow-adbc#634)
           BUILD_DRIVER_FLIGHTSQL: "0"
-          BUILD_DRIVER_SNOWFLAKE: "0"
           BUILD_DRIVER_MANAGER_USER_CONFIG_TEST: "1"
         run: |
           .\ci\scripts\cpp_build.ps1 $pwd ${{ github.workspace }}\build

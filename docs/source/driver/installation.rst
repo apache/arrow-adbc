@@ -77,7 +77,6 @@ Install:
 - ``sudo apt install libadbc-driver-flightsql-dev``
 - ``sudo apt install libadbc-driver-postgresql-dev``
 - ``sudo apt install libadbc-driver-sqlite-dev``
-- ``sudo apt install libadbc-driver-snowflake-dev``
 
 You can use ``dnf`` on the following platforms:
 
@@ -106,7 +105,6 @@ Install:
 - ``sudo dnf install adbc-driver-flightsql-devel``
 - ``sudo dnf install adbc-driver-postgresql-devel``
 - ``sudo dnf install adbc-driver-sqlite-devel``
-- ``sudo dnf install adbc-driver-snowflake-devel``
 
 Then they can be used via CMake, e.g.:
 
@@ -137,7 +135,6 @@ For example, from PyPI:
 
 - ``pip install adbc-driver-flightsql``
 - ``pip install adbc-driver-postgresql``
-- ``pip install adbc-driver-snowflake``
 - ``pip install adbc-driver-sqlite``
 
 R
@@ -156,7 +153,6 @@ Drivers not yet available on CRAN can be installed from R-multiverse:
 .. code-block:: r
 
    install.packages("adbcflightsql", repos = "https://community.r-multiverse.org")
-   install.packages("adbcsnowflake", repos = "https://community.r-multiverse.org")
 
 Ruby
 ====

@@ -50,7 +50,6 @@ cmake ^
       -DADBC_DRIVER_FLIGHTSQL=ON ^
       -DADBC_DRIVER_MANAGER=ON ^
       -DADBC_DRIVER_POSTGRESQL=ON ^
-      -DADBC_DRIVER_SNOWFLAKE=ON ^
       -DADBC_DRIVER_SQLITE=ON ^
       %source_dir%\c || exit /B 1
 
@@ -59,7 +58,6 @@ cmake --build . --config %CMAKE_BUILD_TYPE% --target install --verbose -j || exi
 set ADBC_FLIGHTSQL_LIBRARY=%build_dir%\bin\adbc_driver_flightsql.dll
 set ADBC_POSTGRESQL_LIBRARY=%build_dir%\bin\adbc_driver_postgresql.dll
 set ADBC_SQLITE_LIBRARY=%build_dir%\bin\adbc_driver_sqlite.dll
-set ADBC_SNOWFLAKE_LIBRARY=%build_dir%\bin\adbc_driver_snowflake.dll
 
 # Build with Cython debug info
 set ADBC_BUILD_TYPE=debug
@@ -70,7 +68,7 @@ python -m pip install --upgrade pip delvewheel wheel || exit /B 1
 
 FOR /F %%i IN ('python -c "import sysconfig; print(sysconfig.get_platform())"') DO set PLAT_NAME=%%i
 
-FOR %%c IN (adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adbc_driver_sqlite adbc_driver_snowflake) DO (
+FOR %%c IN (adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adbc_driver_sqlite) DO (
     pushd %source_dir%\python\%%c
 
     echo "=== (%PYTHON_VERSION%) Checking %%c version ==="

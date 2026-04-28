@@ -153,10 +153,6 @@ echo "::group::Test ADBC Flight SQL Driver"
 ${install_command} --enablerepo=epel adbc-driver-flightsql-devel-${package_version}
 echo "::endgroup::"
 
-echo "::group::Test ADBC Snowflake Driver"
-${install_command} --enablerepo=epel adbc-driver-snowflake-devel-${package_version}
-echo "::endgroup::"
-
 echo "::group::Test ADBC GLib"
 export G_DEBUG=fatal-warnings
 

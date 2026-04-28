@@ -144,7 +144,6 @@ jobs:
           retention-days: 7
           path: |
             adbc/go/adbc/pkg/libadbc_driver_flightsql.*
-            adbc/go/adbc/pkg/libadbc_driver_snowflake.*
 
   csharp:
     name: "C#/.NET"
@@ -711,7 +710,6 @@ jobs:
             adbc/python/adbc_driver_manager/repaired_wheels/*.whl
             adbc/python/adbc_driver_postgresql/repaired_wheels/*.whl
             adbc/python/adbc_driver_sqlite/repaired_wheels/*.whl
-            adbc/python/adbc_driver_snowflake/repaired_wheels/*.whl
 
       - name: Test wheel 3.10
         env:
@@ -863,7 +861,6 @@ jobs:
             adbc/python/adbc_driver_manager/repaired_wheels/*.whl
             adbc/python/adbc_driver_postgresql/repaired_wheels/*.whl
             adbc/python/adbc_driver_sqlite/repaired_wheels/*.whl
-            adbc/python/adbc_driver_snowflake/repaired_wheels/*.whl
 
       # N.B. delocate (called above) will install these Python versions for
       # us. You can get the interpreter path by inspecting CI output (search
@@ -1048,7 +1045,6 @@ jobs:
             adbc/python/adbc_driver_manager/repaired_wheels/*.whl
             adbc/python/adbc_driver_postgresql/repaired_wheels/*.whl
             adbc/python/adbc_driver_sqlite/repaired_wheels/*.whl
-            adbc/python/adbc_driver_snowflake/repaired_wheels/*.whl
             adbc/build/**/*.pdb
 
       - name: Test wheel
@@ -1113,7 +1109,6 @@ jobs:
             adbc/python/adbc_driver_manager/dist/*.tar.gz
             adbc/python/adbc_driver_postgresql/dist/*.tar.gz
             adbc/python/adbc_driver_sqlite/dist/*.tar.gz
-            adbc/python/adbc_driver_snowflake/dist/*.tar.gz
 
       - name: Test sdist
         run: |
