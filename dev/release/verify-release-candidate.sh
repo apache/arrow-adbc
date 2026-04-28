@@ -249,7 +249,7 @@ install_dotnet() {
   if command -v dotnet; then
     show_info "Found $(dotnet --version) at $(which dotnet)"
 
-    if dotnet --version | grep --quiet --fixed-string 8.0; then
+    if dotnet --version | grep --quiet --fixed-string 10.0; then
         local csharp_bin=$(dirname $(which dotnet))
         show_info "Found C# at $(which csharp) (.NET $(dotnet --version))"
         DOTNET_ALREADY_INSTALLED=1
@@ -260,7 +260,7 @@ install_dotnet() {
   show_info "dotnet found but it is the wrong version or dotnet not found"
 
   local csharp_bin=${ARROW_TMPDIR}/csharp/bin
-  local dotnet_version=8.0.204
+  local dotnet_version=10.0.203
   local dotnet_platform=
   case "$(uname)" in
       Linux)

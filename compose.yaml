@@ -22,7 +22,7 @@ services:
   ############################### C#/.NET ######################################
 
   csharp-dist:
-    image: mcr.microsoft.com/dotnet/sdk:8.0
+    image: mcr.microsoft.com/dotnet/sdk:10.0
     volumes:
       - .:/adbc:delegated
     command: |
