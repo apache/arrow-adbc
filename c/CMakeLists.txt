@@ -95,6 +95,12 @@ if(ADBC_DRIVER_SNOWFLAKE)
   add_subdirectory(driver/snowflake)
 endif()
 
+if(ADBC_DRIVER_DB2)
+  install(FILES "${REPOSITORY_ROOT}/c/include/arrow-adbc/driver/db2.h"
+          DESTINATION include/arrow-adbc/driver)
+  add_subdirectory(driver/db2)
+endif()
+
 if(ADBC_INTEGRATION_DUCKDB)
   add_subdirectory(integration/duckdb)
 endif()
@@ -144,6 +150,10 @@ LIBRARY=$<TARGET_FILE:adbc_driver_${TARGET}_shared>" ${Python3_EXECUTABLE} -m pi
 
   if(ADBC_DRIVER_SNOWFLAKE)
     adbc_install_python_package(snowflake)
+  endif()
+
+  if(ADBC_DRIVER_DB2)
+    adbc_install_python_package(db2)
   endif()
 endif()
 
