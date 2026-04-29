@@ -56,6 +56,7 @@ main() {
         libgtest-dev \
         libpq-dev \
         libsqlite3-dev \
+        libuv1-dev \
         lsb-release \
         ninja-build \
         pkg-config \
