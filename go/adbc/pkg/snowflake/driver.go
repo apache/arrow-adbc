@@ -233,22 +233,24 @@ func printLoggingHelp() {
 	fmt.Fprintf(os.Stderr, "Snowflake: to enable logging, set %s to 'debug', 'info', 'warn', or 'error'", logLevelEnvVar)
 }
 
-// Allocate a new cgo.Handle and store its address in a heap-allocated
-// uintptr_t.  Experimentally, this was found to be necessary, else
-// something (the Go runtime?) would corrupt (garbage-collect?) the
-// handle.
+// Store the cgo.Handle's numeric value in C-allocated memory so that
+// private_data (a C pointer field) never holds a Go pointer — CGO forbids
+// C from retaining a copy of a Go pointer after a call returns.
+// cgo.Handle itself is just a uintptr (an integer), not a pointer, so the
+// GC does not trace or move it; the handle keeps the pointed-to Go object
+// alive via an internal global map until h.Delete() is called.
 func createHandle(hndl cgo.Handle) unsafe.Pointer {
-	// uintptr_t* hptr = malloc(sizeof(uintptr_t));
 	hptr := (*C.uintptr_t)(C.calloc(C.sizeof_uintptr_t, C.size_t(1)))
-	// *hptr = (uintptr)hndl;
 	*hptr = C.uintptr_t(uintptr(hndl))
 	return unsafe.Pointer(hptr)
 }
 
+func handleFromPtr(ptr unsafe.Pointer) cgo.Handle {
+	return cgo.Handle(uintptr(*(*C.uintptr_t)(ptr)))
+}
+
 func getFromHandle[T any](ptr unsafe.Pointer) *T {
-	// uintptr_t* hptr = (uintptr_t*)ptr;
-	hptr := (*C.uintptr_t)(ptr)
-	return cgo.Handle((uintptr)(*hptr)).Value().(*T)
+	return handleFromPtr(ptr).Value().(*T)
 }
 
 func exportStringOption(val string, out *C.char, length *C.size_t) C.AdbcStatusCode {
@@ -256,7 +258,7 @@ func exportStringOption(val string, out *C.char, length *C.size_t) C.AdbcStatusC
 	if lenWithTerminator <= *length {
 		sink := fromCArr[byte]((*byte)(unsafe.Pointer(out)), int(*length))
 		copy(sink, val)
-		sink[lenWithTerminator] = 0
+		sink[len(val)] = 0
 	}
 	*length = lenWithTerminator
 	return C.ADBC_STATUS_OK
@@ -420,7 +422,7 @@ func SnowflakeArrayStreamRelease(stream *C.struct_ArrowArrayStream) {
 	if stream == nil || stream.release != (*[0]byte)(C.SnowflakeArrayStreamRelease) || stream.private_data == nil {
 		return
 	}
-	h := (*(*cgo.Handle)(stream.private_data))
+	h := handleFromPtr(stream.private_data)
 
 	cStream := h.Value().(*cArrayStream)
 	cStream.rdr.Release()
@@ -617,7 +619,7 @@ func SnowflakeDatabaseRelease(db *C.struct_AdbcDatabase, err *C.struct_AdbcError
 	if !checkDBAlloc(db, err, "AdbcDatabaseRelease") {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
-	h := (*(*cgo.Handle)(db.private_data))
+	h := handleFromPtr(db.private_data)
 
 	cdb := h.Value().(*cDatabase)
 	if cdb.db != nil {
@@ -1032,7 +1034,7 @@ func SnowflakeConnectionRelease(cnxn *C.struct_AdbcConnection, err *C.struct_Adb
 	if !checkConnAlloc(cnxn, err, "AdbcConnectionRelease") {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
-	h := (*(*cgo.Handle)(cnxn.private_data))
+	h := handleFromPtr(cnxn.private_data)
 
 	conn := h.Value().(*cConn)
 	defer func() {
@@ -1482,7 +1484,7 @@ func SnowflakeStatementRelease(stmt *C.struct_AdbcStatement, err *C.struct_AdbcE
 	if !checkStmtAlloc(stmt, err, "AdbcStatementRelease") {
 		return C.ADBC_STATUS_INVALID_STATE
 	}
-	h := (*(*cgo.Handle)(stmt.private_data))
+	h := handleFromPtr(stmt.private_data)
 
 	st := h.Value().(*cStmt)
 	defer func() {
