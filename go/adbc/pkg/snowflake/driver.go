@@ -233,20 +233,18 @@ func printLoggingHelp() {
 	fmt.Fprintf(os.Stderr, "Snowflake: to enable logging, set %s to 'debug', 'info', 'warn', or 'error'", logLevelEnvVar)
 }
 
-// Store the cgo.Handle's numeric value in C-allocated memory so that
-// private_data (a C pointer field) never holds a Go pointer — CGO forbids
-// C from retaining a copy of a Go pointer after a call returns.
-// cgo.Handle itself is just a uintptr (an integer), not a pointer, so the
-// GC does not trace or move it; the handle keeps the pointed-to Go object
-// alive via an internal global map until h.Delete() is called.
+// cgo.Handle is a uintptr integer (not a pointer). Packing it directly into
+// a void* field is safe: the CGO checker only rejects Go heap pointers, and
+// handle values (small non-zero integers from a global counter) never alias
+// Go-allocated memory. The GC does not scan C-managed memory, so it will
+// never misinterpret the stored integer as a live pointer. No C allocation
+// is needed — the handle value itself fits in the pointer-sized field.
 func createHandle(hndl cgo.Handle) unsafe.Pointer {
-	hptr := (*C.uintptr_t)(C.calloc(C.sizeof_uintptr_t, C.size_t(1)))
-	*hptr = C.uintptr_t(uintptr(hndl))
-	return unsafe.Pointer(hptr)
+	return unsafe.Pointer(uintptr(hndl))
 }
 
 func handleFromPtr(ptr unsafe.Pointer) cgo.Handle {
-	return cgo.Handle(uintptr(*(*C.uintptr_t)(ptr)))
+	return cgo.Handle(uintptr(ptr))
 }
 
 func getFromHandle[T any](ptr unsafe.Pointer) *T {
@@ -423,16 +421,15 @@ func SnowflakeArrayStreamRelease(stream *C.struct_ArrowArrayStream) {
 		return
 	}
 	h := handleFromPtr(stream.private_data)
+	stream.private_data = nil
 
 	cStream := h.Value().(*cArrayStream)
+	h.Delete()
 	cStream.rdr.Release()
 	if cStream.adbcErr != nil {
 		C.SnowflakeerrRelease(cStream.adbcErr)
 		C.free(unsafe.Pointer(cStream.adbcErr))
 	}
-	C.free(unsafe.Pointer(stream.private_data))
-	stream.private_data = nil
-	h.Delete()
 	runtime.GC()
 }
 
@@ -620,18 +617,15 @@ func SnowflakeDatabaseRelease(db *C.struct_AdbcDatabase, err *C.struct_AdbcError
 		return C.ADBC_STATUS_INVALID_STATE
 	}
 	h := handleFromPtr(db.private_data)
+	db.private_data = nil
 
 	cdb := h.Value().(*cDatabase)
+	h.Delete()
 	if cdb.db != nil {
 		cdb.db.Close()
 		cdb.db = nil
 	}
 	cdb.opts = nil
-	if db.private_data != nil {
-		C.free(unsafe.Pointer(db.private_data))
-		db.private_data = nil
-	}
-	h.Delete()
 	// manually trigger GC for two reasons:
 	//  1. ASAN expects the release callback to be called before
 	//     the process ends, but GC is not deterministic. So by manually
@@ -1035,14 +1029,13 @@ func SnowflakeConnectionRelease(cnxn *C.struct_AdbcConnection, err *C.struct_Adb
 		return C.ADBC_STATUS_INVALID_STATE
 	}
 	h := handleFromPtr(cnxn.private_data)
+	cnxn.private_data = nil
 
 	conn := h.Value().(*cConn)
+	h.Delete()
 	defer func() {
 		conn.cancelContext()
 		conn.cnxn = nil
-		C.free(cnxn.private_data)
-		cnxn.private_data = nil
-		h.Delete()
 		// manually trigger GC for two reasons:
 		//  1. ASAN expects the release callback to be called before
 		//     the process ends, but GC is not deterministic. So by manually
@@ -1485,14 +1478,13 @@ func SnowflakeStatementRelease(stmt *C.struct_AdbcStatement, err *C.struct_AdbcE
 		return C.ADBC_STATUS_INVALID_STATE
 	}
 	h := handleFromPtr(stmt.private_data)
+	stmt.private_data = nil
 
 	st := h.Value().(*cStmt)
+	h.Delete()
 	defer func() {
 		st.cancelContext()
 		st.stmt = nil
-		C.free(stmt.private_data)
-		stmt.private_data = nil
-		h.Delete()
 		// manually trigger GC for two reasons:
 		//  1. ASAN expects the release callback to be called before
 		//     the process ends, but GC is not deterministic. So by manually
