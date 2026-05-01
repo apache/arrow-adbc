@@ -366,11 +366,14 @@ fn test_connection_get_info() {
 
 #[test]
 fn test_connection_cancel() {
-    let (_, _, mut exported_connection, _) = get_exported();
-    let (_, _, mut native_connection, _) = get_native();
+    let (_, _, exported_connection, _) = get_exported();
+    let (_, _, native_connection, _) = get_native();
 
-    let exported_error = exported_connection.cancel().unwrap_err();
-    let native_error = native_connection.cancel().unwrap_err();
+    let exported_handle = exported_connection.get_cancel_handle();
+    let native_handle = native_connection.get_cancel_handle();
+
+    let exported_error = exported_handle.try_cancel().unwrap_err();
+    let native_error = native_handle.try_cancel().unwrap_err();
 
     assert_eq!(exported_error, native_error);
 }
@@ -569,11 +572,14 @@ fn test_statement_bind_stream() {
 
 #[test]
 fn test_statement_cancel() {
-    let (_, _, _, mut exported_statement) = get_exported();
-    let (_, _, _, mut native_statement) = get_native();
+    let (_, _, _, exported_statement) = get_exported();
+    let (_, _, _, native_statement) = get_native();
 
-    exported_statement.cancel().unwrap();
-    native_statement.cancel().unwrap();
+    let exported_handle = exported_statement.get_cancel_handle();
+    let native_handle = native_statement.get_cancel_handle();
+
+    exported_handle.try_cancel().unwrap();
+    native_handle.try_cancel().unwrap();
 }
 
 #[test]

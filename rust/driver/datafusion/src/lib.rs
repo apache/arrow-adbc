@@ -735,10 +735,6 @@ impl Connection for DataFusionConnection {
         })
     }
 
-    fn cancel(&mut self) -> adbc_core::error::Result<()> {
-        todo!()
-    }
-
     fn get_info(
         &self,
         codes: Option<std::collections::HashSet<adbc_core::options::InfoCode>>,
@@ -983,10 +979,6 @@ impl Statement for DataFusionStatement {
     fn set_substrait_plan(&mut self, plan: impl AsRef<[u8]>) -> adbc_core::error::Result<()> {
         self.substrait_plan = Some(Plan::decode(plan.as_ref()).unwrap());
         Ok(())
-    }
-
-    fn cancel(&mut self) -> adbc_core::error::Result<()> {
-        todo!()
     }
 }
 

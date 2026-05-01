@@ -20,7 +20,7 @@ use std::collections::HashSet;
 use arrow_array::{RecordBatch, RecordBatchReader};
 use arrow_schema::Schema;
 
-use crate::error::Result;
+use crate::error::{Error, Result, Status};
 use crate::options::{self, OptionConnection, OptionDatabase, OptionStatement, OptionValue};
 use crate::PartitionedResult;
 
@@ -42,6 +42,28 @@ pub trait Optionable {
 
     /// Get a float option value by key.
     fn get_option_double(&self, key: Self::Option) -> Result<f64>;
+}
+
+/// A handle to cancel an in-progress operation.
+///
+/// This is a separated handle because otherwise it would be impossible to
+/// safely call a `cancel` method on a database/connection/statement itself
+/// due to the borrow checker.
+pub trait CancelHandle: Send + Sync {
+    /// Attempt to cancel the in-progress operation (best-effort).
+    fn try_cancel(&self) -> Result<()>;
+}
+
+/// A cancellation handle that does nothing (because cancellation is unsupported).
+pub struct NoOpCancellationHandle;
+
+impl CancelHandle for NoOpCancellationHandle {
+    fn try_cancel(&self) -> Result<()> {
+        Err(Error::with_message_and_status(
+            "cancellation not implemented",
+            Status::Unknown,
+        ))
+    }
 }
 
 /// A handle to an ADBC driver.
@@ -76,6 +98,11 @@ pub trait Database: Optionable<Option = OptionDatabase> {
         &self,
         opts: impl IntoIterator<Item = (options::OptionConnection, OptionValue)>,
     ) -> Result<Self::ConnectionType>;
+
+    /// Get a handle to cancel operations on this database.
+    fn get_cancel_handle(&self) -> Box<dyn CancelHandle> {
+        Box::new(NoOpCancellationHandle {})
+    }
 }
 
 /// A handle to an ADBC connection.
@@ -94,8 +121,10 @@ pub trait Connection: Optionable<Option = OptionConnection> {
     /// Allocate and initialize a new statement.
     fn new_statement(&mut self) -> Result<Self::StatementType>;
 
-    /// Cancel the in-progress operation on a connection.
-    fn cancel(&mut self) -> Result<()>;
+    /// Get a handle to cancel operations on this connection.
+    fn get_cancel_handle(&self) -> Box<dyn CancelHandle> {
+        Box::new(NoOpCancellationHandle {})
+    }
 
     /// Get metadata about the database/driver.
     ///
@@ -455,13 +484,15 @@ pub trait Statement: Optionable<Option = OptionStatement> {
     /// expected to be executed repeatedly, call [Statement::prepare] first.
     fn set_substrait_plan(&mut self, plan: impl AsRef<[u8]>) -> Result<()>;
 
-    /// Cancel execution of an in-progress query.
+    /// Get a handle to cancel operations on this statement.
     ///
-    /// This can be called during [Statement::execute] (or similar), or while
-    /// consuming a result set returned from such.
+    /// The resulting handle can be called during [Statement::execute] (or
+    /// similar), or while consuming a result set returned from such.
     ///
     /// # Since
     ///
     /// ADBC API revision 1.1.0
-    fn cancel(&mut self) -> Result<()>;
+    fn get_cancel_handle(&self) -> Box<dyn CancelHandle> {
+        Box::new(NoOpCancellationHandle {})
+    }
 }
