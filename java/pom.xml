@@ -103,6 +103,7 @@
     <maven.compiler.release>11</maven.compiler.release>
     <maven.compiler.target>11</maven.compiler.target>
     <surefire.version>3.5.2</surefire.version>
+    <surefireArgLine></surefireArgLine>
     <version.maven-javadoc-plugin>3.11.1</version.maven-javadoc-plugin>
   </properties>
 
@@ -198,7 +199,7 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
-          <argLine>--add-opens=java.base/java.nio=ALL-UNNAMED</argLine>
+          <argLine>${surefireArgLine} --add-opens=java.base/java.nio=ALL-UNNAMED</argLine>
         </configuration>
       </plugin>
 
@@ -277,6 +278,15 @@
   </reporting>
 
   <profiles>
+    <profile>
+      <id>java-25+</id>
+      <activation>
+        <jdk>[25,)</jdk>
+      </activation>
+      <properties>
+        <surefireArgLine>--sun-misc-unsafe-memory-access=allow</surefireArgLine>
+      </properties>
+    </profile>
     <profile>
       <id>errorprone</id>
       <build>
