@@ -77,9 +77,13 @@ public final class JdbcDataSourceDatabase implements AdbcDatabase {
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() throws AdbcException {
     if (connection != null) {
-      connection.close();
+      try {
+        connection.close();
+      } catch (SQLException e) {
+        throw AdbcException.io(e);
+      }
     }
     connection = null;
   }

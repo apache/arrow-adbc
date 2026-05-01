@@ -508,8 +508,14 @@ public class JdbcConnection implements AdbcConnection {
   }
 
   @Override
-  public void close() throws Exception {
-    AutoCloseables.close(connection, allocator);
+  public void close() throws AdbcException {
+    try {
+      AutoCloseables.close(connection, allocator);
+    } catch (RuntimeException e) {
+      throw e;
+    } catch (Exception e) {
+      throw AdbcException.io(e);
+    }
   }
 
   private void checkAutoCommit() throws AdbcException, SQLException {

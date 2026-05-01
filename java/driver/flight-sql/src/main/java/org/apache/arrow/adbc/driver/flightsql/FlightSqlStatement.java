@@ -309,10 +309,10 @@ public class FlightSqlStatement implements AdbcStatement {
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() throws AdbcException {
     // TODO(https://github.com/apache/arrow/issues/39814): this is annotated wrongly upstream
     if (preparedStatement != null) {
-      AutoCloseables.close(preparedStatement);
+      preparedStatement.close();
     }
   }
 

@@ -42,7 +42,7 @@ import org.checkerframework.checker.nullness.qual.Nullable;
  * <p>Statements are not required to be thread-safe, but they can be used from multiple threads so
  * long as clients take care to serialize accesses to a statement.
  */
-public interface AdbcStatement extends AutoCloseable, AdbcOptions {
+public interface AdbcStatement extends AdbcCloseable, AdbcOptions {
   /**
    * Cancel execution of a query.
    *
@@ -182,7 +182,7 @@ public interface AdbcStatement extends AutoCloseable, AdbcOptions {
   void prepare() throws AdbcException;
 
   /** The result of executing a query with a result set. */
-  class QueryResult implements AutoCloseable {
+  class QueryResult implements AdbcCloseable {
     private final long affectedRows;
 
     private final ArrowReader reader;
@@ -207,8 +207,12 @@ public interface AdbcStatement extends AutoCloseable, AdbcOptions {
 
     /** Close the contained reader. */
     @Override
-    public void close() throws IOException {
-      reader.close();
+    public void close() throws AdbcException {
+      try {
+        reader.close();
+      } catch (IOException e) {
+        throw AdbcException.io(e);
+      }
     }
   }
 

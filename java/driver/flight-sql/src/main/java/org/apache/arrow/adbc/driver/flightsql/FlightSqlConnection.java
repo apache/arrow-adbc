@@ -204,9 +204,15 @@ public class FlightSqlConnection implements AdbcConnection {
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() throws AdbcException {
     clientCache.invalidateAll();
-    AutoCloseables.close(client, allocator);
+    try {
+      AutoCloseables.close(client, allocator);
+    } catch (RuntimeException e) {
+      throw e;
+    } catch (Exception e) {
+      throw AdbcException.io(e);
+    }
   }
 
   @Override
