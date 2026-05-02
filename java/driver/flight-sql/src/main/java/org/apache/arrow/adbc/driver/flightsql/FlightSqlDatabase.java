@@ -64,6 +64,13 @@ public final class FlightSqlDatabase implements AdbcDatabase {
         adbcException.addSuppressed(e);
       }
       throw adbcException;
+    } catch (AdbcException ex) {
+      try {
+        AutoCloseables.close(connectionAllocator);
+      } catch (Exception e) {
+        ex.addSuppressed(e);
+      }
+      throw ex;
     } catch (Exception ex) {
       AdbcException adbcException = FlightSqlDriverUtil.fromGeneralException(ex);
       try {
