@@ -80,6 +80,13 @@
       <artifactId>flight-sql-jdbc-core</artifactId>
     </dependency>
 
+    <!-- OAuth constants and token request primitives -->
+    <dependency>
+      <groupId>com.nimbusds</groupId>
+      <artifactId>oauth2-oidc-sdk</artifactId>
+      <version>11.20.1</version>
+    </dependency>
+
     <!-- Static analysis and linting -->
     <dependency>
       <groupId>org.checkerframework</groupId>

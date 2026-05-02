@@ -38,6 +38,7 @@ import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.adbc.core.BulkIngestMode;
+import org.apache.arrow.adbc.driver.flightsql.oauth.FlightSqlOAuthCredentialWriter;
 import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.flight.CallOption;
 import org.apache.arrow.flight.FlightCallHeaders;
@@ -58,6 +59,10 @@ import org.checkerframework.checker.initialization.qual.UnknownInitialization;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
 public class FlightSqlConnection implements AdbcConnection {
+  private static final String AUTH_HEADER_CONFLICT_ERROR =
+      "[Flight SQL] Authentication conflict: Use either Authorization header or OAuth options, "
+          + "or username/password parameters";
+
   private final BufferAllocator allocator;
   private final AtomicInteger counter = new AtomicInteger(0);
   private final FlightSqlClientWithCallOptions client;
@@ -107,9 +112,18 @@ public class FlightSqlConnection implements AdbcConnection {
             .build(
                 loc -> {
                   FlightClient client = buildClient(loc);
-                  client.handshake(callOptions);
-                  return new FlightSqlClientWithCallOptions(
-                      new FlightSqlClient(client), callOptions);
+                  try {
+                    client.handshake(callOptions);
+                    return new FlightSqlClientWithCallOptions(
+                        new FlightSqlClient(client), callOptions);
+                  } catch (RuntimeException ex) {
+                    try {
+                      client.close();
+                    } catch (Exception closeEx) {
+                      ex.addSuppressed(closeEx);
+                    }
+                    throw ex;
+                  }
                 });
     this.clientCache.put(location, this.client);
   }
@@ -262,54 +276,91 @@ public class FlightSqlConnection implements AdbcConnection {
       }
     }
 
-    // Build the client using the above properties.
-    final FlightClient client = buildClient(location);
-
     // Add user-specified headers.
     ArrayList<CallOption> options = new ArrayList<>();
     final FlightCallHeaders callHeaders = new FlightCallHeaders();
-    for (Map.Entry<String, Object> parameter : parameters.entrySet()) {
-      if (parameter.getKey().startsWith(FlightSqlConnectionProperties.RPC_CALL_HEADER_PREFIX)) {
-        String userHeaderName =
-            parameter
-                .getKey()
-                .substring(FlightSqlConnectionProperties.RPC_CALL_HEADER_PREFIX.length());
+    String authorizationHeader = null;
+    String username = null;
+    String password = null;
+    String oauthFlow = null;
+    if (parameters != null) {
+      for (Map.Entry<String, Object> parameter : parameters.entrySet()) {
+        if (parameter.getKey().startsWith(FlightSqlConnectionProperties.RPC_CALL_HEADER_PREFIX)) {
+          String userHeaderName =
+              parameter
+                  .getKey()
+                  .substring(FlightSqlConnectionProperties.RPC_CALL_HEADER_PREFIX.length());
 
-        if (parameter.getValue() instanceof String) {
-          callHeaders.insert(userHeaderName, (String) parameter.getValue());
-        } else if (parameter.getValue() instanceof byte[]) {
-          callHeaders.insert(userHeaderName, (byte[]) parameter.getValue());
-        } else {
-          throw new AdbcException(
-              String.format(
-                  "Header values must be String or byte[]. The header failing was %s.",
-                  parameter.getKey()),
-              null,
-              AdbcStatusCode.INVALID_ARGUMENT,
-              null,
-              0);
+          if (parameter.getValue() instanceof String) {
+            callHeaders.insert(userHeaderName, (String) parameter.getValue());
+          } else if (parameter.getValue() instanceof byte[]) {
+            callHeaders.insert(userHeaderName, (byte[]) parameter.getValue());
+          } else {
+            throw new AdbcException(
+                String.format(
+                    "Header values must be String or byte[]. The header failing was %s.",
+                    parameter.getKey()),
+                null,
+                AdbcStatusCode.INVALID_ARGUMENT,
+                null,
+                0);
+          }
         }
       }
+
+      authorizationHeader = FlightSqlConnectionProperties.AUTHORIZATION_HEADER.get(parameters);
+      username = AdbcDriver.PARAM_USERNAME.get(parameters);
+      password = AdbcDriver.PARAM_PASSWORD.get(parameters);
+      oauthFlow = FlightSqlConnectionProperties.OAUTH_FLOW.get(parameters);
+    }
+
+    if (authorizationHeader != null) {
+      callHeaders.insert("authorization", authorizationHeader);
     }
 
     options.add(new HeaderCallOption(callHeaders));
 
-    // Test the connection.
-    String username = AdbcDriver.PARAM_USERNAME.get(parameters);
-    String password = AdbcDriver.PARAM_PASSWORD.get(parameters);
-    if (username != null && password != null) {
-      Optional<CredentialCallOption> bearerToken =
-          client.authenticateBasicToken(username, password);
-      options.add(
-          bearerToken.orElse(
-              new CredentialCallOption(new BasicAuthCredentialWriter(username, password))));
-      this.callOptions = options.toArray(new CallOption[0]);
-    } else {
-      this.callOptions = options.toArray(new CallOption[0]);
-      client.handshake(this.callOptions);
+    final boolean hasAuthorizationHeader = authorizationHeader != null;
+    final boolean hasUsernamePassword = username != null || password != null;
+    final boolean hasOauth = oauthFlow != null;
+
+    if ((hasAuthorizationHeader && (hasUsernamePassword || hasOauth))
+        || (hasUsernamePassword && hasOauth)) {
+      throw AdbcException.invalidArgument(AUTH_HEADER_CONFLICT_ERROR);
     }
 
-    return client;
+    // Build the client using the above properties.
+    final FlightClient client = buildClient(location);
+
+    try {
+      // Test the connection.
+      if (hasOauth) {
+        final FlightSqlOAuthCredentialWriter oauthCredentialWriter =
+            FlightSqlOAuthCredentialWriter.create(parameters);
+        oauthCredentialWriter.prefetchToken();
+        options.add(new CredentialCallOption(oauthCredentialWriter));
+        this.callOptions = options.toArray(new CallOption[0]);
+        client.handshake(this.callOptions);
+      } else if (username != null && password != null) {
+        Optional<CredentialCallOption> bearerToken =
+            client.authenticateBasicToken(username, password);
+        options.add(
+            bearerToken.orElse(
+                new CredentialCallOption(new BasicAuthCredentialWriter(username, password))));
+        this.callOptions = options.toArray(new CallOption[0]);
+      } else {
+        this.callOptions = options.toArray(new CallOption[0]);
+        client.handshake(this.callOptions);
+      }
+      return client;
+    } catch (AdbcException | RuntimeException ex) {
+      try {
+        client.close();
+      } catch (Exception closeEx) {
+        ex.addSuppressed(closeEx);
+      }
+      throw ex;
+    }
   }
 
   /** Returns a yet-to-be authenticated FlightClient */
