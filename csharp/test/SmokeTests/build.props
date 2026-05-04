@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
- <PropertyGroup>
-  <ApacheArrowAdbcClientVersion>$(Version)</ApacheArrowAdbcClientVersion>
-  <ApacheArrowAdbcDriversBigQueryVersion>$(Version)</ApacheArrowAdbcDriversBigQueryVersion>
-  <ApacheArrowAdbcDriversInteropSnowflakeVersion>$(Version)</ApacheArrowAdbcDriversInteropSnowflakeVersion>
-  <ApacheArrowAdbcDriversInteropFlightSqlVersion>$(Version)</ApacheArrowAdbcDriversInteropFlightSqlVersion>
- </PropertyGroup>
+  <PropertyGroup>
+    <ApacheArrowAdbcClientVersion>$(Version)</ApacheArrowAdbcClientVersion>
+    <ApacheArrowAdbcDriversBigQueryVersion>$(Version)</ApacheArrowAdbcDriversBigQueryVersion>
+    <ApacheArrowAdbcDriversInteropFlightSqlVersion>$(Version)</ApacheArrowAdbcDriversInteropFlightSqlVersion>
+  </PropertyGroup>
 </Project>
