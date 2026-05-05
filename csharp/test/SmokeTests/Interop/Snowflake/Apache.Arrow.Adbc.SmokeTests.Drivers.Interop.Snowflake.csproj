@@ -16,7 +16,6 @@
     <ItemGroup>
       <Folder Include="Resources\" />
     </ItemGroup>
-    </ItemGroup>
     <ItemGroup>
       <ProjectReference Include="..\..\Apache.Arrow.Adbc.SmokeTests\Apache.Arrow.Adbc.SmokeTests.csproj" />
     </ItemGroup>
