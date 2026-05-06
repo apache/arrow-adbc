@@ -290,7 +290,12 @@ jobs:
           BUILD_ALL: 0
           BUILD_DRIVER_MANAGER: 1
           CMAKE_BUILD_TYPE: Release
+          PLATFORM: ${{ matrix.os }}
         run: |
+          if [[ "${PLATFORM}" == "Windows" ]]; then
+            # Target VS2022
+            export CMAKE_GENERATOR_TOOLSET=v143
+          fi
           ./ci/scripts/cpp_build.sh $(pwd) $(pwd)/build_driver_manager
           ./ci/scripts/java_build.sh $(pwd)
           ./ci/scripts/java_jni_build.sh $(pwd) $(pwd)/build_jni $(pwd)/build_driver_manager/local
@@ -959,6 +964,9 @@ jobs:
       PYTHON_VERSION: "${{ matrix.python_version }}"
       # Where to install vcpkg
       VCPKG_ROOT: "${{ github.workspace }}\\vcpkg"
+      # Target VS2022 from VS2026
+      CMAKE_GENERATOR: Visual Studio 18 2026
+      CMAKE_GENERATOR_TOOLSET: v143
     steps:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -1006,7 +1014,7 @@ jobs:
         shell: pwsh
         run: |
           echo $env:VCPKG_VERSION
-          git clone --shallow-since=2022-06-01 https://github.com/microsoft/vcpkg $env:VCPKG_ROOT
+          git clone --shallow-since=2024-06-01 https://github.com/microsoft/vcpkg $env:VCPKG_ROOT
           pushd $env:VCPKG_ROOT
           .\bootstrap-vcpkg.bat -disableMetrics
           popd
@@ -1028,8 +1036,6 @@ jobs:
         # TODO(https://github.com/apache/arrow-adbc/issues/4269): remove cmd.exe usage
         shell: cmd # zizmor: ignore[misfeature]
         run: |
-          where python.exe
-          CALL "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
           pushd adbc
           set SETUPTOOLS_SCM_PRETEND_VERSION=%VERSION%
           .\ci\scripts\python_wheel_windows_build.bat %cd% %cd%\build

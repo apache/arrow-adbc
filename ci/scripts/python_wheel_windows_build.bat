@@ -23,11 +23,13 @@ set build_dir=%2
 echo "=== (%PYTHON_VERSION%) Building ADBC libpq driver ==="
 
 set CMAKE_BUILD_TYPE=RelWithDebInfo
-set CMAKE_GENERATOR=Visual Studio 17 2022
+set CMAKE_GENERATOR=Visual Studio 18 2026
 set CMAKE_GENERATOR_PLATFORM=x64
 set CMAKE_UNITY_BUILD=ON
 set VCPKG_FEATURE_FLAGS=-manifests
-set VCPKG_TARGET_TRIPLET=x64-windows-static
+set VCPKG_TARGET_TRIPLET=x64-windows-static-2019
+set VCPKG_DEFAULT_HOST_TRIPLET=x64-windows-static-2019
+set VCPKG_OVERLAY_TRIPLETS=%source_dir%\ci\vcpkg\triplets
 
 IF NOT DEFINED VCPKG_ROOT (echo "Must set VCPKG_ROOT" && exit /B 1)
 
