@@ -89,12 +89,6 @@ if(ADBC_DRIVER_SQLITE)
   add_subdirectory(driver/sqlite)
 endif()
 
-if(ADBC_DRIVER_SNOWFLAKE)
-  install(FILES "${REPOSITORY_ROOT}/c/include/arrow-adbc/driver/snowflake.h"
-          DESTINATION include/arrow-adbc/driver)
-  add_subdirectory(driver/snowflake)
-endif()
-
 if(ADBC_INTEGRATION_DUCKDB)
   add_subdirectory(integration/duckdb)
 endif()
@@ -140,10 +134,6 @@ LIBRARY=$<TARGET_FILE:adbc_driver_${TARGET}_shared>" ${Python3_EXECUTABLE} -m pi
 
   if(ADBC_DRIVER_FLIGHTSQL)
     adbc_install_python_package(flightsql)
-  endif()
-
-  if(ADBC_DRIVER_SNOWFLAKE)
-    adbc_install_python_package(snowflake)
   endif()
 endif()
 

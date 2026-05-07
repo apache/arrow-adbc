@@ -69,21 +69,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "adbc_snowflake"
-version = "0.24.0"
-dependencies = [
- "adbc_core",
- "adbc_driver_manager",
- "adbc_ffi",
- "arrow-array",
- "arrow-schema",
- "dotenvy",
- "regex",
- "test-with",
- "url",
-]
-
-[[package]]
 name = "ahash"
 version = "0.8.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1187,12 +1172,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dotenvy"
-version = "0.15.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1aaf95b3e5c8f23aa320147307562d361db0ae0d51242340f558153b4eb2439b"
-
-[[package]]
 name = "dyn-clone"
 version = "1.0.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1980,28 +1959,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "proc-macro-error-attr2"
-version = "2.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96de42df36bb9bba5542fe9f1a054b8cc87e172759a1868aa05c1f3acc89dfc5"
-dependencies = [
- "proc-macro2",
- "quote",
-]
-
-[[package]]
-name = "proc-macro-error2"
-version = "2.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "11ec05c52be0a07b08061f7dd003e7d7092e0472bc731b4af7bb1ef876109802"
-dependencies = [
- "proc-macro-error-attr2",
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "proc-macro2"
 version = "1.0.106"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2495,28 +2452,6 @@ dependencies = [
  "once_cell",
  "rustix",
  "windows-sys",
-]
-
-[[package]]
-name = "test-with"
-version = "0.16.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c292571fb159e65c78c7c88a96e5ddfc326d6819e49b3a040d7b0aa3497925b"
-dependencies = [
- "test-with-derive",
-]
-
-[[package]]
-name = "test-with-derive"
-version = "0.16.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "01b95b557b54c0d50b04688ab86aaeaf16f201a0341936f3bfa19497dee081bd"
-dependencies = [
- "proc-macro-error2",
- "proc-macro2",
- "quote",
- "regex",
- "syn",
 ]
 
 [[package]]

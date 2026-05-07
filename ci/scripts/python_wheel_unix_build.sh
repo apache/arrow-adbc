@@ -79,4 +79,3 @@ build_drivers "${source_dir}" "${build_dir}"
 check_visibility $ADBC_FLIGHTSQL_LIBRARY
 check_visibility $ADBC_POSTGRESQL_LIBRARY
 check_visibility $ADBC_SQLITE_LIBRARY
-check_visibility $ADBC_SNOWFLAKE_LIBRARY

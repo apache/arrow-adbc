@@ -62,7 +62,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu, macOS, windows]
-        pkg: [adbcflightsql, adbcsnowflake]
+        pkg: [adbcflightsql]
 
     uses: ./.github/workflows/r-check.yml
     with:
@@ -71,5 +71,3 @@ jobs:
       # Go based drivers generate WARNINGs because some symbols
       # are linked in that R CMD check does not allow.
       error-on: error
-    secrets:
-      SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}

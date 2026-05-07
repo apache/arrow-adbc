@@ -84,7 +84,3 @@ endif
 if get_option('sqlite').enabled()
     subdir('driver/sqlite')
 endif
-
-if get_option('snowflake').enabled()
-    subdir('driver/snowflake')
-endif

@@ -73,12 +73,6 @@ int main(int argc, char** argv) {
   }
   printf("Loaded PostgreSQL driver\n");
 
-  rc = TryDriver("adbc_driver_snowflake");
-  if (rc != EXIT_SUCCESS) {
-    return rc;
-  }
-  printf("Loaded Snowflake driver\n");
-
   rc = TryDriver("adbc_driver_sqlite");
   if (rc != EXIT_SUCCESS) {
     return rc;

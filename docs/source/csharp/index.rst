@@ -23,4 +23,3 @@ The ADBC C# libraries are under development, supporting:
 
 - A native driver to Google BigQuery
 - A way to import/export native (C/C++) drivers
-- Bindings to the Snowflake driver

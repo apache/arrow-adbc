@@ -35,9 +35,6 @@ on:
         required: false
         default: warning
         type: string
-    secrets:
-      SNOWFLAKE_URI:
-        required: false
 
 defaults:
   run:
@@ -107,7 +104,6 @@ jobs:
 
       - uses: r-lib/actions/check-r-package@6f6e5bc62fba3a704f74e7ad7ef7676c5c6a2590  # v2.11.4
         env:
-          ADBC_SNOWFLAKE_TEST_URI: ${{ secrets.SNOWFLAKE_URI }} # zizmor: ignore[secrets-outside-env]
           R_KEEP_PKG_SOURCE: yes
         with:
           working-directory: r/${{ inputs.pkg }}

@@ -2641,12 +2641,6 @@ THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 
-3rdparty dependency github.com/snowflakedb/gosnowflake
-is statically linked in certain binary distributions, like the Python wheels.
-github.com/snowflakedb/gosnowflake is under the Apache-2.0 license.
-
---------------------------------------------------------------------------------
-
 3rdparty dependency github.com/stretchr/testify
 is statically linked in certain binary distributions, like the Python wheels.
 github.com/stretchr/testify is under the MIT license.

@@ -27,7 +27,6 @@ find_package(AdbcDriverFramework REQUIRED)
 find_package(AdbcDriverFlightSQL REQUIRED)
 find_package(AdbcDriverPostgreSQL REQUIRED)
 find_package(AdbcDriverSQLite REQUIRED)
-find_package(AdbcDriverSnowflake REQUIRED)
 
 # Alias SQLite::SQLite3 to SQLite3::SQLite3 if needed. SQLite::SQLite3 is
 # deprecated in CMake < 4.3. See

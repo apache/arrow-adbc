@@ -251,7 +251,6 @@ Why ADBC?
    driver/flight_sql
    driver/jdbc
    driver/postgresql
-   driver/snowflake
    driver/sqlite
    driver/authoring
 

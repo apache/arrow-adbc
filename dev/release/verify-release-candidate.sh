@@ -546,12 +546,9 @@ test_cpp() {
   export BUILD_DRIVER_FLIGHTSQL=0
   # PostgreSQL driver requires running database for testing
   export BUILD_DRIVER_POSTGRESQL=0
-  # Snowflake driver requires snowflake creds for testing
-  export BUILD_DRIVER_SNOWFLAKE=0
   "${ADBC_DIR}/ci/scripts/cpp_test.sh" "${ARROW_TMPDIR}/cpp-build" "${CPP_INSTALL_PREFIX}"
   export BUILD_DRIVER_FLIGHTSQL=1
   export BUILD_DRIVER_POSTGRESQL=1
-  export BUILD_DRIVER_SNOWFLAKE=1
 }
 
 test_java() {
@@ -599,22 +596,18 @@ test_r() {
   R CMD INSTALL "${ADBC_SOURCE_DIR}/r/adbcdrivermanager" --preclean --library="${ARROW_TMPDIR}/r/tmplib"
   R CMD INSTALL "${ADBC_SOURCE_DIR}/r/adbcsqlite" --preclean --library="${ARROW_TMPDIR}/r/tmplib"
   R CMD INSTALL "${ADBC_SOURCE_DIR}/r/adbcpostgresql" --preclean --library="${ARROW_TMPDIR}/r/tmplib"
-  R CMD INSTALL "${ADBC_SOURCE_DIR}/r/adbcsnowflake" --preclean --library="${ARROW_TMPDIR}/r/tmplib"
 
   pushd "${ARROW_TMPDIR}/r"
   R CMD build "${ADBC_SOURCE_DIR}/r/adbcdrivermanager"
   R CMD build "${ADBC_SOURCE_DIR}/r/adbcsqlite"
   R CMD build "${ADBC_SOURCE_DIR}/r/adbcpostgresql"
-  R CMD build "${ADBC_SOURCE_DIR}/r/adbcsnowflake"
   local -r adbcdrivermanager_tar_gz="$(ls adbcdrivermanager_*.tar.gz)"
   local -r adbcsqlite_tar_gz="$(ls adbcsqlite_*.tar.gz)"
   local -r adbcpostgresql_tar_gz="$(ls adbcpostgresql_*.tar.gz)"
-  local -r adbcsnowflake_tar_gz="$(ls adbcsnowflake_*.tar.gz)"
 
   R_LIBS_USER="${ARROW_TMPDIR}/r/tmplib" R CMD check "${adbcdrivermanager_tar_gz}" --no-manual
   R_LIBS_USER="${ARROW_TMPDIR}/r/tmplib" R CMD check "${adbcsqlite_tar_gz}" --no-manual
   R_LIBS_USER="${ARROW_TMPDIR}/r/tmplib" R CMD check "${adbcpostgresql_tar_gz}" --no-manual
-  R_LIBS_USER="${ARROW_TMPDIR}/r/tmplib" R CMD check "${adbcsnowflake_tar_gz}" --no-manual
   popd
 }
 
@@ -702,7 +695,6 @@ test_rust() {
   maybe_setup_conda rust || exit 1
 
   # We expect the C++ libraries to exist.
-  export ADBC_SNOWFLAKE_GO_LIB_DIR="${CPP_INSTALL_PREFIX}/lib"
   # XXX(https://github.com/apache/arrow-adbc/issues/3288)
   if [[ -n "${CC}" ]]; then
       export RUSTDOCFLAGS="-Clinker=${CC}"
