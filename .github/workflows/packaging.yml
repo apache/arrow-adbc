@@ -1006,7 +1006,7 @@ jobs:
         shell: pwsh
         run: |
           echo $env:VCPKG_VERSION
-          git clone --shallow-since=2022-06-01 https://github.com/microsoft/vcpkg $env:VCPKG_ROOT
+          git clone --shallow-since=2024-06-01 https://github.com/microsoft/vcpkg $env:VCPKG_ROOT
           pushd $env:VCPKG_ROOT
           .\bootstrap-vcpkg.bat -disableMetrics
           popd
@@ -1028,8 +1028,6 @@ jobs:
         # TODO(https://github.com/apache/arrow-adbc/issues/4269): remove cmd.exe usage
         shell: cmd # zizmor: ignore[misfeature]
         run: |
-          where python.exe
-          CALL "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
           pushd adbc
           set SETUPTOOLS_SCM_PRETEND_VERSION=%VERSION%
           .\ci\scripts\python_wheel_windows_build.bat %cd% %cd%\build
