@@ -321,7 +321,6 @@
 <li class="toctree-l3"><a class="reference internal" href="../python/api/adbc_driver_manager.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../python/api/adbc_driver_flightsql.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_flightsql</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../python/api/adbc_driver_postgresql.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="../python/api/adbc_driver_snowflake.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_snowflake</span></code></a></li>
 <li class="toctree-l3"><a class="reference internal" href="../python/api/adbc_driver_sqlite.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_sqlite</span></code></a></li>
 </ul>
 </li>
@@ -351,7 +350,6 @@
 <li class="toctree-l1"><a class="reference internal" href="flight_sql.html">Flight SQL Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="jdbc.html">JDBC Adapter</a></li>
 <li class="toctree-l1"><a class="reference internal" href="postgresql.html">PostgreSQL Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="snowflake.html">Snowflake Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="sqlite.html">SQLite Driver</a></li>
 <li class="toctree-l1"><a class="reference internal" href="authoring.html">Writing New Drivers</a></li>
 </ul>
@@ -449,7 +447,6 @@ sudo<span class="w"> </span>apt<span class="w"> </span>update
 <li><p><code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">apt</span> <span class="pre">install</span> <span class="pre">libadbc-driver-flightsql-dev</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">apt</span> <span class="pre">install</span> <span class="pre">libadbc-driver-postgresql-dev</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">apt</span> <span class="pre">install</span> <span class="pre">libadbc-driver-sqlite-dev</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">apt</span> <span class="pre">install</span> <span class="pre">libadbc-driver-snowflake-dev</span></code></p></li>
 </ul>
 <p>You can use <code class="docutils literal notranslate"><span class="pre">dnf</span></code> on the following platforms:</p>
 <ul class="simple">
@@ -476,7 +473,6 @@ sudo<span class="w"> </span>subscription-manager<span class="w"> </span>repos<sp
 <li><p><code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">dnf</span> <span class="pre">install</span> <span class="pre">adbc-driver-flightsql-devel</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">dnf</span> <span class="pre">install</span> <span class="pre">adbc-driver-postgresql-devel</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">dnf</span> <span class="pre">install</span> <span class="pre">adbc-driver-sqlite-devel</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">sudo</span> <span class="pre">dnf</span> <span class="pre">install</span> <span class="pre">adbc-driver-snowflake-devel</span></code></p></li>
 </ul>
 <p>Then they can be used via CMake, e.g.:</p>
 <div class="highlight-cmake notranslate"><div class="highlight"><pre><span></span><span class="nb">find_package</span><span class="p">(</span><span class="s">AdbcDriverPostgreSQL</span><span class="p">)</span>
@@ -506,7 +502,6 @@ sudo<span class="w"> </span>subscription-manager<span class="w"> </span>repos<sp
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">adbc-driver-flightsql</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">adbc-driver-postgresql</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">adbc-driver-snowflake</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">adbc-driver-sqlite</span></code></p></li>
 </ul>
 </section>
@@ -520,7 +515,6 @@ sudo<span class="w"> </span>subscription-manager<span class="w"> </span>repos<sp
 </div>
 <p>Drivers not yet available on CRAN can be installed from R-multiverse:</p>
 <div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">install.packages</span><span class="p">(</span><span class="s">&quot;adbcflightsql&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">repos</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://community.r-multiverse.org&quot;</span><span class="p">)</span>
-<span class="nf">install.packages</span><span class="p">(</span><span class="s">&quot;adbcsnowflake&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">repos</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;https://community.r-multiverse.org&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>

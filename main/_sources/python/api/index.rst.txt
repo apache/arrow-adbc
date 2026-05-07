@@ -26,5 +26,4 @@ Python API Reference
 
    adbc_driver_flightsql
    adbc_driver_postgresql
-   adbc_driver_snowflake
    adbc_driver_sqlite
