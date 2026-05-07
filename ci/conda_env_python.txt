@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-Cython
+cython
 importlib-resources
 # libxml2 broke ABI compatibility
 # https://github.com/conda-forge/arrow-cpp-feedstock/issues/1740
