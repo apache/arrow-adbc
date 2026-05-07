@@ -38,7 +38,11 @@ if ($versionSuffix) {
 }
 if ($noBuild) {
     Write-Host " * Pack without building"
-    $packArgs["-no-build"] = $true
+    # this argument is a flag and has no value, so we set it to an empty string,
+    # not $true or $false, which would be converted to "True" or "False"
+    $packArgs["-no-build"] = ""
 }
 
 dotnet pack @packArgs
+
+Set-Location -
