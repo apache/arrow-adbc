@@ -22,7 +22,7 @@ param (
 
 $csharpFolder = [IO.Path]::Combine($PSScriptRoot, "..", "..", "csharp") | Resolve-Path
 Write-Host "Setting Path: $csharpFolder"
-Set-Location $csharpFolder
+Push-Location $csharpFolder
 
 Write-Host "Running dotnet pack -c Release"
 $packArgs = @{
@@ -45,4 +45,4 @@ if ($noBuild) {
 
 dotnet pack @packArgs
 
-Set-Location -
+Pop-Location
