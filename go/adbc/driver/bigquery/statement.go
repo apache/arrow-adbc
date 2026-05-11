@@ -109,6 +109,9 @@ type statement struct {
 	// Field that contains Table.update columns descriptions
 	updateTableColumnsDescription string
 
+	// Field that contains Table.update columns policy tags
+	updateTableColumnsPolicyTags string
+
 	// Field that contains the JSON string to authorize a view to source datasets
 	authorizeViewToDatasets string
 
@@ -222,6 +225,8 @@ func (st *statement) GetOption(key string) (string, error) {
 		return st.ingestPath, nil
 	case OptionJsonUpdateTableColumnsDescription:
 		return st.updateTableColumnsDescription, nil
+	case OptionJsonUpdateTableColumnsPolicyTags:
+		return st.updateTableColumnsPolicyTags, nil
 	case OptionStringUpdateTableDescriptionValue:
 		return st.tableDescription, nil
 	case OptionJsonAuthorizeViewToDatasets:
@@ -431,6 +436,8 @@ func (st *statement) SetOption(key string, v string) error {
 		st.copyTableWriteDisposition = v
 	case OptionJsonUpdateTableColumnsDescription:
 		st.updateTableColumnsDescription = v
+	case OptionJsonUpdateTableColumnsPolicyTags:
+		st.updateTableColumnsPolicyTags = v
 	case OptionIntDataprocReqPoolingTimeout:
 		val, err := strconv.ParseInt(v, 10, strconv.IntSize)
 		if err == nil {
@@ -550,8 +557,8 @@ func (st *statement) ExecuteQuery(ctx context.Context) (array.RecordReader, int6
 		return st.executeCopyTable(ctx)
 	}
 
-	if st.updateTableColumnsDescription != "" {
-		return st.executeUpdateTableColumnsDescription(ctx)
+	if st.updateTableColumnsDescription != "" || st.updateTableColumnsPolicyTags != "" {
+		return st.executeUpdateTableColumnsMetadata(ctx)
 	}
 
 	if st.tableDescription != "" {
@@ -1711,14 +1718,16 @@ func (st *statement) executeCreateNotebookExecutionJob(ctx context.Context) (arr
 
 }
 
-// executeUpdateTableColumnsDescription updates the table columns descriptions
-// based on the JSON string in st.updateTableColumnsDescription
+// executeUpdateTableColumnsMetadata updates the table columns descriptions and policy tags
+// based on the JSON strings in st.updateTableColumnsDescription and st.updateTableColumnsPolicyTags
 // using the table reference from st.queryConfig.Dst
 //
-// The JSON string is a map of column name to description.
+// st.updateTableColumnsDescription is a map of column name to description.
+// st.updateTableColumnsPolicyTags is a map of column name to a list of policy tag IDs.
+// Either may be empty; columns absent from a map are left unchanged for that dimension.
 //
 // The driver will return an empty record reader since this operation doesn't return data
-func (st *statement) executeUpdateTableColumnsDescription(ctx context.Context) (array.RecordReader, int64, error) {
+func (st *statement) executeUpdateTableColumnsMetadata(ctx context.Context) (array.RecordReader, int64, error) {
 	thisFunction := getFunctionName()
 
 	if st.queryConfig.Dst == nil {
@@ -1728,8 +1737,19 @@ func (st *statement) executeUpdateTableColumnsDescription(ctx context.Context) (
 	columnDescriptionsRaw, _ := st.GetOption(OptionJsonUpdateTableColumnsDescription)
 	// deserialize the column name -> description mapping
 	var columnDescriptions map[string]string
-	if err := json.Unmarshal([]byte(columnDescriptionsRaw), &columnDescriptions); err != nil {
-		return nil, -1, adbcError(adbc.StatusInvalidArgument, thisFunction, fmt.Sprintf("failed to parse column descriptions JSON: %v", err))
+	if columnDescriptionsRaw != "" {
+		if err := json.Unmarshal([]byte(columnDescriptionsRaw), &columnDescriptions); err != nil {
+			return nil, -1, adbcError(adbc.StatusInvalidArgument, thisFunction, fmt.Sprintf("failed to parse column descriptions JSON: %v", err))
+		}
+	}
+
+	columnPolicyTagsRaw, _ := st.GetOption(OptionJsonUpdateTableColumnsPolicyTags)
+	// deserialize the column name -> policy tags mapping
+	var columnPolicyTags map[string][]string
+	if columnPolicyTagsRaw != "" {
+		if err := json.Unmarshal([]byte(columnPolicyTagsRaw), &columnPolicyTags); err != nil {
+			return nil, -1, adbcError(adbc.StatusInvalidArgument, thisFunction, fmt.Sprintf("failed to parse column policy tags JSON: %v", err))
+		}
 	}
 
 	// Create a new schema with updated descriptions
@@ -1749,9 +1769,14 @@ func (st *statement) executeUpdateTableColumnsDescription(ctx context.Context) (
 			Repeated:    field.Repeated,
 			Required:    field.Required,
 			Schema:      field.Schema, // For nested fields
+			PolicyTags:  field.PolicyTags,
 		}
 		if description, exists := columnDescriptions[field.Name]; exists {
 			newField.Description = description
+		}
+		// Policy tags are not applied to RECORD-typed fields.
+		if tags, exists := columnPolicyTags[field.Name]; exists && field.Type != bigquery.RecordFieldType {
+			newField.PolicyTags = &bigquery.PolicyTagList{Names: tags}
 		}
 		newSchema[i] = newField
 	}

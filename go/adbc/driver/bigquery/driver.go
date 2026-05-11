@@ -121,6 +121,7 @@ const (
 	OptionStringNotebookExecuteJobRegion        = "adbc.bigquery.notebook_execute_job.region"
 
 	OptionJsonUpdateTableColumnsDescription = "adbc.bigquery.table.update_columns_description"
+	OptionJsonUpdateTableColumnsPolicyTags  = "adbc.bigquery.table.update_columns_policy_tags"
 	OptionJsonAuthorizeViewToDatasets       = "adbc.bigquery.dataset.authorize_view_to_datasets"
 	OptionStringUpdateTableDescriptionValue = "adbc.bigquery.table.update_description"
 
