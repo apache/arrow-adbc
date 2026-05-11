@@ -85,6 +85,7 @@ struct AdbcErrorDetail SalesforceErrorGetDetail(const struct AdbcError* error,
   };
 }
 
+#if !defined(ADBC_NO_COMMON_ENTRYPOINTS)
 int AdbcErrorGetDetailCount(const struct AdbcError* error) {
   return SalesforceErrorGetDetailCount(error);
 }
@@ -430,8 +431,9 @@ AdbcStatusCode AdbcStatementSetOptionInt(struct AdbcStatement* statement,
 
 ADBC_EXPORT
 AdbcStatusCode AdbcDriverInit(int version, void* driver, struct AdbcError* error) {
-  return SalesforceDriverInit(version, driver, error);
+  return AdbcDriverSalesforceInit(version, driver, error);
 }
+#endif  // ADBC_NO_COMMON_ENTRYPOINTS
 
 int SalesforceArrayStreamGetSchema(struct ArrowArrayStream*, struct ArrowSchema*);
 int SalesforceArrayStreamGetNext(struct ArrowArrayStream*, struct ArrowArray*);

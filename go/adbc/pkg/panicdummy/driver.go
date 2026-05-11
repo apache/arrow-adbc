@@ -62,6 +62,7 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/panicdummy"
+	"github.com/apache/arrow-adbc/go/adbc/pkg/internal/cdataalign"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/cdata"
 	"github.com/apache/arrow-go/v18/arrow/memory"
@@ -117,7 +118,7 @@ func setErrWithDetails(err *C.struct_AdbcError, adbcError adbc.Error) {
 		if adbcError.VendorCode != C.ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA {
 			err.vendor_code = C.int(adbcError.VendorCode)
 		}
-		setErr(err, adbcError.Msg)
+		setErr(err, "%s", adbcError.Msg)
 		return
 	}
 
@@ -126,7 +127,7 @@ func setErrWithDetails(err *C.struct_AdbcError, adbcError adbc.Error) {
 	// `vendor_code` and not populate `private_data` with the error details.
 	if numDetails == 0 && adbcError.VendorCode != 0 && adbcError.VendorCode != C.ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA {
 		err.vendor_code = C.int(adbcError.VendorCode)
-		setErr(err, adbcError.Msg)
+		setErr(err, "%s", adbcError.Msg)
 		return
 	}
 
@@ -179,7 +180,7 @@ func errToAdbcErr(adbcerr *C.struct_AdbcError, err error) adbc.Status {
 		return adbcError.Code
 	}
 
-	setErr(adbcerr, err.Error())
+	setErr(adbcerr, "%s", err.Error())
 	return adbc.StatusUnknown
 }
 
@@ -393,7 +394,11 @@ func PanicDummyArrayStreamGetNext(stream *C.struct_ArrowArrayStream, array *C.st
 	}
 	cStream := getFromHandle[cArrayStream](stream.private_data)
 	if cStream.rdr.Next() {
-		cdata.ExportArrowRecordBatch(cStream.rdr.RecordBatch(), toCdataArray(array), nil)
+		rec, release := cdataalign.RecordBatch(cStream.rdr.RecordBatch())
+		if release {
+			defer rec.Release()
+		}
+		cdata.ExportArrowRecordBatch(rec, toCdataArray(array), nil)
 		return 0
 	}
 	array.release = nil

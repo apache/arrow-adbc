@@ -25,7 +25,7 @@ package main
 // won't be accessible to the driver manager
 
 // #cgo CFLAGS: -DADBC_EXPORTING
-// #cgo CXXFLAGS: -std=c++11 -DADBC_EXPORTING
+// #cgo CXXFLAGS: -std=c++17 -DADBC_EXPORTING
 // #include "../../drivermgr/arrow-adbc/adbc.h"
 // #include "utils.h"
 // #include <errno.h>
@@ -62,6 +62,7 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/salesforce"
+	"github.com/apache/arrow-adbc/go/adbc/pkg/internal/cdataalign"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/cdata"
 	"github.com/apache/arrow-go/v18/arrow/memory"
@@ -87,7 +88,15 @@ func setErr(err *C.struct_AdbcError, format string, vals ...interface{}) {
 		C.SalesforceerrRelease(err)
 	}
 
-	msg := errPrefix + fmt.Sprintf(format, vals...)
+	var msg string
+	if strings.HasPrefix(format, errPrefix) {
+		// If the error message already starts with the prefix, we don't
+		// want to add it again.
+		msg = fmt.Sprintf(format, vals...)
+	} else {
+		// Otherwise, we prepend the prefix to the error message.
+		msg = errPrefix + fmt.Sprintf(format, vals...)
+	}
 	err.message = C.CString(msg)
 	err.release = (*[0]byte)(C.Salesforce_release_error)
 }
@@ -97,7 +106,7 @@ func setErrWithDetails(err *C.struct_AdbcError, adbcError adbc.Error) {
 		return
 	}
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		err.sqlstate[i] = C.char(adbcError.SqlState[i])
 	}
 
@@ -109,7 +118,7 @@ func setErrWithDetails(err *C.struct_AdbcError, adbcError adbc.Error) {
 		if adbcError.VendorCode != C.ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA {
 			err.vendor_code = C.int(adbcError.VendorCode)
 		}
-		setErr(err, adbcError.Msg)
+		setErr(err, "%s", adbcError.Msg)
 		return
 	}
 
@@ -118,7 +127,7 @@ func setErrWithDetails(err *C.struct_AdbcError, adbcError adbc.Error) {
 	// `vendor_code` and not populate `private_data` with the error details.
 	if numDetails == 0 && adbcError.VendorCode != 0 && adbcError.VendorCode != C.ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA {
 		err.vendor_code = C.int(adbcError.VendorCode)
-		setErr(err, adbcError.Msg)
+		setErr(err, "%s", adbcError.Msg)
 		return
 	}
 
@@ -171,7 +180,7 @@ func errToAdbcErr(adbcerr *C.struct_AdbcError, err error) adbc.Status {
 		return adbcError.Code
 	}
 
-	setErr(adbcerr, err.Error())
+	setErr(adbcerr, "%s", err.Error())
 	return adbc.StatusUnknown
 }
 
@@ -385,7 +394,11 @@ func SalesforceArrayStreamGetNext(stream *C.struct_ArrowArrayStream, array *C.st
 	}
 	cStream := getFromHandle[cArrayStream](stream.private_data)
 	if cStream.rdr.Next() {
-		cdata.ExportArrowRecordBatch(cStream.rdr.Record(), toCdataArray(array), nil)
+		rec, release := cdataalign.RecordBatch(cStream.rdr.RecordBatch())
+		if release {
+			defer rec.Release()
+		}
+		cdata.ExportArrowRecordBatch(rec, toCdataArray(array), nil)
 		return 0
 	}
 	array.release = nil
@@ -1832,8 +1845,8 @@ func SalesforceStatementExecutePartitions(stmt *C.struct_AdbcStatement, schema *
 	return C.ADBC_STATUS_OK
 }
 
-//export SalesforceDriverInit
-func SalesforceDriverInit(version C.int, rawDriver *C.void, err *C.struct_AdbcError) C.AdbcStatusCode {
+//export AdbcDriverSalesforceInit
+func AdbcDriverSalesforceInit(version C.int, rawDriver *C.void, err *C.struct_AdbcError) C.AdbcStatusCode {
 	driver := (*C.struct_AdbcDriver)(unsafe.Pointer(rawDriver))
 
 	switch version {

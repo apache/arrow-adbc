@@ -156,7 +156,8 @@ AdbcStatusCode SalesforceStatementSetSubstraitPlan(struct AdbcStatement* stmt,
                                                    const uint8_t* plan, size_t length,
                                                    struct AdbcError* err);
 
-AdbcStatusCode SalesforceDriverInit(int version, void* rawDriver, struct AdbcError* err);
+AdbcStatusCode AdbcDriverSalesforceInit(int version, void* rawDriver,
+                                        struct AdbcError* err);
 
 static inline void SalesforceerrRelease(struct AdbcError* error) {
   if (error->release) {
