@@ -21,6 +21,9 @@ using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
+#if NET6_0_OR_GREATER
+using System.Diagnostics.CodeAnalysis;
+#endif
 using Apache.Arrow.Adbc.C;
 
 namespace Apache.Arrow.Adbc.DriverManager
@@ -232,6 +235,14 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// Thrown when the assembly cannot be loaded, the type is not found, or the type
         /// does not derive from <see cref="AdbcDriver"/>.
         /// </exception>
+#if NET6_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode",
+            Justification = "Dynamic driver loading is inherently incompatible with full trimming. " +
+                            "Drivers must opt out of trimming or be preserved by the host.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2072:RequiresUnreferencedCode",
+            Justification = "Dynamic driver loading is inherently incompatible with full trimming. " +
+                            "Drivers must opt out of trimming or be preserved by the host.")]
+#endif
         public static AdbcDriver LoadManagedDriver(string assemblyPath, string typeName)
         {
             if (string.IsNullOrEmpty(assemblyPath))
