@@ -50,12 +50,12 @@ jobs:
       matrix:
         java: ['11', '17', '21', '25']
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           persist-credentials: false
           submodules: recursive
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           cache: "maven"
           distribution: "temurin"
@@ -76,12 +76,12 @@ jobs:
       matrix:
         java: ['21', '25']
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           persist-credentials: false
           submodules: recursive
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           cache: "maven"
           distribution: "temurin"
@@ -116,11 +116,11 @@ jobs:
     env:
       VCPKG_ROOT: "${{ github.workspace }}/vcpkg"
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           cache: "maven"
           distribution: "temurin"
@@ -132,7 +132,7 @@ jobs:
       - name: Install vcpkg
         run: |
           ./ci/scripts/install_vcpkg.sh $VCPKG_ROOT $VCPKG_VERSION
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -172,7 +172,7 @@ jobs:
           ls -laR artifacts
           mv artifacts artifacts-${{ matrix.os }}-${{ matrix.arch }}
           tar czf artifacts-${{ matrix.os }}-${{ matrix.arch }}.tgz artifacts-${{ matrix.os }}-${{ matrix.arch }}
-      - uses: actions/upload-artifact@v7
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: jni-artifacts-${{ matrix.os }}-${{ matrix.arch }}
           retention-days: 7
@@ -185,7 +185,7 @@ jobs:
           find "$VCPKG_ROOT" -name 'build-*.log' -exec cp '{}' ~/logs ';'
       - name: Upload failure logs
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: jni-artifacts-${{ matrix.os }}-${{ matrix.arch }}
           retention-days: 7
@@ -204,22 +204,22 @@ jobs:
           - { java: '11', os: macOS, arch: arm64v8, vcpkg_arch: arm64, runner: macos-latest }
           - { java: '25', os: macOS, arch: arm64v8, vcpkg_arch: arm64, runner: macos-latest }
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           persist-credentials: false
           submodules: recursive
-      - uses: actions/download-artifact@v8
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: artifacts
           pattern: jni-artifacts-*
           merge-multiple: true
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           cache: "maven"
           distribution: "temurin"
           java-version: 11
-      - name: Build/Test
+      - name: Build
         run: |
           set -x
           pushd artifacts
@@ -228,10 +228,34 @@ jobs:
           done
           popd
           cp -r artifacts/*/jni/adbc_driver_jni java/driver/jni/src/main/resources
+          env BUILD_JNI=ON ./ci/scripts/java_build.sh $(pwd)
+
+      - name: Start Dependencies
+        if: matrix.os == 'Linux' && matrix.arch == 'amd64'
+        run: |
+          docker compose up --detach --wait flightsql-sqlite-test mssql-test postgres-test
+          cat .env | grep -v -e '^#' | grep -e '^ADBC_' | awk NF | sed 's/"//g' | tee -a $GITHUB_ENV
+
+      - name: Download thirdparty driver
+        if: matrix.os == 'Linux' && matrix.arch == 'amd64'
+        run: |
+          wget https://dbc-cdn.columnar.tech/mssql/v1.3.1/mssql_linux_amd64_v1.3.1.tar.gz
+          echo "e6723cf417403f313fb75c1ac03aea9b9ff857d4a947608c8ae44eacc1aa22b3  mssql_linux_amd64_v1.3.1.tar.gz" > mssql_linux_amd64_v1.3.1.tar.gz.sha256
+          sha256sum -c mssql_linux_amd64_v1.3.1.tar.gz.sha256
+
+          tar xvf mssql_linux_amd64_v1.3.1.tar.gz
+          mkdir -p ~/.config/adbc/drivers/
+          mv libadbc_driver_mssql.so ~/.config/adbc/drivers/
+          echo "manifest_version = 1" > ~/.config/adbc/drivers/mssql.toml
+          echo "[Driver]" >> ~/.config/adbc/drivers/mssql.toml
+          echo "shared = '$HOME/.config/adbc/drivers/libadbc_driver_mssql.so'" >> ~/.config/adbc/drivers/mssql.toml
+          cat ~/.config/adbc/drivers/mssql.toml
+
+      - name: Test
+        run: |
           for driver in artifacts/*/driver; do
             export LD_LIBRARY_PATH=$(pwd)/$driver:${LD_LIBRARY_PATH:-}
             export DYLD_LIBRARY_PATH=$(pwd)/$driver:${DYLD_LIBRARY_PATH:-}
           done
-          env BUILD_JNI=ON ./ci/scripts/java_build.sh $(pwd)
           cd java
-          mvn -B -Pjni test -pl :adbc-driver-jni
+          mvn -B -Pjni test -pl :adbc-driver-jni -pl :adbc-driver-jni-validation

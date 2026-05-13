@@ -131,6 +131,20 @@ def test_get_table_types(sqlite) -> None:
     assert sqlite.adbc_get_table_types() == ["table", "view"]
 
 
+@pytest.mark.sqlite
+def test_get_statistics_not_supported(sqlite) -> None:
+    """SQLite does not support GetStatistics."""
+    with pytest.raises(dbapi.NotSupportedError):
+        sqlite.adbc_get_statistics()
+
+
+@pytest.mark.sqlite
+def test_get_statistic_names_not_supported(sqlite) -> None:
+    """SQLite does not support GetStatisticNames."""
+    with pytest.raises(dbapi.NotSupportedError):
+        sqlite.adbc_get_statistic_names()
+
+
 class ArrayWrapper:
     def __init__(self, array) -> None:
         self.array = array
@@ -735,7 +749,7 @@ def test_connect(tmp_path: pathlib.Path, monkeypatch) -> None:
             cur.execute("SELECT * FROM foo")
             assert cur.fetchone() == (1,)
 
-    monkeypatch.setenv("ADBC_DRIVER_PATH", tmp_path)
+    monkeypatch.setenv("ADBC_DRIVER_PATH", str(tmp_path))
     with (tmp_path / "foobar.toml").open("w") as f:
         f.write(
             """
@@ -746,4 +760,14 @@ shared = "adbc_driver_foobar"
     # Just check that the driver gets detected and loaded (should fail)
     with pytest.raises(dbapi.ProgrammingError, match="NOT_FOUND"):
         with dbapi.connect("foobar://localhost:5439"):
+            pass
+
+    # https://github.com/apache/arrow-adbc/issues/4077: allow profile argument
+    # Just check that the profile gets detected and loaded (should fail)
+    with pytest.raises(dbapi.ProgrammingError, match="NOT_FOUND.*Profile not found"):
+        with dbapi.connect(profile="nonexistent"):
+            pass
+
+    with pytest.raises(TypeError):
+        with dbapi.connect():
             pass

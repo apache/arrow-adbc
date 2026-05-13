@@ -23,10 +23,8 @@ $InstallDir = if ($Args[1] -ne $null) { $Args[1] } else { Join-Path $BuildDir "l
 
 $BuildAll = $env:BUILD_ALL -ne "0"
 $BuildDriverManager = ($BuildAll -and (-not ($env:BUILD_DRIVER_MANAGER -eq "0"))) -or ($env:BUILD_DRIVER_MANAGER -eq "1")
-$BuildDriverBigQuery = ($BuildAll -and (-not ($env:BUILD_DRIVER_BIGQUERY -eq "0"))) -or ($env:BUILD_DRIVER_BIGQUERY -eq "1")
 $BuildDriverFlightSql = ($BuildAll -and (-not ($env:BUILD_DRIVER_FLIGHTSQL -eq "0"))) -or ($env:BUILD_DRIVER_FLIGHTSQL -eq "1")
 $BuildDriverPostgreSQL = ($BuildAll -and (-not ($env:BUILD_DRIVER_POSTGRESQL -eq "0"))) -or ($env:BUILD_DRIVER_POSTGRESQL -eq "1")
-$BuildDriverSnowflake = ($BuildAll -and (-not ($env:BUILD_DRIVER_SNOWFLAKE -eq "0"))) -or ($env:BUILD_DRIVER_SNOWFLAKE -eq "1")
 $BuildDriverSqlite = ($BuildAll -and (-not ($env:BUILD_DRIVER_SQLITE -eq "0"))) -or ($env:BUILD_DRIVER_SQLITE -eq "1")
 
 $env:LD_LIBRARY_PATH += ":$($InstallDir)"
@@ -46,16 +44,10 @@ function Test-Project {
         $labels += "|driver-manager"
     }
     if ($BuildDriverFlightSql) {
-        $labels += "|driver-bigquery"
-    }
-    if ($BuildDriverFlightSql) {
         $labels += "|driver-flightsql"
     }
     if ($BuildDriverPostgreSQL) {
         $labels += "|driver-postgresql"
-    }
-    if ($BuildDriverSnowflake) {
-        $labels += "|driver-snowflake"
     }
     if ($BuildDriverSqlite) {
         $labels += "|driver-sqlite"

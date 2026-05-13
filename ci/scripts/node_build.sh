@@ -37,9 +37,10 @@ cmake -S "${REPO_ROOT}/c" -B "${OUT_DIR}" \
   -DCMAKE_BUILD_TYPE=RelWithDebInfo \
   -DADBC_DRIVER_SQLITE=ON \
   -DADBC_BUILD_TESTS=OFF \
-  -DADBC_BUILD_SHARED=ON
+  -DADBC_BUILD_SHARED=ON \
+  -DADBC_BUILD_STATIC=OFF
 
-cmake --build "${OUT_DIR}" --target install -j
+cmake --build "${OUT_DIR}" --config RelWithDebInfo --target install -j
 
 # 2. Build Node.js Package
 echo "=== Building Node.js Package ==="

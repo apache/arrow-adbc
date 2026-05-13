@@ -19,34 +19,24 @@
 #include <windows.h>
 #endif
 
-#include <gmock/gmock.h>
-#include <gtest/gtest.h>
-
 #include <algorithm>
 #include <cstdlib>
 #include <filesystem>  // NOLINT [build/c++17]
 #include <iostream>
 #include <string>
-#include <toml++/toml.hpp>
+#include <utility>
 #include <vector>
 
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+#include <toml++/toml.hpp>
+
+#include "adbc_driver_manager_internal.h"
 #include "arrow-adbc/adbc.h"
 #include "arrow-adbc/adbc_driver_manager.h"
 #include "current_arch.h"
 #include "validation/adbc_validation.h"
 #include "validation/adbc_validation_util.h"
-
-std::string InternalAdbcDriverManagerDefaultEntrypoint(const std::string& filename);
-std::vector<std::filesystem::path> InternalAdbcParsePath(const std::string_view path);
-std::filesystem::path InternalAdbcUserConfigDir();
-
-struct ParseDriverUriResult {
-  std::string_view driver;
-  std::optional<std::string_view> uri;
-  std::optional<std::string_view> profile;
-};
-
-std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view str);
 
 // Tests of the SQLite example driver, except using the driver manager
 
@@ -55,6 +45,34 @@ namespace adbc {
 using adbc_validation::Handle;
 using adbc_validation::IsOkStatus;
 using adbc_validation::IsStatus;
+
+namespace {
+void SetDriverPath(const char* path) {
+#ifdef _WIN32
+  int size_needed = MultiByteToWideChar(CP_UTF8, 0, path, -1, nullptr, 0);
+  std::wstring wpath(size_needed, 0);
+  MultiByteToWideChar(CP_UTF8, 0, path, -1, &wpath[0], size_needed);
+  ASSERT_TRUE(SetEnvironmentVariableW(L"ADBC_DRIVER_PATH", wpath.c_str()));
+#else
+  setenv("ADBC_DRIVER_PATH", path, 1);
+#endif
+}
+
+void UnsetDriverPath() { SetDriverPath(""); }
+
+void SetProfilePath(const char* path) {
+#ifdef _WIN32
+  int size_needed = MultiByteToWideChar(CP_UTF8, 0, path, -1, nullptr, 0);
+  std::wstring wpath(size_needed, 0);
+  MultiByteToWideChar(CP_UTF8, 0, path, -1, &wpath[0], size_needed);
+  ASSERT_TRUE(SetEnvironmentVariableW(L"ADBC_PROFILE_PATH", wpath.c_str()));
+#else
+  setenv("ADBC_PROFILE_PATH", path, 1);
+#endif
+}
+
+void UnsetProfilePath() { SetProfilePath(""); }
+}  // namespace
 
 class DriverManager : public ::testing::Test {
  public:
@@ -726,19 +744,6 @@ class DriverManifest : public ::testing::Test {
   }
 
  protected:
-  void SetConfigPath(const char* path) {
-#ifdef _WIN32
-    int size_needed = MultiByteToWideChar(CP_UTF8, 0, path, -1, nullptr, 0);
-    std::wstring wpath(size_needed, 0);
-    MultiByteToWideChar(CP_UTF8, 0, path, -1, &wpath[0], size_needed);
-    ASSERT_TRUE(SetEnvironmentVariableW(L"ADBC_DRIVER_PATH", wpath.c_str()));
-#else
-    setenv("ADBC_DRIVER_PATH", path, 1);
-#endif
-  }
-
-  void UnsetConfigPath() { SetConfigPath(""); }
-
   struct AdbcDriver driver = {};
   struct AdbcError error = {};
 
@@ -757,7 +762,7 @@ TEST_F(DriverManifest, LoadDriverEnv) {
   test_manifest_file << simple_manifest;
   test_manifest_file.close();
 
-  SetConfigPath(temp_dir.string().c_str());
+  SetDriverPath(temp_dir.string().c_str());
 
   ASSERT_THAT(AdbcFindLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0,
                                  ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
@@ -765,7 +770,7 @@ TEST_F(DriverManifest, LoadDriverEnv) {
 
   ASSERT_TRUE(std::filesystem::remove(temp_dir / "sqlite.toml"));
 
-  UnsetConfigPath();
+  UnsetDriverPath();
 }
 
 TEST_F(DriverManifest, LoadNonAsciiPath) {
@@ -786,7 +791,7 @@ TEST_F(DriverManifest, LoadNonAsciiPath) {
   test_manifest_file << simple_manifest;
   test_manifest_file.close();
 
-  SetConfigPath(non_ascii_dir.string().c_str());
+  SetDriverPath(non_ascii_dir.string().c_str());
 
   ASSERT_THAT(AdbcFindLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0,
                                  ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
@@ -794,7 +799,7 @@ TEST_F(DriverManifest, LoadNonAsciiPath) {
 
   ASSERT_TRUE(std::filesystem::remove(non_ascii_dir / "sqlite.toml"));
 
-  UnsetConfigPath();
+  UnsetDriverPath();
 }
 
 TEST_F(DriverManifest, DisallowEnvConfig) {
@@ -803,7 +808,7 @@ TEST_F(DriverManifest, DisallowEnvConfig) {
   test_manifest_file << simple_manifest;
   test_manifest_file.close();
 
-  SetConfigPath(temp_dir.string().c_str());
+  SetDriverPath(temp_dir.string().c_str());
 
   auto load_options = ADBC_LOAD_FLAG_DEFAULT & ~ADBC_LOAD_FLAG_SEARCH_ENV;
   ASSERT_THAT(AdbcFindLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0, load_options,
@@ -812,7 +817,7 @@ TEST_F(DriverManifest, DisallowEnvConfig) {
 
   ASSERT_TRUE(std::filesystem::remove(temp_dir / "sqlite.toml"));
 
-  UnsetConfigPath();
+  UnsetDriverPath();
 }
 
 TEST_F(DriverManifest, ConfigEntrypoint) {
@@ -1226,7 +1231,11 @@ TEST_F(DriverManifest, LoadUserLevelManifest) {
                                  ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
               Not(IsOkStatus(&error)));
 
-  auto user_config_dir = InternalAdbcUserConfigDir();
+#if defined(_WIN32) || defined(__APPLE__)
+  auto user_config_dir = InternalAdbcUserConfigDir() / "Drivers";
+#else
+  auto user_config_dir = InternalAdbcUserConfigDir() / "drivers";
+#endif
   bool created = false;
   if (!std::filesystem::exists(user_config_dir)) {
     ASSERT_TRUE(std::filesystem::create_directories(user_config_dir));
@@ -1476,9 +1485,9 @@ class ConnectionProfiles : public ::testing::Test {
     std::filesystem::create_directories(temp_dir);
 
     simple_profile = toml::table{
-        {"version", 1},
+        {"profile_version", 1},
         {"driver", "adbc_driver_sqlite"},
-        {"options",
+        {"Options",
          toml::table{
              {"uri", "file::memory:"},
          }},
@@ -1503,19 +1512,6 @@ class ConnectionProfiles : public ::testing::Test {
   }
 
  protected:
-  void SetConfigPath(const char* path) {
-#ifdef _WIN32
-    int size_needed = MultiByteToWideChar(CP_UTF8, 0, path, -1, nullptr, 0);
-    std::wstring wpath(size_needed, 0);
-    MultiByteToWideChar(CP_UTF8, 0, path, -1, &wpath[0], size_needed);
-    ASSERT_TRUE(SetEnvironmentVariableW(L"ADBC_PROFILE_PATH", wpath.c_str()));
-#else
-    setenv("ADBC_PROFILE_PATH", path, 1);
-#endif
-  }
-
-  void UnsetConfigPath() { SetConfigPath(""); }
-
   struct AdbcDriver driver = {};
   struct AdbcError error = {};
 
@@ -1546,20 +1542,22 @@ TEST_F(ConnectionProfiles, SetProfileOption) {
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
               IsOkStatus(&error));
-  ASSERT_THAT(AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
-                  &database.value, temp_dir.string().c_str(), &error),
-              IsOkStatus(&error));
+  auto search_path = temp_dir.string();
+  ASSERT_THAT(
+      AdbcDatabaseSetOption(&database.value, "additional_profile_search_path_list",
+                            search_path.c_str(), &error),
+      IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
 
   // find profile by name using ADBC_PROFILE_PATH
-  SetConfigPath(temp_dir.string().c_str());
+  SetProfilePath(temp_dir.string().c_str());
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
-  UnsetConfigPath();
+  UnsetProfilePath();
 }
 
 TEST_F(ConnectionProfiles, HierarchicalProfile) {
@@ -1573,13 +1571,13 @@ TEST_F(ConnectionProfiles, HierarchicalProfile) {
 
   adbc_validation::Handle<struct AdbcDatabase> database;
 
-  SetConfigPath(temp_dir.string().c_str());
+  SetProfilePath(temp_dir.string().c_str());
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "dev/profile", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
-  UnsetConfigPath();
+  UnsetProfilePath();
 }
 
 TEST_F(ConnectionProfiles, UriProfileOption) {
@@ -1601,13 +1599,13 @@ TEST_F(ConnectionProfiles, UriProfileOption) {
   ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
 
   // find profile by name using ADBC_PROFILE_PATH
-  SetConfigPath(temp_dir.string().c_str());
+  SetProfilePath(temp_dir.string().c_str());
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "uri", "profile://profile", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
-  UnsetConfigPath();
+  UnsetProfilePath();
 }
 
 TEST_F(ConnectionProfiles, DriverProfileOption) {
@@ -1629,20 +1627,20 @@ TEST_F(ConnectionProfiles, DriverProfileOption) {
   ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
 
   // find profile by name using ADBC_PROFILE_PATH
-  SetConfigPath(temp_dir.string().c_str());
+  SetProfilePath(temp_dir.string().c_str());
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(
       AdbcDatabaseSetOption(&database.value, "driver", "profile://profile", &error),
       IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
-  UnsetConfigPath();
+  UnsetProfilePath();
 }
 
 TEST_F(ConnectionProfiles, ExtraStringOption) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = simple_profile;
-  profile["options"].as_table()->insert("foo", "bar");
+  profile["Options"].as_table()->insert("foo", "bar");
   std::ofstream test_manifest_file(filepath);
   ASSERT_TRUE(test_manifest_file.is_open());
   test_manifest_file << profile;
@@ -1651,20 +1649,20 @@ TEST_F(ConnectionProfiles, ExtraStringOption) {
   adbc_validation::Handle<struct AdbcDatabase> database;
 
   // find profile by name using ADBC_PROFILE_PATH
-  SetConfigPath(temp_dir.string().c_str());
+  SetProfilePath(temp_dir.string().c_str());
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
               IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
   ASSERT_THAT(error.message, ::testing::HasSubstr("Unknown database option foo='bar'"));
-  UnsetConfigPath();
+  UnsetProfilePath();
 }
 
 TEST_F(ConnectionProfiles, ExtraIntOption) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = simple_profile;
-  profile["options"].as_table()->insert("foo", int64_t(42));
+  profile["Options"].as_table()->insert("foo", int64_t(42));
   std::ofstream test_manifest_file(filepath);
   ASSERT_TRUE(test_manifest_file.is_open());
   test_manifest_file << profile;
@@ -1673,20 +1671,20 @@ TEST_F(ConnectionProfiles, ExtraIntOption) {
   adbc_validation::Handle<struct AdbcDatabase> database;
 
   // find profile by name using ADBC_PROFILE_PATH
-  SetConfigPath(temp_dir.string().c_str());
+  SetProfilePath(temp_dir.string().c_str());
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
               IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
   ASSERT_THAT(error.message, ::testing::HasSubstr("Unknown database option foo=42"));
-  UnsetConfigPath();
+  UnsetProfilePath();
 }
 
 TEST_F(ConnectionProfiles, ExtraDoubleOption) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = simple_profile;
-  profile["options"].as_table()->insert("foo", 42.0);
+  profile["Options"].as_table()->insert("foo", 42.0);
   std::ofstream test_manifest_file(filepath);
   ASSERT_TRUE(test_manifest_file.is_open());
   test_manifest_file << profile;
@@ -1695,22 +1693,22 @@ TEST_F(ConnectionProfiles, ExtraDoubleOption) {
   adbc_validation::Handle<struct AdbcDatabase> database;
 
   // find profile by name using ADBC_PROFILE_PATH
-  SetConfigPath(temp_dir.string().c_str());
+  SetProfilePath(temp_dir.string().c_str());
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
               IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
   ASSERT_THAT(error.message, ::testing::HasSubstr("Unknown database option foo=42"));
-  UnsetConfigPath();
+  UnsetProfilePath();
 }
 
 TEST_F(ConnectionProfiles, DotSeparatedKey) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = toml::parse(R"(
-    version = 1
+    profile_version = 1
     driver = "adbc_driver_sqlite"
-    [options]
+    [Options]
     foo.bar.baz = "bar"
   )");
 
@@ -1722,7 +1720,7 @@ TEST_F(ConnectionProfiles, DotSeparatedKey) {
   adbc_validation::Handle<struct AdbcDatabase> database;
 
   // find profile by name using ADBC_PROFILE_PATH
-  SetConfigPath(temp_dir.string().c_str());
+  SetProfilePath(temp_dir.string().c_str());
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
               IsOkStatus(&error));
@@ -1730,15 +1728,15 @@ TEST_F(ConnectionProfiles, DotSeparatedKey) {
               IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
   ASSERT_THAT(error.message,
               ::testing::HasSubstr("Unknown database option foo.bar.baz='bar'"));
-  UnsetConfigPath();
+  UnsetProfilePath();
 }
 
 TEST_F(ConnectionProfiles, UseEnvVar) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = toml::parse(R"|(
-    version = 1
+    profile_version = 1
     driver = "adbc_driver_sqlite"
-    [options]
+    [Options]
     foo = "{{ env_var(ADBC_PROFILE_PATH) }}"
   )|");
 
@@ -1750,7 +1748,7 @@ TEST_F(ConnectionProfiles, UseEnvVar) {
   adbc_validation::Handle<struct AdbcDatabase> database;
 
   // find profile by name using ADBC_PROFILE_PATH
-  SetConfigPath(temp_dir.string().c_str());
+  SetProfilePath(temp_dir.string().c_str());
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
               IsOkStatus(&error));
@@ -1758,15 +1756,15 @@ TEST_F(ConnectionProfiles, UseEnvVar) {
               IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
   ASSERT_THAT(error.message, ::testing::HasSubstr("Unknown database option foo='" +
                                                   temp_dir.string() + "'"));
-  UnsetConfigPath();
+  UnsetProfilePath();
 }
 
 TEST_F(ConnectionProfiles, UseEnvVarNotExist) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = toml::parse(R"|(
-    version = 1
+    profile_version = 1
     driver = "adbc_driver_sqlite"
-    [options]
+    [Options]
     foo = "{{ env_var(FOOBAR_ENV_VAR_THAT_DOES_NOT_EXIST) }}"
   )|");
 
@@ -1778,22 +1776,50 @@ TEST_F(ConnectionProfiles, UseEnvVarNotExist) {
   adbc_validation::Handle<struct AdbcDatabase> database;
 
   // find profile by name using ADBC_PROFILE_PATH
-  SetConfigPath(temp_dir.string().c_str());
+  SetProfilePath(temp_dir.string().c_str());
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
               IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
   ASSERT_THAT(error.message, ::testing::HasSubstr("Unknown database option foo=''"));
-  UnsetConfigPath();
+  UnsetProfilePath();
+}
+
+TEST_F(ConnectionProfiles, UseEnvVarNotExistNoBail) {
+  auto filepath = temp_dir / "profile.toml";
+  toml::table profile = toml::parse(R"|(
+    profile_version = 1
+    driver = "adbc_driver_sqlite"
+    [Options]
+    foo = "foo{{ env_var(FOOBAR_ENV_VAR_THAT_DOES_NOT_EXIST) }}bar"
+  )|");
+
+  std::ofstream test_manifest_file(filepath);
+  ASSERT_TRUE(test_manifest_file.is_open());
+  test_manifest_file << profile;
+  test_manifest_file.close();
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+
+  // find profile by name using ADBC_PROFILE_PATH
+  SetProfilePath(temp_dir.string().c_str());
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+              IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
+  ASSERT_THAT(error.message,
+              ::testing::HasSubstr("Unknown database option foo='foobar'"));
+  UnsetProfilePath();
 }
 
 TEST_F(ConnectionProfiles, UseEnvVarMalformed) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = toml::parse(R"|(
-    version = 1
+    profile_version = 1
     driver = "adbc_driver_sqlite"
-    [options]
+    [Options]
     foo = "{{ env_var(ENV_VAR_WITHOUT_CLOSING_PAREN }}"
   )|");
 
@@ -1805,24 +1831,25 @@ TEST_F(ConnectionProfiles, UseEnvVarMalformed) {
   adbc_validation::Handle<struct AdbcDatabase> database;
 
   // find profile by name using ADBC_PROFILE_PATH
-  SetConfigPath(temp_dir.string().c_str());
+  SetProfilePath(temp_dir.string().c_str());
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
               IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
-  ASSERT_THAT(error.message,
-              ::testing::HasSubstr(
-                  "Malformed env_var() profile value: missing closing parenthesis"));
-  UnsetConfigPath();
+  ASSERT_THAT(
+      error.message,
+      ::testing::HasSubstr(
+          "In profile: malformed env_var() in key `foo`: missing closing parenthesis"));
+  UnsetProfilePath();
 }
 
 TEST_F(ConnectionProfiles, UseEnvVarMissingArg) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = toml::parse(R"|(
-    version = 1
+    profile_version = 1
     driver = "adbc_driver_sqlite"
-    [options]
+    [Options]
     foo = "{{ env_var() }}"
   )|");
 
@@ -1834,25 +1861,24 @@ TEST_F(ConnectionProfiles, UseEnvVarMissingArg) {
   adbc_validation::Handle<struct AdbcDatabase> database;
 
   // find profile by name using ADBC_PROFILE_PATH
-  SetConfigPath(temp_dir.string().c_str());
+  SetProfilePath(temp_dir.string().c_str());
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
               IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
-  ASSERT_THAT(
-      error.message,
-      ::testing::HasSubstr(
-          "Malformed env_var() profile value: missing environment variable name"));
-  UnsetConfigPath();
+  ASSERT_THAT(error.message,
+              ::testing::HasSubstr("In profile: malformed env_var() in key `foo`: "
+                                   "missing environment variable name"));
+  UnsetProfilePath();
 }
 
 TEST_F(ConnectionProfiles, UseEnvVarInterpolation) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = toml::parse(R"|(
-    version = 1
+    profile_version = 1
     driver = "adbc_driver_sqlite"
-    [options]
+    [Options]
     foo = "super {{ env_var(ADBC_PROFILE_PATH) }} duper"
   )|");
 
@@ -1864,7 +1890,7 @@ TEST_F(ConnectionProfiles, UseEnvVarInterpolation) {
   adbc_validation::Handle<struct AdbcDatabase> database;
 
   // find profile by name using ADBC_PROFILE_PATH
-  SetConfigPath(temp_dir.string().c_str());
+  SetProfilePath(temp_dir.string().c_str());
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
               IsOkStatus(&error));
@@ -1872,15 +1898,15 @@ TEST_F(ConnectionProfiles, UseEnvVarInterpolation) {
               IsStatus(ADBC_STATUS_NOT_IMPLEMENTED, &error));
   ASSERT_THAT(error.message, ::testing::HasSubstr("Unknown database option foo='super " +
                                                   temp_dir.string() + " duper'"));
-  UnsetConfigPath();
+  UnsetProfilePath();
 }
 
 TEST_F(ConnectionProfiles, UseEnvVarInterpolationMultiple) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = toml::parse(R"|(
-    version = 1
+    profile_version = 1
     driver = "adbc_driver_sqlite"
-    [options]
+    [Options]
     foo = "super {{ env_var(ADBC_PROFILE_PATH) }} duper {{ env_var(ADBC_PROFILE_PATH) }} end"
   )|");
 
@@ -1892,7 +1918,7 @@ TEST_F(ConnectionProfiles, UseEnvVarInterpolationMultiple) {
   adbc_validation::Handle<struct AdbcDatabase> database;
 
   // find profile by name using ADBC_PROFILE_PATH
-  SetConfigPath(temp_dir.string().c_str());
+  SetProfilePath(temp_dir.string().c_str());
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
               IsOkStatus(&error));
@@ -1901,7 +1927,7 @@ TEST_F(ConnectionProfiles, UseEnvVarInterpolationMultiple) {
   ASSERT_THAT(error.message, ::testing::HasSubstr("Unknown database option foo='super " +
                                                   temp_dir.string() + " duper " +
                                                   temp_dir.string() + " end'"));
-  UnsetConfigPath();
+  UnsetProfilePath();
 }
 
 TEST_F(ConnectionProfiles, ProfileNotFound) {
@@ -1919,7 +1945,7 @@ TEST_F(ConnectionProfiles, ProfileNotFound) {
   ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
 
   // find profile by name using ADBC_PROFILE_PATH
-  SetConfigPath(temp_dir.string().c_str());
+  SetProfilePath(temp_dir.string().c_str());
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
               IsOkStatus(&error));
@@ -1930,7 +1956,47 @@ TEST_F(ConnectionProfiles, ProfileNotFound) {
                                    "Also searched these paths for profiles:\n\t" +
                                    "ADBC_PROFILE_PATH: " + temp_dir.string() + "\n\t"));
   ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
-  UnsetConfigPath();
+  UnsetProfilePath();
+}
+
+TEST_F(ConnectionProfiles, CondaProfileTest) {
+#if ADBC_CONDA_BUILD
+  constexpr bool is_conda_build = true;
+#else
+  constexpr bool is_conda_build = false;
+#endif  // ADBC_CONDA_BUILD
+
+  std::cerr << "ADBC_CONDA_BUILD: " << (is_conda_build ? "defined" : "not defined")
+            << std::endl;
+
+  auto filepath = temp_dir / "etc" / "adbc" / "profiles" / "sqlite-test.toml";
+  std::filesystem::create_directories(filepath.parent_path());
+  std::ofstream test_profile_file(filepath);
+  ASSERT_TRUE(test_profile_file.is_open());
+  test_profile_file << simple_profile;
+  test_profile_file.close();
+
+#ifdef _WIN32
+  ASSERT_EQ(0, ::_wputenv_s(L"CONDA_PREFIX", temp_dir.native().c_str()));
+#else
+  ASSERT_EQ(0, ::setenv("CONDA_PREFIX", temp_dir.native().c_str(), 1));
+#endif  // _WIN32
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+
+  // absolute path to the profile
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "sqlite-test", &error),
+              IsOkStatus(&error));
+  if constexpr (is_conda_build) {
+    ASSERT_THAT(AdbcDatabaseInit(&database.value, &error), IsOkStatus(&error));
+  } else {
+    ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+                IsStatus(ADBC_STATUS_NOT_FOUND, &error));
+    ASSERT_THAT(error.message,
+                ::testing::HasSubstr("not enabled at build time: Conda prefix"));
+  }
+  ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
 }
 
 TEST_F(ConnectionProfiles, CustomProfileProvider) {
@@ -1964,5 +2030,394 @@ TEST_F(ConnectionProfiles, CustomProfileProvider) {
   ASSERT_THAT(error.message, ::testing::HasSubstr("custom profile provider error"));
   ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
 }
+
+struct DriverUriProfile {
+  std::string name;
+  std::string driver;
+  std::string uri;
+  std::string profile;
+
+  std::string expected_driver = "";
+  std::string expected_uri = "";
+  AdbcStatusCode expected_error = ADBC_STATUS_OK;
+  std::string expected_message = "";
+
+  DriverUriProfile WithExpected(std::string driver, std::string uri) {
+    expected_driver = std::move(driver);
+    expected_uri = std::move(uri);
+    expected_error = ADBC_STATUS_OK;
+    expected_message.clear();
+    return *this;
+  }
+
+  DriverUriProfile WithExpectedError(AdbcStatusCode error_code,
+                                     std::string message_substr) {
+    expected_driver.clear();
+    expected_uri.clear();
+    expected_error = error_code;
+    expected_message = std::move(message_substr);
+    return *this;
+  }
+};
+
+class DriverUriProfileTest : public ConnectionProfiles,
+                             public testing::WithParamInterface<DriverUriProfile> {
+ public:
+  void SetUp() override {
+    ConnectionProfiles::SetUp();
+
+    auto profiles = temp_dir / "profiles";
+    std::filesystem::create_directories(profiles);
+    SetProfilePath(profiles.string().c_str());
+
+    {
+      auto filepath = profiles / "prod-sqlite.toml";
+      std::ofstream profile_file(filepath);
+      ASSERT_TRUE(profile_file.is_open());
+      profile_file << toml::table{
+          {"profile_version", 1},
+          {"driver", "sqlite"},
+          {"Options", toml::table{{"uri", "file://:memory:"}}},
+      };
+    }
+    {
+      auto filepath = profiles / "prod-driver-uri.toml";
+      std::ofstream profile_file(filepath);
+      ASSERT_TRUE(profile_file.is_open());
+      profile_file << toml::table{
+          {"profile_version", 1},
+          {"driver", "adbc_driver_sqlite"},
+          {"Options", toml::table{{"uri", "file://:memory:"}}},
+      };
+    }
+    {
+      auto filepath = profiles / "prod-driver.toml";
+      std::ofstream profile_file(filepath);
+      ASSERT_TRUE(profile_file.is_open());
+      profile_file << toml::table{
+          {"profile_version", 1},
+          {"driver", "adbc_driver_sqlite"},
+          {"Options", toml::table{}},
+      };
+    }
+    {
+      auto filepath = profiles / "prod-uri.toml";
+      std::ofstream profile_file(filepath);
+      ASSERT_TRUE(profile_file.is_open());
+      profile_file << toml::table{
+          {"profile_version", 1},
+          {"Options", toml::table{{"uri", "file://:memory:"}}},
+      };
+    }
+    {
+      auto filepath = profiles / "prod-empty.toml";
+      std::ofstream profile_file(filepath);
+      ASSERT_TRUE(profile_file.is_open());
+      profile_file << toml::table{
+          {"profile_version", 1},
+          {"Options", toml::table{{"noturi", "file://:memory:"}}},
+      };
+    }
+
+    auto manifests = temp_dir / "drivers";
+    std::filesystem::create_directories(manifests);
+    SetDriverPath(manifests.string().c_str());
+
+    auto filepath = manifests / "sqlite.toml";
+    std::ofstream manifest_file(filepath);
+    ASSERT_TRUE(manifest_file.is_open());
+    manifest_file << toml::table{
+        {"name", "SQLite3"},
+        {"publisher", "arrow-adbc"},
+        {"version", "X.Y.Z"},
+        {"ADBC",
+         toml::table{
+             {"version", "1.1.0"},
+         }},
+        {"Driver",
+         toml::table{
+             {"shared",
+              toml::table{
+                  {adbc::CurrentArch(), driver_path.string()},
+              }},
+         }},
+    };
+  }
+
+  void TearDown() override {
+    ConnectionProfiles::TearDown();
+    UnsetProfilePath();
+  }
+};
+
+TEST_P(DriverUriProfileTest, Load) {
+  const auto& param = GetParam();
+
+  TempDatabase db;
+  if (!param.driver.empty()) {
+    db.driver = param.driver;
+  }
+  if (!param.uri.empty()) {
+    db.options["uri"] = param.uri;
+  }
+  if (!param.profile.empty()) {
+    db.options["profile"] = param.profile;
+  }
+
+  auto status = InternalAdbcParseOptions(&db, &error);
+  if (param.expected_error != ADBC_STATUS_OK) {
+    ASSERT_THAT(status, IsStatus(param.expected_error, &error));
+    ASSERT_THAT(error.message, ::testing::HasSubstr(param.expected_message));
+  } else {
+    ASSERT_THAT(status, IsOkStatus(&error));
+    EXPECT_EQ(db.driver, param.expected_driver);
+    if (param.expected_uri.empty()) {
+      EXPECT_THAT(db.options, testing::Not(testing::Contains(testing::Key("uri"))));
+    } else {
+      EXPECT_THAT(db.options,
+                  testing::Contains(testing::Pair("uri", param.expected_uri)));
+    }
+  }
+}
+
+constexpr char kNoDriverError[] = "Must set 'driver' option before AdbcDatabaseInit";
+constexpr char kMultipleProfilesError[] = "Multiple profiles specified";
+// TODO(https://github.com/apache/arrow-adbc/issues/3963): designated initializers
+static const DriverUriProfile kOptionsValues[] = {
+    // nothing is specified => error
+    // ------------------------------------------------------------
+    (DriverUriProfile{"empty_empty_empty", "", "", ""})
+        .WithExpectedError(ADBC_STATUS_INVALID_ARGUMENT, kNoDriverError),
+
+    // no driver + no URI + profile: use profile's values
+    // ------------------------------------------------------------
+    (DriverUriProfile{"empty_empty_profile1", "", "", "prod-driver-uri"})
+        .WithExpected("adbc_driver_sqlite", "file://:memory:"),
+    (DriverUriProfile{"empty_empty_profile2", "", "", "prod-driver"})
+        .WithExpected("adbc_driver_sqlite", ""),
+    // Profile has no driver, but has a URI, so we parse that
+    (DriverUriProfile{"empty_empty_profile3", "", "", "prod-uri"})
+        .WithExpected("file", "file://:memory:"),
+    (DriverUriProfile{"empty_empty_profile4", "", "", "prod-empty"})
+        .WithExpectedError(ADBC_STATUS_INVALID_ARGUMENT, kNoDriverError),
+
+    // no driver + URI (where URI is not a profile URI) + no
+    // profile: parse URI for driver
+    // ------------------------------------------------------------
+    (DriverUriProfile{"empty_driveruri_empty", "", "sqlite://:memory:", ""})
+        .WithExpected("sqlite", "sqlite://:memory:"),
+
+    // no driver + URI (where URI is not a profile URI) + profile:
+    // it depends on what the profile contains. If it has a driver,
+    // then we use the profile's driver
+    // ------------------------------------------------------------
+    (DriverUriProfile{"empty_driveruri_profile1", "", "bar://:memory:", "prod-sqlite"})
+        .WithExpected("sqlite", "bar://:memory:"),
+    (DriverUriProfile{"empty_driveruri_profile2", "", "bar://:memory:", "prod-driver"})
+        .WithExpected("adbc_driver_sqlite", "bar://:memory:"),
+    // here the profile's URI is overridden by the supplied one
+    (DriverUriProfile{"empty_driveruri_profile3", "", "bar://:memory:", "prod-uri"})
+        .WithExpected("bar", "bar://:memory:"),
+    (DriverUriProfile{"empty_driveruri_profile4", "", "bar://:memory:", "prod-empty"})
+        .WithExpected("bar", "bar://:memory:"),
+
+    // no driver + profile URI + no profile
+    (DriverUriProfile{"empty_profile_empty", "", "profile://prod-sqlite", ""})
+        .WithExpected("sqlite", "file://:memory:"),
+
+    // no driver + profile URI + profile
+    (DriverUriProfile{"empty_profile_profile", "", "profile://prod-sqlite", "profile"})
+        .WithExpectedError(ADBC_STATUS_INVALID_ARGUMENT, kMultipleProfilesError),
+
+    // no driver + URI (not profile or driver) + no profile
+    // ------------------------------------------------------------
+    // there's no driver, so the URI gets treated as the driver (as
+    // otherwise you'd blow up anyways)
+    (DriverUriProfile{"empty_uri_empty", "", "DSN={yes}", ""})
+        .WithExpected("DSN={yes}", "DSN={yes}"),
+
+    // no driver + URI (not profile or driver) + profile
+    // ------------------------------------------------------------
+    (DriverUriProfile{"empty_uri_profile1", "", "DSN={yes}", "prod-driver"})
+        .WithExpected("adbc_driver_sqlite", "DSN={yes}"),
+    (DriverUriProfile{"empty_uri_profile2", "", "DSN={yes}", "prod-driver-uri"})
+        .WithExpected("adbc_driver_sqlite", "DSN={yes}"),
+    (DriverUriProfile{"empty_uri_profile3", "", "DSN={yes}", "prod-uri"})
+        .WithExpected("DSN={yes}", "DSN={yes}"),
+
+    // driver + no URI + no profile
+    // ------------------------------------------------------------
+    (DriverUriProfile{"driver_empty_empty", "sqlite", "", ""}).WithExpected("sqlite", ""),
+
+    // driver + no URI + profile
+    // ------------------------------------------------------------
+    (DriverUriProfile{"driver_empty_profile1", "sqlite", "", "prod-sqlite"})
+        .WithExpected("sqlite", "file://:memory:"),
+    (DriverUriProfile{"driver_empty_profile2", "sqlite", "", "prod-driver-uri"})
+        .WithExpectedError(
+            ADBC_STATUS_INVALID_ARGUMENT,
+            "Profile `prod-driver-uri` specifies driver `adbc_driver_sqlite` which does "
+            "not match requested driver `sqlite`"),
+
+    // driver + URI + no profile
+    // ------------------------------------------------------------
+    (DriverUriProfile{"driver_driveruri_empty", "sqlite", "postgres://bar", ""})
+        .WithExpected("sqlite", "postgres://bar"),
+
+    // driver + URI + profile
+    // ------------------------------------------------------------
+    (DriverUriProfile{"driver_driveruri_profile1", "sqlite", "postgres://bar",
+                      "prod-sqlite"})
+        .WithExpected("sqlite", "postgres://bar"),
+    (DriverUriProfile{"driver_driveruri_profile2", "adbc_driver_sqlite", "postgres://bar",
+                      "prod-driver-uri"})
+        .WithExpected("adbc_driver_sqlite", "postgres://bar"),
+
+    // driver + profile URI + no profile
+    // ------------------------------------------------------------
+    (DriverUriProfile{"driver_profile_empty1", "sqlite", "profile://prod-sqlite", ""})
+        .WithExpected("sqlite", "file://:memory:"),
+    (DriverUriProfile{"driver_profile_empty2", "postgres", "profile://prod-sqlite", ""})
+        .WithExpectedError(ADBC_STATUS_INVALID_ARGUMENT,
+                           "Profile `prod-sqlite` specifies driver `sqlite` which does "
+                           "not match requested driver `postgres`"),
+
+    // driver + profile URI + profile
+    // ------------------------------------------------------------
+    (DriverUriProfile{"driver_profile_profile", "sqlite", "profile://prod-sqlite",
+                      "prod-sqlite"})
+        .WithExpectedError(ADBC_STATUS_INVALID_ARGUMENT, kMultipleProfilesError),
+
+    // driver + URI (not profile or driver) + no profile
+    // ------------------------------------------------------------
+    (DriverUriProfile{"driver_uri_empty", "sqlite", "DSN={yes}", ""})
+        .WithExpected("sqlite", "DSN={yes}"),
+
+    // driver + URI (not profile or driver) + profile
+    // ------------------------------------------------------------
+    (DriverUriProfile{"driver_uri_profile1", "sqlite", "DSN={yes}", "prod-sqlite"})
+        .WithExpected("sqlite", "DSN={yes}"),
+    (DriverUriProfile{"driver_uri_profile2", "sqlite", "DSN={yes}", "prod-driver"})
+        .WithExpectedError(ADBC_STATUS_INVALID_ARGUMENT,
+                           "Profile `prod-driver` specifies driver `adbc_driver_sqlite` "
+                           "which does not match requested driver `sqlite`"),
+
+    // URI in driver + no URI + no profile
+    // ------------------------------------------------------------
+    (DriverUriProfile{"driveruri_empty_empty", "sqlite://foo", "", ""})
+        .WithExpected("sqlite", "sqlite://foo"),
+
+    // URI in driver + no URI + profile
+    // ------------------------------------------------------------
+    // this fails because we validate the profile's driver against
+    // the requested driver immediately, without doing further
+    // parsing (they would resolve to the same thing if we did
+    // parse the URIs but that's additional edge cases)
+    (DriverUriProfile{"driveruri_empty_profile1", "sqlite://foo", "", "prod-sqlite"})
+        .WithExpectedError(ADBC_STATUS_INVALID_ARGUMENT,
+                           "Profile `prod-sqlite` specifies driver `sqlite` which does "
+                           "not match requested driver `sqlite://foo`"),
+    (DriverUriProfile{"driveruri_empty_profile2", "sqlite://foo", "", "prod-uri"})
+        .WithExpected("sqlite", "sqlite://foo"),
+    (DriverUriProfile{"driveruri_empty_profile3", "sqlite://foo", "", "prod-driver-uri"})
+        .WithExpectedError(
+            ADBC_STATUS_INVALID_ARGUMENT,
+            "Profile `prod-driver-uri` specifies driver `adbc_driver_sqlite` which does "
+            "not match requested driver `sqlite://foo`"),
+
+    // URI in driver + URI + no profile
+    // ------------------------------------------------------------
+    // TODO: I think URI should take precedence here
+    (DriverUriProfile{"driveruri_driver_empty", "sqlite://foo", "sqlite://bar", ""})
+        .WithExpected("sqlite", "sqlite://foo"),
+
+    // URI in driver + URI + profile
+    // ------------------------------------------------------------
+    (DriverUriProfile{"driveruri_driver_profile1", "sqlite://foo", "sqlite://bar",
+                      "prod-sqlite"})
+        .WithExpectedError(ADBC_STATUS_INVALID_ARGUMENT,
+                           "Profile `prod-sqlite` specifies driver `sqlite` which does "
+                           "not match requested driver `sqlite://foo`"),
+
+    // URI in driver + profile URI + no profile
+    // ------------------------------------------------------------
+    (DriverUriProfile{"driveruri_profile_empty", "sqlite://foo", "profile://prod-sqlite",
+                      ""})
+        .WithExpectedError(ADBC_STATUS_INVALID_ARGUMENT,
+                           "Profile `prod-sqlite` specifies driver `sqlite` which does "
+                           "not match requested driver `sqlite://foo`"),
+
+    // URI in driver + profile URI + profile
+    // ------------------------------------------------------------
+    (DriverUriProfile{"driveruri_profile_profile1", "sqlite://foo",
+                      "profile://prod-sqlite", "prod-sqlite"})
+        .WithExpectedError(ADBC_STATUS_INVALID_ARGUMENT, kMultipleProfilesError),
+
+    // URI in driver + URI (not profile or driver) + no profile
+    // ------------------------------------------------------------
+    // TODO: I think URI should take precedence here
+    (DriverUriProfile{"driveruri_uri_empty", "sqlite://foo", "DSN={yes}", ""})
+        .WithExpected("sqlite", "sqlite://foo"),
+
+    // URI in driver + URI (not profile or driver) + profile
+    // ------------------------------------------------------------
+    (DriverUriProfile{"driveruri_uri_profile1", "sqlite://foo", "DSN={yes}",
+                      "prod-sqlite"})
+        .WithExpectedError(ADBC_STATUS_INVALID_ARGUMENT,
+                           "Profile `prod-sqlite` specifies driver `sqlite` which does "
+                           "not match requested driver `sqlite://foo`"),
+
+    // profile URI in driver + no URI + no profile
+    // ------------------------------------------------------------
+    (DriverUriProfile{"profile_empty_empty", "profile://prod-sqlite", "", ""})
+        .WithExpected("sqlite", "file://:memory:"),
+
+    // profile URI in driver + no URI + profile
+    // ------------------------------------------------------------
+    (DriverUriProfile{"profile_empty_profile", "profile://prod-sqlite", "",
+                      "prod-sqlite"})
+        .WithExpectedError(ADBC_STATUS_INVALID_ARGUMENT, kMultipleProfilesError),
+
+    // profile URI in driver + driver URI + no profile
+    // ------------------------------------------------------------
+    (DriverUriProfile{"profile_driveruri_empty", "profile://prod-sqlite", "sqlite://foo",
+                      ""})
+        .WithExpected("sqlite", "sqlite://foo"),
+
+    // profile URI in driver + driver URI + profile
+    // ------------------------------------------------------------
+    (DriverUriProfile{"profile_driveruri_profile", "profile://prod-sqlite",
+                      "sqlite://foo", "prod-sqlite"})
+        .WithExpectedError(ADBC_STATUS_INVALID_ARGUMENT, kMultipleProfilesError),
+
+    // profile URI in driver + profile URI + no profile
+    // ------------------------------------------------------------
+    (DriverUriProfile{"profile_profile_empty", "profile://prod-sqlite",
+                      "profile://prod-sqlite", ""})
+        .WithExpectedError(ADBC_STATUS_INVALID_ARGUMENT, kMultipleProfilesError),
+
+    // profile URI in driver + profile URI + profile
+    // ------------------------------------------------------------
+    (DriverUriProfile{"profile_profile_profile", "profile://prod-sqlite",
+                      "profile://prod-sqlite", "prod-sqlite"})
+        .WithExpectedError(ADBC_STATUS_INVALID_ARGUMENT, kMultipleProfilesError),
+
+    // profile URI in driver + URI (not profile or driver) + no profile
+    // ------------------------------------------------------------
+    (DriverUriProfile{"profile_uri_empty", "profile://prod-sqlite", "DSN={yes}", ""})
+        .WithExpected("sqlite", "DSN={yes}"),
+
+    // profile URI in driver + URI (not profile or driver) + profile
+    // ------------------------------------------------------------
+    (DriverUriProfile{"profile_uri_profile", "profile://prod-sqlite", "DSN={yes}",
+                      "prod-sqlite"})
+        .WithExpectedError(ADBC_STATUS_INVALID_ARGUMENT, kMultipleProfilesError),
+};
+
+INSTANTIATE_TEST_SUITE_P(
+    ValidateOptions, DriverUriProfileTest, testing::ValuesIn(kOptionsValues),
+    [](const testing::TestParamInfo<DriverUriProfileTest::ParamType>& info) {
+      return info.param.name;
+    });
 
 }  // namespace adbc

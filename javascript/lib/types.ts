@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { RecordBatch, RecordBatchReader, Table, Schema } from 'apache-arrow'
+import { RecordBatchReader, Table, Schema } from 'apache-arrow'
 
 /**
  * Bitmask flags controlling how the driver manager resolves a driver name.
@@ -73,7 +73,7 @@ export type ObjectDepth = (typeof ObjectDepth)[keyof typeof ObjectDepth]
  * Pass a subset to `getInfo()` to retrieve only specific metadata fields.
  *
  * @example
- * const reader = await conn.getInfo([InfoCode.VendorName, InfoCode.DriverVersion])
+ * const table = await conn.getInfo([InfoCode.VendorName, InfoCode.DriverVersion])
  */
 export const InfoCode = {
   /** The database vendor/product name (string). */
@@ -118,7 +118,7 @@ export interface ConnectOptions {
    * - URI-style string: `"sqlite:file::memory:"`, `"postgresql://user:pass@host/db"` — the
    *   driver name is the URI scheme and the remainder is passed as the connection URI.
    * - Connection profile URI: `"profile://my_profile"` — loads a named profile from a
-   *   `.toml` file found in {@link searchPaths} or the default search directories.
+   *   `.toml` file found in {@link profileSearchPaths} or the default search directories.
    */
   driver: string
   /**
@@ -127,10 +127,15 @@ export interface ConnectOptions {
    */
   entrypoint?: string
   /**
-   * Additional directories to search for drivers and driver manifest (`.toml`) profile files (optional).
+   * Additional directories to search for drivers and driver manifest (`.toml`) files (optional).
    * Searched before the default system and user configuration directories.
    */
-  searchPaths?: string[]
+  manifestSearchPaths?: string[]
+  /**
+   * Additional directories to search for connection profile (`.toml`) files (optional).
+   * Searched before the default system and user configuration directories.
+   */
+  profileSearchPaths?: string[]
   /**
    * Bitmask controlling how the driver name is resolved (optional).
    * Use the {@link LoadFlags} constants to compose a value.
@@ -142,6 +147,41 @@ export interface ConnectOptions {
    * Key-value pairs passed to the driver during database initialization (e.g., "uri", "username").
    */
   databaseOptions?: Record<string, string>
+}
+
+/**
+ * Ingestion modes for the `ingest` convenience method.
+ *
+ * These correspond to the `adbc.ingest.mode.*` option values in the ADBC spec.
+ *
+ * @example
+ * await conn.ingest('my_table', data, { mode: IngestMode.Append })
+ */
+export const IngestMode = {
+  /** Append to an existing table. Fails if the table does not exist. */
+  Append: 'adbc.ingest.mode.append',
+  /** Create a new table and insert. Fails if the table already exists. */
+  Create: 'adbc.ingest.mode.create',
+  /** Create the table if it does not exist, then append. */
+  CreateAppend: 'adbc.ingest.mode.create_append',
+  /** Drop the existing table (if any) and recreate it, then insert. */
+  Replace: 'adbc.ingest.mode.replace',
+} as const
+export type IngestMode = (typeof IngestMode)[keyof typeof IngestMode]
+
+/** Options for the `ingest` convenience method. */
+export interface IngestOptions {
+  /**
+   * How to handle an existing table.
+   * Defaults to {@link IngestMode.Create}.
+   */
+  mode?: IngestMode
+  /** The catalog to create/locate the target table in (optional). */
+  catalog?: string
+  /** The database schema to create/locate the target table in (optional). */
+  dbSchema?: string
+  /** Whether to ingest into a temporary table (optional). */
+  temporary?: boolean
 }
 
 /** Options for getObjects metadata call. */
@@ -225,9 +265,9 @@ export interface AdbcConnection {
    * Get a hierarchical view of database objects (catalogs, schemas, tables, columns).
    *
    * @param options Filtering options for the metadata query.
-   * @returns A RecordBatchReader containing the metadata.
+   * @returns A Promise resolving to an Apache Arrow Table containing the metadata.
    */
-  getObjects(options?: GetObjectsOptions): Promise<RecordBatchReader>
+  getObjects(options?: GetObjectsOptions): Promise<Table>
 
   /**
    * Get the Arrow schema for a specific table.
@@ -243,32 +283,72 @@ export interface AdbcConnection {
   /**
    * Get a list of table types supported by the database.
    *
-   * @returns A RecordBatchReader containing a single string column of table types.
+   * @returns A Promise resolving to an Apache Arrow Table with a single string column of table types.
    */
-  getTableTypes(): Promise<RecordBatchReader>
+  getTableTypes(): Promise<Table>
 
   /**
    * Get metadata about the driver and database.
    *
    * @param infoCodes Optional list of info codes to retrieve. Use the {@link InfoCode} constants.
    *   If omitted, all available info is returned.
-   * @returns A RecordBatchReader containing the requested metadata info.
+   * @returns A Promise resolving to an Apache Arrow Table containing the requested metadata info.
    */
-  getInfo(infoCodes?: InfoCode[]): Promise<RecordBatchReader>
+  getInfo(infoCodes?: InfoCode[]): Promise<Table>
 
   /**
-   * Execute a SQL query and return the results as a RecordBatchReader.
+   * Execute a SQL query and return all results as an Arrow Table.
    *
    * Convenience method that creates a statement, sets the SQL, optionally binds
-   * parameters, executes the query, and closes the statement. The reader remains
-   * valid after the statement is closed because the underlying iterator holds its
-   * own reference to the native resources.
+   * parameters, executes the query, and closes the statement.
+   * For large result sets, use {@link queryStream} to avoid loading everything into memory.
    *
    * @param sql The SQL query to execute.
-   * @param params Optional Arrow RecordBatch or Table to bind as parameters.
+   * @param params Optional Arrow Table to bind as parameters.
+   * @returns A Promise resolving to an Apache Arrow Table.
+   */
+  query(sql: string, params?: Table): Promise<Table>
+
+  /**
+   * Execute a SQL query and return the results as a RecordBatchReader for streaming.
+   *
+   * Use this instead of {@link query} when working with large result sets that should
+   * not be fully loaded into memory. The reader remains valid after the statement is
+   * closed because the underlying iterator holds its own reference to the native resources.
+   *
+   * @param sql The SQL query to execute.
+   * @param params Optional Arrow Table to bind as parameters.
    * @returns A Promise resolving to an Apache Arrow RecordBatchReader.
    */
-  query(sql: string, params?: RecordBatch | Table): Promise<RecordBatchReader>
+  queryStream(sql: string, params?: Table): Promise<RecordBatchReader>
+
+  /**
+   * Ingest Arrow data into a database table.
+   *
+   * Convenience method that sets the ingestion options, binds the data, and
+   * calls executeUpdate. Depending on the driver, this can avoid per-row
+   * overhead compared to a prepare-bind-insert loop.
+   *
+   * @param tableName The target table name.
+   * @param data Arrow Table to ingest.
+   * @param options Ingestion options (mode, catalog, dbSchema, temporary).
+   * @returns A Promise resolving to the number of rows ingested, or -1 if unknown.
+   */
+  ingest(tableName: string, data: Table, options?: IngestOptions): Promise<number>
+
+  /**
+   * Ingest Arrow data from a stream into a database table.
+   *
+   * Unlike {@link ingest}, this method streams data batch-by-batch, avoiding
+   * full materialization in memory. Use this for large datasets that should
+   * not be buffered entirely.
+   *
+   * @param tableName The target table name.
+   * @param reader Arrow RecordBatchReader to stream.
+   * @param options Ingestion options (mode, catalog, dbSchema, temporary).
+   * @returns A Promise resolving to the number of rows ingested, or -1 if unknown.
+   */
+  ingestStream(tableName: string, reader: RecordBatchReader, options?: IngestOptions): Promise<number>
 
   /**
    * Execute a SQL statement (INSERT, UPDATE, DELETE, DDL) and return the row count.
@@ -277,10 +357,10 @@ export interface AdbcConnection {
    * parameters, executes the update, and closes the statement.
    *
    * @param sql The SQL statement to execute.
-   * @param params Optional Arrow RecordBatch or Table to bind as parameters.
+   * @param params Optional Arrow Table to bind as parameters.
    * @returns A Promise resolving to the number of rows affected, or -1 if unknown.
    */
-  execute(sql: string, params?: RecordBatch | Table): Promise<number>
+  execute(sql: string, params?: Table): Promise<number>
 
   /**
    * Commit any pending transactions.
@@ -340,12 +420,21 @@ export interface AdbcStatement {
   /**
    * Bind parameters or data for ingestion.
    *
-   * This binds an Arrow RecordBatch or Table to the statement.
    * This is used for bulk ingestion or parameterized queries.
    *
-   * @param data Arrow RecordBatch or Table containing the data to bind.
+   * @param data Arrow Table containing the data to bind.
    */
-  bind(data: RecordBatch | Table): Promise<void>
+  bind(data: Table): Promise<void>
+
+  /**
+   * Bind a stream of data for ingestion or parameterized queries.
+   *
+   * Streams batches one at a time to the driver, avoiding full
+   * materialization of the reader in memory.
+   *
+   * @param reader Arrow RecordBatchReader to bind.
+   */
+  bindStream(reader: RecordBatchReader): Promise<void>
 
   /**
    * Close the statement and release resources.

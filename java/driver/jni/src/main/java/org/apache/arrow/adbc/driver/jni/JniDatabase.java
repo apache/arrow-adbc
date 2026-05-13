@@ -20,6 +20,7 @@ package org.apache.arrow.adbc.driver.jni;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcException;
+import org.apache.arrow.adbc.core.TypedKey;
 import org.apache.arrow.adbc.driver.jni.impl.JniLoader;
 import org.apache.arrow.adbc.driver.jni.impl.NativeDatabaseHandle;
 import org.apache.arrow.memory.BufferAllocator;
@@ -41,5 +42,60 @@ public class JniDatabase implements AdbcDatabase {
   @Override
   public void close() {
     handle.close();
+  }
+
+  @Override
+  public <T> T getOption(TypedKey<T> key) throws AdbcException {
+    if (key.getType() == String.class) {
+      return key.cast(JniLoader.INSTANCE.databaseGetOptionString(handle, key.getKey()));
+    } else if (key.getType() == Integer.class) {
+      return key.cast((int) JniLoader.INSTANCE.databaseGetOptionLong(handle, key.getKey()));
+    } else if (key.getType() == Long.class) {
+      return key.cast(JniLoader.INSTANCE.databaseGetOptionLong(handle, key.getKey()));
+    } else if (key.getType() == Float.class) {
+      return key.cast((float) JniLoader.INSTANCE.databaseGetOptionDouble(handle, key.getKey()));
+    } else if (key.getType() == Double.class) {
+      return key.cast(JniLoader.INSTANCE.databaseGetOptionDouble(handle, key.getKey()));
+    } else if (key.getType() == Boolean.class) {
+      String value = JniLoader.INSTANCE.databaseGetOptionString(handle, key.getKey());
+      if (value == null) {
+        return null;
+      } else if ("true".equalsIgnoreCase(value)) {
+        return key.cast(Boolean.TRUE);
+      } else if ("false".equalsIgnoreCase(value)) {
+        return key.cast(Boolean.FALSE);
+      } else {
+        throw AdbcException.invalidArgument(
+            "[jni] invalid boolean value for option " + key.getKey() + ": " + value);
+      }
+    } else if (key.getType() == byte[].class) {
+      return key.cast(JniLoader.INSTANCE.databaseGetOptionBytes(handle, key.getKey()));
+    }
+    return AdbcDatabase.super.getOption(key);
+  }
+
+  @Override
+  public <T> void setOption(TypedKey<T> key, T value) throws AdbcException {
+    if (value instanceof String) {
+      JniLoader.INSTANCE.databaseSetOptionString(handle, key.getKey(), (String) value);
+    } else if (value == null) {
+      JniLoader.INSTANCE.databaseSetOptionString(handle, key.getKey(), null);
+    } else if (value instanceof Integer) {
+      JniLoader.INSTANCE.databaseSetOptionLong(handle, key.getKey(), (Integer) value);
+    } else if (value instanceof Long) {
+      JniLoader.INSTANCE.databaseSetOptionLong(handle, key.getKey(), (Long) value);
+    } else if (value instanceof Float) {
+      JniLoader.INSTANCE.databaseSetOptionDouble(handle, key.getKey(), (Float) value);
+    } else if (value instanceof Double) {
+      JniLoader.INSTANCE.databaseSetOptionDouble(handle, key.getKey(), (Double) value);
+    } else if (value instanceof Boolean) {
+      JniLoader.INSTANCE.databaseSetOptionString(
+          handle, key.getKey(), ((Boolean) value) ? "true" : "false");
+    } else if (value instanceof byte[]) {
+      JniLoader.INSTANCE.databaseSetOptionBytes(handle, key.getKey(), (byte[]) value);
+    } else {
+      throw AdbcException.invalidArgument(
+          "[jni] unsupported database option type " + value.getClass());
+    }
   }
 }

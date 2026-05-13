@@ -1,0 +1,10 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "entryPoints": ["lib/index.ts", "lib/types.ts", "lib/error.ts"],
+  "out": "typedoc",
+  "json": "typedoc/typedoc.json",
+  "name": "ADBC JavaScript Driver Manager",
+  "skipErrorChecking": true,
+  "excludeInternal": true,
+  "sort": ["source-order"]
+}

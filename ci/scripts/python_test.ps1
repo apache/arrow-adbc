@@ -24,10 +24,8 @@ $InstallDir = if ($Args[2] -ne $null) { $Args[2] } else { Join-Path $BuildDir "l
 
 $BuildAll = $env:BUILD_ALL -ne "0"
 $BuildDriverManager = ($BuildAll -and (-not ($env:BUILD_DRIVER_MANAGER -eq "0"))) -or ($env:BUILD_DRIVER_MANAGER -eq "1")
-$BuildDriverBigQuery = ($BuildAll -and (-not ($env:BUILD_DRIVER_BIGQUERY -eq "0"))) -or ($env:BUILD_DRIVER_BIGQUERY -eq "1")
 $BuildDriverFlightSql = ($BuildAll -and (-not ($env:BUILD_DRIVER_FLIGHTSQL -eq "0"))) -or ($env:BUILD_DRIVER_FLIGHTSQL -eq "1")
 $BuildDriverPostgreSQL = ($BuildAll -and (-not ($env:BUILD_DRIVER_POSTGRESQL -eq "0"))) -or ($env:BUILD_DRIVER_POSTGRESQL -eq "1")
-$BuildDriverSnowflake = ($BuildAll -and (-not ($env:BUILD_DRIVER_SNOWFLAKE -eq "0"))) -or ($env:BUILD_DRIVER_SNOWFLAKE -eq "1")
 $BuildDriverSqlite = ($BuildAll -and (-not ($env:BUILD_DRIVER_SQLITE -eq "0"))) -or ($env:BUILD_DRIVER_SQLITE -eq "1")
 
 function Build-Subproject {
@@ -56,9 +54,6 @@ if ($BuildDriverManager) {
     $env:PATH += ";$($SqliteDir)"
     Build-Subproject adbc_driver_manager
 }
-if ($BuildDriverBigQuery) {
-    Build-Subproject adbc_driver_bigquery
-}
 if ($BuildDriverFlightSql) {
     Build-Subproject adbc_driver_flightsql
 }
@@ -67,7 +62,4 @@ if ($BuildDriverPostgreSQL) {
 }
 if ($BuildDriverSqlite) {
     Build-Subproject adbc_driver_sqlite
-}
-if ($BuildDriverSnowflake) {
-    Build-Subproject adbc_driver_snowflake
 }

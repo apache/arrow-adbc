@@ -249,7 +249,7 @@ install_dotnet() {
   if command -v dotnet; then
     show_info "Found $(dotnet --version) at $(which dotnet)"
 
-    if dotnet --version | grep --quiet --fixed-string 8.0; then
+    if dotnet --version | grep --quiet --fixed-string 10.0; then
         local csharp_bin=$(dirname $(which dotnet))
         show_info "Found C# at $(which csharp) (.NET $(dotnet --version))"
         DOTNET_ALREADY_INSTALLED=1
@@ -260,7 +260,7 @@ install_dotnet() {
   show_info "dotnet found but it is the wrong version or dotnet not found"
 
   local csharp_bin=${ARROW_TMPDIR}/csharp/bin
-  local dotnet_version=8.0.204
+  local dotnet_version=10.0.203
   local dotnet_platform=
   case "$(uname)" in
       Linux)
@@ -530,6 +530,7 @@ test_cpp() {
     export CMAKE_PREFIX_PATH="${CONDA_BACKUP_CMAKE_PREFIX_PATH}:${CMAKE_PREFIX_PATH}"
     # The CMake setup forces RPATH to be the Conda prefix
     export CPP_INSTALL_PREFIX="${CONDA_PREFIX}"
+    export CONDA_BUILD=1
   else
     export CPP_INSTALL_PREFIX="${ARROW_TMPDIR}/local"
   fi
@@ -545,12 +546,9 @@ test_cpp() {
   export BUILD_DRIVER_FLIGHTSQL=0
   # PostgreSQL driver requires running database for testing
   export BUILD_DRIVER_POSTGRESQL=0
-  # Snowflake driver requires snowflake creds for testing
-  export BUILD_DRIVER_SNOWFLAKE=0
   "${ADBC_DIR}/ci/scripts/cpp_test.sh" "${ARROW_TMPDIR}/cpp-build" "${CPP_INSTALL_PREFIX}"
   export BUILD_DRIVER_FLIGHTSQL=1
   export BUILD_DRIVER_POSTGRESQL=1
-  export BUILD_DRIVER_SNOWFLAKE=1
 }
 
 test_java() {
@@ -568,13 +566,13 @@ test_python() {
 
   # Build and test Python
   maybe_setup_virtualenv cython duckdb pandas polars protobuf pyarrow pytest setuptools_scm setuptools importlib_resources || exit 1
-  # XXX: pin Python for now since various other packages haven't caught up
-  maybe_setup_conda --file "${ADBC_DIR}/ci/conda_env_python.txt" python=3.12 || exit 1
+  maybe_setup_conda --file "${ADBC_DIR}/ci/conda_env_python.txt" || exit 1
 
   if [ "${USE_CONDA}" -gt 0 ]; then
     CMAKE_PREFIX_PATH="${CONDA_BACKUP_CMAKE_PREFIX_PATH}:${CMAKE_PREFIX_PATH}"
     # The CMake setup forces RPATH to be the Conda prefix
     local -r install_prefix="${CONDA_PREFIX}"
+    export _ADBC_IS_CONDA=1
   else
     local -r install_prefix="${ARROW_TMPDIR}/local"
   fi
@@ -598,22 +596,18 @@ test_r() {
   R CMD INSTALL "${ADBC_SOURCE_DIR}/r/adbcdrivermanager" --preclean --library="${ARROW_TMPDIR}/r/tmplib"
   R CMD INSTALL "${ADBC_SOURCE_DIR}/r/adbcsqlite" --preclean --library="${ARROW_TMPDIR}/r/tmplib"
   R CMD INSTALL "${ADBC_SOURCE_DIR}/r/adbcpostgresql" --preclean --library="${ARROW_TMPDIR}/r/tmplib"
-  R CMD INSTALL "${ADBC_SOURCE_DIR}/r/adbcsnowflake" --preclean --library="${ARROW_TMPDIR}/r/tmplib"
 
   pushd "${ARROW_TMPDIR}/r"
   R CMD build "${ADBC_SOURCE_DIR}/r/adbcdrivermanager"
   R CMD build "${ADBC_SOURCE_DIR}/r/adbcsqlite"
   R CMD build "${ADBC_SOURCE_DIR}/r/adbcpostgresql"
-  R CMD build "${ADBC_SOURCE_DIR}/r/adbcsnowflake"
   local -r adbcdrivermanager_tar_gz="$(ls adbcdrivermanager_*.tar.gz)"
   local -r adbcsqlite_tar_gz="$(ls adbcsqlite_*.tar.gz)"
   local -r adbcpostgresql_tar_gz="$(ls adbcpostgresql_*.tar.gz)"
-  local -r adbcsnowflake_tar_gz="$(ls adbcsnowflake_*.tar.gz)"
 
   R_LIBS_USER="${ARROW_TMPDIR}/r/tmplib" R CMD check "${adbcdrivermanager_tar_gz}" --no-manual
   R_LIBS_USER="${ARROW_TMPDIR}/r/tmplib" R CMD check "${adbcsqlite_tar_gz}" --no-manual
   R_LIBS_USER="${ARROW_TMPDIR}/r/tmplib" R CMD check "${adbcpostgresql_tar_gz}" --no-manual
-  R_LIBS_USER="${ARROW_TMPDIR}/r/tmplib" R CMD check "${adbcsnowflake_tar_gz}" --no-manual
   popd
 }
 
@@ -701,7 +695,6 @@ test_rust() {
   maybe_setup_conda rust || exit 1
 
   # We expect the C++ libraries to exist.
-  export ADBC_SNOWFLAKE_GO_LIB_DIR="${CPP_INSTALL_PREFIX}/lib"
   # XXX(https://github.com/apache/arrow-adbc/issues/3288)
   if [[ -n "${CC}" ]]; then
       export RUSTDOCFLAGS="-Clinker=${CC}"

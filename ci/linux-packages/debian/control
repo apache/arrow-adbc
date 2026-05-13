@@ -34,7 +34,7 @@ Build-Depends:
 Standards-Version: 4.5.0
 Homepage: https://arrow.apache.org/adbc/
 
-Package: libadbc-driver-manager111
+Package: libadbc-driver-manager112
 Section: libs
 Architecture: any
 Multi-Arch: same
@@ -52,12 +52,12 @@ Architecture: any
 Multi-Arch: same
 Depends:
   ${misc:Depends},
-  libadbc-driver-manager111 (= ${binary:Version})
+  libadbc-driver-manager112 (= ${binary:Version})
 Description: Apache Arrow Database Connectivity (ADBC) driver manager
  .
  This package provides C++ header files.
 
-Package: libadbc-driver-postgresql111
+Package: libadbc-driver-postgresql112
 Section: libs
 Architecture: any
 Multi-Arch: same
@@ -75,12 +75,12 @@ Architecture: any
 Multi-Arch: same
 Depends:
   ${misc:Depends},
-  libadbc-driver-postgresql111 (= ${binary:Version})
+  libadbc-driver-postgresql112 (= ${binary:Version})
 Description: Apache Arrow Database Connectivity (ADBC) PostgreSQL driver
  .
  This package provides CMake package, pkg-config package and so on.
 
-Package: libadbc-driver-sqlite111
+Package: libadbc-driver-sqlite112
 Section: libs
 Architecture: any
 Multi-Arch: same
@@ -98,12 +98,12 @@ Architecture: any
 Multi-Arch: same
 Depends:
   ${misc:Depends},
-  libadbc-driver-sqlite111 (= ${binary:Version})
+  libadbc-driver-sqlite112 (= ${binary:Version})
 Description: Apache Arrow Database Connectivity (ADBC) SQLite driver
  .
  This package provides CMake package, pkg-config package and so on.
 
-Package: libadbc-driver-flightsql111
+Package: libadbc-driver-flightsql112
 Section: libs
 Architecture: any
 Multi-Arch: same
@@ -121,34 +121,10 @@ Architecture: any
 Multi-Arch: same
 Depends:
   ${misc:Depends},
-  libadbc-driver-flightsql111 (= ${binary:Version})
+  libadbc-driver-flightsql112 (= ${binary:Version})
 Description: Apache Arrow Database Connectivity (ADBC) Flight SQL driver
  .
  This package provides CMake package, pkg-config package and so on.
-
-Package: libadbc-driver-snowflake111
-Section: libs
-Architecture: any
-Multi-Arch: same
-Pre-Depends: ${misc:Pre-Depends}
-Depends:
-  ${misc:Depends},
-  ${shlibs:Depends}
-Description: Apache Arrow Database Connectivity (ADBC) Snowflake driver
- .
- This package provides an ADBC driver for Snowflake
-
-Package: libadbc-driver-snowflake-dev
-Section: libdevel
-Architecture: any
-Multi-Arch: same
-Depends:
-  ${misc:Depends},
-  libadbc-driver-snowflake111 (= ${binary:Version})
-Description: Apache Arrow Database Connectivity (ADBC) Snowflake driver
- .
- This package provides CMake package, pkg-config package and so on.
-
 
 Package: libadbc-glib1
 Section: libs
@@ -158,7 +134,7 @@ Pre-Depends: ${misc:Pre-Depends}
 Depends:
   ${misc:Depends},
   ${shlibs:Depends},
-  libadbc-driver-manager111 (= ${binary:Version})
+  libadbc-driver-manager112 (= ${binary:Version})
 Description: Apache Arrow Database Connectivity (ADBC) driver manager
  .
  This package provides GLib based library files.

@@ -50,21 +50,71 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        dotnet: ['8.0.x']
+        dotnet: ['8.0.x', '10.0.x']
         os: [ubuntu-latest, windows-2022, macos-15-intel, macos-latest]
     steps:
       - name: Install C#
-        uses: actions/setup-dotnet@v5
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
         with:
           dotnet-version: ${{ matrix.dotnet }}
       - name: Checkout ADBC
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           submodules: recursive
+          persist-credentials: false
       - name: Build
         shell: bash
         run: ci/scripts/csharp_build.sh $(pwd)
       - name: Test
         shell: bash
         run: ci/scripts/csharp_test.sh $(pwd)
+
+  # TODO: Create a test fixture driver to use for interop testing as the
+  # real drivers have migrated to https://github.com/adbc-drivers
+
+  # Publishes the Apache driver as a NativeAOT shared library (net10) and
+  # loads it from Python via adbc_driver_manager to catch AOT regressions
+  # (trim-unsafe reflection, missing exports, broken C-ABI marshaling).
+  # Windows-only for now; the smoke test only exercises Windows paths.
+  csharp-aot:
+    name: "C# NativeAOT smoke test (windows-2022)"
+    runs-on: windows-2022
+    # if: ${{ !contains(github.event.pull_request.title, 'WIP') }}
+    if: false
+    timeout-minutes: 30
+    steps:
+      - name: Checkout ADBC
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          persist-credentials: false
+      - name: Install .NET 10
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
+        with:
+          # NativeAOT for our producer requires net10. Using 10.0.x selects
+          # the latest available SDK; preview tags may be needed until GA.
+          dotnet-version: '10.0.x'
+      - name: Setup MSVC (for NativeAOT linker)
+        # Third-party action; activates vcvars64 so ilc's downstream
+        # link.exe step can find link.exe/lib.exe and the Windows SDK.
+        # The existing workflow only uses first-party actions, so flag
+        # this for review before enabling.
+        uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756  # v1
+      - name: Publish NativeAOT driver
+        shell: bash
+        run: |
+          dotnet publish \
+            csharp/src/Drivers/Apache/Apache.Arrow.Adbc.Drivers.Apache.Native/Apache.Arrow.Adbc.Drivers.Apache.Native.csproj \
+            -c Release -r win-x64
+      - name: Install Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: '3.11'
+      - name: Install Python dependencies
+        shell: bash
+        run: python -m pip install adbc_driver_manager
+      - name: Run Python smoke test
+        shell: bash
+        run: python csharp/src/Drivers/Apache/Apache.Arrow.Adbc.Drivers.Apache.Native/smoke_test.py

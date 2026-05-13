@@ -25,7 +25,7 @@
 set -euo pipefail
 
 : ${JDK:=21}
-: ${MAVEN:=3.9.13}
+: ${MAVEN:=3.9.15}
 
 main() {
     local -r source_dir="${1}"
@@ -56,6 +56,7 @@ main() {
         libgtest-dev \
         libpq-dev \
         libsqlite3-dev \
+        libuv1-dev \
         lsb-release \
         ninja-build \
         pkg-config \
@@ -103,7 +104,7 @@ main() {
     echo "============================================================"
     echo "Installing Maven ${MAVEN}..."
     echo "============================================================"
-    wget -O apache-maven.tar.gz https://dlcdn.apache.org/maven/maven-3/${MAVEN}/binaries/apache-maven-${MAVEN}-bin.tar.gz
+    wget -O apache-maven.tar.gz https://www.apache.org/dyn/closer.lua/maven/maven-3/${MAVEN}/binaries/apache-maven-${MAVEN}-bin.tar.gz?action=download
     mkdir -p /opt/maven
     tar -C /opt/maven -xzvf apache-maven.tar.gz --strip-components=1
     export PATH=/opt/maven/bin:$PATH

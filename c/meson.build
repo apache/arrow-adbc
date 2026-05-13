@@ -19,7 +19,7 @@ project(
     'arrow-adbc',
     'c',
     'cpp',
-    version: '1.11.0-SNAPSHOT',
+    version: '1.12.0-SNAPSHOT',
     license: 'Apache-2.0',
     meson_version: '>=1.3.0',
     default_options: [
@@ -73,10 +73,6 @@ subdir('driver/common')
 subdir('driver/framework')
 subdir('validation')
 
-if get_option('bigquery').enabled()
-    subdir('driver/bigquery')
-endif
-
 if get_option('flightsql').enabled()
     subdir('driver/flightsql')
 endif
@@ -87,8 +83,4 @@ endif
 
 if get_option('sqlite').enabled()
     subdir('driver/sqlite')
-endif
-
-if get_option('snowflake').enabled()
-    subdir('driver/snowflake')
 endif

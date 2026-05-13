@@ -61,7 +61,7 @@ jobs:
       matrix:
         rversion: [oldrel, release, devel]
         os: [macOS, windows, ubuntu]
-        pkg: [adbcflightsql, adbcsnowflake, adbcbigquery]
+        pkg: [adbcflightsql]
       max-parallel: 5
       fail-fast: false
 
@@ -73,8 +73,6 @@ jobs:
       # Go based drivers generate WARNINGs because some symbols
       # are linked in that R CMD check does not allow.
       error-on: error
-    secrets:
-      SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
 
   # Check older versions of R on Linux. This catches accidental use of newer R functions.
   # We don't check Go drivers here because they don't have much R API surface area.
@@ -128,8 +126,10 @@ jobs:
       fail-fast: false
 
     steps:
-      - uses: actions/checkout@v6
-      - uses: r-lib/actions/setup-r@6f6e5bc62fba3a704f74e7ad7ef7676c5c6a2590  # v2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - uses: r-lib/actions/setup-r@a51a8012b0aab7c32ef9d19bf54da93f3254335e  # v2.12.0
         with:
           rversion: ${{ matrix.rversion }}
           use-public-rspm: true
@@ -152,7 +152,7 @@ jobs:
           popd
         shell: bash
 
-      - uses: r-lib/actions/setup-r-dependencies@6f6e5bc62fba3a704f74e7ad7ef7676c5c6a2590
+      - uses: r-lib/actions/setup-r-dependencies@a51a8012b0aab7c32ef9d19bf54da93f3254335e
         with:
           working-directory: r/${{ matrix.pkg }}
 

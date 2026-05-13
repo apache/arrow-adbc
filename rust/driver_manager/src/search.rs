@@ -596,8 +596,15 @@ impl<'a> DriverLibrary<'a> {
                 }
 
                 full_path.set_extension(""); // Remove the extension to try loading as a dynamic library.
-                let result = DriverLibrary::load_library(&full_path)
-                    .map(|library| SearchHit::new(full_path, library, None));
+                let library_path = match DriverLibrary::platform_library_path(&full_path) {
+                    Ok(path) => path,
+                    Err(err) => {
+                        trace.push(err);
+                        return None;
+                    }
+                };
+                let result = DriverLibrary::load_library(&library_path)
+                    .map(|library| SearchHit::new(library_path, library, None));
                 match result {
                     Ok(res) => return Some(Ok(res)),
                     Err(err) => trace.push(err),
@@ -610,6 +617,16 @@ impl<'a> DriverLibrary<'a> {
                     Status::NotFound,
                 ))
             })
+    }
+
+    fn platform_library_path(path: &Path) -> Result<PathBuf> {
+        let file_name = path.file_name().ok_or_else(|| {
+            Error::with_message_and_status(
+                "Driver search path must include a file name",
+                Status::Internal,
+            )
+        })?;
+        Ok(path.with_file_name(libloading::library_filename(file_name)))
     }
 
     /// Construct default entrypoint from the library path.
@@ -845,7 +862,7 @@ fn get_search_paths(lvls: LoadFlags) -> Vec<PathBuf> {
 /// Returns `Status::NotFound` if the profile cannot be located in any search path.
 pub(crate) fn find_filesystem_profile(
     name: &str,
-    additional_path_list: Option<Vec<PathBuf>>,
+    additional_path_list: &Option<Vec<PathBuf>>,
 ) -> Result<PathBuf> {
     // Convert the name to a PathBuf to ensure proper platform-specific path handling.
     // This normalizes forward slashes to backslashes on Windows.
@@ -905,8 +922,8 @@ pub(crate) fn find_filesystem_profile(
 /// # Returns
 ///
 /// A vector of paths to search for profiles, in priority order.
-fn get_profile_search_paths(additional_path_list: Option<Vec<PathBuf>>) -> Vec<PathBuf> {
-    let mut result = additional_path_list.unwrap_or_default();
+fn get_profile_search_paths(additional_path_list: &Option<Vec<PathBuf>>) -> Vec<PathBuf> {
+    let mut result = additional_path_list.clone().unwrap_or_default();
 
     // Add ADBC_PROFILE_PATH environment variable paths
     if let Some(paths) = env::var_os("ADBC_PROFILE_PATH") {
@@ -1419,6 +1436,27 @@ mod tests {
     }
 
     #[test]
+    fn test_load_additional_path_with_platform_library_filename() {
+        let library_path =
+            DriverLibrary::platform_library_path(Path::new("drivers/adbc_driver_test")).unwrap();
+        assert_eq!(
+            library_path.extension(),
+            Some(OsStr::new(env::consts::DLL_EXTENSION))
+        );
+        assert_eq!(
+            library_path,
+            Path::new("drivers").join(libloading::library_filename("adbc_driver_test"))
+        );
+    }
+
+    #[test]
+    fn test_platform_library_path_requires_file_name() {
+        let err = DriverLibrary::platform_library_path(Path::new("")).unwrap_err();
+        assert_eq!(err.status, Status::Internal);
+        assert_eq!(err.message, "Driver search path must include a file name");
+    }
+
+    #[test]
     #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
     fn test_load_non_ascii_path() {
         let p = PathBuf::from("majestik møøse/sqlite.toml");
@@ -1741,7 +1779,7 @@ mod tests {
                 profile_name.to_string()
             };
 
-            let result = find_filesystem_profile(&profile_arg, search_paths);
+            let result = find_filesystem_profile(&profile_arg, &search_paths);
 
             if should_succeed {
                 assert!(
@@ -1793,7 +1831,7 @@ mod tests {
 
         let result = find_filesystem_profile(
             "searched_profile",
-            Some(vec![
+            &Some(vec![
                 tmp_dir1.path().to_path_buf(),
                 tmp_dir2.path().to_path_buf(),
             ]),
@@ -1813,7 +1851,7 @@ mod tests {
             .tempdir()
             .unwrap();
 
-        let paths = get_profile_search_paths(Some(vec![tmp_dir.path().to_path_buf()]));
+        let paths = get_profile_search_paths(&Some(vec![tmp_dir.path().to_path_buf()]));
 
         assert!(paths.contains(&tmp_dir.path().to_path_buf()));
         assert!(!paths.is_empty());
@@ -1823,7 +1861,7 @@ mod tests {
 
     #[test]
     fn test_get_profile_search_paths_empty() {
-        let paths = get_profile_search_paths(None);
+        let paths = get_profile_search_paths(&None);
         // Should still return some paths (env vars, user config, etc.)
         assert!(!paths.is_empty() || paths.is_empty()); // Just verify it doesn't panic
     }

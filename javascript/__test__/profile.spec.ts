@@ -21,7 +21,6 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs'
 import { join, isAbsolute } from 'node:path'
 import { tmpdir } from 'node:os'
 import { AdbcDatabase } from '../lib/index.js'
-import { dumpReader } from './test_utils.js'
 
 const testLib = process.env.ADBC_DRIVER_MANAGER_TEST_LIB
 
@@ -43,19 +42,19 @@ test('profile: load database from profile:// URI', async () => {
     const toml = (p: string) => p.replaceAll('\\', '/')
     writeFileSync(
       join(tmpDir, 'test_sqlite.toml'),
-      `version = 1\ndriver = "${toml(driver)}"\n\n[options]\nuri = "${toml(dbPath)}"\n`,
+      `profile_version = 1\ndriver = "${toml(driver)}"\n\n[Options]\nuri = "${toml(dbPath)}"\n`,
     )
 
     const db = new AdbcDatabase({
       driver: 'profile://test_sqlite',
-      searchPaths: [tmpDir],
+      profileSearchPaths: [tmpDir],
     })
     const conn = await db.connect()
 
-    const rows = await dumpReader(await conn.query('SELECT id, value FROM profile_marker'))
-    assert.strictEqual(rows.length, 1)
-    assert.strictEqual(rows[0].id, 42n)
-    assert.strictEqual(rows[0].value, 'from_profile')
+    const table = await conn.query('SELECT id, value FROM profile_marker')
+    assert.strictEqual(table.numRows, 1)
+    assert.strictEqual(table.getChild('id')?.get(0), 42n)
+    assert.strictEqual(table.getChild('value')?.get(0), 'from_profile')
 
     await conn.close()
     await db.close()

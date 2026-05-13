@@ -23,16 +23,25 @@ import type {
   AdbcStatement as AdbcStatementInterface,
   ConnectOptions,
   GetObjectsOptions,
+  IngestOptions,
 } from './types.js'
-import { LoadFlags, ObjectDepth, InfoCode } from './types.js'
+import { LoadFlags, ObjectDepth, InfoCode, IngestMode } from './types.js'
 
-import { RecordBatchReader, RecordBatch, Table, tableToIPC, Schema } from 'apache-arrow'
+import { RecordBatch, RecordBatchReader, Table, tableToIPC, Schema } from 'apache-arrow'
 import { AdbcError } from './error.js'
 
 // Safely define Symbol.asyncDispose for compatibility with Node.js environments older than v21.
 const asyncDisposeSymbol = (Symbol as any).asyncDispose ?? Symbol('Symbol.asyncDispose')
 
 type NativeIterator = { next(): Promise<Buffer | null | undefined>; close(): void }
+
+async function readerToTable(reader: RecordBatchReader): Promise<Table> {
+  const batches: RecordBatch[] = []
+  for await (const batch of reader) {
+    batches.push(batch)
+  }
+  return new Table(batches)
+}
 
 /**
  * Converts the native result iterator into an Apache Arrow `RecordBatchReader`.
@@ -67,8 +76,8 @@ async function iteratorToReader(iterator: NativeIterator): Promise<RecordBatchRe
 }
 
 // Export Options types, constants, and Error class
-export type { ConnectOptions, GetObjectsOptions }
-export { AdbcError, LoadFlags, ObjectDepth, InfoCode }
+export type { ConnectOptions, GetObjectsOptions, IngestOptions }
+export { AdbcError, LoadFlags, ObjectDepth, InfoCode, IngestMode }
 
 /**
  * Represents an ADBC Database.
@@ -112,6 +121,7 @@ export class AdbcDatabase implements AdbcDatabaseInterface {
 export class AdbcConnection implements AdbcConnectionInterface {
   private _inner: NativeAdbcConnection
 
+  /** @internal */
   constructor(inner: NativeAdbcConnection) {
     this._inner = inner
   }
@@ -141,7 +151,7 @@ export class AdbcConnection implements AdbcConnectionInterface {
     this.setOption('adbc.connection.read_only', enabled ? 'true' : 'false')
   }
 
-  async getObjects(options?: GetObjectsOptions): Promise<RecordBatchReader> {
+  async getObjects(options?: GetObjectsOptions): Promise<Table> {
     try {
       const opts = {
         depth: options?.depth ?? 0,
@@ -152,7 +162,7 @@ export class AdbcConnection implements AdbcConnectionInterface {
         columnName: options?.columnName,
       }
       const iterator = await this._inner.getObjects(opts)
-      return iteratorToReader(iterator as NativeIterator)
+      return readerToTable(await iteratorToReader(iterator as NativeIterator))
     } catch (e) {
       throw AdbcError.fromError(e)
     }
@@ -171,25 +181,29 @@ export class AdbcConnection implements AdbcConnectionInterface {
     }
   }
 
-  async getTableTypes(): Promise<RecordBatchReader> {
+  async getTableTypes(): Promise<Table> {
     try {
       const iterator = await this._inner.getTableTypes()
-      return iteratorToReader(iterator as NativeIterator)
+      return readerToTable(await iteratorToReader(iterator as NativeIterator))
     } catch (e) {
       throw AdbcError.fromError(e)
     }
   }
 
-  async getInfo(infoCodes?: InfoCode[]): Promise<RecordBatchReader> {
+  async getInfo(infoCodes?: InfoCode[]): Promise<Table> {
     try {
       const iterator = await this._inner.getInfo(infoCodes)
-      return iteratorToReader(iterator as NativeIterator)
+      return readerToTable(await iteratorToReader(iterator as NativeIterator))
     } catch (e) {
       throw AdbcError.fromError(e)
     }
   }
 
-  async query(sql: string, params?: RecordBatch | Table): Promise<RecordBatchReader> {
+  async query(sql: string, params?: Table): Promise<Table> {
+    return readerToTable(await this.queryStream(sql, params))
+  }
+
+  async queryStream(sql: string, params?: Table): Promise<RecordBatchReader> {
     const stmt = await this.createStatement()
     try {
       await stmt.setSqlQuery(sql)
@@ -202,7 +216,68 @@ export class AdbcConnection implements AdbcConnectionInterface {
     }
   }
 
-  async execute(sql: string, params?: RecordBatch | Table): Promise<number> {
+  private setIngestOptions(
+    stmt: { setOption(key: string, value: string): void },
+    tableName: string,
+    options?: IngestOptions,
+  ): void {
+    stmt.setOption('adbc.ingest.target_table', tableName)
+    stmt.setOption('adbc.ingest.mode', options?.mode ?? IngestMode.Create)
+    if (options?.catalog !== undefined) {
+      stmt.setOption('adbc.ingest.target_catalog', options.catalog)
+    }
+    if (options?.dbSchema !== undefined) {
+      stmt.setOption('adbc.ingest.target_db_schema', options.dbSchema)
+    }
+    if (options?.temporary === true) {
+      stmt.setOption('adbc.ingest.temporary', 'true')
+    }
+  }
+
+  async ingest(tableName: string, data: Table, options?: IngestOptions): Promise<number> {
+    const stmt = await this.createStatement()
+    try {
+      this.setIngestOptions(stmt, tableName, options)
+      await stmt.bind(data)
+      return await stmt.executeUpdate()
+    } finally {
+      await stmt.close()
+    }
+  }
+
+  async ingestStream(tableName: string, reader: RecordBatchReader, options?: IngestOptions): Promise<number> {
+    const nativeStmt = (await this._inner.createStatement()) as NativeAdbcStatement
+    try {
+      this.setIngestOptions(nativeStmt, tableName, options)
+
+      await reader.open()
+      const schemaTable = new Table(reader.schema, [])
+      const schemaBytes = tableToIPC(schemaTable, 'stream')
+      const promise = nativeStmt.startBindStreamExecute(Buffer.from(schemaBytes))
+
+      let pushError: unknown
+      try {
+        for await (const batch of reader) {
+          const batchBytes = tableToIPC(new Table([batch]), 'stream')
+          nativeStmt.pushBatch(Buffer.from(batchBytes))
+        }
+      } catch (e) {
+        pushError = e
+      } finally {
+        nativeStmt.endStream()
+      }
+
+      const result = (await promise) as number
+      if (pushError) throw pushError
+      return result
+    } catch (e) {
+      throw AdbcError.fromError(e)
+    } finally {
+      nativeStmt.close()
+    }
+  }
+
+  async execute(sql: string, params?: Table): Promise<number> {
     const stmt = await this.createStatement()
     try {
       await stmt.setSqlQuery(sql)
@@ -250,6 +325,7 @@ export class AdbcConnection implements AdbcConnectionInterface {
 export class AdbcStatement implements AdbcStatementInterface {
   private _inner: NativeAdbcStatement
 
+  /** @internal */
   constructor(inner: NativeAdbcStatement) {
     this._inner = inner
   }
@@ -294,24 +370,36 @@ export class AdbcStatement implements AdbcStatementInterface {
     }
   }
 
-  async bind(data: RecordBatch | Table): Promise<void> {
+  async bind(data: Table): Promise<void> {
     try {
-      let table: Table
-      if (data instanceof Table) {
-        table = data
-      } else {
-        table = new Table(data)
-      }
-
-      if (table.batches.length > 1) {
-        throw new Error(
-          `bind() requires a single-batch Table or RecordBatch, but received ${table.batches.length} batches. ` +
-            `Concatenate the table into one batch first (e.g. tableFromArrays(...)).`,
-        )
-      }
-
-      const ipcBytes = tableToIPC(table, 'stream')
+      const ipcBytes = tableToIPC(data, 'stream')
       await this._inner.bind(Buffer.from(ipcBytes))
+    } catch (e) {
+      throw AdbcError.fromError(e)
+    }
+  }
+
+  async bindStream(reader: RecordBatchReader): Promise<void> {
+    try {
+      await reader.open()
+      const schemaTable = new Table(reader.schema, [])
+      const schemaBytes = tableToIPC(schemaTable, 'stream')
+      const bindPromise = this._inner.startBindStream(Buffer.from(schemaBytes))
+
+      let pushError: unknown
+      try {
+        for await (const batch of reader) {
+          const batchBytes = tableToIPC(new Table([batch]), 'stream')
+          this._inner.pushBatch(Buffer.from(batchBytes))
+        }
+      } catch (e) {
+        pushError = e
+      } finally {
+        this._inner.endStream()
+      }
+
+      await bindPromise
+      if (pushError) throw pushError
     } catch (e) {
       throw AdbcError.fromError(e)
     }

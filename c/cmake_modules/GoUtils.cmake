@@ -36,18 +36,30 @@ if(_IMPORT_PREFIX STREQUAL "/")
 endif()
 
 function(adbc_add_shared_library target_name base_name)
-  set(shared_base_name
-    "${CMAKE_SHARED_LIBRARY_PREFIX}${base_name}${CMAKE_SHARED_LIBRARY_SUFFIX}")
   set(prefix "${_IMPORT_PREFIX}/${ADBC_INSTALL_LIBDIR}")
   add_library(${target_name} SHARED IMPORTED)
   if(WINDOWS)
+    set(shared_base_name
+      "${CMAKE_SHARED_LIBRARY_PREFIX}${base_name}${CMAKE_SHARED_LIBRARY_SUFFIX}")
     set(import_base_name
       "${CMAKE_IMPORT_LIBRARY_PREFIX}${base_name}${CMAKE_IMPORT_LIBRARY_SUFFIX}")
     set_target_properties(${target_name}
       PROPERTIES
       IMPORTED_IMPLIB "${prefix}/${import_base_name}"
       IMPORTED_LOCATION "${_IMPORT_PREFIX}/bin/${shared_base_name}")
+  elseif(APPLE)
+    # Follow libname.version.dylib convention on macOS
+    set(shared_versioned_name
+      "${CMAKE_SHARED_LIBRARY_PREFIX}${base_name}.${ADBC_FULL_SO_VERSION}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+    set(shared_soname
+      "${CMAKE_SHARED_LIBRARY_PREFIX}${base_name}.${ADBC_SO_VERSION}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+    set_target_properties(${target_name}
+      PROPERTIES
+      IMPORTED_LOCATION "${prefix}/${shared_versioned_name}"
+      IMPORTED_SONAME "${prefix}/${shared_soname}")
   else()
+    set(shared_base_name
+      "${CMAKE_SHARED_LIBRARY_PREFIX}${base_name}${CMAKE_SHARED_LIBRARY_SUFFIX}")
     set_target_properties(${target_name}
       PROPERTIES
       IMPORTED_LOCATION "${prefix}/${shared_base_name}.${ADBC_FULL_SO_VERSION}"
@@ -247,35 +259,56 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
                                                               "${LIBOUT_IMPORT_LIB}")
       endif()
     else()
-      add_custom_command(OUTPUT "${LIBOUT_SHARED}.${ADBC_FULL_SO_VERSION}"
+      # Follow libname.version.dylib convention on macOS
+      if(APPLE)
+        set(LIBOUT_VERSIONED
+            "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_SHARED_LIBRARY_PREFIX}${GO_LIBNAME}.${ADBC_FULL_SO_VERSION}${CMAKE_SHARED_LIBRARY_SUFFIX}"
+        )
+        set(LIBOUT_SOVERSION
+            "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_SHARED_LIBRARY_PREFIX}${GO_LIBNAME}.${ADBC_SO_VERSION}${CMAKE_SHARED_LIBRARY_SUFFIX}"
+        )
+        set(LIBOUT_SHARED
+            "${CMAKE_CURRENT_BINARY_DIR}/${CMAKE_SHARED_LIBRARY_PREFIX}${GO_LIBNAME}${CMAKE_SHARED_LIBRARY_SUFFIX}"
+        )
+        set(LIB_NAME_VERSIONED
+            "${CMAKE_SHARED_LIBRARY_PREFIX}${GO_LIBNAME}.${ADBC_FULL_SO_VERSION}${CMAKE_SHARED_LIBRARY_SUFFIX}"
+        )
+        set(LIB_NAME_SOVERSION
+            "${CMAKE_SHARED_LIBRARY_PREFIX}${GO_LIBNAME}.${ADBC_SO_VERSION}${CMAKE_SHARED_LIBRARY_SUFFIX}"
+        )
+        set(LIB_NAME_SHARED
+            "${CMAKE_SHARED_LIBRARY_PREFIX}${GO_LIBNAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+      else()
+        set(LIBOUT_VERSIONED "${LIBOUT_SHARED}.${ADBC_FULL_SO_VERSION}")
+        set(LIBOUT_SOVERSION "${LIBOUT_SHARED}.${ADBC_SO_VERSION}")
+        set(LIB_NAME_VERSIONED "${LIB_NAME_SHARED}.${ADBC_FULL_SO_VERSION}")
+        set(LIB_NAME_SOVERSION "${LIB_NAME_SHARED}.${ADBC_SO_VERSION}")
+      endif()
+
+      add_custom_command(OUTPUT "${LIBOUT_VERSIONED}"
                          WORKING_DIRECTORY ${GO_MOD_DIR}
                          DEPENDS ${ARG_SOURCES}
                          COMMAND ${CMAKE_COMMAND} -E env ${GO_ENV_VARS} ${GO_BIN} build
                                  ${GO_BUILD_TAGS} "${GO_BUILD_FLAGS}" -o
-                                 ${LIBOUT_SHARED}.${ADBC_FULL_SO_VERSION}
-                                 -buildmode=c-shared ${GO_LDFLAGS} .
-                         COMMAND ${CMAKE_COMMAND} -E remove -f
-                                 "${LIBOUT_SHARED}.${ADBC_SO_VERSION}.0.h"
+                                 ${LIBOUT_VERSIONED} -buildmode=c-shared ${GO_LDFLAGS} .
+                         COMMAND ${CMAKE_COMMAND} -E remove -f "${LIBOUT_VERSIONED}.h"
                          COMMENT "Building Go Shared lib ${GO_LIBNAME}"
                          COMMAND_EXPAND_LISTS)
 
-      add_custom_command(OUTPUT "${LIBOUT_SHARED}.${ADBC_SO_VERSION}" "${LIBOUT_SHARED}"
-                         DEPENDS "${LIBOUT_SHARED}.${ADBC_FULL_SO_VERSION}"
+      add_custom_command(OUTPUT "${LIBOUT_SOVERSION}" "${LIBOUT_SHARED}"
+                         DEPENDS "${LIBOUT_VERSIONED}"
                          WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
                          COMMAND ${CMAKE_COMMAND} -E create_symlink
-                                 "${LIB_NAME_SHARED}.${ADBC_FULL_SO_VERSION}"
-                                 "${LIB_NAME_SHARED}.${ADBC_SO_VERSION}"
+                                 "${LIB_NAME_VERSIONED}" "${LIB_NAME_SOVERSION}"
                          COMMAND ${CMAKE_COMMAND} -E create_symlink
-                                 "${LIB_NAME_SHARED}.${ADBC_SO_VERSION}"
-                                 "${LIB_NAME_SHARED}")
+                                 "${LIB_NAME_SOVERSION}" "${LIB_NAME_SHARED}")
 
       add_custom_target(${GO_LIBNAME}_target ALL
-                        DEPENDS "${LIBOUT_SHARED}.${ADBC_FULL_SO_VERSION}"
-                                "${LIBOUT_SHARED}.${ADBC_SO_VERSION}" "${LIBOUT_SHARED}")
+                        DEPENDS "${LIBOUT_VERSIONED}" "${LIBOUT_SOVERSION}"
+                                "${LIBOUT_SHARED}")
       add_library(${GO_LIBNAME}_shared SHARED IMPORTED GLOBAL)
       set_target_properties(${GO_LIBNAME}_shared
-                            PROPERTIES IMPORTED_LOCATION
-                                       "${LIBOUT_SHARED}.${ADBC_FULL_SO_VERSION}"
+                            PROPERTIES IMPORTED_LOCATION "${LIBOUT_VERSIONED}"
                                        IMPORTED_SONAME "${LIB_NAME_SHARED}")
     endif()
     add_dependencies(${GO_LIBNAME}_shared ${GO_LIBNAME}_target)
@@ -331,7 +364,7 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
         install(FILES "${LIBOUT_IMPORT_LIB}" TYPE LIB)
       endif()
     else()
-      install(FILES "${LIBOUT_SHARED}" "${LIBOUT_SHARED}.${ADBC_SO_VERSION}" TYPE LIB)
+      install(FILES "${LIBOUT_SHARED}" "${LIBOUT_SOVERSION}" TYPE LIB)
     endif()
   endif()
 

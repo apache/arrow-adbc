@@ -20,10 +20,8 @@
 #include <string.h>
 
 #include <arrow-adbc/adbc.h>
-#include <arrow-adbc/driver/bigquery.h>
 #include <arrow-adbc/driver/flightsql.h>
 #include <arrow-adbc/driver/postgresql.h>
-#include <arrow-adbc/driver/snowflake.h>
 #include <arrow-adbc/driver/sqlite.h>
 
 int main(int argc, char** argv) {

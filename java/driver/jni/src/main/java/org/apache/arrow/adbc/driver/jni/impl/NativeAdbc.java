@@ -17,6 +17,7 @@
 
 package org.apache.arrow.adbc.driver.jni.impl;
 
+import java.nio.ByteBuffer;
 import org.apache.arrow.adbc.core.AdbcException;
 
 /** All the JNI methods. Don't use this directly, prefer {@link JniLoader}. */
@@ -34,10 +35,6 @@ class NativeAdbc {
 
   static native void closeStatement(long handle) throws AdbcException;
 
-  static native NativeQueryResult statementExecuteQuery(long handle) throws AdbcException;
-
-  static native void statementSetSqlQuery(long handle, String query) throws AdbcException;
-
   static native void statementBind(long handle, long values, long schema) throws AdbcException;
 
   // TODO(lidavidm): we need a way to bind an ArrowReader (or some other suitable interface that
@@ -46,13 +43,44 @@ class NativeAdbc {
   @SuppressWarnings("unused")
   static native void statementBindStream(long handle, long stream) throws AdbcException;
 
+  static native void statementCancel(long handle) throws AdbcException;
+
   static native long statementExecuteUpdate(long handle) throws AdbcException;
 
   static native void statementPrepare(long handle) throws AdbcException;
 
-  static native void statementSetOption(long handle, String key, String value) throws AdbcException;
+  static native NativePartitionResult statementExecutePartitions(long handle) throws AdbcException;
+
+  static native NativeQueryResult statementExecuteQuery(long handle) throws AdbcException;
 
   static native NativeSchemaResult statementExecuteSchema(long handle) throws AdbcException;
+
+  static native NativeSchemaResult statementGetParameterSchema(long statementHandle)
+      throws AdbcException;
+
+  static native void statementSetSqlQuery(long handle, String query) throws AdbcException;
+
+  static native byte[] statementGetOptionBytes(long handle, String key) throws AdbcException;
+
+  static native double statementGetOptionDouble(long handle, String key) throws AdbcException;
+
+  static native long statementGetOptionLong(long handle, String key) throws AdbcException;
+
+  static native String statementGetOptionString(long handle, String key) throws AdbcException;
+
+  static native void statementSetOptionBytes(long handle, String key, byte[] value)
+      throws AdbcException;
+
+  static native void statementSetOptionDouble(long handle, String key, double value)
+      throws AdbcException;
+
+  static native void statementSetOptionLong(long handle, String key, long value)
+      throws AdbcException;
+
+  static native void statementSetOptionString(long handle, String key, String value)
+      throws AdbcException;
+
+  static native void connectionCancel(long handle) throws AdbcException;
 
   static native NativeQueryResult connectionGetObjects(
       long handle,
@@ -71,4 +99,51 @@ class NativeAdbc {
       long handle, String catalog, String dbSchema, String tableName) throws AdbcException;
 
   static native NativeQueryResult connectionGetTableTypes(long handle) throws AdbcException;
+
+  static native void connectionCommit(long handle) throws AdbcException;
+
+  static native void connectionRollback(long handle) throws AdbcException;
+
+  static native NativeQueryResult connectionReadPartition(long handle, ByteBuffer partition)
+      throws AdbcException;
+
+  static native byte[] connectionGetOptionBytes(long handle, String key) throws AdbcException;
+
+  static native double connectionGetOptionDouble(long handle, String key) throws AdbcException;
+
+  static native long connectionGetOptionLong(long handle, String key) throws AdbcException;
+
+  static native String connectionGetOptionString(long handle, String key) throws AdbcException;
+
+  static native void connectionSetOptionBytes(long handle, String key, byte[] value)
+      throws AdbcException;
+
+  static native void connectionSetOptionDouble(long handle, String key, double value)
+      throws AdbcException;
+
+  static native void connectionSetOptionLong(long handle, String key, long value)
+      throws AdbcException;
+
+  static native void connectionSetOptionString(long handle, String key, String value)
+      throws AdbcException;
+
+  static native byte[] databaseGetOptionBytes(long handle, String key) throws AdbcException;
+
+  static native double databaseGetOptionDouble(long handle, String key) throws AdbcException;
+
+  static native long databaseGetOptionLong(long handle, String key) throws AdbcException;
+
+  static native String databaseGetOptionString(long handle, String key) throws AdbcException;
+
+  static native void databaseSetOptionBytes(long handle, String key, byte[] value)
+      throws AdbcException;
+
+  static native void databaseSetOptionDouble(long handle, String key, double value)
+      throws AdbcException;
+
+  static native void databaseSetOptionLong(long handle, String key, long value)
+      throws AdbcException;
+
+  static native void databaseSetOptionString(long handle, String key, String value)
+      throws AdbcException;
 }

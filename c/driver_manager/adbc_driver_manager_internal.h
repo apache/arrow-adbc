@@ -189,8 +189,8 @@ AdbcStatusCode LoadDriverFromRegistry(HKEY root, const std::wstring& driver_name
 #endif
 
 // Profile loading
-AdbcStatusCode ProcessProfileValue(std::string_view value, std::string& out,
-                                   struct AdbcError* error);
+AdbcStatusCode ProcessProfileValue(std::string_view key, std::string_view value,
+                                   std::string& out, struct AdbcError* error);
 
 // Initialization
 /// Temporary state while the database is being configured.
@@ -203,9 +203,16 @@ struct TempDatabase {
   std::string entrypoint;
   AdbcDriverInitFunc init_func = nullptr;
   AdbcLoadFlags load_flags = ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS;
-  std::string additional_search_path_list;
+  std::string additional_manifest_search_path_list;
+  std::string additional_profile_search_path_list;
   AdbcConnectionProfileProvider profile_provider = nullptr;
 };
+
+// Parse and validate options like uri/profile, with the result being that
+// `driver` or `init_func` are populated and options like `profile` are
+// removed
+ADBC_EXPORT
+AdbcStatusCode InternalAdbcParseOptions(TempDatabase* db, struct AdbcError* error);
 
 /// Temporary state while the connection is being configured.
 struct TempConnection {

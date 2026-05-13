@@ -737,19 +737,23 @@ type Statement interface {
 	// executed repeatedly, Prepare should be called first on the statement.
 	SetSubstraitPlan(plan []byte) error
 
-	// Bind uses an arrow record batch to bind parameters to the query.
+	// Bind uses an Arrow record batch to bind parameters to the query.
 	//
-	// This can be used for bulk inserts or for prepared statements.
-	// The driver will call release on the passed in Record when it is done,
-	// but it may not do this until the statement is closed or another
-	// record is bound.
+	// This can be used for bulk inserts or for prepared statements.  The
+	// driver will Retain the given batch; the application must still
+	// Release the batch after binding. The driver will Release the batch
+	// after processing, but this may not be until Close is called. A nil
+	// batch will unbind values.
 	Bind(ctx context.Context, values arrow.RecordBatch) error
 
 	// BindStream uses a record batch stream to bind parameters for this
 	// query. This can be used for bulk inserts or prepared statements.
 	//
-	// The driver will call Release on the record reader, but may not do this
-	// until Close is called.
+	// This can be used for bulk inserts or for prepared statements.  The
+	// driver will Retain the given reader; the application must still
+	// Release the reader after binding. The driver will Release the
+	// reader after processing, but this may not be until Close is
+	// called. A nil reader will unbind values.
 	BindStream(ctx context.Context, stream array.RecordReader) error
 
 	// GetParameterSchema returns an Arrow schema representation of

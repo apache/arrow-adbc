@@ -17,6 +17,7 @@
 
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
+use std::sync::mpsc;
 use std::sync::Mutex;
 
 use adbc_core::{
@@ -30,6 +31,7 @@ use adbc_driver_manager::{ManagedConnection, ManagedDatabase, ManagedDriver, Man
 use arrow_array::RecordBatchReader;
 use arrow_ipc::reader::StreamReader;
 use arrow_ipc::writer::StreamWriter;
+use arrow_schema::SchemaRef;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ClientError {
@@ -46,7 +48,8 @@ pub type Result<T> = std::result::Result<T, ClientError>;
 pub struct ConnectOptions {
   pub driver: String,
   pub entrypoint: Option<String>,
-  pub search_paths: Option<Vec<String>>,
+  pub manifest_search_paths: Option<Vec<String>>,
+  pub profile_search_paths: Option<Vec<String>>,
   pub load_flags: Option<u32>,
   pub database_options: Option<HashMap<String, String>>,
 }
@@ -76,20 +79,28 @@ impl AdbcDatabaseCore {
     let load_flags = opts.load_flags.unwrap_or(LOAD_FLAG_DEFAULT);
     let entrypoint = opts.entrypoint.as_ref().map(|s| s.as_bytes().to_vec());
 
-    let search_paths: Option<Vec<PathBuf>> = opts
-      .search_paths
+    let manifest_search_paths: Option<Vec<PathBuf>> = opts
+      .manifest_search_paths
+      .map(|paths| paths.into_iter().map(PathBuf::from).collect());
+
+    let profile_search_paths: Option<Vec<PathBuf>> = opts
+      .profile_search_paths
       .map(|paths| paths.into_iter().map(PathBuf::from).collect());
 
     let database_opts = opts.database_options.map(map_database_options);
 
     let database = if opts.driver.contains(':') {
+      let provider = adbc_driver_manager::profile::FilesystemProfileProvider::new_with_search_paths(
+        profile_search_paths,
+      );
       // URI-style ("sqlite:file::memory:") or profile URI ("profile://my_profile")
-      ManagedDatabase::from_uri_with_opts(
+      ManagedDatabase::from_uri_with_profile_provider(
         &opts.driver,
         entrypoint.as_deref(),
         version,
         load_flags,
-        search_paths,
+        manifest_search_paths,
+        provider,
         database_opts.into_iter().flatten(),
       )?
     } else {
@@ -99,7 +110,7 @@ impl AdbcDatabaseCore {
         entrypoint.as_deref(),
         version,
         load_flags,
-        search_paths,
+        manifest_search_paths,
       )?;
       match database_opts {
         Some(db_opts) => driver.new_database_with_opts(db_opts)?,
@@ -282,24 +293,30 @@ impl AdbcStatementCore {
   }
 
   pub fn bind(&mut self, c_data: Vec<u8>) -> Result<()> {
-    let mut reader =
+    let reader =
       StreamReader::try_new(std::io::Cursor::new(c_data), None).map_err(ClientError::Arrow)?;
-    let batch = match reader.next() {
-      Some(Ok(b)) => b,
-      Some(Err(e)) => return Err(ClientError::Arrow(e)),
-      None => {
-        return Err(ClientError::Other(
-          "bind() received an empty record batch stream".to_string(),
-        ))
-      }
-    };
-    if reader.next().is_some() {
-      return Err(ClientError::Other(
-        "bind() received multiple record batches; concatenate into one batch first".to_string(),
-      ));
-    }
-    self.inner.bind(batch)?;
+    self.inner.bind_stream(Box::new(reader))?;
     Ok(())
+  }
+
+  pub fn bind_channel_stream(
+    &mut self,
+    schema_bytes: Vec<u8>,
+    receiver: mpsc::Receiver<Vec<u8>>,
+  ) -> Result<()> {
+    let reader = ChannelBatchReader::new(schema_bytes, receiver)?;
+    self.inner.bind_stream(Box::new(reader))?;
+    Ok(())
+  }
+
+  pub fn bind_stream_and_execute(
+    &mut self,
+    schema_bytes: Vec<u8>,
+    receiver: mpsc::Receiver<Vec<u8>>,
+  ) -> Result<i64> {
+    self.bind_channel_stream(schema_bytes, receiver)?;
+    let rows = self.inner.execute_update()?;
+    Ok(rows.unwrap_or(-1))
   }
 }
 
@@ -323,6 +340,46 @@ impl AdbcResultIteratorCore {
     }
     writer.finish()?;
     Ok(Some(output))
+  }
+}
+
+/// A `RecordBatchReader` backed by a channel. Batches arrive as IPC bytes
+/// from the JS main thread and are deserialized on demand by the thread pool.
+pub struct ChannelBatchReader {
+  schema: SchemaRef,
+  receiver: mpsc::Receiver<Vec<u8>>,
+}
+
+impl ChannelBatchReader {
+  pub fn new(schema_bytes: Vec<u8>, receiver: mpsc::Receiver<Vec<u8>>) -> Result<Self> {
+    let ipc_reader = StreamReader::try_new(std::io::Cursor::new(schema_bytes), None)
+      .map_err(ClientError::Arrow)?;
+    let schema = ipc_reader.schema();
+    Ok(Self { schema, receiver })
+  }
+}
+
+impl Iterator for ChannelBatchReader {
+  type Item = std::result::Result<arrow_array::RecordBatch, arrow_schema::ArrowError>;
+
+  fn next(&mut self) -> Option<Self::Item> {
+    let bytes = self.receiver.recv().ok()?;
+    let mut ipc_reader = match StreamReader::try_new(std::io::Cursor::new(bytes), None) {
+      Ok(r) => r,
+      Err(e) => return Some(Err(e)),
+    };
+    match ipc_reader.next() {
+      Some(result) => Some(result),
+      None => Some(Err(arrow_schema::ArrowError::IpcError(
+        "Received IPC stream with no record batches".to_string(),
+      ))),
+    }
+  }
+}
+
+impl RecordBatchReader for ChannelBatchReader {
+  fn schema(&self) -> SchemaRef {
+    self.schema.clone()
   }
 }
 

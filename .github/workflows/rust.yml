@@ -26,6 +26,8 @@ on:
       - "rust/**"
       - ".github/workflows/rust.yml"
   push:
+    branches-ignore:
+      - 'dependabot/**'
     paths:
       - "c/**"
       - "rust/**"
@@ -65,7 +67,7 @@ jobs:
       CARGO_INCREMENTAL: 0
       RUSTFLAGS: "-Adead_code" # TODO(alexandreyc): remove this line when implementation is complete
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -83,7 +85,7 @@ jobs:
       - name: Get required Go version
         run: |
           (. ./.env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
-      - uses: actions/setup-go@v6
+      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -111,7 +113,7 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get install libsqlite3-dev
       - name: Setup conda
-        uses: conda-incubator/setup-miniconda@fc2d68f6413eb2d87b895e92f8584b5b94a10167  # v3.3.0
+        uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5  # v4.0.1
         if: runner.os == 'Windows'
         with:
           miniforge-version: latest
@@ -126,11 +128,9 @@ jobs:
           pushd build
           cmake \
             -DADBC_BUILD_TESTS=OFF \
-            -DADBC_DRIVER_BIGQUERY=ON \
             -DADBC_DRIVER_FLIGHTSQL=ON \
             -DADBC_DRIVER_MANAGER=ON \
             -DADBC_DRIVER_SQLITE=ON \
-            -DADBC_DRIVER_SNOWFLAKE=ON \
             -DADBC_USE_ASAN=OFF \
             -DADBC_USE_UBSAN=OFF \
             -DADBC_SQLITE_COMPILE_DEFINES=-DADBC_SQLITE_WITH_NO_LOAD_EXTENSION \
@@ -159,8 +159,6 @@ jobs:
         run: |
           echo "PATH=${{ github.workspace }}/local/bin;${{ github.workspace }}/local/lib;$PATH" >> "$GITHUB_ENV"
           echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/local/bin/adbc_driver_sqlite.dll" >> "$GITHUB_ENV"
-      - name: Set search dir for Snowflake Go lib
-        run: echo "ADBC_SNOWFLAKE_GO_LIB_DIR=${{ github.workspace }}/local/lib" >> "$GITHUB_ENV"
       - name: Clippy
         if: runner.os != 'Linux' && ! matrix.minimal-versions
         working-directory: rust
@@ -181,36 +179,24 @@ jobs:
             -Zcrate-attr='allow(unused_features)'
       - name: Test (Default Features)
         working-directory: rust
-        # TODO: enable snowflake tests on windows
         run: >
           cargo test --all-targets --workspace
           ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
-          ${{ runner.os == 'Windows' && '--exclude adbc_snowflake' || '' }}
       - name: Test (All Features)
         working-directory: rust
-        # TODO: enable snowflake tests on windows
         run: >
           cargo test --all-targets --all-features --workspace
           ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
-          ${{ runner.os == 'Windows' && '--exclude adbc_snowflake' || '' }}
-        # env:
-        # ADBC_SNOWFLAKE_TESTS: 1
-        # ADBC_SNOWFLAKE_URI: ${{ secrets.SNOWFLAKE_URI }}
-        # ADBC_SNOWFLAKE_SQL_DB: ARROW_OSS_DB
       - name: Doctests
         working-directory: rust
-        # TODO: enable snowflake tests on windows
         run: >
           cargo test --doc --all-features --workspace
           ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
-          ${{ runner.os == 'Windows' && '--exclude adbc_snowflake' || '' }}
       - name: Check docs
         working-directory: rust
-        # TODO: enable snowflake tests on windows
         run: >
           cargo doc --all-features --workspace
           ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
-          ${{ runner.os == 'Windows' && '--exclude adbc_snowflake' || '' }}
       - name: Install cargo-msrv
         if: matrix.os == 'ubuntu-latest'
         run: |

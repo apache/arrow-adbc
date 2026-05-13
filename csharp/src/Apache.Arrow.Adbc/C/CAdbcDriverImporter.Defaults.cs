@@ -169,7 +169,7 @@ namespace Apache.Arrow.Adbc.C
         }
 
 #if !NET5_0_OR_GREATER
-        private static unsafe IntPtr StatementPrepareDefault = NativeDelegate<StatementPrepare>.AsNativePointer(StatementPrepareDefaultImpl);
+        private static unsafe IntPtr StatementPrepareDefault = NativeDelegate<StatementFn>.AsNativePointer(StatementPrepareDefaultImpl);
 #else
         private static unsafe delegate* unmanaged<CAdbcStatement*, CAdbcError*, AdbcStatusCode> StatementPrepareDefault => &StatementPrepareDefaultImpl;
         [UnmanagedCallersOnly]

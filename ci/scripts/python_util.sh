@@ -17,23 +17,19 @@
 
 set -ex
 
-COMPONENTS="adbc_driver_bigquery adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adbc_driver_sqlite adbc_driver_snowflake"
+COMPONENTS="adbc_driver_manager adbc_driver_flightsql adbc_driver_postgresql adbc_driver_sqlite"
 
 function find_drivers {
     local -r build_dir="${1}/${VCPKG_ARCH}"
 
     if [[ $(uname) == "Linux" ]]; then
-        export ADBC_BIGQUERY_LIBRARY=${build_dir}/lib/libadbc_driver_bigquery.so
         export ADBC_FLIGHTSQL_LIBRARY=${build_dir}/lib/libadbc_driver_flightsql.so
         export ADBC_POSTGRESQL_LIBRARY=${build_dir}/lib/libadbc_driver_postgresql.so
         export ADBC_SQLITE_LIBRARY=${build_dir}/lib/libadbc_driver_sqlite.so
-        export ADBC_SNOWFLAKE_LIBRARY=${build_dir}/lib/libadbc_driver_snowflake.so
     else # macOS
-        export ADBC_BIGQUERY_LIBRARY=${build_dir}/lib/libadbc_driver_bigquery.dylib
         export ADBC_FLIGHTSQL_LIBRARY=${build_dir}/lib/libadbc_driver_flightsql.dylib
         export ADBC_POSTGRESQL_LIBRARY=${build_dir}/lib/libadbc_driver_postgresql.dylib
         export ADBC_SQLITE_LIBRARY=${build_dir}/lib/libadbc_driver_sqlite.dylib
-        export ADBC_SNOWFLAKE_LIBRARY=${build_dir}/lib/libadbc_driver_snowflake.dylib
     fi
 }
 
@@ -47,7 +43,6 @@ function build_drivers {
     : ${VCPKG_ROOT:=/opt/vcpkg}
     # Enable manifest mode
     : ${VCPKG_FEATURE_FLAGS:=manifests}
-    : ${ADBC_DRIVER_SNOWFLAKE:=ON}
     # Add our custom triplets
     export VCPKG_OVERLAY_TRIPLETS="${source_dir}/ci/vcpkg/triplets/"
 
@@ -71,7 +66,7 @@ function build_drivers {
     echo "=== Setup VCPKG ==="
 
     # Need to install sqlite3 to make CMake be able to find it below
-    "${VCPKG_ROOT}/vcpkg" install libpq sqlite3 \
+    "${VCPKG_ROOT}/vcpkg" install libpq 'sqlite3[dbstat,fts3,fts4,fts5,geopoly,json1,limit,math,rtree,session,snapshot,soundex]' \
           --overlay-triplets "${VCPKG_OVERLAY_TRIPLETS}" \
           --triplet "${VCPKG_DEFAULT_TRIPLET}"
 
@@ -89,12 +84,10 @@ function build_drivers {
         -DVCPKG_TARGET_TRIPLET="${VCPKG_DEFAULT_TRIPLET}" \
         -DADBC_BUILD_SHARED=ON \
         -DADBC_BUILD_STATIC=ON \
-        -DADBC_DRIVER_BIGQUERY=ON \
         -DADBC_DRIVER_FLIGHTSQL=ON \
         -DADBC_DRIVER_MANAGER=ON \
         -DADBC_DRIVER_POSTGRESQL=ON \
         -DADBC_DRIVER_SQLITE=ON \
-        -DADBC_DRIVER_SNOWFLAKE=ON \
         ${source_dir}/c
     cmake --build . --target install --verbose -j
     popd
@@ -135,10 +128,8 @@ function setup_build_vars {
     fi
     # No PyPy, no Python 3.8, no Python 3.9
     export CIBW_SKIP="pp* cp38-* cp39-* ${CIBW_SKIP}"
-    # Make sure our manylinux version doesn't creep up (this only matters for
-    # the driver manager)
-    export CIBW_MANYLINUX_X86_64_IMAGE="manylinux2014"
-    export CIBW_MANYLINUX_AARCH64_IMAGE="manylinux2014"
+    export CIBW_MANYLINUX_X86_64_IMAGE="manylinux_2_28"
+    export CIBW_MANYLINUX_AARCH64_IMAGE="manylinux_2_28"
 }
 
 function test_packages {

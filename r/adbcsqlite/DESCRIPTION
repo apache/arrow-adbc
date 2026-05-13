@@ -1,6 +1,6 @@
 Package: adbcsqlite
 Title: 'Arrow' Database Connectivity ('ADBC') 'SQLite' Driver
-Version: 0.22.0.9000
+Version: 0.23.0.9000
 Authors@R: c(
       person("Dewey", "Dunnington", , "dewey@dunnington.ca", role = c("aut", "cre"),
              comment = c(ORCID = "0000-0002-9415-4582")),
@@ -19,7 +19,8 @@ RoxygenNote: 7.3.2
 SystemRequirements: SQLite3
 Suggests:
     nanoarrow,
-    testthat (>= 3.0.0)
+    testthat (>= 3.0.0),
+    withr
 Config/testthat/edition: 3
 Config/build/bootstrap: TRUE
 URL: https://arrow.apache.org/adbc/current/r/adbcsqlite/, https://github.com/apache/arrow-adbc

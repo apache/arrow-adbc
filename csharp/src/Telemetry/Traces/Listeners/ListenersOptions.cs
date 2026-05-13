@@ -31,5 +31,12 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Listeners
             public const string None = "none";
             public const string AdbcFile = "adbcfile";
         }
+
+        public static class AdbcFile
+        {
+            public const string Location = "adbc.traces.exporter.adbcfile.location";
+            public const string MaxTraceFileSizeKb = "adbc.traces.exporter.adbcfile.maxtracesizekb";
+            public const string MaxTraceFiles = "adbc.traces.exporter.adbcfile.maxtracefiles";
+        }
     }
 }

@@ -5,13 +5,6 @@
     <TargetFrameworks Condition="'$(TargetFrameworks)'==''">net8.0</TargetFrameworks>
   </PropertyGroup>
     <ItemGroup>
-      <Compile Include="..\..\..\Drivers\Interop\Snowflake\ClientTests.cs" Link="ClientTests.cs" />
-      <Compile Include="..\..\..\Drivers\Interop\Snowflake\SnowflakeData.cs" Link="SnowflakeData.cs" />
-      <Compile Include="..\..\..\Drivers\Interop\Snowflake\SnowflakeTestConfiguration.cs" Link="SnowflakeTestConfiguration.cs" />
-      <Compile Include="..\..\..\Drivers\Interop\Snowflake\SnowflakeTestingUtils.cs" Link="SnowflakeTestingUtils.cs" />
-    </ItemGroup>
-    <ItemGroup>
-     <PackageReference Include="Apache.Arrow.Adbc.Drivers.Interop.Snowflake" />
      <PackageReference Include="Microsoft.NET.Test.Sdk" />
      <PackageReference Include="xunit" />
      <PackageReference Include="xunit.runner.visualstudio">
@@ -22,11 +15,6 @@
    </ItemGroup>
     <ItemGroup>
       <Folder Include="Resources\" />
-    </ItemGroup>
-    <ItemGroup>
-      <None Include="..\..\..\Drivers\Interop\Snowflake\Resources\SnowflakeData.sql" Link="Resources\SnowflakeData.sql">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      </None>
     </ItemGroup>
     <ItemGroup>
       <ProjectReference Include="..\..\Apache.Arrow.Adbc.SmokeTests\Apache.Arrow.Adbc.SmokeTests.csproj" />

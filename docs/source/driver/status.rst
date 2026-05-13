@@ -44,7 +44,6 @@ Feature Support
 
 .. adbc_driver_status_table::
 
-   ../../../c/driver/bigquery/README.md
    ../../../csharp/src/Drivers/Apache/Hive2/README.md
    ../../../csharp/src/Drivers/Apache/Impala/README.md
    ../../../csharp/src/Drivers/Apache/Spark/README.md
@@ -57,7 +56,6 @@ Feature Support
    ./flight_sql => ../../../c/driver/flightsql/README.md
    ./jdbc => ../../../java/driver/jdbc/README.md
    ./postgresql => ../../../c/driver/postgresql/README.md
-   ./snowflake => ../../../c/driver/snowflake/README.md
    ./sqlite => ../../../c/driver/sqlite/README.md
 
 .. [#duckdb] DuckDB is developed and provided by a third party.  See the

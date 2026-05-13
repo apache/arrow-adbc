@@ -24,4 +24,5 @@ Java
 
    quickstart
    driver_manager
+   jni
    api/index

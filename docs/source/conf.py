@@ -32,11 +32,11 @@ Apache, the Apache logo, and the Apache Arrow project logo are either
 registered trademarks or trademarks of The Apache Software Foundation in the
 United States and other countries."""
 author = "the Apache Arrow Developers"
-release = "23 (dev)"
+release = "24 (dev)"
 # Needed to generate version switcher
 version = release
 # For linking to latest downloads
-latest_release = "22"
+latest_release = "23"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -49,6 +49,8 @@ extensions = [
     "sphinx_recipe",
     # generic directives to enable intersphinx for java
     "adbc_java_domain",
+    # generic directives to enable intersphinx for javascript
+    "adbc_js_domain",
     "numpydoc",
     "sphinx.ext.autodoc",
     "sphinx.ext.doctest",

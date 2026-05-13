@@ -32,10 +32,6 @@ case "${PKG_NAME}" in
     adbc-driver-sqlite-cpp)
         export BUILD_SQLITE=ON
         ;;
-    adbc-driver-snowflake-go)
-        export CGO_ENABLED=1
-        export BUILD_SNOWFLAKE=ON
-        ;;
     *)
         echo "Unknown package ${PKG_NAME}"
         exit 1
@@ -63,7 +59,6 @@ cmake "../c" \
       ${BUILD_FLIGHTSQL:+-DADBC_DRIVER_FLIGHTSQL="$BUILD_FLIGHTSQL" } \
       ${BUILD_POSTGRESQL:+-DADBC_DRIVER_POSTGRESQL="$BUILD_POSTGRESQL"} \
       ${BUILD_SQLITE:+-DADBC_DRIVER_SQLITE="$BUILD_SQLITE"} \
-      ${BUILD_SNOWFLAKE:+-DADBC_DRIVER_SNOWFLAKE="$BUILD_SNOWFLAKE"} \
       -DCMAKE_PREFIX_PATH="${PREFIX}"
 
 cmake --build . --target install -j

@@ -63,6 +63,7 @@ Gem::Specification.new do |spec|
   [
     ["debian", "libadbc-glib-dev"],
     ["rhel", "adbc-glib-devel"],
+    ["homebrew", "apache-arrow-adbc-glib"],
   ].each do |platform, package|
     spec.requirements <<
       "system: adbc-glib>=#{required_adbc_glib_version}: " +

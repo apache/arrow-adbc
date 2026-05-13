@@ -18,6 +18,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
@@ -40,8 +42,7 @@ namespace Apache.Arrow.Adbc.Tracing
         public ActivityTrace(string? activitySourceName = default, string? activitySourceVersion = default, string? traceParent = default, IEnumerable<KeyValuePair<string, object?>>? tags = default)
         {
             activitySourceName ??= GetType().Assembly.GetName().Name!;
-            // It's okay to have a null version.
-            activitySourceVersion ??= FileVersionInfo.GetVersionInfo(GetType().Assembly.Location).ProductVersion;
+            activitySourceVersion ??= GetAssemblyVersion(typeof(ActivityTrace));
             if (string.IsNullOrWhiteSpace(activitySourceName))
             {
                 throw new ArgumentNullException(nameof(activitySourceName));
@@ -261,6 +262,28 @@ namespace Apache.Arrow.Adbc.Tracing
         public void Dispose()
         {
             ActivitySource.Dispose();
+        }
+
+        /// <summary>
+        /// If possible, gets the file version for the assembly associated with the given Type.
+        /// </summary>
+        [SuppressMessage("SingleFile", "IL3000", Justification="Using guard")]
+        public static string GetAssemblyVersion(Type type)
+        {
+            var versionAttr = type.Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
+            if (versionAttr?.InformationalVersion != null) return versionAttr.InformationalVersion;
+
+#if NET8_0_OR_GREATER
+            if (RuntimeFeature.IsDynamicCodeSupported && !string.IsNullOrEmpty(type.Assembly.Location))
+            {
+                var fileVersion = FileVersionInfo.GetVersionInfo(type.Assembly.Location).ProductVersion;
+                if (fileVersion != null) return fileVersion;
+            }
+#endif
+
+            string? assemblyVersion = type.Assembly.GetName().Version?.ToString();
+
+            return assemblyVersion ?? string.Empty;
         }
 
         private static void WriteTraceException(Exception exception, Activity? activity)

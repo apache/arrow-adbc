@@ -21,9 +21,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
-import java.util.Locale;
 import java.util.Map;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.c.ArrowArray;
@@ -34,10 +34,15 @@ public enum JniLoader {
   INSTANCE;
 
   JniLoader() {
+    // If 'arrow.adbc.driver.jni.library.path' is set, load from there instead of the JAR.
+    String resolvedPath = JniLibraryResolver.resolve();
+    if (resolvedPath != null) {
+      System.load(resolvedPath);
+      return;
+    }
+
     // The JAR may contain multiple binaries for different platforms, so load the appropriate one.
-    final String libraryName = "adbc_driver_jni";
-    String libraryToLoad =
-        libraryName + "/" + getNormalizedArch() + "/" + System.mapLibraryName(libraryName);
+    String libraryToLoad = JniLibraryResolver.resourcePath();
 
     try {
       InputStream is = JniLoader.class.getClassLoader().getResourceAsStream(libraryToLoad);
@@ -58,19 +63,6 @@ public enum JniLoader {
     }
   }
 
-  private String getNormalizedArch() {
-    // Be consistent with our CMake config
-    String arch = System.getProperty("os.arch").toLowerCase(Locale.US);
-    switch (arch) {
-      case "amd64":
-        return "x86_64";
-      case "aarch64":
-        return "aarch_64";
-      default:
-        throw new RuntimeException("ADBC JNI driver not supported on architecture " + arch);
-    }
-  }
-
   public NativeDatabaseHandle openDatabase(Map<String, String> parameters) throws AdbcException {
     String[] nativeParameters = new String[parameters.size() * 2];
     int index = 0;
@@ -88,6 +80,15 @@ public enum JniLoader {
   public NativeStatementHandle openStatement(NativeConnectionHandle connection)
       throws AdbcException {
     return NativeAdbc.openStatement(connection.getConnectionHandle());
+  }
+
+  public void statementCancel(NativeStatementHandle statement) throws AdbcException {
+    NativeAdbc.statementCancel(statement.getStatementHandle());
+  }
+
+  public NativePartitionResult statementExecutePartitions(NativeStatementHandle statement)
+      throws AdbcException {
+    return NativeAdbc.statementExecutePartitions(statement.getStatementHandle());
   }
 
   public NativeQueryResult statementExecuteQuery(NativeStatementHandle statement)
@@ -114,14 +115,58 @@ public enum JniLoader {
     NativeAdbc.statementPrepare(statement.getStatementHandle());
   }
 
-  public void statementSetOption(NativeStatementHandle statement, String key, String value)
-      throws AdbcException {
-    NativeAdbc.statementSetOption(statement.getStatementHandle(), key, value);
-  }
-
   public NativeSchemaResult statementExecuteSchema(NativeStatementHandle statement)
       throws AdbcException {
     return NativeAdbc.statementExecuteSchema(statement.getStatementHandle());
+  }
+
+  public NativeSchemaResult statementGetParameterSchema(NativeStatementHandle statement)
+      throws AdbcException {
+    return NativeAdbc.statementGetParameterSchema(statement.getStatementHandle());
+  }
+
+  public byte[] statementGetOptionBytes(NativeStatementHandle handle, String key)
+      throws AdbcException {
+    return NativeAdbc.statementGetOptionBytes(handle.getStatementHandle(), key);
+  }
+
+  public double statementGetOptionDouble(NativeStatementHandle handle, String key)
+      throws AdbcException {
+    return NativeAdbc.statementGetOptionDouble(handle.getStatementHandle(), key);
+  }
+
+  public long statementGetOptionLong(NativeStatementHandle handle, String key)
+      throws AdbcException {
+    return NativeAdbc.statementGetOptionLong(handle.getStatementHandle(), key);
+  }
+
+  public String statementGetOptionString(NativeStatementHandle handle, String key)
+      throws AdbcException {
+    return NativeAdbc.statementGetOptionString(handle.getStatementHandle(), key);
+  }
+
+  public void statementSetOptionBytes(NativeStatementHandle handle, String key, byte[] value)
+      throws AdbcException {
+    NativeAdbc.statementSetOptionBytes(handle.getStatementHandle(), key, value);
+  }
+
+  public void statementSetOptionDouble(NativeStatementHandle handle, String key, double value)
+      throws AdbcException {
+    NativeAdbc.statementSetOptionDouble(handle.getStatementHandle(), key, value);
+  }
+
+  public void statementSetOptionLong(NativeStatementHandle handle, String key, long value)
+      throws AdbcException {
+    NativeAdbc.statementSetOptionLong(handle.getStatementHandle(), key, value);
+  }
+
+  public void statementSetOptionString(NativeStatementHandle statement, String key, String value)
+      throws AdbcException {
+    NativeAdbc.statementSetOptionString(statement.getStatementHandle(), key, value);
+  }
+
+  public void connectionCancel(NativeConnectionHandle connection) throws AdbcException {
+    NativeAdbc.connectionCancel(connection.getConnectionHandle());
   }
 
   public NativeQueryResult connectionGetObjects(
@@ -158,5 +203,97 @@ public enum JniLoader {
   public NativeQueryResult connectionGetTableTypes(NativeConnectionHandle connection)
       throws AdbcException {
     return NativeAdbc.connectionGetTableTypes(connection.getConnectionHandle());
+  }
+
+  public void connectionCommit(NativeConnectionHandle connection) throws AdbcException {
+    NativeAdbc.connectionCommit(connection.getConnectionHandle());
+  }
+
+  public void connectionRollback(NativeConnectionHandle connection) throws AdbcException {
+    NativeAdbc.connectionRollback(connection.getConnectionHandle());
+  }
+
+  public NativeQueryResult connectionReadPartition(
+      NativeConnectionHandle connection, ByteBuffer partition) throws AdbcException {
+    return NativeAdbc.connectionReadPartition(connection.getConnectionHandle(), partition);
+  }
+
+  public byte[] connectionGetOptionBytes(NativeConnectionHandle handle, String key)
+      throws AdbcException {
+    return NativeAdbc.connectionGetOptionBytes(handle.getConnectionHandle(), key);
+  }
+
+  public double connectionGetOptionDouble(NativeConnectionHandle handle, String key)
+      throws AdbcException {
+    return NativeAdbc.connectionGetOptionDouble(handle.getConnectionHandle(), key);
+  }
+
+  public long connectionGetOptionLong(NativeConnectionHandle handle, String key)
+      throws AdbcException {
+    return NativeAdbc.connectionGetOptionLong(handle.getConnectionHandle(), key);
+  }
+
+  public String connectionGetOptionString(NativeConnectionHandle handle, String key)
+      throws AdbcException {
+    return NativeAdbc.connectionGetOptionString(handle.getConnectionHandle(), key);
+  }
+
+  public void connectionSetOptionBytes(NativeConnectionHandle handle, String key, byte[] value)
+      throws AdbcException {
+    NativeAdbc.connectionSetOptionBytes(handle.getConnectionHandle(), key, value);
+  }
+
+  public void connectionSetOptionDouble(NativeConnectionHandle handle, String key, double value)
+      throws AdbcException {
+    NativeAdbc.connectionSetOptionDouble(handle.getConnectionHandle(), key, value);
+  }
+
+  public void connectionSetOptionLong(NativeConnectionHandle handle, String key, long value)
+      throws AdbcException {
+    NativeAdbc.connectionSetOptionLong(handle.getConnectionHandle(), key, value);
+  }
+
+  public void connectionSetOptionString(NativeConnectionHandle connection, String key, String value)
+      throws AdbcException {
+    NativeAdbc.connectionSetOptionString(connection.getConnectionHandle(), key, value);
+  }
+
+  public byte[] databaseGetOptionBytes(NativeDatabaseHandle handle, String key)
+      throws AdbcException {
+    return NativeAdbc.databaseGetOptionBytes(handle.getDatabaseHandle(), key);
+  }
+
+  public double databaseGetOptionDouble(NativeDatabaseHandle handle, String key)
+      throws AdbcException {
+    return NativeAdbc.databaseGetOptionDouble(handle.getDatabaseHandle(), key);
+  }
+
+  public long databaseGetOptionLong(NativeDatabaseHandle handle, String key) throws AdbcException {
+    return NativeAdbc.databaseGetOptionLong(handle.getDatabaseHandle(), key);
+  }
+
+  public String databaseGetOptionString(NativeDatabaseHandle handle, String key)
+      throws AdbcException {
+    return NativeAdbc.databaseGetOptionString(handle.getDatabaseHandle(), key);
+  }
+
+  public void databaseSetOptionBytes(NativeDatabaseHandle handle, String key, byte[] value)
+      throws AdbcException {
+    NativeAdbc.databaseSetOptionBytes(handle.getDatabaseHandle(), key, value);
+  }
+
+  public void databaseSetOptionDouble(NativeDatabaseHandle handle, String key, double value)
+      throws AdbcException {
+    NativeAdbc.databaseSetOptionDouble(handle.getDatabaseHandle(), key, value);
+  }
+
+  public void databaseSetOptionLong(NativeDatabaseHandle handle, String key, long value)
+      throws AdbcException {
+    NativeAdbc.databaseSetOptionLong(handle.getDatabaseHandle(), key, value);
+  }
+
+  public void databaseSetOptionString(NativeDatabaseHandle handle, String key, String value)
+      throws AdbcException {
+    NativeAdbc.databaseSetOptionString(handle.getDatabaseHandle(), key, value);
   }
 }

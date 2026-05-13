@@ -32,6 +32,10 @@ export declare class NativeAdbcStatement {
   executeQuery(): Promise<unknown>
   executeUpdate(): Promise<unknown>
   bind(data: Buffer): Promise<unknown>
+  startBindStreamExecute(schemaBytes: Buffer): Promise<unknown>
+  startBindStream(schemaBytes: Buffer): Promise<unknown>
+  pushBatch(data: Buffer): void
+  endStream(): void
   close(): void
 }
 export type _NativeAdbcStatement = NativeAdbcStatement
@@ -39,7 +43,8 @@ export type _NativeAdbcStatement = NativeAdbcStatement
 export interface ConnectOptions {
   driver: string
   entrypoint?: string
-  searchPaths?: Array<string>
+  manifestSearchPaths?: Array<string>
+  profileSearchPaths?: Array<string>
   loadFlags?: number
   databaseOptions?: Record<string, string>
 }

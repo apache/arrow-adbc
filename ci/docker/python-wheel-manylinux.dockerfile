@@ -16,11 +16,11 @@
 # under the License.
 
 ARG MANYLINUX
-FROM quay.io/pypa/manylinux${MANYLINUX}:latest
+FROM quay.io/pypa/manylinux_${MANYLINUX}:latest
 
-ARG CMAKE=4.1.2
+ARG CMAKE=4.3.0
 ARG GO
-ARG NINJA=1.13.1
+ARG NINJA=1.13.2
 ARG PYTHON
 ARG VCPKG
 ARG TARGETPLATFORM
@@ -30,7 +30,7 @@ ENTRYPOINT ["/bin/bash", "-i", "-c"]
 
 # -------------------- System Dependencies --------------------
 # Some of these dependencies are needed to build things like OpenSSL in vcpkg
-RUN ulimit -n 1024 && yum install -y autoconf curl git flex perl-IPC-Cmd unzip wget yum-utils zip
+RUN ulimit -n 1024 && yum install -y autoconf autoconf-archive curl git flex perl-IPC-Cmd perl-Time-Piece unzip wget yum-utils zip
 # docker is aliased to podman by AlmaLinux, but we want real Docker
 # (podman is just too different)
 RUN ulimit -n 1024 && yum remove -y docker

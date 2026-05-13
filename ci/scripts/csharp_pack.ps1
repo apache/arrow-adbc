@@ -22,7 +22,7 @@ param (
 
 $csharpFolder = [IO.Path]::Combine($PSScriptRoot, "..", "..", "csharp") | Resolve-Path
 Write-Host "Setting Path: $csharpFolder"
-Set-Location $csharpFolder
+Push-Location $csharpFolder
 
 Write-Host "Running dotnet pack -c Release"
 $packArgs = @{
@@ -38,7 +38,11 @@ if ($versionSuffix) {
 }
 if ($noBuild) {
     Write-Host " * Pack without building"
-    $packArgs["-no-build"] = $true
+    # this argument is a flag and has no value, so we set it to an empty string,
+    # not $true or $false, which would be converted to "True" or "False"
+    $packArgs["-no-build"] = ""
 }
 
 dotnet pack @packArgs
+
+Pop-Location

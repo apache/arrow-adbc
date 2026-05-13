@@ -17,7 +17,12 @@
 
 find_package(SQLite3)
 if(SQLite3_FOUND)
-  set(SQLite3_LINK_LIBRARIES SQLite::SQLite3)
+  # SQLite::SQLite3 is deprecated in newer cmake. Alias to support CMake < 4.3.
+  # See https://cmake.org/cmake/help/latest/module/FindSQLite3.html.
+  if(NOT TARGET SQLite3::SQLite3)
+    add_library(SQLite3::SQLite3 ALIAS SQLite::SQLite3)
+  endif()
+  set(SQLite3_LINK_LIBRARIES SQLite3::SQLite3)
 else()
   # vcpkg
   find_package(unofficial-sqlite3 CONFIG REQUIRED)

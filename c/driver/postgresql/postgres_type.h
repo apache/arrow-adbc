@@ -653,6 +653,12 @@ inline ArrowErrorCode PostgresType::FromSchema(const PostgresTypeResolver& resol
       // Dictionary arrays always resolve to the dictionary type when binding or ingesting
       return PostgresType::FromSchema(resolver, schema->dictionary, out, error);
 
+    case NANOARROW_TYPE_NA:
+      // NA type - default to TEXT which PostgreSQL can coerce to any type
+      // This provides a fallback when we don't have expected type information (e.g.,
+      // COPY)
+      return resolver.Find(resolver.GetOID(PostgresTypeId::kText), out, error);
+
     default:
       ArrowErrorSet(error, "Can't map Arrow type '%s' to Postgres type",
                     ArrowTypeString(schema_view.type));
