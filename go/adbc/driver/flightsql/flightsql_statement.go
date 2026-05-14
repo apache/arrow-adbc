@@ -503,6 +503,14 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 		return nil, -1, err
 	}
 
+	// Reject staged binds if no ingest target was provided
+	if s.targetTable == "" && s.prepared == nil && (s.bound != nil || s.streamBind != nil) {
+		return nil, -1, adbc.Error{
+			Msg:  "[Flight SQL Statement] must set IngestTargetTable before bulk ingestion",
+			Code: adbc.StatusInvalidState,
+		}
+	}
+
 	// Handle bulk ingest
 	if s.targetTable != "" {
 		nrec, err = s.executeIngest(ctx)
@@ -533,6 +541,14 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 	if err := s.clearIncrementalQuery(); err != nil {
 		return -1, err
+	}
+
+	// Reject staged binds if no ingest target was provided
+	if s.targetTable == "" && s.prepared == nil && (s.bound != nil || s.streamBind != nil) {
+		return -1, adbc.Error{
+			Msg:  "[Flight SQL Statement] must set IngestTargetTable before bulk ingestion",
+			Code: adbc.StatusInvalidState,
+		}
 	}
 
 	// Handle bulk ingest
@@ -617,9 +633,18 @@ func (s *statement) Bind(_ context.Context, values arrow.RecordBatch) error {
 	}
 
 	if s.prepared == nil {
-		return adbc.Error{
-			Msg:  "[Flight SQL Statement] must call Prepare or set IngestTargetTable before calling Bind",
-			Code: adbc.StatusInvalidState}
+		if s.streamBind != nil {
+			s.streamBind.Release()
+			s.streamBind = nil
+		}
+		if s.bound != nil {
+			s.bound.Release()
+		}
+		s.bound = values
+		if s.bound != nil {
+			s.bound.Retain()
+		}
+		return nil
 	}
 
 	// calls retain
@@ -650,9 +675,18 @@ func (s *statement) BindStream(_ context.Context, stream array.RecordReader) err
 	}
 
 	if s.prepared == nil {
-		return adbc.Error{
-			Msg:  "[Flight SQL Statement] must call Prepare or set IngestTargetTable before calling Bind",
-			Code: adbc.StatusInvalidState}
+		if s.bound != nil {
+			s.bound.Release()
+			s.bound = nil
+		}
+		if s.streamBind != nil {
+			s.streamBind.Release()
+		}
+		s.streamBind = stream
+		if s.streamBind != nil {
+			s.streamBind.Retain()
+		}
+		return nil
 	}
 
 	// calls retain

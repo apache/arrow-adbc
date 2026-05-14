@@ -3047,6 +3047,150 @@ func (suite *BulkIngestTests) TestBulkIngestWithStream() {
 	suite.Equal(int64(5), totalRows)
 }
 
+func (suite *BulkIngestTests) TestBulkIngestBindStreamBeforeOptions() {
+	stmt, err := suite.cnxn.NewStatement()
+	suite.Require().NoError(err)
+	defer validation.CheckedClose(suite.T(), stmt)
+
+	schema := arrow.NewSchema([]arrow.Field{
+		{Name: "batch_id", Type: arrow.PrimitiveTypes.Int32, Nullable: false},
+	}, nil)
+
+	bldr := array.NewRecordBuilder(memory.DefaultAllocator, schema)
+	defer bldr.Release()
+
+	bldr.Field(0).(*array.Int32Builder).AppendValues([]int32{1}, nil)
+	rec1 := bldr.NewRecordBatch()
+	bldr.Field(0).(*array.Int32Builder).AppendValues([]int32{2, 3}, nil)
+	rec2 := bldr.NewRecordBatch()
+	defer rec1.Release()
+	defer rec2.Release()
+
+	rdr, err := array.NewRecordReader(schema, []arrow.RecordBatch{rec1, rec2})
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.Require().NoError(stmt.BindStream(context.Background(), rdr))
+
+	suite.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bind_first"))
+	suite.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestMode, adbc.OptionValueIngestModeCreate))
+
+	nRows, err := stmt.ExecuteUpdate(context.Background())
+	suite.Require().NoError(err)
+	suite.Equal(int64(3), nRows)
+
+	requests := suite.server.GetIngestRequests()
+	suite.Require().Len(requests, 1)
+	suite.Equal("bind_first", requests[0].GetTable())
+}
+
+func (suite *BulkIngestTests) TestBulkIngestBindBeforeOptions() {
+	stmt, err := suite.cnxn.NewStatement()
+	suite.Require().NoError(err)
+	defer validation.CheckedClose(suite.T(), stmt)
+
+	schema := arrow.NewSchema([]arrow.Field{
+		{Name: "id", Type: arrow.PrimitiveTypes.Int32, Nullable: false},
+	}, nil)
+
+	bldr := array.NewRecordBuilder(memory.DefaultAllocator, schema)
+	defer bldr.Release()
+
+	bldr.Field(0).(*array.Int32Builder).AppendValues([]int32{10, 20}, nil)
+	rec := bldr.NewRecordBatch()
+	defer rec.Release()
+
+	suite.Require().NoError(stmt.Bind(context.Background(), rec))
+
+	suite.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetTable, "bind_batch_first"))
+	suite.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestMode, adbc.OptionValueIngestModeCreate))
+
+	nRows, err := stmt.ExecuteUpdate(context.Background())
+	suite.Require().NoError(err)
+	suite.Equal(int64(2), nRows)
+
+	requests := suite.server.GetIngestRequests()
+	suite.Require().Len(requests, 1)
+	suite.Equal("bind_batch_first", requests[0].GetTable())
+}
+
+func (suite *BulkIngestTests) TestBulkIngestBindStreamMissingTarget() {
+	stmt, err := suite.cnxn.NewStatement()
+	suite.Require().NoError(err)
+	defer validation.CheckedClose(suite.T(), stmt)
+
+	schema := arrow.NewSchema([]arrow.Field{
+		{Name: "batch_id", Type: arrow.PrimitiveTypes.Int32, Nullable: false},
+	}, nil)
+
+	bldr := array.NewRecordBuilder(memory.DefaultAllocator, schema)
+	defer bldr.Release()
+
+	bldr.Field(0).(*array.Int32Builder).AppendValues([]int32{1}, nil)
+	rec := bldr.NewRecordBatch()
+	defer rec.Release()
+
+	rdr, err := array.NewRecordReader(schema, []arrow.RecordBatch{rec})
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.Require().NoError(stmt.BindStream(context.Background(), rdr))
+
+	_, err = stmt.ExecuteUpdate(context.Background())
+	suite.Require().Error(err)
+	suite.Contains(err.Error(), "must set IngestTargetTable before bulk ingestion")
+}
+
+func (suite *BulkIngestTests) TestBulkIngestBindMissingTarget() {
+	stmt, err := suite.cnxn.NewStatement()
+	suite.Require().NoError(err)
+	defer validation.CheckedClose(suite.T(), stmt)
+
+	schema := arrow.NewSchema([]arrow.Field{
+		{Name: "id", Type: arrow.PrimitiveTypes.Int32, Nullable: false},
+	}, nil)
+
+	bldr := array.NewRecordBuilder(memory.DefaultAllocator, schema)
+	defer bldr.Release()
+
+	bldr.Field(0).(*array.Int32Builder).AppendValues([]int32{1}, nil)
+	rec := bldr.NewRecordBatch()
+	defer rec.Release()
+
+	suite.Require().NoError(stmt.Bind(context.Background(), rec))
+
+	_, err = stmt.ExecuteUpdate(context.Background())
+	suite.Require().Error(err)
+	suite.Contains(err.Error(), "must set IngestTargetTable before bulk ingestion")
+}
+
+func (suite *BulkIngestTests) TestBulkIngestBindStreamMissingTargetExecuteQuery() {
+	stmt, err := suite.cnxn.NewStatement()
+	suite.Require().NoError(err)
+	defer validation.CheckedClose(suite.T(), stmt)
+
+	schema := arrow.NewSchema([]arrow.Field{
+		{Name: "batch_id", Type: arrow.PrimitiveTypes.Int32, Nullable: false},
+	}, nil)
+
+	bldr := array.NewRecordBuilder(memory.DefaultAllocator, schema)
+	defer bldr.Release()
+
+	bldr.Field(0).(*array.Int32Builder).AppendValues([]int32{1}, nil)
+	rec := bldr.NewRecordBatch()
+	defer rec.Release()
+
+	rdr, err := array.NewRecordReader(schema, []arrow.RecordBatch{rec})
+	suite.Require().NoError(err)
+	defer rdr.Release()
+
+	suite.Require().NoError(stmt.BindStream(context.Background(), rdr))
+
+	_, _, err = stmt.ExecuteQuery(context.Background())
+	suite.Require().Error(err)
+	suite.Contains(err.Error(), "must set IngestTargetTable before bulk ingestion")
+}
+
 func (suite *BulkIngestTests) TestBulkIngestWithoutBind() {
 	stmt, err := suite.cnxn.NewStatement()
 	suite.Require().NoError(err)
