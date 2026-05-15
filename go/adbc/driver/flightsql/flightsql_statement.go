@@ -616,40 +616,27 @@ func (s *statement) SetSubstraitPlan(plan []byte) error {
 // but it may not do this until the statement is closed or another
 // record is bound.
 func (s *statement) Bind(_ context.Context, values arrow.RecordBatch) error {
-	// For bulk ingest, bind to the statement
-	if s.targetTable != "" {
-		if s.streamBind != nil {
-			s.streamBind.Release()
-			s.streamBind = nil
-		}
-		if s.bound != nil {
-			s.bound.Release()
-		}
-		s.bound = values
-		if s.bound != nil {
-			s.bound.Retain()
-		}
+	if s.targetTable != "" || s.prepared == nil {
+		s.setBound(values)
 		return nil
 	}
 
-	if s.prepared == nil {
-		if s.streamBind != nil {
-			s.streamBind.Release()
-			s.streamBind = nil
-		}
-		if s.bound != nil {
-			s.bound.Release()
-		}
-		s.bound = values
-		if s.bound != nil {
-			s.bound.Retain()
-		}
-		return nil
-	}
-
-	// calls retain
 	s.prepared.SetParameters(values)
 	return nil
+}
+
+func (s *statement) setBound(values arrow.RecordBatch) {
+	if s.streamBind != nil {
+		s.streamBind.Release()
+		s.streamBind = nil
+	}
+	if s.bound != nil {
+		s.bound.Release()
+	}
+	s.bound = values
+	if s.bound != nil {
+		s.bound.Retain()
+	}
 }
 
 // BindStream uses a record batch stream to bind parameters for this
@@ -658,40 +645,27 @@ func (s *statement) Bind(_ context.Context, values arrow.RecordBatch) error {
 // The driver will call Release on the record reader, but may not do this
 // until Close is called.
 func (s *statement) BindStream(_ context.Context, stream array.RecordReader) error {
-	// For bulk ingest, bind to the statement
-	if s.targetTable != "" {
-		if s.bound != nil {
-			s.bound.Release()
-			s.bound = nil
-		}
-		if s.streamBind != nil {
-			s.streamBind.Release()
-		}
-		s.streamBind = stream
-		if s.streamBind != nil {
-			s.streamBind.Retain()
-		}
+	if s.targetTable != "" || s.prepared == nil {
+		s.setStreamBound(stream)
 		return nil
 	}
 
-	if s.prepared == nil {
-		if s.bound != nil {
-			s.bound.Release()
-			s.bound = nil
-		}
-		if s.streamBind != nil {
-			s.streamBind.Release()
-		}
-		s.streamBind = stream
-		if s.streamBind != nil {
-			s.streamBind.Retain()
-		}
-		return nil
-	}
-
-	// calls retain
 	s.prepared.SetRecordReader(stream)
 	return nil
+}
+
+func (s *statement) setStreamBound(stream array.RecordReader) {
+	if s.bound != nil {
+		s.bound.Release()
+		s.bound = nil
+	}
+	if s.streamBind != nil {
+		s.streamBind.Release()
+	}
+	s.streamBind = stream
+	if s.streamBind != nil {
+		s.streamBind.Retain()
+	}
 }
 
 // GetParameterSchema returns an Arrow schema representation of
