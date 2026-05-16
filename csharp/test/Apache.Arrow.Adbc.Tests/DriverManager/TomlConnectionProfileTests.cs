@@ -24,7 +24,7 @@ using Xunit;
 namespace Apache.Arrow.Adbc.Tests.DriverManager
 {
     /// <summary>
-    /// Tests for <see cref="TomlConnectionProfile"/> and the internal <see cref="TomlParser"/>.
+    /// Tests for <see cref="FilesystemProfileProvider"/> TOML parsing and the internal <see cref="TomlParser"/>.
     /// </summary>
     public class TomlConnectionProfileTests : IDisposable
     {
@@ -70,7 +70,7 @@ port = 5432
 timeout = 30.5
 use_ssl = true
 ";
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
 
             Assert.Equal("libadbc_driver_postgresql", profile.DriverName);
             Assert.Equal("postgresql://localhost/mydb", profile.StringOptions["uri"]);
@@ -95,7 +95,7 @@ driver = ""libadbc_driver_postgresql""
 uri = ""postgresql://localhost/mydb""
 port = 5432
 ";
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
 
             Assert.Equal("libadbc_driver_postgresql", profile.DriverName);
             Assert.Equal("postgresql://localhost/mydb", profile.StringOptions["uri"]);
@@ -113,7 +113,7 @@ driver = ""mydriver""
 [options]
 key = ""value""
 ";
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
 
             Assert.Equal("mydriver", profile.DriverName);
             Assert.Equal("value", profile.StringOptions["key"]);
@@ -130,7 +130,7 @@ driver = ""mydriver""
 [options]
 key = ""value""
 ";
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
 
             Assert.Equal("mydriver", profile.DriverName);
             Assert.Equal("value", profile.StringOptions["key"]);
@@ -148,7 +148,7 @@ driver = ""mydriver""
 [OPTIONS]
 key = ""value""
 ";
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
 
             Assert.Equal("value", profile.StringOptions["key"]);
         }
@@ -163,7 +163,7 @@ driver = ""mydriver""
 [options]
 verify_cert = false
 ";
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
             Assert.Equal("false", profile.StringOptions["verify_cert"]);
         }
 
@@ -176,7 +176,7 @@ version = 1
 [options]
 uri = ""jdbc:something""
 ";
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
             Assert.Null(profile.DriverName);
             Assert.Equal("jdbc:something", profile.StringOptions["uri"]);
         }
@@ -188,7 +188,7 @@ uri = ""jdbc:something""
 version = 1
 driver = ""mydriver""
 ";
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
             Assert.Equal("mydriver", profile.DriverName);
             Assert.Empty(profile.StringOptions);
             Assert.Empty(profile.IntOptions);
@@ -207,7 +207,7 @@ driver = ""mydriver"" # inline comment
 # another comment
 key = ""value""
 ";
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
             Assert.Equal("mydriver", profile.DriverName);
             Assert.Equal("value", profile.StringOptions["key"]);
         }
@@ -222,7 +222,7 @@ driver = ""d""
 [options]
 offset = -100
 ";
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
             Assert.Equal(-100L, profile.IntOptions["offset"]);
         }
 
@@ -236,7 +236,7 @@ driver = ""d""
 [options]
 delta = -0.5
 ";
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
             Assert.Equal(-0.5, profile.DoubleOptions["delta"]);
         }
 
@@ -251,7 +251,7 @@ driver = ""file_driver""
 server = ""localhost""
 ";
             string path = WriteTempToml(toml);
-            TomlConnectionProfile profile = TomlConnectionProfile.FromFile(path);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromFile(path);
 
             Assert.Equal("file_driver", profile.DriverName);
             Assert.Equal("localhost", profile.StringOptions["server"]);
@@ -262,7 +262,7 @@ server = ""localhost""
         {
             const string toml = "version = 1\ndriver = \"d\"\n\n[options]\nmsg = \"say \\\"hello\\\"\"\n";
 
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
             Assert.Equal("say \"hello\"", profile.StringOptions["msg"]);
         }
 
@@ -285,7 +285,7 @@ driver = ""d""
 password = ""env_var(ADBC_TEST_PASSWORD_TOML)""
 plain = ""notanenvvar""
 ";
-                TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml).ResolveEnvVars();
+                ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml).ResolveEnvVars();
 
                 Assert.Equal("secret123", profile.StringOptions["password"]);
                 Assert.Equal("notanenvvar", profile.StringOptions["plain"]);
@@ -306,7 +306,7 @@ driver = ""d""
 [options]
 key = ""value""
 ";
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml).ResolveEnvVars();
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml).ResolveEnvVars();
             Assert.Equal("value", profile.StringOptions["key"]);
         }
 
@@ -365,7 +365,7 @@ driver = ""mydriver""
 [options]
 key = ""value""
 ";
-            AdbcException ex = Assert.Throws<AdbcException>(() => TomlConnectionProfile.FromContent(toml));
+            AdbcException ex = Assert.Throws<AdbcException>(() => FilesystemProfileProvider.LoadFromContent(toml));
             Assert.Equal(AdbcStatusCode.InvalidArgument, ex.Status);
             Assert.Contains("profile_version", ex.Message, StringComparison.OrdinalIgnoreCase);
         }
@@ -381,7 +381,7 @@ key = ""value""
 profile_version = 99
 driver = ""mydriver""
 ";
-            AdbcException ex = Assert.Throws<AdbcException>(() => TomlConnectionProfile.FromContent(toml));
+            AdbcException ex = Assert.Throws<AdbcException>(() => FilesystemProfileProvider.LoadFromContent(toml));
             Assert.Equal(AdbcStatusCode.NotImplemented, ex.Status);
             Assert.Contains("99", ex.Message);
         }
@@ -393,13 +393,13 @@ driver = ""mydriver""
         [Fact]
         public void ParseProfile_NullContent_ThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => TomlConnectionProfile.FromContent(null!));
+            Assert.Throws<ArgumentNullException>(() => FilesystemProfileProvider.LoadFromContent(null!));
         }
 
         [Fact]
         public void ParseProfile_EmptyContent_ThrowsAdbcException()
         {
-            AdbcException ex = Assert.Throws<AdbcException>(() => TomlConnectionProfile.FromContent(string.Empty));
+            AdbcException ex = Assert.Throws<AdbcException>(() => FilesystemProfileProvider.LoadFromContent(string.Empty));
             Assert.Equal(AdbcStatusCode.InvalidArgument, ex.Status);
         }
 
@@ -412,7 +412,7 @@ driver = ""mydriver""
         {
             string fakePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".toml");
             Assert.ThrowsAny<IOException>(
-                () => TomlConnectionProfile.FromFile(fakePath));
+                () => FilesystemProfileProvider.LoadFromFile(fakePath));
         }
 
         // -----------------------------------------------------------------------
@@ -432,7 +432,7 @@ driver = ""d""
 [options]
 password = ""env_var(ADBC_TEST_DEFINITELY_NOT_SET_XYZ)""
 ";
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
             AdbcException ex = Assert.Throws<AdbcException>(() => profile.ResolveEnvVars());
             Assert.Equal(AdbcStatusCode.InvalidState, ex.Status);
             Assert.Contains(varName, ex.Message);
@@ -508,7 +508,7 @@ version = 1
 [options]
 key = ""value""
 ";
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
             AdbcException ex = Assert.Throws<AdbcException>(
                 () => AdbcDriverManager.LoadDriverFromProfile(profile));
             Assert.Equal(AdbcStatusCode.InvalidArgument, ex.Status);
@@ -522,7 +522,7 @@ key = ""value""
         public void FilesystemProfileProvider_UnknownProfile_ReturnsNull()
         {
             FilesystemProfileProvider provider = new FilesystemProfileProvider();
-            IConnectionProfile? result = provider.GetProfile(
+            ConnectionProfile? result = provider.GetProfile(
                 "definitely_not_a_real_profile_xyz",
                 additionalSearchPathList: Path.GetTempPath());
             Assert.Null(result);
@@ -556,7 +556,7 @@ key = ""found""
             try
             {
                 FilesystemProfileProvider provider = new FilesystemProfileProvider();
-                IConnectionProfile? profile = provider.GetProfile("myprofile", additionalSearchPathList: dir);
+                ConnectionProfile? profile = provider.GetProfile("myprofile", additionalSearchPathList: dir);
 
                 Assert.NotNull(profile);
                 Assert.Equal("test_driver", profile!.DriverName);
@@ -578,7 +578,7 @@ driver = ""abs_driver""
 ";
             string path = WriteTempToml(toml);
             FilesystemProfileProvider provider = new FilesystemProfileProvider();
-            IConnectionProfile? profile = provider.GetProfile(path);
+            ConnectionProfile? profile = provider.GetProfile(path);
 
             Assert.NotNull(profile);
             Assert.Equal("abs_driver", profile!.DriverName);
@@ -596,7 +596,7 @@ version = 1
 driver = ""Apache.Arrow.Adbc.Tests.dll""
 driver_type = ""Apache.Arrow.Adbc.Tests.DriverManager.FakeAdbcDriver""
 ";
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
             Assert.Equal("Apache.Arrow.Adbc.Tests.dll", profile.DriverName);
             Assert.Equal("Apache.Arrow.Adbc.Tests.DriverManager.FakeAdbcDriver", profile.DriverTypeName);
         }
@@ -608,7 +608,7 @@ driver_type = ""Apache.Arrow.Adbc.Tests.DriverManager.FakeAdbcDriver""
 version = 1
 driver = ""mydriver""
 ";
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
             Assert.Null(profile.DriverTypeName);
         }
 
@@ -646,7 +646,7 @@ int_key = 42
 dbl_key = 1.5
 bool_key = true
 ";
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
             IReadOnlyDictionary<string, string> opts = AdbcDriverManager.BuildStringOptions(profile);
 
             Assert.Equal("hello", opts["str_key"]);
@@ -662,7 +662,7 @@ bool_key = true
 version = 1
 driver = ""d""
 ";
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
             IReadOnlyDictionary<string, string> opts = AdbcDriverManager.BuildStringOptions(profile);
 
             Assert.Empty(opts);
@@ -687,7 +687,7 @@ driver = ""d""
                 + "project_id = \"my-project\"\n"
                 + "region = \"us-east1\"\n";
 
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
             AdbcDatabase db = AdbcDriverManager.OpenDatabaseFromProfile(profile);
 
             // Use type name comparison to avoid assembly identity issues when loaded via Assembly.LoadFrom
@@ -764,7 +764,7 @@ driver_type = ""Apache.Arrow.Adbc.Tests.DriverManager.FakeAdbcDriver""
 [options]
 key = ""value""
 ";
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
             AdbcException ex = Assert.Throws<AdbcException>(
                 () => AdbcDriverManager.OpenDatabaseFromProfile(profile));
             Assert.Equal(AdbcStatusCode.InvalidArgument, ex.Status);
@@ -804,7 +804,7 @@ key = ""value""
             // raw strings.  ValidateVersion must not leak a raw FormatException.
             const string toml = "version = notanumber\ndriver = \"d\"\n";
             AdbcException ex = Assert.Throws<AdbcException>(
-                () => TomlConnectionProfile.FromContent(toml));
+                () => FilesystemProfileProvider.LoadFromContent(toml));
             Assert.Equal(AdbcStatusCode.InvalidArgument, ex.Status);
         }
 
@@ -814,7 +814,7 @@ key = ""value""
             // A quoted string that cannot be converted to long must not leak FormatException.
             const string toml = "version = \"abc\"\ndriver = \"d\"\n";
             AdbcException ex = Assert.Throws<AdbcException>(
-                () => TomlConnectionProfile.FromContent(toml));
+                () => FilesystemProfileProvider.LoadFromContent(toml));
             Assert.Equal(AdbcStatusCode.InvalidArgument, ex.Status);
         }
 
@@ -835,7 +835,7 @@ author = ""someone""
 [options]
 key = ""value""
 ";
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
             // [metadata] must not bleed into options
             Assert.Equal("value", profile.StringOptions["key"]);
             Assert.False(profile.StringOptions.ContainsKey("author"));
@@ -849,7 +849,7 @@ key = ""value""
         public void ParseProfile_DuplicateOptionKey_LastValueWins()
         {
             const string toml = "version = 1\ndriver = \"d\"\n\n[options]\nkey = \"first\"\nkey = \"second\"\n";
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
             Assert.Equal("second", profile.StringOptions["key"]);
         }
 
@@ -872,7 +872,7 @@ driver_type = ""My.Namespace.MyDriver""
 [options]
 host = ""env_var(ADBC_TEST_RESOLVE_ENVVAR_HOST)""
 ";
-                TomlConnectionProfile resolved = TomlConnectionProfile.FromContent(toml).ResolveEnvVars();
+                ConnectionProfile resolved = FilesystemProfileProvider.LoadFromContent(toml).ResolveEnvVars();
                 Assert.Equal("My.Namespace.MyDriver", resolved.DriverTypeName);
                 Assert.Equal("myhost", resolved.StringOptions["host"]);
             }
@@ -900,7 +900,7 @@ host = ""env_var(ADBC_TEST_RESOLVE_ENVVAR_HOST)""
                 + "known_key = \"hello\"\n"
                 + "unknown_widget = \"ignored_by_driver\"\n";
 
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
             AdbcDatabase db = AdbcDriverManager.OpenDatabaseFromProfile(profile);
 
             // Use type name comparison to avoid assembly identity issues
@@ -932,7 +932,7 @@ profile_key = ""from_profile""
 shared_key = ""profile_value""
 port = 5432
 ";
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
 
             Dictionary<string, string> explicitOptions = new Dictionary<string, string>
             {
@@ -963,7 +963,7 @@ driver = ""d""
 [options]
 key = ""value""
 ";
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
             IReadOnlyDictionary<string, string> opts = AdbcDriverManager.BuildStringOptions(profile, null);
 
             Assert.Equal("value", opts["key"]);
@@ -979,7 +979,7 @@ driver = ""d""
 [options]
 key = ""value""
 ";
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
             Dictionary<string, string> empty = new Dictionary<string, string>();
             IReadOnlyDictionary<string, string> opts = AdbcDriverManager.BuildStringOptions(profile, empty);
 
@@ -999,7 +999,7 @@ int_key = 100
 dbl_key = 2.5
 bool_key = false
 ";
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
 
             Dictionary<string, string> explicitOptions = new Dictionary<string, string>
             {
@@ -1036,7 +1036,7 @@ bool_key = false
                 + "profile_option = \"from_profile\"\n"
                 + "shared_option = \"profile_value\"\n";
 
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
 
             Dictionary<string, string> explicitOptions = new Dictionary<string, string>
             {
@@ -1077,7 +1077,7 @@ bool_key = false
                 + "\n[options]\n"
                 + "key = \"value\"\n";
 
-            TomlConnectionProfile profile = TomlConnectionProfile.FromContent(toml);
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
             AdbcDatabase db = AdbcDriverManager.OpenDatabaseFromProfile(profile, null);
 
             // Use type name comparison to avoid assembly identity issues

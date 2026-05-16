@@ -7,13 +7,6 @@
     <IsTestProject>true</IsTestProject>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ProcessArchitecture>$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant())</ProcessArchitecture>
-    <!--
-      net10's NuGet audit elevates known vulnerabilities of transitive packages to errors.
-      The OpenTelemetry.Api 1.12.0 advisory (GHSA-g94r-2vxg-569j) is pulled in transitively
-      from the centrally pinned OpenTelemetry 1.12.0 and is not addressable from this test
-      project. The fix lives in OpenTelemetry 1.15+, which is tracked separately.
-    -->
-    <NoWarn>$(NoWarn);NU1902</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

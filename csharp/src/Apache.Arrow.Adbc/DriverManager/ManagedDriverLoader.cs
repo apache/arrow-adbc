@@ -69,17 +69,21 @@ namespace Apache.Arrow.Adbc.DriverManager
     ///   </item>
     ///   <item>
     ///     <description>
-    ///       Drivers should be published with their <c>.deps.json</c> file alongside the
-    ///       assembly (the default when building with the .NET SDK). Native dependencies
-    ///       should follow the standard <c>runtimes/&lt;rid&gt;/native</c> layout.
+    ///       Drivers <b>must</b> be published with their <c>.deps.json</c> file alongside
+    ///       the assembly (the default when building with the .NET SDK). Without it the
+    ///       loader cannot construct an <see cref="AssemblyDependencyResolver"/>, the
+    ///       host's TPA list is the only thing that gets consulted, and any driver
+    ///       dependency the host does not already have will fail to load at the first
+    ///       call site that touches it. Native dependencies should follow the standard
+    ///       <c>runtimes/&lt;rid&gt;/native</c> layout.
     ///     </description>
     ///   </item>
     ///   <item>
     ///     <description>
-    ///       If a driver does not ship a <c>.deps.json</c>, the loader still works but
-    ///       falls back to whatever the host can resolve plus the driver's directory.
-    ///       Callers needing strong isolation should load the driver into a custom
-    ///       <see cref="AssemblyLoadContext"/> themselves.
+    ///       A driver whose only dependencies are already present in the host's TPA list
+    ///       can technically load without a <c>.deps.json</c>, but this is fragile and
+    ///       not a supported configuration. Callers needing strong isolation should
+    ///       load the driver into a custom <see cref="AssemblyLoadContext"/> themselves.
     ///     </description>
     ///   </item>
     /// </list>
@@ -145,9 +149,13 @@ namespace Apache.Arrow.Adbc.DriverManager
 #if NET6_0_OR_GREATER
             // Register an AssemblyDependencyResolver for this driver so that its own
             // .deps.json is consulted when the default AssemblyLoadContext fails to
-            // resolve a dependency. AssemblyDependencyResolver throws if no .deps.json
-            // is present next to the assembly; in that case we silently fall back to
-            // the host's normal probing behavior.
+            // resolve a dependency. AssemblyDependencyResolver throws InvalidOperationException
+            // if no .deps.json is present next to the assembly. Without that file the
+            // runtime has no way to map the driver's transitive references to files on
+            // disk, so any non-trivial driver will fail at first use. We swallow the
+            // exception so the driver assembly itself can still be loaded (useful for
+            // diagnostics and for fully self-contained drivers), but callers are
+            // expected to ship the .deps.json.
             if (!resolvers.ContainsKey(fullPath))
             {
                 try
@@ -158,7 +166,9 @@ namespace Apache.Arrow.Adbc.DriverManager
                 }
                 catch (InvalidOperationException)
                 {
-                    // No .deps.json next to the driver; rely on LoadFrom's directory probing.
+                    // No .deps.json next to the driver. The driver assembly will still
+                    // load, but any transitive dependency not already in the host's TPA
+                    // list will fail to resolve.
                 }
             }
 #endif

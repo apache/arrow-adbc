@@ -41,14 +41,12 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// </summary>
         public const string DriverPathEnvVar = "ADBC_DRIVER_PATH";
 
-        private static readonly string[] s_nativeExtensions = { ".so", ".dll", ".dylib" };
-
         // -----------------------------------------------------------------------
-        // AdbcLoadDriver – load a driver directly from an absolute or relative path
+        // AdbcLoadDriver – load a driver directly from an absolute path
         // -----------------------------------------------------------------------
 
         /// <summary>
-        /// Loads an ADBC driver from an explicit file path.
+        /// Loads an ADBC driver from an explicit absolute file path.
         /// Mirrors <c>AdbcLoadDriver</c> in <c>adbc_driver_manager.h</c>.
         /// </summary>
         /// <remarks>
@@ -63,9 +61,25 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// or provide additional metadata. The <paramref name="entrypoint"/> parameter
         /// always takes precedence over any entrypoint derived from the manifest or filename.
         /// </para>
+        /// <para>
+        /// <b>Managed (.NET) drivers always require a manifest.</b> This method loads the
+        /// driver as a native shared library unless a co-located TOML manifest is present
+        /// that specifies a managed <c>driver_type</c>. To load a managed .NET driver,
+        /// either point <paramref name="driverPath"/> at a directory containing a
+        /// co-located <c>.toml</c> manifest, call <see cref="LoadFromManifest"/> directly,
+        /// or use <see cref="LoadManagedDriver"/> to load a .NET assembly without a manifest.
+        /// </para>
+        /// <para>
+        /// <b>Security:</b> <paramref name="driverPath"/> must be an absolute, fully
+        /// qualified path. Relative paths are rejected, because resolving them inside the
+        /// driver manager (e.g. against the current process working directory) is a
+        /// security hazard: an attacker who can influence the working directory could
+        /// cause the wrong shared library to be loaded. Host programs that need to
+        /// resolve a relative location should do so explicitly before calling this method.
+        /// </para>
         /// </remarks>
         /// <param name="driverPath">
-        /// The absolute or relative path to the driver shared library.
+        /// The absolute, fully qualified path to the driver shared library.
         /// </param>
         /// <param name="entrypoint">
         /// The symbol name of the driver initialisation function. When <c>null</c> the
@@ -73,10 +87,19 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// <see cref="DeriveEntrypoint"/>), falling back to <c>AdbcDriverInit</c>.
         /// </param>
         /// <returns>The loaded <see cref="AdbcDriver"/>.</returns>
+        /// <exception cref="ArgumentException">
+        /// Thrown when <paramref name="driverPath"/> is null, empty, or not an absolute path.
+        /// </exception>
         public static AdbcDriver LoadDriver(string driverPath, string? entrypoint = null)
         {
             if (string.IsNullOrEmpty(driverPath))
                 throw new ArgumentException("Driver path must not be null or empty.", nameof(driverPath));
+
+            if (!Path.IsPathRooted(driverPath))
+                throw new ArgumentException(
+                    $"Driver path '{driverPath}' must be an absolute path. " +
+                    "Resolve the path in the host program before passing it to the driver manager.",
+                    nameof(driverPath));
 
             // Check for co-located TOML manifest
             string? colocatedManifest = TryFindColocatedManifest(driverPath);
@@ -150,13 +173,22 @@ namespace Apache.Arrow.Adbc.DriverManager
             if (Path.IsPathRooted(driverName))
                 return LoadFromAbsolutePath(driverName, entrypoint);
 
+            // Anything that is not an absolute path is treated as a name to be resolved
+            // by the driver manager. To avoid loading the wrong library based on an
+            // attacker-controlled working directory, we require that such a name be a
+            // simple file/base name with no directory separators and no ".." segments.
+            EnsureSimpleDriverName(driverName);
+
             // Bare name with an extension but not rooted – relative path case.
             string ext = Path.GetExtension(driverName);
             if (!string.IsNullOrEmpty(ext) && loadOptions.HasFlag(AdbcLoadFlags.AllowRelativePaths))
             {
+                // Resolve against the executing process directory rather than the
+                // current working directory, then dispatch to the absolute-path loader.
+                string resolved = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, driverName));
                 if (string.Equals(ext, ".toml", StringComparison.OrdinalIgnoreCase))
-                    return LoadFromManifest(driverName, entrypoint);
-                return LoadDriver(driverName, entrypoint);
+                    return LoadFromManifest(resolved, entrypoint);
+                return LoadDriver(resolved, entrypoint);
             }
 
             // Bareword – search configured directories.
@@ -177,7 +209,7 @@ namespace Apache.Arrow.Adbc.DriverManager
         // -----------------------------------------------------------------------
 
         /// <summary>
-        /// Loads an ADBC driver as specified by an <see cref="IConnectionProfile"/>.
+        /// Loads an ADBC driver as specified by a <see cref="ConnectionProfile"/>.
         /// </summary>
         /// <param name="profile">The profile that specifies the driver to load.</param>
         /// <param name="entrypoint">
@@ -194,7 +226,7 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// Thrown when the profile does not specify a driver, or the driver cannot be found.
         /// </exception>
         public static AdbcDriver LoadDriverFromProfile(
-            IConnectionProfile profile,
+            ConnectionProfile profile,
             string? entrypoint = null,
             AdbcLoadFlags loadOptions = AdbcLoadFlags.Default,
             string? additionalSearchPathList = null)
@@ -323,9 +355,9 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// </summary>
         /// <remarks>
         /// <para>
-        /// If the profile has a non-null <see cref="IConnectionProfile.DriverTypeName"/>, the
+        /// If the profile has a non-null <see cref="ConnectionProfile.DriverTypeName"/>, the
         /// driver is loaded as a managed .NET assembly via <see cref="LoadManagedDriver"/> and
-        /// <see cref="IConnectionProfile.DriverName"/> is used as the assembly path.
+        /// <see cref="ConnectionProfile.DriverName"/> is used as the assembly path.
         /// </para>
         /// <para>
         /// Otherwise the driver is loaded as a native shared library via
@@ -338,7 +370,7 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// passed to <see cref="AdbcDriver.Open(IReadOnlyDictionary{string,string})"/>.
         /// </para>
         /// <para>
-        /// Call <see cref="TomlConnectionProfile.ResolveEnvVars"/> on the profile before
+        /// Call <see cref="ConnectionProfile.ResolveEnvVars"/> on the profile before
         /// passing it here if you want <c>env_var(NAME)</c> values expanded first.
         /// </para>
         /// </remarks>
@@ -349,7 +381,7 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// </param>
         /// <returns>An open <see cref="AdbcDatabase"/>.</returns>
         public static AdbcDatabase OpenDatabaseFromProfile(
-            IConnectionProfile profile,
+            ConnectionProfile profile,
             AdbcLoadFlags loadOptions = AdbcLoadFlags.Default,
             string? additionalSearchPathList = null)
         {
@@ -368,16 +400,16 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// options, the explicit value takes precedence.
         /// </para>
         /// <para>
-        /// If the profile has a non-null <see cref="IConnectionProfile.DriverTypeName"/>, the
+        /// If the profile has a non-null <see cref="ConnectionProfile.DriverTypeName"/>, the
         /// driver is loaded as a managed .NET assembly via <see cref="LoadManagedDriver"/> and
-        /// <see cref="IConnectionProfile.DriverName"/> is used as the assembly path.
+        /// <see cref="ConnectionProfile.DriverName"/> is used as the assembly path.
         /// </para>
         /// <para>
         /// Otherwise the driver is loaded as a native shared library via
         /// <see cref="FindLoadDriver"/>.
         /// </para>
         /// <para>
-        /// All options are merged into a single <c>string → string</c> dictionary in the
+        /// All options are merged into a single
         /// following order (later values override earlier ones for the same key):
         /// <list type="number">
         ///   <item>Profile integer options (formatted as strings)</item>
@@ -399,7 +431,7 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// </param>
         /// <returns>An open <see cref="AdbcDatabase"/>.</returns>
         public static AdbcDatabase OpenDatabaseFromProfile(
-            IConnectionProfile profile,
+            ConnectionProfile profile,
             IReadOnlyDictionary<string, string>? explicitOptions,
             AdbcLoadFlags loadOptions = AdbcLoadFlags.Default,
             string? additionalSearchPathList = null)
@@ -433,7 +465,7 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// Integer and double values are formatted with <see cref="CultureInfo.InvariantCulture"/>.
         /// String options take precedence if the same key appears in multiple option sets.
         /// </summary>
-        public static IReadOnlyDictionary<string, string> BuildStringOptions(IConnectionProfile profile)
+        public static IReadOnlyDictionary<string, string> BuildStringOptions(ConnectionProfile profile)
         {
             return BuildStringOptions(profile, null);
         }
@@ -464,7 +496,7 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// </param>
         /// <returns>A merged dictionary of all options.</returns>
         public static IReadOnlyDictionary<string, string> BuildStringOptions(
-            IConnectionProfile profile,
+            ConnectionProfile profile,
             IReadOnlyDictionary<string, string>? explicitOptions)
         {
             if (profile == null) throw new ArgumentNullException(nameof(profile));
@@ -564,7 +596,7 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// applied to database connections. The manifest is used solely for driver loading.
         /// To use manifest options, explicitly load the profile with
         /// <see cref="TomlConnectionProfile.FromFile"/> and use
-        /// <see cref="OpenDatabaseFromProfile(IConnectionProfile, IReadOnlyDictionary{string, string}?, AdbcLoadFlags, string?)"/>.
+        /// <see cref="OpenDatabaseFromProfile(ConnectionProfile, IReadOnlyDictionary{string, string}?, AdbcLoadFlags, string?)"/>.
         /// </para>
         /// </remarks>
         /// <param name="driverPath">The path to the driver file.</param>
@@ -601,7 +633,7 @@ namespace Apache.Arrow.Adbc.DriverManager
                     AdbcStatusCode.NotFound);
             }
 
-            TomlConnectionProfile manifest = TomlConnectionProfile.FromFile(manifestPath);
+            ConnectionProfile manifest = FilesystemProfileProvider.LoadFromFile(manifestPath);
 
             if (string.IsNullOrEmpty(manifest.DriverName))
             {
@@ -760,6 +792,42 @@ namespace Apache.Arrow.Adbc.DriverManager
 
         private static string[] SplitPathList(string pathList) =>
             pathList.Split(new char[] { Path.PathSeparator }, StringSplitOptions.RemoveEmptyEntries);
+
+        /// <summary>
+        /// Validates that a non-rooted driver name is a simple file/base name with no
+        /// directory separators and no <c>..</c> segments. Such names may be safely
+        /// combined with a search-path directory or resolved against the executing
+        /// process directory; names with separators or parent-traversal segments are
+        /// rejected because they would let an attacker steer the loader to an
+        /// unintended location.
+        /// </summary>
+        private static void EnsureSimpleDriverName(string driverName)
+        {
+            if (driverName.IndexOf('/') >= 0 ||
+                driverName.IndexOf('\\') >= 0 ||
+                driverName.IndexOf(Path.DirectorySeparatorChar) >= 0 ||
+                driverName.IndexOf(Path.AltDirectorySeparatorChar) >= 0)
+            {
+                throw new ArgumentException(
+                    $"Driver name '{driverName}' must not contain directory separators. " +
+                    "Pass an absolute path to load a driver from a specific location.",
+                    nameof(driverName));
+            }
+
+            if (driverName.Contains(".."))
+            {
+                throw new ArgumentException(
+                    $"Driver name '{driverName}' must not contain '..' segments.",
+                    nameof(driverName));
+            }
+
+            if (driverName.IndexOf('\0') >= 0)
+            {
+                throw new ArgumentException(
+                    $"Driver name must not contain null characters.",
+                    nameof(driverName));
+            }
+        }
 
         private static string ToPascalCase(string snake)
         {

@@ -18,7 +18,7 @@
 namespace Apache.Arrow.Adbc.DriverManager
 {
     /// <summary>
-    /// Provides <see cref="IConnectionProfile"/> instances by name.
+    /// Provides <see cref="ConnectionProfile"/> instances by name.
     /// Mirrors the <c>AdbcConnectionProfileProvider</c> function type defined in
     /// <c>adbc_driver_manager.h</c>.
     /// </summary>
@@ -36,9 +36,9 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// search for profiles, or <c>null</c> to use only the default locations.
         /// </param>
         /// <returns>
-        /// The loaded <see cref="IConnectionProfile"/>, or <c>null</c> if no profile with
+        /// The loaded <see cref="ConnectionProfile"/>, or <c>null</c> if no profile with
         /// <paramref name="profileName"/> was found.
         /// </returns>
-        IConnectionProfile? GetProfile(string profileName, string? additionalSearchPathList = null);
+        ConnectionProfile? GetProfile(string profileName, string? additionalSearchPathList = null);
     }
 }

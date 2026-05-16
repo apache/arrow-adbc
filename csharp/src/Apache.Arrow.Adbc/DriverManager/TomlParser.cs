@@ -71,7 +71,9 @@ namespace Apache.Arrow.Adbc.DriverManager
 
                 if (line.StartsWith("[", StringComparison.Ordinal) && line.EndsWith("]", StringComparison.Ordinal))
                 {
-                    currentSection = line.Substring(1, line.Length - 2).Trim();
+                    string sectionName = line.Substring(1, line.Length - 2).Trim();
+                    ValidateSectionName(sectionName);
+                    currentSection = sectionName;
                     if (!result.ContainsKey(currentSection))
                     {
                         result[currentSection] = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
@@ -93,6 +95,49 @@ namespace Apache.Arrow.Adbc.DriverManager
             }
 
             return result;
+        }
+
+        private static void ValidateSectionName(string sectionName)
+        {
+            // Per the ADBC driver manifest spec (https://arrow.apache.org/adbc/current/format/driver_manifests.html)
+            // manifests are TOML, and the only section headers used by the spec are bare or
+            // dotted keys composed of TOML bare-key characters (A-Z a-z 0-9 _ -), e.g.
+            // [ADBC], [ADBC.features], [Driver], [Driver.shared].
+            //
+            // This parser intentionally implements only that subset: quoted section names,
+            // whitespace inside segments, empty segments, and leading/trailing dots are
+            // rejected so that an unsupported construct produces a clear error instead of
+            // being silently misinterpreted.
+            if (sectionName.Length == 0)
+            {
+                throw new FormatException("Invalid TOML section header: section name is empty.");
+            }
+
+            string[] segments = sectionName.Split('.');
+            foreach (string segment in segments)
+            {
+                if (segment.Length == 0)
+                {
+                    throw new FormatException(
+                        "Invalid TOML section header '" + sectionName + "': empty segment in dotted name.");
+                }
+
+                for (int i = 0; i < segment.Length; i++)
+                {
+                    char c = segment[i];
+                    bool isAllowed =
+                        (c >= 'A' && c <= 'Z') ||
+                        (c >= 'a' && c <= 'z') ||
+                        (c >= '0' && c <= '9') ||
+                        c == '_' || c == '-';
+                    if (!isAllowed)
+                    {
+                        throw new FormatException(
+                            "Invalid TOML section header '" + sectionName +
+                            "': only bare keys (A-Z, a-z, 0-9, '_' , '-') and dotted keys are supported.");
+                    }
+                }
+            }
         }
 
         private static object ParseValue(string raw)
