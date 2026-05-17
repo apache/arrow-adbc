@@ -147,11 +147,11 @@ hold driver-owned memory that callers release locally.
 Driver-side semantics
 ---------------------
 
-- **Begin** validates options, creates the target table for
-  ``create``/``replace``/``create_append`` modes, and returns a handle
-  that encodes whatever state the driver needs to scope subsequent
-  writes (UUID, target catalog/schema/table, transaction id, object
-  store prefix, etc.).
+- **Begin** validates options, performs whatever setup the driver
+  requires for writes to proceed (e.g., creating the target table for
+  ``create``/``replace``/``create_append`` modes, reserving a
+  transaction snapshot, allocating an object-store prefix), and returns
+  a handle that encodes the state needed to scope subsequent writes.
 - **Write** takes a handle and a stream, writes the partition into
   driver-private staging (a per-write staging table, a per-write
   object-store path), and returns a receipt encoding what was
@@ -221,20 +221,8 @@ For ``append`` mode, the schema parameter is optional; if supplied
 it is validated against the target so a thousand workers don't all
 fail independently with the same schema-mismatch error.
 
-3. No caller-supplied partition IDs
------------------------------------
-
-Earlier drafts gave each ``Write`` a caller-supplied ``partition_id``
-for idempotent retry.  Dropped: receipts are the source of truth for
-what gets committed, and well-designed drivers write each ``Write``
-to a unique location (per-call staging table, per-call data file).
-A retried ``Write`` produces a *new* receipt; the original write
-becomes orphaned and is collected by ``Abort``.  Caller-supplied IDs
-only matter for drivers that share staging across writes — which they
-shouldn't.
-
-4. Driver-owned output structs (handle, receipt)
-------------------------------------------------
+3. Driver-owned output structs (handle, receipt)
+-------------------------------------------------
 
 An earlier draft used the ``GetOptionBytes`` two-phase sizing
 pattern: caller passes a buffer + capacity, driver reports required
@@ -249,7 +237,7 @@ The chosen pattern (driver-owned struct with a release callback)
 mirrors ``AdbcPartitions`` on the read side, eliminates the orphan
 window, and gives drivers a clean place to free internal state.
 
-5. ``Commit`` and ``Abort`` take raw bytes, not structs
+4. ``Commit`` and ``Abort`` take raw bytes, not structs
 -------------------------------------------------------
 
 Symmetric with ``AdbcConnectionReadPartition``, which takes the raw
@@ -259,7 +247,7 @@ arrive as raw bytes; forcing the caller to wrap them in
 ``AdbcIngestReceipt`` structs (with bogus ``release`` callbacks)
 would be friction without benefit.
 
-6. Lost receipts are handled by handle-scoped sweep, not by receipts
+5. Lost receipts are handled by handle-scoped sweep, not by receipts
 --------------------------------------------------------------------
 
 If a worker writes data but its receipt is lost in transit, the
@@ -276,7 +264,7 @@ optimization (fast-path deletion of known writes); the handle is the
 authority for cleanup scope.  Drivers that cannot enumerate from
 the handle alone cannot correctly implement partitioned ingest.
 
-7. Coordinator may die without calling ``Commit`` or ``Abort``
+6. Coordinator may die without calling ``Commit`` or ``Abort``
 --------------------------------------------------------------
 
 The handle is opaque to the driver outside of ``Write``, so the
@@ -291,27 +279,6 @@ behaviors:
 
 The spec does not mandate any of these; it documents the failure
 mode and leaves the policy to drivers.
-
-Open questions
-==============
-
-These are intentionally unresolved in the initial revision.
-
-- **Single-coordinator commit only.**  Two coordinators calling
-  ``Commit`` on the same handle concurrently is undefined.  Should
-  drivers be required to detect and reject this, or is it the
-  caller's responsibility?
-- **Subset writes.**  Today the prototype assumes each worker writes
-  the same column set.  Receipts encode the column list, so it is
-  possible to support per-worker subsets in the future, but this is
-  not specified yet.
-- **Append-mode schema validation.**  The schema parameter is
-  optional in ``append`` mode.  Should drivers be *required* to
-  validate when a schema is supplied?  Currently "should".
-- **Streaming Commit.**  Today ``Commit`` takes all receipts at
-  once.  For very-many-partition jobs (10k+ workers) it may be
-  preferable to incrementally accumulate receipts.  Out of scope for
-  v1.
 
 Reference implementation
 ========================
