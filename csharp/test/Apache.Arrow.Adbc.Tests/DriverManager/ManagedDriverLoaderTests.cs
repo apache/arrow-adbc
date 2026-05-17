@@ -267,5 +267,84 @@ namespace Apache.Arrow.Adbc.Tests.DriverManager
             Assert.NotNull(driver);
             Assert.Equal(typeName, driver.GetType().FullName);
         }
+
+        /// <summary>
+        /// Integration-style proof that managed-driver loading preserves a single
+        /// identity for the shared public contract assemblies between the host and
+        /// the driver. This is the failure mode that is most likely to bite in
+        /// production: the driver's <c>.deps.json</c> happily lists a different
+        /// version of <c>Apache.Arrow.Adbc</c> / <c>Apache.Arrow</c> /
+        /// <c>System.Diagnostics.DiagnosticSource</c>, but on the default
+        /// <c>AssemblyLoadContext</c> the host's copy always wins -- and that is
+        /// exactly what we want for type identity.
+        /// </summary>
+        [Fact]
+        public void LoadManagedDriver_SharedContractAssemblies_ResolveToHostIdentity()
+        {
+            string dir = CreateTempDir();
+            string driverPath = CopyDriverAssembly(dir);
+            string typeName = typeof(FakeAdbcDriver).FullName!;
+
+            AdbcDriver driver = AdbcDriverManager.LoadManagedDriver(driverPath, typeName);
+
+            // The driver's loaded assembly must reference Apache.Arrow.Adbc (the public
+            // contract). Whatever version that reference points to, after loading it
+            // must resolve to the SAME Assembly instance the host is using -- otherwise
+            // AdbcDriver / AdbcDatabase would be two different types and the cast below
+            // would fail with a runtime InvalidCastException.
+            Assembly driverAssembly = driver.GetType().Assembly;
+
+            // 1. Driver and host share AdbcDriver identity.
+            Assert.Same(typeof(AdbcDriver), driver.GetType().BaseType);
+            Assert.Same(typeof(AdbcDriver).Assembly, driver.GetType().BaseType!.Assembly);
+
+            // 2. For each shared public contract assembly the driver references,
+            //    the resolved instance must be the host's copy. Apache.Arrow and
+            //    System.Diagnostics.DiagnosticSource may or may not be referenced
+            //    by the fake driver directly, so we only assert on the ones it does
+            //    reference.
+            string[] sharedContractAssemblies =
+            {
+                "Apache.Arrow.Adbc",
+                "Apache.Arrow",
+                "System.Diagnostics.DiagnosticSource",
+            };
+
+            // Apache.Arrow.Adbc must always be a shared reference.
+            Assert.Contains(
+                driverAssembly.GetReferencedAssemblies(),
+                n => string.Equals(n.Name, "Apache.Arrow.Adbc", StringComparison.OrdinalIgnoreCase));
+
+            foreach (string contract in sharedContractAssemblies)
+            {
+                AssemblyName? reference = System.Array.Find(
+                    driverAssembly.GetReferencedAssemblies(),
+                    n => string.Equals(n.Name, contract, StringComparison.OrdinalIgnoreCase));
+                if (reference == null)
+                {
+                    continue;
+                }
+
+                // Resolving the reference must return whatever the host has -- or, if the
+                // host has not yet touched it, the runtime's default load -- and from
+                // that point on there must be exactly one identity per simple name in
+                // the AppDomain. Any "version skew" failure would manifest as two
+                // assemblies with the same simple name but different MVIDs.
+                Assembly resolved = Assembly.Load(reference);
+
+                Assembly[] loaded = System.Array.FindAll(
+                    AppDomain.CurrentDomain.GetAssemblies(),
+                    a => string.Equals(a.GetName().Name, contract, StringComparison.OrdinalIgnoreCase));
+                Assert.Single(loaded);
+                Assert.Same(loaded[0], resolved);
+            }
+
+            // 3. Cross-boundary type identity: the AdbcDatabase the driver returns is
+            //    assignment-compatible with the host's AdbcDatabase, which can only be
+            //    true if Apache.Arrow.Adbc has a single identity across the boundary.
+            AdbcDatabase db = driver.Open(new Dictionary<string, string> { { "uri", "fake://skew" } });
+            Assert.IsAssignableFrom<AdbcDatabase>(db);
+            Assert.Same(typeof(AdbcDatabase), db.GetType().BaseType);
+        }
     }
 }

@@ -249,10 +249,33 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// Loads a managed (pure .NET) ADBC driver from a .NET assembly using reflection.
         /// </summary>
         /// <remarks>
+        /// <para>
         /// Use this instead of <see cref="LoadDriver"/> when the driver is a .NET assembly
         /// (e.g. <c>Apache.Arrow.Adbc.Drivers.BigQuery.dll</c>) rather than a native shared
         /// library. The assembly is loaded via <see cref="Assembly.LoadFrom"/> and the
         /// specified type is instantiated with a public parameterless constructor.
+        /// </para>
+        /// <para>
+        /// <b>What .deps.json buys you, and what it does not.</b> On modern .NET the
+        /// driver is loaded into the default <c>AssemblyLoadContext</c>. The driver's
+        /// <c>.deps.json</c> (which must be deployed next to the driver assembly) is
+        /// consulted to resolve <i>private</i> driver dependencies that the host process
+        /// does not already have on its TPA list. It is <b>not</b> used to override
+        /// versions of assemblies the host has already loaded. In particular, the public
+        /// contract assemblies
+        /// — <c>Apache.Arrow.Adbc</c>, <c>Apache.Arrow</c>, and
+        /// <c>System.Diagnostics.DiagnosticSource</c> —
+        /// are always satisfied from the host. Drivers must therefore be compiled
+        /// against versions of these assemblies that are less than or equal to the
+        /// versions shipped by the host; otherwise the driver will fail at first use
+        /// with <see cref="MissingMethodException"/> or <see cref="TypeLoadException"/>.
+        /// </para>
+        /// <para>
+        /// A driver deployed without its <c>.deps.json</c> can still load if all of its
+        /// references happen to be on the host's TPA list, but this is best-effort and
+        /// not a supported configuration. See <see cref="ManagedDriverLoader"/> for the
+        /// full dependency-resolution contract.
+        /// </para>
         /// </remarks>
         /// <param name="assemblyPath">
         /// The absolute or relative path to the .NET assembly containing the driver.

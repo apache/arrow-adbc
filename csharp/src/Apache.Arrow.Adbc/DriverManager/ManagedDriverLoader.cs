@@ -87,6 +87,33 @@ namespace Apache.Arrow.Adbc.DriverManager
     ///     </description>
     ///   </item>
     /// </list>
+    /// <para>
+    /// <b>Shared public contract assemblies and version skew:</b> a small set of
+    /// assemblies form the public contract between the driver manager and any managed
+    /// driver and must have <i>exactly one identity</i> per process. In particular:
+    /// </para>
+    /// <list type="bullet">
+    ///   <item><description><c>Apache.Arrow.Adbc</c> (defines <see cref="AdbcDriver"/>, <c>AdbcDatabase</c>, etc.)</description></item>
+    ///   <item><description><c>Apache.Arrow</c> (Arrow types crossing the API boundary)</description></item>
+    ///   <item><description><c>System.Diagnostics.DiagnosticSource</c> (telemetry / Activity)</description></item>
+    /// </list>
+    /// <para>
+    /// Because the driver is loaded into the default <see cref="AssemblyLoadContext"/>,
+    /// the runtime always returns the copy already loaded by the host for these
+    /// assemblies; any version shipped next to the driver and listed in the driver's
+    /// <c>.deps.json</c> is ignored. This is the desired behavior (type identity is
+    /// preserved across the boundary) but it has an operational consequence:
+    /// <b>the host must ship versions of these contract assemblies that meet or exceed
+    /// the minimum versions the driver was compiled against.</b> If the host pins an
+    /// older version, the driver may throw <see cref="MissingMethodException"/> or
+    /// <see cref="TypeLoadException"/> the first time it touches a newer API.
+    /// </para>
+    /// <para>
+    /// Private driver dependencies (i.e. assemblies the host does <i>not</i> reference)
+    /// go through the per-driver <see cref="AssemblyDependencyResolver"/> and load from
+    /// the driver's directory using its <c>.deps.json</c>. They are isolated from host
+    /// versions of the same files only insofar as the host has not already loaded them.
+    /// </para>
     /// </remarks>
     internal static class ManagedDriverLoader
     {
