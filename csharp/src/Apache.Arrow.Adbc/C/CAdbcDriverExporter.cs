@@ -57,9 +57,13 @@ namespace Apache.Arrow.Adbc.C
         private static unsafe delegate* unmanaged<CAdbcConnection*, CAdbcStatement*, CAdbcError*, AdbcStatusCode> StatementNewPtr => &NewStatement;
         private static unsafe delegate* unmanaged<CAdbcStatement*, CAdbcError*, AdbcStatusCode> StatementReleasePtr => &ReleaseStatement;
         private static unsafe delegate* unmanaged<CAdbcStatement*, CAdbcError*, AdbcStatusCode> StatementPreparePtr => &PrepareStatement;
+        private static unsafe delegate* unmanaged<CAdbcStatement*, byte*, byte*, CAdbcError*, AdbcStatusCode> StatementSetOptionPtr => &SetStatementOption;
         private static unsafe delegate* unmanaged<CAdbcStatement*, byte*, CAdbcError*, AdbcStatusCode> StatementSetSqlQueryPtr => &SetStatementSqlQuery;
         private static unsafe delegate* unmanaged<CAdbcStatement*, byte*, int, CAdbcError*, AdbcStatusCode> StatementSetSubstraitPlanPtr => &SetStatementSubstraitPlan;
         private static unsafe delegate* unmanaged<CAdbcStatement*, CArrowSchema*, CAdbcError*, AdbcStatusCode> StatementGetParameterSchemaPtr => &GetStatementParameterSchema;
+
+        private static unsafe delegate* unmanaged<CAdbcConnection*, CAdbcError*, AdbcStatusCode> ConnectionCancelPtr => &CancelConnection;
+        private static unsafe delegate* unmanaged<CAdbcStatement*, CAdbcError*, AdbcStatusCode> StatementCancelPtr => &CancelStatement;
 #else
         internal static unsafe IntPtr ReleaseErrorPtr => s_releaseError.Pointer;
         private static unsafe IntPtr ReleaseDriverPtr = NativeDelegate<DriverRelease>.AsNativePointer(ReleaseDriver);
@@ -88,16 +92,19 @@ namespace Apache.Arrow.Adbc.C
         private static unsafe IntPtr StatementNewPtr = NativeDelegate<StatementNew>.AsNativePointer(NewStatement);
         private static unsafe IntPtr StatementReleasePtr = NativeDelegate<StatementFn>.AsNativePointer(ReleaseStatement);
         private static unsafe IntPtr StatementPreparePtr = NativeDelegate<StatementFn>.AsNativePointer(PrepareStatement);
+        private static unsafe IntPtr StatementSetOptionPtr = NativeDelegate<StatementSetOption>.AsNativePointer(SetStatementOption);
         private static unsafe IntPtr StatementSetSqlQueryPtr = NativeDelegate<StatementSetSqlQuery>.AsNativePointer(SetStatementSqlQuery);
         private static unsafe IntPtr StatementSetSubstraitPlanPtr = NativeDelegate<StatementSetSubstraitPlan>.AsNativePointer(SetStatementSubstraitPlan);
         private static unsafe IntPtr StatementGetParameterSchemaPtr = NativeDelegate<StatementGetParameterSchema>.AsNativePointer(GetStatementParameterSchema);
+
+        private static unsafe IntPtr ConnectionCancelPtr = NativeDelegate<ConnectionFn>.AsNativePointer(CancelConnection);
+        private static unsafe IntPtr StatementCancelPtr = NativeDelegate<StatementFn>.AsNativePointer(CancelStatement);
 #endif
 
         public unsafe static AdbcStatusCode AdbcDriverInit(int version, CAdbcDriver* nativeDriver, CAdbcError* error, AdbcDriver driver)
         {
-            if (version != AdbcVersion.Version_1_0_0)
+            if (version != AdbcVersion.Version_1_0_0 && version != AdbcVersion.Version_1_1_0)
             {
-                // TODO: implement support for AdbcVersion.Version_1_1_0
                 return AdbcStatusCode.NotImplemented;
             }
 
@@ -131,8 +138,17 @@ namespace Apache.Arrow.Adbc.C
             nativeDriver->StatementNew = StatementNewPtr;
             nativeDriver->StatementPrepare = StatementPreparePtr;
             nativeDriver->StatementRelease = StatementReleasePtr;
+            nativeDriver->StatementSetOption = StatementSetOptionPtr;
             nativeDriver->StatementSetSqlQuery = StatementSetSqlQueryPtr;
             nativeDriver->StatementSetSubstraitPlan = StatementSetSubstraitPlanPtr;
+
+            if (version >= AdbcVersion.Version_1_1_0)
+            {
+                nativeDriver->ConnectionCancel = ConnectionCancelPtr;
+
+                nativeDriver->StatementCancel = StatementCancelPtr;
+                nativeDriver->StatementExecuteSchema = StatementExecuteSchemaPtr;
+            }
 
             return 0;
         }
@@ -494,6 +510,63 @@ namespace Apache.Arrow.Adbc.C
 
                 stub.SqlQuery = MarshalExtensions.PtrToStringUTF8(text);
 
+                return AdbcStatusCode.Success;
+            }
+            catch (Exception e)
+            {
+                return SetError(error, e);
+            }
+        }
+
+#if NET5_0_OR_GREATER
+        [UnmanagedCallersOnly]
+#endif
+        private unsafe static AdbcStatusCode SetStatementOption(CAdbcStatement* nativeStatement, byte* name, byte* value, CAdbcError* error)
+        {
+            try
+            {
+                if (name == null) throw new ArgumentNullException(nameof(name));
+
+                GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeStatement->private_data);
+                AdbcStatement stub = (AdbcStatement)gch.Target!;
+
+                stub.SetOption(MarshalExtensions.PtrToStringUTF8(name)!, MarshalExtensions.PtrToStringUTF8(value)!);
+                return AdbcStatusCode.Success;
+            }
+            catch (Exception e)
+            {
+                return SetError(error, e);
+            }
+        }
+
+#if NET5_0_OR_GREATER
+        [UnmanagedCallersOnly]
+#endif
+        private unsafe static AdbcStatusCode CancelStatement(CAdbcStatement* nativeStatement, CAdbcError* error)
+        {
+            try
+            {
+                GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeStatement->private_data);
+                AdbcStatement stub = (AdbcStatement)gch.Target!;
+                stub.Cancel();
+                return AdbcStatusCode.Success;
+            }
+            catch (Exception e)
+            {
+                return SetError(error, e);
+            }
+        }
+
+#if NET5_0_OR_GREATER
+        [UnmanagedCallersOnly]
+#endif
+        private unsafe static AdbcStatusCode CancelConnection(CAdbcConnection* nativeConnection, CAdbcError* error)
+        {
+            try
+            {
+                GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeConnection->private_data);
+                ConnectionStub stub = (ConnectionStub)gch.Target!;
+                stub.Cancel();
                 return AdbcStatusCode.Success;
             }
             catch (Exception e)
@@ -872,6 +945,7 @@ namespace Apache.Arrow.Adbc.C
 
             public void Rollback() { Connection.Rollback(); }
             public void Commit() { Connection.Commit(); }
+            public void Cancel() { Connection.Cancel(); }
 
             public void Dispose()
             {

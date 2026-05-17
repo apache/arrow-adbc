@@ -114,6 +114,112 @@ namespace Apache.Arrow.Adbc.Tests
             Assert.Contains("boom", ex.Message);
         }
 
+        [Fact]
+        public void StatementSetOptionIsMarshaledToProducer()
+        {
+            var fixture = new FixtureDriver();
+
+            using AdbcDriver imported = CAdbcDriverImporter.Load(CreateAdapter(fixture));
+            using AdbcDatabase db = imported.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+
+            stmt.SetOption("adbc.ingest.target_table", "my_table");
+            stmt.SetOption("adbc.ingest.mode", "append");
+
+            Assert.Equal("my_table", fixture.LastStatement!.Options["adbc.ingest.target_table"]);
+            Assert.Equal("append", fixture.LastStatement!.Options["adbc.ingest.mode"]);
+        }
+
+        [Fact]
+        public void StatementCancelIsMarshaledToProducer()
+        {
+            var fixture = new FixtureDriver();
+
+            using AdbcDriver imported = CAdbcDriverImporter.Load(CreateAdapter(fixture));
+            Assert.Equal(AdbcVersion.Version_1_1_0, imported.DriverVersion);
+
+            using AdbcDatabase db = imported.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+
+            stmt.Cancel();
+
+            Assert.True(fixture.LastStatement!.WasCancelled);
+        }
+
+        [Fact]
+        public void ConnectionCancelIsMarshaledToProducer()
+        {
+            var fixture = new FixtureDriver();
+
+            using AdbcDriver imported = CAdbcDriverImporter.Load(CreateAdapter(fixture));
+            Assert.Equal(AdbcVersion.Version_1_1_0, imported.DriverVersion);
+
+            using AdbcDatabase db = imported.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+
+            conn.Cancel();
+
+            Assert.True(fixture.LastConnection!.WasCancelled);
+        }
+
+        [Fact]
+        public void StatementExecuteSchemaReturnsSchemaWithoutExecutingQuery()
+        {
+            var fixture = new FixtureDriver();
+
+            using AdbcDriver imported = CAdbcDriverImporter.Load(CreateAdapter(fixture));
+            using AdbcDatabase db = imported.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+            stmt.SqlQuery = "SELECT 42";
+
+            Schema schema = stmt.ExecuteSchema();
+            Assert.Single(schema.FieldsList);
+            Assert.Equal("answer", schema.FieldsList[0].Name);
+            Assert.Equal(ArrowTypeId.Int32, schema.FieldsList[0].DataType.TypeId);
+
+            Assert.False(fixture.LastStatement!.WasExecuted);
+        }
+
+        [Fact]
+        public void V1_0_0_DriverInitRejectsV1_1_0_OnlyFunctions()
+        {
+            // Force the importer to settle on v1.0.0 by having the producer's init
+            // refuse v1.1.0. This proves the v1.1.0 functions are gated by version.
+            var fixture = new FixtureDriver();
+            AdbcDriverInit adapter = (int version, ref CAdbcDriver nativeDriver, ref CAdbcError error) =>
+            {
+                if (version != AdbcVersion.Version_1_0_0) { return AdbcStatusCode.NotImplemented; }
+                return CallExporter(version, ref nativeDriver, ref error, fixture);
+            };
+
+            using AdbcDriver imported = CAdbcDriverImporter.Load(adapter);
+            Assert.Equal(AdbcVersion.Version_1_0_0, imported.DriverVersion);
+
+            using AdbcDatabase db = imported.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+
+            // ExecuteSchema, Cancel are 1.1.0-only: on a v1.0.0 driver the importer's
+            // built-in defaults return NotImplemented.
+            AdbcException ex = Assert.ThrowsAny<AdbcException>(() => stmt.ExecuteSchema());
+            Assert.Equal(AdbcStatusCode.NotImplemented, ex.Status);
+        }
+
+        private static AdbcStatusCode CallExporter(int version, ref CAdbcDriver nativeDriver, ref CAdbcError error, AdbcDriver driver)
+        {
+            unsafe
+            {
+                fixed (CAdbcDriver* dp = &nativeDriver)
+                fixed (CAdbcError* ep = &error)
+                {
+                    return CAdbcDriverExporter.AdbcDriverInit(version, dp, ep, driver);
+                }
+            }
+        }
+
         private static AdbcDriverInit CreateAdapter(AdbcDriver driver)
         {
             return (int version, ref CAdbcDriver nativeDriver, ref CAdbcError error) =>
@@ -132,6 +238,7 @@ namespace Apache.Arrow.Adbc.Tests
         private sealed class FixtureDriver : AdbcDriver
         {
             public FixtureDatabase? LastDatabase { get; private set; }
+            public FixtureConnection? LastConnection { get; private set; }
             public FixtureStatement? LastStatement { get; private set; }
             public Exception? ThrowOnExecute { get; set; }
 
@@ -142,6 +249,7 @@ namespace Apache.Arrow.Adbc.Tests
                 return db;
             }
 
+            internal void RecordConnection(FixtureConnection conn) => LastConnection = conn;
             internal void RecordStatement(FixtureStatement stmt) => LastStatement = stmt;
         }
 
@@ -167,7 +275,11 @@ namespace Apache.Arrow.Adbc.Tests
             public override void SetOption(string key, string value) => Options[key] = value;
 
             public override AdbcConnection Connect(IReadOnlyDictionary<string, string>? options)
-                => new FixtureConnection(_driver);
+            {
+                var conn = new FixtureConnection(_driver);
+                _driver.RecordConnection(conn);
+                return conn;
+            }
         }
 
         private sealed class FixtureConnection : AdbcConnection
@@ -175,6 +287,10 @@ namespace Apache.Arrow.Adbc.Tests
             private readonly FixtureDriver _driver;
 
             public FixtureConnection(FixtureDriver driver) { _driver = driver; }
+
+            public bool WasCancelled { get; private set; }
+
+            public override void Cancel() => WasCancelled = true;
 
             public override AdbcStatement CreateStatement()
             {
@@ -203,6 +319,9 @@ namespace Apache.Arrow.Adbc.Tests
             public FixtureStatement(FixtureDriver driver) { _driver = driver; }
 
             public string? ReceivedQuery => _sqlQuery;
+            public Dictionary<string, string> Options { get; } = new Dictionary<string, string>();
+            public bool WasCancelled { get; private set; }
+            public bool WasExecuted { get; private set; }
 
             public override string? SqlQuery
             {
@@ -210,13 +329,18 @@ namespace Apache.Arrow.Adbc.Tests
                 set => _sqlQuery = value;
             }
 
+            public override void SetOption(string key, string value) => Options[key] = value;
+
+            public override void Cancel() => WasCancelled = true;
+
+            public override Schema ExecuteSchema() => BuildResultSchema();
+
             public override QueryResult ExecuteQuery()
             {
                 if (_driver.ThrowOnExecute != null) { throw _driver.ThrowOnExecute; }
 
-                var schema = new Schema.Builder()
-                    .Field(f => f.Name("answer").DataType(Int32Type.Default).Nullable(false))
-                    .Build();
+                WasExecuted = true;
+                Schema schema = BuildResultSchema();
                 var column = new Int32Array.Builder().Append(42).Build();
                 var batch = new RecordBatch(schema, new IArrowArray[] { column }, 1);
                 return new QueryResult(1, new SingleBatchStream(schema, batch));
@@ -224,6 +348,10 @@ namespace Apache.Arrow.Adbc.Tests
 
             public override UpdateResult ExecuteUpdate()
                 => throw AdbcException.NotImplemented("fixture does not support ExecuteUpdate");
+
+            private static Schema BuildResultSchema() => new Schema.Builder()
+                .Field(f => f.Name("answer").DataType(Int32Type.Default).Nullable(false))
+                .Build();
         }
 
         private sealed class SingleBatchStream : IArrowArrayStream
