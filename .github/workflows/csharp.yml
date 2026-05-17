@@ -70,18 +70,15 @@ jobs:
         shell: bash
         run: ci/scripts/csharp_test.sh $(pwd)
 
-  # TODO: Create a test fixture driver to use for interop testing as the
-  # real drivers have migrated to https://github.com/adbc-drivers
-
-  # Publishes the Apache driver as a NativeAOT shared library (net10) and
-  # loads it from Python via adbc_driver_manager to catch AOT regressions
-  # (trim-unsafe reflection, missing exports, broken C-ABI marshaling).
-  # Windows-only for now; the smoke test only exercises Windows paths.
+  # Publishes the AOT test fixture driver as a NativeAOT shared library (net10)
+  # and exercises it through the managed CAdbcDriverImporter. This catches
+  # AOT regressions (trim-unsafe reflection, missing exports, broken C-ABI
+  # marshaling) on both the import and export halves of csharp/src/Apache.Arrow.Adbc/C.
+  # Windows-only for now; the MSVC setup step below is Windows-specific.
   csharp-aot:
-    name: "C# NativeAOT smoke test (windows-2022)"
+    name: "C# NativeAOT fixture interop (windows-2022)"
     runs-on: windows-2022
-    # if: ${{ !contains(github.event.pull_request.title, 'WIP') }}
-    if: false
+    if: ${{ !contains(github.event.pull_request.title, 'WIP') }}
     timeout-minutes: 30
     steps:
       - name: Checkout ADBC
@@ -93,28 +90,26 @@ jobs:
       - name: Install .NET 10
         uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
         with:
-          # NativeAOT for our producer requires net10. Using 10.0.x selects
-          # the latest available SDK; preview tags may be needed until GA.
+          # NativeAOT requires net10. Using 10.0.x selects the latest
+          # available SDK; preview tags may be needed until GA.
           dotnet-version: '10.0.x'
       - name: Setup MSVC (for NativeAOT linker)
         # Third-party action; activates vcvars64 so ilc's downstream
         # link.exe step can find link.exe/lib.exe and the Windows SDK.
-        # The existing workflow only uses first-party actions, so flag
-        # this for review before enabling.
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756  # v1
-      - name: Publish NativeAOT driver
+      - name: Publish AOT test fixture
         shell: bash
         run: |
           dotnet publish \
-            csharp/src/Drivers/Apache/Apache.Arrow.Adbc.Drivers.Apache.Native/Apache.Arrow.Adbc.Drivers.Apache.Native.csproj \
-            -c Release -r win-x64
-      - name: Install Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
-        with:
-          python-version: '3.11'
-      - name: Install Python dependencies
+            csharp/test/AotInterop/Apache.Arrow.Adbc.TestFixture.Native/Apache.Arrow.Adbc.TestFixture.Native.csproj \
+            -c Release -r win-x64 \
+            -o csharp/artifacts/aot-fixture
+      - name: Run AOT interop tests
         shell: bash
-        run: python -m pip install adbc_driver_manager
-      - name: Run Python smoke test
-        shell: bash
-        run: python csharp/src/Drivers/Apache/Apache.Arrow.Adbc.Drivers.Apache.Native/smoke_test.py
+        env:
+          # Consumer test loads this DLL through CAdbcDriverImporter.
+          ADBC_TEST_AOT_FIXTURE_PATH: ${{ github.workspace }}/csharp/artifacts/aot-fixture/Apache.Arrow.Adbc.TestFixture.Native.dll
+        run: |
+          dotnet test \
+            csharp/test/AotInterop/Apache.Arrow.Adbc.TestFixture.Tests/Apache.Arrow.Adbc.TestFixture.Tests.csproj \
+            -c Release
