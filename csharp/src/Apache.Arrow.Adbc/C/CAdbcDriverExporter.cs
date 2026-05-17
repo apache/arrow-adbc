@@ -526,6 +526,7 @@ namespace Apache.Arrow.Adbc.C
             try
             {
                 if (name == null) throw new ArgumentNullException(nameof(name));
+                if (value == null) throw new ArgumentNullException(nameof(value));
 
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeStatement->private_data);
                 AdbcStatement stub = (AdbcStatement)gch.Target!;
