@@ -191,6 +191,11 @@ namespace Apache.Arrow.Adbc.C
                 return adbcException.Status;
             }
 
+            if (exception is ArgumentException)
+            {
+                return AdbcStatusCode.InvalidArgument;
+            }
+
             return AdbcStatusCode.UnknownError;
         }
 
