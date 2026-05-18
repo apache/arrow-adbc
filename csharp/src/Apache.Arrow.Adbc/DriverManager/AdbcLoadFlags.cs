@@ -52,12 +52,38 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// Allow loading drivers from relative paths.
         /// Corresponds to <c>ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS</c>.
         /// </summary>
+        /// <remarks>
+        /// Even when set, relative paths are resolved against
+        /// <see cref="AppContext.BaseDirectory"/> rather than the process current
+        /// working directory, so this flag does not enable CWD-based loading.
+        /// Disable this flag to require callers to supply fully-qualified paths or
+        /// bare driver names that are resolved via the configured search
+        /// directories.
+        /// </remarks>
         AllowRelativePaths = 8,
 
         /// <summary>
-        /// Default flags: search env, user, system, and allow relative paths.
-        /// Corresponds to <c>ADBC_LOAD_FLAG_DEFAULT</c>.
+        /// Default flags for this .NET driver manager: search env, user, and system
+        /// directories. Relative-path loading is <b>not</b> enabled by default; callers
+        /// that need it must opt in by combining <see cref="AllowRelativePaths"/> with
+        /// the other flags (or use <see cref="Compatible"/>).
         /// </summary>
-        Default = SearchEnv | SearchUser | SearchSystem | AllowRelativePaths,
+        /// <remarks>
+        /// This intentionally diverges from <c>ADBC_LOAD_FLAG_DEFAULT</c> in
+        /// <c>adbc_driver_manager.h</c>, which includes
+        /// <c>ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS</c>. The C# default is hardened to
+        /// reduce attack surface from accidentally loading a driver out of an
+        /// attacker-influenced directory. Use <see cref="Compatible"/> to opt in to
+        /// the C header's exact default flag set.
+        /// </remarks>
+        Default = SearchEnv | SearchUser | SearchSystem,
+
+        /// <summary>
+        /// Flag set that mirrors <c>ADBC_LOAD_FLAG_DEFAULT</c> from
+        /// <c>adbc_driver_manager.h</c> exactly, including
+        /// <see cref="AllowRelativePaths"/>. Prefer <see cref="Default"/> unless
+        /// strict parity with the C header is required.
+        /// </summary>
+        Compatible = SearchEnv | SearchUser | SearchSystem | AllowRelativePaths,
     }
 }

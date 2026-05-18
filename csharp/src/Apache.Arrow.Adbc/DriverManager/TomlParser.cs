@@ -142,19 +142,35 @@ namespace Apache.Arrow.Adbc.DriverManager
 
         private static object ParseValue(string raw)
         {
-            // Double-quoted string
-            if (raw.StartsWith("\"", StringComparison.Ordinal) && raw.EndsWith("\"", StringComparison.Ordinal) && raw.Length >= 2)
+            if (raw.Length == 0)
             {
+                throw new FormatException("Invalid TOML value: value is empty.");
+            }
+
+            // Double-quoted string. Multi-line triple-quoted strings ("""...""") are
+            // explicitly rejected so that they don't get misread as a basic string with
+            // empty quotes around the content.
+            if (raw[0] == '"')
+            {
+                if (raw.Length >= 3 && raw[1] == '"' && raw[2] == '"')
+                {
+                    throw new FormatException(
+                        "Invalid TOML value '" + raw + "': multi-line strings are not supported.");
+                }
+                if (raw.Length < 2 || raw[raw.Length - 1] != '"')
+                {
+                    throw new FormatException("Invalid TOML value '" + raw + "': unterminated double-quoted string.");
+                }
                 string inner = raw.Substring(1, raw.Length - 2);
                 return UnescapeString(inner);
             }
 
-            // Boolean
-            if (string.Equals(raw, "true", StringComparison.OrdinalIgnoreCase))
+            // Boolean (TOML booleans are lowercase; be strict.)
+            if (raw == "true")
             {
                 return true;
             }
-            if (string.Equals(raw, "false", StringComparison.OrdinalIgnoreCase))
+            if (raw == "false")
             {
                 return false;
             }
@@ -171,8 +187,16 @@ namespace Apache.Arrow.Adbc.DriverManager
                 return dblValue;
             }
 
-            // Fallback: treat as unquoted string
-            return raw;
+            // Per the ADBC driver manifest spec, values are TOML scalars. This parser
+            // intentionally implements only the subset of TOML productions documented on
+            // the type (double-quoted strings, integers, floats, and lowercase booleans).
+            // Anything else -- TOML literal strings ('foo'), multi-line strings ("""..."""),
+            // arrays, inline tables, dates, hex/oct/bin/underscored integers, etc. -- is
+            // rejected with a clear error rather than being silently treated as an unquoted
+            // string. This matches the strict-by-default policy used for section names.
+            throw new FormatException(
+                "Invalid TOML value '" + raw +
+                "': only double-quoted strings, integers, floats, and 'true'/'false' are supported.");
         }
 
         private static string UnescapeString(string s)

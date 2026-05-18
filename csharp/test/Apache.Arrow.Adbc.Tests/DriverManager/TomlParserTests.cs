@@ -59,5 +59,48 @@ namespace Apache.Arrow.Adbc.Tests.DriverManager
 
             Assert.Throws<FormatException>(() => TomlParser.Parse(content));
         }
+
+        [Theory]
+        [InlineData("key = 'foo'")]              // TOML literal (single-quoted) string
+        [InlineData("key = \"\"\"foo\"\"\"")]   // multi-line basic string
+        [InlineData("key = '''foo'''")]         // multi-line literal string
+        [InlineData("key = [1, 2, 3]")]         // array
+        [InlineData("key = { a = 1 }")]         // inline table
+        [InlineData("key = 1_000")]             // underscored integer
+        [InlineData("key = 0xff")]              // hex integer
+        [InlineData("key = 0o77")]              // octal integer
+        [InlineData("key = 0b10")]              // binary integer
+        [InlineData("key = 2024-01-01")]        // date
+        [InlineData("key = bareword")]           // bare unquoted string
+        [InlineData("key = \"unterminated")]   // unterminated double-quoted string
+        [InlineData("key = TRUE")]               // non-lowercase boolean
+        [InlineData("key = False")]              // non-lowercase boolean
+        public void Parse_RejectsUnsupportedValueProductions(string line)
+        {
+            Assert.Throws<FormatException>(() => TomlParser.Parse(line + "\n"));
+        }
+
+        [Theory]
+        [InlineData("key = \"hello\"", "hello")]
+        [InlineData("key = \"\"", "")]
+        public void Parse_AcceptsDoubleQuotedStrings(string line, string expected)
+        {
+            Dictionary<string, Dictionary<string, object>> result = TomlParser.Parse(line + "\n");
+            Assert.Equal(expected, result[""]["key"]);
+        }
+
+        [Fact]
+        public void Parse_AcceptsRecognizedScalarValues()
+        {
+            string content = "s = \"x\"\ni = 42\nf = 3.14\nb1 = true\nb2 = false\n";
+
+            Dictionary<string, Dictionary<string, object>> result = TomlParser.Parse(content);
+
+            Assert.Equal("x", result[""]["s"]);
+            Assert.Equal(42L, result[""]["i"]);
+            Assert.Equal(3.14, result[""]["f"]);
+            Assert.Equal(true, result[""]["b1"]);
+            Assert.Equal(false, result[""]["b2"]);
+        }
     }
 }

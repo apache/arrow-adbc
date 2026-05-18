@@ -82,7 +82,7 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// The absolute, fully qualified path to the driver shared library.
         /// </param>
         /// <param name="entrypoint">
-        /// The symbol name of the driver initialiaation function. When <c>null</c> the
+        /// The symbol name of the driver initialization function. When <c>null</c> the
         /// driver manager derives a candidate entrypoint from the file name (see
         /// <see cref="DeriveEntrypoint"/>), falling back to <c>AdbcDriverInit</c>.
         /// </param>
@@ -769,25 +769,25 @@ namespace Apache.Arrow.Adbc.DriverManager
 
         private static AdbcDriver? TryLoadFromDirectory(string dir, string driverName, string? entrypoint)
         {
-            // 1. Try manifest
+            // 1. Try manifest. Any failure (parse error, missing field, load error)
+            // is surfaced to the caller -- if a manifest is present it is clearly the
+            // user's intended driver entry.
             string manifestPath = Path.Combine(dir, driverName + ".toml");
             if (File.Exists(manifestPath))
             {
-                try { return LoadFromManifest(manifestPath, entrypoint); }
-                catch (AdbcException) { throw; }   // surface manifest parse errors
+                return LoadFromManifest(manifestPath, entrypoint);
             }
 
-            // 2. Try native library extensions
+            // 2. Try native library extensions. If a matching file exists but fails
+            // to load (e.g., corrupt binary, wrong architecture, missing entrypoint),
+            // surface that concrete error rather than silently degrading to a generic
+            // NotFound -- the file is clearly the user's intended driver.
             foreach (string nativeExt in GetPlatformExtensions())
             {
                 string libPath = Path.Combine(dir, driverName + nativeExt);
                 if (File.Exists(libPath))
                 {
-                    try
-                    {
-                        return LoadNativeDriver(libPath, entrypoint, nameof(FindLoadDriver));
-                    }
-                    catch (AdbcException) { /* try next extension */ }
+                    return LoadNativeDriver(libPath, entrypoint, nameof(FindLoadDriver));
                 }
             }
 

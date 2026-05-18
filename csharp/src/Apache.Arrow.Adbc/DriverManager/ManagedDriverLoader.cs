@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Threading;
@@ -114,12 +115,46 @@ namespace Apache.Arrow.Adbc.DriverManager
     /// the driver's directory using its <c>.deps.json</c>. They are isolated from host
     /// versions of the same files only insofar as the host has not already loaded them.
     /// </para>
+    /// <para>
+    /// <b>Order-dependent resolution across multiple drivers:</b> if two drivers ship
+    /// different versions of the same private dependency (for example
+    /// <c>Newtonsoft.Json</c> 12 in one driver and 13 in another), the first driver
+    /// whose resolver satisfies that simple name "wins" for the lifetime of the
+    /// process; the runtime will return the already-loaded copy for every subsequent
+    /// request. When a later driver's resolver could also have satisfied the same
+    /// simple name, the loader emits a warning via the
+    /// <c>Apache.Arrow.Adbc.DriverManager.ManagedDriverLoader</c>
+    /// <see cref="TraceSource"/> so the collision is debuggable instead of silent.
+    /// Callers that need version isolation between drivers should load conflicting
+    /// drivers into their own <see cref="AssemblyLoadContext"/> instances.
+    /// </para>
+    /// <para>
+    /// <b>Failed-load cleanup:</b> the per-driver <see cref="AssemblyDependencyResolver"/>
+    /// is only published to the process-wide resolver cache (and the global
+    /// <see cref="AssemblyLoadContext.Resolving"/> hook is only armed) after
+    /// <see cref="Assembly.LoadFrom(string)"/> succeeds. If the driver assembly itself
+    /// fails to load, no resolver is left behind to influence later assembly
+    /// resolutions. Once a driver loads successfully its resolver remains for the
+    /// lifetime of the process; the default <see cref="AssemblyLoadContext"/> is not
+    /// unloadable, so there is no safe point at which to remove it.
+    /// </para>
     /// </remarks>
     internal static class ManagedDriverLoader
     {
 #if NET6_0_OR_GREATER
         private static readonly ConcurrentDictionary<string, AssemblyDependencyResolver> resolvers
             = new ConcurrentDictionary<string, AssemblyDependencyResolver>(StringComparer.OrdinalIgnoreCase);
+
+        // Tracks which driver path "won" the very first contested resolution for a
+        // given simple assembly name (e.g. "Newtonsoft.Json"). Used purely to emit a
+        // diagnostic when a later resolver could also satisfy that name -- the runtime
+        // always returns the assembly already loaded by the first winner, so any later
+        // candidate is silently shadowed.
+        private static readonly ConcurrentDictionary<string, string> s_firstResolverWinner
+            = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        private static readonly TraceSource s_trace = new TraceSource(
+            "Apache.Arrow.Adbc.DriverManager.ManagedDriverLoader", SourceLevels.Warning);
 
         private static int s_resolveHookInstalled;
 
@@ -136,15 +171,52 @@ namespace Apache.Arrow.Adbc.DriverManager
                             "Drivers must opt out of trimming or be preserved by the host.")]
         private static Assembly? OnDefaultContextResolving(AssemblyLoadContext context, AssemblyName assemblyName)
         {
-            foreach (AssemblyDependencyResolver resolver in resolvers.Values)
+            string? winningPath = null;
+            Assembly? loaded = null;
+
+            foreach (var kvp in resolvers)
             {
-                string? path = resolver.ResolveAssemblyToPath(assemblyName);
-                if (!string.IsNullOrEmpty(path) && File.Exists(path))
+                string? path = kvp.Value.ResolveAssemblyToPath(assemblyName);
+                if (string.IsNullOrEmpty(path) || !File.Exists(path))
                 {
-                    return context.LoadFromAssemblyPath(path!);
+                    continue;
+                }
+
+                if (loaded == null)
+                {
+                    // First resolver that can satisfy this name wins. Subsequent winners
+                    // for the same simple name only matter as a diagnostic signal.
+                    winningPath = path!;
+                    loaded = context.LoadFromAssemblyPath(path!);
+
+                    string simpleName = assemblyName.Name ?? path!;
+                    string ownerPath = kvp.Key;
+                    s_firstResolverWinner.TryAdd(simpleName, ownerPath);
+                }
+                else
+                {
+                    // Another driver also has a candidate for this name. The runtime
+                    // will keep using `loaded` (the assembly already loaded by the first
+                    // winner), so emit a one-shot warning so version-pinning collisions
+                    // between drivers are debuggable instead of silent.
+                    string simpleName = assemblyName.Name ?? path!;
+                    string winnerForName = s_firstResolverWinner.GetOrAdd(simpleName, kvp.Key);
+                    s_trace.TraceEvent(
+                        TraceEventType.Warning,
+                        id: 1,
+                        format: "Managed driver dependency resolution collision for '{0}' v{1}: " +
+                                "driver '{2}' would resolve to '{3}', but driver '{4}' already pinned this " +
+                                "assembly for the process. Use a single shared version or load conflicting " +
+                                "drivers into custom AssemblyLoadContexts.",
+                        simpleName,
+                        assemblyName.Version,
+                        kvp.Key,
+                        path,
+                        winnerForName);
                 }
             }
-            return null;
+
+            return loaded;
         }
 #endif
 
@@ -174,22 +246,27 @@ namespace Apache.Arrow.Adbc.DriverManager
             }
 
 #if NET6_0_OR_GREATER
-            // Register an AssemblyDependencyResolver for this driver so that its own
-            // .deps.json is consulted when the default AssemblyLoadContext fails to
-            // resolve a dependency. AssemblyDependencyResolver throws InvalidOperationException
-            // if no .deps.json is present next to the assembly. Without that file the
-            // runtime has no way to map the driver's transitive references to files on
-            // disk, so any non-trivial driver will fail at first use. We swallow the
-            // exception so the driver assembly itself can still be loaded (useful for
-            // diagnostics and for fully self-contained drivers), but callers are
-            // expected to ship the .deps.json.
-            if (!resolvers.ContainsKey(fullPath))
+            // Build (but do not yet register) an AssemblyDependencyResolver for this
+            // driver. AssemblyDependencyResolver throws InvalidOperationException if no
+            // .deps.json is present next to the assembly. Without that file the runtime
+            // has no way to map the driver's transitive references to files on disk, so
+            // any non-trivial driver will fail at first use. We swallow the exception so
+            // the driver assembly itself can still be loaded (useful for diagnostics and
+            // for fully self-contained drivers), but callers are expected to ship the
+            // .deps.json.
+            //
+            // We intentionally do NOT add the resolver to the process-wide cache until
+            // Assembly.LoadFrom below has succeeded. The default-ALC Resolving hook is a
+            // permanent global side effect; registering a resolver for a driver that
+            // never actually loaded would leak its dependency probing into every future
+            // assembly resolution in the process.
+            AssemblyDependencyResolver? pendingResolver = null;
+            bool alreadyRegistered = resolvers.ContainsKey(fullPath);
+            if (!alreadyRegistered)
             {
                 try
                 {
-                    AssemblyDependencyResolver resolver = new AssemblyDependencyResolver(fullPath);
-                    resolvers.TryAdd(fullPath, resolver);
-                    EnsureResolveHookInstalled();
+                    pendingResolver = new AssemblyDependencyResolver(fullPath);
                 }
                 catch (InvalidOperationException)
                 {
@@ -203,7 +280,19 @@ namespace Apache.Arrow.Adbc.DriverManager
             // Use LoadFrom which works on both .NET Framework and modern .NET.
             // On modern .NET this loads into AssemblyLoadContext.Default, which keeps
             // a single identity for shared types such as AdbcDriver.
-            return Assembly.LoadFrom(fullPath);
+            Assembly assembly = Assembly.LoadFrom(fullPath);
+
+#if NET6_0_OR_GREATER
+            // Driver assembly loaded successfully; now it is safe to publish the
+            // resolver and arm the global Resolving hook. If LoadFrom threw, we leave
+            // no trace in the process-wide cache.
+            if (pendingResolver != null && resolvers.TryAdd(fullPath, pendingResolver))
+            {
+                EnsureResolveHookInstalled();
+            }
+#endif
+
+            return assembly;
         }
     }
 }

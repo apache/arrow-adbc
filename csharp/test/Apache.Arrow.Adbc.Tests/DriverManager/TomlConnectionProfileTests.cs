@@ -338,6 +338,18 @@ key = ""value""
             Assert.True(flags.HasFlag(AdbcLoadFlags.SearchEnv));
             Assert.True(flags.HasFlag(AdbcLoadFlags.SearchUser));
             Assert.True(flags.HasFlag(AdbcLoadFlags.SearchSystem));
+            // Default is hardened relative to ADBC_LOAD_FLAG_DEFAULT in the C header:
+            // relative-path loading is opt-in via AllowRelativePaths or Compatible.
+            Assert.False(flags.HasFlag(AdbcLoadFlags.AllowRelativePaths));
+        }
+
+        [Fact]
+        public void AdbcLoadFlags_CompatibleMirrorsCHeaderDefault()
+        {
+            AdbcLoadFlags flags = AdbcLoadFlags.Compatible;
+            Assert.True(flags.HasFlag(AdbcLoadFlags.SearchEnv));
+            Assert.True(flags.HasFlag(AdbcLoadFlags.SearchUser));
+            Assert.True(flags.HasFlag(AdbcLoadFlags.SearchSystem));
             Assert.True(flags.HasFlag(AdbcLoadFlags.AllowRelativePaths));
         }
 

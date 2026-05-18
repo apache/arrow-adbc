@@ -325,6 +325,18 @@ namespace Apache.Arrow.Adbc.DriverManager
     /// comparison on Windows and case-sensitive on other platforms.
     /// </para>
     /// <para>
+    /// <b>Symbolic link handling:</b> on .NET 6 and later (i.e. net8.0/net10.0
+    /// in this project), both the allowed directories and the candidate
+    /// <paramref name="driverPath"/> have their final-target symlinks resolved
+    /// before comparison so a symlink inside an allowed directory cannot smuggle
+    /// in a file from elsewhere on disk. On <c>netstandard2.0</c> (where
+    /// <see cref="FileSystemInfo.ResolveLinkTarget(bool)"/> is unavailable),
+    /// only path canonicalization via <see cref="Path.GetFullPath(string)"/> is
+    /// performed; callers who rely on the allowlist as a hard security boundary
+    /// on those targets should ensure no symlinks exist inside the allowed
+    /// directories.
+    /// </para>
+    /// <para>
     /// <b>Example usage:</b>
     /// <code>
     /// var allowlist = new DirectoryAllowlist(new[]
@@ -346,7 +358,9 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// </summary>
         /// <param name="allowedDirectories">
         /// The directories from which drivers may be loaded. Paths are
-        /// canonicalized during construction.
+        /// canonicalized during construction; on .NET 6+ symbolic links are
+        /// also resolved to their final target so that a symlinked allowed
+        /// directory is matched by its real on-disk location.
         /// </param>
         public DirectoryAllowlist(IEnumerable<string> allowedDirectories)
         {
@@ -360,8 +374,9 @@ namespace Apache.Arrow.Adbc.DriverManager
             {
                 if (!string.IsNullOrWhiteSpace(dir))
                 {
-                    // Canonicalize and ensure trailing separator for proper prefix matching
-                    string canonical = Path.GetFullPath(dir);
+                    // Canonicalize, resolve symlinks where supported, and ensure
+                    // a trailing separator for proper prefix matching.
+                    string canonical = ResolveRealPath(dir, isDirectory: true);
                     if (!canonical.EndsWith(Path.DirectorySeparatorChar.ToString()))
                     {
                         canonical += Path.DirectorySeparatorChar;
@@ -384,7 +399,11 @@ namespace Apache.Arrow.Adbc.DriverManager
                 return false;
             }
 
-            string canonicalPath = Path.GetFullPath(driverPath);
+            // Resolve the driver path the same way the allowed directories were
+            // resolved: canonicalize, then resolve symlinks to final target on
+            // .NET 6+. Without this a symlink in an allowed directory pointing
+            // outside that directory would be silently permitted.
+            string canonicalPath = ResolveRealPath(driverPath, isDirectory: false);
 
             foreach (string allowedDir in _allowedDirectories)
             {
@@ -395,6 +414,47 @@ namespace Apache.Arrow.Adbc.DriverManager
             }
 
             return false;
+        }
+
+        /// <summary>
+        /// Returns the canonical absolute path with symbolic links resolved to
+        /// their final target on .NET 6+. On <c>netstandard2.0</c> only
+        /// canonicalization is performed.
+        /// </summary>
+        private static string ResolveRealPath(string path, bool isDirectory)
+        {
+            string canonical = Path.GetFullPath(path);
+
+#if NET6_0_OR_GREATER
+            try
+            {
+                FileSystemInfo info = isDirectory
+                    ? (FileSystemInfo)new DirectoryInfo(canonical)
+                    : new FileInfo(canonical);
+
+                // ResolveLinkTarget(returnFinalTarget: true) walks the entire
+                // symlink chain. Returns null if the path is not a symlink, in
+                // which case the canonicalized path is already correct.
+                FileSystemInfo? target = info.ResolveLinkTarget(returnFinalTarget: true);
+                if (target != null && !string.IsNullOrEmpty(target.FullName))
+                {
+                    canonical = target.FullName;
+                }
+            }
+            catch (IOException)
+            {
+                // Broken or cyclical symlink, or the path doesn't exist yet.
+                // Fall back to the canonicalized (but unresolved) path; the
+                // subsequent prefix comparison will simply not match an allowed
+                // directory, which is the safe outcome for an allowlist.
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // Same fall-back rationale as above.
+            }
+#endif
+
+            return canonical;
         }
     }
 

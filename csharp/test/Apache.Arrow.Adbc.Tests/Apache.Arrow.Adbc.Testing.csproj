@@ -7,6 +7,15 @@
     <IsTestProject>true</IsTestProject>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ProcessArchitecture>$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant())</ProcessArchitecture>
+    <!--
+      NU1902: OpenTelemetry.Api 1.12.0 has a known moderate-severity advisory
+      (https://github.com/advisories/GHSA-g94r-2vxg-569j). The OpenTelemetry/
+      System.Diagnostics.DiagnosticSource versions used by this repo are
+      treated as "shared contract" assemblies for managed ADBC drivers, so
+      bumping them is intentionally handled in a separate PR. Suppress only
+      this specific advisory in the test project.
+    -->
+    <NoWarn>$(NoWarn);NU1902</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
