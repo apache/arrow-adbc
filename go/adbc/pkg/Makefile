@@ -18,17 +18,19 @@ MANAGERS = bigquery flightsql panicdummy snowflake databricks salesforce
 
 GO_BUILD := go build
 RM := rm -f
+DEBUG ?= false
+GOOS := $(shell go env GOOS)
 
-ifeq ($(shell go env GOOS),linux)
+ifeq ($(GOOS),linux)
 	SUFFIX=so
-else ifeq ($(shell go env GOOS),windows)
+else ifeq ($(GOOS),windows)
 	SUFFIX=dll
 	RM=del
 else
 	SUFFIX=dylib
 endif
 
-ifeq ($(shell go env GOOS),windows)
+ifeq ($(GOOS),windows)
 	GIT_VERSION := $(shell powershell -Command "git tag --sort=-v:refname --points-at $$(git rev-list --tags --max-count=1) | Select-Object -First 1")
 else
 	GIT_VERSION=$(shell git tag -l --points-at $(shell git rev-list --tags --max-count=1) --sort=-v:refname | head -n 1)
@@ -40,6 +42,20 @@ VERSION=$(subst go/adbc/,,$(GIT_VERSION))
 # Expand dynamically libadbc_driver_.SUFFIX
 DRIVERS := $(addsuffix .$(SUFFIX),$(addprefix libadbc_driver_,$(MANAGERS)))
 
+ifeq ($(DEBUG),$(filter $(DEBUG),true 1 yes))
+	GCFLAGS := -N -l
+
+	ifeq ($(GOOS),darwin)
+		# Go on macOS forces -w (strip DWARF) for buildmode=c-shared by default
+		LDFLAGS := -w=false -compressdwarf=false
+	else
+		LDFLAGS :=
+	endif
+else
+	GCFLAGS :=
+	LDFLAGS := -s -w
+endif
+
 # =========
 #  Targets
 # =========
@@ -50,7 +66,9 @@ all: $(DRIVERS)
 libadbc_driver_%.$(SUFFIX): % ../driver/% ../go.mod ../go.sum
 	$(GO_BUILD) -buildvcs=true -tags driverlib,netgo \
 		-o $@ -buildmode=c-shared \
-		-ldflags "-s -w -X github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase.infoDriverVersion=$(VERSION)" ./$*
+		-gcflags "$(GCFLAGS)" \
+		-ldflags "$(LDFLAGS) -X github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase.infoDriverVersion=$(VERSION)" \
+		./$*
 	$(RM) $(basename $@).h
 
 regenerate:
