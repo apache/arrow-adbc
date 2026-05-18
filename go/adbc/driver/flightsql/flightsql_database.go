@@ -22,6 +22,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"log/slog"
 	"net/url"
 	"strconv"
 	"strings"
@@ -38,6 +39,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/peer"
 )
 
 type dbDialOpts struct {
@@ -69,6 +71,24 @@ type databaseImpl struct {
 	options       map[string]string
 	userDialOpts  []grpc.DialOption
 	oauthToken    credentials.PerRPCCredentials
+	// tracesExporter records the value of
+	// adbc.OptionKeyTelemetryTracesExporter that was supplied (if any)
+	// at database construction time. The tracer itself is already
+	// initialized by driverbase by the time SetOptions runs, so this
+	// field is retained purely so GetOption can echo back the
+	// configured value (callers expect "get returns what was set") and
+	// so SetOption can return a precise diagnostic when a caller tries
+	// to change the exporter after the database has been opened.
+	tracesExporter string
+	// tracesFolderPath records the value of
+	// adbc.OptionKeyTelemetryTracesFolderPath that was supplied at
+	// construction time. The on-disk RotatingFileWriter behind the
+	// "adbcfile" exporter is created during NewDatabase*, so this field
+	// is retained for symmetry with tracesExporter: GetOption can echo
+	// the configured value back, and SetOption can surface a precise
+	// diagnostic when a caller tries to retarget the folder after the
+	// writer is already running.
+	tracesFolderPath string
 }
 
 func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
@@ -283,6 +303,10 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 		return d.timeout.updateTimeout.String(), nil
 	case OptionTimeoutConnect:
 		return d.timeout.connectTimeout.String(), nil
+	case adbc.OptionKeyTelemetryTracesExporter:
+		return d.tracesExporter, nil
+	case adbc.OptionKeyTelemetryTracesFolderPath:
+		return d.tracesFolderPath, nil
 	}
 	if val, ok := d.options[key]; ok {
 		return val, nil
@@ -329,6 +353,29 @@ func (d *databaseImpl) SetOption(key, value string) error {
 	switch key {
 	case OptionTimeoutFetch, OptionTimeoutQuery, OptionTimeoutUpdate, OptionTimeoutConnect:
 		return d.timeout.setTimeoutString(key, value)
+	case adbc.OptionKeyTelemetryTracesExporter:
+		// The OpenTelemetry tracer is built during NewDatabase*, so any
+		// value supplied through SetOption after that point cannot
+		// retroactively rewire the exporter. Surface a precise error
+		// rather than silently dropping the change, but still record the
+		// new value so GetOption can echo it back to introspection
+		// tooling that immediately follows up with a Get.
+		d.tracesExporter = value
+		return adbc.Error{
+			Msg:  fmt.Sprintf("Option '%s' must be set at database construction time; tracer is already initialized", key),
+			Code: adbc.StatusInvalidState,
+		}
+	case adbc.OptionKeyTelemetryTracesFolderPath:
+		// The on-disk file writer behind the "adbcfile" exporter is
+		// created during NewDatabase*; once it is running its target
+		// folder cannot be changed without tearing the writer down. The
+		// new value is recorded for GetOption echo-back, mirroring the
+		// behavior of OptionKeyTelemetryTracesExporter above.
+		d.tracesFolderPath = value
+		return adbc.Error{
+			Msg:  fmt.Sprintf("Option '%s' must be set at database construction time; trace file writer is already initialized", key),
+			Code: adbc.StatusInvalidState,
+		}
 	}
 	if strings.HasPrefix(key, OptionRPCCallHeaderPrefix) {
 		d.hdrs.Set(strings.TrimPrefix(key, OptionRPCCallHeaderPrefix), value)
@@ -367,6 +414,15 @@ func (d *databaseImpl) SetOptionDouble(key string, value float64) error {
 }
 
 func (d *databaseImpl) Close() error {
+	// Emit a structured log line on close so that connection / database
+	// lifetime events can be reconstructed end-to-end from the driver's
+	// log stream alone. This is a no-op release otherwise; resources
+	// owned by individual connections are released by connectionImpl.Close.
+	if d.Logger != nil {
+		d.Logger.Info("FlightSQL database closed",
+			"target", d.uri.String(),
+		)
+	}
 	return nil
 }
 
@@ -430,15 +486,47 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 	var authValue string
 
 	if d.user != "" || d.pass != "" {
+		// Emit start/finish logs around basic auth so an operator can
+		// distinguish "the driver never tried to authenticate" from
+		// "authentication started but the server never responded" — the
+		// two have very different root causes (option not threaded vs
+		// network/TLS/server fault).
+		authStart := time.Now()
+		d.Logger.InfoContext(ctx, "FlightSQL basic auth started",
+			"target", loc,
+			"user", d.user,
+		)
 		var header, trailer metadata.MD
 		ctx, err = cl.Client.AuthenticateBasicToken(ctx, d.user, d.pass, grpc.Header(&header), grpc.Trailer(&trailer), d.timeout)
 		if err != nil {
+			args := []any{
+				"target", loc,
+				"user", d.user,
+				"duration", time.Since(authStart),
+				"err", err,
+			}
+			args = append(args, correlationHeaderAttrs(header)...)
+			args = append(args, correlationHeaderAttrs(trailer)...)
+			args = append(args, grpcStatusAttrs(err)...)
+			d.Logger.InfoContext(ctx, "FlightSQL basic auth failed", args...)
 			return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "AuthenticateBasicToken")
 		}
 
 		if md, ok := metadata.FromOutgoingContext(ctx); ok {
 			authValue = md.Get("Authorization")[0]
 		}
+
+		// Log only the fact + token length, never the token value. The
+		// length is useful for quick sanity checks (e.g. a zero-length
+		// token would indicate the server returned an empty
+		// Authorization header even though AuthenticateBasicToken
+		// returned no error).
+		d.Logger.InfoContext(ctx, "FlightSQL basic auth succeeded",
+			"target", loc,
+			"user", d.user,
+			"duration", time.Since(authStart),
+			"token_length", len(authValue),
+		)
 	}
 
 	if authValue != "" {
@@ -453,7 +541,7 @@ type support struct {
 }
 
 func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
-	authMiddle := &bearerAuthMiddleware{hdrs: d.hdrs.Copy()}
+	authMiddle := &bearerAuthMiddleware{hdrs: d.hdrs.Copy(), logger: safeLogger(d.Logger)}
 	var cookies flight.CookieMiddleware
 	if d.enableCookies {
 		cookies = flight.NewCookieMiddleware()
@@ -480,7 +568,7 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 			}
 			// use the existing auth token if there is one
 			cl, err := getFlightClient(context.Background(), uri, d,
-				&bearerAuthMiddleware{hdrs: authMiddle.hdrs.Copy()}, cookieMiddleware)
+				&bearerAuthMiddleware{hdrs: authMiddle.hdrs.Copy(), logger: safeLogger(d.Logger)}, cookieMiddleware)
 			if err != nil {
 				return nil, err
 			}
@@ -504,13 +592,22 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 
 	var cnxnSupport support
 
-	info, err := cl.GetSqlInfo(ctx, []flightsql.SqlInfo{flightsql.SqlInfoFlightSqlServerTransaction}, d.timeout)
+	// Capture the resolved gRPC peer address from the first call so the
+	// connection can stamp it onto every subsequent log line (and so an
+	// operator can see at a glance which backend the gRPC name resolver
+	// selected, which frequently differs from the user-supplied URI when
+	// an L7 proxy is in front of the server). The peer field is read
+	// after the call returns regardless of success — even a failed call
+	// usually has a resolved peer attached at that point — but is only
+	// logged when it is non-empty.
+	var sqlInfoPeer peer.Peer
+	info, err := cl.GetSqlInfo(ctx, []flightsql.SqlInfo{flightsql.SqlInfoFlightSqlServerTransaction}, d.timeout, grpc.Peer(&sqlInfoPeer))
 	// ignore this if it fails
 	if err == nil {
 		const int32code = 3
 
 		for _, endpoint := range info.Endpoint {
-			rdr, err := doGet(ctx, cl, endpoint, cache, d.timeout)
+			rdr, err := doGetWithLogger(ctx, cl, endpoint, cache, d.Logger, d.timeout)
 			if err != nil {
 				continue
 			}
@@ -549,6 +646,27 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		hdrs: make(metadata.MD), timeouts: d.timeout, supportInfo: cnxnSupport,
 		ConnectionImplBase: driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
 	}
+	// Mint a stable per-connection identifier and wrap the inherited
+	// logger so that every subsequent log line (and every statement
+	// created through this connection) carries connection_id. This is the
+	// primary correlation hook between FlightSQL driver logs and any host
+	// application (such as Power Query / Mashup) that records its own
+	// per-connection identifier.
+	conn.id = newRandomID("conn")
+	conn.openedAt = time.Now()
+	conn.Logger = safeLogger(conn.Logger).With("connection_id", conn.id)
+	// Record + emit the resolved gRPC peer address. This runs even when
+	// GetSqlInfo failed because gRPC populates Peer on the call context
+	// before the RPC body executes; capturing it here means an operator
+	// can answer "which backend was the driver actually talking to?"
+	// from a single log line without enabling Debug logging.
+	conn.recordPeer(&sqlInfoPeer)
+	conn.Logger.InfoContext(ctx, "FlightSQL connection opened",
+		"target", d.uri.String(),
+		"peer_addr", conn.peerAddr,
+		"transactionsSupported", cnxnSupport.transactions,
+		"driver", infoDriverName,
+	)
 
 	return driverbase.NewConnectionBuilder(conn).
 		WithDriverInfoPreparer(conn).
@@ -560,6 +678,14 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 type bearerAuthMiddleware struct {
 	mutex sync.RWMutex
 	hdrs  metadata.MD
+	// logger, when non-nil, receives an Info-level event every time the
+	// bearer token is rotated (either because the server returned a new
+	// Authorization header on a response, or because the driver itself
+	// explicitly set one via SetHeader). The token value is never
+	// logged; only the fact of the rotation plus the new token length
+	// is recorded so an operator can confirm that token-refresh logic
+	// is firing without exposing credential material in the log stream.
+	logger *slog.Logger
 }
 
 func (b *bearerAuthMiddleware) StartCall(ctx context.Context) context.Context {
@@ -574,13 +700,46 @@ func (b *bearerAuthMiddleware) HeadersReceived(ctx context.Context, md metadata.
 	headers := md.Get("authorization")
 	if len(headers) > 0 {
 		b.mutex.Lock()
-		defer b.mutex.Unlock()
+		previous := b.hdrs.Get("authorization")
 		b.hdrs.Set("authorization", headers...)
+		logger := b.logger
+		b.mutex.Unlock()
+		if logger != nil {
+			// Compare lengths rather than values so that we never
+			// touch the token contents in the log path. Equal
+			// lengths can still indicate a fresh token (a server
+			// might issue tokens of the same shape), but for the
+			// no-op case (server echoed the same header) the
+			// reflected length is what an operator wants to see
+			// anyway.
+			var prevLen int
+			if len(previous) > 0 {
+				prevLen = len(previous[0])
+			}
+			logger.InfoContext(ctx, "FlightSQL bearer token rotated by server",
+				"previous_token_length", prevLen,
+				"new_token_length", len(headers[0]),
+				"source", "HeadersReceived",
+			)
+		}
 	}
 }
 
 func (b *bearerAuthMiddleware) SetHeader(authValue string) {
 	b.mutex.Lock()
-	defer b.mutex.Unlock()
+	previous := b.hdrs.Get("authorization")
 	b.hdrs.Set("authorization", authValue)
+	logger := b.logger
+	b.mutex.Unlock()
+	if logger != nil {
+		var prevLen int
+		if len(previous) > 0 {
+			prevLen = len(previous[0])
+		}
+		logger.Info("FlightSQL bearer token rotated by client",
+			"previous_token_length", prevLen,
+			"new_token_length", len(authValue),
+			"source", "SetHeader",
+		)
+	}
 }

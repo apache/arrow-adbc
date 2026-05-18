@@ -16,11 +16,19 @@
 // under the License.
 
 #if defined(_WIN32)
-#include <windows.h>  // Must come first
-
+// These version macros gate which Win32 APIs the SDK headers declare. They MUST
+// be set before <windows.h> is included — once windows.h pulls in winnt.h, the
+// internal API-availability macros are fixed and later #defines have no effect.
+// In particular, SHGetKnownFolderPath (used below) requires _WIN32_WINNT >= 0x0600
+// (Vista). Without this, builds with toolchains that default _WIN32_WINNT below
+// Vista (e.g. TDM-GCC 10.x) fail with "SHGetKnownFolderPath was not declared".
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0A00  // Windows 10
+#endif
 #ifndef NTDDI_VERSION
 #define NTDDI_VERSION 0x0A00000C  // For SHGetKnownFolderPath in ShlObj_core.h in ShlObj.h
 #endif
+#include <windows.h>  // Must come first
 
 #include <KnownFolders.h>
 #include <ShlObj.h>

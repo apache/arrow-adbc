@@ -20,6 +20,7 @@ package flightsql
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"math"
 	"strconv"
 	"strings"
@@ -179,6 +180,24 @@ type statement struct {
 	// Bound data for bulk ingest
 	bound      arrow.RecordBatch
 	streamBind array.RecordReader
+
+	// id is a short random identifier assigned when the statement is
+	// created. It is included as an attribute on every log record emitted
+	// for the statement and as a "statement_id" ADBC error detail on every
+	// error surfaced from the statement, so that a single failing
+	// operation can be traced from host-application logs through driver
+	// logs to the server.
+	id string
+	// log is a slog.Logger pre-decorated with connection_id and
+	// statement_id so callers can emit structured records without having
+	// to remember to attach those identifiers. Always non-nil.
+	log *slog.Logger
+	// logQueryPreview is the maximum number of UTF-8 bytes of the SQL
+	// query (or Substrait plan) to include in log records as a
+	// "query_preview" attribute. Zero (the default) disables preview
+	// logging entirely; only a SHA-256 fingerprint and length are
+	// recorded. Configurable via OptionStatementLogQueryPreview.
+	logQueryPreview int
 }
 
 func (s *statement) closePreparedStatement() error {
@@ -251,6 +270,8 @@ func (s *statement) GetOption(key string) (string, error) {
 		return s.timeouts.queryTimeout.String(), nil
 	case OptionTimeoutUpdate:
 		return s.timeouts.updateTimeout.String(), nil
+	case OptionStatementLogQueryPreview:
+		return strconv.Itoa(s.logQueryPreview), nil
 	case adbc.OptionKeyIncremental:
 		if s.incrementalState != nil {
 			return adbc.OptionValueEnabled, nil
@@ -304,6 +325,8 @@ func (s *statement) GetOptionInt(key string) (int64, error) {
 			return 0, err
 		}
 		return int64(val), nil
+	case OptionStatementLogQueryPreview:
+		return int64(s.logQueryPreview), nil
 	}
 
 	return 0, adbc.Error{
@@ -360,6 +383,16 @@ func (s *statement) SetOption(key string, val string) error {
 			}
 		}
 		return s.SetOptionInt(key, int64(size))
+	case OptionStatementLogQueryPreview:
+		n, err := strconv.Atoi(val)
+		if err != nil || n < 0 {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("[Flight SQL] Invalid value for statement option '%s': '%s' is not a non-negative integer", OptionStatementLogQueryPreview, val),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		s.logQueryPreview = n
+		return nil
 	case OptionStatementSubstraitVersion:
 		s.query.substraitVersion = val
 	case adbc.OptionKeyIncremental:
@@ -454,6 +487,15 @@ func (s *statement) SetOptionInt(key string, value int64) error {
 		}
 		s.queueSize = int(value)
 		return nil
+	case OptionStatementLogQueryPreview:
+		if value < 0 {
+			return adbc.Error{
+				Msg:  fmt.Sprintf("[Flight SQL] Invalid value for statement option '%s': '%d' is not a non-negative integer", OptionStatementLogQueryPreview, value),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		s.logQueryPreview = int(value)
+		return nil
 	}
 	return s.SetOptionDouble(key, float64(value))
 }
@@ -490,7 +532,27 @@ func (s *statement) SetSqlQuery(query string) error {
 	}
 	s.targetTable = ""
 	s.query.setSqlQuery(query)
+	if s.log != nil {
+		s.log.Debug("FlightSQL SetSqlQuery", s.queryAttrs()...)
+	}
 	return nil
+}
+
+// queryAttrs returns slog attributes that fingerprint the SQL or Substrait
+// payload currently set on this statement, honoring the
+// OptionStatementLogQueryPreview opt-in for inclusion of the SQL text.
+// Always safe to log because no parameter values are surfaced.
+func (s *statement) queryAttrs() []any {
+	if s.query.sqlQuery != "" {
+		return queryFingerprintAttrs(s.query.sqlQuery, s.logQueryPreview)
+	}
+	if s.query.substraitPlan != nil {
+		return substraitFingerprintAttrs(s.query.substraitPlan, s.query.substraitVersion)
+	}
+	if s.targetTable != "" {
+		return []any{slog.String("query_type", "ingest"), slog.String("target_table", s.targetTable)}
+	}
+	return []any{slog.String("query_type", "none")}
 }
 
 // ExecuteQuery executes the current query or prepared statement
@@ -509,6 +571,18 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 		return nil, nrec, err
 	}
 
+	// Emit a structured "start" record so that operators can pair this
+	// driver-side event with the corresponding host-application (Mashup /
+	// Power Query) log entry by statement_id and query fingerprint, even
+	// when the driver fails before any data is returned. The matching
+	// "finished" record is emitted via the deferred function below.
+	startTime := time.Now()
+	startAttrs := append([]any{
+		slog.Bool("prepared", s.prepared != nil),
+		slog.Bool("hasTxn", s.cnxn.txn != nil),
+	}, s.queryAttrs()...)
+	s.log.InfoContext(ctx, "FlightSQL ExecuteQuery start", startAttrs...)
+
 	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
 	var info *flight.FlightInfo
 	var header, trailer metadata.MD
@@ -519,12 +593,35 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 		info, err = s.query.execute(ctx, s.cnxn, opts...)
 	}
 
+	defer func() {
+		finishAttrs := []any{
+			slog.Duration("duration", time.Since(startTime)),
+			slog.String("phase", "GetFlightInfo"),
+		}
+		if info != nil {
+			finishAttrs = append(finishAttrs, flightInfoLogAttrs(info)...)
+		}
+		finishAttrs = append(finishAttrs, correlationHeaderAttrs(header)...)
+		finishAttrs = append(finishAttrs, correlationHeaderAttrs(trailer)...)
+		if err != nil {
+			finishAttrs = append(finishAttrs, "err", err)
+			s.log.WarnContext(ctx, "FlightSQL ExecuteQuery finished with error", finishAttrs...)
+		} else {
+			s.log.InfoContext(ctx, "FlightSQL ExecuteQuery finished", finishAttrs...)
+		}
+	}()
+
 	if err != nil {
-		return nil, -1, adbcFromFlightStatusWithDetails(err, header, trailer, "ExecuteQuery")
+		return nil, -1, withOperationIDs(
+			adbcFromFlightStatusWithDetails(err, header, trailer, "ExecuteQuery"),
+			s.id, s.cnxn.id)
 	}
 
 	nrec = info.TotalRecords
-	rdr, err = newRecordReader(ctx, s.alloc, s.cnxn.cl, info, s.clientCache, s.queueSize, s.timeouts)
+	rdr, err = newRecordReader(withOperationIDsCtx(ctx, s.id, s.cnxn.id), s.alloc, s.cnxn.cl, info, s.clientCache, s.queueSize, s.log, s.timeouts)
+	if err != nil {
+		err = withOperationIDs(err, s.id, s.cnxn.id)
+	}
 	return
 }
 
@@ -540,6 +637,13 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 		return s.executeIngest(ctx)
 	}
 
+	startTime := time.Now()
+	startAttrs := append([]any{
+		slog.Bool("prepared", s.prepared != nil),
+		slog.Bool("hasTxn", s.cnxn.txn != nil),
+	}, s.queryAttrs()...)
+	s.log.InfoContext(ctx, "FlightSQL ExecuteUpdate start", startAttrs...)
+
 	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
 	var header, trailer metadata.MD
 	opts := append([]grpc.CallOption{}, grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
@@ -549,8 +653,25 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 		n, err = s.query.executeUpdate(ctx, s.cnxn, opts...)
 	}
 
+	defer func() {
+		finishAttrs := []any{
+			slog.Duration("duration", time.Since(startTime)),
+			slog.Int64("rowsAffected", n),
+		}
+		finishAttrs = append(finishAttrs, correlationHeaderAttrs(header)...)
+		finishAttrs = append(finishAttrs, correlationHeaderAttrs(trailer)...)
+		if err != nil {
+			finishAttrs = append(finishAttrs, "err", err)
+			s.log.WarnContext(ctx, "FlightSQL ExecuteUpdate finished with error", finishAttrs...)
+		} else {
+			s.log.InfoContext(ctx, "FlightSQL ExecuteUpdate finished", finishAttrs...)
+		}
+	}()
+
 	if err != nil {
-		err = adbcFromFlightStatusWithDetails(err, header, trailer, "ExecuteQuery")
+		err = withOperationIDs(
+			adbcFromFlightStatusWithDetails(err, header, trailer, "ExecuteQuery"),
+			s.id, s.cnxn.id)
 	}
 
 	return
@@ -559,11 +680,29 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 // Prepare turns this statement into a prepared statement to be executed
 // multiple times. This invalidates any prior result sets.
 func (s *statement) Prepare(ctx context.Context) error {
+	startTime := time.Now()
+	s.log.InfoContext(ctx, "FlightSQL Prepare start", s.queryAttrs()...)
+
 	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
 	var header, trailer metadata.MD
 	prep, err := s.query.prepare(ctx, s.cnxn, grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
+
+	defer func() {
+		finishAttrs := []any{slog.Duration("duration", time.Since(startTime))}
+		finishAttrs = append(finishAttrs, correlationHeaderAttrs(header)...)
+		finishAttrs = append(finishAttrs, correlationHeaderAttrs(trailer)...)
+		if err != nil {
+			finishAttrs = append(finishAttrs, "err", err)
+			s.log.WarnContext(ctx, "FlightSQL Prepare finished with error", finishAttrs...)
+		} else {
+			s.log.InfoContext(ctx, "FlightSQL Prepare finished", finishAttrs...)
+		}
+	}()
+
 	if err != nil {
-		return adbcFromFlightStatusWithDetails(err, header, trailer, "Prepare")
+		return withOperationIDs(
+			adbcFromFlightStatusWithDetails(err, header, trailer, "Prepare"),
+			s.id, s.cnxn.id)
 	}
 	s.prepared = prep
 	return nil

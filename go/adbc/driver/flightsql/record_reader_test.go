@@ -160,7 +160,7 @@ func (suite *RecordReaderTests) TestFallbackFailedConnection() {
 		},
 	}
 
-	reader, err := newRecordReader(context.Background(), suite.alloc, suite.cl, &info, suite.clCache, 3)
+	reader, err := newRecordReader(context.Background(), suite.alloc, suite.cl, &info, suite.clCache, 3, nil)
 	suite.NoError(err)
 	defer reader.Release()
 
@@ -190,7 +190,7 @@ func (suite *RecordReaderTests) TestFallbackFailedDoGet() {
 		},
 	}
 
-	reader, err := newRecordReader(context.Background(), suite.alloc, suite.cl, &info, suite.clCache, 3)
+	reader, err := newRecordReader(context.Background(), suite.alloc, suite.cl, &info, suite.clCache, 3, nil)
 	suite.NoError(err)
 	defer reader.Release()
 
@@ -204,7 +204,7 @@ func (suite *RecordReaderTests) TestFallbackFailedDoGet() {
 
 	// Not enough retries
 	suite.service.failureCount = 4
-	reader, err = newRecordReader(context.Background(), suite.alloc, suite.cl, &info, suite.clCache, 3)
+	reader, err = newRecordReader(context.Background(), suite.alloc, suite.cl, &info, suite.clCache, 3, nil)
 	suite.NoError(err)
 	defer reader.Release()
 	suite.False(reader.Next())
@@ -223,7 +223,7 @@ func (suite *RecordReaderTests) TestFallbackFailed() {
 		},
 	}
 
-	reader, err := newRecordReader(context.Background(), suite.alloc, suite.cl, &info, suite.clCache, 3)
+	reader, err := newRecordReader(context.Background(), suite.alloc, suite.cl, &info, suite.clCache, 3, nil)
 	suite.NoError(err)
 	defer reader.Release()
 
@@ -236,7 +236,7 @@ func (suite *RecordReaderTests) TestNoEndpoints() {
 		Schema: flight.SerializeSchema(orderingSchema(), suite.alloc),
 	}
 
-	reader, err := newRecordReader(context.Background(), suite.alloc, suite.cl, &info, suite.clCache, 3)
+	reader, err := newRecordReader(context.Background(), suite.alloc, suite.cl, &info, suite.clCache, 3, nil)
 	suite.NoError(err)
 	defer reader.Release()
 
@@ -248,7 +248,7 @@ func (suite *RecordReaderTests) TestNoEndpoints() {
 func (suite *RecordReaderTests) TestNoEndpointsNoSchema() {
 	info := flight.FlightInfo{}
 
-	_, err := newRecordReader(context.Background(), suite.alloc, suite.cl, &info, suite.clCache, 3)
+	_, err := newRecordReader(context.Background(), suite.alloc, suite.cl, &info, suite.clCache, 3, nil)
 	suite.ErrorContains(err, "Server returned FlightInfo with no schema and no endpoints, cannot read stream")
 }
 
@@ -257,7 +257,7 @@ func (suite *RecordReaderTests) TestNoEndpointsInvalidSchema() {
 		Schema: []byte("f"),
 	}
 
-	_, err := newRecordReader(context.Background(), suite.alloc, suite.cl, &info, suite.clCache, 3)
+	_, err := newRecordReader(context.Background(), suite.alloc, suite.cl, &info, suite.clCache, 3, nil)
 	suite.ErrorContains(err, "Server returned FlightInfo with invalid schema and no endpoints, cannot read stream")
 }
 
@@ -272,7 +272,7 @@ func (suite *RecordReaderTests) TestNoSchema() {
 		},
 	}
 
-	reader, err := newRecordReader(context.Background(), suite.alloc, suite.cl, &info, suite.clCache, 3)
+	reader, err := newRecordReader(context.Background(), suite.alloc, suite.cl, &info, suite.clCache, 3, nil)
 	suite.NoError(err)
 	defer reader.Release()
 
@@ -305,7 +305,7 @@ func (suite *RecordReaderTests) TestSchemaEndpointMismatch() {
 		},
 	}
 
-	reader, err := newRecordReader(context.Background(), suite.alloc, suite.cl, &info, suite.clCache, 3)
+	reader, err := newRecordReader(context.Background(), suite.alloc, suite.cl, &info, suite.clCache, 3, nil)
 	suite.NoError(err)
 	defer reader.Release()
 
@@ -339,7 +339,7 @@ func (suite *RecordReaderTests) TestOrdering() {
 		},
 	}
 
-	reader, err := newRecordReader(context.Background(), suite.alloc, suite.cl, &info, suite.clCache, 3)
+	reader, err := newRecordReader(context.Background(), suite.alloc, suite.cl, &info, suite.clCache, 3, nil)
 	suite.NoError(err)
 	defer reader.Release()
 

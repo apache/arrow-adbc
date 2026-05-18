@@ -20,6 +20,8 @@ package flightsql
 import (
 	"context"
 	"fmt"
+	"log/slog"
+	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-go/v18/arrow"
@@ -111,6 +113,26 @@ func (s *statement) executeIngest(ctx context.Context) (int64, error) {
 		}
 	}
 
+	startTime := time.Now()
+	catalogStr := ""
+	if s.catalog != nil {
+		catalogStr = *s.catalog
+	}
+	dbSchemaStr := ""
+	if s.dbSchema != nil {
+		dbSchemaStr = *s.dbSchema
+	}
+	startAttrs := []any{
+		slog.String("target_table", s.targetTable),
+		slog.String("mode", s.ingestMode),
+		slog.String("catalog", catalogStr),
+		slog.String("db_schema", dbSchemaStr),
+		slog.Bool("temporary", s.temporary),
+		slog.Bool("streamBind", s.streamBind != nil),
+		slog.Bool("recordBound", s.bound != nil),
+	}
+	s.log.InfoContext(ctx, "FlightSQL ExecuteIngest start", startAttrs...)
+
 	opts := ingestOptions{
 		targetTable: s.targetTable,
 		mode:        s.ingestMode,
@@ -129,6 +151,10 @@ func (s *statement) executeIngest(ctx context.Context) (int64, error) {
 	} else {
 		rdr, err = createRecordReaderFromBatch(s.bound)
 		if err != nil {
+			s.log.WarnContext(ctx, "FlightSQL ExecuteIngest finished with error",
+				slog.Duration("duration", time.Since(startTime)),
+				"err", err,
+			)
 			return -1, err
 		}
 	}
@@ -138,9 +164,21 @@ func (s *statement) executeIngest(ctx context.Context) (int64, error) {
 	callOpts := append([]grpc.CallOption{}, grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
 
 	nRows, err := s.cnxn.cl.ExecuteIngest(ctx, rdr, ingestOpts, callOpts...)
-	if err != nil {
-		return -1, adbcFromFlightStatusWithDetails(err, header, trailer, "ExecuteIngest")
+	finishAttrs := []any{
+		slog.Duration("duration", time.Since(startTime)),
+		slog.Int64("rowsIngested", nRows),
 	}
+	finishAttrs = append(finishAttrs, correlationHeaderAttrs(header)...)
+	finishAttrs = append(finishAttrs, correlationHeaderAttrs(trailer)...)
+	if err != nil {
+		wrapped := withOperationIDs(
+			adbcFromFlightStatusWithDetails(err, header, trailer, "ExecuteIngest"),
+			s.id, s.cnxn.id)
+		finishAttrs = append(finishAttrs, "err", wrapped)
+		s.log.WarnContext(ctx, "FlightSQL ExecuteIngest finished with error", finishAttrs...)
+		return -1, wrapped
+	}
+	s.log.InfoContext(ctx, "FlightSQL ExecuteIngest finished", finishAttrs...)
 
 	return nRows, nil
 }

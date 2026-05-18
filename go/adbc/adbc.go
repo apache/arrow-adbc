@@ -264,6 +264,28 @@ const (
 	OptionKeyPassword                 = "password"
 	// EXPERIMENTAL. Sets/Gets the trace parent on OpenTelemetry traces
 	OptionKeyTelemetryTraceParent = "adbc.telemetry.trace_parent"
+	// EXPERIMENTAL. Selects the OpenTelemetry traces exporter when the
+	// driver initializes its tracer provider. Accepts the same values as
+	// the OpenTelemetry "OTEL_TRACES_EXPORTER" environment variable (see
+	// the OptionTelemetryExporter constants below: "none", "otlp",
+	// "console", "adbcfile"). When this option is set on a database it
+	// takes precedence over the OTEL_TRACES_EXPORTER environment
+	// variable, which lets operators select an exporter via the ADBC
+	// driver manager / TOML profile mechanism without having to mutate
+	// the host process's environment. When neither this option nor the
+	// environment variable is set, the driver falls back to the
+	// process-global OpenTelemetry tracer provider.
+	OptionKeyTelemetryTracesExporter = "adbc.telemetry.traces_exporter"
+	// EXPERIMENTAL. Selects the on-disk folder used by the "adbcfile"
+	// traces exporter. When the exporter is "adbcfile" and this option
+	// is set, rotated trace files are written to the supplied folder
+	// (which is created if it does not exist) instead of the default
+	// "<user-config-dir>/.adbc/traces" path. The option is ignored for
+	// other exporters; it exists so an operator can route trace files
+	// to a location their support workflow already collects (e.g. a
+	// shared diagnostics folder) via the ADBC driver-manager / TOML
+	// profile mechanism.
+	OptionKeyTelemetryTracesFolderPath = "adbc.telemetry.traces_folder_path"
 )
 
 // EXPERIMENTAL. Traces Telemetry exporter option type

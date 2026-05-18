@@ -66,7 +66,17 @@ const (
 	OptionBoolSessionOptionPrefix       = "adbc.flight.sql.session.optionbool."
 	OptionStringListSessionOptionPrefix = "adbc.flight.sql.session.optionstringlist."
 	OptionLastFlightInfo                = "adbc.flight.sql.statement.exec.last_flight_info"
-	infoDriverName                      = "ADBC Flight SQL Driver - Go"
+	// OptionStatementLogQueryPreview controls whether the SQL query (or
+	// Substrait plan) text is included in log records emitted for a
+	// statement. The value is the maximum number of UTF-8 bytes of the
+	// query to include in the "query_preview" log attribute. Set to "0"
+	// (or leave unset) to disable preview logging entirely; in that case
+	// only a SHA-256 fingerprint and length are recorded. This is opt-in
+	// because SQL text frequently embeds user-supplied literal values
+	// (account numbers, credentials, etc.) that should not be persisted
+	// into shared log streams without explicit operator consent.
+	OptionStatementLogQueryPreview = "adbc.flight.sql.statement.log.query_preview"
+	infoDriverName                 = "ADBC Flight SQL Driver - Go"
 
 	// Oauth2 options
 	OptionKeyOauthFlow        = "adbc.flight.sql.oauth.flow"
@@ -131,7 +141,30 @@ func (d *driverImpl) NewDatabaseWithOptionsContext(ctx context.Context, opts map
 	}
 	delete(opts, adbc.OptionKeyURI)
 
-	dbBase, err := driverbase.NewDatabaseImplBase(ctx, &d.DriverImplBase)
+	// The OTEL traces-exporter option must be consumed before
+	// driverbase.NewDatabaseImplBase runs, because that constructor is
+	// what stands up the per-database OpenTelemetry tracer. Pulling it
+	// out of the opts map here lets the driver-manager / TOML profile
+	// path override the OTEL_TRACES_EXPORTER environment variable
+	// without any host-process mutation, while empty or absent values
+	// fall through to the environment-variable behavior preserved by
+	// InitTracingWithExporter.
+	tracesExporter := opts[adbc.OptionKeyTelemetryTracesExporter]
+	delete(opts, adbc.OptionKeyTelemetryTracesExporter)
+
+	// The traces folder path is only meaningful for the "adbcfile"
+	// exporter, but the option has to be extracted here for the same
+	// reason as the exporter itself: the RotatingFileWriter is created
+	// inside driverbase.NewDatabaseImplBase*, so post-construction
+	// SetOption calls cannot retarget the on-disk location of an
+	// already-running writer.
+	tracesFolderPath := opts[adbc.OptionKeyTelemetryTracesFolderPath]
+	delete(opts, adbc.OptionKeyTelemetryTracesFolderPath)
+
+	dbBase, err := driverbase.NewDatabaseImplBaseWithOptions(ctx, &d.DriverImplBase, driverbase.TracingOptions{
+		ExporterName:      tracesExporter,
+		TracingFolderPath: tracesFolderPath,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -141,8 +174,10 @@ func (d *driverImpl) NewDatabaseWithOptionsContext(ctx context.Context, opts map
 			// Match gRPC default
 			connectTimeout: time.Second * 20,
 		},
-		hdrs:         make(metadata.MD),
-		userDialOpts: userDialOpts,
+		hdrs:             make(metadata.MD),
+		userDialOpts:     userDialOpts,
+		tracesExporter:   tracesExporter,
+		tracesFolderPath: tracesFolderPath,
 	}
 
 	if db.uri, err = url.Parse(uri); err != nil {

@@ -729,7 +729,12 @@ func (ts *ErrorDetailsTests) TestBinaryDetails() {
 
 	ts.Equal(int32(codes.FailedPrecondition), adbcErr.VendorCode)
 
-	ts.Equal(2, len(adbcErr.Details))
+	// Expected detail set:
+	//   - x-header-bin, x-trailer-bin: server-supplied details
+	//   - grpc_code, grpc_message: canonical gRPC code/message added
+	//     by adbcFromFlightStatusWithDetails for every Flight error
+	//   - statement_id, connection_id: driver-attached correlation IDs
+	ts.Equal(6, len(adbcErr.Details))
 
 	headerFound := false
 	trailerFound := false
@@ -745,6 +750,14 @@ func (ts *ErrorDetailsTests) TestBinaryDetails() {
 			ts.NoError(err)
 			ts.Equal([]byte{111, 0, 112}, val)
 			trailerFound = true
+		case "statement_id", "connection_id":
+			val, err := wrapper.Serialize()
+			ts.NoError(err)
+			ts.NotEmpty(val)
+		case "grpc_code", "grpc_message":
+			val, err := wrapper.Serialize()
+			ts.NoError(err)
+			ts.NotEmpty(val)
 		default:
 			ts.Failf("Unexpected detail key: %s", wrapper.Key())
 		}
@@ -766,9 +779,21 @@ func (ts *ErrorDetailsTests) TestGetFlightInfo() {
 
 	ts.Equal(int32(codes.Unknown), adbcErr.VendorCode)
 
-	ts.Equal(1, len(adbcErr.Details))
+	// Expected detail set:
+	//   - grpc-status-details-bin: one server-supplied protobuf detail
+	//   - grpc_code, grpc_message: canonical gRPC code/message added
+	//     by adbcFromFlightStatusWithDetails for every Flight error
+	//   - statement_id, connection_id: driver-attached correlation IDs
+	ts.Equal(5, len(adbcErr.Details))
 
-	wrapper := adbcErr.Details[0]
+	var wrapper adbc.ErrorDetail
+	for _, d := range adbcErr.Details {
+		if d.Key() == "grpc-status-details-bin" {
+			wrapper = d
+			break
+		}
+	}
+	ts.NotNil(wrapper, "grpc-status-details-bin detail not found")
 	ts.Equal("grpc-status-details-bin", wrapper.Key())
 
 	raw, err := wrapper.Serialize()
@@ -801,9 +826,21 @@ func (ts *ErrorDetailsTests) TestDoGet() {
 	var adbcErr adbc.Error
 	ts.ErrorAs(err, &adbcErr, "Error was: %#v", err)
 
-	ts.Equal(1, len(adbcErr.Details))
+	// Expected detail set:
+	//   - grpc-status-details-bin: one server-supplied protobuf detail
+	//   - grpc_code, grpc_message: canonical gRPC code/message added
+	//     by adbcFromFlightStatusWithDetails for every Flight error
+	//   - statement_id, connection_id: driver-attached correlation IDs
+	ts.Equal(5, len(adbcErr.Details))
 
-	wrapper := adbcErr.Details[0]
+	var wrapper adbc.ErrorDetail
+	for _, d := range adbcErr.Details {
+		if d.Key() == "grpc-status-details-bin" {
+			wrapper = d
+			break
+		}
+	}
+	ts.NotNil(wrapper, "grpc-status-details-bin detail not found")
 	ts.Equal("grpc-status-details-bin", wrapper.Key())
 
 	raw, err := wrapper.Serialize()

@@ -85,6 +85,20 @@ func adbcFromFlightStatusWithDetails(err error, header, trailer metadata.MD, con
 	}
 
 	details := []adbc.ErrorDetail{}
+	// Surface the canonical gRPC status code and message as their own
+	// structured detail entries. The same values appear inside the
+	// formatted Msg (and as "grpc_code"/"grpc_message" slog attributes
+	// in the structured log stream), but applications that consume
+	// adbc.Error.Details directly can filter on them without parsing
+	// the formatted message — and operators triaging a bug report can
+	// join the host-application error log against the driver's log
+	// stream on the same key.
+	details = append(details,
+		&adbc.TextErrorDetail{Name: "grpc_code", Detail: grpcStatus.Code().String()})
+	if gmsg := grpcStatus.Message(); gmsg != "" {
+		details = append(details,
+			&adbc.TextErrorDetail{Name: "grpc_message", Detail: gmsg})
+	}
 	for _, detail := range grpcStatus.Proto().Details {
 		details = append(details, &anyErrorDetail{name: "grpc-status-details-bin", message: detail})
 	}
@@ -135,11 +149,38 @@ func adbcFromFlightStatusWithDetails(err error, header, trailer metadata.MD, con
 
 	return adbc.Error{
 		// People don't read error messages, so backload the context and frontload the server error
-		Msg:        fmt.Sprintf("[FlightSQL] %s (%s; %s)", grpcStatus.Message(), grpcStatus.Code(), fmt.Sprintf(context, args...)),
+		Msg:        fmt.Sprintf("[FlightSQL] %s (%s; %s%s)", grpcStatus.Message(), grpcStatus.Code(), fmt.Sprintf(context, args...), eofHint(err, grpcStatus.Code())),
 		Code:       adbcCode,
 		VendorCode: int32(grpcStatus.Code()),
 		Details:    details,
 	}
+}
+
+// eofHint returns a short diagnostic hint that is appended to the error
+// message produced by adbcFromFlightStatusWithDetails when the underlying
+// failure looks like a server-side stream termination ("error reading from
+// server: EOF" with a gRPC Unavailable code). The hint enumerates the most
+// common operator-actionable root causes so that the message left in logs
+// is self-describing without requiring source-code lookups. It returns an
+// empty string for any error that does not match the EOF pattern so we do
+// not pollute normal error messages.
+func eofHint(err error, code codes.Code) string {
+	if err == nil {
+		return ""
+	}
+	msg := err.Error()
+	if code != codes.Unavailable {
+		return ""
+	}
+	// Match on the substring rather than equality because the gRPC error
+	// chain wraps the underlying transport error in its own message format
+	// (e.g. "rpc error: code = Unavailable desc = error reading from server: EOF").
+	if !strings.Contains(msg, "error reading from server: EOF") && !strings.Contains(msg, "transport is closing") {
+		return ""
+	}
+	return "; possible causes: server crashed or restarted, server-side timeout/idle disconnect, " +
+		"load balancer or proxy idle timeout, network interruption, server out-of-memory while serving the stream, " +
+		"or client read timeout shorter than server processing time"
 }
 
 func checkContext(maybeErr error, ctx context.Context) error {

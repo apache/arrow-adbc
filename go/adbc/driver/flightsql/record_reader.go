@@ -20,6 +20,7 @@ package flightsql
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sync/atomic"
 
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -48,7 +49,19 @@ type reader struct {
 
 // kicks off a goroutine for each endpoint and returns a reader which
 // gathers all of the records as they come in.
-func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.Client, info *flight.FlightInfo, clCache gcache.Cache, bufferSize int, opts ...grpc.CallOption) (rdr array.RecordReader, err error) {
+//
+// logger may be nil; in that case a no-op logger is used internally.
+// When supplied it receives structured records describing every endpoint
+// stream's lifecycle (start, first batch received, completion, failure).
+// These records are essential when diagnosing transient stream failures
+// such as "[FlightSQL] error reading from server: EOF (Unavailable; DoGet:
+// endpoint N: [])" because they record exactly which endpoint failed, how
+// many batches/rows had already been received, and how long the stream had
+// been open at the time of failure. Without these records the operator
+// otherwise has only the bare gRPC EOF to work with, which carries no
+// progress or location information.
+func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.Client, info *flight.FlightInfo, clCache gcache.Cache, bufferSize int, logger *slog.Logger, opts ...grpc.CallOption) (rdr array.RecordReader, err error) {
+	log := safeLogger(logger)
 	endpoints := info.Endpoint
 	var header, trailer metadata.MD
 	opts = append(append([]grpc.CallOption{}, opts...), grpc.Header(&header), grpc.Trailer(&trailer))
@@ -76,6 +89,12 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 	// We may mutate endpoints below
 	numEndpoints := len(endpoints)
 
+	log.DebugContext(ctx, "FlightSQL newRecordReader start",
+		append([]any{
+			slog.Int("bufferSize", bufferSize),
+		}, flightInfoLogAttrs(info)...)...,
+	)
+
 	defer func() {
 		if err != nil {
 			close(ch)
@@ -92,9 +111,19 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 		}
 	} else {
 		firstEndpoint := endpoints[0]
-		rdr, err := doGet(ctx, cl, firstEndpoint, clCache, opts...)
+		epAttrs := endpointLogAttrs(0, numEndpoints, firstEndpoint)
+		log.DebugContext(ctx, "FlightSQL endpoint stream opening (schema discovery)", epAttrs...)
+		startSchemaFetch := newStreamProgress()
+		rdr, err := doGetWithLogger(ctx, cl, firstEndpoint, clCache, log, opts...)
 		if err != nil {
-			return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "DoGet: endpoint 0: remote: %s", firstEndpoint.Location)
+			log.ErrorContext(ctx, "FlightSQL endpoint DoGet failed (schema discovery)",
+				append(append([]any{}, epAttrs...),
+					"err", err,
+					"elapsed", startSchemaFetch.summary(),
+				)...,
+			)
+			return nil, adbcFromFlightStatusWithDetails(err, header, trailer,
+				"DoGet: endpoint 0: remote: %s [%s]", firstEndpoint.Location, startSchemaFetch.summary())
 		}
 		schema = rdr.Schema()
 		group.Go(func() error {
@@ -103,14 +132,27 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 				defer close(ch)
 			}
 
+			progress := newStreamProgress()
 			for rdr.Next() && ctx.Err() == nil {
 				rec := rdr.RecordBatch()
+				progress.recordBatch(rec.NumRows(), estimateBatchBytes(rec))
 				rec.Retain()
 				ch <- rec
 			}
 			if err := checkContext(rdr.Err(), ctx); err != nil {
-				return adbcFromFlightStatusWithDetails(err, header, trailer, "DoGet: endpoint 0: remote: %s", firstEndpoint.Location)
+				log.ErrorContext(ctx, "FlightSQL endpoint stream ended with error",
+					append(append([]any{}, endpointLogAttrs(0, numEndpoints, firstEndpoint)...),
+						append([]any{"err", err}, progress.logAttrs()...)...,
+					)...,
+				)
+				return adbcFromFlightStatusWithDetails(err, header, trailer,
+					"DoGet: endpoint 0: remote: %s [%s]", firstEndpoint.Location, progress.summary())
 			}
+			log.DebugContext(ctx, "FlightSQL endpoint stream completed",
+				append(append([]any{}, endpointLogAttrs(0, numEndpoints, firstEndpoint)...),
+					progress.logAttrs()...,
+				)...,
+			)
 			return nil
 		})
 
@@ -133,6 +175,12 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 	for i, ep := range endpoints {
 		endpoint := ep
 		endpointIndex := i
+		// Offset the endpoint index for the log records to account for endpoint 0
+		// having been processed above when info.Schema was unset.
+		logEndpointIndex := endpointIndex
+		if info.Schema == nil {
+			logEndpointIndex = endpointIndex + 1
+		}
 		chs[endpointIndex] = make(chan arrow.RecordBatch, bufferSize)
 		group.Go(func() error {
 			// Close channels (except the last) so that Next can move on to the next channel properly
@@ -140,38 +188,110 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 				defer close(chs[endpointIndex])
 			}
 
-			rdr, err := doGet(ctx, cl, endpoint, clCache, opts...)
+			epAttrs := endpointLogAttrs(logEndpointIndex, numEndpoints, endpoint)
+			log.DebugContext(ctx, "FlightSQL endpoint stream opening", epAttrs...)
+			doGetStart := newStreamProgress()
+			rdr, err := doGetWithLogger(ctx, cl, endpoint, clCache, log, opts...)
 			if err != nil {
-				return adbcFromFlightStatusWithDetails(err, header, trailer, "DoGet: endpoint %d: %s", endpointIndex, endpoint.Location)
+				log.ErrorContext(ctx, "FlightSQL endpoint DoGet failed",
+					append(append([]any{}, epAttrs...),
+						"err", err,
+						"elapsed", doGetStart.summary(),
+					)...,
+				)
+				return adbcFromFlightStatusWithDetails(err, header, trailer,
+					"DoGet: endpoint %d: %s [%s]", logEndpointIndex, endpoint.Location, doGetStart.summary())
 			}
 			defer rdr.Release()
 
 			streamSchema := utils.RemoveSchemaMetadata(rdr.Schema())
 			if !streamSchema.Equal(referenceSchema) {
-				return fmt.Errorf("endpoint %d returned inconsistent schema: expected %s but got %s", endpointIndex, referenceSchema.String(), streamSchema.String())
+				log.ErrorContext(ctx, "FlightSQL endpoint returned inconsistent schema",
+					append(append([]any{}, epAttrs...),
+						"expectedSchema", referenceSchema.String(),
+						"actualSchema", streamSchema.String(),
+					)...,
+				)
+				return fmt.Errorf("endpoint %d returned inconsistent schema: expected %s but got %s", logEndpointIndex, referenceSchema.String(), streamSchema.String())
 			}
 
+			progress := newStreamProgress()
 			for rdr.Next() && ctx.Err() == nil {
 				rec := rdr.RecordBatch()
+				progress.recordBatch(rec.NumRows(), estimateBatchBytes(rec))
 				rec.Retain()
 				chs[endpointIndex] <- rec
 			}
 
 			if err := checkContext(rdr.Err(), ctx); err != nil {
-				return adbcFromFlightStatusWithDetails(err, header, trailer, "DoGet: endpoint %d: %s", endpointIndex, endpoint.Location)
+				log.ErrorContext(ctx, "FlightSQL endpoint stream ended with error",
+					append(append([]any{}, epAttrs...),
+						append([]any{"err", err}, progress.logAttrs()...)...,
+					)...,
+				)
+				return adbcFromFlightStatusWithDetails(err, header, trailer,
+					"DoGet: endpoint %d: %s [%s]", logEndpointIndex, endpoint.Location, progress.summary())
 			}
+			log.DebugContext(ctx, "FlightSQL endpoint stream completed",
+				append(append([]any{}, epAttrs...),
+					progress.logAttrs()...,
+				)...,
+			)
 			return nil
 		})
 	}
 
 	go func() {
-		reader.err = group.Wait()
+		err := group.Wait()
+		// Surface the statement/connection identifiers (if any were
+		// propagated through ctx by the caller) on the error returned via
+		// reader.Err() so the most common production failure mode — a
+		// mid-stream EOF reported only after the reader has been handed
+		// off to client code — carries the same correlation IDs that a
+		// synchronous ExecuteQuery error would.
+		stmtID, connID := operationIDsFromCtx(ctx)
+		reader.err = withOperationIDs(err, stmtID, connID)
+		if reader.err != nil {
+			log.WarnContext(ctx, "FlightSQL record reader finished with error",
+				"err", reader.err,
+				"numEndpoints", numEndpoints,
+			)
+		} else {
+			log.DebugContext(ctx, "FlightSQL record reader finished successfully",
+				"numEndpoints", numEndpoints,
+			)
+		}
 		// Don't close the last channel until after the group is finished, so that
 		// Next() can only return after reader.err may have been set
 		close(chs[lastChannelIndex])
 	}()
 
 	return reader, nil
+}
+
+// estimateBatchBytes returns a rough estimate of the in-memory size of a
+// record batch. The estimate is intentionally cheap to compute and is only
+// used for diagnostic logging so it does not have to be exact; it simply sums
+// the lengths of every column buffer in the batch. The total is useful for
+// answering questions such as "did the stream fail after receiving 10 KB or
+// 10 MB?" when triaging a mid-stream EOF.
+func estimateBatchBytes(rec arrow.RecordBatch) int64 {
+	if rec == nil {
+		return 0
+	}
+	var total int64
+	for i := 0; i < int(rec.NumCols()); i++ {
+		col := rec.Column(i)
+		if col == nil {
+			continue
+		}
+		for _, buf := range col.Data().Buffers() {
+			if buf != nil {
+				total += int64(buf.Len())
+			}
+		}
+	}
+	return total
 }
 
 func (r *reader) Retain() {
