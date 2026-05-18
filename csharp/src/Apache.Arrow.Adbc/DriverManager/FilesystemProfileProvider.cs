@@ -104,7 +104,22 @@ namespace Apache.Arrow.Adbc.DriverManager
                 throw new ArgumentNullException(nameof(tomlContent));
             }
 
-            Dictionary<string, Dictionary<string, object>> sections = TomlParser.Parse(tomlContent);
+            Dictionary<string, Dictionary<string, object>> sections;
+            try
+            {
+                sections = TomlParser.Parse(tomlContent);
+            }
+            catch (FormatException ex)
+            {
+                // The strict TOML parser throws FormatException for productions outside
+                // the supported subset (unquoted barewords, arrays, multi-line strings,
+                // etc.). Surface those as AdbcException so callers get a consistent
+                // failure mode for malformed manifests.
+                throw new AdbcException(
+                    "Invalid TOML profile: " + ex.Message,
+                    AdbcStatusCode.InvalidArgument,
+                    ex);
+            }
 
             Dictionary<string, object> root = sections.TryGetValue("", out Dictionary<string, object>? r) ? r : new Dictionary<string, object>();
 

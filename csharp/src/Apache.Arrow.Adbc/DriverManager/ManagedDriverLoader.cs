@@ -116,17 +116,32 @@ namespace Apache.Arrow.Adbc.DriverManager
     /// versions of the same files only insofar as the host has not already loaded them.
     /// </para>
     /// <para>
-    /// <b>Order-dependent resolution across multiple drivers:</b> if two drivers ship
-    /// different versions of the same private dependency (for example
-    /// <c>Newtonsoft.Json</c> 12 in one driver and 13 in another), the first driver
-    /// whose resolver satisfies that simple name "wins" for the lifetime of the
-    /// process; the runtime will return the already-loaded copy for every subsequent
-    /// request. When a later driver's resolver could also have satisfied the same
-    /// simple name, the loader emits a warning via the
-    /// <c>Apache.Arrow.Adbc.DriverManager.ManagedDriverLoader</c>
+    /// <b>Order-dependent resolution across multiple drivers (default ALC only):</b>
+    /// this loader always loads driver assemblies into
+    /// <see cref="AssemblyLoadContext.Default"/> and only hooks that ALC's
+    /// <see cref="AssemblyLoadContext.Resolving"/> event. Within the default ALC, if
+    /// two drivers ship different versions of the same private dependency (for
+    /// example <c>Newtonsoft.Json</c> 12 in one driver and 13 in another), the first
+    /// driver whose resolver satisfies that simple name "wins" for the lifetime of
+    /// the process: once the assembly is loaded into the default ALC, the runtime
+    /// returns that same instance for every subsequent request and the Resolving
+    /// event is no longer raised for that name. When a later driver's resolver
+    /// could also have satisfied the same simple name, the loader emits a warning
+    /// via the <c>Apache.Arrow.Adbc.DriverManager.ManagedDriverLoader</c>
     /// <see cref="TraceSource"/> so the collision is debuggable instead of silent.
-    /// Callers that need version isolation between drivers should load conflicting
-    /// drivers into their own <see cref="AssemblyLoadContext"/> instances.
+    /// This first-winner behavior is scoped to the default ALC; code that creates
+    /// its own <see cref="AssemblyLoadContext"/> can resolve the same simple name
+    /// to a different file/version, which is by design in .NET Core and is
+    /// unaffected by this loader. Callers that need version isolation between
+    /// drivers should load conflicting drivers into their own
+    /// <see cref="AssemblyLoadContext"/> instances.
+    /// </para>
+    /// <para>
+    /// The per-driver <see cref="AssemblyDependencyResolver"/> fallback fires only
+    /// when the default ALC cannot satisfy a reference from its own probing (the
+    /// host's TPA list / <c>.deps.json</c>). A driver only contributes a resolver
+    /// if it ships its own <c>.deps.json</c>; drivers without one still load
+    /// against the host's TPA list but do not participate in this fallback.
     /// </para>
     /// <para>
     /// <b>Failed-load cleanup:</b> the per-driver <see cref="AssemblyDependencyResolver"/>
@@ -146,10 +161,34 @@ namespace Apache.Arrow.Adbc.DriverManager
             = new ConcurrentDictionary<string, AssemblyDependencyResolver>(StringComparer.OrdinalIgnoreCase);
 
         // Tracks which driver path "won" the very first contested resolution for a
-        // given simple assembly name (e.g. "Newtonsoft.Json"). Used purely to emit a
-        // diagnostic when a later resolver could also satisfy that name -- the runtime
-        // always returns the assembly already loaded by the first winner, so any later
-        // candidate is silently shadowed.
+        // given simple assembly name (e.g. "Newtonsoft.Json") *within the default
+        // AssemblyLoadContext*. Used purely to emit a diagnostic when a later
+        // resolver could also satisfy that name. Scope notes:
+        //
+        //   * This loader always loads driver assemblies into
+        //     AssemblyLoadContext.Default (see LoadAssembly below), and only the
+        //     default ALC's Resolving event is hooked. So the "first winner pins
+        //     the process" effect described here is scoped to the default ALC.
+        //     Code that explicitly creates its own AssemblyLoadContext is
+        //     independent and can resolve the same simple name to a different
+        //     file/version -- that is by design in .NET Core and is unaffected
+        //     by this loader.
+        //
+        //   * The Resolving hook fires for any assembly the default ALC cannot
+        //     satisfy from its own probing (the host's TPA list / .deps.json).
+        //     We then walk every per-driver AssemblyDependencyResolver that has
+        //     been registered. A driver only contributes a resolver if it ships
+        //     a .deps.json next to its assembly (AssemblyDependencyResolver's
+        //     constructor throws otherwise and LoadAssembly swallows that), so
+        //     drivers without a .deps.json never participate in this fallback
+        //     -- but they still load against the host's TPA list and can still
+        //     cause/observe collisions for shared host assemblies.
+        //
+        //   * Once an assembly with a given simple name is loaded into the
+        //     default ALC, the runtime returns that same instance for every
+        //     subsequent request in that ALC; the Resolving event is not raised
+        //     again for that name. That's the silent-shadowing case this
+        //     diagnostic exists to surface.
         private static readonly ConcurrentDictionary<string, string> s_firstResolverWinner
             = new ConcurrentDictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
