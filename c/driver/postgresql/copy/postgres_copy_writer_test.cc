@@ -1603,18 +1603,18 @@ TEST_P(PostgresCopyListTest, PostgresCopyWriteListSlicedMatchesDirect) {
                                    "col", GetParam(), {{"item", NANOARROW_TYPE_INT32}})}),
             ADBC_STATUS_OK);
 
-  ASSERT_EQ(adbc_validation::MakeBatch<std::vector<int32_t>>(
-                &schema.value, &source.value, &na_error,
-                {std::vector<int32_t>{1, 2}, std::vector<int32_t>{3, 4, 5}, std::nullopt,
-                 std::vector<int32_t>{6}, std::vector<int32_t>{7, 8},
-                 std::vector<int32_t>{9}}),
-            ADBC_STATUS_OK);
+  ASSERT_EQ(
+      adbc_validation::MakeBatch<std::vector<int32_t>>(
+          &schema.value, &source.value, &na_error,
+          {std::vector<int32_t>{1, 2}, std::vector<int32_t>{3, 4, 5}, std::nullopt,
+           std::vector<int32_t>{6}, std::vector<int32_t>{7, 8}, std::vector<int32_t>{9}}),
+      ADBC_STATUS_OK);
 
-  ASSERT_EQ(adbc_validation::MakeBatch<std::vector<int32_t>>(
-                &schema.value, &tail.value, &na_error,
-                {std::vector<int32_t>{6}, std::vector<int32_t>{7, 8},
-                 std::vector<int32_t>{9}}),
-            ADBC_STATUS_OK);
+  ASSERT_EQ(
+      adbc_validation::MakeBatch<std::vector<int32_t>>(
+          &schema.value, &tail.value, &na_error,
+          {std::vector<int32_t>{6}, std::vector<int32_t>{7, 8}, std::vector<int32_t>{9}}),
+      ADBC_STATUS_OK);
 
   PostgresCopyStreamWriteTester ref_tester;
   ASSERT_EQ(ref_tester.Init(&schema.value, &tail.value, *type_resolver_), NANOARROW_OK);
@@ -1636,7 +1636,7 @@ TEST_P(PostgresCopyListTest, PostgresCopyWriteListSlicedMatchesDirect) {
   const struct ArrowBuffer sliced_buf = sliced_tester.WriteBuffer();
 
   ASSERT_EQ(sliced_buf.size_bytes, ref_buf.size_bytes);
-  for (size_t i = 0; i < sliced_buf.size_bytes; i++) {
+  for (int64_t i = 0; i < sliced_buf.size_bytes; i++) {
     ASSERT_EQ(sliced_buf.data[i], ref_buf.data[i]) << "failure at index " << i;
   }
 }
@@ -1656,9 +1656,9 @@ TEST_F(PostgresCopyTest, PostgresCopyWriteFixedSizeListSlicedMatchesDirect) {
     ASSERT_EQ(ArrowSchemaInitFromType(out, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
     ASSERT_EQ(ArrowSchemaAllocateChildren(out, 1), NANOARROW_OK);
     ArrowSchemaInit(out->children[0]);
-    ASSERT_EQ(ArrowSchemaSetTypeFixedSize(out->children[0],
-                                          NANOARROW_TYPE_FIXED_SIZE_LIST, 2),
-              NANOARROW_OK);
+    ASSERT_EQ(
+        ArrowSchemaSetTypeFixedSize(out->children[0], NANOARROW_TYPE_FIXED_SIZE_LIST, 2),
+        NANOARROW_OK);
     ASSERT_EQ(ArrowSchemaSetName(out->children[0], "col"), NANOARROW_OK);
     ASSERT_EQ(ArrowSchemaSetType(out->children[0]->children[0], NANOARROW_TYPE_INT32),
               NANOARROW_OK);
@@ -1668,12 +1668,11 @@ TEST_F(PostgresCopyTest, PostgresCopyWriteFixedSizeListSlicedMatchesDirect) {
   build_schema(&schema.value);
   build_schema(&tail_schema.value);
 
-  ASSERT_EQ(
-      adbc_validation::MakeBatch<std::vector<int32_t>>(
-          &schema.value, &source.value, &na_error,
-          {std::vector<int32_t>{1, 2}, std::vector<int32_t>{3, 4}, std::nullopt,
-           std::vector<int32_t>{5, 6}, std::vector<int32_t>{7, 8}, std::nullopt}),
-      ADBC_STATUS_OK);
+  ASSERT_EQ(adbc_validation::MakeBatch<std::vector<int32_t>>(
+                &schema.value, &source.value, &na_error,
+                {std::vector<int32_t>{1, 2}, std::vector<int32_t>{3, 4}, std::nullopt,
+                 std::vector<int32_t>{5, 6}, std::vector<int32_t>{7, 8}, std::nullopt}),
+            ADBC_STATUS_OK);
 
   ASSERT_EQ(adbc_validation::MakeBatch<std::vector<int32_t>>(
                 &tail_schema.value, &tail.value, &na_error,
@@ -1698,7 +1697,7 @@ TEST_F(PostgresCopyTest, PostgresCopyWriteFixedSizeListSlicedMatchesDirect) {
   const struct ArrowBuffer sliced_buf = sliced_tester.WriteBuffer();
 
   ASSERT_EQ(sliced_buf.size_bytes, ref_buf.size_bytes);
-  for (size_t i = 0; i < sliced_buf.size_bytes; i++) {
+  for (int64_t i = 0; i < sliced_buf.size_bytes; i++) {
     ASSERT_EQ(sliced_buf.data[i], ref_buf.data[i]) << "failure at index " << i;
   }
 }

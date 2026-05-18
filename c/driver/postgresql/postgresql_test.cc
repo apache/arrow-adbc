@@ -1903,11 +1903,11 @@ TEST_F(PostgresStatementTest, BindUpsertWithSlicedListParameter) {
   ASSERT_THAT(quirks()->DropTable(&connection, "adbc_test", &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
 
-  ASSERT_THAT(AdbcStatementSetSqlQuery(
-                  &statement,
-                  "CREATE TABLE adbc_test (id INT PRIMARY KEY, tags TEXT[] NOT NULL)",
-                  &error),
-              IsOkStatus(&error));
+  ASSERT_THAT(
+      AdbcStatementSetSqlQuery(
+          &statement, "CREATE TABLE adbc_test (id INT PRIMARY KEY, tags TEXT[] NOT NULL)",
+          &error),
+      IsOkStatus(&error));
   {
     adbc_validation::StreamReader reader;
     ASSERT_THAT(
@@ -1928,13 +1928,13 @@ TEST_F(PostgresStatementTest, BindUpsertWithSlicedListParameter) {
                      "tags", NANOARROW_TYPE_LIST, {{"item", NANOARROW_TYPE_STRING}})}),
             ADBC_STATUS_OK);
 
-  ASSERT_EQ((adbc_validation::MakeBatch<int32_t, std::vector<std::string>>(
-                &bind_schema.value, &bind.value, &na_error, {0, 1, 2, 3, 4, 5},
-                {std::vector<std::string>{"r0a", "r0b"}, std::vector<std::string>{"r1x"},
-                 std::vector<std::string>{"r2a", "r2b"}, std::vector<std::string>{"r3x"},
-                 std::vector<std::string>{"r4a", "r4b"},
-                 std::vector<std::string>{"r5x"}})),
-            ADBC_STATUS_OK);
+  ASSERT_EQ(
+      (adbc_validation::MakeBatch<int32_t, std::vector<std::string>>(
+          &bind_schema.value, &bind.value, &na_error, {0, 1, 2, 3, 4, 5},
+          {std::vector<std::string>{"r0a", "r0b"}, std::vector<std::string>{"r1x"},
+           std::vector<std::string>{"r2a", "r2b"}, std::vector<std::string>{"r3x"},
+           std::vector<std::string>{"r4a", "r4b"}, std::vector<std::string>{"r5x"}})),
+      ADBC_STATUS_OK);
 
   // Hide rows 0..2 by setting offset/length on the struct root and on
   // each child column (nanoarrow does not propagate the struct's offset).
@@ -1945,12 +1945,12 @@ TEST_F(PostgresStatementTest, BindUpsertWithSlicedListParameter) {
   bind->children[1]->offset = 3;
   bind->children[1]->length = 3;
 
-  ASSERT_THAT(AdbcStatementSetSqlQuery(
-                  &statement,
-                  "INSERT INTO adbc_test (id, tags) VALUES ($1, $2) "
-                  "ON CONFLICT (id) DO UPDATE SET tags = EXCLUDED.tags",
-                  &error),
-              IsOkStatus(&error));
+  ASSERT_THAT(
+      AdbcStatementSetSqlQuery(&statement,
+                               "INSERT INTO adbc_test (id, tags) VALUES ($1, $2) "
+                               "ON CONFLICT (id) DO UPDATE SET tags = EXCLUDED.tags",
+                               &error),
+      IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementBind(&statement, &bind.value, &bind_schema.value, &error),
               IsOkStatus(&error));
   {
@@ -1963,11 +1963,11 @@ TEST_F(PostgresStatementTest, BindUpsertWithSlicedListParameter) {
   // SELECT array_length(tags, 1) per id. Expected: id=3→1, id=4→2, id=5→1.
   // Under the bug, ids 3..5 would receive tags from underlying rows 0..2
   // and report lengths 2/1/2 instead.
-  ASSERT_THAT(AdbcStatementSetSqlQuery(
-                  &statement,
-                  "SELECT id, array_length(tags, 1) AS len FROM adbc_test ORDER BY id",
-                  &error),
-              IsOkStatus(&error));
+  ASSERT_THAT(
+      AdbcStatementSetSqlQuery(
+          &statement,
+          "SELECT id, array_length(tags, 1) AS len FROM adbc_test ORDER BY id", &error),
+      IsOkStatus(&error));
   adbc_validation::StreamReader reader;
   ASSERT_THAT(
       AdbcStatementExecuteQuery(&statement, &reader.stream.value, nullptr, &error),
