@@ -1587,6 +1587,122 @@ TEST_F(PostgresCopyTest, PostgresCopyWriteFixedSizeListInteger) {
   }
 }
 
+// Regression test for https://github.com/apache/arrow-adbc/issues/4319.
+// When the source array has offset > 0 (a sliced parent), the list writer
+// must read child offsets at (array_view->offset + index), not at index.
+// Writing rows 3..5 of a 6-row source via offset/length must produce the
+// same body as writing those rows as a fresh 3-row array.
+TEST_P(PostgresCopyListTest, PostgresCopyWriteListSlicedMatchesDirect) {
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> source;
+  adbc_validation::Handle<struct ArrowArray> tail;
+  struct ArrowError na_error;
+
+  ASSERT_EQ(adbc_validation::MakeSchema(
+                &schema.value, {adbc_validation::SchemaField::Nested(
+                                   "col", GetParam(), {{"item", NANOARROW_TYPE_INT32}})}),
+            ADBC_STATUS_OK);
+
+  ASSERT_EQ(adbc_validation::MakeBatch<std::vector<int32_t>>(
+                &schema.value, &source.value, &na_error,
+                {std::vector<int32_t>{1, 2}, std::vector<int32_t>{3, 4, 5}, std::nullopt,
+                 std::vector<int32_t>{6}, std::vector<int32_t>{7, 8},
+                 std::vector<int32_t>{9}}),
+            ADBC_STATUS_OK);
+
+  ASSERT_EQ(adbc_validation::MakeBatch<std::vector<int32_t>>(
+                &schema.value, &tail.value, &na_error,
+                {std::vector<int32_t>{6}, std::vector<int32_t>{7, 8},
+                 std::vector<int32_t>{9}}),
+            ADBC_STATUS_OK);
+
+  PostgresCopyStreamWriteTester ref_tester;
+  ASSERT_EQ(ref_tester.Init(&schema.value, &tail.value, *type_resolver_), NANOARROW_OK);
+  ASSERT_EQ(ref_tester.WriteAll(nullptr), ENODATA);
+  const struct ArrowBuffer ref_buf = ref_tester.WriteBuffer();
+
+  // Slice: hide the first 3 rows by setting offset/length on the struct
+  // root and on the list-typed column. nanoarrow does not propagate the
+  // struct's offset down to children, so both levels need updating.
+  source->offset = 0;
+  source->length = 3;
+  source->children[0]->offset = 3;
+  source->children[0]->length = 3;
+
+  PostgresCopyStreamWriteTester sliced_tester;
+  ASSERT_EQ(sliced_tester.Init(&schema.value, &source.value, *type_resolver_),
+            NANOARROW_OK);
+  ASSERT_EQ(sliced_tester.WriteAll(nullptr), ENODATA);
+  const struct ArrowBuffer sliced_buf = sliced_tester.WriteBuffer();
+
+  ASSERT_EQ(sliced_buf.size_bytes, ref_buf.size_bytes);
+  for (size_t i = 0; i < sliced_buf.size_bytes; i++) {
+    ASSERT_EQ(sliced_buf.data[i], ref_buf.data[i]) << "failure at index " << i;
+  }
+}
+
+// Same regression check for FIXED_SIZE_LIST, which takes the
+// IsFixedSize=true branch in PostgresCopyListFieldWriter.
+TEST_F(PostgresCopyTest, PostgresCopyWriteFixedSizeListSlicedMatchesDirect) {
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> source;
+  adbc_validation::Handle<struct ArrowArray> tail;
+  struct ArrowError na_error;
+
+  // Two FIXED_SIZE_LIST schemas of size 2 — one for the 6-row source, one
+  // for the 3-row reference. Both are independently allocated because
+  // MakeBatch consumes the schema state.
+  auto build_schema = [](struct ArrowSchema* out) {
+    ASSERT_EQ(ArrowSchemaInitFromType(out, NANOARROW_TYPE_STRUCT), NANOARROW_OK);
+    ASSERT_EQ(ArrowSchemaAllocateChildren(out, 1), NANOARROW_OK);
+    ArrowSchemaInit(out->children[0]);
+    ASSERT_EQ(ArrowSchemaSetTypeFixedSize(out->children[0],
+                                          NANOARROW_TYPE_FIXED_SIZE_LIST, 2),
+              NANOARROW_OK);
+    ASSERT_EQ(ArrowSchemaSetName(out->children[0], "col"), NANOARROW_OK);
+    ASSERT_EQ(ArrowSchemaSetType(out->children[0]->children[0], NANOARROW_TYPE_INT32),
+              NANOARROW_OK);
+  };
+
+  adbc_validation::Handle<struct ArrowSchema> tail_schema;
+  build_schema(&schema.value);
+  build_schema(&tail_schema.value);
+
+  ASSERT_EQ(
+      adbc_validation::MakeBatch<std::vector<int32_t>>(
+          &schema.value, &source.value, &na_error,
+          {std::vector<int32_t>{1, 2}, std::vector<int32_t>{3, 4}, std::nullopt,
+           std::vector<int32_t>{5, 6}, std::vector<int32_t>{7, 8}, std::nullopt}),
+      ADBC_STATUS_OK);
+
+  ASSERT_EQ(adbc_validation::MakeBatch<std::vector<int32_t>>(
+                &tail_schema.value, &tail.value, &na_error,
+                {std::vector<int32_t>{5, 6}, std::vector<int32_t>{7, 8}, std::nullopt}),
+            ADBC_STATUS_OK);
+
+  PostgresCopyStreamWriteTester ref_tester;
+  ASSERT_EQ(ref_tester.Init(&tail_schema.value, &tail.value, *type_resolver_),
+            NANOARROW_OK);
+  ASSERT_EQ(ref_tester.WriteAll(nullptr), ENODATA);
+  const struct ArrowBuffer ref_buf = ref_tester.WriteBuffer();
+
+  source->offset = 0;
+  source->length = 3;
+  source->children[0]->offset = 3;
+  source->children[0]->length = 3;
+
+  PostgresCopyStreamWriteTester sliced_tester;
+  ASSERT_EQ(sliced_tester.Init(&schema.value, &source.value, *type_resolver_),
+            NANOARROW_OK);
+  ASSERT_EQ(sliced_tester.WriteAll(nullptr), ENODATA);
+  const struct ArrowBuffer sliced_buf = sliced_tester.WriteBuffer();
+
+  ASSERT_EQ(sliced_buf.size_bytes, ref_buf.size_bytes);
+  for (size_t i = 0; i < sliced_buf.size_bytes; i++) {
+    ASSERT_EQ(sliced_buf.data[i], ref_buf.data[i]) << "failure at index " << i;
+  }
+}
+
 TEST_F(PostgresCopyTest, PostgresCopyWriteMultiBatch) {
   // Regression test for https://github.com/apache/arrow-adbc/issues/1310
   adbc_validation::Handle<struct ArrowSchema> schema;
