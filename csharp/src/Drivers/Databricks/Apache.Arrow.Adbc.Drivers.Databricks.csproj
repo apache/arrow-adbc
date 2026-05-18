@@ -15,7 +15,4 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Apache\Apache.Arrow.Adbc.Drivers.Apache.csproj" />
-  </ItemGroup>
 </Project>

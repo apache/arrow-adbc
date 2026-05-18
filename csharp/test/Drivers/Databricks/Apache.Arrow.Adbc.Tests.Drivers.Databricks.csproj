@@ -18,9 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Drivers\Databricks\Apache.Arrow.Adbc.Drivers.Databricks.csproj" />
     <ProjectReference Include="..\..\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Testing.csproj" />
-    <ProjectReference Include="..\Apache\Apache.Arrow.Adbc.Tests.Drivers.Apache.csproj" />
   </ItemGroup>
 
   <ItemGroup>
