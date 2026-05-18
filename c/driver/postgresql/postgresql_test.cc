@@ -1892,6 +1892,103 @@ TEST_F(PostgresStatementTest, EmptyStringAndBinaryParameter) {
   ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
 }
 
+// Regression test for https://github.com/apache/arrow-adbc/issues/4319.
+// The parameterized prepared-statement path (BindAndExecuteCurrentRow)
+// constructs its field writers via the same MakeCopyFieldWriter factory
+// as the COPY ingest path, so the offset bug in PostgresCopyListFieldWriter
+// drifts list-typed bound parameters the same way. This exercises the bind
+// path end-to-end with an INSERT … ON CONFLICT DO UPDATE upsert whose list
+// parameter comes from a sliced Arrow array (parent.offset > 0).
+TEST_F(PostgresStatementTest, BindUpsertWithSlicedListParameter) {
+  ASSERT_THAT(quirks()->DropTable(&connection, "adbc_test", &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement,
+                  "CREATE TABLE adbc_test (id INT PRIMARY KEY, tags TEXT[] NOT NULL)",
+                  &error),
+              IsOkStatus(&error));
+  {
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(
+        AdbcStatementExecuteQuery(&statement, &reader.stream.value, nullptr, &error),
+        IsOkStatus(&error));
+  }
+
+  // 6-row struct(int32, list<string>) where odd rows have 1-element tags
+  // and even rows have 2-element tags. The size difference makes drift
+  // structurally observable, not just value-different.
+  adbc_validation::Handle<struct ArrowSchema> bind_schema;
+  adbc_validation::Handle<struct ArrowArray> bind;
+  struct ArrowError na_error;
+  ASSERT_EQ(adbc_validation::MakeSchema(
+                &bind_schema.value,
+                {{"id", NANOARROW_TYPE_INT32},
+                 adbc_validation::SchemaField::Nested(
+                     "tags", NANOARROW_TYPE_LIST, {{"item", NANOARROW_TYPE_STRING}})}),
+            ADBC_STATUS_OK);
+
+  ASSERT_EQ((adbc_validation::MakeBatch<int32_t, std::vector<std::string>>(
+                &bind_schema.value, &bind.value, &na_error, {0, 1, 2, 3, 4, 5},
+                {std::vector<std::string>{"r0a", "r0b"}, std::vector<std::string>{"r1x"},
+                 std::vector<std::string>{"r2a", "r2b"}, std::vector<std::string>{"r3x"},
+                 std::vector<std::string>{"r4a", "r4b"},
+                 std::vector<std::string>{"r5x"}})),
+            ADBC_STATUS_OK);
+
+  // Hide rows 0..2 by setting offset/length on the struct root and on
+  // each child column (nanoarrow does not propagate the struct's offset).
+  bind->offset = 0;
+  bind->length = 3;
+  bind->children[0]->offset = 3;
+  bind->children[0]->length = 3;
+  bind->children[1]->offset = 3;
+  bind->children[1]->length = 3;
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement,
+                  "INSERT INTO adbc_test (id, tags) VALUES ($1, $2) "
+                  "ON CONFLICT (id) DO UPDATE SET tags = EXCLUDED.tags",
+                  &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &bind.value, &bind_schema.value, &error),
+              IsOkStatus(&error));
+  {
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(
+        AdbcStatementExecuteQuery(&statement, &reader.stream.value, nullptr, &error),
+        IsOkStatus(&error));
+  }
+
+  // SELECT array_length(tags, 1) per id. Expected: id=3→1, id=4→2, id=5→1.
+  // Under the bug, ids 3..5 would receive tags from underlying rows 0..2
+  // and report lengths 2/1/2 instead.
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement,
+                  "SELECT id, array_length(tags, 1) AS len FROM adbc_test ORDER BY id",
+                  &error),
+              IsOkStatus(&error));
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(
+      AdbcStatementExecuteQuery(&statement, &reader.stream.value, nullptr, &error),
+      IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NE(reader.array->release, nullptr);
+  ASSERT_EQ(reader.array->length, 3);
+
+  // id column (int32)
+  ASSERT_EQ(ArrowArrayViewGetIntUnsafe(reader.array_view->children[0], 0), 3);
+  ASSERT_EQ(ArrowArrayViewGetIntUnsafe(reader.array_view->children[0], 1), 4);
+  ASSERT_EQ(ArrowArrayViewGetIntUnsafe(reader.array_view->children[0], 2), 5);
+  // len column (int32 — PostgreSQL array_length returns int4)
+  ASSERT_EQ(ArrowArrayViewGetIntUnsafe(reader.array_view->children[1], 0), 1);
+  ASSERT_EQ(ArrowArrayViewGetIntUnsafe(reader.array_view->children[1], 1), 2);
+  ASSERT_EQ(ArrowArrayViewGetIntUnsafe(reader.array_view->children[1], 2), 1);
+
+  ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
+}
+
 TEST_F(PostgresStatementTest, SqlExecuteCopyZeroRowOutputError) {
   ASSERT_THAT(quirks()->DropTable(&connection, "adbc_test", &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
