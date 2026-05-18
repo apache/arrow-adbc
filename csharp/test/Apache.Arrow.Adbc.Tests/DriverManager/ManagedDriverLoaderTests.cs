@@ -346,5 +346,69 @@ namespace Apache.Arrow.Adbc.Tests.DriverManager
             Assert.IsAssignableFrom<AdbcDatabase>(db);
             Assert.Same(typeof(AdbcDatabase), db.GetType().BaseType);
         }
+
+        /// <summary>
+        /// Version-skew proof: copy a foreign file named <c>Apache.Arrow.Adbc.dll</c>
+        /// (a different assembly, masquerading as the public contract by simple name)
+        /// next to the driver. On the default <see cref="System.Runtime.Loader.AssemblyLoadContext"/>
+        /// the host's already-loaded <c>Apache.Arrow.Adbc</c> must still win when the
+        /// driver resolves the contract -- the colocated copy must be ignored.
+        /// </summary>
+        /// <remarks>
+        /// This directly exercises the failure mode the reviewer called out
+        /// (&quot;the failure mode that is most likely to bite in production&quot;):
+        /// a driver that ships a different version of a shared contract assembly
+        /// in its own directory must not be able to replace the host's copy at
+        /// runtime, because doing so would split type identity for
+        /// <see cref="AdbcDriver"/> / <see cref="AdbcDatabase"/> across the boundary
+        /// and break every cast.
+        /// </remarks>
+        [Fact]
+        public void LoadManagedDriver_ColocatedSharedContract_HostIdentityWins()
+        {
+            string dir = CreateTempDir();
+            string driverPath = CopyDriverAssembly(dir);
+            string typeName = typeof(FakeAdbcDriver).FullName!;
+
+            // Drop a foreign file using the simple name of the public contract assembly
+            // next to the driver. We deliberately copy a *different* managed assembly
+            // (the test assembly itself) over the contract file name -- if the loader
+            // were to honor colocated files for already-loaded assemblies, the runtime
+            // would either pick up this bogus file or refuse to load at all.
+            string foreignSource = typeof(ManagedDriverLoaderTests).Assembly.Location;
+            string fakeContractPath = Path.Combine(dir, "Apache.Arrow.Adbc.dll");
+            File.Copy(foreignSource, fakeContractPath, overwrite: true);
+
+            // Sanity: prove we actually planted a file that differs from the host's
+            // real Apache.Arrow.Adbc.dll byte-for-byte (different assembly entirely).
+            string hostContractLocation = typeof(AdbcDriver).Assembly.Location;
+            Assert.NotEqual(
+                new FileInfo(hostContractLocation).Length,
+                new FileInfo(fakeContractPath).Length);
+
+            AdbcDriver driver = AdbcDriverManager.LoadManagedDriver(driverPath, typeName);
+
+            // Host's Apache.Arrow.Adbc identity is preserved across the boundary
+            // even though a colocated file with the same simple name exists.
+            Assert.Same(typeof(AdbcDriver), driver.GetType().BaseType);
+            Assert.Same(typeof(AdbcDriver).Assembly, driver.GetType().BaseType!.Assembly);
+
+            // There is still exactly one Apache.Arrow.Adbc loaded in this AppDomain,
+            // and it is the host's copy -- not the colocated shim.
+            Assembly[] loaded = System.Array.FindAll(
+                AppDomain.CurrentDomain.GetAssemblies(),
+                a => string.Equals(a.GetName().Name, "Apache.Arrow.Adbc", StringComparison.OrdinalIgnoreCase));
+            Assert.Single(loaded);
+            Assert.Same(typeof(AdbcDriver).Assembly, loaded[0]);
+            Assert.NotEqual(
+                fakeContractPath,
+                loaded[0].Location,
+                StringComparer.OrdinalIgnoreCase);
+
+            // And cross-boundary calls still work, which is the operational consequence
+            // we actually care about.
+            AdbcDatabase db = driver.Open(new Dictionary<string, string> { { "uri", "fake://colocated-skew" } });
+            Assert.IsAssignableFrom<AdbcDatabase>(db);
+        }
     }
 }

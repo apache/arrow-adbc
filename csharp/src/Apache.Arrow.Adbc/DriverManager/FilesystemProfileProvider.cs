@@ -185,7 +185,7 @@ namespace Apache.Arrow.Adbc.DriverManager
             }
 
             // If already an absolute path, load directly.
-            if (Path.IsPathRooted(profileName))
+            if (IsAbsolutePath(profileName))
             {
                 string candidate = EnsureTomlExtension(profileName);
                 if (File.Exists(candidate))
@@ -282,6 +282,21 @@ namespace Apache.Arrow.Adbc.DriverManager
 
         private static string[] SplitPathList(string pathList) =>
             pathList.Split(new char[] { Path.PathSeparator }, StringSplitOptions.RemoveEmptyEntries);
+
+        /// <summary>
+        /// Returns <c>true</c> when <paramref name="path"/> is fully qualified.
+        /// On modern .NET this uses the stricter <c>Path.IsPathFullyQualified</c>;
+        /// on .NET Framework / .NET Standard 2.0 it falls back to
+        /// <see cref="Path.IsPathRooted(string)"/>.
+        /// </summary>
+        private static bool IsAbsolutePath(string path)
+        {
+#if NET6_0_OR_GREATER
+            return Path.IsPathFullyQualified(path);
+#else
+            return Path.IsPathRooted(path);
+#endif
+        }
 
         private static string GetUserProfileDirectory()
         {

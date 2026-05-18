@@ -82,7 +82,7 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// The absolute, fully qualified path to the driver shared library.
         /// </param>
         /// <param name="entrypoint">
-        /// The symbol name of the driver initialisation function. When <c>null</c> the
+        /// The symbol name of the driver initialiaation function. When <c>null</c> the
         /// driver manager derives a candidate entrypoint from the file name (see
         /// <see cref="DeriveEntrypoint"/>), falling back to <c>AdbcDriverInit</c>.
         /// </param>
@@ -95,7 +95,7 @@ namespace Apache.Arrow.Adbc.DriverManager
             if (string.IsNullOrEmpty(driverPath))
                 throw new ArgumentException("Driver path must not be null or empty.", nameof(driverPath));
 
-            if (!Path.IsPathRooted(driverPath))
+            if (!IsAbsolutePath(driverPath))
                 throw new ArgumentException(
                     $"Driver path '{driverPath}' must be an absolute path. " +
                     "Resolve the path in the host program before passing it to the driver manager.",
@@ -108,8 +108,23 @@ namespace Apache.Arrow.Adbc.DriverManager
                 return LoadFromManifest(colocatedManifest, entrypoint);
             }
 
+            return LoadNativeDriver(driverPath, entrypoint, nameof(LoadDriver));
+        }
+
+        /// <summary>
+        /// Loads a native driver assembly from a verified absolute path, with no
+        /// further manifest probing. All terminal native-load call sites funnel
+        /// through this helper so security policy is applied uniformly.
+        /// </summary>
+        private static AdbcDriver LoadNativeDriver(string driverPath, string? entrypoint, string loadMethod)
+        {
             string resolvedEntrypoint = entrypoint ?? DeriveEntrypoint(driverPath);
-            return CAdbcDriverImporter.Load(driverPath, resolvedEntrypoint);
+            return LoadWithSecurity(
+                driverPath,
+                typeName: null,
+                manifestPath: null,
+                loadMethod: loadMethod,
+                () => CAdbcDriverImporter.Load(driverPath, resolvedEntrypoint));
         }
 
         // -----------------------------------------------------------------------
@@ -148,7 +163,7 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// driver name to be resolved by directory search.
         /// </param>
         /// <param name="entrypoint">
-        /// The symbol name of the driver initialisation function, or <c>null</c> to
+        /// The symbol name of the driver initialization function, or <c>null</c> to
         /// derive it automatically.
         /// </param>
         /// <param name="loadOptions">
@@ -156,7 +171,15 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// </param>
         /// <param name="additionalSearchPathList">
         /// An optional OS path-list-separator-delimited list of extra directories to
-        /// search before the standard ones, or <c>null</c>.
+        /// search <b>before</b> the standard ones, or <c>null</c>. The full search order
+        /// is: (1) entries from this parameter, (2) entries from the
+        /// <c>ADBC_DRIVER_PATH</c> environment variable (when
+        /// <see cref="AdbcLoadFlags.SearchEnv"/> is set), (3) the user-level driver
+        /// directory (when <see cref="AdbcLoadFlags.SearchUser"/> is set), and (4) the
+        /// system-level driver directory (when <see cref="AdbcLoadFlags.SearchSystem"/>
+        /// is set). This ordering matters for security review: caller-supplied paths
+        /// and the environment variable take precedence over the user and system
+        /// directories.
         /// </param>
         /// <returns>The loaded <see cref="AdbcDriver"/>.</returns>
         /// <exception cref="AdbcException">Thrown when the driver cannot be found or loaded.</exception>
@@ -170,7 +193,7 @@ namespace Apache.Arrow.Adbc.DriverManager
                 throw new ArgumentException("Driver name must not be null or empty.", nameof(driverName));
 
             // Absolute path – load directly.
-            if (Path.IsPathRooted(driverName))
+            if (IsAbsolutePath(driverName))
                 return LoadFromAbsolutePath(driverName, entrypoint);
 
             // Anything that is not an absolute path is treated as a name to be resolved
@@ -276,6 +299,17 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// not a supported configuration. See <see cref="ManagedDriverLoader"/> for the
         /// full dependency-resolution contract.
         /// </para>
+        /// <para>
+        /// <b>Process-wide side effect.</b> On .NET 6+ the first successful call to this
+        /// method (per process) attaches a permanent
+        /// <see cref="System.Runtime.Loader.AssemblyLoadContext"/>.Default.Resolving
+        /// handler so that each loaded driver's <c>.deps.json</c> can satisfy private
+        /// dependency lookups. The handler is installed exactly once and is never
+        /// removed, even if the caller drops every reference to the returned
+        /// <see cref="AdbcDriver"/>. This is intentional &#8212; managed drivers cannot
+        /// be safely unloaded from the default load context &#8212; but it means
+        /// <c>LoadManagedDriver</c> has a permanent global effect on the host process.
+        /// </para>
         /// </remarks>
         /// <param name="assemblyPath">
         /// The absolute or relative path to the .NET assembly containing the driver.
@@ -309,6 +343,24 @@ namespace Apache.Arrow.Adbc.DriverManager
                 throw new ArgumentException("Type name must not be null or empty.", nameof(typeName));
             }
 
+            return LoadWithSecurity(
+                assemblyPath,
+                typeName,
+                manifestPath: null,
+                loadMethod: nameof(LoadManagedDriver),
+                () => LoadManagedDriverCore(assemblyPath, typeName));
+        }
+
+#if NET6_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode",
+            Justification = "Dynamic driver loading is inherently incompatible with full trimming. " +
+                            "Drivers must opt out of trimming or be preserved by the host.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2072:RequiresUnreferencedCode",
+            Justification = "Dynamic driver loading is inherently incompatible with full trimming. " +
+                            "Drivers must opt out of trimming or be preserved by the host.")]
+#endif
+        private static AdbcDriver LoadManagedDriverCore(string assemblyPath, string typeName)
+        {
             Assembly assembly;
             try
             {
@@ -590,14 +642,9 @@ namespace Apache.Arrow.Adbc.DriverManager
             if (string.Equals(ext, ".toml", StringComparison.OrdinalIgnoreCase))
                 return LoadFromManifest(path, entrypoint);
 
-            // Check for co-located TOML manifest (e.g., libadbc_driver_snowflake.toml
-            // alongside libadbc_driver_snowflake.dll)
-            string? colocatedManifest = TryFindColocatedManifest(path);
-            if (colocatedManifest != null)
-            {
-                return LoadFromManifest(colocatedManifest, entrypoint);
-            }
-
+            // Native shared library path. LoadDriver itself probes for a co-located
+            // manifest; we don't probe again here so manifest-detection logic lives
+            // in exactly one place.
             return LoadDriver(path, entrypoint);
         }
 
@@ -672,7 +719,7 @@ namespace Apache.Arrow.Adbc.DriverManager
             {
                 // Managed .NET driver - resolve path
                 string driverPath = manifest.DriverName!;
-                if (Path.IsPathRooted(driverPath))
+                if (IsAbsolutePath(driverPath))
                 {
                     // Absolute path - validate it doesn't contain path traversal
                     DriverManagerSecurity.ValidatePathSecurity(driverPath, "manifest driver path");
@@ -685,7 +732,12 @@ namespace Apache.Arrow.Adbc.DriverManager
                         driverPath = DriverManagerSecurity.ValidateAndResolveManifestPath(manifestDir, driverPath);
                     }
                 }
-                return LoadManagedDriver(driverPath, manifest.DriverTypeName!);
+                return LoadWithSecurity(
+                    driverPath,
+                    manifest.DriverTypeName!,
+                    manifestPath,
+                    nameof(LoadFromManifest),
+                    () => LoadManagedDriverCore(driverPath, manifest.DriverTypeName!));
             }
 
             // Native driver - resolve entrypoint and path
@@ -693,7 +745,7 @@ namespace Apache.Arrow.Adbc.DriverManager
 
             // Resolve driver path
             string resolvedDriverPath = manifest.DriverName!;
-            if (Path.IsPathRooted(resolvedDriverPath))
+            if (IsAbsolutePath(resolvedDriverPath))
             {
                 // Absolute path - validate it doesn't contain path traversal
                 DriverManagerSecurity.ValidatePathSecurity(resolvedDriverPath, "manifest driver path");
@@ -707,7 +759,12 @@ namespace Apache.Arrow.Adbc.DriverManager
                 }
             }
 
-            return CAdbcDriverImporter.Load(resolvedDriverPath, resolvedEntrypoint);
+            return LoadWithSecurity(
+                resolvedDriverPath,
+                typeName: null,
+                manifestPath: manifestPath,
+                loadMethod: nameof(LoadFromManifest),
+                () => CAdbcDriverImporter.Load(resolvedDriverPath, resolvedEntrypoint));
         }
 
         private static AdbcDriver? TryLoadFromDirectory(string dir, string driverName, string? entrypoint)
@@ -728,8 +785,7 @@ namespace Apache.Arrow.Adbc.DriverManager
                 {
                     try
                     {
-                        string ep = entrypoint ?? DeriveEntrypoint(libPath);
-                        return CAdbcDriverImporter.Load(libPath, ep);
+                        return LoadNativeDriver(libPath, entrypoint, nameof(FindLoadDriver));
                     }
                     catch (AdbcException) { /* try next extension */ }
                 }
@@ -815,6 +871,74 @@ namespace Apache.Arrow.Adbc.DriverManager
 
         private static string[] SplitPathList(string pathList) =>
             pathList.Split(new char[] { Path.PathSeparator }, StringSplitOptions.RemoveEmptyEntries);
+
+        /// <summary>
+        /// Returns <c>true</c> when <paramref name="path"/> is an absolute, fully
+        /// qualified path for the current platform.
+        /// </summary>
+        /// <remarks>
+        /// On modern .NET this uses <c>Path.IsPathFullyQualified</c>, which on Windows
+        /// is stricter than <see cref="Path.IsPathRooted(string)"/>: a path like
+        /// <c>/foo</c> is rooted but not fully qualified (it depends on the current
+        /// drive), and so it is rejected. .NET Framework / .NET Standard 2.0 fall back
+        /// to <see cref="Path.IsPathRooted(string)"/>.
+        /// </remarks>
+        private static bool IsAbsolutePath(string path)
+        {
+#if NET6_0_OR_GREATER
+            return Path.IsPathFullyQualified(path);
+#else
+            return Path.IsPathRooted(path);
+#endif
+        }
+
+        /// <summary>
+        /// Centralizes the security policy applied to every driver load: consults the
+        /// allowlist configured on <see cref="DriverManagerSecurity"/>, invokes the
+        /// supplied loader, and emits an audit record on both success and failure
+        /// through <see cref="DriverManagerSecurity.LogDriverLoadAttempt"/>.
+        /// </summary>
+        /// <remarks>
+        /// All terminal driver-load call sites in this class route through this helper
+        /// so that <see cref="DriverManagerSecurity.Allowlist"/> and
+        /// <see cref="DriverManagerSecurity.AuditLogger"/> are actually consulted at
+        /// runtime instead of being documented-but-non-functional API surface.
+        /// </remarks>
+        private static AdbcDriver LoadWithSecurity(
+            string driverPath,
+            string? typeName,
+            string? manifestPath,
+            string loadMethod,
+            Func<AdbcDriver> loader)
+        {
+            // Allowlist denial is itself an audited failure.
+            try
+            {
+                DriverManagerSecurity.ValidateAllowlist(driverPath, typeName);
+            }
+            catch (Exception ex)
+            {
+                DriverManagerSecurity.LogDriverLoadAttempt(new DriverLoadAttempt(
+                    driverPath, typeName, manifestPath, success: false, ex.Message, loadMethod));
+                throw;
+            }
+
+            AdbcDriver driver;
+            try
+            {
+                driver = loader();
+            }
+            catch (Exception ex)
+            {
+                DriverManagerSecurity.LogDriverLoadAttempt(new DriverLoadAttempt(
+                    driverPath, typeName, manifestPath, success: false, ex.Message, loadMethod));
+                throw;
+            }
+
+            DriverManagerSecurity.LogDriverLoadAttempt(new DriverLoadAttempt(
+                driverPath, typeName, manifestPath, success: true, errorMessage: null, loadMethod));
+            return driver;
+        }
 
         /// <summary>
         /// Validates that a non-rooted driver name is a simple file/base name with no
