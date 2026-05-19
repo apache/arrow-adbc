@@ -517,6 +517,15 @@ namespace Apache.Arrow.Adbc.C
                 }
             }
 
+            private unsafe ref CAdbcDriver Driver11
+            {
+                get
+                {
+                    if (_disposed) { throw new ObjectDisposedException(nameof(ImportedAdbcConnection)); }
+                    return ref _driver.Driver11;
+                }
+            }
+
             public override bool AutoCommit
             {
                 get => _autoCommit ?? throw AdbcException.NotImplemented("no value has been set for AutoCommit");
@@ -756,6 +765,14 @@ namespace Apache.Arrow.Adbc.C
                 using (CallHelper caller = new CallHelper())
                 {
                     caller.Call(Driver.ConnectionRollback, ref _nativeConnection);
+                }
+            }
+
+            public unsafe override void Cancel()
+            {
+                using (CallHelper caller = new CallHelper())
+                {
+                    caller.Call(Driver11.ConnectionCancel, ref _nativeConnection);
                 }
             }
 
@@ -1064,6 +1081,14 @@ namespace Apache.Arrow.Adbc.C
                 using (CallHelper caller = new CallHelper())
                 {
                     caller.Call(Driver.StatementSetOption, ref _nativeStatement, key, value);
+                }
+            }
+
+            public unsafe override void Cancel()
+            {
+                using (CallHelper caller = new CallHelper())
+                {
+                    caller.Call(Driver11.StatementCancel, ref _nativeStatement);
                 }
             }
 

@@ -1,0 +1,1002 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
+using System.Reflection;
+using System.Runtime.InteropServices;
+#if NET6_0_OR_GREATER
+using System.Diagnostics.CodeAnalysis;
+#endif
+using Apache.Arrow.Adbc.C;
+
+namespace Apache.Arrow.Adbc.DriverManager
+{
+    /// <summary>
+    /// Provides methods to locate and load ADBC drivers, optionally using TOML manifest
+    /// files and connection profiles.
+    /// Mirrors the free functions declared in <c>adbc_driver_manager.h</c>:
+    /// <c>AdbcLoadDriver</c> and <c>AdbcFindLoadDriver</c>.
+    /// </summary>
+    public static class AdbcDriverManager
+    {
+        /// <summary>
+        /// The environment variable that specifies additional driver search paths.
+        /// </summary>
+        public const string DriverPathEnvVar = "ADBC_DRIVER_PATH";
+
+        // -----------------------------------------------------------------------
+        // AdbcLoadDriver – load a driver directly from an absolute path
+        // -----------------------------------------------------------------------
+
+        /// <summary>
+        /// Loads an ADBC driver from an explicit absolute file path.
+        /// Mirrors <c>AdbcLoadDriver</c> in <c>adbc_driver_manager.h</c>.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// If a TOML manifest file with the same base name exists in the same directory
+        /// as the driver file, it will be automatically detected and used. For example,
+        /// loading <c>libadbc_driver_snowflake.dll</c> will automatically use
+        /// <c>libadbc_driver_snowflake.toml</c> if present.
+        /// </para>
+        /// <para>
+        /// The co-located manifest can specify default options, override the driver path,
+        /// or provide additional metadata. The <paramref name="entrypoint"/> parameter
+        /// always takes precedence over any entrypoint derived from the manifest or filename.
+        /// </para>
+        /// <para>
+        /// <b>Managed (.NET) drivers always require a manifest.</b> This method loads the
+        /// driver as a native shared library unless a co-located TOML manifest is present
+        /// that specifies a managed <c>driver_type</c>. To load a managed .NET driver,
+        /// either point <paramref name="driverPath"/> at a directory containing a
+        /// co-located <c>.toml</c> manifest, call <see cref="LoadFromManifest"/> directly,
+        /// or use <see cref="LoadManagedDriver"/> to load a .NET assembly without a manifest.
+        /// </para>
+        /// <para>
+        /// <b>Security:</b> <paramref name="driverPath"/> must be an absolute, fully
+        /// qualified path. Relative paths are rejected, because resolving them inside the
+        /// driver manager (e.g. against the current process working directory) is a
+        /// security hazard: an attacker who can influence the working directory could
+        /// cause the wrong shared library to be loaded. Host programs that need to
+        /// resolve a relative location should do so explicitly before calling this method.
+        /// </para>
+        /// </remarks>
+        /// <param name="driverPath">
+        /// The absolute, fully qualified path to the driver shared library.
+        /// </param>
+        /// <param name="entrypoint">
+        /// The symbol name of the driver initialization function. When <c>null</c> the
+        /// driver manager derives a candidate entrypoint from the file name (see
+        /// <see cref="DeriveEntrypoint"/>), falling back to <c>AdbcDriverInit</c>.
+        /// </param>
+        /// <returns>The loaded <see cref="AdbcDriver"/>.</returns>
+        /// <exception cref="ArgumentException">
+        /// Thrown when <paramref name="driverPath"/> is null, empty, or not an absolute path.
+        /// </exception>
+        public static AdbcDriver LoadDriver(string driverPath, string? entrypoint = null)
+        {
+            if (string.IsNullOrEmpty(driverPath))
+                throw new ArgumentException("Driver path must not be null or empty.", nameof(driverPath));
+
+            if (!IsAbsolutePath(driverPath))
+                throw new ArgumentException(
+                    $"Driver path '{driverPath}' must be an absolute path. " +
+                    "Resolve the path in the host program before passing it to the driver manager.",
+                    nameof(driverPath));
+
+            // Check for co-located TOML manifest
+            string? colocatedManifest = TryFindColocatedManifest(driverPath);
+            if (colocatedManifest != null)
+            {
+                return LoadFromManifest(colocatedManifest, entrypoint);
+            }
+
+            return LoadNativeDriver(driverPath, entrypoint, nameof(LoadDriver));
+        }
+
+        /// <summary>
+        /// Loads a native driver assembly from a verified absolute path, with no
+        /// further manifest probing. All terminal native-load call sites funnel
+        /// through this helper so security policy is applied uniformly.
+        /// </summary>
+        private static AdbcDriver LoadNativeDriver(string driverPath, string? entrypoint, string loadMethod)
+        {
+            string resolvedEntrypoint = entrypoint ?? DeriveEntrypoint(driverPath);
+            return LoadWithSecurity(
+                driverPath,
+                typeName: null,
+                manifestPath: null,
+                loadMethod: loadMethod,
+                () => CAdbcDriverImporter.Load(driverPath, resolvedEntrypoint));
+        }
+
+        // -----------------------------------------------------------------------
+        // AdbcFindLoadDriver – locate a driver by name using configurable search rules
+        // -----------------------------------------------------------------------
+
+        /// <summary>
+        /// Searches for an ADBC driver by name and loads it.
+        /// Mirrors <c>AdbcFindLoadDriver</c> in <c>adbc_driver_manager.h</c>.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// If <paramref name="driverName"/> is an absolute path:
+        /// <list type="bullet">
+        ///   <item>A <c>.toml</c> extension triggers manifest loading.</item>
+        ///   <item>Any other extension loads the path as a shared library directly.</item>
+        /// </list>
+        /// </para>
+        /// <para>
+        /// If <paramref name="driverName"/> is a bare name (no extension, not absolute):
+        /// <list type="number">
+        ///   <item>Each configured search directory is checked in order.</item>
+        ///   <item>
+        ///     For each directory, <c>&lt;dir&gt;/&lt;name&gt;.toml</c> is attempted first;
+        ///     if found the manifest is parsed and the driver loaded.
+        ///   </item>
+        ///   <item>
+        ///     Then <c>&lt;dir&gt;/&lt;name&gt;.&lt;ext&gt;</c> for each platform extension
+        ///     (<c>.dll</c>, <c>.so</c>, <c>.dylib</c>) is attempted.
+        ///   </item>
+        /// </list>
+        /// </para>
+        /// </remarks>
+        /// <param name="driverName">
+        /// A driver identifier: an absolute path (with or without extension) or a bare
+        /// driver name to be resolved by directory search.
+        /// </param>
+        /// <param name="entrypoint">
+        /// The symbol name of the driver initialization function, or <c>null</c> to
+        /// derive it automatically.
+        /// </param>
+        /// <param name="loadOptions">
+        /// Flags controlling which directories are searched.
+        /// </param>
+        /// <param name="additionalSearchPathList">
+        /// An optional OS path-list-separator-delimited list of extra directories to
+        /// search <b>before</b> the standard ones, or <c>null</c>. The full search order
+        /// is: (1) entries from this parameter, (2) entries from the
+        /// <c>ADBC_DRIVER_PATH</c> environment variable (when
+        /// <see cref="AdbcLoadFlags.SearchEnv"/> is set), (3) the user-level driver
+        /// directory (when <see cref="AdbcLoadFlags.SearchUser"/> is set), and (4) the
+        /// system-level driver directory (when <see cref="AdbcLoadFlags.SearchSystem"/>
+        /// is set). This ordering matters for security review: caller-supplied paths
+        /// and the environment variable take precedence over the user and system
+        /// directories.
+        /// </param>
+        /// <returns>The loaded <see cref="AdbcDriver"/>.</returns>
+        /// <exception cref="AdbcException">Thrown when the driver cannot be found or loaded.</exception>
+        public static AdbcDriver FindLoadDriver(
+            string driverName,
+            string? entrypoint = null,
+            AdbcLoadFlags loadOptions = AdbcLoadFlags.Default,
+            string? additionalSearchPathList = null)
+        {
+            if (string.IsNullOrEmpty(driverName))
+                throw new ArgumentException("Driver name must not be null or empty.", nameof(driverName));
+
+            // Absolute path – load directly.
+            if (IsAbsolutePath(driverName))
+                return LoadFromAbsolutePath(driverName, entrypoint);
+
+            // Anything that is not an absolute path is treated as a name to be resolved
+            // by the driver manager. To avoid loading the wrong library based on an
+            // attacker-controlled working directory, we require that such a name be a
+            // simple file/base name with no directory separators and no ".." segments.
+            EnsureSimpleDriverName(driverName);
+
+            // Bare name with an extension but not rooted – relative path case.
+            string ext = Path.GetExtension(driverName);
+            if (!string.IsNullOrEmpty(ext) && loadOptions.HasFlag(AdbcLoadFlags.AllowRelativePaths))
+            {
+                // Resolve against the executing process directory rather than the
+                // current working directory, then dispatch to the absolute-path loader.
+                string resolved = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, driverName));
+                if (string.Equals(ext, ".toml", StringComparison.OrdinalIgnoreCase))
+                    return LoadFromManifest(resolved, entrypoint);
+                return LoadDriver(resolved, entrypoint);
+            }
+
+            // Bareword – search configured directories.
+            foreach (string dir in BuildSearchDirectories(loadOptions, additionalSearchPathList))
+            {
+                AdbcDriver? found = TryLoadFromDirectory(dir, driverName, entrypoint);
+                if (found != null)
+                    return found;
+            }
+
+            throw new AdbcException(
+                $"Could not find ADBC driver '{driverName}' in any configured search path.",
+                AdbcStatusCode.NotFound);
+        }
+
+        // -----------------------------------------------------------------------
+        // LoadDriverFromProfile – load a driver as specified by a connection profile
+        // -----------------------------------------------------------------------
+
+        /// <summary>
+        /// Loads an ADBC driver as specified by a <see cref="ConnectionProfile"/>.
+        /// </summary>
+        /// <param name="profile">The profile that specifies the driver to load.</param>
+        /// <param name="entrypoint">
+        /// An optional override for the driver entrypoint symbol. When <c>null</c> the
+        /// entrypoint is derived from the driver name in the profile.
+        /// </param>
+        /// <param name="loadOptions">Flags controlling directory search behaviour.</param>
+        /// <param name="additionalSearchPathList">
+        /// An optional additional search path list, overriding any search paths that may
+        /// be embedded in the profile.
+        /// </param>
+        /// <returns>The loaded <see cref="AdbcDriver"/>.</returns>
+        /// <exception cref="AdbcException">
+        /// Thrown when the profile does not specify a driver, or the driver cannot be found.
+        /// </exception>
+        public static AdbcDriver LoadDriverFromProfile(
+            ConnectionProfile profile,
+            string? entrypoint = null,
+            AdbcLoadFlags loadOptions = AdbcLoadFlags.Default,
+            string? additionalSearchPathList = null)
+        {
+            if (profile == null) throw new ArgumentNullException(nameof(profile));
+
+            if (string.IsNullOrEmpty(profile.DriverName))
+                throw new AdbcException(
+                    "The connection profile does not specify a driver name.",
+                    AdbcStatusCode.InvalidArgument);
+
+            return FindLoadDriver(profile.DriverName!, entrypoint, loadOptions, additionalSearchPathList);
+        }
+
+        // -----------------------------------------------------------------------
+        // LoadManagedDriver – load a managed .NET AdbcDriver via reflection
+        // -----------------------------------------------------------------------
+
+        /// <summary>
+        /// Loads a managed (pure .NET) ADBC driver from a .NET assembly using reflection.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Use this instead of <see cref="LoadDriver"/> when the driver is a .NET assembly
+        /// (e.g. <c>Apache.Arrow.Adbc.Drivers.BigQuery.dll</c>) rather than a native shared
+        /// library. The assembly is loaded via <see cref="Assembly.LoadFrom"/> and the
+        /// specified type is instantiated with a public parameterless constructor.
+        /// </para>
+        /// <para>
+        /// <b>What .deps.json buys you, and what it does not.</b> On modern .NET the
+        /// driver is loaded into the default <c>AssemblyLoadContext</c>. The driver's
+        /// <c>.deps.json</c> (which must be deployed next to the driver assembly) is
+        /// consulted to resolve <i>private</i> driver dependencies that the host process
+        /// does not already have on its TPA list. It is <b>not</b> used to override
+        /// versions of assemblies the host has already loaded. In particular, the public
+        /// contract assemblies
+        /// — <c>Apache.Arrow.Adbc</c>, <c>Apache.Arrow</c>, and
+        /// <c>System.Diagnostics.DiagnosticSource</c> —
+        /// are always satisfied from the host. Drivers must therefore be compiled
+        /// against versions of these assemblies that are less than or equal to the
+        /// versions shipped by the host; otherwise the driver will fail at first use
+        /// with <see cref="MissingMethodException"/> or <see cref="TypeLoadException"/>.
+        /// </para>
+        /// <para>
+        /// A driver deployed without its <c>.deps.json</c> can still load if all of its
+        /// references happen to be on the host's TPA list, but this is best-effort and
+        /// not a supported configuration. See <see cref="ManagedDriverLoader"/> for the
+        /// full dependency-resolution contract.
+        /// </para>
+        /// <para>
+        /// <b>Process-wide side effect.</b> On .NET 6+ the first successful call to this
+        /// method (per process) attaches a permanent
+        /// <see cref="System.Runtime.Loader.AssemblyLoadContext"/>.Default.Resolving
+        /// handler so that each loaded driver's <c>.deps.json</c> can satisfy private
+        /// dependency lookups. The handler is installed exactly once and is never
+        /// removed, even if the caller drops every reference to the returned
+        /// <see cref="AdbcDriver"/>. This is intentional &#8212; managed drivers cannot
+        /// be safely unloaded from the default load context &#8212; but it means
+        /// <c>LoadManagedDriver</c> has a permanent global effect on the host process.
+        /// </para>
+        /// </remarks>
+        /// <param name="assemblyPath">
+        /// The absolute or relative path to the .NET assembly containing the driver.
+        /// </param>
+        /// <param name="typeName">
+        /// The fully-qualified name of a concrete class that derives from
+        /// <see cref="AdbcDriver"/> and has a public parameterless constructor
+        /// (e.g. <c>Apache.Arrow.Adbc.Drivers.BigQuery.BigQueryDriver</c>).
+        /// </param>
+        /// <returns>An instance of the specified <see cref="AdbcDriver"/> subclass.</returns>
+        /// <exception cref="AdbcException">
+        /// Thrown when the assembly cannot be loaded, the type is not found, or the type
+        /// does not derive from <see cref="AdbcDriver"/>.
+        /// </exception>
+#if NET6_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode",
+            Justification = "Dynamic driver loading is inherently incompatible with full trimming. " +
+                            "Drivers must opt out of trimming or be preserved by the host.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2072:RequiresUnreferencedCode",
+            Justification = "Dynamic driver loading is inherently incompatible with full trimming. " +
+                            "Drivers must opt out of trimming or be preserved by the host.")]
+#endif
+        public static AdbcDriver LoadManagedDriver(string assemblyPath, string typeName)
+        {
+            if (string.IsNullOrEmpty(assemblyPath))
+            {
+                throw new ArgumentException("Assembly path must not be null or empty.", nameof(assemblyPath));
+            }
+            if (string.IsNullOrEmpty(typeName))
+            {
+                throw new ArgumentException("Type name must not be null or empty.", nameof(typeName));
+            }
+
+            return LoadWithSecurity(
+                assemblyPath,
+                typeName,
+                manifestPath: null,
+                loadMethod: nameof(LoadManagedDriver),
+                () => LoadManagedDriverCore(assemblyPath, typeName));
+        }
+
+#if NET6_0_OR_GREATER
+        [UnconditionalSuppressMessage("Trimming", "IL2026:RequiresUnreferencedCode",
+            Justification = "Dynamic driver loading is inherently incompatible with full trimming. " +
+                            "Drivers must opt out of trimming or be preserved by the host.")]
+        [UnconditionalSuppressMessage("Trimming", "IL2072:RequiresUnreferencedCode",
+            Justification = "Dynamic driver loading is inherently incompatible with full trimming. " +
+                            "Drivers must opt out of trimming or be preserved by the host.")]
+#endif
+        private static AdbcDriver LoadManagedDriverCore(string assemblyPath, string typeName)
+        {
+            Assembly assembly;
+            try
+            {
+                assembly = ManagedDriverLoader.LoadAssembly(assemblyPath);
+            }
+            catch (FileNotFoundException ex)
+            {
+                throw new AdbcException(
+                    $"Driver assembly not found: {ex.FileName}",
+                    AdbcStatusCode.NotFound);
+            }
+            catch (BadImageFormatException ex)
+            {
+                throw new AdbcException(
+                    $"Driver assembly has an invalid format (possibly wrong platform or not a .NET assembly): {ex.Message}",
+                    AdbcStatusCode.InvalidArgument);
+            }
+            catch (Exception ex)
+            {
+                throw new AdbcException(
+                    $"Failed to load managed driver assembly: {ex.Message}",
+                    AdbcStatusCode.IOError);
+            }
+
+            Type? driverType = assembly.GetType(typeName, throwOnError: false);
+            if (driverType == null)
+            {
+                throw new AdbcException(
+                    $"Type '{typeName}' was not found in the assembly.",
+                    AdbcStatusCode.NotFound);
+            }
+
+            if (!typeof(AdbcDriver).IsAssignableFrom(driverType))
+                throw new AdbcException(
+                    $"Type '{typeName}' does not derive from {nameof(AdbcDriver)}.",
+                    AdbcStatusCode.InvalidArgument);
+
+            object? instance;
+            try
+            {
+                instance = Activator.CreateInstance(driverType);
+            }
+            catch (Exception ex)
+            {
+                throw new AdbcException(
+                    $"Failed to instantiate driver type '{typeName}': {ex.Message}",
+                    AdbcStatusCode.InternalError);
+            }
+
+            if (instance == null)
+            {
+                throw new AdbcException(
+                    $"Activator returned null for driver type '{typeName}'.",
+                    AdbcStatusCode.InternalError);
+            }
+
+            return (AdbcDriver)instance;
+        }
+
+        // -----------------------------------------------------------------------
+        // OpenDatabaseFromProfile – load driver + open database in one step
+        // -----------------------------------------------------------------------
+
+        /// <summary>
+        /// Loads the driver specified by <paramref name="profile"/> and opens a database,
+        /// applying all options from the profile as connection parameters.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// If the profile has a non-null <see cref="ConnectionProfile.DriverTypeName"/>, the
+        /// driver is loaded as a managed .NET assembly via <see cref="LoadManagedDriver"/> and
+        /// <see cref="ConnectionProfile.DriverName"/> is used as the assembly path.
+        /// </para>
+        /// <para>
+        /// Otherwise the driver is loaded as a native shared library via
+        /// <see cref="FindLoadDriver"/>.
+        /// </para>
+        /// <para>
+        /// All options (string, integer, and double) are merged into a single
+        /// <c>string → string</c> dictionary.  Integer and double values are formatted
+        /// using <see cref="CultureInfo.InvariantCulture"/>. The merged dictionary is
+        /// passed to <see cref="AdbcDriver.Open(IReadOnlyDictionary{string,string})"/>.
+        /// </para>
+        /// <para>
+        /// Call <see cref="ConnectionProfile.ResolveEnvVars"/> on the profile before
+        /// passing it here if you want <c>env_var(NAME)</c> values expanded first.
+        /// </para>
+        /// </remarks>
+        /// <param name="profile">The connection profile specifying the driver and options.</param>
+        /// <param name="loadOptions">Flags controlling directory search for native drivers.</param>
+        /// <param name="additionalSearchPathList">
+        /// An optional extra search path list for native driver discovery.
+        /// </param>
+        /// <returns>An open <see cref="AdbcDatabase"/>.</returns>
+        public static AdbcDatabase OpenDatabaseFromProfile(
+            ConnectionProfile profile,
+            AdbcLoadFlags loadOptions = AdbcLoadFlags.Default,
+            string? additionalSearchPathList = null)
+        {
+            return OpenDatabaseFromProfile(profile, null, loadOptions, additionalSearchPathList);
+        }
+
+        /// <summary>
+        /// Loads the driver specified by <paramref name="profile"/> and opens a database,
+        /// merging profile options with explicitly provided options.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This overload allows specifying additional options that will be merged with the
+        /// profile options. Per the ADBC specification, profile options are applied first,
+        /// then explicit options. If the same key appears in both the profile and explicit
+        /// options, the explicit value takes precedence.
+        /// </para>
+        /// <para>
+        /// If the profile has a non-null <see cref="ConnectionProfile.DriverTypeName"/>, the
+        /// driver is loaded as a managed .NET assembly via <see cref="LoadManagedDriver"/> and
+        /// <see cref="ConnectionProfile.DriverName"/> is used as the assembly path.
+        /// </para>
+        /// <para>
+        /// Otherwise the driver is loaded as a native shared library via
+        /// <see cref="FindLoadDriver"/>.
+        /// </para>
+        /// <para>
+        /// All options are merged into a single
+        /// following order (later values override earlier ones for the same key):
+        /// <list type="number">
+        ///   <item>Profile integer options (formatted as strings)</item>
+        ///   <item>Profile double options (formatted as strings)</item>
+        ///   <item>Profile string options</item>
+        ///   <item>Explicit options from <paramref name="explicitOptions"/></item>
+        /// </list>
+        /// The merged dictionary is passed to <see cref="AdbcDriver.Open(IReadOnlyDictionary{string,string})"/>.
+        /// </para>
+        /// </remarks>
+        /// <param name="profile">The connection profile specifying the driver and options.</param>
+        /// <param name="explicitOptions">
+        /// Additional options to merge with profile options. Explicit options override profile
+        /// options for the same key. May be <c>null</c> or empty.
+        /// </param>
+        /// <param name="loadOptions">Flags controlling directory search for native drivers.</param>
+        /// <param name="additionalSearchPathList">
+        /// An optional extra search path list for native driver discovery.
+        /// </param>
+        /// <returns>An open <see cref="AdbcDatabase"/>.</returns>
+        public static AdbcDatabase OpenDatabaseFromProfile(
+            ConnectionProfile profile,
+            IReadOnlyDictionary<string, string>? explicitOptions,
+            AdbcLoadFlags loadOptions = AdbcLoadFlags.Default,
+            string? additionalSearchPathList = null)
+        {
+            if (profile == null) throw new ArgumentNullException(nameof(profile));
+
+            AdbcDriver driver;
+
+            if (!string.IsNullOrEmpty(profile.DriverTypeName))
+            {
+                // Managed .NET driver path
+                if (string.IsNullOrEmpty(profile.DriverName))
+                    throw new AdbcException(
+                        "The connection profile specifies a driver_type but no driver assembly path (driver field).",
+                        AdbcStatusCode.InvalidArgument);
+
+                driver = LoadManagedDriver(profile.DriverName!, profile.DriverTypeName!);
+            }
+            else
+            {
+                // Native shared-library path
+                driver = LoadDriverFromProfile(profile, null, loadOptions, additionalSearchPathList);
+            }
+
+            return driver.Open(BuildStringOptions(profile, explicitOptions));
+        }
+
+        /// <summary>
+        /// Merges all options from a profile into a flat <c>string → string</c> dictionary
+        /// suitable for passing to <see cref="AdbcDriver.Open(IReadOnlyDictionary{string,string})"/>.
+        /// Integer and double values are formatted with <see cref="CultureInfo.InvariantCulture"/>.
+        /// String options take precedence if the same key appears in multiple option sets.
+        /// </summary>
+        public static IReadOnlyDictionary<string, string> BuildStringOptions(ConnectionProfile profile)
+        {
+            return BuildStringOptions(profile, null);
+        }
+
+        /// <summary>
+        /// Merges options from a profile with explicitly provided options into a flat
+        /// <c>string → string</c> dictionary suitable for passing to
+        /// <see cref="AdbcDriver.Open(IReadOnlyDictionary{string,string})"/>.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Options are merged in the following order (later values override earlier ones):
+        /// <list type="number">
+        ///   <item>Profile integer options (formatted as strings)</item>
+        ///   <item>Profile double options (formatted as strings)</item>
+        ///   <item>Profile string options</item>
+        ///   <item>Explicit options from <paramref name="explicitOptions"/></item>
+        /// </list>
+        /// </para>
+        /// <para>
+        /// This ordering ensures that explicit options always take precedence over profile
+        /// options, as required by the ADBC specification.
+        /// </para>
+        /// </remarks>
+        /// <param name="profile">The connection profile containing base options.</param>
+        /// <param name="explicitOptions">
+        /// Additional options that override profile options. May be <c>null</c> or empty.
+        /// </param>
+        /// <returns>A merged dictionary of all options.</returns>
+        public static IReadOnlyDictionary<string, string> BuildStringOptions(
+            ConnectionProfile profile,
+            IReadOnlyDictionary<string, string>? explicitOptions)
+        {
+            if (profile == null) throw new ArgumentNullException(nameof(profile));
+
+            var merged = new Dictionary<string, string>(StringComparer.Ordinal);
+
+            // Profile options first (in order: int, double, string)
+            foreach (var kv in profile.IntOptions)
+                merged[kv.Key] = kv.Value.ToString(CultureInfo.InvariantCulture);
+
+            foreach (var kv in profile.DoubleOptions)
+                merged[kv.Key] = kv.Value.ToString(CultureInfo.InvariantCulture);
+
+            foreach (var kv in profile.StringOptions)
+                merged[kv.Key] = kv.Value;
+
+            // Explicit options last – they override profile options
+            if (explicitOptions != null)
+            {
+                foreach (var kv in explicitOptions)
+                    merged[kv.Key] = kv.Value;
+            }
+
+            return merged;
+        }
+
+        // -----------------------------------------------------------------------
+        // Helpers – derive entrypoint, search directories, manifest loading
+        // -----------------------------------------------------------------------
+
+        /// <summary>
+        /// Derives a candidate entrypoint symbol name from a driver file path.
+        /// </summary>
+        /// <remarks>
+        /// The convention used by the Go-based ADBC drivers is to strip leading
+        /// <c>lib</c> and any extension, then append <c>Init</c>. For example,
+        /// <c>libadbc_driver_postgresql.so</c> yields <c>AdbcDriverPostgresqlInit</c>.
+        /// Falls back to <c>AdbcDriverInit</c> when no better candidate can be formed.
+        /// </remarks>
+        public static string DeriveEntrypoint(string driverPath)
+        {
+            string baseName = Path.GetFileNameWithoutExtension(driverPath);
+
+            // Strip leading "lib" prefix common on POSIX platforms.
+            if (baseName.StartsWith("lib", StringComparison.OrdinalIgnoreCase))
+                baseName = baseName.Substring(3);
+
+            // Strip "adbc_driver_" or "adbc_" prefix to get a shorter stem.
+            const string adbcDriverPrefix = "adbc_driver_";
+            const string adbcPrefix = "adbc_";
+
+            if (baseName.StartsWith(adbcDriverPrefix, StringComparison.OrdinalIgnoreCase))
+                baseName = baseName.Substring(adbcDriverPrefix.Length);
+            else if (baseName.StartsWith(adbcPrefix, StringComparison.OrdinalIgnoreCase))
+                baseName = baseName.Substring(adbcPrefix.Length);
+
+            if (string.IsNullOrEmpty(baseName))
+                return "AdbcDriverInit";
+
+            // Convert snake_case to PascalCase.
+            string pascal = ToPascalCase(baseName);
+            return $"AdbcDriver{pascal}Init";
+        }
+
+        private static AdbcDriver LoadFromAbsolutePath(string path, string? entrypoint)
+        {
+            string ext = Path.GetExtension(path);
+            if (string.Equals(ext, ".toml", StringComparison.OrdinalIgnoreCase))
+                return LoadFromManifest(path, entrypoint);
+
+            // Native shared library path. LoadDriver itself probes for a co-located
+            // manifest; we don't probe again here so manifest-detection logic lives
+            // in exactly one place.
+            return LoadDriver(path, entrypoint);
+        }
+
+        /// <summary>
+        /// Checks for a TOML manifest file co-located with a driver file.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Given a driver path like <c>C:\drivers\libadbc_driver_snowflake.dll</c>,
+        /// this checks for <c>C:\drivers\libadbc_driver_snowflake.toml</c>.
+        /// </para>
+        /// <para>
+        /// Co-located manifests allow drivers to ship with metadata about how they should
+        /// be loaded (e.g., specifying they're managed .NET drivers via <c>driver_type</c>,
+        /// or redirecting to the actual driver location via the <c>driver</c> field).
+        /// </para>
+        /// <para>
+        /// <b>Important:</b> Options specified in co-located manifests are NOT automatically
+        /// applied to database connections. The manifest is used solely for driver loading.
+        /// To use manifest options, explicitly load the profile with
+        /// <see cref="TomlConnectionProfile.FromFile"/> and use
+        /// <see cref="OpenDatabaseFromProfile(ConnectionProfile, IReadOnlyDictionary{string, string}?, AdbcLoadFlags, string?)"/>.
+        /// </para>
+        /// </remarks>
+        /// <param name="driverPath">The path to the driver file.</param>
+        /// <returns>
+        /// The full path to the co-located manifest if found; otherwise <c>null</c>.
+        /// </returns>
+        private static string? TryFindColocatedManifest(string driverPath)
+        {
+            try
+            {
+                string fullPath = Path.GetFullPath(driverPath);
+                string? directory = Path.GetDirectoryName(fullPath);
+                if (string.IsNullOrEmpty(directory))
+                    return null;
+
+                string fileNameWithoutExt = Path.GetFileNameWithoutExtension(fullPath);
+                string manifestPath = Path.Combine(directory, fileNameWithoutExt + ".toml");
+
+                return File.Exists(manifestPath) ? manifestPath : null;
+            }
+            catch
+            {
+                // If path resolution fails, just return null
+                return null;
+            }
+        }
+
+        private static AdbcDriver LoadFromManifest(string manifestPath, string? entrypoint)
+        {
+            if (!File.Exists(manifestPath))
+            {
+                throw new AdbcException(
+                    $"Driver manifest file not found.",
+                    AdbcStatusCode.NotFound);
+            }
+
+            ConnectionProfile manifest = FilesystemProfileProvider.LoadFromFile(manifestPath);
+
+            if (string.IsNullOrEmpty(manifest.DriverName))
+            {
+                throw new AdbcException(
+                    $"Driver manifest does not specify a 'driver' field.",
+                    AdbcStatusCode.InvalidArgument);
+            }
+
+            string? manifestDir = Path.GetDirectoryName(Path.GetFullPath(manifestPath));
+
+            // Check if this is a managed driver
+            if (!string.IsNullOrEmpty(manifest.DriverTypeName))
+            {
+                // Managed .NET driver - resolve path
+                string driverPath = manifest.DriverName!;
+                if (IsAbsolutePath(driverPath))
+                {
+                    // Absolute path - validate it doesn't contain path traversal
+                    DriverManagerSecurity.ValidatePathSecurity(driverPath, "manifest driver path");
+                }
+                else
+                {
+                    // Relative path - validate it doesn't escape the manifest directory
+                    if (!string.IsNullOrEmpty(manifestDir))
+                    {
+                        driverPath = DriverManagerSecurity.ValidateAndResolveManifestPath(manifestDir, driverPath);
+                    }
+                }
+                return LoadWithSecurity(
+                    driverPath,
+                    manifest.DriverTypeName!,
+                    manifestPath,
+                    nameof(LoadFromManifest),
+                    () => LoadManagedDriverCore(driverPath, manifest.DriverTypeName!));
+            }
+
+            // Native driver - resolve entrypoint and path
+            string resolvedEntrypoint = entrypoint ?? DeriveEntrypoint(manifest.DriverName!);
+
+            // Resolve driver path
+            string resolvedDriverPath = manifest.DriverName!;
+            if (IsAbsolutePath(resolvedDriverPath))
+            {
+                // Absolute path - validate it doesn't contain path traversal
+                DriverManagerSecurity.ValidatePathSecurity(resolvedDriverPath, "manifest driver path");
+            }
+            else
+            {
+                // Relative path - validate it doesn't escape the manifest directory
+                if (!string.IsNullOrEmpty(manifestDir))
+                {
+                    resolvedDriverPath = DriverManagerSecurity.ValidateAndResolveManifestPath(manifestDir, resolvedDriverPath);
+                }
+            }
+
+            return LoadWithSecurity(
+                resolvedDriverPath,
+                typeName: null,
+                manifestPath: manifestPath,
+                loadMethod: nameof(LoadFromManifest),
+                () => CAdbcDriverImporter.Load(resolvedDriverPath, resolvedEntrypoint));
+        }
+
+        private static AdbcDriver? TryLoadFromDirectory(string dir, string driverName, string? entrypoint)
+        {
+            // 1. Try manifest. Any failure (parse error, missing field, load error)
+            // is surfaced to the caller -- if a manifest is present it is clearly the
+            // user's intended driver entry.
+            string manifestPath = Path.Combine(dir, driverName + ".toml");
+            if (File.Exists(manifestPath))
+            {
+                return LoadFromManifest(manifestPath, entrypoint);
+            }
+
+            // 2. Try native library extensions. If a matching file exists but fails
+            // to load (e.g., corrupt binary, wrong architecture, missing entrypoint),
+            // surface that concrete error rather than silently degrading to a generic
+            // NotFound -- the file is clearly the user's intended driver.
+            foreach (string nativeExt in GetPlatformExtensions())
+            {
+                string libPath = Path.Combine(dir, driverName + nativeExt);
+                if (File.Exists(libPath))
+                {
+                    return LoadNativeDriver(libPath, entrypoint, nameof(FindLoadDriver));
+                }
+            }
+
+            return null;
+        }
+
+        private static IEnumerable<string> BuildSearchDirectories(
+            AdbcLoadFlags flags,
+            string? additionalSearchPathList)
+        {
+            // 1. Caller-supplied additional paths
+            if (!string.IsNullOrEmpty(additionalSearchPathList))
+            {
+                foreach (string p in SplitPathList(additionalSearchPathList!))
+                    yield return p;
+            }
+
+            // 2. ADBC_DRIVER_PATH environment variable
+            if (flags.HasFlag(AdbcLoadFlags.SearchEnv))
+            {
+                string? envPath = Environment.GetEnvironmentVariable(DriverPathEnvVar);
+                if (!string.IsNullOrEmpty(envPath))
+                {
+                    foreach (string p in SplitPathList(envPath!))
+                        yield return p;
+                }
+            }
+
+            // 3. User-level directory
+            if (flags.HasFlag(AdbcLoadFlags.SearchUser))
+            {
+                string userDir = GetUserDriverDirectory();
+                if (!string.IsNullOrEmpty(userDir))
+                    yield return userDir;
+            }
+
+            // 4. System-level directory
+            if (flags.HasFlag(AdbcLoadFlags.SearchSystem))
+            {
+                string sysDir = GetSystemDriverDirectory();
+                if (!string.IsNullOrEmpty(sysDir))
+                    yield return sysDir;
+            }
+        }
+
+        private static string[] GetPlatformExtensions()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                return new[] { ".dll" };
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                return new[] { ".dylib", ".so" };
+            return new[] { ".so", ".dylib" };
+        }
+
+        private static string GetUserDriverDirectory()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                string? appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                return string.IsNullOrEmpty(appData) ? string.Empty : Path.Combine(appData, "adbc", "drivers");
+            }
+            else
+            {
+                string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                return string.IsNullOrEmpty(home) ? string.Empty : Path.Combine(home, ".config", "adbc", "drivers");
+            }
+        }
+
+        private static string GetSystemDriverDirectory()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                string? sysRoot = Environment.GetEnvironmentVariable("ProgramData");
+                return string.IsNullOrEmpty(sysRoot) ? string.Empty : Path.Combine(sysRoot, "adbc", "drivers");
+            }
+            else
+            {
+                return "/usr/lib/adbc";
+            }
+        }
+
+        private static string[] SplitPathList(string pathList) =>
+            pathList.Split(new char[] { Path.PathSeparator }, StringSplitOptions.RemoveEmptyEntries);
+
+        /// <summary>
+        /// Returns <c>true</c> when <paramref name="path"/> is an absolute, fully
+        /// qualified path for the current platform.
+        /// </summary>
+        /// <remarks>
+        /// On modern .NET this uses <c>Path.IsPathFullyQualified</c>, which on Windows
+        /// is stricter than <see cref="Path.IsPathRooted(string)"/>: a path like
+        /// <c>/foo</c> is rooted but not fully qualified (it depends on the current
+        /// drive), and so it is rejected. .NET Framework / .NET Standard 2.0 fall back
+        /// to <see cref="Path.IsPathRooted(string)"/>.
+        /// </remarks>
+        private static bool IsAbsolutePath(string path)
+        {
+#if NET6_0_OR_GREATER
+            return Path.IsPathFullyQualified(path);
+#else
+            return Path.IsPathRooted(path);
+#endif
+        }
+
+        /// <summary>
+        /// Centralizes the security policy applied to every driver load: consults the
+        /// allowlist configured on <see cref="DriverManagerSecurity"/>, invokes the
+        /// supplied loader, and emits an audit record on both success and failure
+        /// through <see cref="DriverManagerSecurity.LogDriverLoadAttempt"/>.
+        /// </summary>
+        /// <remarks>
+        /// All terminal driver-load call sites in this class route through this helper
+        /// so that <see cref="DriverManagerSecurity.Allowlist"/> and
+        /// <see cref="DriverManagerSecurity.AuditLogger"/> are actually consulted at
+        /// runtime instead of being documented-but-non-functional API surface.
+        /// </remarks>
+        private static AdbcDriver LoadWithSecurity(
+            string driverPath,
+            string? typeName,
+            string? manifestPath,
+            string loadMethod,
+            Func<AdbcDriver> loader)
+        {
+            // Allowlist denial is itself an audited failure.
+            try
+            {
+                DriverManagerSecurity.ValidateAllowlist(driverPath, typeName);
+            }
+            catch (Exception ex)
+            {
+                DriverManagerSecurity.LogDriverLoadAttempt(new DriverLoadAttempt(
+                    driverPath, typeName, manifestPath, success: false, ex.Message, loadMethod));
+                throw;
+            }
+
+            AdbcDriver driver;
+            try
+            {
+                driver = loader();
+            }
+            catch (Exception ex)
+            {
+                DriverManagerSecurity.LogDriverLoadAttempt(new DriverLoadAttempt(
+                    driverPath, typeName, manifestPath, success: false, ex.Message, loadMethod));
+                throw;
+            }
+
+            DriverManagerSecurity.LogDriverLoadAttempt(new DriverLoadAttempt(
+                driverPath, typeName, manifestPath, success: true, errorMessage: null, loadMethod));
+            return driver;
+        }
+
+        /// <summary>
+        /// Validates that a non-rooted driver name is a simple file/base name with no
+        /// directory separators and no <c>..</c> segments. Such names may be safely
+        /// combined with a search-path directory or resolved against the executing
+        /// process directory; names with separators or parent-traversal segments are
+        /// rejected because they would let an attacker steer the loader to an
+        /// unintended location.
+        /// </summary>
+        private static void EnsureSimpleDriverName(string driverName)
+        {
+            if (driverName.IndexOf('/') >= 0 ||
+                driverName.IndexOf('\\') >= 0 ||
+                driverName.IndexOf(Path.DirectorySeparatorChar) >= 0 ||
+                driverName.IndexOf(Path.AltDirectorySeparatorChar) >= 0)
+            {
+                throw new ArgumentException(
+                    $"Driver name '{driverName}' must not contain directory separators. " +
+                    "Pass an absolute path to load a driver from a specific location.",
+                    nameof(driverName));
+            }
+
+            if (driverName.Contains(".."))
+            {
+                throw new ArgumentException(
+                    $"Driver name '{driverName}' must not contain '..' segments.",
+                    nameof(driverName));
+            }
+
+            if (driverName.IndexOf('\0') >= 0)
+            {
+                throw new ArgumentException(
+                    $"Driver name must not contain null characters.",
+                    nameof(driverName));
+            }
+        }
+
+        private static string ToPascalCase(string snake)
+        {
+            var sb = new System.Text.StringBuilder();
+            bool upperNext = true;
+            foreach (char c in snake)
+            {
+                if (c == '_')
+                {
+                    upperNext = true;
+                }
+                else if (upperNext)
+                {
+                    sb.Append(char.ToUpperInvariant(c));
+                    upperNext = false;
+                }
+                else
+                {
+                    sb.Append(char.ToLowerInvariant(c));
+                }
+            }
+            return sb.ToString();
+        }
+    }
+}

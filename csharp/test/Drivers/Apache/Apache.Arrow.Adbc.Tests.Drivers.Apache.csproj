@@ -18,7 +18,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\src\Drivers\Apache\Apache.Arrow.Adbc.Drivers.Apache.csproj" />
     <ProjectReference Include="..\..\Apache.Arrow.Adbc.Tests\Apache.Arrow.Adbc.Testing.csproj" />
   </ItemGroup>
 
