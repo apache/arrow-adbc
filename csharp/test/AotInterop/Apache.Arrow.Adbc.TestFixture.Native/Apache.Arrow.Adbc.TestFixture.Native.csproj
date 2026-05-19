@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Publishes a NativeAOT shared library that exports `AdbcDriverInit`.
+    The exported entry point delegates to CAdbcDriverExporter wrapped around
+    a deterministic in-process fixture driver. The companion test project
+    (Apache.Arrow.Adbc.TestFixture.Tests) loads the published .dll/.so/.dylib
+    via CAdbcDriverImporter and exercises both sides of the C ABI.
+
+    A regular `dotnet build` produces a managed library; only `dotnet publish`
+    with `-c Release -r <rid>` produces the native shared library that the
+    consumer test expects.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <PublishAot>true</PublishAot>
+    <IsAotCompatible>true</IsAotCompatible>
+    <IsPackable>false</IsPackable>
+    <!-- Strong-name signing isn't meaningful for the produced native lib. -->
+    <SignAssembly>false</SignAssembly>
+    <!-- Suppress the SourceLink reference; this is internal test infra. -->
+    <PublishRepositoryUrl>false</PublishRepositoryUrl>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
+  </ItemGroup>
+</Project>
