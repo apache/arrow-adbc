@@ -25,7 +25,9 @@ pushd ${source_dir}
 dotnet test
 popd
 
-source_dir=${1}/csharp/test/Drivers/Databricks
-pushd ${source_dir}
-dotnet test --filter "FullyQualifiedName~Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit"
-popd
+# Databricks driver has been moved out of this repo; its tests are kept
+# on disk for now but are intentionally not built or run in CI.
+# source_dir=${1}/csharp/test/Drivers/Databricks
+# pushd ${source_dir}
+# dotnet test --filter "FullyQualifiedName~Apache.Arrow.Adbc.Tests.Drivers.Databricks.Unit"
+# popd
