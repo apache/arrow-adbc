@@ -26,6 +26,18 @@ namespace Apache.Arrow.Adbc.Tests.DriverManager
     /// <summary>
     /// Tests for <see cref="DriverManagerSecurity"/> functionality.
     /// </summary>
+    /// <remarks>
+    /// Mutates process-wide static values on <see cref="DriverManagerSecurity"/>
+    /// (notably <see cref="DriverManagerSecurity.AuditLogger"/> and
+    /// <see cref="DriverManagerSecurity.Allowlist"/>) and resets them to null
+    /// in <see cref="Dispose"/>. xUnit's collection serialization keeps these
+    /// tests off the parallel queue alongside
+    /// <see cref="DriverManagerSecurityIntegrationTests"/>, which also depends
+    /// on those static values. Without this, a concurrent Dispose here can null out
+    /// an AuditLogger an integration test just installed, causing
+    /// Assert.Single(logger.Attempts) to see an empty list.
+    /// </remarks>
+    [Collection(DriverManagerSecurityCollection.Name)]
     public class DriverManagerSecurityTests : IDisposable
     {
         private readonly List<string> _tempDirs = new List<string>();

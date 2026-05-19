@@ -37,7 +37,19 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// When set, all driver load attempts will be logged.
         /// </summary>
         /// <remarks>
+        /// <para>
         /// This property is thread-safe. Set to <c>null</c> to disable audit logging.
+        /// </para>
+        /// <para>
+        /// <b>Testing note:</b> this is process-wide mutable state. Test classes
+        /// that assign this property -- or that exercise the
+        /// <see cref="AdbcDriverManager"/> load path, which reads it on every
+        /// load -- must join the same xUnit collection
+        /// (<c>DriverManagerSecurityCollection.Name</c>) so they are serialized
+        /// against each other. Otherwise concurrent tests can null out the
+        /// logger between "install" and "load", producing flaky
+        /// <c>Assert.Single</c> failures on captured-attempt lists.
+        /// </para>
         /// </remarks>
         public static IDriverLoadAuditLogger? AuditLogger
         {
@@ -70,6 +82,16 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// <b>Security Note:</b> In production environments, consider using an
         /// allowlist to restrict which drivers can be loaded, preventing
         /// potential arbitrary code execution attacks.
+        /// </para>
+        /// <para>
+        /// <b>Testing note:</b> this is process-wide mutable state. Test classes
+        /// that assign this property -- or that exercise the
+        /// <see cref="AdbcDriverManager"/> load path, which reads it on every
+        /// load -- must join the same xUnit collection
+        /// (<c>DriverManagerSecurityCollection.Name</c>) so they are serialized
+        /// against each other. Otherwise a concurrent test can install a
+        /// restrictive allowlist that rejects an unrelated test's driver path
+        /// with <c>AdbcStatusCode.Unauthorized</c>.
         /// </para>
         /// </remarks>
         public static IDriverAllowlist? Allowlist
