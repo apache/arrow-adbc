@@ -26,6 +26,16 @@ namespace Apache.Arrow.Adbc.Tests.DriverManager
     /// <summary>
     /// Tests for <see cref="FilesystemProfileProvider"/> TOML parsing and the internal <see cref="TomlParser"/>.
     /// </summary>
+    /// <remarks>
+    /// Some tests in this class load drivers via <c>AdbcDriverManager</c>, whose
+    /// hot path reads the process-wide <c>DriverManagerSecurity.Allowlist</c> and
+    /// fans every load attempt into <c>DriverManagerSecurity.AuditLogger</c>.
+    /// Joining the <see cref="DriverManagerSecurityCollection"/> serializes us
+    /// against tests that mutate those static values, preventing flaky
+    /// "collection was modified" / "not permitted by the configured allowlist"
+    /// failures.
+    /// </remarks>
+    [Collection(DriverManagerSecurityCollection.Name)]
     public class TomlConnectionProfileTests : IDisposable
     {
         // -----------------------------------------------------------------------

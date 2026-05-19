@@ -574,11 +574,21 @@ namespace Apache.Arrow.Adbc.Tests.DriverManager
 
         private class TestAuditLogger : IDriverLoadAuditLogger
         {
-            public List<DriverLoadAttempt> Attempts { get; } = new List<DriverLoadAttempt>();
+            private readonly object _gate = new object();
+            private readonly List<DriverLoadAttempt> _attempts = new List<DriverLoadAttempt>();
+
+            // Snapshot under lock so concurrent fan-in from other tests (which xUnit
+            // serializes against us via the DriverManagerSecurity collection, but is
+            // possible if a future test class forgets to opt in) cannot tear this
+            // list mid-enumeration on Assert.Single / foreach.
+            public IReadOnlyList<DriverLoadAttempt> Attempts
+            {
+                get { lock (_gate) { return _attempts.ToArray(); } }
+            }
 
             public void LogDriverLoadAttempt(DriverLoadAttempt attempt)
             {
-                Attempts.Add(attempt);
+                lock (_gate) { _attempts.Add(attempt); }
             }
         }
 

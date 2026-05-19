@@ -26,6 +26,15 @@ namespace Apache.Arrow.Adbc.Tests.DriverManager
     /// <summary>
     /// Tests for co-located manifest file auto-discovery.
     /// </summary>
+    /// <remarks>
+    /// These tests load drivers via <c>AdbcDriverManager</c>, whose hot path reads
+    /// the process-wide <c>DriverManagerSecurity.Allowlist</c> and fans every load
+    /// attempt into <c>DriverManagerSecurity.AuditLogger</c>. Joining the
+    /// <see cref="DriverManagerSecurityCollection"/> serializes us against tests
+    /// that mutate those static values, preventing flaky "collection was modified" /
+    /// "not permitted by the configured allowlist" failures.
+    /// </remarks>
+    [Collection(DriverManagerSecurityCollection.Name)]
     public class ColocatedManifestTests : IDisposable
     {
         private readonly List<string> _tempFiles = new List<string>();
