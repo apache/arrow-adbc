@@ -74,12 +74,24 @@ jobs:
   # and exercises it through the managed CAdbcDriverImporter. This catches
   # AOT regressions (trim-unsafe reflection, missing exports, broken C-ABI
   # marshaling) on both the import and export halves of csharp/src/Apache.Arrow.Adbc/C.
-  # Windows-only for now; the MSVC setup step below is Windows-specific.
   csharp-aot:
-    name: "C# NativeAOT fixture interop (windows-2022)"
-    runs-on: windows-2022
+    name: "C# NativeAOT fixture interop (${{ matrix.os }})"
+    runs-on: ${{ matrix.os }}
     if: ${{ !contains(github.event.pull_request.title, 'WIP') }}
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-2022
+            rid: win-x64
+            lib-name: Apache.Arrow.Adbc.TestFixture.Native.dll
+          - os: ubuntu-latest
+            rid: linux-x64
+            lib-name: Apache.Arrow.Adbc.TestFixture.Native.so
+          - os: macos-latest
+            rid: osx-arm64
+            lib-name: Apache.Arrow.Adbc.TestFixture.Native.dylib
     steps:
       - name: Checkout ADBC
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -94,6 +106,7 @@ jobs:
           # available SDK; preview tags may be needed until GA.
           dotnet-version: '10.0.x'
       - name: Setup MSVC (for NativeAOT linker)
+        if: runner.os == 'Windows'
         # Third-party action; activates vcvars64 so ilc's downstream
         # link.exe step can find link.exe/lib.exe and the Windows SDK.
         uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756  # v1
@@ -102,13 +115,12 @@ jobs:
         run: |
           dotnet publish \
             csharp/test/AotInterop/Apache.Arrow.Adbc.TestFixture.Native/Apache.Arrow.Adbc.TestFixture.Native.csproj \
-            -c Release -r win-x64 \
+            -c Release -r ${{ matrix.rid }} \
             -o csharp/artifacts/aot-fixture
       - name: Run AOT interop tests
         shell: bash
         env:
-          # Consumer test loads this DLL through CAdbcDriverImporter.
-          ADBC_TEST_AOT_FIXTURE_PATH: ${{ github.workspace }}/csharp/artifacts/aot-fixture/Apache.Arrow.Adbc.TestFixture.Native.dll
+          ADBC_TEST_AOT_FIXTURE_PATH: ${{ github.workspace }}/csharp/artifacts/aot-fixture/${{ matrix.lib-name }}
         run: |
           dotnet test \
             csharp/test/AotInterop/Apache.Arrow.Adbc.TestFixture.Tests/Apache.Arrow.Adbc.TestFixture.Tests.csproj \
