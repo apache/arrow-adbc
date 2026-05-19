@@ -32,6 +32,18 @@ namespace Apache.Arrow.Adbc.Tests.DriverManager
     /// is verified on .NET Framework and on modern .NET where dependency
     /// resolution goes through <c>AssemblyLoadContext</c>.
     /// </summary>
+    /// <remarks>
+    /// Every call here goes through <c>AdbcDriverManager.LoadManagedDriver</c>,
+    /// which consults the process-wide <see cref="DriverManagerSecurity.Allowlist"/>
+    /// and <see cref="DriverManagerSecurity.AuditLogger"/>. Other test classes
+    /// (notably <c>DriverManagerSecurityTests</c> and
+    /// <c>DriverManagerSecurityIntegrationTests</c>) mutate those static values, so
+    /// we join the same xUnit collection to keep them off the parallel queue.
+    /// Without this, a concurrent test that installs a restrictive
+    /// <c>DirectoryAllowlist</c> would cause loads from our private temp
+    /// directory to fail with "not permitted by the configured allowlist".
+    /// </remarks>
+    [Collection(DriverManagerSecurityCollection.Name)]
     public class ManagedDriverLoaderTests : IDisposable
     {
         private readonly List<string> _tempDirs = new List<string>();

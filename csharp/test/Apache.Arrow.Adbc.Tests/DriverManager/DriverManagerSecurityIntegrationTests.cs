@@ -34,7 +34,7 @@ namespace Apache.Arrow.Adbc.Tests.DriverManager
     /// xUnit's collection serialization keeps these tests off the parallel queue
     /// alongside <see cref="DriverManagerSecurityTests"/>.
     /// </remarks>
-    [Collection("DriverManagerSecurity")]
+    [Collection(DriverManagerSecurityCollection.Name)]
     public sealed class DriverManagerSecurityIntegrationTests : IDisposable
     {
         private readonly List<string> _tempDirs = new List<string>();
