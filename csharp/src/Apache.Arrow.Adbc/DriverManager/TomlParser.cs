@@ -79,7 +79,7 @@ namespace Apache.Arrow.Adbc.DriverManager
                     if (line[line.Length - 1] != ']')
                     {
                         throw new FormatException(
-                            "Invalid TOML section header '" + line + "': missing closing ']'.");
+                            "Invalid TOML section header '" + line + "': missing closing ']' or invalid trailing content.");
                     }
                     string sectionName = line.Substring(1, line.Length - 2).Trim();
                     ValidateSectionName(sectionName);
@@ -218,8 +218,8 @@ namespace Apache.Arrow.Adbc.DriverManager
             }
 
             // Integer (try before float, since integers are a subset). Reject TOML
-            // integer extensions (underscores, hex/oct/bin prefixes, leading '+') by
-            // restricting the allowed NumberStyles and explicitly checking the input.
+            // integer extensions (underscores, hex/oct/bin prefixes) by restricting
+            // the allowed NumberStyles and explicitly checking the input.
             if (IsPlainInteger(raw) &&
                 long.TryParse(raw, NumberStyles.Integer, CultureInfo.InvariantCulture, out long intValue))
             {
