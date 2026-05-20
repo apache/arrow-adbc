@@ -874,7 +874,7 @@ namespace Apache.Arrow.Adbc.DriverManager
             }
             else
             {
-                return "/usr/lib/adbc";
+                return "/etc/adbc/drivers";
             }
         }
 
