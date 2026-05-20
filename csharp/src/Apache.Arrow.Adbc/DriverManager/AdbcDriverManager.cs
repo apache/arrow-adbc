@@ -849,6 +849,11 @@ namespace Apache.Arrow.Adbc.DriverManager
                 string? appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
                 return string.IsNullOrEmpty(appData) ? string.Empty : Path.Combine(appData, "adbc", "drivers");
             }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                return string.IsNullOrEmpty(home) ? string.Empty : Path.Combine(home, "Library", "Application Support", "ADBC", "Drivers");
+            }
             else
             {
                 string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
@@ -863,9 +868,13 @@ namespace Apache.Arrow.Adbc.DriverManager
                 string? sysRoot = Environment.GetEnvironmentVariable("ProgramData");
                 return string.IsNullOrEmpty(sysRoot) ? string.Empty : Path.Combine(sysRoot, "adbc", "drivers");
             }
+            else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                return "/Library/Application Support/ADBC/Drivers";
+            }
             else
             {
-                return "/usr/lib/adbc";
+                return "/etc/adbc/drivers";
             }
         }
 
