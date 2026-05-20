@@ -695,51 +695,59 @@ func (b *bearerAuthMiddleware) StartCall(ctx context.Context) context.Context {
 	return metadata.NewOutgoingContext(ctx, metadata.Join(md, b.hdrs))
 }
 
+// rotateAuth atomically replaces the stored Authorization metadata and
+// returns the previous value plus a snapshot of the logger pointer.
+// Splitting this out lets HeadersReceived and SetHeader manage the
+// mutex with defer-style discipline while still performing the logger
+// call outside of the critical section: log handlers are user-supplied
+// and may be slow, so holding b.mutex across them would penalize every
+// concurrent StartCall reader.
+func (b *bearerAuthMiddleware) rotateAuth(headers ...string) (previous []string, logger *slog.Logger) {
+	b.mutex.Lock()
+	defer b.mutex.Unlock()
+	previous = b.hdrs.Get("authorization")
+	b.hdrs.Set("authorization", headers...)
+	return previous, b.logger
+}
+
 func (b *bearerAuthMiddleware) HeadersReceived(ctx context.Context, md metadata.MD) {
 	// apache/arrow-adbc#584
 	headers := md.Get("authorization")
-	if len(headers) > 0 {
-		b.mutex.Lock()
-		previous := b.hdrs.Get("authorization")
-		b.hdrs.Set("authorization", headers...)
-		logger := b.logger
-		b.mutex.Unlock()
-		if logger != nil {
-			// Compare lengths rather than values so that we never
-			// touch the token contents in the log path. Equal
-			// lengths can still indicate a fresh token (a server
-			// might issue tokens of the same shape), but for the
-			// no-op case (server echoed the same header) the
-			// reflected length is what an operator wants to see
-			// anyway.
-			var prevLen int
-			if len(previous) > 0 {
-				prevLen = len(previous[0])
-			}
-			logger.InfoContext(ctx, "FlightSQL bearer token rotated by server",
-				"previous_token_length", prevLen,
-				"new_token_length", len(headers[0]),
-				"source", "HeadersReceived",
-			)
-		}
+	if len(headers) == 0 {
+		return
 	}
+	previous, logger := b.rotateAuth(headers...)
+	if logger == nil {
+		return
+	}
+	// Compare lengths rather than values so that we never touch the
+	// token contents in the log path. Equal lengths can still indicate
+	// a fresh token (a server might issue tokens of the same shape),
+	// but for the no-op case (server echoed the same header) the
+	// reflected length is what an operator wants to see anyway.
+	var prevLen int
+	if len(previous) > 0 {
+		prevLen = len(previous[0])
+	}
+	logger.InfoContext(ctx, "FlightSQL bearer token rotated by server",
+		"previous_token_length", prevLen,
+		"new_token_length", len(headers[0]),
+		"source", "HeadersReceived",
+	)
 }
 
 func (b *bearerAuthMiddleware) SetHeader(authValue string) {
-	b.mutex.Lock()
-	previous := b.hdrs.Get("authorization")
-	b.hdrs.Set("authorization", authValue)
-	logger := b.logger
-	b.mutex.Unlock()
-	if logger != nil {
-		var prevLen int
-		if len(previous) > 0 {
-			prevLen = len(previous[0])
-		}
-		logger.Info("FlightSQL bearer token rotated by client",
-			"previous_token_length", prevLen,
-			"new_token_length", len(authValue),
-			"source", "SetHeader",
-		)
+	previous, logger := b.rotateAuth(authValue)
+	if logger == nil {
+		return
 	}
+	var prevLen int
+	if len(previous) > 0 {
+		prevLen = len(previous[0])
+	}
+	logger.Info("FlightSQL bearer token rotated by client",
+		"previous_token_length", prevLen,
+		"new_token_length", len(authValue),
+		"source", "SetHeader",
+	)
 }

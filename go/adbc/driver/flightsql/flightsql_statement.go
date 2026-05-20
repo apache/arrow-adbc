@@ -618,7 +618,14 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 	}
 
 	nrec = info.TotalRecords
-	rdr, err = newRecordReader(withOperationIDsCtx(ctx, s.id, s.cnxn.id), s.alloc, s.cnxn.cl, info, s.clientCache, s.queueSize, s.log, s.timeouts)
+	rdr, err = newRecordReader(withOperationIDsCtx(ctx, s.id, s.cnxn.id), recordReaderConfig{
+		alloc:       s.alloc,
+		cl:          s.cnxn.cl,
+		info:        info,
+		clientCache: s.clientCache,
+		bufferSize:  s.queueSize,
+		logger:      s.log,
+	}, s.timeouts)
 	if err != nil {
 		err = withOperationIDs(err, s.id, s.cnxn.id)
 	}

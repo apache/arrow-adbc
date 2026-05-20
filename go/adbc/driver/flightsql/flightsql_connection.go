@@ -804,7 +804,14 @@ func (c *connectionImpl) PrepareDriverInfo(ctx context.Context, infoCodes []adbc
 // Helper function to read and validate a metadata stream
 func (c *connectionImpl) readInfo(ctx context.Context, expectedSchema *arrow.Schema, info *flight.FlightInfo, opts ...grpc.CallOption) (array.RecordReader, error) {
 	// use a default queueSize for the reader
-	rdr, err := newRecordReader(ctx, c.db.Alloc, c.cl, info, c.clientCache, 5, c.Logger, opts...)
+	rdr, err := newRecordReader(ctx, recordReaderConfig{
+		alloc:       c.db.Alloc,
+		cl:          c.cl,
+		info:        info,
+		clientCache: c.clientCache,
+		bufferSize:  5,
+		logger:      c.Logger,
+	}, opts...)
 	if err != nil {
 		return nil, adbcFromFlightStatus(err, "DoGet")
 	}
@@ -1071,7 +1078,14 @@ func (c *connectionImpl) GetTableTypes(ctx context.Context) (array.RecordReader,
 		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetTableTypes")
 	}
 
-	return newRecordReader(ctx, c.db.Alloc, c.cl, info, c.clientCache, 5, c.Logger)
+	return newRecordReader(ctx, recordReaderConfig{
+		alloc:       c.db.Alloc,
+		cl:          c.cl,
+		info:        info,
+		clientCache: c.clientCache,
+		bufferSize:  5,
+		logger:      c.Logger,
+	})
 }
 
 // Commit commits any pending transactions on this connection, it should

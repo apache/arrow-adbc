@@ -30,6 +30,7 @@ import (
 	"github.com/apache/arrow-go/v18/arrow/flight"
 	"github.com/apache/arrow-go/v18/arrow/flight/flightsql"
 	"github.com/apache/arrow-go/v18/arrow/memory"
+	"github.com/apache/arrow-go/v18/arrow/util"
 	"github.com/bluele/gcache"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -47,10 +48,26 @@ type reader struct {
 	cancelFn context.CancelFunc
 }
 
+// recordReaderConfig bundles the dependencies that newRecordReader
+// needs to spin up its per-endpoint goroutines. Grouping them into a
+// single value keeps the call sites compact and lets new fields be
+// added without rippling another positional argument through every
+// caller. The fields mirror the corresponding members on
+// connectionImpl/statement so callers can populate the struct by
+// straight field copies.
+type recordReaderConfig struct {
+	alloc       memory.Allocator
+	cl          *flightsql.Client
+	info        *flight.FlightInfo
+	clientCache gcache.Cache
+	bufferSize  int
+	logger      *slog.Logger
+}
+
 // kicks off a goroutine for each endpoint and returns a reader which
 // gathers all of the records as they come in.
 //
-// logger may be nil; in that case a no-op logger is used internally.
+// cfg.logger may be nil; in that case a no-op logger is used internally.
 // When supplied it receives structured records describing every endpoint
 // stream's lifecycle (start, first batch received, completion, failure).
 // These records are essential when diagnosing transient stream failures
@@ -60,8 +77,9 @@ type reader struct {
 // been open at the time of failure. Without these records the operator
 // otherwise has only the bare gRPC EOF to work with, which carries no
 // progress or location information.
-func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.Client, info *flight.FlightInfo, clCache gcache.Cache, bufferSize int, logger *slog.Logger, opts ...grpc.CallOption) (rdr array.RecordReader, err error) {
-	log := safeLogger(logger)
+func newRecordReader(ctx context.Context, cfg recordReaderConfig, opts ...grpc.CallOption) (rdr array.RecordReader, err error) {
+	log := safeLogger(cfg.logger)
+	info := cfg.info
 	endpoints := info.Endpoint
 	var header, trailer metadata.MD
 	opts = append(append([]grpc.CallOption{}, opts...), grpc.Header(&header), grpc.Trailer(&trailer))
@@ -73,7 +91,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 				Code: adbc.StatusInternal,
 			}
 		}
-		schema, err = flight.DeserializeSchema(info.Schema, alloc)
+		schema, err = flight.DeserializeSchema(info.Schema, cfg.alloc)
 		if err != nil {
 			return nil, adbc.Error{
 				Msg:  "Server returned FlightInfo with invalid schema and no endpoints, cannot read stream",
@@ -83,7 +101,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 		return array.NewRecordReader(schema, []arrow.RecordBatch{})
 	}
 
-	ch := make(chan arrow.RecordBatch, bufferSize)
+	ch := make(chan arrow.RecordBatch, cfg.bufferSize)
 	group, ctx := errgroup.WithContext(ctx)
 	ctx, cancelFn := context.WithCancel(ctx)
 	// We may mutate endpoints below
@@ -91,7 +109,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 
 	log.DebugContext(ctx, "FlightSQL newRecordReader start",
 		append([]any{
-			slog.Int("bufferSize", bufferSize),
+			slog.Int("bufferSize", cfg.bufferSize),
 		}, flightInfoLogAttrs(info)...)...,
 	)
 
@@ -103,7 +121,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 	}()
 
 	if info.Schema != nil {
-		schema, err = flight.DeserializeSchema(info.Schema, alloc)
+		schema, err = flight.DeserializeSchema(info.Schema, cfg.alloc)
 		if err != nil {
 			return nil, adbc.Error{
 				Msg:  err.Error(),
@@ -114,7 +132,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 		epAttrs := endpointLogAttrs(0, numEndpoints, firstEndpoint)
 		log.DebugContext(ctx, "FlightSQL endpoint stream opening (schema discovery)", epAttrs...)
 		startSchemaFetch := newStreamProgress()
-		rdr, err := doGetWithLogger(ctx, cl, firstEndpoint, clCache, log, opts...)
+		rdr, err := doGetWithLogger(ctx, cfg.cl, firstEndpoint, cfg.clientCache, log, opts...)
 		if err != nil {
 			log.ErrorContext(ctx, "FlightSQL endpoint DoGet failed (schema discovery)",
 				append(append([]any{}, epAttrs...),
@@ -135,7 +153,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 			progress := newStreamProgress()
 			for rdr.Next() && ctx.Err() == nil {
 				rec := rdr.RecordBatch()
-				progress.recordBatch(rec.NumRows(), estimateBatchBytes(rec))
+				progress.recordBatch(rec.NumRows(), util.TotalRecordSize(rec))
 				rec.Retain()
 				ch <- rec
 			}
@@ -181,7 +199,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 		if info.Schema == nil {
 			logEndpointIndex = endpointIndex + 1
 		}
-		chs[endpointIndex] = make(chan arrow.RecordBatch, bufferSize)
+		chs[endpointIndex] = make(chan arrow.RecordBatch, cfg.bufferSize)
 		group.Go(func() error {
 			// Close channels (except the last) so that Next can move on to the next channel properly
 			if endpointIndex != lastChannelIndex {
@@ -191,7 +209,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 			epAttrs := endpointLogAttrs(logEndpointIndex, numEndpoints, endpoint)
 			log.DebugContext(ctx, "FlightSQL endpoint stream opening", epAttrs...)
 			doGetStart := newStreamProgress()
-			rdr, err := doGetWithLogger(ctx, cl, endpoint, clCache, log, opts...)
+			rdr, err := doGetWithLogger(ctx, cfg.cl, endpoint, cfg.clientCache, log, opts...)
 			if err != nil {
 				log.ErrorContext(ctx, "FlightSQL endpoint DoGet failed",
 					append(append([]any{}, epAttrs...),
@@ -218,7 +236,7 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 			progress := newStreamProgress()
 			for rdr.Next() && ctx.Err() == nil {
 				rec := rdr.RecordBatch()
-				progress.recordBatch(rec.NumRows(), estimateBatchBytes(rec))
+				progress.recordBatch(rec.NumRows(), util.TotalRecordSize(rec))
 				rec.Retain()
 				chs[endpointIndex] <- rec
 			}
@@ -267,31 +285,6 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, cl *flightsql.
 	}()
 
 	return reader, nil
-}
-
-// estimateBatchBytes returns a rough estimate of the in-memory size of a
-// record batch. The estimate is intentionally cheap to compute and is only
-// used for diagnostic logging so it does not have to be exact; it simply sums
-// the lengths of every column buffer in the batch. The total is useful for
-// answering questions such as "did the stream fail after receiving 10 KB or
-// 10 MB?" when triaging a mid-stream EOF.
-func estimateBatchBytes(rec arrow.RecordBatch) int64 {
-	if rec == nil {
-		return 0
-	}
-	var total int64
-	for i := 0; i < int(rec.NumCols()); i++ {
-		col := rec.Column(i)
-		if col == nil {
-			continue
-		}
-		for _, buf := range col.Data().Buffers() {
-			if buf != nil {
-				total += int64(buf.Len())
-			}
-		}
-	}
-	return total
 }
 
 func (r *reader) Retain() {
