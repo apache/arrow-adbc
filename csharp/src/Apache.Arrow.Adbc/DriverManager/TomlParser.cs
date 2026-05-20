@@ -154,9 +154,14 @@ namespace Apache.Arrow.Adbc.DriverManager
 
         private static void ValidateKeyName(string keyName)
         {
-            // Only bare keys are supported. Dotted, quoted, and whitespace-containing
-            // keys are recognized TOML productions that this parser deliberately rejects
-            // rather than misinterpret.
+            // ADBC connection profiles and driver manifests use dot-namespaced option
+            // names (e.g. 'adbc.snowflake.sql.warehouse') as flat keys, not as TOML
+            // dotted keys that nest tables. The Rust and C++ driver managers parse
+            // those as nested tables and then flatten the result back to dotted
+            // strings before handing them to AdbcDatabaseSetOption; this minimal
+            // parser short-circuits that by accepting '.' as part of a bare key, so
+            // the dictionary entries match what the other implementations produce.
+            // Quoted and whitespace-containing keys are still rejected.
             if (keyName.Length == 0)
             {
                 throw new FormatException("Invalid TOML key: key is empty.");
@@ -169,12 +174,12 @@ namespace Apache.Arrow.Adbc.DriverManager
                     (c >= 'A' && c <= 'Z') ||
                     (c >= 'a' && c <= 'z') ||
                     (c >= '0' && c <= '9') ||
-                    c == '_' || c == '-';
+                    c == '_' || c == '-' || c == '.';
                 if (!isAllowed)
                 {
                     throw new FormatException(
                         "Invalid TOML key '" + keyName +
-                        "': only bare keys (A-Z, a-z, 0-9, '_', '-') are supported.");
+                        "': only bare keys (A-Z, a-z, 0-9, '_', '-', '.') are supported.");
                 }
             }
         }

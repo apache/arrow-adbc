@@ -91,11 +91,24 @@ namespace Apache.Arrow.Adbc.Tests.DriverManager
         [InlineData("[foo")]                    // missing closing bracket
         [InlineData("key value")]               // missing '='
         [InlineData("= value")]                 // missing key
-        [InlineData("key.dotted = 1")]          // dotted keys are not supported
         [InlineData("\"quoted-key\" = 1")]    // quoted keys are not supported
+        [InlineData("key with spaces = 1")]    // whitespace-containing keys are not supported
         public void Parse_RejectsMalformedLines(string line)
         {
             Assert.Throws<FormatException>(() => TomlParser.Parse(line + "\n"));
+        }
+
+        [Fact]
+        public void Parse_AcceptsDotNamespacedKeyAsFlatKey()
+        {
+            // ADBC connection profiles use dot-namespaced option names as flat keys.
+            // The Rust and C++ driver managers reach the same result by parsing them
+            // as nested tables and then flattening; this minimal parser accepts them
+            // as bare keys directly. The dictionary entry must be the literal dotted
+            // string -- not nested -- so it can be passed to AdbcDatabaseSetOption.
+            Dictionary<string, Dictionary<string, object>> result =
+                TomlParser.Parse("adbc.snowflake.sql.warehouse = \"COMPUTE_WH\"\n");
+            Assert.Equal("COMPUTE_WH", result[""]["adbc.snowflake.sql.warehouse"]);
         }
 
         [Theory]
