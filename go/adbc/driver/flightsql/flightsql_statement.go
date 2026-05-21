@@ -503,6 +503,14 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 		return nil, -1, err
 	}
 
+	// Reject staged binds if no ingest target was provided
+	if s.targetTable == "" && s.prepared == nil && (s.bound != nil || s.streamBind != nil) {
+		return nil, -1, adbc.Error{
+			Msg:  "[Flight SQL Statement] must set IngestTargetTable before bulk ingestion",
+			Code: adbc.StatusInvalidState,
+		}
+	}
+
 	// Handle bulk ingest
 	if s.targetTable != "" {
 		nrec, err = s.executeIngest(ctx)
@@ -533,6 +541,14 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 	if err := s.clearIncrementalQuery(); err != nil {
 		return -1, err
+	}
+
+	// Reject staged binds if no ingest target was provided
+	if s.targetTable == "" && s.prepared == nil && (s.bound != nil || s.streamBind != nil) {
+		return -1, adbc.Error{
+			Msg:  "[Flight SQL Statement] must set IngestTargetTable before bulk ingestion",
+			Code: adbc.StatusInvalidState,
+		}
 	}
 
 	// Handle bulk ingest
@@ -600,31 +616,27 @@ func (s *statement) SetSubstraitPlan(plan []byte) error {
 // but it may not do this until the statement is closed or another
 // record is bound.
 func (s *statement) Bind(_ context.Context, values arrow.RecordBatch) error {
-	// For bulk ingest, bind to the statement
-	if s.targetTable != "" {
-		if s.streamBind != nil {
-			s.streamBind.Release()
-			s.streamBind = nil
-		}
-		if s.bound != nil {
-			s.bound.Release()
-		}
-		s.bound = values
-		if s.bound != nil {
-			s.bound.Retain()
-		}
+	if s.targetTable != "" || s.prepared == nil {
+		s.setBound(values)
 		return nil
 	}
 
-	if s.prepared == nil {
-		return adbc.Error{
-			Msg:  "[Flight SQL Statement] must call Prepare or set IngestTargetTable before calling Bind",
-			Code: adbc.StatusInvalidState}
-	}
-
-	// calls retain
 	s.prepared.SetParameters(values)
 	return nil
+}
+
+func (s *statement) setBound(values arrow.RecordBatch) {
+	if s.streamBind != nil {
+		s.streamBind.Release()
+		s.streamBind = nil
+	}
+	if s.bound != nil {
+		s.bound.Release()
+	}
+	s.bound = values
+	if s.bound != nil {
+		s.bound.Retain()
+	}
 }
 
 // BindStream uses a record batch stream to bind parameters for this
@@ -633,31 +645,27 @@ func (s *statement) Bind(_ context.Context, values arrow.RecordBatch) error {
 // The driver will call Release on the record reader, but may not do this
 // until Close is called.
 func (s *statement) BindStream(_ context.Context, stream array.RecordReader) error {
-	// For bulk ingest, bind to the statement
-	if s.targetTable != "" {
-		if s.bound != nil {
-			s.bound.Release()
-			s.bound = nil
-		}
-		if s.streamBind != nil {
-			s.streamBind.Release()
-		}
-		s.streamBind = stream
-		if s.streamBind != nil {
-			s.streamBind.Retain()
-		}
+	if s.targetTable != "" || s.prepared == nil {
+		s.setStreamBound(stream)
 		return nil
 	}
 
-	if s.prepared == nil {
-		return adbc.Error{
-			Msg:  "[Flight SQL Statement] must call Prepare or set IngestTargetTable before calling Bind",
-			Code: adbc.StatusInvalidState}
-	}
-
-	// calls retain
 	s.prepared.SetRecordReader(stream)
 	return nil
+}
+
+func (s *statement) setStreamBound(stream array.RecordReader) {
+	if s.bound != nil {
+		s.bound.Release()
+		s.bound = nil
+	}
+	if s.streamBind != nil {
+		s.streamBind.Release()
+	}
+	s.streamBind = stream
+	if s.streamBind != nil {
+		s.streamBind.Retain()
+	}
 }
 
 // GetParameterSchema returns an Arrow schema representation of

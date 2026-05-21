@@ -100,17 +100,17 @@ func IngestStream(ctx context.Context, cnxn Connection, reader array.RecordReade
 		err = errors.Join(err, stmt.Close())
 	}()
 
-	// Bind the record batch stream
-	if err = stmt.BindStream(ctx, reader); err != nil {
-		return -1, fmt.Errorf("error during ingestion: BindStream: %w", err)
-	}
-
-	// Set required options
+	// Set required options before binding
 	if err = stmt.SetOption(OptionKeyIngestTargetTable, targetTable); err != nil {
 		return -1, fmt.Errorf("error during ingestion: SetOption(target_table=%s): %w", targetTable, err)
 	}
 	if err = stmt.SetOption(OptionKeyIngestMode, ingestMode); err != nil {
 		return -1, fmt.Errorf("error during ingestion: SetOption(mode=%s): %w", ingestMode, err)
+	}
+
+	// Bind the record batch stream
+	if err = stmt.BindStream(ctx, reader); err != nil {
+		return -1, fmt.Errorf("error during ingestion: BindStream: %w", err)
 	}
 
 	// Set other options if provided
@@ -167,17 +167,17 @@ func IngestStreamContext(ctx context.Context, cnxn ConnectionWithContext, reader
 		err = errors.Join(err, stmt.Close(ctx))
 	}()
 
-	// Bind the record batch stream
-	if err = stmt.BindStream(ctx, reader); err != nil {
-		return -1, fmt.Errorf("error during ingestion: BindStream: %w", err)
-	}
-
-	// Set required options
+	// Set required options before binding (some drivers require target first)
 	if err = stmt.SetOption(ctx, OptionKeyIngestTargetTable, targetTable); err != nil {
 		return -1, fmt.Errorf("error during ingestion: SetOption(target_table=%s): %w", targetTable, err)
 	}
 	if err = stmt.SetOption(ctx, OptionKeyIngestMode, ingestMode); err != nil {
 		return -1, fmt.Errorf("error during ingestion: SetOption(mode=%s): %w", ingestMode, err)
+	}
+
+	// Bind the record batch stream
+	if err = stmt.BindStream(ctx, reader); err != nil {
+		return -1, fmt.Errorf("error during ingestion: BindStream: %w", err)
 	}
 
 	// Set other options if provided
