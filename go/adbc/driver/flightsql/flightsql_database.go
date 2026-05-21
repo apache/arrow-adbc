@@ -39,7 +39,6 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/peer"
 )
 
 type dbDialOpts struct {
@@ -71,24 +70,6 @@ type databaseImpl struct {
 	options       map[string]string
 	userDialOpts  []grpc.DialOption
 	oauthToken    credentials.PerRPCCredentials
-	// tracesExporter records the value of
-	// adbc.OptionKeyTelemetryTracesExporter that was supplied (if any)
-	// at database construction time. The tracer itself is already
-	// initialized by driverbase by the time SetOptions runs, so this
-	// field is retained purely so GetOption can echo back the
-	// configured value (callers expect "get returns what was set") and
-	// so SetOption can return a precise diagnostic when a caller tries
-	// to change the exporter after the database has been opened.
-	tracesExporter string
-	// tracesFolderPath records the value of
-	// adbc.OptionKeyTelemetryTracesFolderPath that was supplied at
-	// construction time. The on-disk RotatingFileWriter behind the
-	// "adbcfile" exporter is created during NewDatabase*, so this field
-	// is retained for symmetry with tracesExporter: GetOption can echo
-	// the configured value back, and SetOption can surface a precise
-	// diagnostic when a caller tries to retarget the folder after the
-	// writer is already running.
-	tracesFolderPath string
 }
 
 func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
@@ -303,10 +284,6 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 		return d.timeout.updateTimeout.String(), nil
 	case OptionTimeoutConnect:
 		return d.timeout.connectTimeout.String(), nil
-	case adbc.OptionKeyTelemetryTracesExporter:
-		return d.tracesExporter, nil
-	case adbc.OptionKeyTelemetryTracesFolderPath:
-		return d.tracesFolderPath, nil
 	}
 	if val, ok := d.options[key]; ok {
 		return val, nil
@@ -353,29 +330,6 @@ func (d *databaseImpl) SetOption(key, value string) error {
 	switch key {
 	case OptionTimeoutFetch, OptionTimeoutQuery, OptionTimeoutUpdate, OptionTimeoutConnect:
 		return d.timeout.setTimeoutString(key, value)
-	case adbc.OptionKeyTelemetryTracesExporter:
-		// The OpenTelemetry tracer is built during NewDatabase*, so any
-		// value supplied through SetOption after that point cannot
-		// retroactively rewire the exporter. Surface a precise error
-		// rather than silently dropping the change, but still record the
-		// new value so GetOption can echo it back to introspection
-		// tooling that immediately follows up with a Get.
-		d.tracesExporter = value
-		return adbc.Error{
-			Msg:  fmt.Sprintf("Option '%s' must be set at database construction time; tracer is already initialized", key),
-			Code: adbc.StatusInvalidState,
-		}
-	case adbc.OptionKeyTelemetryTracesFolderPath:
-		// The on-disk file writer behind the "adbcfile" exporter is
-		// created during NewDatabase*; once it is running its target
-		// folder cannot be changed without tearing the writer down. The
-		// new value is recorded for GetOption echo-back, mirroring the
-		// behavior of OptionKeyTelemetryTracesExporter above.
-		d.tracesFolderPath = value
-		return adbc.Error{
-			Msg:  fmt.Sprintf("Option '%s' must be set at database construction time; trace file writer is already initialized", key),
-			Code: adbc.StatusInvalidState,
-		}
 	}
 	if strings.HasPrefix(key, OptionRPCCallHeaderPrefix) {
 		d.hdrs.Set(strings.TrimPrefix(key, OptionRPCCallHeaderPrefix), value)
@@ -592,16 +546,7 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 
 	var cnxnSupport support
 
-	// Capture the resolved gRPC peer address from the first call so the
-	// connection can stamp it onto every subsequent log line (and so an
-	// operator can see at a glance which backend the gRPC name resolver
-	// selected, which frequently differs from the user-supplied URI when
-	// an L7 proxy is in front of the server). The peer field is read
-	// after the call returns regardless of success — even a failed call
-	// usually has a resolved peer attached at that point — but is only
-	// logged when it is non-empty.
-	var sqlInfoPeer peer.Peer
-	info, err := cl.GetSqlInfo(ctx, []flightsql.SqlInfo{flightsql.SqlInfoFlightSqlServerTransaction}, d.timeout, grpc.Peer(&sqlInfoPeer))
+	info, err := cl.GetSqlInfo(ctx, []flightsql.SqlInfo{flightsql.SqlInfoFlightSqlServerTransaction}, d.timeout)
 	// ignore this if it fails
 	if err == nil {
 		const int32code = 3
@@ -655,15 +600,8 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 	conn.id = newRandomID("conn")
 	conn.openedAt = time.Now()
 	conn.Logger = safeLogger(conn.Logger).With("connection_id", conn.id)
-	// Record + emit the resolved gRPC peer address. This runs even when
-	// GetSqlInfo failed because gRPC populates Peer on the call context
-	// before the RPC body executes; capturing it here means an operator
-	// can answer "which backend was the driver actually talking to?"
-	// from a single log line without enabling Debug logging.
-	conn.recordPeer(&sqlInfoPeer)
 	conn.Logger.InfoContext(ctx, "FlightSQL connection opened",
 		"target", d.uri.String(),
-		"peer_addr", conn.peerAddr,
 		"transactionsSupported", cnxnSupport.transactions,
 		"driver", infoDriverName,
 	)

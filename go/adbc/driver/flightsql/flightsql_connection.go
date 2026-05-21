@@ -26,7 +26,6 @@ import (
 	"log/slog"
 	"math"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -43,7 +42,6 @@ import (
 	"google.golang.org/grpc"
 	grpccodes "google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/peer"
 	grpcstatus "google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
 )
@@ -62,30 +60,11 @@ type connectionImpl struct {
 
 	// id is a short random identifier assigned at Open time. It is stamped
 	// onto every log record emitted by this connection (via Logger.With)
-	// and onto every ADBC error detail produced for operations executed on
-	// it, allowing per-connection events to be correlated across logs and
-	// host-application error reports.
 	id string
 
-	// openedAt is the wall-clock time at which Open() finished initializing
-	// this connection. Recorded so Close() can log a "duration" attribute
-	// (and therefore the lifetime of a problematic connection can be
-	// summarized in a single log line without joining across two records).
+	// wall-clock time at which Open() finished initializing
+	// this connection.
 	openedAt time.Time
-
-	// peerAddr is the resolved network address of the FlightSQL server as
-	// reported by gRPC's peer.FromContext on the first successful RPC.
-	// Stored so subsequent log records (and especially failure records)
-	// can be stamped with the actual server endpoint that was selected by
-	// the gRPC name resolver / load balancer, which is frequently
-	// different from the user-supplied URI when an L7 proxy is in front
-	// of the server.
-	peerAddr string
-
-	// peerOnce guards the one-shot "peer resolved" log emission. Without
-	// this gate every successful RPC would re-log the peer; the address
-	// is invariant per gRPC ClientConn so logging it once is sufficient.
-	peerOnce sync.Once
 }
 
 type flightSqlMetadata struct {
@@ -253,22 +232,9 @@ var adbcToFlightSQLInfo = map[adbc.InfoCode]flightsql.SqlInfo{
 	adbc.InfoVendorSubstraitMaxVersion: flightsql.SqlInfoFlightSqlServerSubstraitMaxVersion,
 }
 
-// doGetWithLogger is the logging-aware DoGet implementation used by every
-// caller in the driver. Earlier revisions exposed a plain `doGet` wrapper
-// that supplied a nil logger; it had no remaining callers and was removed
-// to satisfy the unused-function linter — every call site now passes its
-// own *slog.Logger (or relies on safeLogger to materialize a no-op one).
-//
-// When a logger is provided every endpoint resolution attempt is logged
-// individually so that failures hopping between Flight locations can be
-// traced. The function also accumulates per-location attempt errors and, if
-// every attempt fails, joins them into a single returned error so that the
-// caller can see *all* the locations that were tried (and how each one
-// failed) rather than just the last one. This is critical for diagnosing
-// "[FlightSQL] error reading from server: EOF" reports where the empty
-// "endpoint N: []" indicates the Location list was actually empty: with the
-// enhanced error the operator can see whether multiple alternate locations
-// were attempted and which one ultimately served (or failed) the request.
+// doGetWithLogger performs DoGet against an endpoint's locations, logging each
+// attempt and joining all per-location failures into the returned error so the
+// caller can see every location that was tried. logger may be nil.
 func doGetWithLogger(ctx context.Context, cl *flightsql.Client, endpoint *flight.FlightEndpoint, clientCache gcache.Cache, logger *slog.Logger, opts ...grpc.CallOption) (rdr *flight.Reader, err error) {
 	log := safeLogger(logger)
 	if len(endpoint.Location) == 0 {
@@ -1252,12 +1218,10 @@ func (c *connectionImpl) Close() error {
 	// triaging a hung shutdown need to see when the close began.
 	logger := safeLogger(c.Logger)
 	connID := c.id
-	peerAddr := c.peerAddr
 	openedAt := c.openedAt
 
 	logger.Info("FlightSQL connection closing",
 		"connection_id", connID,
-		"peer_addr", peerAddr,
 	)
 
 	ctx := metadata.NewOutgoingContext(context.Background(), c.hdrs)
@@ -1279,7 +1243,6 @@ func (c *connectionImpl) Close() error {
 
 	args := []any{
 		"connection_id", connID,
-		"peer_addr", peerAddr,
 		"close_duration", time.Since(closeStart),
 	}
 	if !openedAt.IsZero() {
@@ -1294,33 +1257,6 @@ func (c *connectionImpl) Close() error {
 	}
 
 	return adbcFromFlightStatus(err, "Close")
-}
-
-// recordPeer captures the resolved server peer address from a successful
-// gRPC call's per-call grpc.Peer (or, equivalently, peer.FromContext on
-// the call context). The first invocation per connection logs a
-// structured "FlightSQL peer resolved" event so an operator can see at a
-// glance which backend the gRPC name resolver selected; subsequent
-// invocations are no-ops because the peer is invariant for a given
-// gRPC ClientConn. The peer address is then attached to every Close,
-// statement, and stream error log emitted by the connection.
-func (c *connectionImpl) recordPeer(p *peer.Peer) {
-	if c == nil || p == nil || p.Addr == nil {
-		return
-	}
-	addr := p.Addr.String()
-	if addr == "" {
-		return
-	}
-	c.peerOnce.Do(func() {
-		c.peerAddr = addr
-		if c.Logger != nil {
-			c.Logger.Info("FlightSQL peer resolved",
-				"connection_id", c.id,
-				"peer_addr", addr,
-			)
-		}
-	})
 }
 
 // ReadPartition constructs a statement for a partition of a query. The

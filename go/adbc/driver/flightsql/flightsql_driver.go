@@ -174,10 +174,8 @@ func (d *driverImpl) NewDatabaseWithOptionsContext(ctx context.Context, opts map
 			// Match gRPC default
 			connectTimeout: time.Second * 20,
 		},
-		hdrs:             make(metadata.MD),
-		userDialOpts:     userDialOpts,
-		tracesExporter:   tracesExporter,
-		tracesFolderPath: tracesFolderPath,
+		hdrs:         make(metadata.MD),
+		userDialOpts: userDialOpts,
 	}
 
 	if db.uri, err = url.Parse(uri); err != nil {

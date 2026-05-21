@@ -24,14 +24,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"strings"
-	"sync"
 	"testing"
 
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/peer"
 	"google.golang.org/grpc/status"
 )
 
@@ -364,91 +361,6 @@ func TestSafeLogger_AlwaysWrapsOtel(t *testing.T) {
 	})
 }
 
-// TestRecordPeer_OneShot verifies that recordPeer:
-//   - stores the peer address from the first call
-//   - emits exactly one structured log line for the lifetime of the
-//     connection (not one per RPC)
-//   - ignores later calls even if a different address is supplied
-//   - tolerates concurrent first-callers without double-logging.
-func TestRecordPeer_OneShot(t *testing.T) {
-	var buf bytes.Buffer
-	c := &connectionImpl{
-		id: "conn-test",
-	}
-	c.Logger = slog.New(slog.NewJSONHandler(&buf, &slog.HandlerOptions{Level: slog.LevelDebug}))
-
-	c.recordPeer(&peer.Peer{Addr: stringAddr("10.0.0.1:443")})
-	if c.peerAddr != "10.0.0.1:443" {
-		t.Fatalf("peerAddr after first call = %q, want %q", c.peerAddr, "10.0.0.1:443")
-	}
-
-	// Second call with a *different* address must be ignored — the
-	// gRPC ClientConn's resolved peer is invariant for the connection.
-	c.recordPeer(&peer.Peer{Addr: stringAddr("10.0.0.2:443")})
-	if c.peerAddr != "10.0.0.1:443" {
-		t.Fatalf("peerAddr after second call = %q, want %q (one-shot)",
-			c.peerAddr, "10.0.0.1:443")
-	}
-
-	count := strings.Count(buf.String(), "FlightSQL peer resolved")
-	if count != 1 {
-		t.Fatalf("expected exactly 1 'FlightSQL peer resolved' log line, got %d:\n%s",
-			count, buf.String())
-	}
-}
-
-// TestRecordPeer_NilSafety covers the input shapes that may be observed
-// in practice — a nil receiver should be impossible, but a nil *Peer or
-// a *Peer with no Addr is what gRPC returns when the resolver has not
-// yet produced a value (for example because the connection failed
-// before the dial completed).
-func TestRecordPeer_NilSafety(t *testing.T) {
-	var buf bytes.Buffer
-	c := &connectionImpl{id: "conn-test"}
-	c.Logger = slog.New(slog.NewJSONHandler(&buf, nil))
-
-	c.recordPeer(nil)
-	c.recordPeer(&peer.Peer{}) // Addr is nil
-
-	if c.peerAddr != "" {
-		t.Errorf("peerAddr changed despite nil/empty inputs: %q", c.peerAddr)
-	}
-	if strings.Contains(buf.String(), "FlightSQL peer resolved") {
-		t.Errorf("recordPeer logged with nil/empty Addr: %s", buf.String())
-	}
-}
-
-// TestRecordPeer_ConcurrentFirstCallers verifies the sync.Once gate
-// works under concurrent first callers — only one of N goroutines
-// should win the "first" slot, and only one log line should appear.
-func TestRecordPeer_ConcurrentFirstCallers(t *testing.T) {
-	var buf bytes.Buffer
-	var mu sync.Mutex
-	c := &connectionImpl{id: "conn-test"}
-	c.Logger = slog.New(slog.NewJSONHandler(&lockedWriter{w: &buf, mu: &mu},
-		&slog.HandlerOptions{Level: slog.LevelDebug}))
-
-	const N = 32
-	var wg sync.WaitGroup
-	wg.Add(N)
-	for i := 0; i < N; i++ {
-		go func(i int) {
-			defer wg.Done()
-			c.recordPeer(&peer.Peer{Addr: stringAddr(fmt.Sprintf("10.0.0.%d:443", i+1))})
-		}(i)
-	}
-	wg.Wait()
-
-	if c.peerAddr == "" {
-		t.Fatal("peerAddr is empty after concurrent first-callers")
-	}
-	count := strings.Count(buf.String(), "FlightSQL peer resolved")
-	if count != 1 {
-		t.Fatalf("expected exactly 1 'FlightSQL peer resolved' log line under concurrency, got %d",
-			count)
-	}
-}
-
 // ---------- test helpers ----------
 
 // slogAttrsToMap converts the slog.Attr slice returned by the various
@@ -492,25 +404,4 @@ func decodeFirstLogLine(t *testing.T, b []byte) map[string]any {
 		t.Fatalf("failed to decode log line %q: %v", line, err)
 	}
 	return rec
-}
-
-// stringAddr is a net.Addr stub used when we only need Addr.String() to
-// return a stable value — recordPeer only consults String(), so a full
-// network address implementation is unnecessary.
-type stringAddr string
-
-func (s stringAddr) Network() string { return "tcp" }
-func (s stringAddr) String() string  { return string(s) }
-
-// lockedWriter wraps a bytes.Buffer with a mutex so concurrent slog
-// writers do not race on the underlying buffer.
-type lockedWriter struct {
-	w  *bytes.Buffer
-	mu *sync.Mutex
-}
-
-func (l *lockedWriter) Write(p []byte) (int, error) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	return l.w.Write(p)
 }
