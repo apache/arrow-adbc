@@ -131,12 +131,6 @@ namespace Apache.Arrow.Adbc.DriverManager
                 driverName = driverStr;
             }
 
-            string? driverTypeName = null;
-            if (root.TryGetValue("driver_type", out object? driverTypeObj) && driverTypeObj is string driverTypeStr)
-            {
-                driverTypeName = driverTypeStr;
-            }
-
             Dictionary<string, string> stringOpts = new Dictionary<string, string>(StringComparer.Ordinal);
             Dictionary<string, long> intOpts = new Dictionary<string, long>(StringComparer.Ordinal);
             Dictionary<string, double> doubleOpts = new Dictionary<string, double>(StringComparer.Ordinal);
@@ -173,7 +167,7 @@ namespace Apache.Arrow.Adbc.DriverManager
                 }
             }
 
-            return new ConnectionProfile(driverName, driverTypeName, stringOpts, intOpts, doubleOpts);
+            return new ConnectionProfile(driverName, stringOpts, intOpts, doubleOpts);
         }
 
         /// <summary>

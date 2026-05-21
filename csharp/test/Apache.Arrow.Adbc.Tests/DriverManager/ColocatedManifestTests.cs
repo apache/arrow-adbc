@@ -76,6 +76,17 @@ namespace Apache.Arrow.Adbc.Tests.DriverManager
         }
 
         /// <summary>
+        /// Scheme prefix this test process must use when selecting managed drivers
+        /// (matches the runtime hosting the test).
+        /// </summary>
+        private static string ManagedScheme =>
+#if NETFRAMEWORK
+            "netfx:";
+#else
+            "dotnet:";
+#endif
+
+        /// <summary>
         /// Creates test files where the manifest uses a relative path to a real assembly.
         /// </summary>
         private (string placeholderDllPath, string tomlPath, string realAssemblyPath) CreateTestFilesWithRelativeDriver(
@@ -98,12 +109,12 @@ namespace Apache.Arrow.Adbc.Tests.DriverManager
             File.WriteAllText(placeholderDllPath, "placeholder");
             _tempFiles.Add(placeholderDllPath);
 
-            // Create manifest that uses relative path to the real assembly
-            string toml = "version = 1\n"
-                + "driver = \"" + realAssemblyName + "\"\n"
-                + "driver_type = \"" + typeName + "\"\n"
-                + "\n[options]\n"
-                + "from_manifest = \"true\"\n";
+            // Driver manifest: scheme-prefixed entrypoint selects the managed runtime,
+            // [Driver].shared = "..." carries the relative assembly path.
+            string toml = "manifest_version = 1\n"
+                + "\n[Driver]\n"
+                + "entrypoint = \"" + ManagedScheme + typeName + "\"\n"
+                + "shared = \"" + realAssemblyName + "\"\n";
 
             string tomlPath = Path.Combine(tempDir, baseName + ".toml");
             File.WriteAllText(tomlPath, toml);
@@ -133,8 +144,8 @@ namespace Apache.Arrow.Adbc.Tests.DriverManager
                 CreateTestFilesWithRelativeDriver("test_driver", typeName);
 
             // LoadDriver should auto-detect the co-located manifest and use it to determine:
-            // - The actual driver location (from the 'driver' field - relative path)
-            // - Whether it's a managed driver (from 'driver_type')
+            // - The actual driver location (from [Driver].shared, a relative path here)
+            // - The managed runtime to host the driver (from the scheme prefix on entrypoint)
             AdbcDriver driver = AdbcDriverManager.LoadDriver(dllPath);
             Assert.NotNull(driver);
             // Check type name instead of IsType to avoid assembly identity issues
@@ -195,18 +206,55 @@ namespace Apache.Arrow.Adbc.Tests.DriverManager
         }
 
         [Fact]
-        public void LoadDriver_ExplicitEntrypointStillWorks()
+        public void LoadDriver_ExplicitEntrypointOverridesManifest()
         {
+            // Build a manifest whose [Driver].entrypoint is something the caller will
+            // override. The caller passes a scheme-prefixed entrypoint pointing at
+            // the real managed driver type; that override must win over the manifest
+            // value and select the managed loader.
             string typeName = typeof(FakeAdbcDriver).FullName!;
 
             (string dllPath, string tomlPath, string realAssemblyPath) =
-                CreateTestFilesWithRelativeDriver("entrypoint_test", typeName);
+                CreateTestFilesWithManifestEntrypoint("entrypoint_test", "AdbcDriverInit");
 
-            // Even with a manifest, explicit entrypoint parameter should work
-            // (though for managed drivers, entrypoint doesn't apply - it's ignored)
-            AdbcDriver driver = AdbcDriverManager.LoadDriver(dllPath, "CustomEntrypoint");
+            AdbcDriver driver = AdbcDriverManager.LoadDriver(dllPath, ManagedScheme + typeName);
             Assert.NotNull(driver);
             Assert.Equal(typeName, driver.GetType().FullName);
+        }
+
+        /// <summary>
+        /// Like <see cref="CreateTestFilesWithRelativeDriver"/> but lets the caller
+        /// control the manifest's <c>[Driver].entrypoint</c> value -- useful for
+        /// tests that verify caller-supplied entrypoint overrides win.
+        /// </summary>
+        private (string placeholderDllPath, string tomlPath, string realAssemblyPath) CreateTestFilesWithManifestEntrypoint(
+            string baseName,
+            string manifestEntrypoint)
+        {
+            string tempDir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(tempDir);
+            _tempDirs.Add(tempDir);
+
+            string realAssemblyPath = typeof(FakeAdbcDriver).Assembly.Location;
+            string realAssemblyName = Path.GetFileName(realAssemblyPath);
+            string copiedAssemblyPath = Path.Combine(tempDir, realAssemblyName);
+            File.Copy(realAssemblyPath, copiedAssemblyPath, overwrite: true);
+            _tempFiles.Add(copiedAssemblyPath);
+
+            string placeholderDllPath = Path.Combine(tempDir, baseName + ".dll");
+            File.WriteAllText(placeholderDllPath, "placeholder");
+            _tempFiles.Add(placeholderDllPath);
+
+            string toml = "manifest_version = 1\n"
+                + "\n[Driver]\n"
+                + "entrypoint = \"" + manifestEntrypoint + "\"\n"
+                + "shared = \"" + realAssemblyName + "\"\n";
+
+            string tomlPath = Path.Combine(tempDir, baseName + ".toml");
+            File.WriteAllText(tomlPath, toml);
+            _tempFiles.Add(tomlPath);
+
+            return (placeholderDllPath, tomlPath, copiedAssemblyPath);
         }
 
         [Fact]
@@ -226,9 +274,10 @@ namespace Apache.Arrow.Adbc.Tests.DriverManager
             _tempFiles.Add(localAssemblyPath);
 
             // Manifest uses relative path to the driver
-            string toml = "version = 1\n"
-                + "driver = \"" + assemblyFileName + "\"\n"
-                + "driver_type = \"" + typeName + "\"\n";
+            string toml = "manifest_version = 1\n"
+                + "\n[Driver]\n"
+                + "entrypoint = \"" + ManagedScheme + typeName + "\"\n"
+                + "shared = \"" + assemblyFileName + "\"\n";
 
             string dllPath = Path.Combine(tempDir, "wrapper.dll");
             string tomlPath = Path.Combine(tempDir, "wrapper.toml");
@@ -269,9 +318,10 @@ namespace Apache.Arrow.Adbc.Tests.DriverManager
             _tempFiles.Add(copiedAssemblyPath);
 
             // Create manifest with relative path
-            string toml = "version = 1\n"
-                + "driver = \"" + assemblyFileName + "\"\n"
-                + "driver_type = \"" + typeName + "\"\n";
+            string toml = "manifest_version = 1\n"
+                + "\n[Driver]\n"
+                + "entrypoint = \"" + ManagedScheme + typeName + "\"\n"
+                + "shared = \"" + assemblyFileName + "\"\n";
 
             string soPath = Path.Combine(tempDir, "test.driver.so");
             string soToml = Path.Combine(tempDir, "test.driver.toml");
@@ -306,7 +356,7 @@ namespace Apache.Arrow.Adbc.Tests.DriverManager
             // Note: LoadManagedDriver does not currently detect co-located manifests.
             // It loads directly from the specified assembly path.
             // To use manifest redirection, use LoadDriver with a co-located manifest
-            // that specifies driver_type.
+            // whose [Driver].entrypoint carries a dotnet:/netfx: scheme prefix.
             string typeName = typeof(FakeAdbcDriver).FullName!;
             string assemblyPath = typeof(FakeAdbcDriver).Assembly.Location;
 

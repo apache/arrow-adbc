@@ -292,7 +292,7 @@ version = 1
 driver = ""d""
 
 [options]
-password = ""env_var(ADBC_TEST_PASSWORD_TOML)""
+password = ""{{ env_var(ADBC_TEST_PASSWORD_TOML) }}""
 plain = ""notanenvvar""
 ";
                 ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml).ResolveEnvVars();
@@ -307,7 +307,7 @@ plain = ""notanenvvar""
         }
 
         [Fact]
-        public void ResolveEnvVars_NoEnvVarValues_ReturnsSameProfile()
+        public void ResolveEnvVars_NoPlaceholders_ReturnsSameValues()
         {
             const string toml = @"
 version = 1
@@ -318,6 +318,101 @@ key = ""value""
 ";
             ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml).ResolveEnvVars();
             Assert.Equal("value", profile.StringOptions["key"]);
+        }
+
+        [Fact]
+        public void ResolveEnvVars_PlaceholderEmbeddedInString_ExpandedInPlace()
+        {
+            // Per spec: placeholders may appear anywhere inside a value.
+            const string varName = "ADBC_TEST_EMBEDDED_HOST";
+            Environment.SetEnvironmentVariable(varName, "prod.example.com");
+            try
+            {
+                const string toml = @"
+version = 1
+driver = ""d""
+
+[options]
+uri = ""postgres://user@{{ env_var(ADBC_TEST_EMBEDDED_HOST) }}:5432/db""
+";
+                ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml).ResolveEnvVars();
+                Assert.Equal("postgres://user@prod.example.com:5432/db", profile.StringOptions["uri"]);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(varName, null);
+            }
+        }
+
+        [Fact]
+        public void ResolveEnvVars_MultiplePlaceholdersInOneValue_AllExpanded()
+        {
+            const string hostVar = "ADBC_TEST_MULTI_HOST";
+            const string portVar = "ADBC_TEST_MULTI_PORT";
+            Environment.SetEnvironmentVariable(hostVar, "db.local");
+            Environment.SetEnvironmentVariable(portVar, "5433");
+            try
+            {
+                const string toml = @"
+version = 1
+driver = ""d""
+
+[options]
+uri = ""postgres://{{ env_var(ADBC_TEST_MULTI_HOST) }}:{{ env_var(ADBC_TEST_MULTI_PORT) }}/db""
+";
+                ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml).ResolveEnvVars();
+                Assert.Equal("postgres://db.local:5433/db", profile.StringOptions["uri"]);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(hostVar, null);
+                Environment.SetEnvironmentVariable(portVar, null);
+            }
+        }
+
+        [Fact]
+        public void ResolveEnvVars_WhitespaceVariationsInsidePlaceholder_AllAccepted()
+        {
+            const string varName = "ADBC_TEST_WS_VAR";
+            Environment.SetEnvironmentVariable(varName, "X");
+            try
+            {
+                // No whitespace, lots of whitespace, asymmetric whitespace -- all valid.
+                const string toml = @"
+version = 1
+driver = ""d""
+
+[options]
+tight = ""{{env_var(ADBC_TEST_WS_VAR)}}""
+loose = ""{{    env_var(ADBC_TEST_WS_VAR)    }}""
+asymmetric = ""{{ env_var(ADBC_TEST_WS_VAR)}}""
+";
+                ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml).ResolveEnvVars();
+                Assert.Equal("X", profile.StringOptions["tight"]);
+                Assert.Equal("X", profile.StringOptions["loose"]);
+                Assert.Equal("X", profile.StringOptions["asymmetric"]);
+            }
+            finally
+            {
+                Environment.SetEnvironmentVariable(varName, null);
+            }
+        }
+
+        [Fact]
+        public void ResolveEnvVars_BareEnvVarSyntax_NotInterpretedAsPlaceholder()
+        {
+            // The old (pre-spec) C# implementation treated a whole-value 'env_var(NAME)'
+            // as a placeholder. The spec requires '{{ }}' delimiters, so the bare form
+            // is now a literal string.
+            const string toml = @"
+version = 1
+driver = ""d""
+
+[options]
+literal = ""env_var(NOT_A_PLACEHOLDER)""
+";
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml).ResolveEnvVars();
+            Assert.Equal("env_var(NOT_A_PLACEHOLDER)", profile.StringOptions["literal"]);
         }
 
         // -----------------------------------------------------------------------
@@ -438,12 +533,15 @@ driver = ""mydriver""
         }
 
         // -----------------------------------------------------------------------
-        // Negative: env_var expansion – variable not set
+        // env_var expansion – variable not set
         // -----------------------------------------------------------------------
 
         [Fact]
-        public void ResolveEnvVars_MissingEnvVar_ThrowsAdbcException()
+        public void ResolveEnvVars_MissingEnvVar_ExpandsToEmptyString()
         {
+            // Per spec (and matching the C/C++ driver manager): a missing env var
+            // expands to "" and processing of the rest of the value continues.
+            // Example from the spec: "foo{{ env_var(MISSING) }}bar" -> "foobar".
             const string varName = "ADBC_TEST_DEFINITELY_NOT_SET_XYZ";
             Environment.SetEnvironmentVariable(varName, null);
 
@@ -452,12 +550,61 @@ version = 1
 driver = ""d""
 
 [options]
-password = ""env_var(ADBC_TEST_DEFINITELY_NOT_SET_XYZ)""
+password = ""{{ env_var(ADBC_TEST_DEFINITELY_NOT_SET_XYZ) }}""
+greeting = ""foo{{ env_var(ADBC_TEST_DEFINITELY_NOT_SET_XYZ) }}bar""
+";
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml).ResolveEnvVars();
+            Assert.Equal("", profile.StringOptions["password"]);
+            Assert.Equal("foobar", profile.StringOptions["greeting"]);
+        }
+
+        // -----------------------------------------------------------------------
+        // Negative: malformed / unsupported placeholders
+        // -----------------------------------------------------------------------
+
+        [Fact]
+        public void ResolveEnvVars_UnsupportedFunction_ThrowsInvalidArgument()
+        {
+            const string toml = @"
+version = 1
+driver = ""d""
+
+[options]
+weird = ""{{ unknown_func(FOO) }}""
 ";
             ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
             AdbcException ex = Assert.Throws<AdbcException>(() => profile.ResolveEnvVars());
-            Assert.Equal(AdbcStatusCode.InvalidState, ex.Status);
-            Assert.Contains(varName, ex.Message);
+            Assert.Equal(AdbcStatusCode.InvalidArgument, ex.Status);
+        }
+
+        [Fact]
+        public void ResolveEnvVars_MissingClosingParen_ThrowsInvalidArgument()
+        {
+            const string toml = @"
+version = 1
+driver = ""d""
+
+[options]
+oops = ""{{ env_var(FOO }}""
+";
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
+            AdbcException ex = Assert.Throws<AdbcException>(() => profile.ResolveEnvVars());
+            Assert.Equal(AdbcStatusCode.InvalidArgument, ex.Status);
+        }
+
+        [Fact]
+        public void ResolveEnvVars_EmptyVarName_ThrowsInvalidArgument()
+        {
+            const string toml = @"
+version = 1
+driver = ""d""
+
+[options]
+oops = ""{{ env_var() }}""
+";
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
+            AdbcException ex = Assert.Throws<AdbcException>(() => profile.ResolveEnvVars());
+            Assert.Equal(AdbcStatusCode.InvalidArgument, ex.Status);
         }
 
         // -----------------------------------------------------------------------
@@ -607,34 +754,6 @@ driver = ""abs_driver""
         }
 
         // -----------------------------------------------------------------------
-        // Positive: driver_type field in TOML profile
-        // -----------------------------------------------------------------------
-
-        [Fact]
-        public void ParseProfile_WithDriverType_ParsedCorrectly()
-        {
-            const string toml = @"
-version = 1
-driver = ""Apache.Arrow.Adbc.Tests.dll""
-driver_type = ""Apache.Arrow.Adbc.Tests.DriverManager.FakeAdbcDriver""
-";
-            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
-            Assert.Equal("Apache.Arrow.Adbc.Tests.dll", profile.DriverName);
-            Assert.Equal("Apache.Arrow.Adbc.Tests.DriverManager.FakeAdbcDriver", profile.DriverTypeName);
-        }
-
-        [Fact]
-        public void ParseProfile_WithoutDriverType_DriverTypeNameIsNull()
-        {
-            const string toml = @"
-version = 1
-driver = ""mydriver""
-";
-            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
-            Assert.Null(profile.DriverTypeName);
-        }
-
-        // -----------------------------------------------------------------------
         // Positive: LoadManagedDriver loads a managed .NET driver by reflection
         // -----------------------------------------------------------------------
 
@@ -692,7 +811,23 @@ driver = ""d""
 
         // -----------------------------------------------------------------------
         // Positive: OpenDatabaseFromProfile end-to-end with managed driver
+        //
+        // Managed drivers are selected by a scheme-prefixed 'entrypoint' option:
+        // dotnet:Type for modern .NET, netfx:Type for .NET Framework. The driver
+        // manager consumes the entrypoint option before opening the database.
         // -----------------------------------------------------------------------
+
+        /// <summary>
+        /// Scheme prefix this test process must use when selecting managed drivers
+        /// -- a dotnet: entrypoint on .NET Framework (or vice versa) is a runtime
+        /// mismatch that the driver manager intentionally rejects.
+        /// </summary>
+        private static string ManagedScheme =>
+#if NETFRAMEWORK
+            "netfx:";
+#else
+            "dotnet:";
+#endif
 
         [Fact]
         public void OpenDatabaseFromProfile_ManagedDriver_OpensDatabase()
@@ -700,27 +835,26 @@ driver = ""d""
             string assemblyPath = typeof(FakeAdbcDriver).Assembly.Location;
             string typeName = typeof(FakeAdbcDriver).FullName!;
 
-            // Build TOML content; escape any backslashes in the Windows assembly path.
             string escapedPath = assemblyPath.Replace("\\", "\\\\");
-            string toml = "version = 1\n"
+            string toml = "profile_version = 1\n"
                 + "driver = \"" + escapedPath + "\"\n"
-                + "driver_type = \"" + typeName + "\"\n"
-                + "\n[options]\n"
+                + "\n[Options]\n"
+                + "entrypoint = \"" + ManagedScheme + typeName + "\"\n"
                 + "project_id = \"my-project\"\n"
                 + "region = \"us-east1\"\n";
 
             ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
             AdbcDatabase db = AdbcDriverManager.OpenDatabaseFromProfile(profile);
 
-            // Use type name comparison to avoid assembly identity issues when loaded via Assembly.LoadFrom
             Assert.Equal("Apache.Arrow.Adbc.Tests.DriverManager.FakeAdbcDatabase", db.GetType().FullName);
 
-            // Access parameters via reflection since the type identity differs
             System.Reflection.PropertyInfo? paramsProp = db.GetType().GetProperty("Parameters");
             Assert.NotNull(paramsProp);
             IReadOnlyDictionary<string, string> parameters = (IReadOnlyDictionary<string, string>)paramsProp!.GetValue(db)!;
             Assert.Equal("my-project", parameters["project_id"]);
             Assert.Equal("us-east1", parameters["region"]);
+            // entrypoint is consumed by the driver manager, not forwarded to the driver
+            Assert.False(parameters.ContainsKey("entrypoint"));
         }
 
         // -----------------------------------------------------------------------
@@ -776,14 +910,13 @@ driver = ""d""
         }
 
         [Fact]
-        public void OpenDatabaseFromProfile_ManagedDriverMissingAssemblyPath_ThrowsAdbcException()
+        public void OpenDatabaseFromProfile_NoDriver_ThrowsAdbcException()
         {
-            // driver_type is set but the driver (assembly path) field is omitted.
+            // A profile with no 'driver' field cannot be opened on its own.
             const string toml = @"
-version = 1
-driver_type = ""Apache.Arrow.Adbc.Tests.DriverManager.FakeAdbcDriver""
+profile_version = 1
 
-[options]
+[Options]
 key = ""value""
 ";
             ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
@@ -876,11 +1009,11 @@ key = ""value""
         }
 
         // -----------------------------------------------------------------------
-        // ResolveEnvVars preserves DriverTypeName
+        // ResolveEnvVars preserves the driver reference and other non-env values
         // -----------------------------------------------------------------------
 
         [Fact]
-        public void ResolveEnvVars_DriverTypeNameIsPreserved()
+        public void ResolveEnvVars_DriverNameIsPreserved()
         {
             const string varName = "ADBC_TEST_RESOLVE_ENVVAR_HOST";
             Environment.SetEnvironmentVariable(varName, "myhost");
@@ -889,13 +1022,12 @@ key = ""value""
                 const string toml = @"
 version = 1
 driver = ""MyDriver.dll""
-driver_type = ""My.Namespace.MyDriver""
 
 [options]
-host = ""env_var(ADBC_TEST_RESOLVE_ENVVAR_HOST)""
+host = ""{{ env_var(ADBC_TEST_RESOLVE_ENVVAR_HOST) }}""
 ";
                 ConnectionProfile resolved = FilesystemProfileProvider.LoadFromContent(toml).ResolveEnvVars();
-                Assert.Equal("My.Namespace.MyDriver", resolved.DriverTypeName);
+                Assert.Equal("MyDriver.dll", resolved.DriverName);
                 Assert.Equal("myhost", resolved.StringOptions["host"]);
             }
             finally
@@ -915,20 +1047,18 @@ host = ""env_var(ADBC_TEST_RESOLVE_ENVVAR_HOST)""
             string typeName = typeof(FakeAdbcDriver).FullName!;
 
             string escapedPath = assemblyPath.Replace("\\", "\\\\");
-            string toml = "version = 1\n"
+            string toml = "profile_version = 1\n"
                 + "driver = \"" + escapedPath + "\"\n"
-                + "driver_type = \"" + typeName + "\"\n"
-                + "\n[options]\n"
+                + "\n[Options]\n"
+                + "entrypoint = \"" + ManagedScheme + typeName + "\"\n"
                 + "known_key = \"hello\"\n"
                 + "unknown_widget = \"ignored_by_driver\"\n";
 
             ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
             AdbcDatabase db = AdbcDriverManager.OpenDatabaseFromProfile(profile);
 
-            // Use type name comparison to avoid assembly identity issues
             Assert.Equal("Apache.Arrow.Adbc.Tests.DriverManager.FakeAdbcDatabase", db.GetType().FullName);
 
-            // Access parameters via reflection since the type identity differs
             System.Reflection.PropertyInfo? paramsProp = db.GetType().GetProperty("Parameters");
             Assert.NotNull(paramsProp);
             IReadOnlyDictionary<string, string> parameters = (IReadOnlyDictionary<string, string>)paramsProp!.GetValue(db)!;
@@ -1051,10 +1181,10 @@ bool_key = false
             string typeName = typeof(FakeAdbcDriver).FullName!;
 
             string escapedPath = assemblyPath.Replace("\\", "\\\\");
-            string toml = "version = 1\n"
+            string toml = "profile_version = 1\n"
                 + "driver = \"" + escapedPath + "\"\n"
-                + "driver_type = \"" + typeName + "\"\n"
-                + "\n[options]\n"
+                + "\n[Options]\n"
+                + "entrypoint = \"" + ManagedScheme + typeName + "\"\n"
                 + "profile_option = \"from_profile\"\n"
                 + "shared_option = \"profile_value\"\n";
 
@@ -1068,21 +1198,14 @@ bool_key = false
 
             AdbcDatabase db = AdbcDriverManager.OpenDatabaseFromProfile(profile, explicitOptions);
 
-            // Use type name comparison to avoid assembly identity issues
             Assert.Equal("Apache.Arrow.Adbc.Tests.DriverManager.FakeAdbcDatabase", db.GetType().FullName);
 
-            // Access parameters via reflection since the type identity differs
             System.Reflection.PropertyInfo? paramsProp = db.GetType().GetProperty("Parameters");
             Assert.NotNull(paramsProp);
             IReadOnlyDictionary<string, string> parameters = (IReadOnlyDictionary<string, string>)paramsProp!.GetValue(db)!;
 
-            // Profile-only option should be present
             Assert.Equal("from_profile", parameters["profile_option"]);
-
-            // Explicit-only option should be present
             Assert.Equal("from_explicit", parameters["explicit_option"]);
-
-            // Shared option: explicit should override profile
             Assert.Equal("explicit_value", parameters["shared_option"]);
         }
 
@@ -1093,19 +1216,17 @@ bool_key = false
             string typeName = typeof(FakeAdbcDriver).FullName!;
 
             string escapedPath = assemblyPath.Replace("\\", "\\\\");
-            string toml = "version = 1\n"
+            string toml = "profile_version = 1\n"
                 + "driver = \"" + escapedPath + "\"\n"
-                + "driver_type = \"" + typeName + "\"\n"
-                + "\n[options]\n"
+                + "\n[Options]\n"
+                + "entrypoint = \"" + ManagedScheme + typeName + "\"\n"
                 + "key = \"value\"\n";
 
             ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
             AdbcDatabase db = AdbcDriverManager.OpenDatabaseFromProfile(profile, null);
 
-            // Use type name comparison to avoid assembly identity issues
             Assert.Equal("Apache.Arrow.Adbc.Tests.DriverManager.FakeAdbcDatabase", db.GetType().FullName);
 
-            // Access parameters via reflection since the type identity differs
             System.Reflection.PropertyInfo? paramsProp = db.GetType().GetProperty("Parameters");
             Assert.NotNull(paramsProp);
             IReadOnlyDictionary<string, string> parameters = (IReadOnlyDictionary<string, string>)paramsProp!.GetValue(db)!;

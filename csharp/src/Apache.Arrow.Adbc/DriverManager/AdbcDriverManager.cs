@@ -64,10 +64,11 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// <para>
         /// <b>Managed (.NET) drivers always require a manifest.</b> This method loads the
         /// driver as a native shared library unless a co-located TOML manifest is present
-        /// that specifies a managed <c>driver_type</c>. To load a managed .NET driver,
-        /// either point <paramref name="driverPath"/> at a directory containing a
-        /// co-located <c>.toml</c> manifest, call <see cref="LoadFromManifest"/> directly,
-        /// or use <see cref="LoadManagedDriver"/> to load a .NET assembly without a manifest.
+        /// whose <c>[Driver].entrypoint</c> begins with a managed-runtime scheme prefix
+        /// (e.g. <c>dotnet:My.Driver.Type</c>). To load a managed .NET driver, either
+        /// point <paramref name="driverPath"/> at a directory containing such a co-located
+        /// manifest or use <see cref="LoadManagedDriver"/> to load a .NET assembly
+        /// without a manifest.
         /// </para>
         /// <para>
         /// <b>Security:</b> <paramref name="driverPath"/> must be an absolute, fully
@@ -112,12 +113,19 @@ namespace Apache.Arrow.Adbc.DriverManager
         }
 
         /// <summary>
-        /// Loads a native driver assembly from a verified absolute path, with no
-        /// further manifest probing. All terminal native-load call sites funnel
-        /// through this helper so security policy is applied uniformly.
+        /// Loads a driver assembly from a verified absolute path, with no further
+        /// manifest probing. If <paramref name="entrypoint"/> is scheme-prefixed
+        /// (<c>dotnet:</c>, <c>netfx:</c>) the managed loader is used; otherwise
+        /// the path is loaded as a native shared library. All terminal load call
+        /// sites funnel through this helper so security policy and audit logging
+        /// are applied uniformly.
         /// </summary>
         private static AdbcDriver LoadNativeDriver(string driverPath, string? entrypoint, string loadMethod)
         {
+            if (entrypoint != null && HasManagedEntrypointScheme(entrypoint))
+            {
+                return LoadByEntrypointScheme(driverPath, entrypoint, manifestPath: null, loadMethod);
+            }
             string resolvedEntrypoint = entrypoint ?? DeriveEntrypoint(driverPath);
             return LoadWithSecurity(
                 driverPath,
@@ -424,25 +432,30 @@ namespace Apache.Arrow.Adbc.DriverManager
         // OpenDatabaseFromProfile – load driver + open database in one step
         // -----------------------------------------------------------------------
 
+        /// <summary>The option key the connection profile uses to override the driver entrypoint.</summary>
+        internal const string EntrypointOptionKey = "entrypoint";
+
         /// <summary>
         /// Loads the driver specified by <paramref name="profile"/> and opens a database,
         /// applying all options from the profile as connection parameters.
         /// </summary>
         /// <remarks>
         /// <para>
-        /// If the profile has a non-null <see cref="ConnectionProfile.DriverTypeName"/>, the
-        /// driver is loaded as a managed .NET assembly via <see cref="LoadManagedDriver"/> and
-        /// <see cref="ConnectionProfile.DriverName"/> is used as the assembly path.
-        /// </para>
-        /// <para>
-        /// Otherwise the driver is loaded as a native shared library via
-        /// <see cref="FindLoadDriver"/>.
+        /// The driver is located by name via <see cref="FindLoadDriver"/>. If a driver
+        /// manifest is found, its <c>[Driver].entrypoint</c> determines whether the
+        /// driver loads natively or via the managed (.NET) host; a scheme-prefixed
+        /// entrypoint such as <c>dotnet:My.Driver.Type</c> selects the managed loader.
+        /// The profile's <c>[Options]</c> table may carry an <c>entrypoint</c> value
+        /// that overrides anything in the manifest -- useful when <c>driver</c> is a
+        /// bare shared-library path with no companion manifest.
         /// </para>
         /// <para>
         /// All options (string, integer, and double) are merged into a single
         /// <c>string → string</c> dictionary.  Integer and double values are formatted
         /// using <see cref="CultureInfo.InvariantCulture"/>. The merged dictionary is
         /// passed to <see cref="AdbcDriver.Open(IReadOnlyDictionary{string,string})"/>.
+        /// The <c>entrypoint</c> option (if any) is consumed by the driver manager
+        /// and is not forwarded to the driver.
         /// </para>
         /// <para>
         /// Call <see cref="ConnectionProfile.ResolveEnvVars"/> on the profile before
@@ -475,24 +488,24 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// options, the explicit value takes precedence.
         /// </para>
         /// <para>
-        /// If the profile has a non-null <see cref="ConnectionProfile.DriverTypeName"/>, the
-        /// driver is loaded as a managed .NET assembly via <see cref="LoadManagedDriver"/> and
-        /// <see cref="ConnectionProfile.DriverName"/> is used as the assembly path.
+        /// The driver is located by name via <see cref="FindLoadDriver"/>; the
+        /// <c>entrypoint</c> option (if present in either the profile's <c>[Options]</c>
+        /// or <paramref name="explicitOptions"/>) is consumed by the driver manager
+        /// and overrides any entrypoint specified by a discovered driver manifest.
+        /// Scheme-prefixed values such as <c>dotnet:My.Driver.Type</c> route the load
+        /// through the managed (.NET) host.
         /// </para>
         /// <para>
-        /// Otherwise the driver is loaded as a native shared library via
-        /// <see cref="FindLoadDriver"/>.
-        /// </para>
-        /// <para>
-        /// All options are merged into a single
-        /// following order (later values override earlier ones for the same key):
+        /// All options are merged into a single dictionary in the following order (later
+        /// values override earlier ones for the same key):
         /// <list type="number">
         ///   <item>Profile integer options (formatted as strings)</item>
         ///   <item>Profile double options (formatted as strings)</item>
         ///   <item>Profile string options</item>
         ///   <item>Explicit options from <paramref name="explicitOptions"/></item>
         /// </list>
-        /// The merged dictionary is passed to <see cref="AdbcDriver.Open(IReadOnlyDictionary{string,string})"/>.
+        /// The merged dictionary, minus any <c>entrypoint</c> entry, is passed to
+        /// <see cref="AdbcDriver.Open(IReadOnlyDictionary{string,string})"/>.
         /// </para>
         /// </remarks>
         /// <param name="profile">The connection profile specifying the driver and options.</param>
@@ -513,25 +526,24 @@ namespace Apache.Arrow.Adbc.DriverManager
         {
             if (profile == null) throw new ArgumentNullException(nameof(profile));
 
-            AdbcDriver driver;
-
-            if (!string.IsNullOrEmpty(profile.DriverTypeName))
+            Dictionary<string, string> mergedOptions = new Dictionary<string, string>(StringComparer.Ordinal);
+            foreach (KeyValuePair<string, string> kv in BuildStringOptions(profile, explicitOptions))
             {
-                // Managed .NET driver path
-                if (string.IsNullOrEmpty(profile.DriverName))
-                    throw new AdbcException(
-                        "The connection profile specifies a driver_type but no driver assembly path (driver field).",
-                        AdbcStatusCode.InvalidArgument);
-
-                driver = LoadManagedDriver(profile.DriverName!, profile.DriverTypeName!);
-            }
-            else
-            {
-                // Native shared-library path
-                driver = LoadDriverFromProfile(profile, null, loadOptions, additionalSearchPathList);
+                mergedOptions[kv.Key] = kv.Value;
             }
 
-            return driver.Open(BuildStringOptions(profile, explicitOptions));
+            // entrypoint is a driver-manager option, not a driver option: pull it out
+            // of the bag before opening the database. When set, it overrides any
+            // entrypoint declared by a driver manifest found via FindLoadDriver.
+            string? entrypoint = null;
+            if (mergedOptions.TryGetValue(EntrypointOptionKey, out string? entrypointValue))
+            {
+                entrypoint = entrypointValue;
+                mergedOptions.Remove(EntrypointOptionKey);
+            }
+
+            AdbcDriver driver = LoadDriverFromProfile(profile, entrypoint, loadOptions, additionalSearchPathList);
+            return driver.Open(mergedOptions);
         }
 
         /// <summary>
@@ -658,15 +670,9 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// </para>
         /// <para>
         /// Co-located manifests allow drivers to ship with metadata about how they should
-        /// be loaded (e.g., specifying they're managed .NET drivers via <c>driver_type</c>,
-        /// or redirecting to the actual driver location via the <c>driver</c> field).
-        /// </para>
-        /// <para>
-        /// <b>Important:</b> Options specified in co-located manifests are NOT automatically
-        /// applied to database connections. The manifest is used solely for driver loading.
-        /// To use manifest options, explicitly load the profile with
-        /// <see cref="TomlConnectionProfile.FromFile"/> and use
-        /// <see cref="OpenDatabaseFromProfile(ConnectionProfile, IReadOnlyDictionary{string, string}?, AdbcLoadFlags, string?)"/>.
+        /// be loaded -- the symbol name to invoke (or, for managed .NET drivers, the type
+        /// to instantiate via a <c>dotnet:</c> / <c>netfx:</c> scheme on <c>entrypoint</c>),
+        /// and platform-specific shared library paths under <c>[Driver.shared]</c>.
         /// </para>
         /// </remarks>
         /// <param name="driverPath">The path to the driver file.</param>
@@ -694,6 +700,12 @@ namespace Apache.Arrow.Adbc.DriverManager
             }
         }
 
+        /// <summary>The entrypoint scheme prefix for managed .NET (Core / 5+) drivers.</summary>
+        internal const string DotnetEntrypointScheme = "dotnet:";
+
+        /// <summary>The entrypoint scheme prefix for managed .NET Framework 4.x drivers.</summary>
+        internal const string NetFxEntrypointScheme = "netfx:";
+
         private static AdbcDriver LoadFromManifest(string manifestPath, string? entrypoint)
         {
             if (!File.Exists(manifestPath))
@@ -703,68 +715,114 @@ namespace Apache.Arrow.Adbc.DriverManager
                     AdbcStatusCode.NotFound);
             }
 
-            ConnectionProfile manifest = FilesystemProfileProvider.LoadFromFile(manifestPath);
+            DriverManifest manifest = DriverManifest.LoadFromFile(manifestPath);
 
-            if (string.IsNullOrEmpty(manifest.DriverName))
-            {
-                throw new AdbcException(
-                    $"Driver manifest does not specify a 'driver' field.",
-                    AdbcStatusCode.InvalidArgument);
-            }
+            // Caller-supplied entrypoint wins over the manifest's. Falls back to
+            // a derived native symbol name only when neither is provided.
+            string resolvedEntrypoint = entrypoint
+                ?? manifest.Entrypoint
+                ?? DeriveEntrypoint(manifest.LibraryPath);
 
             string? manifestDir = Path.GetDirectoryName(Path.GetFullPath(manifestPath));
+            string resolvedPath = ResolveManifestPath(manifest.LibraryPath, manifestDir);
 
-            // Check if this is a managed driver
-            if (!string.IsNullOrEmpty(manifest.DriverTypeName))
+            return LoadByEntrypointScheme(resolvedPath, resolvedEntrypoint, manifestPath, nameof(LoadFromManifest));
+        }
+
+        /// <summary>Returns <c>true</c> if <paramref name="entrypoint"/> uses a managed-runtime scheme prefix.</summary>
+        private static bool HasManagedEntrypointScheme(string entrypoint) =>
+            entrypoint.StartsWith(DotnetEntrypointScheme, StringComparison.Ordinal) ||
+            entrypoint.StartsWith(NetFxEntrypointScheme, StringComparison.Ordinal);
+
+        /// <summary>
+        /// Resolves a path read out of a manifest: absolute paths are validated
+        /// against the security policy as-is; relative paths are anchored to the
+        /// manifest's directory and validated to ensure they don't escape it.
+        /// </summary>
+        private static string ResolveManifestPath(string libraryPath, string? manifestDir)
+        {
+            if (IsAbsolutePath(libraryPath))
             {
-                // Managed .NET driver - resolve path
-                string driverPath = manifest.DriverName!;
-                if (IsAbsolutePath(driverPath))
-                {
-                    // Absolute path - validate it doesn't contain path traversal
-                    DriverManagerSecurity.ValidatePathSecurity(driverPath, "manifest driver path");
-                }
-                else
-                {
-                    // Relative path - validate it doesn't escape the manifest directory
-                    if (!string.IsNullOrEmpty(manifestDir))
-                    {
-                        driverPath = DriverManagerSecurity.ValidateAndResolveManifestPath(manifestDir, driverPath);
-                    }
-                }
+                DriverManagerSecurity.ValidatePathSecurity(libraryPath, "manifest driver path");
+                return libraryPath;
+            }
+            if (!string.IsNullOrEmpty(manifestDir))
+            {
+                return DriverManagerSecurity.ValidateAndResolveManifestPath(manifestDir!, libraryPath);
+            }
+            return libraryPath;
+        }
+
+        /// <summary>
+        /// Dispatches a driver load by the scheme prefix on the entrypoint value.
+        /// Plain symbol names load as native drivers; <c>dotnet:</c> / <c>netfx:</c>
+        /// route to the managed loader and are rejected when the host process is
+        /// running on the wrong runtime.
+        /// </summary>
+        private static AdbcDriver LoadByEntrypointScheme(
+            string driverPath,
+            string entrypoint,
+            string? manifestPath,
+            string loadMethod)
+        {
+            if (entrypoint.StartsWith(DotnetEntrypointScheme, StringComparison.Ordinal))
+            {
+                string typeName = entrypoint.Substring(DotnetEntrypointScheme.Length);
+                EnsureRuntime(isNetFramework: false, scheme: DotnetEntrypointScheme);
                 return LoadWithSecurity(
                     driverPath,
-                    manifest.DriverTypeName!,
+                    typeName,
                     manifestPath,
-                    nameof(LoadFromManifest),
-                    () => LoadManagedDriverCore(driverPath, manifest.DriverTypeName!));
+                    loadMethod,
+                    () => LoadManagedDriverCore(driverPath, typeName));
             }
 
-            // Native driver - resolve entrypoint and path
-            string resolvedEntrypoint = entrypoint ?? DeriveEntrypoint(manifest.DriverName!);
-
-            // Resolve driver path
-            string resolvedDriverPath = manifest.DriverName!;
-            if (IsAbsolutePath(resolvedDriverPath))
+            if (entrypoint.StartsWith(NetFxEntrypointScheme, StringComparison.Ordinal))
             {
-                // Absolute path - validate it doesn't contain path traversal
-                DriverManagerSecurity.ValidatePathSecurity(resolvedDriverPath, "manifest driver path");
-            }
-            else
-            {
-                // Relative path - validate it doesn't escape the manifest directory
-                if (!string.IsNullOrEmpty(manifestDir))
-                {
-                    resolvedDriverPath = DriverManagerSecurity.ValidateAndResolveManifestPath(manifestDir, resolvedDriverPath);
-                }
+                string typeName = entrypoint.Substring(NetFxEntrypointScheme.Length);
+                EnsureRuntime(isNetFramework: true, scheme: NetFxEntrypointScheme);
+                return LoadWithSecurity(
+                    driverPath,
+                    typeName,
+                    manifestPath,
+                    loadMethod,
+                    () => LoadManagedDriverCore(driverPath, typeName));
             }
 
             return LoadWithSecurity(
-                resolvedDriverPath,
+                driverPath,
                 typeName: null,
                 manifestPath: manifestPath,
-                loadMethod: nameof(LoadFromManifest),
-                () => CAdbcDriverImporter.Load(resolvedDriverPath, resolvedEntrypoint));
+                loadMethod: loadMethod,
+                () => CAdbcDriverImporter.Load(driverPath, entrypoint));
+        }
+
+        /// <summary>
+        /// Throws <see cref="AdbcException"/> when the running .NET runtime does
+        /// not match the host implied by the entrypoint scheme. The check uses
+        /// <see cref="RuntimeInformation.FrameworkDescription"/> (a runtime
+        /// property) rather than a compile-time symbol: this library can be
+        /// targeted at <c>netstandard2.0</c> and consumed from either runtime.
+        /// </summary>
+        private static void EnsureRuntime(bool isNetFramework, string scheme)
+        {
+            bool hostIsNetFramework = RuntimeInformation.FrameworkDescription
+                .StartsWith(".NET Framework", StringComparison.OrdinalIgnoreCase);
+
+            if (isNetFramework && !hostIsNetFramework)
+            {
+                throw new AdbcException(
+                    $"Driver entrypoint scheme '{scheme}' requires .NET Framework, but the host process is " +
+                    RuntimeInformation.FrameworkDescription + ".",
+                    AdbcStatusCode.NotImplemented);
+            }
+            if (!isNetFramework && hostIsNetFramework)
+            {
+                throw new AdbcException(
+                    $"Driver entrypoint scheme '{scheme}' requires .NET 5 or later, but the host process is " +
+                    RuntimeInformation.FrameworkDescription + ".",
+                    AdbcStatusCode.NotImplemented);
+            }
         }
 
         private static AdbcDriver? TryLoadFromDirectory(string dir, string driverName, string? entrypoint)

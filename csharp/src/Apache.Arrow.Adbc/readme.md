@@ -27,42 +27,79 @@ The `Apache.Arrow.Adbc.DriverManager` namespace provides a .NET implementation o
 ### Features
 
 - **Driver discovery**: search for ADBC drivers by name across configurable directories (environment variable, user-level, system-level).
-- **TOML manifest loading**: locate drivers via `.toml` manifest files that specify the shared library path.
+- **TOML driver manifests**: locate drivers via `.toml` manifest files that specify the shared library path per platform.
 - **Connection profiles**: load reusable connection configurations (driver + options) from `.toml` profile files.
+- **Managed (.NET) drivers**: load .NET drivers via a scheme-prefixed `entrypoint` (`dotnet:` for .NET 5+, `netfx:` for .NET Framework 4.x).
 - **Custom profile providers**: plug in your own `IConnectionProfileProvider` implementation.
 
-### TOML Manifest / Profile Format
+### Driver Manifest Format
 
-#### Connection Profile Example (Snowflake)
+A *driver manifest* is a TOML file describing where a driver lives and how to load it. The format is shared across all ADBC driver-manager implementations and documented in `docs/source/format/driver_manifests.rst`.
 
-For unmanaged drivers loaded from native shared libraries:
+#### Native Driver Manifest Example (Snowflake)
+
+```toml
+manifest_version = 1
+
+name = "Snowflake"
+version = "1.5.2"
+publisher = "snowflake.com"
+
+[Driver]
+entrypoint = "AdbcDriverSnowflakeInit"
+
+[Driver.shared]
+windows_amd64 = "C:\\path\\to\\adbc_driver_snowflake.dll"
+linux_amd64   = "/usr/local/lib/libadbc_driver_snowflake.so"
+macos_arm64   = "/opt/homebrew/lib/libadbc_driver_snowflake.dylib"
+```
+
+#### Managed Driver Manifest Example (BigQuery)
+
+Managed .NET drivers use a scheme-prefixed `entrypoint`:
+
+- `dotnet:` for modern .NET (.NET 5 and later, including .NET 8 / .NET 10)
+- `netfx:` for .NET Framework 4.x
+
+The host process rejects a manifest whose scheme doesn't match its runtime, so a `dotnet:` manifest on a .NET Framework process (or vice versa) fails with a clear error rather than mysteriously failing inside the assembly loader.
+
+```toml
+manifest_version = 1
+
+name = "BigQuery"
+version = "1.2.0"
+
+[Driver]
+entrypoint = "dotnet:Apache.Arrow.Adbc.Drivers.BigQuery.BigQueryDriver"
+shared = "Apache.Arrow.Adbc.Drivers.BigQuery.dll"
+```
+
+`shared` is relative to the manifest's directory. Managed .NET assemblies are platform-neutral, so the single-string form of `shared` is usually appropriate; the platform-tuple table is also accepted.
+
+### Connection Profile Format
+
+A *connection profile* points at a driver and supplies options to apply when opening a database. Profiles can name a driver by manifest name (resolved against the standard search paths), by direct path to a shared library, or by direct path to a manifest.
 
 ```toml
 profile_version = 1
-driver = "libadbc_driver_snowflake"
-entrypoint = "AdbcDriverSnowflakeInit"
+driver = "snowflake"
 
 [Options]
 adbc.snowflake.sql.account = "myaccount"
 adbc.snowflake.sql.warehouse = "mywarehouse"
-adbc.snowflake.sql.auth_type = "auth_snowflake"
-username = "myuser"
-password = "env_var(SNOWFLAKE_PASSWORD)"
+password = "{{ env_var(SNOWFLAKE_PASSWORD) }}"
 ```
 
-#### Managed Driver Profile Example (BigQuery)
-
-For managed .NET drivers:
+If the profile points directly at a shared library that uses a non-default entrypoint (or at a managed assembly that needs a `dotnet:` / `netfx:` selector), supply it through the `entrypoint` option. The driver manager consumes that option and does not forward it to the driver:
 
 ```toml
 profile_version = 1
 driver = "C:\\path\\to\\Apache.Arrow.Adbc.Drivers.BigQuery.dll"
-driver_type = "Apache.Arrow.Adbc.Drivers.BigQuery.BigQueryDriver"
 
 [Options]
+entrypoint = "dotnet:Apache.Arrow.Adbc.Drivers.BigQuery.BigQueryDriver"
 adbc.bigquery.project_id = "my-project"
-adbc.bigquery.auth_type = "service"
-adbc.bigquery.json_credential = "env_var(BIGQUERY_JSON_CREDENTIAL)"
+adbc.bigquery.json_credential = "{{ env_var(BIGQUERY_JSON_CREDENTIAL) }}"
 ```
 
 #### Format Notes
@@ -70,9 +107,7 @@ adbc.bigquery.json_credential = "env_var(BIGQUERY_JSON_CREDENTIAL)"
 - Use `profile_version = 1` for the version field (legacy `version` is also supported for backward compatibility)
 - Use `[Options]` for the options section (legacy `[options]` is also supported for backward compatibility)
 - Boolean option values are converted to the string equivalents `"true"` or `"false"`.
-- Values of the form `env_var(ENV_VAR_NAME)` are expanded from the named environment variable at connection time.
-- For unmanaged drivers, use `driver` for the library path and `entrypoint` for the initialization function.
-- For managed drivers, use `driver` for the assembly path and `driver_type` for the fully-qualified type name.
+- String values may contain `{{ env_var(NAME) }}` placeholders, which are expanded from process environment variables when `ResolveEnvVars()` is called. The `{{` and `}}` delimiters serve as escapes: any text outside placeholders is treated literally. Placeholders may appear anywhere inside a value and may be repeated. A missing environment variable expands to an empty string. Only `env_var(NAME)` is recognized; other content inside a placeholder is an error.
 
 ### Managed Driver Loading (.NET Core / .NET 8)
 
