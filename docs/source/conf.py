@@ -150,6 +150,7 @@ html_theme_options = {
     "source_branch": "main",
     "source_directory": "docs/source/",
 }
+html_favicon = "_static/favicon.ico"
 
 # -- Options for sphinx-recipe -----------------------------------------------
 
