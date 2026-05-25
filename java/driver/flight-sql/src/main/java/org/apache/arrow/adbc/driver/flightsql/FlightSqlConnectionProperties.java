@@ -22,10 +22,33 @@ import org.apache.arrow.adbc.core.TypedKey;
 
 /** Defines connection options that are used by the FlightSql driver. */
 public interface FlightSqlConnectionProperties {
+  TypedKey<String> AUTHORIZATION_HEADER =
+      new TypedKey<>("adbc.flight.sql.authorization_header", String.class);
   TypedKey<InputStream> MTLS_CERT_CHAIN =
       new TypedKey<>("adbc.flight.sql.client_option.mtls_cert_chain", InputStream.class);
   TypedKey<InputStream> MTLS_PRIVATE_KEY =
       new TypedKey<>("adbc.flight.sql.client_option.mtls_private_key", InputStream.class);
+  TypedKey<String> OAUTH_FLOW = new TypedKey<>("adbc.flight.sql.oauth.flow", String.class);
+  TypedKey<String> OAUTH_TOKEN_URI =
+      new TypedKey<>("adbc.flight.sql.oauth.token_uri", String.class);
+  TypedKey<String> OAUTH_CLIENT_ID =
+      new TypedKey<>("adbc.flight.sql.oauth.client_id", String.class);
+  TypedKey<String> OAUTH_CLIENT_SECRET =
+      new TypedKey<>("adbc.flight.sql.oauth.client_secret", String.class);
+  TypedKey<String> OAUTH_SCOPE = new TypedKey<>("adbc.flight.sql.oauth.scope", String.class);
+  TypedKey<String> OAUTH_RESOURCE = new TypedKey<>("adbc.flight.sql.oauth.resource", String.class);
+  TypedKey<String> OAUTH_EXCHANGE_SUBJECT_TOKEN =
+      new TypedKey<>("adbc.flight.sql.oauth.exchange.subject_token", String.class);
+  TypedKey<String> OAUTH_EXCHANGE_SUBJECT_TOKEN_TYPE =
+      new TypedKey<>("adbc.flight.sql.oauth.exchange.subject_token_type", String.class);
+  TypedKey<String> OAUTH_EXCHANGE_ACTOR_TOKEN =
+      new TypedKey<>("adbc.flight.sql.oauth.exchange.actor_token", String.class);
+  TypedKey<String> OAUTH_EXCHANGE_ACTOR_TOKEN_TYPE =
+      new TypedKey<>("adbc.flight.sql.oauth.exchange.actor_token_type", String.class);
+  TypedKey<String> OAUTH_EXCHANGE_REQUESTED_TOKEN_TYPE =
+      new TypedKey<>("adbc.flight.sql.oauth.exchange.requested_token_type", String.class);
+  TypedKey<String> OAUTH_EXCHANGE_AUD =
+      new TypedKey<>("adbc.flight.sql.oauth.exchange.aud", String.class);
   TypedKey<String> TLS_OVERRIDE_HOSTNAME =
       new TypedKey<>("adbc.flight.sql.client_option.tls_override_hostname", String.class);
   TypedKey<Boolean> TLS_SKIP_VERIFY =
