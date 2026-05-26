@@ -46,7 +46,9 @@ require (
 	google.golang.org/api v0.253.0
 	google.golang.org/grpc v1.76.0
 	google.golang.org/protobuf v1.36.10
+	gopkg.in/dnaeon/go-vcr.v4 v4.0.6
 	modernc.org/sqlite v1.39.1
+	resty.dev/v3 v3.0.0-beta.6
 )
 
 require (
@@ -66,11 +68,9 @@ require (
 	go.opentelemetry.io/contrib/detectors/gcp v1.36.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.38.0 // indirect
 	go.yaml.in/yaml/v4 v4.0.0-rc.3 // indirect
-	gopkg.in/dnaeon/go-vcr.v4 v4.0.6 // indirect
-	resty.dev/v3 v3.0.0-beta.6 // indirect
 )
 
-replace github.com/snowflakedb/gosnowflake => github.com/dbt-labs/gosnowflake v1.17.7
+replace github.com/snowflakedb/gosnowflake => github.com/dbt-labs/gosnowflake v1.17.9
 
 replace github.com/databricks/databricks-sql-go => github.com/dbt-labs/databricks-sql-go v1.19.1
 

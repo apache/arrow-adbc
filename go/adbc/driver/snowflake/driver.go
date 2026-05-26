@@ -67,6 +67,12 @@ const (
 	// "300ms", "1.5s" or "1m30s". ParseDuration accepts negative values
 	// but the absolute value will be used.
 	OptionClientTimeout = "adbc.snowflake.sql.client_option.client_timeout"
+	// Timeout for network round trip + reading http response
+	// use format like http://pkg.go.dev/time#ParseDuration such as
+	// "300ms", "1.5s" or "1m30s". ParseDuration accepts negative values
+	// but the absolute value will be used.
+	// Unlike OptionClientTimeout, this is only used for authentication requests that are not JWT.
+	OptionAuthClientTimeout = "adbc.snowflake.sql.client_option.auth_client_timeout"
 	// OptionUseHighPrecision controls the data type used for NUMBER columns
 	// using a FIXED size data type. By default, this is enabled and NUMBER
 	// columns will be returned as Decimal128 types using the indicated

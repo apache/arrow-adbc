@@ -121,6 +121,8 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 		return strconv.FormatFloat(d.cfg.JWTExpireTimeout.Seconds(), 'f', -1, 64), nil
 	case OptionClientTimeout:
 		return strconv.FormatFloat(d.cfg.ClientTimeout.Seconds(), 'f', -1, 64), nil
+	case OptionAuthClientTimeout:
+		return strconv.FormatFloat(d.cfg.AuthClientTimeout.Seconds(), 'f', -1, 64), nil
 	case OptionApplicationName:
 		return d.cfg.Application, nil
 	case OptionSSLSkipVerify:
@@ -323,6 +325,18 @@ func (d *databaseImpl) SetOptionInternal(k string, v string, cnOptions *map[stri
 			dur = -dur
 		}
 		d.cfg.ClientTimeout = dur
+	case OptionAuthClientTimeout:
+		dur, err := time.ParseDuration(v)
+		if err != nil {
+			return adbc.Error{
+				Msg:  "could not parse duration for '" + OptionAuthClientTimeout + "': " + err.Error(),
+				Code: adbc.StatusInvalidArgument,
+			}
+		}
+		if dur < 0 {
+			dur = -dur
+		}
+		d.cfg.AuthClientTimeout = dur
 	case OptionApplicationName:
 		d.cfg.Application = v
 	case OptionSSLSkipVerify:
