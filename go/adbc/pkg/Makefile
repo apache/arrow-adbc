@@ -30,6 +30,15 @@ else
 	SUFFIX=dylib
 endif
 
+# netgo forces Go's pure-DNS resolver, but on Windows it breaks localhost
+# resolution when a custom DNS server is set, because the default Windows
+# hosts file leaves the localhost entries commented out.
+ifeq ($(GOOS),windows)
+	BUILD_TAGS := driverlib
+else
+	BUILD_TAGS := driverlib,netgo
+endif
+
 ifeq ($(GOOS),windows)
 	GIT_VERSION := $(shell powershell -Command "git tag --sort=-v:refname --points-at $$(git rev-list --tags --max-count=1) | Select-Object -First 1")
 else
@@ -64,7 +73,7 @@ endif
 all: $(DRIVERS)
 
 libadbc_driver_%.$(SUFFIX): % ../driver/% ../go.mod ../go.sum
-	$(GO_BUILD) -buildvcs=true -tags driverlib,netgo \
+	$(GO_BUILD) -buildvcs=true -tags $(BUILD_TAGS) \
 		-o $@ -buildmode=c-shared \
 		-gcflags "$(GCFLAGS)" \
 		-ldflags "$(LDFLAGS) -X github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase.infoDriverVersion=$(VERSION)" \
