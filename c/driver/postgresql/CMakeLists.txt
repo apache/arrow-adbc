@@ -31,6 +31,7 @@ add_arrow_lib(adbc_driver_postgresql
               connection.cc
               error.cc
               database.cc
+              ingest_partition.cc
               postgresql.cc
               result_helper.cc
               result_reader.cc
@@ -81,6 +82,7 @@ if(ADBC_BUILD_TESTS)
                 EXTRA_LABELS
                 driver-postgresql
                 SOURCES
+                partitioned_ingest_test.cc
                 postgres_type_test.cc
                 postgresql_test.cc
                 EXTRA_LINK_LIBS

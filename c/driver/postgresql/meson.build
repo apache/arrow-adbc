@@ -23,6 +23,7 @@ adbc_postgres_driver_lib = library(
         'connection.cc',
         'error.cc',
         'database.cc',
+        'ingest_partition.cc',
         'postgresql.cc',
         'result_helper.cc',
         'result_reader.cc',

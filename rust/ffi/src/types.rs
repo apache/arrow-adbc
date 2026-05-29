@@ -560,9 +560,12 @@ unsafe extern "C" fn release_ffi_error(error: *mut FFI_AdbcError) {
     match error.as_mut() {
         None => (),
         Some(error) => {
-            // SAFETY: `error.message` was necessarily obtained with `CString::into_raw`.
-            // Additionally, C should not modify the string's length.
-            drop(CString::from_raw(error.message));
+            if !error.message.is_null() {
+                // SAFETY: `error.message` was necessarily obtained with `CString::into_raw`.
+                // Additionally, C should not modify the string's length.
+                drop(CString::from_raw(error.message));
+                error.message = null_mut();
+            }
 
             if !error.private_data.is_null() {
                 // SAFETY: `error.private_data` was necessarily obtained with `Box::into_raw`.
@@ -570,7 +573,9 @@ unsafe extern "C" fn release_ffi_error(error: *mut FFI_AdbcError) {
                 // Finally, C should call the release function only once.
                 let private_data = Box::from_raw(error.private_data as *mut ErrorPrivateData);
                 drop(private_data);
+                error.private_data = null_mut();
             }
+            error.release = None;
         }
     }
 }
@@ -625,5 +630,65 @@ mod tests {
         let partitions_ffi: FFI_AdbcPartitions = partitions_expected.clone().into();
         let partitions_actual: Partitions = partitions_ffi.into();
         assert_eq!(partitions_expected, partitions_actual);
+    }
+
+    #[test]
+    fn test_release_ffi_error_nulls_fields() {
+        // Use details to ensure private_data is non-null before release.
+        let error = Error {
+            message: "test error".into(),
+            status: Status::Unknown,
+            vendor_code: 0,
+            sqlstate: [0; 5],
+            details: Some(vec![("key".to_string(), b"value".to_vec())]),
+        };
+        let mut ffi_error: FFI_AdbcError = error.try_into().unwrap();
+        assert!(!ffi_error.message.is_null());
+        assert!(!ffi_error.private_data.is_null());
+
+        unsafe { release_ffi_error(&mut ffi_error) };
+
+        assert!(ffi_error.message.is_null());
+        assert!(ffi_error.private_data.is_null());
+        assert!(ffi_error.release.is_none());
+        // Drop here is a no-op because release is None.
+    }
+
+    #[test]
+    fn test_release_ffi_error_idempotent() {
+        // Calling release twice must not double-free the message pointer.
+        let error = Error {
+            message: "test error".into(),
+            status: Status::Unknown,
+            vendor_code: 0,
+            sqlstate: [0; 5],
+            details: None,
+        };
+        let mut ffi_error: FFI_AdbcError = error.try_into().unwrap();
+
+        unsafe {
+            release_ffi_error(&mut ffi_error);
+            release_ffi_error(&mut ffi_error);
+        }
+        // Drop here is a no-op because release is None.
+    }
+
+    #[test]
+    fn test_release_ffi_error_null_message() {
+        // A null message must not cause UB or a panic during release.
+        let mut ffi_error = FFI_AdbcError {
+            message: null_mut(),
+            vendor_code: 0,
+            sqlstate: [0; 5],
+            release: Some(release_ffi_error),
+            private_data: null_mut(),
+            private_driver: null(),
+        };
+
+        unsafe { release_ffi_error(&mut ffi_error) };
+
+        assert!(ffi_error.message.is_null());
+        assert!(ffi_error.release.is_none());
+        // Drop here is a no-op because release is None.
     }
 }

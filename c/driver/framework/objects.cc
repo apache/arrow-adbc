@@ -287,7 +287,8 @@ struct GetObjectsBuilder {
   Status AppendCatalogs() {
     UNWRAP_STATUS(helper->LoadCatalogs(catalog_filter));
     while (true) {
-      UNWRAP_RESULT(auto maybe_catalog, helper->NextCatalog());
+      std::optional<std::string_view> maybe_catalog;
+      UNWRAP_RESULT(maybe_catalog, helper->NextCatalog());
       if (!maybe_catalog.has_value()) break;
 
       UNWRAP_ERRNO(Internal, ArrowArrayAppendString(catalog_name_col,
@@ -305,7 +306,8 @@ struct GetObjectsBuilder {
   Status AppendSchemas(std::string_view catalog) {
     UNWRAP_STATUS(helper->LoadSchemas(catalog, schema_filter));
     while (true) {
-      UNWRAP_RESULT(auto maybe_schema, helper->NextSchema());
+      std::optional<std::string_view> maybe_schema;
+      UNWRAP_RESULT(maybe_schema, helper->NextSchema());
       if (!maybe_schema.has_value()) break;
 
       UNWRAP_ERRNO(Internal, ArrowArrayAppendString(db_schema_name_col,
@@ -326,7 +328,8 @@ struct GetObjectsBuilder {
   Status AppendTables(std::string_view catalog, std::string_view schema) {
     UNWRAP_STATUS(helper->LoadTables(catalog, schema, table_filter, table_types));
     while (true) {
-      UNWRAP_RESULT(auto maybe_table, helper->NextTable());
+      std::optional<GetObjectsHelper::Table> maybe_table;
+      UNWRAP_RESULT(maybe_table, helper->NextTable());
       if (!maybe_table.has_value()) break;
 
       UNWRAP_ERRNO(Internal, ArrowArrayAppendString(table_name_col,
@@ -351,7 +354,8 @@ struct GetObjectsBuilder {
                        std::string_view table) {
     UNWRAP_STATUS(helper->LoadColumns(catalog, schema, table, column_filter));
     while (true) {
-      UNWRAP_RESULT(auto maybe_column, helper->NextColumn());
+      std::optional<GetObjectsHelper::Column> maybe_column;
+      UNWRAP_RESULT(maybe_column, helper->NextColumn());
       if (!maybe_column.has_value()) break;
       const auto& column = *maybe_column;
 
@@ -415,7 +419,8 @@ struct GetObjectsBuilder {
   Status AppendConstraints(std::string_view catalog, std::string_view schema,
                            std::string_view table) {
     while (true) {
-      UNWRAP_RESULT(auto maybe_constraint, helper->NextConstraint());
+      std::optional<GetObjectsHelper::Constraint> maybe_constraint;
+      UNWRAP_RESULT(maybe_constraint, helper->NextConstraint());
       if (!maybe_constraint.has_value()) break;
       // XXX: copy to make gcc 12.2's -Wmaybe-uninitialized happy (only
       // happens with optimizations enabled)

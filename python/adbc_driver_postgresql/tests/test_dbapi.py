@@ -102,6 +102,49 @@ def test_conn_get_info(postgres: dbapi.Connection) -> None:
     assert info["vendor_name"] == "PostgreSQL"
 
 
+def test_get_statistics(postgres: dbapi.Connection) -> None:
+    with postgres.cursor() as cur:
+        cur.execute("DROP TABLE IF EXISTS test_statistics")
+        cur.execute("CREATE TABLE test_statistics (id INT PRIMARY KEY, value TEXT)")
+        cur.execute("INSERT INTO test_statistics VALUES (1, 'a'), (2, 'b'), (3, 'c')")
+        cur.execute("ANALYZE test_statistics")
+    postgres.commit()
+
+    # PostgreSQL requires db_schema to be specified and only supports approximate stats
+    reader = postgres.adbc_get_statistics(
+        db_schema_filter="public", table_name_filter="test_statistics", approximate=True
+    )
+    assert reader is not None
+    table = reader.read_all()
+
+    # Verify schema is correct
+    assert "catalog_name" in table.schema.names
+    assert "catalog_db_schemas" in table.schema.names
+
+    # Verify we got actual statistics for our table
+    result_list = table.to_pylist()
+    found_test_table = False
+    for catalog in result_list:
+        for schema in catalog["catalog_db_schemas"]:
+            assert schema["db_schema_name"] == "public"
+            found_test_table = found_test_table or any(
+                stat["table_name"] == "test_statistics"
+                for stat in schema["db_schema_statistics"]
+            )
+
+    assert found_test_table, "Expected statistics for 'test_statistics'"
+
+
+def test_get_statistic_names(postgres: dbapi.Connection) -> None:
+    reader = postgres.adbc_get_statistic_names()
+    assert reader is not None
+    table = reader.read_all()
+
+    # Verify schema
+    assert "statistic_name" in table.schema.names
+    assert "statistic_key" in table.schema.names
+
+
 def test_query_batch_size(postgres: dbapi.Connection):
     with postgres.cursor() as cur:
         cur.execute("DROP TABLE IF EXISTS test_batch_size")
@@ -586,3 +629,97 @@ def test_server_terminates_connection(postgres_uri: str) -> None:
             with pytest.raises(Exception):
                 with conn2.cursor() as cur:
                     cur.execute("SELECT 1")
+
+
+# Tests for issue #3549: Cannot use null values as bound parameters
+def test_bind_null_insert(postgres: dbapi.Connection) -> None:
+    """Test INSERT with None parameter (issue #3549)."""
+    with postgres.cursor() as cur:
+        cur.execute("DROP TABLE IF EXISTS test_null_binding")
+        cur.execute("CREATE TABLE test_null_binding(a TEXT, b INT)")
+        # This should not raise an error about mapping Arrow type 'na' to Postgres type
+        cur.execute("INSERT INTO test_null_binding VALUES ($1, $2)", ("hello", None))
+    postgres.commit()
+
+    with postgres.cursor() as cur:
+        cur.execute("SELECT a, b FROM test_null_binding")
+        result = cur.fetchone()
+        assert result is not None
+        assert result[0] == "hello"
+        assert result[1] is None
+
+
+def test_bind_null_update(postgres: dbapi.Connection) -> None:
+    """Test UPDATE with None parameter (issue #3549)."""
+    with postgres.cursor() as cur:
+        cur.execute("DROP TABLE IF EXISTS test_null_binding")
+        cur.execute("CREATE TABLE test_null_binding(a TEXT, b INT)")
+        cur.execute("INSERT INTO test_null_binding VALUES ('hello', 42)")
+    postgres.commit()
+
+    with postgres.cursor() as cur:
+        # This should not raise an error
+        cur.execute("UPDATE test_null_binding SET b=$2 WHERE a=$1", ("hello", None))
+    postgres.commit()
+
+    with postgres.cursor() as cur:
+        cur.execute("SELECT a, b FROM test_null_binding WHERE a='hello'")
+        result = cur.fetchone()
+        assert result is not None
+        assert result[0] == "hello"
+        assert result[1] is None
+
+
+def test_executemany_all_nulls(postgres: dbapi.Connection) -> None:
+    """Test executemany with all None values (issue #3549)."""
+    with postgres.cursor() as cur:
+        cur.execute("DROP TABLE IF EXISTS test_null_binding")
+        cur.execute("CREATE TABLE test_null_binding(a TEXT, b INT)")
+    postgres.commit()
+
+    with postgres.cursor() as cur:
+        # This is the critical test case from the issue
+        cur.executemany(
+            "INSERT INTO test_null_binding VALUES ($1, $2)",
+            [("hello", None), ("world", None)],
+        )
+    postgres.commit()
+
+    with postgres.cursor() as cur:
+        cur.execute("SELECT a, b FROM test_null_binding ORDER BY a")
+        rows = cur.fetchall()
+        assert len(rows) == 2
+        assert rows[0] == ("hello", None)
+        assert rows[1] == ("world", None)
+
+
+def test_bind_multiple_null_parameters(postgres: dbapi.Connection) -> None:
+    """Test binding multiple None parameters in a single statement (issue #3549)."""
+    with postgres.cursor() as cur:
+        cur.execute("DROP TABLE IF EXISTS test_null_binding")
+        cur.execute("CREATE TABLE test_null_binding(a INT, b TEXT, c FLOAT)")
+    postgres.commit()
+
+    with postgres.cursor() as cur:
+        # All parameters are None
+        cur.execute(
+            "INSERT INTO test_null_binding VALUES ($1, $2, $3)", (None, None, None)
+        )
+    postgres.commit()
+
+    with postgres.cursor() as cur:
+        cur.execute("SELECT * FROM test_null_binding")
+        result = cur.fetchone()
+        assert result is not None
+        assert result[0] is None
+        assert result[1] is None
+        assert result[2] is None
+
+
+def test_bind_null_unknown_inference(postgres: dbapi.Connection) -> None:
+    """Test binding None where PostgreSQL can't infer a concrete parameter type."""
+    with postgres.cursor() as cur:
+        cur.execute("SELECT $1", (None,))
+        result = cur.fetchone()
+        assert result is not None
+        assert result[0] is None

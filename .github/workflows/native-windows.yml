@@ -103,7 +103,7 @@ jobs:
         run: |
           .\ci\scripts\cpp_build.ps1 $pwd ${{ github.workspace }}\build
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: driver-manager-${{ matrix.os }}
           retention-days: 3
@@ -224,7 +224,7 @@ jobs:
           cache: true
           cache-dependency-path: go/adbc/go.sum
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: driver-manager-${{ matrix.os }}
           path: ${{ github.workspace }}/build
@@ -328,7 +328,7 @@ jobs:
             --file ci\conda_env_cpp.txt `
             --file ci\conda_env_python.txt
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: driver-manager-${{ matrix.os }}
           path: ${{ github.workspace }}/build
@@ -337,21 +337,15 @@ jobs:
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
-        run: .\ci\scripts\python_build.ps1 $pwd $pwd\build
-      - name: Build Python Driver PostgreSQL
-        env:
-          BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
-        run: .\ci\scripts\python_build.ps1 $pwd $pwd\build
-      - name: Build Python Driver SQLite
-        env:
-          BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
+          _ADBC_IS_CONDA: "1"
         run: .\ci\scripts\python_build.ps1 $pwd $pwd\build
       - name: Test Python Driver Manager
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
+          PYTEST_ADDOPTS: "--run-system"
         run: .\ci\scripts\python_test.ps1 $pwd $pwd\build
       - name: Test Python Driver PostgreSQL
         env:
@@ -380,8 +374,6 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - name: Add msbuild to PATH
-        uses: microsoft/setup-msbuild@6fb02220983dee41ce7ae257b6f4d8f9bf5ed4ce # v2
       - name: Setup MSYS2 tools
         run: |
           # msys64 is pre-installed on windows but not added to path

@@ -139,13 +139,16 @@ namespace Apache.Arrow.Adbc.Tests.Client
             command.Parameters[1].DbType = DbType.String;
             command.Parameters[1].Value = "foo";
 
-            using var reader = command.ExecuteReader();
-            long count = 0;
-            while (reader.Read())
+            using (var reader = command.ExecuteReader(CommandBehavior.CloseConnection))
             {
-                count++;
+                long count = 0;
+                while (reader.Read())
+                {
+                    count++;
+                }
+                Assert.Equal(1, count);
             }
-            Assert.Equal(1, count);
+            Assert.True(connection.State == ConnectionState.Closed);
         }
 
         private static long GetResultCount(AdbcCommand command, string query)

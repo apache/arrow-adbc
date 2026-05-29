@@ -36,6 +36,7 @@ micromamba clean --all -y
 
 export ADBC_USE_ASAN=ON
 export ADBC_USE_UBSAN=ON
+export _ADBC_IS_CONDA=1
 
 env ADBC_BUILD_TESTS=OFF /adbc/ci/scripts/cpp_build.sh /adbc /adbc/build/pydebug
 /adbc/ci/scripts/python_build.sh /adbc /adbc/build/pydebug

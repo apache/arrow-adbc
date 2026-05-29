@@ -27,6 +27,7 @@ import signal
 import sys
 import threading
 import time
+import typing
 
 import pytest
 
@@ -39,7 +40,7 @@ from adbc_driver_manager import _lib
 pytestmark = pytest.mark.skipif(os.name == "nt", reason="Disabled on Windows")
 
 
-def _send_sigint():
+def _send_sigint() -> None:
     # Windows behavior is different
     # https://stackoverflow.com/questions/35772001
     if os.name == "nt":
@@ -48,7 +49,7 @@ def _send_sigint():
         os.kill(os.getpid(), signal.SIGINT)
 
 
-def _blocking(event):
+def _blocking(event) -> None:
     _send_sigint()
     event.wait()
 
@@ -58,7 +59,7 @@ def is_freethreaded() -> bool:
     return hasattr(sys, "_is_gil_enabled") and not getattr(sys, "_is_gil_enabled")()
 
 
-def test_sigint_fires():
+def test_sigint_fires() -> None:
     # Run the thing that fires SIGINT itself as the "blocking" call
     event = threading.Event()
 
@@ -68,7 +69,7 @@ def test_sigint_fires():
     _lib._blocking_call(_blocking, (event,), {}, _cancel)
 
 
-def test_handler_restored():
+def test_handler_restored() -> None:
     event = threading.Event()
     _lib._blocking_call(_blocking, (event,), {}, event.set)
 
@@ -80,7 +81,7 @@ def test_handler_restored():
         time.sleep(60)
 
 
-def test_args_return():
+def test_args_return() -> None:
     def _blocking(a, *, b):
         return a, b
 
@@ -92,7 +93,7 @@ def test_args_return():
     ) == (1, 2)
 
 
-def test_blocking_raise():
+def test_blocking_raise() -> None:
     def _blocking():
         raise ValueError("expected error")
 
@@ -112,7 +113,7 @@ def test_cancel_raise(is_freethreaded: bool) -> None:
         if is_freethreaded:
             time.sleep(5)
 
-    def _cancel():
+    def _cancel() -> typing.NoReturn:
         event.set()
         raise ValueError("expected error")
 
@@ -123,14 +124,14 @@ def test_cancel_raise(is_freethreaded: bool) -> None:
 def test_both_raise(is_freethreaded: bool) -> None:
     event = threading.Event()
 
-    def _blocking(event):
+    def _blocking(event) -> typing.NoReturn:
         _send_sigint()
         event.wait()
         if is_freethreaded:
             time.sleep(5)
         raise ValueError("expected error 1")
 
-    def _cancel():
+    def _cancel() -> typing.NoReturn:
         event.set()
         raise ValueError("expected error 2")
 
@@ -141,11 +142,11 @@ def test_both_raise(is_freethreaded: bool) -> None:
         raise excinfo.value.__cause__
 
 
-def test_nested():
+def test_nested() -> None:
     # To be clear, don't ever do this.
     event = threading.Event()
 
-    def _wrap_blocking():
+    def _wrap_blocking() -> None:
         _lib._blocking_call(_blocking, (event,), {}, event.set)
 
     _lib._blocking_call(_wrap_blocking, (), {}, lambda: None)

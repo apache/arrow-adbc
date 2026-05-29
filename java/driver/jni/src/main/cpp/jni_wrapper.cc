@@ -23,6 +23,7 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <arrow-adbc/adbc.h>
 #include <arrow-adbc/adbc_driver_manager.h>
@@ -96,7 +97,8 @@ void RaiseAdbcException(AdbcStatusCode code, const AdbcError& error) {
   assert(code != ADBC_STATUS_OK);
   throw AdbcException{
       .code = code,
-      .message = std::string(error.message),
+      .message =
+          error.message ? std::string(error.message) : std::string("(unknown error)"),
   };
 }
 
@@ -334,27 +336,34 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_closeStatement(
   }
 }
 
+jobject MakeNativeQueryResult(JNIEnv* env, jlong rows_affected,
+                              struct ArrowArrayStream* out) {
+  jclass native_result_class = RequireImplClass(env, "NativeQueryResult");
+  jmethodID native_result_ctor =
+      RequireMethod(env, native_result_class, "<init>", "(JJ)V");
+  return env->NewObject(native_result_class, native_result_ctor, rows_affected,
+                        static_cast<jlong>(reinterpret_cast<uintptr_t>(out)));
+}
+
+jobject MakeNativeSchemaResult(JNIEnv* env, struct ArrowSchema* schema) {
+  jclass native_result_class = RequireImplClass(env, "NativeSchemaResult");
+  jmethodID native_result_ctor =
+      RequireMethod(env, native_result_class, "<init>", "(J)V");
+  return env->NewObject(native_result_class, native_result_ctor,
+                        static_cast<jlong>(reinterpret_cast<uintptr_t>(schema)));
+}
+
 JNIEXPORT jobject JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementExecuteQuery(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
   try {
     struct AdbcError error = ADBC_ERROR_INIT;
     auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
-    auto out = std::make_unique<struct ArrowArrayStream>();
-    std::memset(out.get(), 0, sizeof(struct ArrowArrayStream));
+    struct ArrowArrayStream out = {};
     int64_t rows_affected = 0;
-    CHECK_ADBC_ERROR(AdbcStatementExecuteQuery(ptr, out.get(), &rows_affected, &error),
-                     error);
+    CHECK_ADBC_ERROR(AdbcStatementExecuteQuery(ptr, &out, &rows_affected, &error), error);
 
-    jclass native_result_class = RequireImplClass(env, "NativeQueryResult");
-    jmethodID native_result_ctor =
-        RequireMethod(env, native_result_class, "<init>", "(JJ)V");
-    jobject object =
-        env->NewObject(native_result_class, native_result_ctor, rows_affected,
-                       static_cast<jlong>(reinterpret_cast<uintptr_t>(out.get())));
-    // Don't release until after we've constructed the object
-    out.release();
-    return object;
+    return MakeNativeQueryResult(env, rows_affected, &out);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
@@ -431,15 +440,661 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementPrepare(
   }
 }
 
-JNIEXPORT void JNICALL
-Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementSetOption(
-    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key, jstring value) {
+JNIEXPORT jobject JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementExecuteSchema(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
   try {
     struct AdbcError error = ADBC_ERROR_INIT;
     auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
+    struct ArrowSchema schema = {};
+    CHECK_ADBC_ERROR(AdbcStatementExecuteSchema(ptr, &schema, &error), error);
+
+    return MakeNativeSchemaResult(env, &schema);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+  return nullptr;
+}
+
+JNIEXPORT jbyteArray JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementGetOptionBytes(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* stmt = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
+
+  std::vector<uint8_t> buf(1024, '\0');
+  size_t length = buf.size();
+  try {
     JniStringView key_str(env, key);
+    CHECK_ADBC_ERROR(
+        AdbcStatementGetOptionBytes(stmt, key_str.value, const_cast<uint8_t*>(buf.data()),
+                                    &length, &error),
+        error);
+    while (length > buf.size()) {
+      // Buffer was too small, resize and try again
+      buf.resize(length);
+      CHECK_ADBC_ERROR(
+          AdbcStatementGetOptionBytes(stmt, key_str.value,
+                                      const_cast<uint8_t*>(buf.data()), &length, &error),
+          error);
+    }
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+    return nullptr;
+  }
+  jbyteArray result = env->NewByteArray(static_cast<jsize>(length));
+  env->SetByteArrayRegion(result, 0, static_cast<jsize>(length),
+                          reinterpret_cast<const jbyte*>(buf.data()));
+  return result;
+}
+
+JNIEXPORT jdouble JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementGetOptionDouble(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* stmt = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
+  double value = 0.0;
+  try {
+    JniStringView key_str(env, key);
+    CHECK_ADBC_ERROR(AdbcStatementGetOptionDouble(stmt, key_str.value, &value, &error),
+                     error);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+    return 0.0;
+  }
+  return static_cast<jdouble>(value);
+}
+
+JNIEXPORT jlong JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementGetOptionLong(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* stmt = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
+  int64_t value = 0;
+  try {
+    JniStringView key_str(env, key);
+    CHECK_ADBC_ERROR(AdbcStatementGetOptionInt(stmt, key_str.value, &value, &error),
+                     error);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+    return 0;
+  }
+  return static_cast<jlong>(value);
+}
+
+JNIEXPORT jstring JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementGetOptionString(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* stmt = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
+
+  std::vector<char> buf(1024, '\0');
+  size_t length = buf.size();
+  try {
+    JniStringView key_str(env, key);
+    CHECK_ADBC_ERROR(
+        AdbcStatementGetOption(stmt, key_str.value, const_cast<char*>(buf.data()),
+                               &length, &error),
+        error);
+    while (length > buf.size()) {
+      // Buffer was too small, resize and try again
+      buf.resize(length);
+      CHECK_ADBC_ERROR(
+          AdbcStatementGetOption(stmt, key_str.value, const_cast<char*>(buf.data()),
+                                 &length, &error),
+          error);
+    }
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+    return nullptr;
+  }
+  return env->NewStringUTF(buf.data());
+}
+
+JNIEXPORT void JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementSetOptionBytes(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key,
+    jbyteArray value) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* stmt = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
+  try {
+    JniStringView key_str(env, key);
+    jsize value_length = env->GetArrayLength(value);
+    std::vector<uint8_t> value_buf(static_cast<size_t>(value_length));
+    env->GetByteArrayRegion(value, 0, value_length,
+                            reinterpret_cast<jbyte*>(value_buf.data()));
+    CHECK_ADBC_ERROR(AdbcStatementSetOptionBytes(stmt, key_str.value, value_buf.data(),
+                                                 value_buf.size(), &error),
+                     error);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+}
+
+JNIEXPORT void JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementSetOptionDouble(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key, jdouble value) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* stmt = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
+  try {
+    JniStringView key_str(env, key);
+    CHECK_ADBC_ERROR(AdbcStatementSetOptionDouble(stmt, key_str.value,
+                                                  static_cast<double>(value), &error),
+                     error);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+}
+
+JNIEXPORT void JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementSetOptionLong(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key, jlong value) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* stmt = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
+  try {
+    JniStringView key_str(env, key);
+    CHECK_ADBC_ERROR(AdbcStatementSetOptionInt(stmt, key_str.value,
+                                               static_cast<int64_t>(value), &error),
+                     error);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+}
+
+JNIEXPORT void JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementSetOptionString(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key, jstring value) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* stmt = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
+  try {
+    JniStringView key_str(env, key);
+    if (value == nullptr) {
+      CHECK_ADBC_ERROR(AdbcStatementSetOption(stmt, key_str.value, nullptr, &error),
+                       error);
+      return;
+    }
     JniStringView value_str(env, value);
-    CHECK_ADBC_ERROR(AdbcStatementSetOption(ptr, key_str.value, value_str.value, &error),
+    CHECK_ADBC_ERROR(AdbcStatementSetOption(stmt, key_str.value, value_str.value, &error),
+                     error);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+}
+
+JNIEXPORT jobject JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetObjects(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jint depth, jstring catalog,
+    jstring db_schema, jstring table_name, jobjectArray table_types,
+    jstring column_name) {
+  try {
+    struct AdbcError error = ADBC_ERROR_INIT;
+    auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
+
+    // Nullable string parameters: null jstring → NULL for C API (meaning "no filter")
+    auto catalog_str = MaybeGetJniString(env, catalog);
+    auto db_schema_str = MaybeGetJniString(env, db_schema);
+    auto table_name_str = MaybeGetJniString(env, table_name);
+    auto column_name_str = MaybeGetJniString(env, column_name);
+
+    // Convert String[] table_types to const char** (NULL-terminated) or NULL
+    std::vector<std::string> table_type_strings;
+    std::vector<const char*> table_type_ptrs;
+    const char** c_table_types = nullptr;
+    if (table_types != nullptr) {
+      jsize len = env->GetArrayLength(table_types);
+      table_type_strings.reserve(len);
+      table_type_ptrs.reserve(len + 1);
+      for (jsize i = 0; i < len; i++) {
+        auto element =
+            reinterpret_cast<jstring>(env->GetObjectArrayElement(table_types, i));
+        table_type_strings.push_back(GetJniString(env, element));
+        table_type_ptrs.push_back(table_type_strings.back().c_str());
+      }
+      table_type_ptrs.push_back(nullptr);  // NULL terminator
+      c_table_types = table_type_ptrs.data();
+    }
+
+    struct ArrowArrayStream out = {};
+
+    CHECK_ADBC_ERROR(
+        AdbcConnectionGetObjects(
+            conn, static_cast<int>(depth), catalog_str ? catalog_str->c_str() : nullptr,
+            db_schema_str ? db_schema_str->c_str() : nullptr,
+            table_name_str ? table_name_str->c_str() : nullptr, c_table_types,
+            column_name_str ? column_name_str->c_str() : nullptr, &out, &error),
+        error);
+
+    return MakeNativeQueryResult(env, -1, &out);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+  return nullptr;
+}
+
+JNIEXPORT jobject JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetInfo(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jintArray info_codes) {
+  try {
+    struct AdbcError error = ADBC_ERROR_INIT;
+    auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
+
+    // Convert jintArray to uint32_t* + length (or NULL + 0 if array is null)
+    const uint32_t* c_info_codes = nullptr;
+    size_t info_codes_length = 0;
+    std::vector<uint32_t> info_codes_vec;
+    if (info_codes != nullptr) {
+      jsize len = env->GetArrayLength(info_codes);
+      info_codes_vec.resize(len);
+      env->GetIntArrayRegion(info_codes, 0, len,
+                             reinterpret_cast<jint*>(info_codes_vec.data()));
+      c_info_codes = info_codes_vec.data();
+      info_codes_length = static_cast<size_t>(len);
+    }
+
+    struct ArrowArrayStream out = {};
+
+    CHECK_ADBC_ERROR(
+        AdbcConnectionGetInfo(conn, c_info_codes, info_codes_length, &out, &error),
+        error);
+
+    return MakeNativeQueryResult(env, -1, &out);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+  return nullptr;
+}
+
+JNIEXPORT jobject JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetTableSchema(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring catalog,
+    jstring db_schema, jstring table_name) {
+  try {
+    struct AdbcError error = ADBC_ERROR_INIT;
+    auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
+
+    auto catalog_str = MaybeGetJniString(env, catalog);
+    auto db_schema_str = MaybeGetJniString(env, db_schema);
+    JniStringView table_name_str(env, table_name);
+
+    struct ArrowSchema schema = {};
+
+    CHECK_ADBC_ERROR(
+        AdbcConnectionGetTableSchema(conn, catalog_str ? catalog_str->c_str() : nullptr,
+                                     db_schema_str ? db_schema_str->c_str() : nullptr,
+                                     table_name_str.value, &schema, &error),
+        error);
+
+    return MakeNativeSchemaResult(env, &schema);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+  return nullptr;
+}
+
+JNIEXPORT jobject JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetTableTypes(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
+  try {
+    struct AdbcError error = ADBC_ERROR_INIT;
+    auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
+
+    struct ArrowArrayStream out = {};
+
+    CHECK_ADBC_ERROR(AdbcConnectionGetTableTypes(conn, &out, &error), error);
+
+    return MakeNativeQueryResult(env, -1, &out);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+  return nullptr;
+}
+
+JNIEXPORT jbyteArray JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetOptionBytes(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
+
+  std::vector<uint8_t> buf(1024, '\0');
+  size_t length = buf.size();
+  try {
+    JniStringView key_str(env, key);
+    CHECK_ADBC_ERROR(
+        AdbcConnectionGetOptionBytes(conn, key_str.value,
+                                     const_cast<uint8_t*>(buf.data()), &length, &error),
+        error);
+    while (length > buf.size()) {
+      // Buffer was too small, resize and try again
+      buf.resize(length);
+      CHECK_ADBC_ERROR(
+          AdbcConnectionGetOptionBytes(conn, key_str.value,
+                                       const_cast<uint8_t*>(buf.data()), &length, &error),
+          error);
+    }
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+    return nullptr;
+  }
+  jbyteArray result = env->NewByteArray(static_cast<jsize>(length));
+  env->SetByteArrayRegion(result, 0, static_cast<jsize>(length),
+                          reinterpret_cast<const jbyte*>(buf.data()));
+  return result;
+}
+
+JNIEXPORT jdouble JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetOptionDouble(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
+  double value = 0.0;
+  try {
+    JniStringView key_str(env, key);
+    CHECK_ADBC_ERROR(AdbcConnectionGetOptionDouble(conn, key_str.value, &value, &error),
+                     error);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+    return 0.0;
+  }
+  return static_cast<jdouble>(value);
+}
+
+JNIEXPORT jlong JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetOptionLong(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
+  int64_t value = 0;
+  try {
+    JniStringView key_str(env, key);
+    CHECK_ADBC_ERROR(AdbcConnectionGetOptionInt(conn, key_str.value, &value, &error),
+                     error);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+    return 0;
+  }
+  return static_cast<jlong>(value);
+}
+
+JNIEXPORT jstring JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetOptionString(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
+
+  std::vector<char> buf(1024, '\0');
+  size_t length = buf.size();
+  try {
+    JniStringView key_str(env, key);
+    CHECK_ADBC_ERROR(
+        AdbcConnectionGetOption(conn, key_str.value, const_cast<char*>(buf.data()),
+                                &length, &error),
+        error);
+    while (length > buf.size()) {
+      // Buffer was too small, resize and try again
+      buf.resize(length);
+      CHECK_ADBC_ERROR(
+          AdbcConnectionGetOption(conn, key_str.value, const_cast<char*>(buf.data()),
+                                  &length, &error),
+          error);
+    }
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+    return nullptr;
+  }
+  return env->NewStringUTF(buf.data());
+}
+
+JNIEXPORT void JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionSetOptionBytes(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key,
+    jbyteArray value) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
+  try {
+    JniStringView key_str(env, key);
+    jsize value_length = env->GetArrayLength(value);
+    std::vector<uint8_t> value_buf(static_cast<size_t>(value_length));
+    env->GetByteArrayRegion(value, 0, value_length,
+                            reinterpret_cast<jbyte*>(value_buf.data()));
+    CHECK_ADBC_ERROR(AdbcConnectionSetOptionBytes(conn, key_str.value, value_buf.data(),
+                                                  value_buf.size(), &error),
+                     error);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+}
+
+JNIEXPORT void JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionSetOptionDouble(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key, jdouble value) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
+  try {
+    JniStringView key_str(env, key);
+    CHECK_ADBC_ERROR(AdbcConnectionSetOptionDouble(conn, key_str.value,
+                                                   static_cast<double>(value), &error),
+                     error);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+}
+
+JNIEXPORT void JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionSetOptionLong(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key, jlong value) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
+  try {
+    JniStringView key_str(env, key);
+    CHECK_ADBC_ERROR(AdbcConnectionSetOptionInt(conn, key_str.value,
+                                                static_cast<int64_t>(value), &error),
+                     error);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+}
+
+JNIEXPORT void JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionSetOptionString(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key, jstring value) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
+  try {
+    JniStringView key_str(env, key);
+    if (value == nullptr) {
+      CHECK_ADBC_ERROR(AdbcConnectionSetOption(conn, key_str.value, nullptr, &error),
+                       error);
+      return;
+    }
+    JniStringView value_str(env, value);
+    CHECK_ADBC_ERROR(
+        AdbcConnectionSetOption(conn, key_str.value, value_str.value, &error), error);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+}
+
+JNIEXPORT void JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionCommit(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
+  try {
+    CHECK_ADBC_ERROR(AdbcConnectionCommit(conn, &error), error);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+}
+
+JNIEXPORT void JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionRollback(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
+  try {
+    CHECK_ADBC_ERROR(AdbcConnectionRollback(conn, &error), error);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+}
+
+JNIEXPORT jbyteArray JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseGetOptionBytes(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* db = reinterpret_cast<struct AdbcDatabase*>(static_cast<uintptr_t>(handle));
+
+  std::vector<uint8_t> buf(1024, '\0');
+  size_t length = buf.size();
+  try {
+    JniStringView key_str(env, key);
+    CHECK_ADBC_ERROR(
+        AdbcDatabaseGetOptionBytes(db, key_str.value, const_cast<uint8_t*>(buf.data()),
+                                   &length, &error),
+        error);
+    while (length > buf.size()) {
+      // Buffer was too small, resize and try again
+      buf.resize(length);
+      CHECK_ADBC_ERROR(
+          AdbcDatabaseGetOptionBytes(db, key_str.value, const_cast<uint8_t*>(buf.data()),
+                                     &length, &error),
+          error);
+    }
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+    return nullptr;
+  }
+  jbyteArray result = env->NewByteArray(static_cast<jsize>(length));
+  env->SetByteArrayRegion(result, 0, static_cast<jsize>(length),
+                          reinterpret_cast<const jbyte*>(buf.data()));
+  return result;
+}
+
+JNIEXPORT jdouble JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseGetOptionDouble(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* db = reinterpret_cast<struct AdbcDatabase*>(static_cast<uintptr_t>(handle));
+  double value = 0.0;
+  try {
+    JniStringView key_str(env, key);
+    CHECK_ADBC_ERROR(AdbcDatabaseGetOptionDouble(db, key_str.value, &value, &error),
+                     error);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+    return 0.0;
+  }
+  return static_cast<jdouble>(value);
+}
+
+JNIEXPORT jlong JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseGetOptionLong(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* db = reinterpret_cast<struct AdbcDatabase*>(static_cast<uintptr_t>(handle));
+  int64_t value = 0;
+  try {
+    JniStringView key_str(env, key);
+    CHECK_ADBC_ERROR(AdbcDatabaseGetOptionInt(db, key_str.value, &value, &error), error);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+    return 0;
+  }
+  return static_cast<jlong>(value);
+}
+
+JNIEXPORT jstring JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseGetOptionString(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* db = reinterpret_cast<struct AdbcDatabase*>(static_cast<uintptr_t>(handle));
+
+  std::vector<char> buf(1024, '\0');
+  size_t length = buf.size();
+  try {
+    JniStringView key_str(env, key);
+    CHECK_ADBC_ERROR(
+        AdbcDatabaseGetOption(db, key_str.value, const_cast<char*>(buf.data()), &length,
+                              &error),
+        error);
+    while (length > buf.size()) {
+      // Buffer was too small, resize and try again
+      buf.resize(length);
+      CHECK_ADBC_ERROR(
+          AdbcDatabaseGetOption(db, key_str.value, const_cast<char*>(buf.data()), &length,
+                                &error),
+          error);
+    }
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+    return nullptr;
+  }
+  return env->NewStringUTF(buf.data());
+}
+
+JNIEXPORT void JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseSetOptionBytes(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key,
+    jbyteArray value) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* db = reinterpret_cast<struct AdbcDatabase*>(static_cast<uintptr_t>(handle));
+  try {
+    JniStringView key_str(env, key);
+    jsize value_length = env->GetArrayLength(value);
+    std::vector<uint8_t> value_buf(static_cast<size_t>(value_length));
+    env->GetByteArrayRegion(value, 0, value_length,
+                            reinterpret_cast<jbyte*>(value_buf.data()));
+    CHECK_ADBC_ERROR(AdbcDatabaseSetOptionBytes(db, key_str.value, value_buf.data(),
+                                                value_buf.size(), &error),
+                     error);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+}
+
+JNIEXPORT void JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseSetOptionDouble(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key, jdouble value) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* db = reinterpret_cast<struct AdbcDatabase*>(static_cast<uintptr_t>(handle));
+  try {
+    JniStringView key_str(env, key);
+    CHECK_ADBC_ERROR(AdbcDatabaseSetOptionDouble(db, key_str.value,
+                                                 static_cast<double>(value), &error),
+                     error);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+}
+
+JNIEXPORT void JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseSetOptionLong(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key, jlong value) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* db = reinterpret_cast<struct AdbcDatabase*>(static_cast<uintptr_t>(handle));
+  try {
+    JniStringView key_str(env, key);
+    CHECK_ADBC_ERROR(
+        AdbcDatabaseSetOptionInt(db, key_str.value, static_cast<int64_t>(value), &error),
+        error);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+}
+
+JNIEXPORT void JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseSetOptionString(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key, jstring value) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* db = reinterpret_cast<struct AdbcDatabase*>(static_cast<uintptr_t>(handle));
+  try {
+    JniStringView key_str(env, key);
+    if (value == nullptr) {
+      CHECK_ADBC_ERROR(AdbcDatabaseSetOption(db, key_str.value, nullptr, &error), error);
+      return;
+    }
+    JniStringView value_str(env, value);
+    CHECK_ADBC_ERROR(AdbcDatabaseSetOption(db, key_str.value, value_str.value, &error),
                      error);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);

@@ -71,7 +71,7 @@ function build_drivers {
     echo "=== Setup VCPKG ==="
 
     # Need to install sqlite3 to make CMake be able to find it below
-    "${VCPKG_ROOT}/vcpkg" install libpq sqlite3 \
+    "${VCPKG_ROOT}/vcpkg" install libpq 'sqlite3[dbstat,fts3,fts4,fts5,geopoly,json1,limit,math,rtree,session,snapshot,soundex]' \
           --overlay-triplets "${VCPKG_OVERLAY_TRIPLETS}" \
           --triplet "${VCPKG_DEFAULT_TRIPLET}"
 
@@ -135,10 +135,8 @@ function setup_build_vars {
     fi
     # No PyPy, no Python 3.8, no Python 3.9
     export CIBW_SKIP="pp* cp38-* cp39-* ${CIBW_SKIP}"
-    # Make sure our manylinux version doesn't creep up (this only matters for
-    # the driver manager)
-    export CIBW_MANYLINUX_X86_64_IMAGE="manylinux2014"
-    export CIBW_MANYLINUX_AARCH64_IMAGE="manylinux2014"
+    export CIBW_MANYLINUX_X86_64_IMAGE="manylinux_2_28"
+    export CIBW_MANYLINUX_AARCH64_IMAGE="manylinux_2_28"
 }
 
 function test_packages {

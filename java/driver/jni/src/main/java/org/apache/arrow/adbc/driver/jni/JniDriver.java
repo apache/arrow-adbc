@@ -29,7 +29,40 @@ import org.apache.arrow.memory.BufferAllocator;
 
 /** An ADBC driver wrapping Arrow Flight SQL. */
 public class JniDriver implements AdbcDriver {
+  /**
+   * The driver to load.
+   *
+   * <p>Can be a path to a driver, a name (which will be found via dlopen or equivalent), or a
+   * manifest name (which will be loaded from platform-specific paths).
+   */
   public static final TypedKey<String> PARAM_DRIVER = new TypedKey<>("jni.driver", String.class);
+
+  /** The profile to load. */
+  public static final TypedKey<String> PARAM_PROFILE = new TypedKey<>("jni.profile", String.class);
+
+  /** Additional paths to search for driver manifests. */
+  public static final TypedKey<String> PARAM_MANIFEST_SEARCH_PATH =
+      new TypedKey<>("jni.additional_manifest_search_path_list", String.class);
+
+  /** Additional paths to search for connection profiles. */
+  public static final TypedKey<String> PARAM_PROFILE_SEARCH_PATH =
+      new TypedKey<>("jni.additional_profile_search_path_list", String.class);
+
+  static final TypedKey<Boolean> AUTOCOMMIT =
+      new TypedKey<>("adbc.connection.autocommit", Boolean.class);
+  static final TypedKey<String> ISOLATION_LEVEL =
+      new TypedKey<>("adbc.connection.transaction.isolation_level", String.class);
+  static final TypedKey<Boolean> READONLY =
+      new TypedKey<>("adbc.connection.readonly", Boolean.class);
+  static final String ISOLATION_LEVEL_READ_UNCOMMITTED =
+      "adbc.connection.transaction.isolation.read_uncommitted";
+  static final String ISOLATION_LEVEL_READ_COMMITTED =
+      "adbc.connection.transaction.isolation.read_committed";
+  static final String ISOLATION_LEVEL_REPEATABLE_READ =
+      "adbc.connection.transaction.isolation.repeatable_read";
+  static final String ISOLATION_LEVEL_SNAPSHOT = "adbc.connection.transaction.isolation.snapshot";
+  static final String ISOLATION_LEVEL_SERIALIZABLE =
+      "adbc.connection.transaction.isolation.serializable";
 
   private final BufferAllocator allocator;
 
@@ -39,20 +72,14 @@ public class JniDriver implements AdbcDriver {
 
   @Override
   public AdbcDatabase open(Map<String, Object> parameters) throws AdbcException {
-    String driverName = PARAM_DRIVER.get(parameters);
-    if (driverName == null) {
-      throw AdbcException.invalidArgument(
-          "[JNI] Must provide String " + PARAM_DRIVER + " parameter");
-    }
-
     Map<String, String> nativeParameters = new HashMap<>();
-    nativeParameters.put("driver", driverName);
-
     for (Map.Entry<String, Object> param : parameters.entrySet()) {
-      if (param.getKey().equals(PARAM_DRIVER.getKey())) continue;
-
       if (param.getValue() instanceof String) {
-        nativeParameters.put(param.getKey(), (String) param.getValue());
+        String key = param.getKey();
+        if (key.startsWith("jni.")) {
+          key = key.substring(4);
+        }
+        nativeParameters.put(key, (String) param.getValue());
       } else {
         throw AdbcException.invalidArgument("[jni] only String parameters are supported");
       }

@@ -133,9 +133,10 @@ if __name__ == "__main__":
     # with snowflake.connector.connect(
     #  **CONNECTION_PARAMETERS
     # ) as conn, conn.cursor() as cursor:
-    with adbc_driver_snowflake.dbapi.connect(
-        **ADBC_CONNECTION_PARAMETERS
-    ) as conn, conn.cursor() as cursor:
+    with (
+        adbc_driver_snowflake.dbapi.connect(**ADBC_CONNECTION_PARAMETERS) as conn,
+        conn.cursor() as cursor,
+    ):
         cursor.adbc.statement.set_options(
             **{
                 "adbc.snowflake.rpc.prefetch_concurrency": 4,
@@ -143,9 +144,10 @@ if __name__ == "__main__":
             }
         )
 
-        with open(perf_record_file, "w") as perf_file, open(
-            memory_record_file, "w"
-        ) as memory_file:
+        with (
+            open(perf_record_file, "w") as perf_file,
+            open(memory_record_file, "w") as memory_file,
+        ):
             # task = task_execution_decorator( # snowflake python connector
             #  task_fetch_arrow_batches, perf_file, memory_file)
             # task = task_execution_decorator( # pyodbc
@@ -158,9 +160,10 @@ if __name__ == "__main__":
             )
 
         if can_draw:
-            with open(perf_record_file) as perf_file, open(
-                memory_record_file
-            ) as memory_file:
+            with (
+                open(perf_record_file) as perf_file,
+                open(memory_record_file) as memory_file,
+            ):
                 # sample rate
                 perf_lines = perf_file.readlines()
                 perf_records = [float(line) for line in perf_lines]

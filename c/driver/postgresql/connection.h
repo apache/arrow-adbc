@@ -66,6 +66,25 @@ class PostgresConnection {
   AdbcStatusCode Init(struct AdbcDatabase* database, struct AdbcError* error);
   AdbcStatusCode Release(struct AdbcError* error);
   AdbcStatusCode Rollback(struct AdbcError* error);
+  AdbcStatusCode BeginIngestPartitions(const char* target_catalog,
+                                       const char* target_db_schema,
+                                       const char* target_table, const char* mode,
+                                       struct ArrowSchema* schema,
+                                       struct AdbcIngestHandle* out_handle,
+                                       struct AdbcError* error);
+  AdbcStatusCode WriteIngestPartition(const uint8_t* handle, size_t handle_len,
+                                      struct ArrowArrayStream* data,
+                                      struct AdbcIngestReceipt* out_receipt,
+                                      struct AdbcError* error);
+  AdbcStatusCode CommitIngestPartitions(const uint8_t* handle, size_t handle_len,
+                                        size_t num_receipts, const uint8_t** receipts,
+                                        const size_t* receipt_lens,
+                                        int64_t* rows_affected, struct AdbcError* error);
+  AdbcStatusCode AbortIngestPartitions(const uint8_t* handle, size_t handle_len,
+                                       size_t num_receipts, const uint8_t** receipts,
+                                       const size_t* receipt_lens,
+                                       struct AdbcError* error);
+
   AdbcStatusCode SetOption(const char* key, const char* value, struct AdbcError* error);
   AdbcStatusCode SetOptionBytes(const char* key, const uint8_t* value, size_t length,
                                 struct AdbcError* error);

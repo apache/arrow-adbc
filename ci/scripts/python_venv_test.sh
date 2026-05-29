@@ -38,6 +38,14 @@ name = "SQLite"
 shared = "${sqlite_driver}"
 EOF
 
+    mkdir -p "${scratch}/.venv/etc/adbc/profiles/sqlite/"
+    cat >"${scratch}/.venv/etc/adbc/profiles/sqlite/dev.toml" <<EOF
+profile_version = 1
+driver = "sqlite"
+[Options]
+uri = "file:///tmp/test.db"
+EOF
+
     cat >"${scratch}/test.py" <<EOF
 import adbc_driver_manager.dbapi
 
@@ -65,6 +73,57 @@ EOF
 
     "${scratch}"/.venv/bin/python "${scratch}/test2.py"
     echo "PASSED: failed manifest contains the proper path in the exception"
+
+    cat >"${scratch}/test3.py" <<EOF
+import adbc_driver_manager.dbapi
+
+with adbc_driver_manager.dbapi.connect(profile="sqlite/dev") as con:
+    with con.cursor() as cur:
+        cur.execute("SELECT 1")
+        assert cur.fetchall() == [(1,)]
+EOF
+
+    "${scratch}"/.venv/bin/python "${scratch}/test3.py"
+    test -f /tmp/test.db
+    echo "PASSED: find profile"
+
+    # If we specify the additional path explicitly, then that overrides the
+    # virtualenv path
+    cat >"${scratch}/test4.py" <<EOF
+import adbc_driver_manager.dbapi
+
+db_kwargs = {
+    "additional_profile_search_path_list": "/",
+}
+with adbc_driver_manager.dbapi.connect(profile="sqlite/dev", db_kwargs=db_kwargs) as con:
+    with con.cursor() as cur:
+        cur.execute("SELECT 1")
+        assert cur.fetchall() == [(1,)]
+EOF
+
+    if "${scratch}"/.venv/bin/python "${scratch}/test4.py"; then
+        echo "FAILED: override profile path"
+        exit 1
+    fi
+    echo "PASSED: override profile path"
+
+    cat >"${scratch}/test5.py" <<EOF
+import adbc_driver_manager.dbapi
+
+db_kwargs = {
+    "additional_manifest_search_path_list": "/",
+}
+with adbc_driver_manager.dbapi.connect(driver="sqlite", db_kwargs=db_kwargs) as con:
+    with con.cursor() as cur:
+        cur.execute("SELECT 1")
+        assert cur.fetchall() == [(1,)]
+EOF
+
+    if "${scratch}"/.venv/bin/python "${scratch}/test5.py"; then
+        echo "FAILED: override manifest path"
+        exit 1
+    fi
+    echo "PASSED: override manifest path"
 }
 
 main "$@"

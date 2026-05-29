@@ -221,12 +221,12 @@ namespace Apache.Arrow.Adbc.Tests.Client
 
             if (!string.IsNullOrEmpty(connectionStringExample.CommandTimeoutProperty))
             {
-                Assert.True(cmd.AdbcCommandTimeoutProperty == connectionStringExample.CommandTimeoutProperty);
-                Assert.True(cmd.CommandTimeout == connectionStringExample.CommandTimeout);
+                Assert.Equal(connectionStringExample.CommandTimeoutProperty, cmd.AdbcCommandTimeoutProperty);
+                Assert.Equal(connectionStringExample.CommandTimeout, cmd.CommandTimeout);
             }
             else
             {
-                Assert.Throws<InvalidOperationException>(() => cmd.AdbcCommandTimeoutProperty);
+                Assert.Null(cmd.AdbcCommandTimeoutProperty);
             }
         }
     }

@@ -47,7 +47,7 @@ import time
 import typing
 import warnings
 import weakref
-from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+from typing import Any, Dict, List, Literal, Mapping, NoReturn, Optional, Tuple, Union
 
 try:
     import pyarrow
@@ -183,12 +183,13 @@ else:
 
 
 def connect(
-    driver: Union[str, pathlib.Path],
+    driver: Optional[Union[str, pathlib.Path]] = None,
     uri: Optional[str] = None,
     *,
+    profile: Optional[str] = None,
     entrypoint: Optional[str] = None,
-    db_kwargs: Optional[Dict[str, Union[str, pathlib.Path]]] = None,
-    conn_kwargs: Optional[Dict[str, str]] = None,
+    db_kwargs: Optional[Mapping[str, Union[str, pathlib.Path]]] = None,
+    conn_kwargs: Optional[Mapping[str, str]] = None,
     autocommit=False,
 ) -> "Connection":
     """
@@ -217,10 +218,17 @@ def connect(
           where the scheme happens to be the same as the driver name (so
           PostgreSQL works, but not SQLite, for example, as SQLite uses
           ``file:`` URIs).
+
+        - If the URI begins with ``profile://``, then a connection profile
+          will be loaded instead. See :doc:`/format/connection_profiles`.
     uri
         The "uri" parameter to the database (if applicable).  This is
         equivalent to passing it in ``db_kwargs`` but is slightly cleaner.
         If given, takes precedence over any value in ``db_kwargs``.
+    profile
+        A connection profile to load. Loading ``profile="profile-name"`` is
+        the same as loading the URI ``profile://profile-name``. See
+        :doc:`/format/connection_profiles`.
     entrypoint
         The driver-specific entrypoint, if different than the default.
     db_kwargs
@@ -238,15 +246,21 @@ def connect(
     conn = None
 
     db_kwargs = dict(db_kwargs or {})
-    db_kwargs["driver"] = driver
+    if driver:
+        db_kwargs["driver"] = driver
     if uri:
         db_kwargs["uri"] = uri
     if entrypoint:
         db_kwargs["entrypoint"] = entrypoint
+    if profile:
+        db_kwargs["profile"] = profile
     if conn_kwargs is None:
         conn_kwargs = {}
     # N.B. treating uri = "postgresql://..." as driver = "postgresql", uri =
     # "..." is handled at the C driver manager layer
+
+    if all(k not in db_kwargs for k in ("driver", "uri", "profile")):
+        raise TypeError("Must specify at least one of 'driver', 'uri', or 'profile'")
 
     try:
         db = _lib.AdbcDatabase(**db_kwargs)
@@ -326,7 +340,7 @@ class Connection(_Closeable):
         self,
         db: Union[_lib.AdbcDatabase, _SharedDatabase],
         conn: _lib.AdbcConnection,
-        conn_kwargs: Optional[Dict[str, str]] = None,
+        conn_kwargs: Optional[Mapping[str, str]] = None,
         *,
         autocommit=False,
         backend: Optional[_dbapi_backend.DbapiBackend] = None,
@@ -353,8 +367,7 @@ class Connection(_Closeable):
             except _lib.NotSupportedError:
                 self._commit_supported = False
                 warnings.warn(
-                    "Cannot disable autocommit; "
-                    "conn will not be DB-API 2.0 compliant",
+                    "Cannot disable autocommit; conn will not be DB-API 2.0 compliant",
                     category=Warning,
                 )
                 self._autocommit = True
@@ -400,7 +413,7 @@ class Connection(_Closeable):
     def cursor(
         self,
         *,
-        adbc_stmt_kwargs: Optional[Dict[str, Any]] = None,
+        adbc_stmt_kwargs: Optional[Mapping[str, Any]] = None,
     ) -> "Cursor":
         """
         Create a new cursor for querying the database.
@@ -433,7 +446,7 @@ class Connection(_Closeable):
         operation: Union[bytes, str],
         parameters=None,
         *,
-        adbc_stmt_kwargs: Optional[Dict[str, Any]] = None,
+        adbc_stmt_kwargs: Optional[Mapping[str, Any]] = None,
     ) -> "Cursor":
         """
         Execute a query on a new cursor.
@@ -539,6 +552,100 @@ class Connection(_Closeable):
                 table_types=table_types_filter,
                 column_name=column_name_filter,
             ),
+            self._conn.cancel,
+        )
+        return self._backend.import_array_stream(handle)
+
+    def adbc_get_statistics(
+        self,
+        *,
+        catalog_filter: Optional[str] = None,
+        db_schema_filter: Optional[str] = None,
+        table_name_filter: Optional[str] = None,
+        approximate: bool = True,
+    ) -> "pyarrow.RecordBatchReader":
+        """
+        Get statistics about the data distribution of table(s).
+
+        The result is an Arrow dataset with a nested structure containing
+        table statistics. The schema includes:
+
+        - catalog_name (utf8)
+        - catalog_db_schemas (list of structs)
+
+          - db_schema_name (utf8)
+          - db_schema_statistics (list of structs)
+
+            - table_name (utf8)
+            - column_name (utf8, nullable) - null if applies to entire table
+            - statistic_key (int16) - dictionary-encoded statistic name
+            - statistic_value (dense union) - int64, uint64, float64, or binary
+            - statistic_is_approximate (bool)
+
+        Parameters
+        ----------
+        catalog_filter
+            An optional filter on the catalog names. May be a search pattern.
+        db_schema_filter
+            An optional filter on the database schema names. May be a search pattern.
+        table_name_filter
+            An optional filter on the table names. May be a search pattern.
+        approximate
+            If True (default), allow approximate or cached statistics.
+            If False, request exact statistics, which may be expensive or
+            unsupported. Note that drivers may still return approximate values
+            as indicated by the statistic_is_approximate column.
+
+        Returns
+        -------
+        pyarrow.RecordBatchReader
+            A reader for the statistics data.
+
+        Notes
+        -----
+        This is an extension and not part of the DBAPI standard.
+
+        Available since ADBC API revision 1.1.0. Not all drivers support
+        this method. If unsupported, a NotSupportedError will be raised.
+        """
+        handle = _blocking_call(
+            self._conn.get_statistics,
+            (),
+            dict(
+                catalog=catalog_filter,
+                db_schema=db_schema_filter,
+                table_name=table_name_filter,
+                approximate=approximate,
+            ),
+            self._conn.cancel,
+        )
+        return self._backend.import_array_stream(handle)
+
+    def adbc_get_statistic_names(self) -> "pyarrow.RecordBatchReader":
+        """
+        Get a list of custom statistic names defined by this driver.
+
+        The result contains two columns:
+        - statistic_name (utf8): The human-readable name of the statistic
+        - statistic_key (int16): The numeric key used in get_statistics results
+
+        Returns
+        -------
+        pyarrow.RecordBatchReader
+            A reader for the statistic names.
+
+        Notes
+        -----
+        This is an extension and not part of the DBAPI standard.
+
+        Available since ADBC API revision 1.1.0. Standard ADBC statistics
+        (keys 0-1023) are not included in this result - only driver-specific
+        statistics.
+        """
+        handle = _blocking_call(
+            self._conn.get_statistic_names,
+            (),
+            {},
             self._conn.cancel,
         )
         return self._backend.import_array_stream(handle)
@@ -665,7 +772,7 @@ class Cursor(_Closeable):
     def __init__(
         self,
         conn: Connection,
-        adbc_stmt_kwargs: Optional[Dict[str, Any]] = None,
+        adbc_stmt_kwargs: Optional[Mapping[str, Any]] = None,
         *,
         dbapi_backend: Optional[_dbapi_backend.DbapiBackend] = None,
     ) -> None:
@@ -685,7 +792,7 @@ class Cursor(_Closeable):
         if adbc_stmt_kwargs:
             self._stmt.set_options(**adbc_stmt_kwargs)
 
-    def _clear(self):
+    def _clear(self) -> None:
         if self._results is not None:
             self._results.close()
             self._results = None
@@ -729,11 +836,11 @@ class Cursor(_Closeable):
             return self._results.rownumber
         return None
 
-    def callproc(self, procname, parameters):
+    def callproc(self, procname, parameters) -> NoReturn:
         """Call a stored procedure (not supported)."""
         raise NotSupportedError("Cursor.callproc")
 
-    def close(self):
+    def close(self) -> None:
         """Close the cursor and free resources."""
         if self._closed:
             return
@@ -920,22 +1027,22 @@ class Cursor(_Closeable):
             )
         return self._results.fetchall()
 
-    def next(self):
+    def next(self) -> tuple:
         """Fetch the next row, or raise StopIteration."""
         row = self.fetchone()
         if row is None:
             raise StopIteration
         return row
 
-    def nextset(self):
+    def nextset(self) -> NoReturn:
         """Move to the next available result set (not supported)."""
         raise NotSupportedError("Cursor.nextset")
 
-    def setinputsizes(self, sizes):
+    def setinputsizes(self, sizes) -> None:
         """Preallocate memory for the parameters (no-op)."""
         pass
 
-    def setoutputsize(self, size, column=None):
+    def setoutputsize(self, size, column=None) -> None:
         """Preallocate memory for the result set (no-op)."""
         pass
 
@@ -944,10 +1051,10 @@ class Cursor(_Closeable):
             self.close()
             _warn_unclosed("adbc_driver_manager.dbapi.Cursor")
 
-    def __iter__(self):
+    def __iter__(self) -> "Self":
         return self
 
-    def __next__(self):
+    def __next__(self) -> tuple:
         return self.next()
 
     # ------------------------------------------------------------
@@ -1454,7 +1561,7 @@ _PYTEST_ENV_VAR = "PYTEST_CURRENT_TEST"
 _ADBC_ENV_VAR = "_ADBC_DRIVER_MANAGER_WARN_UNCLOSED_RESOURCE"
 
 
-def _warn_unclosed(name):
+def _warn_unclosed(name) -> None:
     if _PYTEST_ENV_VAR in os.environ or os.environ.get(_ADBC_ENV_VAR) == "1":
         warnings.warn(
             f"A {name} was not explicitly close()d, which may leak "
@@ -1465,7 +1572,7 @@ def _warn_unclosed(name):
         )
 
 
-def _is_arrow_data(data):
+def _is_arrow_data(data) -> bool:
     # No need to check for PyArrow types explicitly since they support the
     # dunder methods
     return (
@@ -1476,7 +1583,7 @@ def _is_arrow_data(data):
     )
 
 
-def _requires_pyarrow():
+def _requires_pyarrow() -> None:
     if not _has_pyarrow:
         raise ProgrammingError(
             "This API requires PyArrow to be installed",

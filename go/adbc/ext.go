@@ -45,21 +45,6 @@ type OTelTracingInit interface {
 	InitTracing(ctx context.Context, driverName string, driverVersion string) error
 }
 
-// DriverWithContext is an extension interface to allow the creation of a database
-// by providing an existing [context.Context] to initialize OpenTelemetry tracing.
-// It is similar to [database/sql.Driver] taking a map of keys and values as options
-// to initialize a [Connection] to the database. Any common connection
-// state can live in the Driver itself, for example an in-memory database
-// can place ownership of the actual database in this driver.
-//
-// Any connection specific options should be set using SetOptions before
-// calling Open.
-//
-// EXPERIMENTAL. Not formally part of the ADBC APIs.
-type DriverWithContext interface {
-	NewDatabaseWithContext(ctx context.Context, opts map[string]string) (Database, error)
-}
-
 // OTelTracing is an interface that supports instrumentation of [OpenTelementry tracing].
 //
 // EXPERIMENTAL. Not formally part of the ADBC APIs.
@@ -148,6 +133,73 @@ func IngestStream(ctx context.Context, cnxn Connection, reader array.RecordReade
 	// Set driver specific options
 	for k, v := range opt.Extra {
 		if err = stmt.SetOption(k, v); err != nil {
+			return -1, fmt.Errorf("error during ingestion: SetOption(%s=%s): %w", k, v, err)
+		}
+	}
+
+	// Execute the update
+	var count int64
+	count, err = stmt.ExecuteUpdate(ctx)
+	if err != nil {
+		return -1, fmt.Errorf("error during ingestion: ExecuteUpdate: %w", err)
+	}
+
+	return count, nil
+}
+
+// IngestStreamContext is a helper for executing a bulk ingestion with context support.
+// This is a wrapper around the five-step boilerplate of NewStatement, SetOption, Bind,
+// Execute, and Close, with context propagation throughout.
+//
+// This version uses ConnectionContext and StatementContext for uniform context propagation.
+// For backward compatibility with non-context connections, use IngestStream.
+//
+// This is not part of the ADBC API specification.
+//
+// Since ADBC API revision 1.2.0 (Experimental).
+func IngestStreamContext(ctx context.Context, cnxn ConnectionWithContext, reader array.RecordReader, targetTable, ingestMode string, opt IngestStreamOptions) (int64, error) {
+	// Create a new statement
+	stmt, err := cnxn.NewStatement(ctx)
+	if err != nil {
+		return -1, fmt.Errorf("error during ingestion: NewStatement: %w", err)
+	}
+	defer func() {
+		err = errors.Join(err, stmt.Close(ctx))
+	}()
+
+	// Bind the record batch stream
+	if err = stmt.BindStream(ctx, reader); err != nil {
+		return -1, fmt.Errorf("error during ingestion: BindStream: %w", err)
+	}
+
+	// Set required options
+	if err = stmt.SetOption(ctx, OptionKeyIngestTargetTable, targetTable); err != nil {
+		return -1, fmt.Errorf("error during ingestion: SetOption(target_table=%s): %w", targetTable, err)
+	}
+	if err = stmt.SetOption(ctx, OptionKeyIngestMode, ingestMode); err != nil {
+		return -1, fmt.Errorf("error during ingestion: SetOption(mode=%s): %w", ingestMode, err)
+	}
+
+	// Set other options if provided
+	if opt.Catalog != "" {
+		if err = stmt.SetOption(ctx, OptionValueIngestTargetCatalog, opt.Catalog); err != nil {
+			return -1, fmt.Errorf("error during ingestion: target_catalog=%s: %w", opt.Catalog, err)
+		}
+	}
+	if opt.DBSchema != "" {
+		if err = stmt.SetOption(ctx, OptionValueIngestTargetDBSchema, opt.DBSchema); err != nil {
+			return -1, fmt.Errorf("error during ingestion: target_db_schema=%s: %w", opt.DBSchema, err)
+		}
+	}
+	if opt.Temporary {
+		if err = stmt.SetOption(ctx, OptionValueIngestTemporary, OptionValueEnabled); err != nil {
+			return -1, fmt.Errorf("error during ingestion: temporary=true: %w", err)
+		}
+	}
+
+	// Set driver specific options
+	for k, v := range opt.Extra {
+		if err = stmt.SetOption(ctx, k, v); err != nil {
 			return -1, fmt.Errorf("error during ingestion: SetOption(%s=%s): %w", k, v, err)
 		}
 	}

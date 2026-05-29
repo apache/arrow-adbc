@@ -28,9 +28,9 @@ ADBC Driver Manager and Manifests
 
 There are two ways to load a driver with the driver manager:
 
-1. Directly specifying the dynamic library to load
-2. Referring to a driver manifest file which contains metadata along with the
-   location of the dynamic library to be loaded
+1. Directly specifying the dynamic library to load.
+2. Referring to a :term:`driver manifest` file which contains metadata along
+   with the location of the dynamic library to be loaded.
 
 With either method, you specify the dynamic library or driver manifest as the
 ``driver`` option to the driver manager or you can use an explicit function for
@@ -499,7 +499,7 @@ would happen for ODBC drivers. The search for a manifest on Windows would be the
      * ``entrypoint`` - the entrypoint to use for the driver if a non-default entrypoint is needed
      * ``driver`` - the path to the driver shared library
 
-   * If no registry key is found, then the directory ``%LOCAL_APPDATA%\ADBC\Drivers`` is searched
+   * If no registry key is found, then the directory ``%LOCALAPPDATA%\ADBC\Drivers`` is searched
 
 #. If the ``LOAD_FLAG_SEARCH_SYSTEM`` load option is set, the driver manager will search for a system-level configuration
 

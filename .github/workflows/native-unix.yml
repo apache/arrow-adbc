@@ -141,7 +141,7 @@ jobs:
           cd
           tar czf ~/local.tgz local
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: driver-manager-${{ matrix.os }}
           retention-days: 3
@@ -357,7 +357,7 @@ jobs:
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: driver-manager-${{ matrix.os }}
           path: "~"
@@ -495,7 +495,7 @@ jobs:
           cache: true
           cache-dependency-path: go/adbc/go.sum
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: driver-manager-${{ matrix.os }}
           path: "~"
@@ -572,7 +572,7 @@ jobs:
           cache: true
           cache-dependency-path: go/adbc/go.sum
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: driver-manager-${{ matrix.os }}
           path: "~"
@@ -589,6 +589,7 @@ jobs:
           ADBC_USE_UBSAN: "0"
         run: |
           export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/x64/bin:$PATH
+          export _ADBC_IS_CONDA=1
           ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Build Panic Dummy
         run: |
@@ -603,6 +604,8 @@ jobs:
         run: |
           cargo build -padbc_dummy
       - name: Test Python Driver Manager
+        env:
+          PYTEST_ADDOPTS: "--run-system"
         run: |
           if [[ $(uname) = "Darwin" ]]; then
             export PANICDUMMY_LIBRARY_PATH=$(pwd)/go/adbc/pkg/libadbc_driver_panicdummy.dylib
@@ -689,7 +692,7 @@ jobs:
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: driver-manager-${{ matrix.os }}
           path: "~"
@@ -711,7 +714,7 @@ jobs:
         run: |
           ./ci/scripts/docs_build.sh "$(pwd)"
       - name: Archive docs
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: docs
           retention-days: 2

@@ -128,7 +128,8 @@ class Statement : public BaseStatement<Derived> {
                                           " Cannot ingest with result set")
                   .ToAdbc(error);
             }
-            RAISE_RESULT(error, int64_t rows, impl().ExecuteIngestImpl(state));
+            int64_t rows;
+            RAISE_RESULT(error, rows, impl().ExecuteIngestImpl(state));
             if (rows_affected) {
               *rows_affected = rows;
             }
@@ -234,7 +235,8 @@ class Statement : public BaseStatement<Derived> {
       return std::get<IngestState>(state_);
     };
     if (key == ADBC_INGEST_OPTION_MODE) {
-      RAISE_RESULT(error, auto mode, value.AsString());
+      std::string_view mode;
+      RAISE_RESULT(error, mode, value.AsString());
       if (mode == ADBC_INGEST_OPTION_MODE_APPEND) {
         auto& state = ensure_ingest();
         state.table_does_not_exist_ = TableDoesNotExist::kFail;
@@ -259,7 +261,8 @@ class Statement : public BaseStatement<Derived> {
       return ADBC_STATUS_OK;
     } else if (key == ADBC_INGEST_OPTION_TARGET_CATALOG) {
       if (value.has_value()) {
-        RAISE_RESULT(error, auto catalog, value.AsString());
+        std::string_view catalog;
+        RAISE_RESULT(error, catalog, value.AsString());
         ensure_ingest().target_catalog = catalog;
       } else {
         ensure_ingest().target_catalog = std::nullopt;
@@ -267,18 +270,21 @@ class Statement : public BaseStatement<Derived> {
       return ADBC_STATUS_OK;
     } else if (key == ADBC_INGEST_OPTION_TARGET_DB_SCHEMA) {
       if (value.has_value()) {
-        RAISE_RESULT(error, auto schema, value.AsString());
+        std::string_view schema;
+        RAISE_RESULT(error, schema, value.AsString());
         ensure_ingest().target_schema = schema;
       } else {
         ensure_ingest().target_schema = std::nullopt;
       }
       return ADBC_STATUS_OK;
     } else if (key == ADBC_INGEST_OPTION_TARGET_TABLE) {
-      RAISE_RESULT(error, auto table, value.AsString());
+      std::string_view table;
+      RAISE_RESULT(error, table, value.AsString());
       ensure_ingest().target_table = table;
       return ADBC_STATUS_OK;
     } else if (key == ADBC_INGEST_OPTION_TEMPORARY) {
-      RAISE_RESULT(error, auto temporary, value.AsBool());
+      bool temporary;
+      RAISE_RESULT(error, temporary, value.AsBool());
       ensure_ingest().temporary = temporary;
       return ADBC_STATUS_OK;
     }

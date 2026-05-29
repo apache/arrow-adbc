@@ -15,7 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import enum
 import pathlib
+import re
 
 import pyarrow
 import pytest
@@ -40,27 +42,27 @@ def _import(handle):
     raise NotImplementedError(f"Importing {handle!r}")
 
 
-def _bind(stmt, batch):
+def _bind(stmt, batch) -> None:
     array = adbc_driver_manager.ArrowArrayHandle()
     schema = adbc_driver_manager.ArrowSchemaHandle()
     batch._export_to_c(array.address, schema.address)
     stmt.bind(array, schema)
 
 
-def test_version():
+def test_version() -> None:
     assert adbc_driver_manager.__version__  # type:ignore
 
 
-def test_database_init():
+def test_database_init_no_option() -> None:
     with pytest.raises(
         adbc_driver_manager.ProgrammingError,
-        match=".*Must provide 'driver' parameter.*",
+        match=".*Must set 'driver' option.*",
     ):
         with adbc_driver_manager.AdbcDatabase():
             pass
 
 
-def test_error_mapping():
+def test_error_mapping() -> None:
     import adbc_driver_manager._lib as _lib
     from adbc_driver_manager import AdbcStatusCode
 
@@ -98,8 +100,83 @@ def test_error_mapping():
         assert exc_info.value.sqlstate == "X0000"
 
 
+class ExampleEnum(enum.Enum):
+    BAR = "BAR"
+
+
 @pytest.mark.sqlite
-def test_database_set_options(sqlite_raw):
+def test_database_init(tmp_path) -> None:
+    option = "adbc.sqlite.query.batch_rows"
+    path = (tmp_path / "db.sqlite").as_uri()
+    with adbc_driver_manager.AdbcDatabase(
+        driver="adbc_driver_sqlite", uri=path, **{option: 42}
+    ) as db:
+        assert db.get_option_int(option) == 42
+
+    # test different data types
+    with pytest.raises(
+        adbc_driver_manager.NotSupportedError,
+        match=re.escape("Unknown database option foo=1.0"),
+    ):
+        with adbc_driver_manager.AdbcDatabase(
+            driver="adbc_driver_sqlite",
+            **{"foo": 1.0},
+        ):
+            pass
+
+    with pytest.raises(
+        adbc_driver_manager.NotSupportedError,
+        match=re.escape("Unknown database option foo=(3 bytes)"),
+    ):
+        with adbc_driver_manager.AdbcDatabase(
+            driver="adbc_driver_sqlite",
+            **{"foo": b"b\0r"},
+        ):
+            pass
+
+    with pytest.raises(
+        adbc_driver_manager.NotSupportedError,
+        match=re.escape("Unknown database option foo='true'"),
+    ):
+        with adbc_driver_manager.AdbcDatabase(
+            driver="adbc_driver_sqlite",
+            **{"foo": True},
+        ):
+            pass
+
+    with pytest.raises(
+        adbc_driver_manager.NotSupportedError,
+        match=re.escape("Unknown database option foo='false'"),
+    ):
+        with adbc_driver_manager.AdbcDatabase(
+            driver="adbc_driver_sqlite",
+            **{"foo": False},
+        ):
+            pass
+
+    with pytest.raises(
+        adbc_driver_manager.NotSupportedError,
+        match=re.escape("Unknown database option foo='"),
+    ):
+        with adbc_driver_manager.AdbcDatabase(
+            driver="adbc_driver_sqlite",
+            **{"foo": pathlib.Path("/tmp")},
+        ):
+            pass
+
+    with pytest.raises(
+        adbc_driver_manager.NotSupportedError,
+        match=re.escape("Unknown database option foo='BAR'"),
+    ):
+        with adbc_driver_manager.AdbcDatabase(
+            driver="adbc_driver_sqlite",
+            **{"foo": ExampleEnum.BAR},
+        ):
+            pass
+
+
+@pytest.mark.sqlite
+def test_database_set_options(sqlite_raw) -> None:
     db, _ = sqlite_raw
     with pytest.raises(
         adbc_driver_manager.NotSupportedError,
@@ -115,7 +192,73 @@ def test_database_set_options(sqlite_raw):
 
 
 @pytest.mark.sqlite
-def test_connection_get_info(sqlite_raw):
+def test_connection_init() -> None:
+    option = "adbc.sqlite.query.batch_rows"
+    with adbc_driver_manager.AdbcDatabase(driver="adbc_driver_sqlite") as db:
+        with adbc_driver_manager.AdbcConnection(db, **{option: 42}) as conn:
+            assert conn.get_option_int(option) == 42
+
+        # test different data types
+        with pytest.raises(
+            adbc_driver_manager.NotSupportedError,
+            match=re.escape("Unknown connection option foo=1.0"),
+        ):
+            with adbc_driver_manager.AdbcConnection(db, **{"foo": 1.0}):
+                pass
+
+        with pytest.raises(
+            adbc_driver_manager.NotSupportedError,
+            match=re.escape("Unknown connection option foo=(3 bytes)"),
+        ):
+            with adbc_driver_manager.AdbcConnection(
+                db,
+                **{"foo": b"b\0r"},
+            ):
+                pass
+
+        with pytest.raises(
+            adbc_driver_manager.NotSupportedError,
+            match=re.escape("Unknown connection option foo='true'"),
+        ):
+            with adbc_driver_manager.AdbcConnection(
+                db,
+                **{"foo": True},
+            ):
+                pass
+
+        with pytest.raises(
+            adbc_driver_manager.NotSupportedError,
+            match=re.escape("Unknown connection option foo='false'"),
+        ):
+            with adbc_driver_manager.AdbcConnection(
+                db,
+                **{"foo": False},
+            ):
+                pass
+
+        with pytest.raises(
+            adbc_driver_manager.NotSupportedError,
+            match=re.escape("Unknown connection option foo='"),
+        ):
+            with adbc_driver_manager.AdbcConnection(
+                db,
+                **{"foo": pathlib.Path("/tmp")},
+            ):
+                pass
+
+        with pytest.raises(
+            adbc_driver_manager.NotSupportedError,
+            match=re.escape("Unknown connection option foo='BAR'"),
+        ):
+            with adbc_driver_manager.AdbcConnection(
+                db,
+                **{"foo": ExampleEnum.BAR},
+            ):
+                pass
+
+
+@pytest.mark.sqlite
+def test_connection_get_info(sqlite_raw) -> None:
     _, conn = sqlite_raw
     codes = [
         adbc_driver_manager.AdbcInfoCode.VENDOR_NAME.value,
@@ -140,7 +283,7 @@ def test_connection_get_info(sqlite_raw):
 
 
 @pytest.mark.sqlite
-def test_connection_get_objects(sqlite_raw):
+def test_connection_get_objects(sqlite_raw) -> None:
     _, conn = sqlite_raw
     data = pyarrow.record_batch(
         [
@@ -169,7 +312,7 @@ def test_connection_get_objects(sqlite_raw):
 
 
 @pytest.mark.sqlite
-def test_connection_get_table_schema(sqlite_raw):
+def test_connection_get_table_schema(sqlite_raw) -> None:
     _, conn = sqlite_raw
     data = pyarrow.record_batch(
         [
@@ -188,7 +331,7 @@ def test_connection_get_table_schema(sqlite_raw):
 
 
 @pytest.mark.sqlite
-def test_connection_get_table_types(sqlite_raw):
+def test_connection_get_table_types(sqlite_raw) -> None:
     _, conn = sqlite_raw
     handle = conn.get_table_types()
     table = _import(handle).read_all()
@@ -196,14 +339,14 @@ def test_connection_get_table_types(sqlite_raw):
 
 
 @pytest.mark.sqlite
-def test_connection_read_partition(sqlite_raw):
+def test_connection_read_partition(sqlite_raw) -> None:
     _, conn = sqlite_raw
     with pytest.raises(adbc_driver_manager.NotSupportedError):
         conn.read_partition(b"")
 
 
 @pytest.mark.sqlite
-def test_connection_set_options(sqlite_raw):
+def test_connection_set_options(sqlite_raw) -> None:
     _, conn = sqlite_raw
     with pytest.raises(
         adbc_driver_manager.NotSupportedError,
@@ -219,7 +362,7 @@ def test_connection_set_options(sqlite_raw):
 
 
 @pytest.mark.sqlite
-def test_statement_query(sqlite_raw):
+def test_statement_query(sqlite_raw) -> None:
     _, conn = sqlite_raw
     with adbc_driver_manager.AdbcStatement(conn) as stmt:
         stmt.set_sql_query("SELECT 1")
@@ -229,7 +372,7 @@ def test_statement_query(sqlite_raw):
 
 
 @pytest.mark.sqlite
-def test_statement_prepared(sqlite_raw):
+def test_statement_prepared(sqlite_raw) -> None:
     _, conn = sqlite_raw
     with adbc_driver_manager.AdbcStatement(conn) as stmt:
         stmt.set_sql_query("SELECT ?")
@@ -242,7 +385,7 @@ def test_statement_prepared(sqlite_raw):
 
 
 @pytest.mark.sqlite
-def test_statement_ingest(sqlite_raw):
+def test_statement_ingest(sqlite_raw) -> None:
     _, conn = sqlite_raw
     data = pyarrow.record_batch(
         [
@@ -263,7 +406,7 @@ def test_statement_ingest(sqlite_raw):
 
 
 @pytest.mark.sqlite
-def test_statement_adbc_prepare(sqlite_raw):
+def test_statement_adbc_prepare(sqlite_raw) -> None:
     _, conn = sqlite_raw
     with adbc_driver_manager.AdbcStatement(conn) as stmt:
         stmt.set_sql_query("SELECT 1")
@@ -283,7 +426,7 @@ def test_statement_adbc_prepare(sqlite_raw):
 
 
 @pytest.mark.sqlite
-def test_statement_autocommit(sqlite_raw):
+def test_statement_autocommit(sqlite_raw) -> None:
     _, conn = sqlite_raw
 
     # Autocommit enabled by default
@@ -357,7 +500,7 @@ def test_statement_autocommit(sqlite_raw):
 
 
 @pytest.mark.sqlite
-def test_statement_set_options(sqlite_raw):
+def test_statement_set_options(sqlite_raw) -> None:
     _, conn = sqlite_raw
 
     with adbc_driver_manager.AdbcStatement(conn) as stmt:
@@ -375,7 +518,7 @@ def test_statement_set_options(sqlite_raw):
 
 
 @pytest.mark.sqlite
-def test_child_tracking(sqlite_raw):
+def test_child_tracking(sqlite_raw) -> None:
     with adbc_driver_manager.AdbcDatabase(driver="adbc_driver_sqlite") as db:
         with adbc_driver_manager.AdbcConnection(db) as conn:
             with adbc_driver_manager.AdbcStatement(conn):
@@ -396,7 +539,7 @@ def test_child_tracking(sqlite_raw):
 
 
 @pytest.mark.sqlite
-def test_pycapsule(sqlite_raw):
+def test_pycapsule(sqlite_raw) -> None:
     _, conn = sqlite_raw
     handle = conn.get_table_types()
     with pyarrow.RecordBatchReader._import_from_c_capsule(
@@ -467,7 +610,7 @@ def test_pycapsule(sqlite_raw):
     del capsule
 
 
-def test_driver_path():
+def test_driver_path() -> None:
     with pytest.raises(
         adbc_driver_manager.ProgrammingError,
         match="(dlopen|LoadLibraryExW).*failed:",

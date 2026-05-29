@@ -19,7 +19,13 @@
 Driver Manager
 ==============
 
-This document describes the installation of the Java :term:`driver manager`.
+This document describes the Java :term:`driver manager`.
+
+.. note:: This driver manager can only load drivers developed in Java (or
+          other JVM languages). The :doc:`./jni` should be used to load
+          drivers from other ecosystems (including drivers developed in C/C++,
+          Go, and Rust). Currently, far more drivers are available though JNI
+          than are available in pure-Java.
 
 Installation
 ============

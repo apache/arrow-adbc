@@ -15,30 +15,37 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-==================================
-Driver Manager Connection Profiles
-==================================
+===========================================
+ADBC Driver Manager and Connection Profiles
+===========================================
 
-Overview
-========
+.. note:: This document describes using the :term:`driver manager` to load
+          drivers.  The driver manager is not required to use ADBC in general
+          but it allows loading drivers written in a different language from the
+          application and improves the experience when using multiple drivers in
+          a single application. For more information on how the driver manager
+          works see :doc:`how_manager`.
 
-There are two ways to pass connection options to driver managers:
+There are two ways to pass database options through the driver manager:
 
-1. Directly specifying all connection options as arguments to driver manager functions in your
-   application code. (see the `SetOption` family of functions in :doc:`specification` for details)
-2. Referring to a **connection profile** which contains connection options, and optionally overriding
-   some options in your application code.
+1. Directly specifying all options as arguments to the driver manager in your
+   application code (see the `SetOption` family of functions in
+   :doc:`specification` for details).
+2. Referring to a :term:`connection profile` which contains options, and
+   optionally overriding some options by setting them through the above
+   method.
 
-The ADBC driver manager supports **connection profiles** that specify a driver and connection options
-in a reusable configuration. This allows users to:
+Connection profiles combine a driver and database options in a reusable
+configuration. This allows users to:
 
 - Define connection information in files or environment variables
 - Share connection configurations across applications
 - Distribute standardized connection settings
 - Avoid hardcoding driver names and credentials in application code
 
-Profiles are loaded during ``AdbcDatabaseInit()`` before initializing the driver. Options
-from the profile are applied automatically but do not override options already set via ``AdbcDatabaseSetOption()``.
+Profiles are loaded during ``AdbcDatabaseInit()`` before initializing the
+driver. Options from the profile are applied automatically but do not override
+options already set via ``AdbcDatabaseSetOption()``.
 
 Quick Start
 ===========
@@ -74,10 +81,13 @@ Filesystem-based profiles use TOML format with the following structure:
 
 .. code-block:: toml
 
-   version = 1
+   # The version is required.
+   profile_version = 1
+   # The driver is optional, but if not provided it must be set by the application.
    driver = "snowflake"
 
-   [options]
+   # The Options table is required, even if empty
+   [Options]
    # String options
    adbc.snowflake.sql.account = "mycompany"
    adbc.snowflake.sql.warehouse = "COMPUTE_WH"
@@ -93,14 +103,14 @@ Filesystem-based profiles use TOML format with the following structure:
    # Boolean options (converted to "true" or "false" strings)
    adbc.snowflake.sql.client_session_keep_alive = true
 
-version
--------
+profile_version
+---------------
 
 - **Required**: Yes
 - **Type**: Integer
 - **Supported values**: ``1``
 
-The ``version`` field specifies the profile format version. Currently, only version 1 is supported.
+The ``profile_version`` field specifies the profile format version. Currently, only version 1 is supported.
 This will enable future changes while maintaining backward compatibility.
 
 driver
@@ -111,18 +121,19 @@ driver
 
 The ``driver`` field specifies which ADBC driver to load. This can be:
 
-- A driver name (e.g., ``"snowflake"``)
+- A driver or driver manifest name (e.g., ``"snowflake"``)
 - A path to a shared library (e.g., ``"/usr/local/lib/libadbc_driver_snowflake.so"``)
 - A path to a driver manifest (e.g., ``"/etc/adbc/drivers/snowflake.toml"``)
 
 If omitted, the driver must be specified through other means (e.g., the ``driver`` option or ``uri`` parameter).
+If the application specifies a driver, and specifies a profile that itself references a driver, the two must match exactly, or it is an error.
 The driver will be loaded identically to if it was specified via ``AdbcDatabaseSetOption("driver", "<driver>")``.
 For more detils, see :doc:`driver_manifests`.
 
 Options Section
 ---------------
 
-The ``[options]`` section contains driver-specific configuration options. Options can be of the following types:
+The ``[Options]`` section contains driver-specific configuration options to apply to the ``AdbcDatabase`` upon creation. This section must be present, even if empty. Options can be of the following types:
 
 **String values**
    Applied using ``AdbcDatabaseSetOption()``
@@ -153,6 +164,10 @@ The ``[options]`` section contains driver-specific configuration options. Option
 
       adbc.snowflake.sql.client_session_keep_alive = true
 
+.. warning:: If the application overrides option values but uses a different
+             type for the value than the profile does, it is undefined which
+             will take effect.
+
 Value Substitution
 ------------------
 
@@ -175,27 +190,30 @@ Profile values can reference environment variables using the ``{{ env_var() }}``
 
 .. code-block:: toml
 
-   version = 1
+   profile_version = 1
    driver = "adbc_driver_snowflake"
 
-   [options]
+   [Options]
    adbc.snowflake.sql.account = "{{ env_var(SNOWFLAKE_ACCOUNT) }}"
    adbc.snowflake.sql.auth_token = "{{ env_var(SNOWFLAKE_TOKEN) }}"
    adbc.snowflake.sql.warehouse = "COMPUTE_WH"
 
-When the driver manager encounters ``{{ env_var(VAR_NAME) }}``, it replaces the value with the contents of environment variable ``VAR_NAME``. If the environment variable is not set, the value becomes an empty string.
+When the driver manager encounters ``{{ env_var(VAR_NAME) }}``, it replaces the placeholder with the contents of environment variable ``VAR_NAME``. If the environment variable is not set, the placeholder is replaced with an empty string and processing of the rest of the value continues (e.g. ``"foo{{ env_var(MISSING) }}bar"`` becomes ``"foobar"``).
 
 Profile Search Locations
 =========================
 
 When using a profile name (not an absolute path), the driver manager searches for ``<profile_name>.toml`` in the following locations:
 
-1. **Additional Search Paths** (if configured via ``AdbcDriverManagerDatabaseSetAdditionalSearchPathList()``)
+1. **Additional Search Paths** (if configured via ``additional_profile_search_path_list`` option)
 2. **ADBC_PROFILE_PATH** environment variable (colon-separated on Unix, semicolon-separated on Windows)
 3. **Conda Environment** (if built with Conda support and ``CONDA_PREFIX`` is set):
+
    - ``$CONDA_PREFIX/etc/adbc/profiles/``
+
 4. **User Configuration Directory**:
-   - Linux: ``~/.config/adbc/profiles/``
+
+   - Linux: ``$XDG_CONFIG_HOME/adbc/profiles`` if set, else ``~/.config/adbc/profiles/``
    - macOS: ``~/Library/Application Support/ADBC/Profiles/``
    - Windows: ``%LOCALAPPDATA%\ADBC\Profiles\``
 
@@ -224,10 +242,10 @@ File: ``~/.config/adbc/profiles/snowflake_prod.toml``
 
 .. code-block:: toml
 
-   version = 1
+   profile_version = 1
    driver = "snowflake"
 
-   [options]
+   [Options]
    adbc.snowflake.sql.account = "{{ env_var(SNOWFLAKE_ACCOUNT) }}"
    adbc.snowflake.sql.auth_token = "{{ env_var(SNOWFLAKE_TOKEN) }}"
    adbc.snowflake.sql.warehouse = "PRODUCTION_WH"
@@ -257,10 +275,10 @@ File: ``~/.config/adbc/profiles/postgres_dev.toml``
 
 .. code-block:: toml
 
-   version = 1
+   profile_version = 1
    driver = "postgresql"
 
-   [options]
+   [Options]
    uri = "postgresql://localhost:5432/dev_db?sslmode=disable"
    username = "dev_user"
    password = "{{ env_var(POSTGRES_DEV_PASSWORD) }}"
@@ -274,10 +292,10 @@ File: ``~/.config/adbc/profiles/default_timeouts.toml``
 
 .. code-block:: toml
 
-   version = 1
+   profile_version = 1
    # No driver specified - can be used with any driver
 
-   [options]
+   [Options]
    adbc.connection.timeout = 30.0
    adbc.statement.timeout = 60.0
 
@@ -300,7 +318,7 @@ Option Precedence
 Options are applied in the following order (later overrides earlier):
 
 1. Driver defaults
-2. Profile options (from ``[options]`` section)
+2. Profile options (from ``[Options]`` section)
 3. Options set via ``AdbcDatabaseSetOption()`` before ``AdbcDatabaseInit()``
 
 Example:
@@ -318,6 +336,13 @@ Example:
 
    AdbcDatabaseInit(&database, &error);
    // Result: warehouse = "ANALYTICS_WH"
+
+.. note:: Options of different types are set separately. For example, if the
+          profile defines an option with an integer value, and the application
+          sets the same option but with a string value, it is
+          implementation-defined as to which value will take precedence.  If
+          the application were to use an integer value instead, then the
+          application value would take precedence as expected.
 
 Custom Profile Providers
 =========================
@@ -431,9 +456,9 @@ Store credentials separately from code:
 
 .. code-block:: toml
 
-   [options]
+   [Options]
    adbc.snowflake.sql.account = "mycompany"
-   adbc.snowflake.sql.auth_token = "env_var(SNOWFLAKE_TOKEN)"
+   adbc.snowflake.sql.auth_token = "{{ env_var(SNOWFLAKE_TOKEN) }}"
 
 Then set ``SNOWFLAKE_TOKEN`` via environment variable, secrets manager, or configuration service.
 
@@ -551,34 +576,28 @@ Sets a custom connection profile provider. Must be called before ``AdbcDatabaseI
 Setting Additional Search Paths
 --------------------------------
 
-.. code-block:: c
-
-   AdbcStatusCode AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
-       struct AdbcDatabase* database,
-       const char* path_list,
-       struct AdbcError* error);
-
-Adds additional directories to search for profiles. Must be called before ``AdbcDatabaseInit()``.
-
-**Parameters:**
-
-- ``database``: Database object to configure
-- ``path_list``: OS-specific path separator delimited list (``:``) on Unix, ``;`` on Windows), or ``NULL`` to clear
-- ``error``: Optional error output
-
-**Returns:** ``ADBC_STATUS_OK`` on success, error code otherwise.
+This can be done via the ``additional_profile_search_path_list`` option. It
+must be set before ``AdbcDatabaseInit()``. The value of this option is an
+OS-specific delimited list (``:`` on Unix, ``;`` on Windows), or ``NULL`` to
+clear.
 
 **Example:**
 
 .. code-block:: c
 
    // Unix/Linux/macOS
-   AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
-       &database, "/opt/app/profiles:/etc/app/profiles", &error);
+   AdbcDatabaseSetOption(
+       &database,
+       "additional_profile_search_path_list",
+       "/opt/app/profiles:/etc/app/profiles",
+       &error);
 
    // Windows
-   AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
-       &database, "C:\\App\\Profiles;C:\\ProgramData\\App\\Profiles", &error);
+   AdbcDatabaseSetOption(
+       &database,
+       "additional_profile_search_path_list",
+       "C:\\App\\Profiles;C:\\ProgramData\\App\\Profiles",
+       &error);
 
 
 See Also

@@ -26,7 +26,7 @@ from pandas.testing import assert_frame_equal
 from adbc_driver_manager import dbapi
 
 
-def test_type_objects():
+def test_type_objects() -> None:
     assert dbapi.NUMBER == pyarrow.int64()
     assert pyarrow.int64() == dbapi.NUMBER
 
@@ -39,7 +39,7 @@ def test_type_objects():
 
 
 @pytest.mark.sqlite
-def test_attrs(sqlite):
+def test_attrs(sqlite) -> None:
     assert sqlite.Warning == dbapi.Warning
     assert sqlite.Error == dbapi.Error
     assert sqlite.InterfaceError == dbapi.InterfaceError
@@ -59,7 +59,7 @@ def test_attrs(sqlite):
 
 
 @pytest.mark.sqlite
-def test_info(sqlite):
+def test_info(sqlite) -> None:
     info = sqlite.adbc_get_info()
     assert set(info.keys()) == {
         "driver_adbc_version",
@@ -74,7 +74,7 @@ def test_info(sqlite):
 
 
 @pytest.mark.sqlite
-def test_get_underlying(sqlite):
+def test_get_underlying(sqlite) -> None:
     assert sqlite.adbc_database
     assert sqlite.adbc_connection
     with sqlite.cursor() as cur:
@@ -82,7 +82,7 @@ def test_get_underlying(sqlite):
 
 
 @pytest.mark.sqlite
-def test_clone(sqlite):
+def test_clone(sqlite) -> None:
     with sqlite.adbc_clone() as sqlite2:
         with sqlite2.cursor() as cur:
             cur.execute("CREATE TABLE temporary (ints)")
@@ -95,7 +95,7 @@ def test_clone(sqlite):
 
 
 @pytest.mark.sqlite
-def test_get_objects(sqlite):
+def test_get_objects(sqlite) -> None:
     with sqlite.cursor() as cur:
         cur.execute("CREATE TABLE temporary (ints)")
         cur.execute("INSERT INTO temporary VALUES (1)")
@@ -117,7 +117,7 @@ def test_get_objects(sqlite):
 
 
 @pytest.mark.sqlite
-def test_get_table_schema(sqlite):
+def test_get_table_schema(sqlite) -> None:
     with sqlite.cursor() as cur:
         cur.execute("CREATE TABLE temporary (ints)")
         cur.execute("INSERT INTO temporary VALUES (1)")
@@ -127,12 +127,26 @@ def test_get_table_schema(sqlite):
 
 
 @pytest.mark.sqlite
-def test_get_table_types(sqlite):
+def test_get_table_types(sqlite) -> None:
     assert sqlite.adbc_get_table_types() == ["table", "view"]
 
 
+@pytest.mark.sqlite
+def test_get_statistics_not_supported(sqlite) -> None:
+    """SQLite does not support GetStatistics."""
+    with pytest.raises(dbapi.NotSupportedError):
+        sqlite.adbc_get_statistics()
+
+
+@pytest.mark.sqlite
+def test_get_statistic_names_not_supported(sqlite) -> None:
+    """SQLite does not support GetStatisticNames."""
+    with pytest.raises(dbapi.NotSupportedError):
+        sqlite.adbc_get_statistic_names()
+
+
 class ArrayWrapper:
-    def __init__(self, array):
+    def __init__(self, array) -> None:
         self.array = array
 
     def __arrow_c_array__(self, requested_schema=None):
@@ -140,7 +154,7 @@ class ArrayWrapper:
 
 
 class StreamWrapper:
-    def __init__(self, stream):
+    def __init__(self, stream) -> None:
         self.stream = stream
 
     def __arrow_c_stream__(self, requested_schema=None):
@@ -167,7 +181,7 @@ class StreamWrapper:
     ],
 )
 @pytest.mark.sqlite
-def test_ingest(data, sqlite):
+def test_ingest(data, sqlite) -> None:
     with sqlite.cursor() as cur:
         cur.adbc_ingest("bulk_ingest", data())
 
@@ -191,14 +205,14 @@ def test_ingest(data, sqlite):
 
 
 @pytest.mark.sqlite
-def test_partitions(sqlite):
+def test_partitions(sqlite) -> None:
     with pytest.raises(dbapi.NotSupportedError):
         with sqlite.cursor() as cur:
             cur.adbc_execute_partitions("SELECT 1")
 
 
 @pytest.mark.sqlite
-def test_query_fetch_py(sqlite):
+def test_query_fetch_py(sqlite) -> None:
     with sqlite.cursor() as cur:
         cur.execute("SELECT 1, 'foo' AS foo, 2.0")
         assert cur.description == [
@@ -224,7 +238,7 @@ def test_query_fetch_py(sqlite):
 
 
 @pytest.mark.sqlite
-def test_query_fetch_arrow(sqlite):
+def test_query_fetch_arrow(sqlite) -> None:
     with sqlite.cursor() as cur:
         with pytest.raises(sqlite.ProgrammingError):
             cur.fetch_arrow()
@@ -245,7 +259,7 @@ def test_query_fetch_arrow(sqlite):
 
 
 @pytest.mark.sqlite
-def test_query_fetch_arrow_3543(sqlite):
+def test_query_fetch_arrow_3543(sqlite) -> None:
     # Regression test for https://github.com/apache/arrow-adbc/issues/3543
     with sqlite.cursor() as cur:
         cur.execute("SELECT 1, 'foo' AS foo, 2.0")
@@ -269,7 +283,7 @@ def test_query_fetch_arrow_3543(sqlite):
 
 
 @pytest.mark.sqlite
-def test_query_fetch_arrow_table(sqlite):
+def test_query_fetch_arrow_table(sqlite) -> None:
     with sqlite.cursor() as cur:
         cur.execute("SELECT 1, 'foo' AS foo, 2.0")
         assert cur.fetch_arrow_table() == pyarrow.table(
@@ -282,7 +296,7 @@ def test_query_fetch_arrow_table(sqlite):
 
 
 @pytest.mark.sqlite
-def test_query_fetch_df(sqlite):
+def test_query_fetch_df(sqlite) -> None:
     with sqlite.cursor() as cur:
         cur.execute("SELECT 1, 'foo' AS foo, 2.0")
         assert_frame_equal(
@@ -308,14 +322,14 @@ def test_query_fetch_df(sqlite):
         StreamWrapper(pyarrow.table([[1.0], [2]], names=["float", "int"])),
     ],
 )
-def test_execute_parameters(sqlite, parameters):
+def test_execute_parameters(sqlite, parameters) -> None:
     with sqlite.cursor() as cur:
         cur.execute("SELECT ? + 1, ?", parameters)
         assert cur.fetchall() == [(2.0, 2)]
 
 
 @pytest.mark.sqlite
-def test_execute_parameters_name(sqlite):
+def test_execute_parameters_name(sqlite) -> None:
     with sqlite.cursor() as cur:
         cur.execute("SELECT @a + 1, @b", {"@b": 2, "@a": 1})
         assert cur.fetchall() == [(2, 2)]
@@ -334,7 +348,7 @@ def test_execute_parameters_name(sqlite):
 
 
 @pytest.mark.sqlite
-def test_executemany_parameters_name(sqlite):
+def test_executemany_parameters_name(sqlite) -> None:
     with sqlite.cursor() as cur:
         cur.execute("CREATE TABLE executemany_params (a, b)")
 
@@ -365,7 +379,7 @@ def test_executemany_parameters_name(sqlite):
         ((x, y) for x, y in ((1, "a"), (3, None))),
     ],
 )
-def test_executemany_parameters(sqlite, parameters):
+def test_executemany_parameters(sqlite, parameters) -> None:
     with sqlite.cursor() as cur:
         cur.execute("DROP TABLE IF EXISTS executemany")
         cur.execute("CREATE TABLE executemany (int, str)")
@@ -383,7 +397,7 @@ def test_executemany_parameters(sqlite, parameters):
         pyarrow.table([[]], schema=pyarrow.schema([("v", pyarrow.int64())])),
     ],
 )
-def test_executemany_empty(sqlite, parameters):
+def test_executemany_empty(sqlite, parameters) -> None:
     # Regression test for https://github.com/apache/arrow-adbc/issues/3319
     with sqlite.cursor() as cur:
         # With an empty sequence, it should be the same as not executing the
@@ -396,7 +410,7 @@ def test_executemany_empty(sqlite, parameters):
 
 
 @pytest.mark.sqlite
-def test_executemany_none(sqlite):
+def test_executemany_none(sqlite) -> None:
     # Regression test for https://github.com/apache/arrow-adbc/issues/3319
     with sqlite.cursor() as cur:
         # With None, it should be the same as executing the query once.
@@ -407,14 +421,14 @@ def test_executemany_none(sqlite):
 
 
 @pytest.mark.sqlite
-def test_query_substrait(sqlite):
+def test_query_substrait(sqlite) -> None:
     with sqlite.cursor() as cur:
         with pytest.raises(dbapi.NotSupportedError):
             cur.execute(b"Substrait plan")
 
 
 @pytest.mark.sqlite
-def test_executemany(sqlite):
+def test_executemany(sqlite) -> None:
     with sqlite.cursor() as cur:
         cur.execute("CREATE TABLE foo (a, b)")
         cur.executemany(
@@ -437,7 +451,7 @@ def test_executemany(sqlite):
 
 
 @pytest.mark.sqlite
-def test_fetch_record_batch(sqlite):
+def test_fetch_record_batch(sqlite) -> None:
     dataset = [
         [1, 2],
         [3, 4],
@@ -457,7 +471,7 @@ def test_fetch_record_batch(sqlite):
 
 
 @pytest.mark.sqlite
-def test_fetch_empty(sqlite):
+def test_fetch_empty(sqlite) -> None:
     with sqlite.cursor() as cur:
         cur.execute("CREATE TABLE foo (bar)")
         cur.execute("SELECT * FROM foo")
@@ -474,7 +488,7 @@ def test_reader(sqlite, tmp_path) -> None:
 
 
 @pytest.mark.sqlite
-def test_prepare(sqlite):
+def test_prepare(sqlite) -> None:
     with sqlite.cursor() as cur:
         schema = cur.adbc_prepare("SELECT 1")
         assert schema == pyarrow.schema([])
@@ -487,7 +501,7 @@ def test_prepare(sqlite):
 
 
 @pytest.mark.sqlite
-def test_close_warning(sqlite):
+def test_close_warning(sqlite) -> None:
     with pytest.warns(
         ResourceWarning,
         match=r"A adbc_driver_manager.dbapi.Cursor was not explicitly close\(\)d",
@@ -503,7 +517,7 @@ def test_close_warning(sqlite):
         del conn
 
 
-def _execute_schema(cursor):
+def _execute_schema(cursor) -> None:
     try:
         cursor.adbc_execute_schema("select 1")
     except dbapi.NotSupportedError:
@@ -548,7 +562,7 @@ def test_release(sqlite, op) -> None:
             assert not handle.is_valid
 
 
-def test_driver_path():
+def test_driver_path() -> None:
     with pytest.raises(
         dbapi.ProgrammingError,
         match="(dlopen|LoadLibraryExW).*failed:",
@@ -558,7 +572,7 @@ def test_driver_path():
 
 
 @pytest.mark.sqlite
-def test_dbapi_extensions(sqlite):
+def test_dbapi_extensions(sqlite) -> None:
     with sqlite.execute("SELECT ?", (1,)) as cur:
         assert cur.fetchone() == (1,)
         assert cur.fetchone() is None
@@ -571,7 +585,7 @@ def test_dbapi_extensions(sqlite):
 
 
 @pytest.mark.sqlite
-def test_close_connection_with_open_cursor():
+def test_close_connection_with_open_cursor() -> None:
     """
     Regression test for https://github.com/apache/arrow-adbc/issues/3713
 
@@ -596,7 +610,7 @@ def test_close_connection_with_open_cursor():
 
 
 @pytest.mark.sqlite
-def test_close_connection_with_multiple_open_cursors():
+def test_close_connection_with_multiple_open_cursors() -> None:
     """
     Test that closing a connection closes all open cursors.
 
@@ -621,7 +635,7 @@ def test_close_connection_with_multiple_open_cursors():
 
 
 @pytest.mark.sqlite
-def test_close_connection_cursor_already_closed():
+def test_close_connection_cursor_already_closed() -> None:
     """
     Test that closing a connection works even if some cursors are already closed.
 
@@ -646,7 +660,7 @@ def test_close_connection_cursor_already_closed():
 
 
 @pytest.mark.sqlite
-def test_close_connection_via_context_manager_with_open_cursors():
+def test_close_connection_via_context_manager_with_open_cursors() -> None:
     """
     Test that exiting a connection context manager closes open cursors.
 
@@ -671,7 +685,7 @@ def test_close_connection_via_context_manager_with_open_cursors():
 
 
 @pytest.mark.sqlite
-def test_close_connection_suppresses_cursor_close_error():
+def test_close_connection_suppresses_cursor_close_error() -> None:
     """
     Test that closing a connection suppresses exceptions from cursor.close().
 
@@ -735,7 +749,7 @@ def test_connect(tmp_path: pathlib.Path, monkeypatch) -> None:
             cur.execute("SELECT * FROM foo")
             assert cur.fetchone() == (1,)
 
-    monkeypatch.setenv("ADBC_DRIVER_PATH", tmp_path)
+    monkeypatch.setenv("ADBC_DRIVER_PATH", str(tmp_path))
     with (tmp_path / "foobar.toml").open("w") as f:
         f.write(
             """
@@ -746,4 +760,14 @@ shared = "adbc_driver_foobar"
     # Just check that the driver gets detected and loaded (should fail)
     with pytest.raises(dbapi.ProgrammingError, match="NOT_FOUND"):
         with dbapi.connect("foobar://localhost:5439"):
+            pass
+
+    # https://github.com/apache/arrow-adbc/issues/4077: allow profile argument
+    # Just check that the profile gets detected and loaded (should fail)
+    with pytest.raises(dbapi.ProgrammingError, match="NOT_FOUND.*Profile not found"):
+        with dbapi.connect(profile="nonexistent"):
+            pass
+
+    with pytest.raises(TypeError):
+        with dbapi.connect():
             pass

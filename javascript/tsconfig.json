@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "strict": true,
+    "moduleResolution": "nodenext",
+    "module": "nodenext",
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "rootDir": "lib",
+    "outDir": "./dist",
+    "declaration": true,
+    "paths": {
+      "apache-arrow": ["./node_modules/apache-arrow"]
+    }
+  },
+  "include": ["lib"],
+  "exclude": ["node_modules", "bench", "__test__", "src"]
+}

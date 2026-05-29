@@ -52,6 +52,7 @@ constexpr std::string_view kConnectionOptionLoadExtensionEntrypoint =
 /// The batch size for query results (and for initial type inference)
 constexpr std::string_view kStatementOptionBatchRows = "adbc.sqlite.query.batch_rows";
 constexpr std::string_view kStatementOptionBindByName = "adbc.statement.bind_by_name";
+constexpr int kDefaultBatchSize = 1024;
 
 std::string_view GetColumnText(sqlite3_stmt* stmt, int index) {
   return {
@@ -178,8 +179,9 @@ class SqliteQuery {
   static Status Execute(sqlite3* conn, std::string_view query) {
     SqliteQuery q(conn, query);
     UNWRAP_STATUS(q.Init());
+    bool has_row;
     while (true) {
-      UNWRAP_RESULT(bool has_row, q.Next());
+      UNWRAP_RESULT(has_row, q.Next());
       if (!has_row) break;
     }
     return q.Close();
@@ -194,8 +196,9 @@ class SqliteQuery {
     int rc = std::forward<BindFunc>(bind_func)(q.stmt_);
     if (rc != SQLITE_OK) return q.Close();
 
+    bool has_row;
     while (true) {
-      UNWRAP_RESULT(bool has_row, q.Next());
+      UNWRAP_RESULT(has_row, q.Next());
       if (!has_row) break;
 
       rc = std::forward<RowFunc>(row_func)(q.stmt_);
@@ -290,7 +293,8 @@ struct SqliteGetObjectsHelper : public driver::GetObjectsHelper {
       }
       builder.Append(" )");
     }
-    UNWRAP_RESULT(auto query, builder.GetString());
+    std::string_view query;
+    UNWRAP_RESULT(query, builder.GetString());
 
     return SqliteQuery::Scan(
         conn, query,
@@ -320,7 +324,8 @@ struct SqliteGetObjectsHelper : public driver::GetObjectsHelper {
     columns_query.Append(
         R"(SELECT cid, name, type, 'notnull', dflt_value FROM pragma_table_info(%Q, %Q) WHERE NAME LIKE ?)",
         table.data(), catalog.data());
-    UNWRAP_RESULT(auto query, columns_query.GetString());
+    std::string_view query;
+    UNWRAP_RESULT(query, columns_query.GetString());
     assert(!query.empty());
 
     columns.emplace(conn, query);
@@ -351,7 +356,8 @@ struct SqliteGetObjectsHelper : public driver::GetObjectsHelper {
       builder.Append(
           R"(SELECT name FROM pragma_table_info(%Q, %Q) WHERE pk > 0 ORDER BY pk ASC)",
           table.data(), catalog.data());
-      UNWRAP_RESULT(auto pk_query, builder.GetString());
+      std::string_view pk_query;
+      UNWRAP_RESULT(pk_query, builder.GetString());
       std::vector<std::string> pk;
       UNWRAP_STATUS(SqliteQuery::Scan(
           conn, pk_query, [](sqlite3_stmt*) { return SQLITE_OK; },
@@ -420,7 +426,8 @@ struct SqliteGetObjectsHelper : public driver::GetObjectsHelper {
 
   Result<std::optional<Column>> NextColumn() override {
     if (!columns) return std::nullopt;
-    UNWRAP_RESULT(auto has_next, columns->Next());
+    bool has_next;
+    UNWRAP_RESULT(has_next, columns->Next());
     if (!has_next) {
       auto query = std::move(*columns);
       columns.reset();
@@ -541,21 +548,50 @@ class SqliteDatabase : public driver::Database<SqliteDatabase> {
     return Base::ReleaseImpl();
   }
 
+  Result<driver::Option> GetOption(std::string_view key) override {
+    if (key == "uri") {
+      return driver::Option(uri_);
+    } else if (key == kStatementOptionBatchRows) {
+      return driver::Option(static_cast<int64_t>(batch_size_));
+    }
+    return Base::GetOption(key);
+  }
+
   Status SetOptionImpl(std::string_view key, driver::Option value) override {
     if (key == "uri") {
       if (lifecycle_state_ != driver::LifecycleState::kUninitialized) {
         return status::InvalidState("cannot set uri after AdbcDatabaseInit");
       }
-      UNWRAP_RESULT(auto uri, value.AsString());
+      std::string_view uri;
+      UNWRAP_RESULT(uri, value.AsString());
       uri_ = std::move(uri);
+      return status::Ok();
+    } else if (key == kStatementOptionBatchRows) {
+      if (lifecycle_state_ != driver::LifecycleState::kUninitialized) {
+        return status::fmt::InvalidState(
+            "{} cannot set {} after AdbcDatabaseInit, set it directly on the statement "
+            "instead",
+            kErrorPrefix, key);
+      }
+      int64_t batch_size;
+      UNWRAP_RESULT(batch_size, value.AsInt());
+      if (batch_size <= 0 || batch_size > std::numeric_limits<int>::max()) {
+        return status::fmt::InvalidArgument(
+            "{} Invalid statement option value {}={} (value is non-positive or out of "
+            "range of int)",
+            kErrorPrefix, key, value.Format());
+      }
+      batch_size_ = static_cast<int>(batch_size);
       return status::Ok();
     }
     return Base::SetOptionImpl(key, value);
   }
 
  private:
+  friend class SqliteConnection;
   std::string uri_{kDefaultUri};
   sqlite3* conn_ = nullptr;
+  int batch_size_ = kDefaultBatchSize;
 };
 
 class SqliteConnection : public driver::Connection<SqliteConnection> {
@@ -587,7 +623,8 @@ class SqliteConnection : public driver::Connection<SqliteConnection> {
     SqliteStringBuilder builder;
     builder.Append(R"(SELECT * FROM "%w" . "%w")", catalog.value_or("main").data(),
                    table_name.data());
-    UNWRAP_RESULT(std::string_view query, builder.GetString());
+    std::string_view query;
+    UNWRAP_RESULT(query, builder.GetString());
 
     sqlite3_stmt* stmt = nullptr;
     int rc =
@@ -664,6 +701,9 @@ class SqliteConnection : public driver::Connection<SqliteConnection> {
   Status InitImpl(void* parent) {
     auto& db = *reinterpret_cast<SqliteDatabase*>(parent);
     UNWRAP_RESULT(conn_, db.OpenConnection());
+    if (!batch_size_.has_value()) {
+      batch_size_ = db.batch_size_;
+    }
     return status::Ok();
   }
 
@@ -685,13 +725,22 @@ class SqliteConnection : public driver::Connection<SqliteConnection> {
     return SqliteQuery::Execute(conn_, "BEGIN");
   }
 
+  Result<driver::Option> GetOption(std::string_view key) override {
+    if (key == kStatementOptionBatchRows) {
+      return driver::Option(
+          static_cast<int64_t>(batch_size_.value_or(kDefaultBatchSize)));
+    }
+    return Base::GetOption(key);
+  }
+
   Status SetOptionImpl(std::string_view key, driver::Option value) {
     if (key == kConnectionOptionEnableLoadExtension) {
       if (!conn_ || lifecycle_state_ != driver::LifecycleState::kInitialized) {
         return status::InvalidState(
             "cannot enable extension loading before AdbcConnectionInit");
       }
-      UNWRAP_RESULT(const bool enabled, value.AsBool());
+      bool enabled;
+      UNWRAP_RESULT(enabled, value.AsBool());
       int rc = sqlite3_db_config(conn_, SQLITE_DBCONFIG_ENABLE_LOAD_EXTENSION,
                                  enabled ? 1 : 0, nullptr);
       if (rc != SQLITE_OK) {
@@ -715,7 +764,8 @@ class SqliteConnection : public driver::Connection<SqliteConnection> {
       }
       const char* extension_entrypoint = nullptr;
       if (value.has_value()) {
-        UNWRAP_RESULT(auto entrypoint, value.AsString());
+        std::string_view entrypoint;
+        UNWRAP_RESULT(entrypoint, value.AsString());
         extension_entrypoint = entrypoint.data();
       }
 
@@ -736,6 +786,23 @@ class SqliteConnection : public driver::Connection<SqliteConnection> {
       return status::NotImplemented(
           "this driver build does not support extension loading");
 #endif
+    } else if (key == kStatementOptionBatchRows) {
+      if (lifecycle_state_ != driver::LifecycleState::kUninitialized) {
+        return status::fmt::InvalidState(
+            "{} cannot set {} after AdbcConnectionInit, set it directly on the statement "
+            "instead",
+            kErrorPrefix, key);
+      }
+      int64_t batch_size;
+      UNWRAP_RESULT(batch_size, value.AsInt());
+      if (batch_size <= 0 || batch_size > std::numeric_limits<int>::max()) {
+        return status::fmt::InvalidArgument(
+            "{} Invalid statement option value {}={} (value is non-positive or out of "
+            "range of int)",
+            kErrorPrefix, key, value.Format());
+      }
+      batch_size_ = static_cast<int>(batch_size);
+      return status::Ok();
     }
     return Base::SetOptionImpl(key, value);
   }
@@ -751,6 +818,8 @@ class SqliteConnection : public driver::Connection<SqliteConnection> {
   }
 
  private:
+  friend class SqliteStatement;
+
   Status CheckOpen() const {
     if (!conn_) {
       return status::InvalidState("connection is not open");
@@ -762,6 +831,7 @@ class SqliteConnection : public driver::Connection<SqliteConnection> {
   // Temporarily hold the extension path (since the path and entrypoint need
   // to be set separately)
   std::string extension_path_;
+  std::optional<int> batch_size_;
 };
 
 class SqliteStatement : public driver::Statement<SqliteStatement> {
@@ -814,7 +884,8 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
       table_builder.Append(R"(main . "%w")", state.target_table->c_str());
     }
 
-    UNWRAP_RESULT(std::string_view table, table_builder.GetString());
+    std::string_view table;
+    UNWRAP_RESULT(table, table_builder.GetString());
 
     switch (state.table_exists_) {
       case Base::TableExists::kAppend:
@@ -892,9 +963,12 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
     }
     insert_query.Append(")");
 
-    UNWRAP_RESULT(std::string_view create, create_query.GetString());
-    UNWRAP_RESULT(std::string_view drop, drop_query.GetString());
-    UNWRAP_RESULT(std::string_view insert, insert_query.GetString());
+    std::string_view create;
+    UNWRAP_RESULT(create, create_query.GetString());
+    std::string_view drop;
+    UNWRAP_RESULT(drop, drop_query.GetString());
+    std::string_view insert;
+    UNWRAP_RESULT(insert, insert_query.GetString());
 
     // Drop/create tables as needed
 
@@ -1097,7 +1171,11 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
   }
 
   Status InitImpl(void* parent) {
-    conn_ = reinterpret_cast<SqliteConnection*>(parent)->conn();
+    auto& conn = *reinterpret_cast<SqliteConnection*>(parent);
+    conn_ = conn.conn();
+    if (conn.batch_size_) {
+      batch_size_ = conn.batch_size_.value();
+    }
     return Statement::InitImpl(parent);
   }
 
@@ -1137,9 +1215,19 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
     return Statement::ReleaseImpl();
   }
 
-  Status SetOptionImpl(std::string_view key, driver::Option value) {
+  Result<driver::Option> GetOption(std::string_view key) override {
     if (key == kStatementOptionBatchRows) {
-      UNWRAP_RESULT(int64_t batch_size, value.AsInt());
+      return driver::Option(static_cast<int64_t>(batch_size_));
+    } else if (key == kStatementOptionBindByName) {
+      return driver::Option(bind_by_name_ ? "true" : "false");
+    }
+    return Base::GetOption(key);
+  }
+
+  Status SetOptionImpl(std::string_view key, driver::Option value) override {
+    if (key == kStatementOptionBatchRows) {
+      int64_t batch_size;
+      UNWRAP_RESULT(batch_size, value.AsInt());
       if (batch_size >= std::numeric_limits<int>::max() || batch_size <= 0) {
         return status::fmt::InvalidArgument(
             "{} Invalid statement option value {}={} (value is non-positive or out of "
@@ -1155,7 +1243,7 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
     return Base::SetOptionImpl(key, std::move(value));
   }
 
-  int batch_size_ = 1024;
+  int batch_size_ = kDefaultBatchSize;
   bool bind_by_name_ = false;
   AdbcSqliteBinder binder_;
   sqlite3* conn_ = nullptr;

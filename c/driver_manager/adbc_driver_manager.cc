@@ -16,7 +16,6 @@
 // under the License.
 
 #if defined(_WIN32)
-#define NOMINMAX
 #include <windows.h>  // Must come first
 
 #ifndef NTDDI_VERSION
@@ -34,6 +33,7 @@
 #endif  // defined(_WIN32)
 
 #include <toml++/toml.hpp>
+#include "adbc_driver_manager_internal.h"
 #include "arrow-adbc/adbc.h"
 #include "arrow-adbc/adbc_driver_manager.h"
 #include "current_arch.h"
@@ -55,48 +55,122 @@
 
 using namespace std::string_literals;  // NOLINT [build/namespaces]
 
-ADBC_EXPORT
-std::vector<std::filesystem::path> InternalAdbcParsePath(const std::string_view path);
-ADBC_EXPORT
-std::filesystem::path InternalAdbcUserConfigDir();
-#if !defined(_WIN32)
-ADBC_EXPORT
-std::filesystem::path InternalAdbcSystemConfigDir();
-#endif  // !defined(_WIN32)
+// NOTE: Error handling, structures, and helper functions are now in internal header
+// and shared across all source files. This anonymous namespace only contains
+// implementation-specific helpers for this file.
 
-struct ParseDriverUriResult {
-  std::string_view driver;
-  std::optional<std::string_view> uri;
-  std::optional<std::string_view> profile;
+// Generate a note for the error message if the library name has potentially
+// non-printable (or really non-ASCII-printable-range) characters.  Oblivious
+// to Unicode and locales.
+std::string CheckNonPrintableLibraryName(const std::string& name) {
+  // We could use std::isprint, but that requires locales; prefer a
+  // simpler check for out-of-ASCII-range.
+  bool has_non_printable = std::any_of(name.begin(), name.end(), [](char c) {
+    int v = static_cast<int>(c);
+    return v < 32 || v > 127;
+  });
+  if (!has_non_printable) return "";
+
+  std::string error_message = "Note: driver name may have non-printable characters: `";
+  // TODO(lidavidm): we can simplify with C++20 <format>
+  for (char c : name) {
+    int v = static_cast<int>(c);
+    if (v < 32 || v > 127) {
+      error_message += "\\x";
+      char buf[3];
+      std::snprintf(buf, sizeof(buf), "%02x", v & 0xFF);
+      error_message += buf;
+    } else {
+      error_message += c;
+    }
+  }
+  error_message += "`";
+  return error_message;
+}
+
+// Platform-specific helpers
+
+#if defined(_WIN32)
+/// Append a description of the Windows error to the buffer.
+void GetWinError(std::string* buffer) {
+  DWORD rc = GetLastError();
+  LPVOID message;
+
+  FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
+                    FORMAT_MESSAGE_IGNORE_INSERTS,
+                /*lpSource=*/nullptr, rc, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+                reinterpret_cast<LPSTR>(&message), /*nSize=*/0, /*Arguments=*/nullptr);
+
+  (*buffer) += '(';
+  (*buffer) += std::to_string(rc);
+  (*buffer) += ") ";
+  (*buffer) += reinterpret_cast<char*>(message);
+  LocalFree(message);
+}
+
+#endif  // defined(_WIN32)
+
+// Error handling
+
+#ifdef _WIN32
+std::string Utf8Encode(const std::wstring& wstr) {
+  if (wstr.empty()) return std::string();
+  int size_needed = WideCharToMultiByte(
+      CP_UTF8, 0, wstr.data(), static_cast<int>(wstr.size()), NULL, 0, NULL, NULL);
+  std::string str_to(size_needed, 0);
+  WideCharToMultiByte(CP_UTF8, 0, wstr.data(), static_cast<int>(wstr.size()),
+                      str_to.data(), size_needed, NULL, NULL);
+  return str_to;
+}
+
+std::wstring Utf8Decode(const std::string& str) {
+  if (str.empty()) return std::wstring();
+  int size_needed =
+      MultiByteToWideChar(CP_UTF8, 0, str.data(), static_cast<int>(str.size()), NULL, 0);
+  std::wstring wstr_to(size_needed, 0);
+  MultiByteToWideChar(CP_UTF8, 0, str.data(), static_cast<int>(str.size()),
+                      wstr_to.data(), size_needed);
+  return wstr_to;
+}
+#endif  // _WIN32
+
+/// Hold the driver DLL and the driver release callback in the driver struct.
+struct ManagerDriverState {
+  // The original release callback
+  AdbcStatusCode (*driver_release)(struct AdbcDriver* driver, struct AdbcError* error);
+
+  ManagedLibrary handle;
 };
 
-ADBC_EXPORT
-std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view str);
+/// Unload the driver DLL.
+static AdbcStatusCode ReleaseDriverInternal(struct AdbcDriver* driver,
+                                            struct AdbcError* error) {
+  AdbcStatusCode status = ADBC_STATUS_OK;
 
-namespace {
+  if (!driver->private_manager) return status;
+  ManagerDriverState* state =
+      reinterpret_cast<ManagerDriverState*>(driver->private_manager);
 
-/// \brief Where a search path came from (for error reporting)
-enum class SearchPathSource {
-  kEnv,
-  kUser,
-  kRegistry,
-  kSystem,
-  kAdditional,
-  kConda,
-  kUnset,
-  kDoesNotExist,
-  kDisabledAtCompileTime,
-  kDisabledAtRunTime,
-  kOtherError,
-};
+  if (state->driver_release) {
+    status = state->driver_release(driver, error);
+  }
+  state->handle.Release();
 
-enum class SearchPathType {
-  kManifest,
-  kProfile,
-};
+  driver->private_manager = nullptr;
+  delete state;
+  return status;
+}
 
-using SearchPaths = std::vector<std::pair<SearchPathSource, std::filesystem::path>>;
+// Default stubs
 
+static const char kDefaultEntrypoint[] = "AdbcDriverInit";
+
+// Wrapper to expose ReleaseDriver from anonymous namespace
+AdbcStatusCode ReleaseDriver(struct AdbcDriver* driver, struct AdbcError* error) {
+  return ReleaseDriverInternal(driver, error);
+}
+
+// Utility functions (shared across all source files)
 void AddSearchPathsToError(const SearchPaths& search_paths, const SearchPathType& type,
                            std::string& error_message) {
   if (!search_paths.empty()) {
@@ -153,59 +227,7 @@ void AddSearchPathsToError(const SearchPaths& search_paths, const SearchPathType
   }
 }
 
-// Generate a note for the error message if the library name has potentially
-// non-printable (or really non-ASCII-printable-range) characters.  Oblivious
-// to Unicode and locales.
-std::string CheckNonPrintableLibraryName(const std::string& name) {
-  // We could use std::isprint, but that requires locales; prefer a
-  // simpler check for out-of-ASCII-range.
-  bool has_non_printable = std::any_of(name.begin(), name.end(), [](char c) {
-    int v = static_cast<int>(c);
-    return v < 32 || v > 127;
-  });
-  if (!has_non_printable) return "";
-
-  std::string error_message = "Note: driver name may have non-printable characters: `";
-  // TODO(lidavidm): we can simplify with C++20 <format>
-  for (char c : name) {
-    int v = static_cast<int>(c);
-    if (v < 32 || v > 127) {
-      error_message += "\\x";
-      char buf[3];
-      std::snprintf(buf, sizeof(buf), "%02x", v & 0xFF);
-      error_message += buf;
-    } else {
-      error_message += c;
-    }
-  }
-  error_message += "`";
-  return error_message;
-}
-
-// Platform-specific helpers
-
-#if defined(_WIN32)
-/// Append a description of the Windows error to the buffer.
-void GetWinError(std::string* buffer) {
-  DWORD rc = GetLastError();
-  LPVOID message;
-
-  FormatMessage(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
-                    FORMAT_MESSAGE_IGNORE_INSERTS,
-                /*lpSource=*/nullptr, rc, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-                reinterpret_cast<LPSTR>(&message), /*nSize=*/0, /*Arguments=*/nullptr);
-
-  (*buffer) += '(';
-  (*buffer) += std::to_string(rc);
-  (*buffer) += ") ";
-  (*buffer) += reinterpret_cast<char*>(message);
-  LocalFree(message);
-}
-
-#endif  // defined(_WIN32)
-
-// Error handling
-
+// Error handling functions (shared across all source files)
 void ReleaseError(struct AdbcError* error) {
   if (error) {
     if (error->message) delete[] error->message;
@@ -266,1530 +288,6 @@ void SetError(struct AdbcError* error, struct AdbcError* src_error) {
   }
 }
 
-struct OwnedError {
-  struct AdbcError error = ADBC_ERROR_INIT;
-
-  ~OwnedError() {
-    if (error.release) {
-      error.release(&error);
-    }
-  }
-};
-
-#ifdef _WIN32
-using char_type = wchar_t;
-using string_type = std::wstring;
-
-std::string Utf8Encode(const std::wstring& wstr) {
-  if (wstr.empty()) return std::string();
-  int size_needed = WideCharToMultiByte(
-      CP_UTF8, 0, wstr.data(), static_cast<int>(wstr.size()), NULL, 0, NULL, NULL);
-  std::string str_to(size_needed, 0);
-  WideCharToMultiByte(CP_UTF8, 0, wstr.data(), static_cast<int>(wstr.size()),
-                      str_to.data(), size_needed, NULL, NULL);
-  return str_to;
-}
-
-std::wstring Utf8Decode(const std::string& str) {
-  if (str.empty()) return std::wstring();
-  int size_needed =
-      MultiByteToWideChar(CP_UTF8, 0, str.data(), static_cast<int>(str.size()), NULL, 0);
-  std::wstring wstr_to(size_needed, 0);
-  MultiByteToWideChar(CP_UTF8, 0, str.data(), static_cast<int>(str.size()),
-                      wstr_to.data(), size_needed);
-  return wstr_to;
-}
-
-#else
-using char_type = char;
-using string_type = std::string;
-#endif  // _WIN32
-
-/// \brief The location and entrypoint of a resolved driver.
-struct DriverInfo {
-  std::string manifest_file;
-  int64_t manifest_version = 0;
-  std::string driver_name;
-  std::filesystem::path lib_path;
-  std::string entrypoint;
-
-  std::string version;
-  std::string source;
-};
-
-#ifdef _WIN32
-class RegistryKey {
- public:
-  RegistryKey(HKEY root, const std::wstring_view subkey) noexcept
-      : root_(root), key_(nullptr) {
-    status_ = RegOpenKeyExW(root_, subkey.data(), 0, KEY_READ, &key_);
-  }
-
-  ~RegistryKey() {
-    if (is_open() && key_ != nullptr) {
-      RegCloseKey(key_);
-      key_ = nullptr;
-      status_ = ERROR_REGISTRY_IO_FAILED;
-    }
-  }
-
-  HKEY key() const { return key_; }
-  bool is_open() const { return status_ == ERROR_SUCCESS; }
-  LSTATUS status() const { return status_; }
-
-  std::wstring GetString(const std::wstring& name, std::wstring default_value) {
-    if (!is_open()) return default_value;
-
-    DWORD type = REG_SZ;
-    DWORD size = 0;
-    auto result = RegQueryValueExW(key_, name.data(), nullptr, &type, nullptr, &size);
-    if (result != ERROR_SUCCESS) return default_value;
-    if (type != REG_SZ) return default_value;
-
-    std::wstring value(size, '\0');
-    result = RegQueryValueExW(key_, name.data(), nullptr, &type,
-                              reinterpret_cast<LPBYTE>(value.data()), &size);
-    if (result != ERROR_SUCCESS) return default_value;
-    return value;
-  }
-
-  int32_t GetInt(const std::wstring& name, const int32_t default_value) {
-    if (!is_open()) return default_value;
-
-    DWORD dwValue;
-    DWORD dataSize = sizeof(dwValue);
-    DWORD valueType;
-    auto result = RegQueryValueExW(key_, name.data(), nullptr, &valueType,
-                                   (LPBYTE)&dwValue, &dataSize);
-    if (result != ERROR_SUCCESS) return default_value;
-    if (valueType != REG_DWORD) return default_value;
-    return static_cast<int32_t>(dwValue);
-  }
-
- private:
-  HKEY root_;
-  HKEY key_;
-  LSTATUS status_;
-};
-
-AdbcStatusCode LoadDriverFromRegistry(HKEY root, const std::wstring& driver_name,
-                                      DriverInfo& info, struct AdbcError* error) {
-  // N.B. start all error messages with the subkey so that the calling code
-  // can prepend the name of 'root' to the error message (easier than trying
-  // to invoke win32 API to get the name of the HKEY)
-  static const LPCWSTR kAdbcDriverRegistry = L"SOFTWARE\\ADBC\\Drivers";
-  RegistryKey drivers_key(root, kAdbcDriverRegistry);
-  if (!drivers_key.is_open()) {
-    std::string error_message = "SOFTWARE\\ADBC\\DRIVERS not found"s;
-    SetError(error, std::move(error_message));
-    return ADBC_STATUS_NOT_FOUND;
-  }
-
-  RegistryKey dkey(drivers_key.key(), driver_name);
-  if (!dkey.is_open()) {
-    std::string error_message = "SOFTWARE\\ADBC\\DRIVERS has no entry for driver \""s;
-    error_message += Utf8Encode(driver_name);
-    error_message += "\""s;
-    SetError(error, std::move(error_message));
-    return ADBC_STATUS_NOT_FOUND;
-  }
-
-  info.driver_name = Utf8Encode(dkey.GetString(L"name", L""));
-  info.manifest_version = int64_t(dkey.GetInt(L"manifest_version", 1));
-  if (info.manifest_version != 1) {
-    SetError(error, "Driver manifest version '" + std::to_string(info.manifest_version) +
-                        "' is not supported by this driver manager.");
-    return ADBC_STATUS_INVALID_ARGUMENT;
-  }
-
-  info.entrypoint = Utf8Encode(dkey.GetString(L"entrypoint", L""));
-  info.version = Utf8Encode(dkey.GetString(L"version", L""));
-  info.source = Utf8Encode(dkey.GetString(L"source", L""));
-  info.lib_path = std::filesystem::path(dkey.GetString(L"driver", L""));
-  if (info.lib_path.empty()) {
-    std::string error_message = "SOFTWARE\\ADBC\\DRIVERS\\"s;
-    error_message += Utf8Encode(driver_name);
-    error_message += " has no driver path"s;
-    SetError(error, std::move(error_message));
-    return ADBC_STATUS_NOT_FOUND;
-  }
-  return ADBC_STATUS_OK;
-}
-#endif  // _WIN32
-
-#define CHECK_STATUS(EXPR)                                \
-  if (auto _status = (EXPR); _status != ADBC_STATUS_OK) { \
-    return _status;                                       \
-  }
-
-AdbcStatusCode ProcessProfileValue(std::string_view value, std::string& out,
-                                   struct AdbcError* error) {
-  if (value.empty()) {
-    SetError(error, "Profile value is null");
-    return ADBC_STATUS_INVALID_ARGUMENT;
-  }
-
-  static const std::regex pattern(R"(\{\{\s*([^{}]*?)\s*\}\})");
-  auto end_of_last_match = value.begin();
-  auto begin = std::regex_iterator(value.begin(), value.end(), pattern);
-  auto end = decltype(begin){};
-  std::match_results<std::string_view::iterator>::difference_type pos_last_match = 0;
-
-  out.resize(0);
-  for (auto itr = begin; itr != end; ++itr) {
-    auto match = *itr;
-    auto pos_match = match.position();
-    auto diff = pos_match - pos_last_match;
-    auto start_match = end_of_last_match;
-    std::advance(start_match, diff);
-    out.append(end_of_last_match, start_match);
-
-    const auto content = match[1].str();
-    if (content.rfind("env_var(", 0) != 0) {
-      SetError(error, "Unsupported interpolation type in profile value: " + content);
-      return ADBC_STATUS_INVALID_ARGUMENT;
-    }
-
-    if (content[content.size() - 1] != ')') {
-      SetError(error, "Malformed env_var() profile value: missing closing parenthesis");
-      return ADBC_STATUS_INVALID_ARGUMENT;
-    }
-
-    const auto env_var_name = content.substr(8, content.size() - 9);
-    if (env_var_name.empty()) {
-      SetError(error,
-               "Malformed env_var() profile value: missing environment variable name");
-      return ADBC_STATUS_INVALID_ARGUMENT;
-    }
-
-#ifdef _WIN32
-    auto local_env_var = Utf8Decode(std::string(env_var_name));
-    DWORD required_size = GetEnvironmentVariableW(local_env_var.c_str(), NULL, 0);
-    if (required_size == 0) {
-      out = "";
-      return ADBC_STATUS_OK;
-    }
-
-    std::wstring wvalue;
-    wvalue.resize(required_size);
-    DWORD actual_size =
-        GetEnvironmentVariableW(local_env_var.c_str(), wvalue.data(), required_size);
-    // remove null terminator
-    wvalue.resize(actual_size);
-    const auto env_var_value = Utf8Encode(wvalue);
-#else
-    const char* env_value = std::getenv(env_var_name.c_str());
-    if (!env_value) {
-      out = "";
-      return ADBC_STATUS_OK;
-    }
-    const auto env_var_value = std::string(env_value);
-#endif
-    out.append(env_var_value);
-
-    auto length_match = match.length();
-    pos_last_match = pos_match + length_match;
-    end_of_last_match = start_match;
-    std::advance(end_of_last_match, length_match);
-  }
-
-  out.append(end_of_last_match, value.end());
-  return ADBC_STATUS_OK;
-}
-
-/// \return ADBC_STATUS_NOT_FOUND if the manifest does not contain a driver
-///   path for this platform, ADBC_STATUS_INVALID_ARGUMENT if the manifest
-///   could not be parsed, ADBC_STATUS_OK otherwise (`info` will be populated)
-AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
-                                  DriverInfo& info, struct AdbcError* error) {
-  toml::table config;
-  try {
-    config = toml::parse_file(driver_manifest.native());
-  } catch (const toml::parse_error& err) {
-    // Despite the name, this exception covers IO errors too.  Hence, we can't
-    // differentiate between bad syntax and other I/O error.
-    std::string message = "Could not open manifest. ";
-    message += err.what();
-    message += ". Manifest: ";
-    message += driver_manifest.string();
-    SetError(error, std::move(message));
-    return ADBC_STATUS_INVALID_ARGUMENT;
-  }
-
-  info.manifest_file = driver_manifest.string();
-  info.driver_name = config["name"].value_or(""s);
-  info.manifest_version = config["manifest_version"].value_or(int64_t(1));
-  if (info.manifest_version != 1) {
-    SetError(error, "Driver manifest version '" + std::to_string(info.manifest_version) +
-                        "' is not supported by this driver manager.");
-    return ADBC_STATUS_INVALID_ARGUMENT;
-  }
-
-  info.entrypoint = config.at_path("Driver.entrypoint").value_or(""s);
-  info.version = config["version"].value_or(""s);
-  info.source = config["source"].value_or(""s);
-
-  auto entrypoint = config.at_path("Driver.entrypoint");
-  if (entrypoint) {
-    if (auto* ep = entrypoint.as_string()) {
-      info.entrypoint = ep->get();
-    } else {
-      SetError(error, "Driver entrypoint not a string in manifest '"s +
-                          driver_manifest.string() + "'"s);
-      return ADBC_STATUS_INVALID_ARGUMENT;
-    }
-  }
-
-  auto driver = config.at_path("Driver.shared");
-  if (toml::table* platforms = driver.as_table()) {
-    auto view = platforms->at_path(adbc::CurrentArch());
-    if (!view) {
-      std::string message = "Driver path not found in manifest '";
-      message += driver_manifest.string();
-      message += "' for current architecture '";
-      message += adbc::CurrentArch();
-      message += "'. Architectures found:";
-      for (const auto& [key, val] : *platforms) {
-        message += " ";
-        message += key;
-      }
-      SetError(error, std::move(message));
-      return ADBC_STATUS_NOT_FOUND;
-    } else if (auto* path = view.as_string()) {
-      if (path->get().empty()) {
-        std::string message = "Driver path is an empty string in manifest '";
-        message += driver_manifest.string();
-        message += "' for current architecture '";
-        message += adbc::CurrentArch();
-        message += "'";
-        SetError(error, std::move(message));
-        return ADBC_STATUS_INVALID_ARGUMENT;
-      }
-
-      info.lib_path = path->get();
-      return ADBC_STATUS_OK;
-    }
-    std::string message = "Driver path not found in manifest '";
-    message += driver_manifest.string();
-    message += "' for current architecture '";
-    message += adbc::CurrentArch();
-    message += "'. Value was not a string";
-    SetError(error, std::move(message));
-    return ADBC_STATUS_INVALID_ARGUMENT;
-  } else if (auto* path = driver.as_string()) {
-    info.lib_path = path->get();
-    if (info.lib_path.empty()) {
-      SetError(error, "Driver path is an empty string in manifest '"s +
-                          driver_manifest.string() + "'"s);
-      return ADBC_STATUS_INVALID_ARGUMENT;
-    }
-    return ADBC_STATUS_OK;
-  }
-  SetError(error, "Driver path not defined in manifest '"s + driver_manifest.string() +
-                      "'. `Driver.shared` must be a string or table"s);
-  return ADBC_STATUS_INVALID_ARGUMENT;
-}
-
-SearchPaths GetEnvPaths(const char_type* env_var) {
-#ifdef _WIN32
-  DWORD required_size = GetEnvironmentVariableW(env_var, NULL, 0);
-  if (required_size == 0) {
-    return {};
-  }
-
-  std::wstring path_var;
-  path_var.resize(required_size);
-  DWORD actual_size = GetEnvironmentVariableW(env_var, path_var.data(), required_size);
-  // Remove null terminator
-  path_var.resize(actual_size);
-  auto path = Utf8Encode(path_var);
-#else
-  const char* path_var = std::getenv(env_var);
-  if (!path_var) {
-    return {};
-  }
-  std::string path(path_var);
-#endif  // _WIN32
-  SearchPaths paths;
-  for (auto parsed_path : InternalAdbcParsePath(path)) {
-    paths.emplace_back(SearchPathSource::kEnv, parsed_path);
-  }
-  return paths;
-}
-
-#ifdef _WIN32
-static const wchar_t* kAdbcDriverPath = L"ADBC_DRIVER_PATH";
-static const wchar_t* kAdbcProfilePath = L"ADBC_PROFILE_PATH";
-#else
-static const char* kAdbcDriverPath = "ADBC_DRIVER_PATH";
-static const char* kAdbcProfilePath = "ADBC_PROFILE_PATH";
-#endif  // _WIN32
-
-SearchPaths GetSearchPaths(const AdbcLoadFlags levels) {
-  SearchPaths paths;
-  if (levels & ADBC_LOAD_FLAG_SEARCH_ENV) {
-    // Check the ADBC_DRIVER_PATH environment variable
-    paths = GetEnvPaths(kAdbcDriverPath);
-  }
-
-  if (levels & ADBC_LOAD_FLAG_SEARCH_USER) {
-    // Check the user configuration directory
-    std::filesystem::path user_config_dir = InternalAdbcUserConfigDir();
-    if (!user_config_dir.empty() && std::filesystem::exists(user_config_dir)) {
-      paths.emplace_back(SearchPathSource::kUser, std::move(user_config_dir));
-    } else {
-      paths.emplace_back(SearchPathSource::kDoesNotExist, std::move(user_config_dir));
-    }
-  }
-
-  if (levels & ADBC_LOAD_FLAG_SEARCH_SYSTEM) {
-    // System level behavior for Windows is to search the registry keys so we
-    // only need to check for macOS and fall back to Unix-like behavior as long
-    // as we're not on Windows
-#if !defined(_WIN32)
-    const std::filesystem::path system_config_dir = InternalAdbcSystemConfigDir();
-    if (std::filesystem::exists(system_config_dir)) {
-      paths.emplace_back(SearchPathSource::kSystem, std::move(system_config_dir));
-    } else {
-      paths.emplace_back(SearchPathSource::kDoesNotExist, std::move(system_config_dir));
-    }
-#endif  // !defined(_WIN32)
-  }
-
-  return paths;
-}
-
-bool HasExtension(const std::filesystem::path& path, const std::string& ext) {
-#ifdef _WIN32
-  auto wext = Utf8Decode(ext);
-  auto path_ext = path.extension().native();
-  return path_ext.size() == wext.size() &&
-         _wcsnicmp(path_ext.data(), wext.data(), wext.size()) == 0;
-#else
-  return path.extension() == ext;
-#endif  // _WIN32
-}
-
-/// A driver DLL.
-struct ManagedLibrary {
-  ManagedLibrary() : handle(nullptr) {}
-  ManagedLibrary(ManagedLibrary&& other) : handle(other.handle) {
-    other.handle = nullptr;
-  }
-  ManagedLibrary(const ManagedLibrary&) = delete;
-  ManagedLibrary& operator=(const ManagedLibrary&) = delete;
-  ManagedLibrary& operator=(ManagedLibrary&& other) noexcept {
-    this->handle = other.handle;
-    other.handle = nullptr;
-    return *this;
-  }
-
-  ~ManagedLibrary() { Release(); }
-
-  void Release() {
-    // TODO(apache/arrow-adbc#204): causes tests to segfault.  Need to
-    // refcount the driver DLL; also, errors may retain a reference to
-    // release() from the DLL - how to handle this?  It's unlikely we can
-    // actually do this - in general shared libraries are not safe to unload.
-  }
-
-  /// \brief Resolve the driver name to a concrete location.
-  AdbcStatusCode GetDriverInfo(
-      const std::string_view driver_name, const AdbcLoadFlags load_options,
-      const std::vector<std::filesystem::path>& additional_search_paths, DriverInfo& info,
-      struct AdbcError* error) {
-    if (driver_name.empty()) {
-      SetError(error, "Driver name is empty");
-      return ADBC_STATUS_INVALID_ARGUMENT;
-    }
-
-    // First try to treat the given driver name as a path to a manifest or shared library
-    std::filesystem::path driver_path(driver_name);
-    const bool allow_relative_paths = load_options & ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS;
-    if (driver_path.has_extension()) {
-      if (driver_path.is_relative() && !allow_relative_paths) {
-        SetError(error, "Driver path is relative and relative paths are not allowed");
-        return ADBC_STATUS_INVALID_ARGUMENT;
-      }
-
-      if (HasExtension(driver_path, ".toml")) {
-        // if the extension is .toml, attempt to load the manifest
-        // erroring if we fail
-
-        auto status = LoadDriverManifest(driver_path, info, error);
-        if (status == ADBC_STATUS_OK) {
-          return Load(info.lib_path.native(), {}, error);
-        }
-        return status;
-      }
-
-      // if the extension is not .toml, then just try to load the provided
-      // path as if it was an absolute path to a driver library
-      info.lib_path = driver_path;
-      return Load(driver_path.native(), {}, error);
-    }
-
-    if (driver_path.is_absolute()) {
-      // if we have an absolute path without an extension, first see if there's a
-      // toml file with the same name.
-      driver_path.replace_extension(".toml");
-      if (std::filesystem::exists(driver_path)) {
-        auto status = LoadDriverManifest(driver_path, info, error);
-        if (status == ADBC_STATUS_OK) {
-          return Load(info.lib_path.native(), {}, error);
-        }
-      }
-
-      driver_path.replace_extension("");
-      // otherwise just try to load the provided path as if it was an absolute path
-      info.lib_path = driver_path;
-      return Load(driver_path.native(), {}, error);
-    }
-
-    if (driver_path.has_extension()) {
-      if (driver_path.is_relative() && !allow_relative_paths) {
-        SetError(error, "Driver path is relative and relative paths are not allowed");
-        return ADBC_STATUS_INVALID_ARGUMENT;
-      }
-
-#if defined(_WIN32)
-      static const std::string kPlatformLibrarySuffix = ".dll";
-#elif defined(__APPLE__)
-      static const std::string kPlatformLibrarySuffix = ".dylib";
-#else
-      static const std::string kPlatformLibrarySuffix = ".so";
-#endif  // defined(_WIN32)
-      if (HasExtension(driver_path, kPlatformLibrarySuffix)) {
-        info.lib_path = driver_path;
-        return Load(driver_path.native(), {}, error);
-      }
-
-      SetError(error, "Driver name has unrecognized extension: " +
-                          driver_path.extension().string());
-      return ADBC_STATUS_INVALID_ARGUMENT;
-    }
-
-    // not an absolute path, no extension. Let's search the configured paths
-    // based on the options
-    // FindDriver will set info.lib_path
-    // XXX(lidavidm): the control flow in this call chain is excessively
-    // convoluted and it's hard to determine if DriverInfo is fully
-    // initialized or not in all non-error paths
-    return FindDriver(driver_path, load_options, additional_search_paths, info, error);
-  }
-
-  /// \return ADBC_STATUS_NOT_FOUND if the driver shared library could not be
-  ///   found (via dlopen) or if a manifest was found but did not contain a
-  ///   path for the current platform, ADBC_STATUS_INVALID_ARGUMENT if a
-  ///   manifest was found but could not be parsed, ADBC_STATUS_OK otherwise
-  ///
-  /// May modify search_paths to add error info
-  AdbcStatusCode SearchPathsForDriver(const std::filesystem::path& driver_path,
-                                      SearchPaths& search_paths, DriverInfo& info,
-                                      struct AdbcError* error) {
-    SearchPaths extra_debug_info;
-    for (const auto& [source, search_path] : search_paths) {
-      if (source == SearchPathSource::kRegistry || source == SearchPathSource::kUnset ||
-          source == SearchPathSource::kDoesNotExist ||
-          source == SearchPathSource::kDisabledAtCompileTime ||
-          source == SearchPathSource::kDisabledAtRunTime ||
-          source == SearchPathSource::kOtherError) {
-        continue;
-      }
-      std::filesystem::path full_path = search_path / driver_path;
-
-      // check for toml first, then dll
-      full_path.replace_extension(".toml");
-      if (std::filesystem::exists(full_path)) {
-        OwnedError intermediate_error;
-
-        auto status = LoadDriverManifest(full_path, info, &intermediate_error.error);
-        if (status == ADBC_STATUS_OK) {
-          // Don't pass attempted_paths here; we'll generate the error at a higher level
-          status = Load(info.lib_path.native(), {}, &intermediate_error.error);
-          if (status == ADBC_STATUS_OK) {
-            return status;
-          }
-          std::string message = "found ";
-          message += full_path.string();
-          if (intermediate_error.error.message) {
-            message += " but: ";
-            message += intermediate_error.error.message;
-          } else {
-            message += " could not load the driver it specified";
-          }
-          extra_debug_info.emplace_back(SearchPathSource::kOtherError,
-                                        std::move(message));
-          search_paths.insert(search_paths.end(), extra_debug_info.begin(),
-                              extra_debug_info.end());
-          return status;
-        } else if (status == ADBC_STATUS_INVALID_ARGUMENT) {
-          // The manifest was invalid. Don't ignore that!
-          search_paths.insert(search_paths.end(), extra_debug_info.begin(),
-                              extra_debug_info.end());
-          if (intermediate_error.error.message) {
-            std::string error_message = intermediate_error.error.message;
-            AddSearchPathsToError(search_paths, SearchPathType::kManifest, error_message);
-            SetError(error, std::move(error_message));
-          }
-          return status;
-        }
-        // Should be NOT_FOUND otherwise
-        std::string message = "found ";
-        message += full_path.string();
-        if (intermediate_error.error.message) {
-          message += " but: ";
-          message += intermediate_error.error.message;
-        } else {
-          message += " which did not define a driver for this platform";
-        }
-
-        extra_debug_info.emplace_back(SearchPathSource::kOtherError, std::move(message));
-      }
-
-      // remove the .toml extension; Load will add the DLL/SO/DYLIB suffix
-      full_path.replace_extension("");
-      // Don't pass error here - it'll be suppressed anyways
-      auto status = Load(full_path.native(), {}, nullptr);
-      if (status == ADBC_STATUS_OK) {
-        info.lib_path = full_path;
-        return status;
-      }
-    }
-
-    search_paths.insert(search_paths.end(), extra_debug_info.begin(),
-                        extra_debug_info.end());
-    return ADBC_STATUS_NOT_FOUND;
-  }
-
-  AdbcStatusCode FindDriver(
-      const std::filesystem::path& driver_path, const AdbcLoadFlags load_options,
-      const std::vector<std::filesystem::path>& additional_search_paths, DriverInfo& info,
-      struct AdbcError* error) {
-    if (driver_path.empty()) {
-      SetError(error, "Driver path is empty");
-      return ADBC_STATUS_INVALID_ARGUMENT;
-    }
-
-    SearchPaths search_paths;
-    {
-      // First search the paths in the env var `ADBC_DRIVER_PATH`.
-      // Then search the runtime application-defined additional search paths.
-      search_paths = GetSearchPaths(load_options & ADBC_LOAD_FLAG_SEARCH_ENV);
-      if (!(load_options & ADBC_LOAD_FLAG_SEARCH_ENV)) {
-        search_paths.emplace_back(SearchPathSource::kDisabledAtRunTime,
-                                  "ADBC_DRIVER_PATH (enable ADBC_LOAD_FLAG_SEARCH_ENV)");
-      } else if (search_paths.empty()) {
-        search_paths.emplace_back(SearchPathSource::kUnset, "ADBC_DRIVER_PATH");
-      }
-      for (const auto& path : additional_search_paths) {
-        search_paths.emplace_back(SearchPathSource::kAdditional, path);
-      }
-
-#if ADBC_CONDA_BUILD
-      // Then, if this is a conda build, search in the conda environment if
-      // it is activated.
-      if (load_options & ADBC_LOAD_FLAG_SEARCH_ENV) {
-#ifdef _WIN32
-        const wchar_t* conda_name = L"CONDA_PREFIX";
-#else
-        const char* conda_name = "CONDA_PREFIX";
-#endif  // _WIN32
-        auto venv = GetEnvPaths(conda_name);
-        if (!venv.empty()) {
-          for (const auto& [_, venv_path] : venv) {
-            search_paths.emplace_back(SearchPathSource::kConda,
-                                      venv_path / "etc" / "adbc" / "drivers");
-          }
-        }
-      } else {
-        search_paths.emplace_back(SearchPathSource::kDisabledAtRunTime,
-                                  "Conda prefix (enable ADBC_LOAD_FLAG_SEARCH_ENV)");
-      }
-#else
-      if (load_options & ADBC_LOAD_FLAG_SEARCH_ENV) {
-        search_paths.emplace_back(SearchPathSource::kDisabledAtCompileTime,
-                                  "Conda prefix");
-      }
-#endif  // ADBC_CONDA_BUILD
-
-      auto status = SearchPathsForDriver(driver_path, search_paths, info, error);
-      if (status != ADBC_STATUS_NOT_FOUND) {
-        // If NOT_FOUND, then keep searching; if OK or INVALID_ARGUMENT, stop
-        return status;
-      }
-    }
-
-    // We searched environment paths and additional search paths (if they
-    // exist), so now search the rest.
-#ifdef _WIN32
-    // On Windows, check registry keys, not just search paths.
-    if (load_options & ADBC_LOAD_FLAG_SEARCH_USER) {
-      // Check the user registry for the driver.
-      auto status =
-          LoadDriverFromRegistry(HKEY_CURRENT_USER, driver_path.native(), info, error);
-      if (status == ADBC_STATUS_OK) {
-        return Load(info.lib_path.native(), {}, error);
-      }
-      if (error && error->message) {
-        std::string message = "HKEY_CURRENT_USER\\"s;
-        message += error->message;
-        search_paths.emplace_back(SearchPathSource::kRegistry, std::move(message));
-      } else {
-        search_paths.emplace_back(SearchPathSource::kRegistry,
-                                  "not found in HKEY_CURRENT_USER");
-      }
-
-      auto user_paths = GetSearchPaths(ADBC_LOAD_FLAG_SEARCH_USER);
-      status = SearchPathsForDriver(driver_path, user_paths, info, error);
-      if (status != ADBC_STATUS_NOT_FOUND) {
-        return status;
-      }
-      search_paths.insert(search_paths.end(), user_paths.begin(), user_paths.end());
-    } else {
-      search_paths.emplace_back(SearchPathSource::kDisabledAtRunTime,
-                                "HKEY_CURRENT_USER (enable ADBC_LOAD_FLAG_SEARCH_USER)");
-    }
-
-    if (load_options & ADBC_LOAD_FLAG_SEARCH_SYSTEM) {
-      // Check the system registry for the driver.
-      auto status =
-          LoadDriverFromRegistry(HKEY_LOCAL_MACHINE, driver_path.native(), info, error);
-      if (status == ADBC_STATUS_OK) {
-        return Load(info.lib_path.native(), {}, error);
-      }
-      if (error && error->message) {
-        std::string message = "HKEY_LOCAL_MACHINE\\"s;
-        message += error->message;
-        search_paths.emplace_back(SearchPathSource::kRegistry, std::move(message));
-      } else {
-        search_paths.emplace_back(SearchPathSource::kRegistry,
-                                  "not found in HKEY_LOCAL_MACHINE");
-      }
-
-      auto system_paths = GetSearchPaths(ADBC_LOAD_FLAG_SEARCH_SYSTEM);
-      status = SearchPathsForDriver(driver_path, system_paths, info, error);
-      if (status != ADBC_STATUS_NOT_FOUND) {
-        return status;
-      }
-      search_paths.insert(search_paths.end(), system_paths.begin(), system_paths.end());
-    } else {
-      search_paths.emplace_back(
-          SearchPathSource::kDisabledAtRunTime,
-          "HKEY_LOCAL_MACHINE (enable ADBC_LOAD_FLAG_SEARCH_SYSTEM)");
-    }
-
-    info.lib_path = driver_path;
-    return Load(driver_path.native(), search_paths, error);
-#else
-    // Otherwise, search the configured paths.
-    SearchPaths more_search_paths =
-        GetSearchPaths(load_options & ~ADBC_LOAD_FLAG_SEARCH_ENV);
-    auto status = SearchPathsForDriver(driver_path, more_search_paths, info, error);
-    if (status == ADBC_STATUS_NOT_FOUND) {
-      if (!(load_options & ADBC_LOAD_FLAG_SEARCH_USER)) {
-        std::filesystem::path user_config_dir = InternalAdbcUserConfigDir();
-        std::string message = "user config dir ";
-        message += user_config_dir.string();
-        message += " (enable ADBC_LOAD_FLAG_SEARCH_USER)";
-        more_search_paths.emplace_back(SearchPathSource::kDisabledAtRunTime,
-                                       std::move(message));
-      }
-      // Windows searches registry keys, so this only applies to other OSes
-#if !defined(_WIN32)
-      if (!(load_options & ADBC_LOAD_FLAG_SEARCH_SYSTEM)) {
-        std::filesystem::path system_config_dir = InternalAdbcSystemConfigDir();
-        std::string message = "system config dir ";
-        message += system_config_dir.string();
-        message += " (enable ADBC_LOAD_FLAG_SEARCH_SYSTEM)";
-        more_search_paths.emplace_back(SearchPathSource::kDisabledAtRunTime,
-                                       std::move(message));
-      }
-#endif  // !defined(_WIN32)
-
-      // If we reach here, we didn't find the driver in any of the paths
-      // so let's just attempt to load it as default behavior.
-      search_paths.insert(search_paths.end(), more_search_paths.begin(),
-                          more_search_paths.end());
-      info.lib_path = driver_path;
-      return Load(driver_path.native(), search_paths, error);
-    }
-    return status;
-#endif  // _WIN32
-  }
-
-  /// \return ADBC_STATUS_NOT_FOUND if the driver shared library could not be
-  ///   found, ADBC_STATUS_OK otherwise
-  AdbcStatusCode Load(const string_type& library, const SearchPaths& attempted_paths,
-                      struct AdbcError* error) {
-    std::string error_message;
-#if defined(_WIN32)
-    HMODULE handle = LoadLibraryExW(library.c_str(), NULL, 0);
-    if (!handle) {
-      error_message = "Could not load `";
-      error_message += Utf8Encode(library);
-      error_message += "`: LoadLibraryExW() failed: ";
-      GetWinError(&error_message);
-
-      std::wstring full_driver_name = library;
-      full_driver_name += L".dll";
-      handle = LoadLibraryExW(full_driver_name.c_str(), NULL, 0);
-      if (!handle) {
-        error_message += '\n';
-        error_message += Utf8Encode(full_driver_name);
-        error_message += ": LoadLibraryExW() failed: ";
-        GetWinError(&error_message);
-      }
-    }
-    if (!handle) {
-      std::string name = Utf8Encode(library);
-      std::string message = CheckNonPrintableLibraryName(name);
-      if (!message.empty()) {
-        error_message += "\n";
-        error_message += message;
-      }
-      AddSearchPathsToError(attempted_paths, SearchPathType::kManifest, error_message);
-      SetError(error, error_message);
-      return ADBC_STATUS_NOT_FOUND;
-    } else {
-      this->handle = handle;
-    }
-#else
-    static const std::string kPlatformLibraryPrefix = "lib";
-#if defined(__APPLE__)
-    static const std::string kPlatformLibrarySuffix = ".dylib";
-#else
-    static const std::string kPlatformLibrarySuffix = ".so";
-#endif  // defined(__APPLE__)
-
-    void* handle = dlopen(library.c_str(), RTLD_NOW | RTLD_LOCAL);
-    if (!handle) {
-      error_message = "Could not load `";
-      error_message += library;
-      error_message += "`: dlopen() failed: ";
-      error_message += dlerror();
-
-      // If applicable, append the shared library prefix/extension and
-      // try again (this way you don't have to hardcode driver names by
-      // platform in the application)
-      const std::string driver_str = library;
-
-      std::string full_driver_name;
-      if (driver_str.size() < kPlatformLibraryPrefix.size() ||
-          driver_str.compare(0, kPlatformLibraryPrefix.size(), kPlatformLibraryPrefix) !=
-              0) {
-        full_driver_name += kPlatformLibraryPrefix;
-      }
-      full_driver_name += library;
-      if (driver_str.size() < kPlatformLibrarySuffix.size() ||
-          driver_str.compare(full_driver_name.size() - kPlatformLibrarySuffix.size(),
-                             kPlatformLibrarySuffix.size(),
-                             kPlatformLibrarySuffix) != 0) {
-        full_driver_name += kPlatformLibrarySuffix;
-      }
-      handle = dlopen(full_driver_name.c_str(), RTLD_NOW | RTLD_LOCAL);
-      if (!handle) {
-        error_message += "\ndlopen() failed: ";
-        error_message += dlerror();
-      }
-    }
-    if (handle) {
-      this->handle = handle;
-    } else {
-      std::string message = CheckNonPrintableLibraryName(library);
-      if (!message.empty()) {
-        error_message += "\n";
-        error_message += message;
-      }
-      AddSearchPathsToError(attempted_paths, SearchPathType::kManifest, error_message);
-      SetError(error, error_message);
-      return ADBC_STATUS_NOT_FOUND;
-    }
-#endif  // defined(_WIN32)
-    return ADBC_STATUS_OK;
-  }
-
-  AdbcStatusCode Lookup(const char* name, void** func, struct AdbcError* error) {
-#if defined(_WIN32)
-    void* load_handle = reinterpret_cast<void*>(GetProcAddress(handle, name));
-    if (!load_handle) {
-      std::string message = "GetProcAddress(";
-      message += name;
-      message += ") failed: ";
-      GetWinError(&message);
-      AppendError(error, message);
-      return ADBC_STATUS_INTERNAL;
-    }
-#else
-    void* load_handle = dlsym(handle, name);
-    if (!load_handle) {
-      std::string message = "dlsym(";
-      message += name;
-      message += ") failed: ";
-      message += dlerror();
-      AppendError(error, message);
-      return ADBC_STATUS_INTERNAL;
-    }
-#endif  // defined(_WIN32)
-    *func = load_handle;
-    return ADBC_STATUS_OK;
-  }
-
-#if defined(_WIN32)
-  // The loaded DLL
-  HMODULE handle;
-#else
-  void* handle;
-#endif  // defined(_WIN32)
-};
-
-struct FilesystemProfile {
-  std::filesystem::path path;
-  std::string driver;
-  std::unordered_map<std::string, std::string> options;
-  std::unordered_map<std::string, int64_t> int_options;
-  std::unordered_map<std::string, double> double_options;
-
-  std::vector<const char*> options_keys;
-  std::vector<const char*> options_values;
-
-  std::vector<const char*> int_option_keys;
-  std::vector<int64_t> int_option_values;
-
-  std::vector<const char*> double_option_keys;
-  std::vector<double> double_option_values;
-
-  void PopulateConnectionProfile(struct AdbcConnectionProfile* out) {
-    options_keys.reserve(options.size());
-    options_values.reserve(options.size());
-    for (const auto& [key, value] : options) {
-      options_keys.push_back(key.c_str());
-      options_values.push_back(value.c_str());
-    }
-
-    int_option_keys.reserve(int_options.size());
-    int_option_values.reserve(int_options.size());
-    for (const auto& [key, value] : int_options) {
-      int_option_keys.push_back(key.c_str());
-      int_option_values.push_back(value);
-    }
-
-    double_option_keys.reserve(double_options.size());
-    double_option_values.reserve(double_options.size());
-    for (const auto& [key, value] : double_options) {
-      double_option_keys.push_back(key.c_str());
-      double_option_values.push_back(value);
-    }
-
-    out->private_data = new FilesystemProfile(std::move(*this));
-    out->release = [](AdbcConnectionProfile* profile) {
-      if (!profile || !profile->private_data) {
-        return;
-      }
-
-      delete static_cast<FilesystemProfile*>(profile->private_data);
-      profile->private_data = nullptr;
-      profile->release = nullptr;
-    };
-
-    out->GetDriverName = [](AdbcConnectionProfile* profile, const char** out,
-                            AdbcDriverInitFunc* init_func,
-                            struct AdbcError* error) -> AdbcStatusCode {
-      if (!profile || !profile->private_data) {
-        SetError(error, "Invalid connection profile");
-        return ADBC_STATUS_INVALID_ARGUMENT;
-      }
-
-      auto* fs_profile = static_cast<FilesystemProfile*>(profile->private_data);
-      *out = fs_profile->driver.c_str();
-      *init_func = nullptr;
-      return ADBC_STATUS_OK;
-    };
-
-    out->GetOptions = [](AdbcConnectionProfile* profile, const char*** keys,
-                         const char*** values, size_t* num_options,
-                         struct AdbcError* error) -> AdbcStatusCode {
-      if (!profile || !profile->private_data) {
-        SetError(error, "Invalid connection profile");
-        return ADBC_STATUS_INVALID_ARGUMENT;
-      }
-
-      if (!keys || !values || !num_options) {
-        SetError(error, "Output parameters cannot be null");
-        return ADBC_STATUS_INVALID_ARGUMENT;
-      }
-
-      auto* fs_profile = static_cast<FilesystemProfile*>(profile->private_data);
-      *num_options = fs_profile->options.size();
-      *keys = fs_profile->options_keys.data();
-      *values = fs_profile->options_values.data();
-      return ADBC_STATUS_OK;
-    };
-
-    out->GetIntOptions = [](AdbcConnectionProfile* profile, const char*** keys,
-                            const int64_t** values, size_t* num_options,
-                            struct AdbcError* error) -> AdbcStatusCode {
-      if (!profile || !profile->private_data) {
-        SetError(error, "Invalid connection profile");
-        return ADBC_STATUS_INVALID_ARGUMENT;
-      }
-
-      if (!keys || !values || !num_options) {
-        SetError(error, "Output parameters cannot be null");
-        return ADBC_STATUS_INVALID_ARGUMENT;
-      }
-
-      auto* fs_profile = static_cast<FilesystemProfile*>(profile->private_data);
-      *num_options = fs_profile->int_options.size();
-      *keys = fs_profile->int_option_keys.data();
-      *values = fs_profile->int_option_values.data();
-      return ADBC_STATUS_OK;
-    };
-
-    out->GetDoubleOptions = [](AdbcConnectionProfile* profile, const char*** keys,
-                               const double** values, size_t* num_options,
-                               struct AdbcError* error) -> AdbcStatusCode {
-      if (!profile || !profile->private_data) {
-        SetError(error, "Invalid connection profile");
-        return ADBC_STATUS_INVALID_ARGUMENT;
-      }
-
-      if (!keys || !values || !num_options) {
-        SetError(error, "Output parameters cannot be null");
-        return ADBC_STATUS_INVALID_ARGUMENT;
-      }
-
-      auto* fs_profile = static_cast<FilesystemProfile*>(profile->private_data);
-      *num_options = fs_profile->double_options.size();
-      *keys = fs_profile->double_option_keys.data();
-      *values = fs_profile->double_option_values.data();
-      return ADBC_STATUS_OK;
-    };
-  }
-};
-
-struct ProfileVisitor {
-  FilesystemProfile& profile;
-  const std::filesystem::path& profile_path;
-  struct AdbcError* error;
-
-  bool VisitTable(const std::string& prefix, toml::table& table) {
-    for (const auto& [key, value] : table) {
-      if (auto* str = value.as_string()) {
-        profile.options[prefix + key.data()] = str->get();
-      } else if (auto* int_val = value.as_integer()) {
-        profile.int_options[prefix + key.data()] = int_val->get();
-      } else if (auto* double_val = value.as_floating_point()) {
-        profile.double_options[prefix + key.data()] = double_val->get();
-      } else if (auto* bool_val = value.as_boolean()) {
-        profile.options[prefix + key.data()] = bool_val->get() ? "true" : "false";
-      } else if (value.is_table()) {
-        if (!VisitTable(prefix + key.data() + ".", *value.as_table())) {
-          return false;
-        }
-      } else {
-        std::string message = "Unsupported value type for key '" +
-                              std::string(key.str()) + "' in profile '" +
-                              profile_path.string() + "'";
-        SetError(error, std::move(message));
-        return false;
-      }
-    }
-    return !error->message;
-  }
-};
-
-AdbcStatusCode LoadProfileFile(const std::filesystem::path& profile_path,
-                               FilesystemProfile& profile, struct AdbcError* error) {
-  toml::table config;
-  try {
-    config = toml::parse_file(profile_path.native());
-  } catch (const toml::parse_error& err) {
-    std::string message = "Could not open profile. ";
-    message += err.what();
-    message += ". Profile: ";
-    message += profile_path.string();
-    SetError(error, std::move(message));
-    return ADBC_STATUS_INVALID_ARGUMENT;
-  }
-
-  profile.path = profile_path;
-  if (!config["version"].is_integer()) {
-    std::string message =
-        "Profile version is not an integer in profile '" + profile_path.string() + "'";
-    SetError(error, std::move(message));
-    return ADBC_STATUS_INVALID_ARGUMENT;
-  }
-
-  const auto version = config["version"].value_or(int64_t(1));
-  switch (version) {
-    case 1:
-      break;
-    default: {
-      std::string message =
-          "Profile version '" + std::to_string(version) +
-          "' is not supported by this driver manager. Profile: " + profile_path.string();
-      SetError(error, std::move(message));
-      return ADBC_STATUS_INVALID_ARGUMENT;
-    }
-  }
-
-  profile.driver = config["driver"].value_or(""s);
-
-  auto options = config.at_path("options");
-  if (!options.is_table()) {
-    std::string message =
-        "Profile options is not a table in profile '" + profile_path.string() + "'";
-    SetError(error, std::move(message));
-    return ADBC_STATUS_INVALID_ARGUMENT;
-  }
-
-  auto* options_table = options.as_table();
-  ProfileVisitor v{profile, profile_path, error};
-  if (!v.VisitTable("", *options_table)) {
-    return ADBC_STATUS_INVALID_ARGUMENT;
-  }
-
-  return ADBC_STATUS_OK;
-}
-
-SearchPaths GetProfileSearchPaths(const char* additional_search_path_list) {
-  SearchPaths search_paths;
-  {
-    std::vector<std::filesystem::path> additional_paths;
-    if (additional_search_path_list) {
-      additional_paths = InternalAdbcParsePath(additional_search_path_list);
-    }
-
-    for (const auto& path : additional_paths) {
-      search_paths.emplace_back(SearchPathSource::kAdditional, path);
-    }
-  }
-
-  {
-    auto env_paths = GetEnvPaths(kAdbcProfilePath);
-    search_paths.insert(search_paths.end(), env_paths.begin(), env_paths.end());
-  }
-
-#if ADBC_CONDA_BUILD
-#ifdef _WIN32
-  const wchar_t* conda_name = L"CONDA_PREFIX";
-#else
-  const char* conda_name = "CONDA_PREFIX";
-#endif  // _WIN32
-
-  auto venv = GetEnvPaths(conda_name);
-  for (const auto& [_, venv_path] : venv) {
-    search_paths.emplace_back(SearchPathSource::kConda,
-                              venv_path / "etc" / "adbc" / "profiles");
-  }
-#else
-  search_paths.emplace_back(SearchPathSource::kDisabledAtCompileTime, "Conda prefix");
-#endif  // ADBC_CONDA_BUILD
-
-#ifdef _WIN32
-  const wchar_t* profiles_dir = L"Profiles";
-#elif defined(__APPLE__)
-  const char* profiles_dir = "Profiles";
-#else
-  const char* profiles_dir = "profiles";
-#endif  // defined(_WIN32)
-
-  auto user_dir = InternalAdbcUserConfigDir().parent_path() / profiles_dir;
-  search_paths.emplace_back(SearchPathSource::kUser, user_dir);
-  return search_paths;
-}
-
-/// Hold the driver DLL and the driver release callback in the driver struct.
-struct ManagerDriverState {
-  // The original release callback
-  AdbcStatusCode (*driver_release)(struct AdbcDriver* driver, struct AdbcError* error);
-
-  ManagedLibrary handle;
-};
-
-/// Unload the driver DLL.
-static AdbcStatusCode ReleaseDriver(struct AdbcDriver* driver, struct AdbcError* error) {
-  AdbcStatusCode status = ADBC_STATUS_OK;
-
-  if (!driver->private_manager) return status;
-  ManagerDriverState* state =
-      reinterpret_cast<ManagerDriverState*>(driver->private_manager);
-
-  if (state->driver_release) {
-    status = state->driver_release(driver, error);
-  }
-  state->handle.Release();
-
-  driver->private_manager = nullptr;
-  delete state;
-  return status;
-}
-
-// ArrowArrayStream wrapper to support AdbcErrorFromArrayStream
-
-struct ErrorArrayStream {
-  struct ArrowArrayStream stream;
-  struct AdbcDriver* private_driver;
-};
-
-void ErrorArrayStreamRelease(struct ArrowArrayStream* stream) {
-  if (stream->release != ErrorArrayStreamRelease || !stream->private_data) return;
-
-  auto* private_data = reinterpret_cast<struct ErrorArrayStream*>(stream->private_data);
-  private_data->stream.release(&private_data->stream);
-  delete private_data;
-  std::memset(stream, 0, sizeof(*stream));
-}
-
-const char* ErrorArrayStreamGetLastError(struct ArrowArrayStream* stream) {
-  if (stream->release != ErrorArrayStreamRelease || !stream->private_data) return nullptr;
-  auto* private_data = reinterpret_cast<struct ErrorArrayStream*>(stream->private_data);
-  return private_data->stream.get_last_error(&private_data->stream);
-}
-
-int ErrorArrayStreamGetNext(struct ArrowArrayStream* stream, struct ArrowArray* array) {
-  if (stream->release != ErrorArrayStreamRelease || !stream->private_data) return EINVAL;
-  auto* private_data = reinterpret_cast<struct ErrorArrayStream*>(stream->private_data);
-  return private_data->stream.get_next(&private_data->stream, array);
-}
-
-int ErrorArrayStreamGetSchema(struct ArrowArrayStream* stream,
-                              struct ArrowSchema* schema) {
-  if (stream->release != ErrorArrayStreamRelease || !stream->private_data) return EINVAL;
-  auto* private_data = reinterpret_cast<struct ErrorArrayStream*>(stream->private_data);
-  return private_data->stream.get_schema(&private_data->stream, schema);
-}
-
-// Default stubs
-
-int ErrorGetDetailCount(const struct AdbcError* error) { return 0; }
-
-struct AdbcErrorDetail ErrorGetDetail(const struct AdbcError* error, int index) {
-  return {nullptr, nullptr, 0};
-}
-
-const struct AdbcError* ErrorFromArrayStream(struct ArrowArrayStream* stream,
-                                             AdbcStatusCode* status) {
-  return nullptr;
-}
-
-void ErrorArrayStreamInit(struct ArrowArrayStream* out,
-                          struct AdbcDriver* private_driver) {
-  if (!out || !out->release ||
-      // Don't bother wrapping if driver didn't claim support
-      private_driver->ErrorFromArrayStream == ErrorFromArrayStream) {
-    return;
-  }
-  struct ErrorArrayStream* private_data = new ErrorArrayStream;
-  private_data->stream = *out;
-  private_data->private_driver = private_driver;
-  out->get_last_error = ErrorArrayStreamGetLastError;
-  out->get_next = ErrorArrayStreamGetNext;
-  out->get_schema = ErrorArrayStreamGetSchema;
-  out->release = ErrorArrayStreamRelease;
-  out->private_data = private_data;
-}
-
-AdbcStatusCode DatabaseGetOption(struct AdbcDatabase* database, const char* key,
-                                 char* value, size_t* length, struct AdbcError* error) {
-  SetError(error, "AdbcDatabaseGetOption not implemented");
-  return ADBC_STATUS_NOT_FOUND;
-}
-
-AdbcStatusCode DatabaseGetOptionBytes(struct AdbcDatabase* database, const char* key,
-                                      uint8_t* value, size_t* length,
-                                      struct AdbcError* error) {
-  SetError(error, "AdbcDatabaseGetOptionBytes not implemented");
-  return ADBC_STATUS_NOT_FOUND;
-}
-
-AdbcStatusCode DatabaseGetOptionInt(struct AdbcDatabase* database, const char* key,
-                                    int64_t* value, struct AdbcError* error) {
-  SetError(error, "AdbcDatabaseGetOptionInt not implemented");
-  return ADBC_STATUS_NOT_FOUND;
-}
-
-AdbcStatusCode DatabaseGetOptionDouble(struct AdbcDatabase* database, const char* key,
-                                       double* value, struct AdbcError* error) {
-  SetError(error, "AdbcDatabaseGetOptionDouble not implemented");
-  return ADBC_STATUS_NOT_FOUND;
-}
-
-AdbcStatusCode DatabaseSetOption(struct AdbcDatabase* database, const char* key,
-                                 const char* value, struct AdbcError* error) {
-  SetError(error, "AdbcDatabaseSetOption not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode DatabaseSetOptionBytes(struct AdbcDatabase* database, const char* key,
-                                      const uint8_t* value, size_t length,
-                                      struct AdbcError* error) {
-  SetError(error, "AdbcDatabaseSetOptionBytes not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode DatabaseSetOptionInt(struct AdbcDatabase* database, const char* key,
-                                    int64_t value, struct AdbcError* error) {
-  SetError(error, "AdbcDatabaseSetOptionInt not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode DatabaseSetOptionDouble(struct AdbcDatabase* database, const char* key,
-                                       double value, struct AdbcError* error) {
-  SetError(error, "AdbcDatabaseSetOptionDouble not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode ConnectionCancel(struct AdbcConnection* connection,
-                                struct AdbcError* error) {
-  SetError(error, "AdbcConnectionCancel not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode ConnectionCommit(struct AdbcConnection*, struct AdbcError* error) {
-  SetError(error, "AdbcConnectionCommit not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode ConnectionGetInfo(struct AdbcConnection* connection,
-                                 const uint32_t* info_codes, size_t info_codes_length,
-                                 struct ArrowArrayStream* out, struct AdbcError* error) {
-  SetError(error, "AdbcConnectionGetInfo not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode ConnectionGetObjects(struct AdbcConnection*, int, const char*, const char*,
-                                    const char*, const char**, const char*,
-                                    struct ArrowArrayStream*, struct AdbcError* error) {
-  SetError(error, "AdbcConnectionGetObjects not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode ConnectionGetOption(struct AdbcConnection* connection, const char* key,
-                                   char* value, size_t* length, struct AdbcError* error) {
-  SetError(error, "AdbcConnectionGetOption not implemented");
-  return ADBC_STATUS_NOT_FOUND;
-}
-
-AdbcStatusCode ConnectionGetOptionBytes(struct AdbcConnection* connection,
-                                        const char* key, uint8_t* value, size_t* length,
-                                        struct AdbcError* error) {
-  SetError(error, "AdbcConnectionGetOptionBytes not implemented");
-  return ADBC_STATUS_NOT_FOUND;
-}
-
-AdbcStatusCode ConnectionGetOptionInt(struct AdbcConnection* connection, const char* key,
-                                      int64_t* value, struct AdbcError* error) {
-  SetError(error, "AdbcConnectionGetOptionInt not implemented");
-  return ADBC_STATUS_NOT_FOUND;
-}
-
-AdbcStatusCode ConnectionGetOptionDouble(struct AdbcConnection* connection,
-                                         const char* key, double* value,
-                                         struct AdbcError* error) {
-  SetError(error, "AdbcConnectionGetOptionDouble not implemented");
-  return ADBC_STATUS_NOT_FOUND;
-}
-
-AdbcStatusCode ConnectionGetStatistics(struct AdbcConnection*, const char*, const char*,
-                                       const char*, char, struct ArrowArrayStream*,
-                                       struct AdbcError* error) {
-  SetError(error, "AdbcConnectionGetStatistics not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode ConnectionGetStatisticNames(struct AdbcConnection*,
-                                           struct ArrowArrayStream*,
-                                           struct AdbcError* error) {
-  SetError(error, "AdbcConnectionGetStatisticNames not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode ConnectionGetTableSchema(struct AdbcConnection*, const char*, const char*,
-                                        const char*, struct ArrowSchema*,
-                                        struct AdbcError* error) {
-  SetError(error, "AdbcConnectionGetTableSchema not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode ConnectionGetTableTypes(struct AdbcConnection*, struct ArrowArrayStream*,
-                                       struct AdbcError* error) {
-  SetError(error, "AdbcConnectionGetTableTypes not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode ConnectionReadPartition(struct AdbcConnection* connection,
-                                       const uint8_t* serialized_partition,
-                                       size_t serialized_length,
-                                       struct ArrowArrayStream* out,
-                                       struct AdbcError* error) {
-  SetError(error, "AdbcConnectionReadPartition not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode ConnectionRollback(struct AdbcConnection*, struct AdbcError* error) {
-  SetError(error, "AdbcConnectionRollback not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode ConnectionSetOption(struct AdbcConnection*, const char*, const char*,
-                                   struct AdbcError* error) {
-  SetError(error, "AdbcConnectionSetOption not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode ConnectionSetOptionBytes(struct AdbcConnection*, const char*,
-                                        const uint8_t*, size_t, struct AdbcError* error) {
-  SetError(error, "AdbcConnectionSetOptionBytes not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode ConnectionSetOptionInt(struct AdbcConnection* connection, const char* key,
-                                      int64_t value, struct AdbcError* error) {
-  SetError(error, "AdbcConnectionSetOptionInt not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode ConnectionSetOptionDouble(struct AdbcConnection* connection,
-                                         const char* key, double value,
-                                         struct AdbcError* error) {
-  SetError(error, "AdbcConnectionSetOptionDouble not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode StatementBind(struct AdbcStatement*, struct ArrowArray*,
-                             struct ArrowSchema*, struct AdbcError* error) {
-  SetError(error, "AdbcStatementBind not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode StatementBindStream(struct AdbcStatement*, struct ArrowArrayStream*,
-                                   struct AdbcError* error) {
-  SetError(error, "AdbcStatementBindStream not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode StatementCancel(struct AdbcStatement* statement, struct AdbcError* error) {
-  SetError(error, "AdbcStatementCancel not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode StatementExecutePartitions(struct AdbcStatement* statement,
-                                          struct ArrowSchema* schema,
-                                          struct AdbcPartitions* partitions,
-                                          int64_t* rows_affected,
-                                          struct AdbcError* error) {
-  SetError(error, "AdbcStatementExecutePartitions not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode StatementExecuteSchema(struct AdbcStatement* statement,
-                                      struct ArrowSchema* schema,
-                                      struct AdbcError* error) {
-  SetError(error, "AdbcStatementExecuteSchema not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode StatementGetOption(struct AdbcStatement* statement, const char* key,
-                                  char* value, size_t* length, struct AdbcError* error) {
-  SetError(error, "AdbcStatementGetOption not implemented");
-  return ADBC_STATUS_NOT_FOUND;
-}
-
-AdbcStatusCode StatementGetOptionBytes(struct AdbcStatement* statement, const char* key,
-                                       uint8_t* value, size_t* length,
-                                       struct AdbcError* error) {
-  SetError(error, "AdbcStatementGetOptionBytes not implemented");
-  return ADBC_STATUS_NOT_FOUND;
-}
-
-AdbcStatusCode StatementGetOptionInt(struct AdbcStatement* statement, const char* key,
-                                     int64_t* value, struct AdbcError* error) {
-  SetError(error, "AdbcStatementGetOptionInt not implemented");
-  return ADBC_STATUS_NOT_FOUND;
-}
-
-AdbcStatusCode StatementGetOptionDouble(struct AdbcStatement* statement, const char* key,
-                                        double* value, struct AdbcError* error) {
-  SetError(error, "AdbcStatementGetOptionDouble not implemented");
-  return ADBC_STATUS_NOT_FOUND;
-}
-
-AdbcStatusCode StatementGetParameterSchema(struct AdbcStatement* statement,
-                                           struct ArrowSchema* schema,
-                                           struct AdbcError* error) {
-  SetError(error, "AdbcStatementGetParameterSchema not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode StatementPrepare(struct AdbcStatement*, struct AdbcError* error) {
-  SetError(error, "AdbcStatementPrepare not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode StatementSetOption(struct AdbcStatement*, const char*, const char*,
-                                  struct AdbcError* error) {
-  SetError(error, "AdbcStatementSetOption not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode StatementSetOptionBytes(struct AdbcStatement*, const char*, const uint8_t*,
-                                       size_t, struct AdbcError* error) {
-  SetError(error, "AdbcStatementSetOptionBytes not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode StatementSetOptionInt(struct AdbcStatement* statement, const char* key,
-                                     int64_t value, struct AdbcError* error) {
-  SetError(error, "AdbcStatementSetOptionInt not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode StatementSetOptionDouble(struct AdbcStatement* statement, const char* key,
-                                        double value, struct AdbcError* error) {
-  SetError(error, "AdbcStatementSetOptionDouble not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode StatementSetSqlQuery(struct AdbcStatement*, const char*,
-                                    struct AdbcError* error) {
-  SetError(error, "AdbcStatementSetSqlQuery not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-AdbcStatusCode StatementSetSubstraitPlan(struct AdbcStatement*, const uint8_t*, size_t,
-                                         struct AdbcError* error) {
-  SetError(error, "AdbcStatementSetSubstraitPlan not implemented");
-  return ADBC_STATUS_NOT_IMPLEMENTED;
-}
-
-/// Temporary state while the database is being configured.
-struct TempDatabase {
-  std::unordered_map<std::string, std::string> options;
-  std::unordered_map<std::string, std::string> bytes_options;
-  std::unordered_map<std::string, int64_t> int_options;
-  std::unordered_map<std::string, double> double_options;
-  std::string driver;
-  std::string entrypoint;
-  AdbcDriverInitFunc init_func = nullptr;
-  AdbcLoadFlags load_flags = ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS;
-  std::string additional_search_path_list;
-  AdbcConnectionProfileProvider profile_provider = nullptr;
-};
-
-/// Temporary state while the database is being configured.
-struct TempConnection {
-  std::unordered_map<std::string, std::string> options;
-  std::unordered_map<std::string, std::string> bytes_options;
-  std::unordered_map<std::string, int64_t> int_options;
-  std::unordered_map<std::string, double> double_options;
-  AdbcConnectionProfile* connection_profile = nullptr;
-};
-
-static const char kDefaultEntrypoint[] = "AdbcDriverInit";
-}  // namespace
-
 // Other helpers (intentionally not in an anonymous namespace so they can be tested)
 ADBC_EXPORT std::filesystem::path InternalAdbcUserConfigDir() {
   std::filesystem::path config_dir;
@@ -1806,13 +304,13 @@ ADBC_EXPORT std::filesystem::path InternalAdbcUserConfigDir() {
   std::filesystem::path dir(std::move(wpath));
   if (!dir.empty()) {
     config_dir = std::filesystem::path(dir);
-    config_dir /= "ADBC/Drivers";
+    config_dir /= "ADBC";
   }
 #elif defined(__APPLE__)
   auto dir = std::getenv("HOME");
   if (dir) {
     config_dir = std::filesystem::path(dir);
-    config_dir /= "Library/Application Support/ADBC/Drivers";
+    config_dir /= "Library/Application Support/ADBC";
   }
 #elif defined(__linux__)
   auto dir = std::getenv("XDG_CONFIG_HOME");
@@ -1826,7 +324,7 @@ ADBC_EXPORT std::filesystem::path InternalAdbcUserConfigDir() {
   }
 
   if (!config_dir.empty()) {
-    config_dir = config_dir / "adbc" / "drivers";
+    config_dir = config_dir / "adbc";
   }
 #endif  // defined(_WIN32)
 
@@ -1888,69 +386,6 @@ std::vector<std::filesystem::path> InternalAdbcParsePath(const std::string_view 
 }
 
 ADBC_EXPORT
-std::string InternalAdbcDriverManagerDefaultEntrypoint(const std::string& driver) {
-  /// - libadbc_driver_sqlite.so.2.0.0 -> AdbcDriverSqliteInit
-  /// - adbc_driver_sqlite.dll -> AdbcDriverSqliteInit
-  /// - proprietary_driver.dll -> AdbcProprietaryDriverInit
-
-  // N.B.(https://github.com/apache/arrow-adbc/issues/3680): sanity checks
-  assert(!driver.empty());
-
-  // Potential path -> filename
-  // Treat both \ and / as directory separators on all platforms for simplicity
-  std::string filename;
-  {
-    size_t pos = driver.find_last_of("/\\");
-    if (pos != std::string::npos) {
-      filename = driver.substr(pos + 1);
-    } else {
-      filename = driver;
-    }
-  }
-
-  // Remove all extensions
-  {
-    size_t pos = filename.find('.');
-    if (pos != std::string::npos) {
-      filename = filename.substr(0, pos);
-    }
-  }
-
-  // Remove lib prefix
-  // https://stackoverflow.com/q/1878001/262727
-  if (filename.rfind("lib", 0) == 0) {
-    filename = filename.substr(3);
-  }
-
-  // Split on underscores, hyphens
-  // Capitalize and join
-  std::string entrypoint;
-  entrypoint.reserve(filename.size());
-  size_t pos = 0;
-  while (pos < filename.size()) {
-    size_t prev = pos;
-    pos = filename.find_first_of("-_", pos);
-    // if pos == npos this is the entire filename
-    std::string token = filename.substr(prev, pos - prev);
-    // capitalize first letter
-    token[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(token[0])));
-
-    entrypoint += token;
-
-    if (pos != std::string::npos) {
-      pos++;
-    }
-  }
-
-  if (entrypoint.rfind("Adbc", 0) != 0) {
-    entrypoint = "Adbc" + entrypoint;
-  }
-  entrypoint += "Init";
-
-  return entrypoint;
-}
-
-ADBC_EXPORT
 std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view str) {
   std::string::size_type pos = str.find(":");
   if (pos == std::string::npos) {
@@ -1981,349 +416,6 @@ std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view 
   return ParseDriverUriResult{d, str.substr(pos + 1), std::nullopt};
 }
 
-// Direct implementations of API methods
-
-int AdbcErrorGetDetailCount(const struct AdbcError* error) {
-  if (error->vendor_code == ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA && error->private_data &&
-      error->private_driver && error->private_driver->ErrorGetDetailCount) {
-    return error->private_driver->ErrorGetDetailCount(error);
-  }
-  return 0;
-}
-
-struct AdbcErrorDetail AdbcErrorGetDetail(const struct AdbcError* error, int index) {
-  if (error->vendor_code == ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA && error->private_data &&
-      error->private_driver && error->private_driver->ErrorGetDetail) {
-    return error->private_driver->ErrorGetDetail(error, index);
-  }
-  return {nullptr, nullptr, 0};
-}
-
-const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream,
-                                                 AdbcStatusCode* status) {
-  if (!stream->private_data || stream->release != ErrorArrayStreamRelease) {
-    return nullptr;
-  }
-  auto* private_data = reinterpret_cast<struct ErrorArrayStream*>(stream->private_data);
-  auto* error =
-      private_data->private_driver->ErrorFromArrayStream(&private_data->stream, status);
-  if (error) {
-    const_cast<struct AdbcError*>(error)->private_driver = private_data->private_driver;
-  }
-  return error;
-}
-
-#define INIT_ERROR(ERROR, SOURCE)                                    \
-  if ((ERROR) != nullptr &&                                          \
-      (ERROR)->vendor_code == ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA) { \
-    (ERROR)->private_driver = (SOURCE)->private_driver;              \
-  }
-
-#define WRAP_STREAM(EXPR, OUT, SOURCE)                   \
-  if (!(OUT)) {                                          \
-    /* Happens for ExecuteQuery where out is optional */ \
-    return EXPR;                                         \
-  }                                                      \
-  AdbcStatusCode status_code = EXPR;                     \
-  ErrorArrayStreamInit(OUT, (SOURCE)->private_driver);   \
-  return status_code;
-
-AdbcStatusCode AdbcDatabaseNew(struct AdbcDatabase* database, struct AdbcError* error) {
-  // Allocate a temporary structure to store options pre-Init
-  database->private_data = new TempDatabase();
-  database->private_driver = nullptr;
-  return ADBC_STATUS_OK;
-}
-
-AdbcStatusCode AdbcDriverManagerDatabaseSetProfileProvider(
-    struct AdbcDatabase* database, AdbcConnectionProfileProvider provider,
-    struct AdbcError* error) {
-  if (database->private_driver) {
-    SetError(error, "Cannot SetProfileProvider after AdbcDatabaseInit");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-
-  TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
-  args->profile_provider = provider;
-  return ADBC_STATUS_OK;
-}
-
-AdbcStatusCode AdbcDatabaseGetOption(struct AdbcDatabase* database, const char* key,
-                                     char* value, size_t* length,
-                                     struct AdbcError* error) {
-  if (database->private_driver) {
-    INIT_ERROR(error, database);
-    return database->private_driver->DatabaseGetOption(database, key, value, length,
-                                                       error);
-  }
-  const auto* args = reinterpret_cast<const TempDatabase*>(database->private_data);
-  const std::string* result = nullptr;
-  if (std::strcmp(key, "driver") == 0) {
-    result = &args->driver;
-  } else if (std::strcmp(key, "entrypoint") == 0) {
-    result = &args->entrypoint;
-  } else {
-    const auto it = args->options.find(key);
-    if (it == args->options.end()) {
-      SetError(error, std::string("Option not found: ") + key);
-      return ADBC_STATUS_NOT_FOUND;
-    }
-    result = &it->second;
-  }
-
-  if (*length >= result->size() + 1) {
-    // Enough space
-    std::memcpy(value, result->c_str(), result->size() + 1);
-  }
-  *length = result->size() + 1;
-  return ADBC_STATUS_OK;
-}
-
-AdbcStatusCode AdbcDatabaseGetOptionBytes(struct AdbcDatabase* database, const char* key,
-                                          uint8_t* value, size_t* length,
-                                          struct AdbcError* error) {
-  if (database->private_driver) {
-    INIT_ERROR(error, database);
-    return database->private_driver->DatabaseGetOptionBytes(database, key, value, length,
-                                                            error);
-  }
-  const auto* args = reinterpret_cast<const TempDatabase*>(database->private_data);
-  const auto it = args->bytes_options.find(key);
-  if (it == args->bytes_options.end()) {
-    SetError(error, std::string("Option not found: ") + key);
-    return ADBC_STATUS_NOT_FOUND;
-  }
-  const std::string& result = it->second;
-
-  if (*length >= result.size()) {
-    // Enough space
-    std::memcpy(value, result.c_str(), result.size());
-  }
-  *length = result.size();
-  return ADBC_STATUS_OK;
-}
-
-AdbcStatusCode AdbcDatabaseGetOptionInt(struct AdbcDatabase* database, const char* key,
-                                        int64_t* value, struct AdbcError* error) {
-  if (database->private_driver) {
-    INIT_ERROR(error, database);
-    return database->private_driver->DatabaseGetOptionInt(database, key, value, error);
-  }
-  const auto* args = reinterpret_cast<const TempDatabase*>(database->private_data);
-  const auto it = args->int_options.find(key);
-  if (it == args->int_options.end()) {
-    SetError(error, std::string("Option not found: ") + key);
-    return ADBC_STATUS_NOT_FOUND;
-  }
-  *value = it->second;
-  return ADBC_STATUS_OK;
-}
-
-AdbcStatusCode AdbcDatabaseGetOptionDouble(struct AdbcDatabase* database, const char* key,
-                                           double* value, struct AdbcError* error) {
-  if (database->private_driver) {
-    INIT_ERROR(error, database);
-    return database->private_driver->DatabaseGetOptionDouble(database, key, value, error);
-  }
-  const auto* args = reinterpret_cast<const TempDatabase*>(database->private_data);
-  const auto it = args->double_options.find(key);
-  if (it == args->double_options.end()) {
-    SetError(error, std::string("Option not found: ") + key);
-    return ADBC_STATUS_NOT_FOUND;
-  }
-  *value = it->second;
-  return ADBC_STATUS_OK;
-}
-
-AdbcStatusCode AdbcDatabaseSetOption(struct AdbcDatabase* database, const char* key,
-                                     const char* value, struct AdbcError* error) {
-  if (database->private_driver) {
-    INIT_ERROR(error, database);
-    return database->private_driver->DatabaseSetOption(database, key, value, error);
-  }
-
-  TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
-  if (std::strcmp(key, "driver") == 0) {
-    args->driver = value;
-  } else if (std::strcmp(key, "entrypoint") == 0) {
-    args->entrypoint = value;
-  } else {
-    args->options[key] = value;
-  }
-  return ADBC_STATUS_OK;
-}
-
-AdbcStatusCode AdbcDatabaseSetOptionBytes(struct AdbcDatabase* database, const char* key,
-                                          const uint8_t* value, size_t length,
-                                          struct AdbcError* error) {
-  if (database->private_driver) {
-    INIT_ERROR(error, database);
-    return database->private_driver->DatabaseSetOptionBytes(database, key, value, length,
-                                                            error);
-  }
-
-  TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
-  args->bytes_options[key] = std::string(reinterpret_cast<const char*>(value), length);
-  return ADBC_STATUS_OK;
-}
-
-AdbcStatusCode AdbcDatabaseSetOptionInt(struct AdbcDatabase* database, const char* key,
-                                        int64_t value, struct AdbcError* error) {
-  if (database->private_driver) {
-    INIT_ERROR(error, database);
-    return database->private_driver->DatabaseSetOptionInt(database, key, value, error);
-  }
-
-  TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
-  args->int_options[key] = value;
-  return ADBC_STATUS_OK;
-}
-
-AdbcStatusCode AdbcDatabaseSetOptionDouble(struct AdbcDatabase* database, const char* key,
-                                           double value, struct AdbcError* error) {
-  if (database->private_driver) {
-    INIT_ERROR(error, database);
-    return database->private_driver->DatabaseSetOptionDouble(database, key, value, error);
-  }
-
-  TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
-  args->double_options[key] = value;
-  return ADBC_STATUS_OK;
-}
-
-AdbcStatusCode AdbcDriverManagerDatabaseSetLoadFlags(struct AdbcDatabase* database,
-                                                     AdbcLoadFlags flags,
-                                                     struct AdbcError* error) {
-  if (database->private_driver) {
-    SetError(error, "Cannot SetLoadFlags after AdbcDatabaseInit");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-
-  TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
-  args->load_flags = flags;
-  return ADBC_STATUS_OK;
-}
-
-AdbcStatusCode AdbcDriverManagerDatabaseSetAdditionalSearchPathList(
-    struct AdbcDatabase* database, const char* path_list, struct AdbcError* error) {
-  if (database->private_driver) {
-    SetError(error, "Cannot SetAdditionalSearchPathList after AdbcDatabaseInit");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-
-  TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
-  if (path_list) {
-    args->additional_search_path_list.assign(path_list);
-  } else {
-    args->additional_search_path_list.clear();
-  }
-  return ADBC_STATUS_OK;
-}
-
-AdbcStatusCode AdbcDriverManagerDatabaseSetInitFunc(struct AdbcDatabase* database,
-                                                    AdbcDriverInitFunc init_func,
-                                                    struct AdbcError* error) {
-  if (database->private_driver) {
-    SetError(error, "Cannot SetInitFunc after AdbcDatabaseInit");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-
-  TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
-  args->init_func = init_func;
-  return ADBC_STATUS_OK;
-}
-
-AdbcStatusCode AdbcProfileProviderFilesystem(const char* profile_name,
-                                             const char* additional_search_path_list,
-                                             struct AdbcConnectionProfile* out,
-                                             struct AdbcError* error) {
-  if (profile_name == nullptr || strlen(profile_name) == 0) {
-    SetError(error, "Profile name is empty");
-    return ADBC_STATUS_INVALID_ARGUMENT;
-  }
-
-  if (!out) {
-    SetError(error, "Output profile is null");
-    return ADBC_STATUS_INVALID_ARGUMENT;
-  }
-
-  std::memset(out, 0, sizeof(*out));
-  std::filesystem::path profile_path(profile_name);
-  if (profile_path.has_extension()) {
-    if (HasExtension(profile_path, ".toml")) {
-      if (!std::filesystem::exists(profile_path)) {
-        SetError(error, "Profile file does not exist: " + profile_path.string());
-        return ADBC_STATUS_NOT_FOUND;
-      }
-
-      FilesystemProfile profile;
-      CHECK_STATUS(LoadProfileFile(profile_path, profile, error));
-      profile.PopulateConnectionProfile(out);
-      return ADBC_STATUS_OK;
-    }
-  }
-
-  if (profile_path.is_absolute()) {
-    profile_path.replace_extension(".toml");
-
-    FilesystemProfile profile;
-    CHECK_STATUS(LoadProfileFile(profile_path, profile, error));
-    profile.PopulateConnectionProfile(out);
-    return ADBC_STATUS_OK;
-  }
-
-  SearchPaths search_paths = GetProfileSearchPaths(additional_search_path_list);
-  SearchPaths extra_debug_info;
-  for (const auto& [source, search_path] : search_paths) {
-    if (source == SearchPathSource::kRegistry || source == SearchPathSource::kUnset ||
-        source == SearchPathSource::kDoesNotExist ||
-        source == SearchPathSource::kDisabledAtCompileTime ||
-        source == SearchPathSource::kDisabledAtRunTime ||
-        source == SearchPathSource::kOtherError) {
-      continue;
-    }
-
-    std::filesystem::path full_path = search_path / profile_path;
-    full_path.replace_extension(".toml");
-    if (std::filesystem::exists(full_path)) {
-      OwnedError intermediate_error;
-
-      FilesystemProfile profile;
-      auto status = LoadProfileFile(full_path, profile, &intermediate_error.error);
-      if (status == ADBC_STATUS_OK) {
-        profile.PopulateConnectionProfile(out);
-        return ADBC_STATUS_OK;
-      } else if (status == ADBC_STATUS_INVALID_ARGUMENT) {
-        search_paths.insert(search_paths.end(), extra_debug_info.begin(),
-                            extra_debug_info.end());
-        if (intermediate_error.error.message) {
-          std::string error_message = intermediate_error.error.message;
-          AddSearchPathsToError(search_paths, SearchPathType::kProfile, error_message);
-          SetError(error, std::move(error_message));
-        }
-        return status;
-      }
-
-      std::string message = "found ";
-      message += full_path.string();
-      message += " but: ";
-      if (intermediate_error.error.message) {
-        message += intermediate_error.error.message;
-      } else {
-        message += "could not load the profile";
-      }
-      extra_debug_info.emplace_back(SearchPathSource::kOtherError, std::move(message));
-    }
-  }
-
-  search_paths.insert(search_paths.end(), extra_debug_info.begin(),
-                      extra_debug_info.end());
-  std::string error_message = "Profile not found: " + std::string(profile_name);
-  AddSearchPathsToError(search_paths, SearchPathType::kProfile, error_message);
-  SetError(error, std::move(error_message));
-  return ADBC_STATUS_NOT_FOUND;
-}
-
 struct ProfileGuard {
   AdbcConnectionProfile profile;
   explicit ProfileGuard() : profile{} {}
@@ -2334,6 +426,107 @@ struct ProfileGuard {
   }
 };
 
+ADBC_EXPORT
+AdbcStatusCode InternalAdbcParseOptions(TempDatabase* db, struct AdbcError* error) {
+  // https://github.com/apache/arrow-adbc/issues/4085
+
+  // init_func always takes precedence
+  if (db->init_func) return ADBC_STATUS_OK;
+
+  std::optional<ParseDriverUriResult> parsed_driver;
+  std::optional<ParseDriverUriResult> parsed_uri;
+
+  if (!db->driver.empty()) {
+    parsed_driver = InternalAdbcParseDriverUri(db->driver);
+  }
+  if (auto it = db->options.find("uri"); it != db->options.end()) {
+    parsed_uri = InternalAdbcParseDriverUri(it->second);
+  }
+
+  // do we have `profile`, `profile://` URI, or `profile://` URI in driver?
+  {
+    const bool have_profile = db->options.find("profile") != db->options.end();
+    const bool have_profile_driver = parsed_driver && parsed_driver->profile.has_value();
+    const bool have_profile_uri = parsed_uri && parsed_uri->profile.has_value();
+
+    if (static_cast<int>(have_profile) + static_cast<int>(have_profile_uri) +
+            static_cast<int>(have_profile_driver) >
+        1) {
+      SetError(error,
+               "Multiple profiles specified; only one of `profile` option, `profile://` "
+               "URI, or `profile://` driver is allowed");
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+
+    // apply profile (may modify options)
+    std::string profile;
+    if (have_profile) {
+      profile = db->options["profile"];
+      db->options.erase("profile");
+    } else if (have_profile_uri) {
+      profile = *parsed_uri->profile;
+      db->options.erase("uri");
+    } else if (have_profile_driver) {
+      profile = *parsed_driver->profile;
+      db->driver.clear();
+    }
+
+    if (!profile.empty()) {
+      auto status = InternalInitializeProfile(db, profile, error);
+      if (status != ADBC_STATUS_OK) {
+        return status;
+      }
+    }
+  }
+
+  // parse driver for URI. we do this even if it was set via profile
+  {
+    // Reparse because profile may have modified driver
+    std::string owned_driver = db->driver;
+    if (auto maybe_driver = InternalAdbcParseDriverUri(owned_driver);
+        maybe_driver.has_value()) {
+      auto parsed = *maybe_driver;
+      // Don't allow recursive profiles (that is the only way we can reach here)
+      if (parsed.profile.has_value()) {
+        SetError(error, "Profile cannot specify a profile:// URI");
+        return ADBC_STATUS_INVALID_ARGUMENT;
+      }
+      if (parsed.uri.has_value()) {
+        db->driver = std::string{parsed.driver};
+        // maybe only do this if URI is unset?
+        db->options["uri"] = std::string{*parsed.uri};
+      }
+    }
+  }
+
+  // no driver? parse URI
+  if (auto it = db->options.find("uri"); db->driver.empty() && it != db->options.end()) {
+    // Reparse because profile may have modified uri
+    std::string owned_uri = it->second;
+    if (auto maybe_uri = InternalAdbcParseDriverUri(it->second); maybe_uri.has_value()) {
+      auto parsed = *maybe_uri;
+      // Don't allow recursive profiles (that is the only way we can reach here)
+      if (parsed.profile.has_value()) {
+        SetError(error, "Profile cannot specify a profile:// URI");
+        return ADBC_STATUS_INVALID_ARGUMENT;
+      }
+      if (parsed.uri.has_value()) {
+        db->driver = std::string{parsed.driver};
+        db->options["uri"] = std::string{*parsed.uri};
+      }
+    } else if (db->driver.empty()) {
+      db->driver = std::move(owned_uri);
+    }
+  }
+
+  // still no driver? bail
+  if (db->driver.empty()) {
+    SetError(error, "Must set 'driver' option before AdbcDatabaseInit");
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+  return ADBC_STATUS_OK;
+}
+
 AdbcStatusCode InternalInitializeProfile(TempDatabase* args,
                                          const std::string_view profile,
                                          struct AdbcError* error) {
@@ -2342,14 +535,25 @@ AdbcStatusCode InternalInitializeProfile(TempDatabase* args,
   }
 
   ProfileGuard guard{};
-  CHECK_STATUS(args->profile_provider(
-      profile.data(), args->additional_search_path_list.c_str(), &guard.profile, error));
+  CHECK_STATUS(args->profile_provider(profile.data(),
+                                      args->additional_profile_search_path_list.c_str(),
+                                      &guard.profile, error));
 
   const char* driver_name = nullptr;
   AdbcDriverInitFunc init_func = nullptr;
   CHECK_STATUS(
       guard.profile.GetDriverName(&guard.profile, &driver_name, &init_func, error));
-  if (driver_name != nullptr && strlen(driver_name) > 0) {
+  if (driver_name != nullptr && std::strlen(driver_name) > 0) {
+    // ensure the parsed driver matches the profile driver if both are specified
+    if (!args->driver.empty() && args->driver != driver_name) {
+      std::string message = "Profile `";
+      message += profile;
+      message += "` specifies driver `";
+      message += driver_name;
+      message += "` which does not match requested driver `" + args->driver + "`";
+      SetError(error, message);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
     args->driver = driver_name;
   }
 
@@ -2369,7 +573,7 @@ AdbcStatusCode InternalInitializeProfile(TempDatabase* args,
     // use try_emplace so we only add the option if there isn't
     // already an option with the same name
     std::string processed;
-    CHECK_STATUS(ProcessProfileValue(values[i], processed, error));
+    CHECK_STATUS(ProcessProfileValue(keys[i], values[i], processed, error));
     args->options.try_emplace(keys[i], processed);
   }
 
@@ -2392,799 +596,7 @@ AdbcStatusCode InternalInitializeProfile(TempDatabase* args,
   return ADBC_STATUS_OK;
 }
 
-AdbcStatusCode AdbcDatabaseInit(struct AdbcDatabase* database, struct AdbcError* error) {
-  if (!database->private_data) {
-    SetError(error, "Must call AdbcDatabaseNew before AdbcDatabaseInit");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
-  const auto profile_in_use = args->options.find("profile");
-  if (profile_in_use != args->options.end()) {
-    std::string_view profile = profile_in_use->second;
-    CHECK_STATUS(InternalInitializeProfile(args, profile, error));
-    args->options.erase("profile");
-  }
-
-  if (!args->init_func) {
-    const auto uri = args->options.find("uri");
-    if (args->driver.empty() && uri != args->options.end()) {
-      std::string owned_uri = uri->second;
-      auto result = InternalAdbcParseDriverUri(owned_uri);
-      if (result) {
-        if (result->uri) {
-          args->driver = std::string{result->driver};
-          args->options["uri"] = std::string{*result->uri};
-        } else if (result->profile) {
-          args->options.erase("uri");
-          CHECK_STATUS(InternalInitializeProfile(args, *result->profile, error));
-        }
-      }
-    } else if (!args->driver.empty() && uri == args->options.end()) {
-      std::string owned_driver = args->driver;
-      auto result = InternalAdbcParseDriverUri(owned_driver);
-      if (result) {
-        args->driver = std::string{result->driver};
-        if (result->uri) {
-          args->options["uri"] = std::string{*result->uri};
-        } else if (result->profile) {
-          CHECK_STATUS(InternalInitializeProfile(args, *result->profile, error));
-        }
-      }
-    }
-
-    if (args->driver.empty()) {
-      SetError(error,
-               "Must provide 'driver' parameter (or encode driver in 'uri' parameter)");
-      return ADBC_STATUS_INVALID_ARGUMENT;
-    }
-  }
-
-  database->private_driver = new AdbcDriver;
-  std::memset(database->private_driver, 0, sizeof(AdbcDriver));
-  AdbcStatusCode status;
-  // So we don't confuse a driver into thinking it's initialized already
-  database->private_data = nullptr;
-  if (args->init_func) {
-    status = AdbcLoadDriverFromInitFunc(args->init_func, ADBC_VERSION_1_1_0,
-                                        database->private_driver, error);
-  } else if (!args->entrypoint.empty()) {
-    status = AdbcFindLoadDriver(args->driver.c_str(), args->entrypoint.c_str(),
-                                ADBC_VERSION_1_1_0, args->load_flags,
-                                args->additional_search_path_list.data(),
-                                database->private_driver, error);
-  } else {
-    status = AdbcFindLoadDriver(
-        args->driver.c_str(), nullptr, ADBC_VERSION_1_1_0, args->load_flags,
-        args->additional_search_path_list.data(), database->private_driver, error);
-  }
-
-  if (status != ADBC_STATUS_OK) {
-    // Restore private_data so it will be released by AdbcDatabaseRelease
-    database->private_data = args;
-    if (database->private_driver->release) {
-      database->private_driver->release(database->private_driver, error);
-    }
-    delete database->private_driver;
-    database->private_driver = nullptr;
-    return status;
-  }
-
-  // Errors that occur during AdbcDatabaseXXX() refer to the driver via
-  // the private_driver member; however, after we return we have released
-  // the driver and inspecting the error might segfault. Here, we scope
-  // the driver-produced error to this function and make a copy if necessary.
-  OwnedError driver_error;
-
-  status = database->private_driver->DatabaseNew(database, &driver_error.error);
-  if (status != ADBC_STATUS_OK) {
-    if (database->private_driver->release) {
-      SetError(error, &driver_error.error);
-      database->private_driver->release(database->private_driver, nullptr);
-    }
-    delete database->private_driver;
-    database->private_driver = nullptr;
-    return status;
-  }
-  auto options = std::move(args->options);
-  auto bytes_options = std::move(args->bytes_options);
-  auto int_options = std::move(args->int_options);
-  auto double_options = std::move(args->double_options);
-  delete args;
-
-  INIT_ERROR(error, database);
-  for (const auto& option : options) {
-    status = database->private_driver->DatabaseSetOption(
-        database, option.first.c_str(), option.second.c_str(), &driver_error.error);
-    if (status != ADBC_STATUS_OK) break;
-  }
-  for (const auto& option : bytes_options) {
-    status = database->private_driver->DatabaseSetOptionBytes(
-        database, option.first.c_str(),
-        reinterpret_cast<const uint8_t*>(option.second.data()), option.second.size(),
-        &driver_error.error);
-    if (status != ADBC_STATUS_OK) break;
-  }
-  for (const auto& option : int_options) {
-    status = database->private_driver->DatabaseSetOptionInt(
-        database, option.first.c_str(), option.second, &driver_error.error);
-    if (status != ADBC_STATUS_OK) break;
-  }
-  for (const auto& option : double_options) {
-    status = database->private_driver->DatabaseSetOptionDouble(
-        database, option.first.c_str(), option.second, &driver_error.error);
-    if (status != ADBC_STATUS_OK) break;
-  }
-
-  if (status != ADBC_STATUS_OK) {
-    // Release the database
-    std::ignore = database->private_driver->DatabaseRelease(database, nullptr);
-    if (database->private_driver->release) {
-      SetError(error, &driver_error.error);
-      database->private_driver->release(database->private_driver, nullptr);
-    }
-    delete database->private_driver;
-    database->private_driver = nullptr;
-    // Should be redundant, but ensure that AdbcDatabaseRelease
-    // below doesn't think that it contains a TempDatabase
-    database->private_data = nullptr;
-    return status;
-  }
-
-  return database->private_driver->DatabaseInit(database, error);
-}
-
-AdbcStatusCode AdbcDatabaseRelease(struct AdbcDatabase* database,
-                                   struct AdbcError* error) {
-  if (!database->private_driver) {
-    if (database->private_data) {
-      TempDatabase* args = reinterpret_cast<TempDatabase*>(database->private_data);
-      delete args;
-      database->private_data = nullptr;
-      return ADBC_STATUS_OK;
-    }
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, database);
-  auto status = database->private_driver->DatabaseRelease(database, error);
-  if (database->private_driver->release) {
-    database->private_driver->release(database->private_driver, error);
-  }
-  delete database->private_driver;
-  database->private_data = nullptr;
-  database->private_driver = nullptr;
-  return status;
-}
-
-AdbcStatusCode AdbcConnectionCancel(struct AdbcConnection* connection,
-                                    struct AdbcError* error) {
-  if (!connection->private_driver) {
-    SetError(error, "AdbcConnectionCancel: must call AdbcConnectionNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, connection);
-  return connection->private_driver->ConnectionCancel(connection, error);
-}
-
-AdbcStatusCode AdbcConnectionCommit(struct AdbcConnection* connection,
-                                    struct AdbcError* error) {
-  if (!connection->private_driver) {
-    SetError(error, "AdbcConnectionCommit: must call AdbcConnectionNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, connection);
-  return connection->private_driver->ConnectionCommit(connection, error);
-}
-
-AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
-                                     const uint32_t* info_codes, size_t info_codes_length,
-                                     struct ArrowArrayStream* out,
-                                     struct AdbcError* error) {
-  if (!connection->private_driver) {
-    SetError(error, "AdbcConnectionGetInfo: must call AdbcConnectionNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, connection);
-  WRAP_STREAM(connection->private_driver->ConnectionGetInfo(
-                  connection, info_codes, info_codes_length, out, error),
-              out, connection);
-}
-
-AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int depth,
-                                        const char* catalog, const char* db_schema,
-                                        const char* table_name, const char** table_types,
-                                        const char* column_name,
-                                        struct ArrowArrayStream* stream,
-                                        struct AdbcError* error) {
-  if (!connection->private_driver) {
-    SetError(error, "AdbcConnectionGetObjects: must call AdbcConnectionNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, connection);
-  WRAP_STREAM(connection->private_driver->ConnectionGetObjects(
-                  connection, depth, catalog, db_schema, table_name, table_types,
-                  column_name, stream, error),
-              stream, connection);
-}
-
-AdbcStatusCode AdbcConnectionGetOption(struct AdbcConnection* connection, const char* key,
-                                       char* value, size_t* length,
-                                       struct AdbcError* error) {
-  if (!connection->private_data) {
-    SetError(error, "AdbcConnectionGetOption: must call AdbcConnectionNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  if (!connection->private_driver) {
-    // Init not yet called, get the saved option
-    const auto* args = reinterpret_cast<const TempConnection*>(connection->private_data);
-    const auto it = args->options.find(key);
-    if (it == args->options.end()) {
-      return ADBC_STATUS_NOT_FOUND;
-    }
-    if (*length >= it->second.size() + 1) {
-      std::memcpy(value, it->second.c_str(), it->second.size() + 1);
-    }
-    *length = it->second.size() + 1;
-    return ADBC_STATUS_OK;
-  }
-  INIT_ERROR(error, connection);
-  return connection->private_driver->ConnectionGetOption(connection, key, value, length,
-                                                         error);
-}
-
-AdbcStatusCode AdbcConnectionGetOptionBytes(struct AdbcConnection* connection,
-                                            const char* key, uint8_t* value,
-                                            size_t* length, struct AdbcError* error) {
-  if (!connection->private_data) {
-    SetError(error, "AdbcConnectionGetOption: must call AdbcConnectionNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  if (!connection->private_driver) {
-    // Init not yet called, get the saved option
-    const auto* args = reinterpret_cast<const TempConnection*>(connection->private_data);
-    const auto it = args->bytes_options.find(key);
-    if (it == args->bytes_options.end()) {
-      return ADBC_STATUS_NOT_FOUND;
-    }
-    if (*length >= it->second.size()) {
-      std::memcpy(value, it->second.data(), it->second.size());
-    }
-    *length = it->second.size();
-    return ADBC_STATUS_OK;
-  }
-  INIT_ERROR(error, connection);
-  return connection->private_driver->ConnectionGetOptionBytes(connection, key, value,
-                                                              length, error);
-}
-
-AdbcStatusCode AdbcConnectionGetOptionInt(struct AdbcConnection* connection,
-                                          const char* key, int64_t* value,
-                                          struct AdbcError* error) {
-  if (!connection->private_data) {
-    SetError(error, "AdbcConnectionGetOption: must call AdbcConnectionNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  if (!connection->private_driver) {
-    // Init not yet called, get the saved option
-    const auto* args = reinterpret_cast<const TempConnection*>(connection->private_data);
-    const auto it = args->int_options.find(key);
-    if (it == args->int_options.end()) {
-      return ADBC_STATUS_NOT_FOUND;
-    }
-    *value = it->second;
-    return ADBC_STATUS_OK;
-  }
-  INIT_ERROR(error, connection);
-  return connection->private_driver->ConnectionGetOptionInt(connection, key, value,
-                                                            error);
-}
-
-AdbcStatusCode AdbcConnectionGetOptionDouble(struct AdbcConnection* connection,
-                                             const char* key, double* value,
-                                             struct AdbcError* error) {
-  if (!connection->private_data) {
-    SetError(error, "AdbcConnectionGetOption: must call AdbcConnectionNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  if (!connection->private_driver) {
-    // Init not yet called, get the saved option
-    const auto* args = reinterpret_cast<const TempConnection*>(connection->private_data);
-    const auto it = args->double_options.find(key);
-    if (it == args->double_options.end()) {
-      return ADBC_STATUS_NOT_FOUND;
-    }
-    *value = it->second;
-    return ADBC_STATUS_OK;
-  }
-  INIT_ERROR(error, connection);
-  return connection->private_driver->ConnectionGetOptionDouble(connection, key, value,
-                                                               error);
-}
-
-AdbcStatusCode AdbcConnectionGetStatistics(struct AdbcConnection* connection,
-                                           const char* catalog, const char* db_schema,
-                                           const char* table_name, char approximate,
-                                           struct ArrowArrayStream* out,
-                                           struct AdbcError* error) {
-  if (!connection->private_driver) {
-    SetError(error, "AdbcConnectionGetStatistics: must call AdbcConnectionNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, connection);
-  WRAP_STREAM(
-      connection->private_driver->ConnectionGetStatistics(
-          connection, catalog, db_schema, table_name, approximate == 1, out, error),
-      out, connection);
-}
-
-AdbcStatusCode AdbcConnectionGetStatisticNames(struct AdbcConnection* connection,
-                                               struct ArrowArrayStream* out,
-                                               struct AdbcError* error) {
-  if (!connection->private_driver) {
-    SetError(error, "AdbcConnectionGetStatisticNames: must call AdbcConnectionNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, connection);
-  WRAP_STREAM(
-      connection->private_driver->ConnectionGetStatisticNames(connection, out, error),
-      out, connection);
-}
-
-AdbcStatusCode AdbcConnectionGetTableSchema(struct AdbcConnection* connection,
-                                            const char* catalog, const char* db_schema,
-                                            const char* table_name,
-                                            struct ArrowSchema* schema,
-                                            struct AdbcError* error) {
-  if (!connection->private_driver) {
-    SetError(error, "AdbcConnectionGetTableSchema: must call AdbcConnectionNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, connection);
-  return connection->private_driver->ConnectionGetTableSchema(
-      connection, catalog, db_schema, table_name, schema, error);
-}
-
-AdbcStatusCode AdbcConnectionGetTableTypes(struct AdbcConnection* connection,
-                                           struct ArrowArrayStream* stream,
-                                           struct AdbcError* error) {
-  if (!connection->private_driver) {
-    SetError(error, "AdbcConnectionGetTableTypes: must call AdbcConnectionNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, connection);
-  WRAP_STREAM(
-      connection->private_driver->ConnectionGetTableTypes(connection, stream, error),
-      stream, connection);
-}
-
-AdbcStatusCode AdbcConnectionInit(struct AdbcConnection* connection,
-                                  struct AdbcDatabase* database,
-                                  struct AdbcError* error) {
-  if (!connection->private_data) {
-    SetError(error, "Must call AdbcConnectionNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  } else if (!database->private_driver) {
-    SetError(error, "Database is not initialized");
-    return ADBC_STATUS_INVALID_ARGUMENT;
-  }
-
-  TempConnection* args = reinterpret_cast<TempConnection*>(connection->private_data);
-  connection->private_data = nullptr;
-  std::unordered_map<std::string, std::string> options = std::move(args->options);
-  std::unordered_map<std::string, std::string> bytes_options =
-      std::move(args->bytes_options);
-  std::unordered_map<std::string, int64_t> int_options = std::move(args->int_options);
-  std::unordered_map<std::string, double> double_options =
-      std::move(args->double_options);
-  delete args;
-
-  auto status = database->private_driver->ConnectionNew(connection, error);
-  if (status != ADBC_STATUS_OK) return status;
-  connection->private_driver = database->private_driver;
-
-  for (const auto& option : options) {
-    status = database->private_driver->ConnectionSetOption(
-        connection, option.first.c_str(), option.second.c_str(), error);
-    if (status != ADBC_STATUS_OK) return status;
-  }
-  for (const auto& option : bytes_options) {
-    status = database->private_driver->ConnectionSetOptionBytes(
-        connection, option.first.c_str(),
-        reinterpret_cast<const uint8_t*>(option.second.data()), option.second.size(),
-        error);
-    if (status != ADBC_STATUS_OK) return status;
-  }
-  for (const auto& option : int_options) {
-    status = database->private_driver->ConnectionSetOptionInt(
-        connection, option.first.c_str(), option.second, error);
-    if (status != ADBC_STATUS_OK) return status;
-  }
-  for (const auto& option : double_options) {
-    status = database->private_driver->ConnectionSetOptionDouble(
-        connection, option.first.c_str(), option.second, error);
-    if (status != ADBC_STATUS_OK) return status;
-  }
-  INIT_ERROR(error, connection);
-  return connection->private_driver->ConnectionInit(connection, database, error);
-}
-
-AdbcStatusCode AdbcConnectionNew(struct AdbcConnection* connection,
-                                 struct AdbcError* error) {
-  // Allocate a temporary structure to store options pre-Init, because
-  // we don't get access to the database (and hence the driver
-  // function table) until then
-  connection->private_data = new TempConnection;
-  connection->private_driver = nullptr;
-  return ADBC_STATUS_OK;
-}
-
-AdbcStatusCode AdbcConnectionReadPartition(struct AdbcConnection* connection,
-                                           const uint8_t* serialized_partition,
-                                           size_t serialized_length,
-                                           struct ArrowArrayStream* out,
-                                           struct AdbcError* error) {
-  if (!connection->private_driver) {
-    SetError(error, "AdbcConnectionReadPartition: must call AdbcConnectionNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, connection);
-  WRAP_STREAM(connection->private_driver->ConnectionReadPartition(
-                  connection, serialized_partition, serialized_length, out, error),
-              out, connection);
-}
-
-AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
-                                     struct AdbcError* error) {
-  if (!connection->private_driver) {
-    if (connection->private_data) {
-      TempConnection* args = reinterpret_cast<TempConnection*>(connection->private_data);
-      delete args;
-      connection->private_data = nullptr;
-      return ADBC_STATUS_OK;
-    }
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, connection);
-  auto status = connection->private_driver->ConnectionRelease(connection, error);
-  connection->private_driver = nullptr;
-  return status;
-}
-
-AdbcStatusCode AdbcConnectionRollback(struct AdbcConnection* connection,
-                                      struct AdbcError* error) {
-  if (!connection->private_driver) {
-    SetError(error, "AdbcConnectionRollback: must call AdbcConnectionNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, connection);
-  return connection->private_driver->ConnectionRollback(connection, error);
-}
-
-AdbcStatusCode AdbcConnectionSetOption(struct AdbcConnection* connection, const char* key,
-                                       const char* value, struct AdbcError* error) {
-  if (!connection->private_data) {
-    SetError(error, "AdbcConnectionSetOption: must call AdbcConnectionNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  if (!connection->private_driver) {
-    // Init not yet called, save the option
-    TempConnection* args = reinterpret_cast<TempConnection*>(connection->private_data);
-    args->options[key] = value;
-    return ADBC_STATUS_OK;
-  }
-  INIT_ERROR(error, connection);
-  return connection->private_driver->ConnectionSetOption(connection, key, value, error);
-}
-
-AdbcStatusCode AdbcConnectionSetOptionBytes(struct AdbcConnection* connection,
-                                            const char* key, const uint8_t* value,
-                                            size_t length, struct AdbcError* error) {
-  if (!connection->private_data) {
-    SetError(error, "AdbcConnectionSetOptionInt: must call AdbcConnectionNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  if (!connection->private_driver) {
-    // Init not yet called, save the option
-    TempConnection* args = reinterpret_cast<TempConnection*>(connection->private_data);
-    args->bytes_options[key] = std::string(reinterpret_cast<const char*>(value), length);
-    return ADBC_STATUS_OK;
-  }
-  INIT_ERROR(error, connection);
-  return connection->private_driver->ConnectionSetOptionBytes(connection, key, value,
-                                                              length, error);
-}
-
-AdbcStatusCode AdbcConnectionSetOptionInt(struct AdbcConnection* connection,
-                                          const char* key, int64_t value,
-                                          struct AdbcError* error) {
-  if (!connection->private_data) {
-    SetError(error, "AdbcConnectionSetOptionInt: must call AdbcConnectionNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  if (!connection->private_driver) {
-    // Init not yet called, save the option
-    TempConnection* args = reinterpret_cast<TempConnection*>(connection->private_data);
-    args->int_options[key] = value;
-    return ADBC_STATUS_OK;
-  }
-  INIT_ERROR(error, connection);
-  return connection->private_driver->ConnectionSetOptionInt(connection, key, value,
-                                                            error);
-}
-
-AdbcStatusCode AdbcConnectionSetOptionDouble(struct AdbcConnection* connection,
-                                             const char* key, double value,
-                                             struct AdbcError* error) {
-  if (!connection->private_data) {
-    SetError(error, "AdbcConnectionSetOptionDouble: must call AdbcConnectionNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  if (!connection->private_driver) {
-    // Init not yet called, save the option
-    TempConnection* args = reinterpret_cast<TempConnection*>(connection->private_data);
-    args->double_options[key] = value;
-    return ADBC_STATUS_OK;
-  }
-  INIT_ERROR(error, connection);
-  return connection->private_driver->ConnectionSetOptionDouble(connection, key, value,
-                                                               error);
-}
-
-AdbcStatusCode AdbcStatementBind(struct AdbcStatement* statement,
-                                 struct ArrowArray* values, struct ArrowSchema* schema,
-                                 struct AdbcError* error) {
-  if (!statement->private_driver) {
-    SetError(error, "AdbcStatementBind: must call AdbcStatementNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, statement);
-  return statement->private_driver->StatementBind(statement, values, schema, error);
-}
-
-AdbcStatusCode AdbcStatementBindStream(struct AdbcStatement* statement,
-                                       struct ArrowArrayStream* stream,
-                                       struct AdbcError* error) {
-  if (!statement->private_driver) {
-    SetError(error, "AdbcStatementBindStream: must call AdbcStatementNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, statement);
-  return statement->private_driver->StatementBindStream(statement, stream, error);
-}
-
-AdbcStatusCode AdbcStatementCancel(struct AdbcStatement* statement,
-                                   struct AdbcError* error) {
-  if (!statement->private_driver) {
-    SetError(error, "AdbcStatementCancel: must call AdbcStatementNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, statement);
-  return statement->private_driver->StatementCancel(statement, error);
-}
-
-// XXX: cpplint gets confused here if declared as 'struct ArrowSchema* schema'
-AdbcStatusCode AdbcStatementExecutePartitions(struct AdbcStatement* statement,
-                                              ArrowSchema* schema,
-                                              struct AdbcPartitions* partitions,
-                                              int64_t* rows_affected,
-                                              struct AdbcError* error) {
-  if (!statement->private_driver) {
-    SetError(error, "AdbcStatementExecutePartitions: must call AdbcStatementNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, statement);
-  return statement->private_driver->StatementExecutePartitions(
-      statement, schema, partitions, rows_affected, error);
-}
-
-AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
-                                         struct ArrowArrayStream* out,
-                                         int64_t* rows_affected,
-                                         struct AdbcError* error) {
-  if (!statement->private_driver) {
-    SetError(error, "AdbcStatementExecuteQuery: must call AdbcStatementNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, statement);
-  WRAP_STREAM(statement->private_driver->StatementExecuteQuery(statement, out,
-                                                               rows_affected, error),
-              out, statement);
-}
-
-AdbcStatusCode AdbcStatementExecuteSchema(struct AdbcStatement* statement,
-                                          struct ArrowSchema* schema,
-                                          struct AdbcError* error) {
-  if (!statement->private_driver) {
-    SetError(error, "AdbcStatementExecuteSchema: must call AdbcStatementNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, statement);
-  return statement->private_driver->StatementExecuteSchema(statement, schema, error);
-}
-
-AdbcStatusCode AdbcStatementGetOption(struct AdbcStatement* statement, const char* key,
-                                      char* value, size_t* length,
-                                      struct AdbcError* error) {
-  if (!statement->private_driver) {
-    SetError(error, "AdbcStatementGetOption: must call AdbcStatementNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, statement);
-  return statement->private_driver->StatementGetOption(statement, key, value, length,
-                                                       error);
-}
-
-AdbcStatusCode AdbcStatementGetOptionBytes(struct AdbcStatement* statement,
-                                           const char* key, uint8_t* value,
-                                           size_t* length, struct AdbcError* error) {
-  if (!statement->private_driver) {
-    SetError(error, "AdbcStatementGetOptionBytes: must call AdbcStatementNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, statement);
-  return statement->private_driver->StatementGetOptionBytes(statement, key, value, length,
-                                                            error);
-}
-
-AdbcStatusCode AdbcStatementGetOptionInt(struct AdbcStatement* statement, const char* key,
-                                         int64_t* value, struct AdbcError* error) {
-  if (!statement->private_driver) {
-    SetError(error, "AdbcStatementGetOptionInt: must call AdbcStatementNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, statement);
-  return statement->private_driver->StatementGetOptionInt(statement, key, value, error);
-}
-
-AdbcStatusCode AdbcStatementGetOptionDouble(struct AdbcStatement* statement,
-                                            const char* key, double* value,
-                                            struct AdbcError* error) {
-  if (!statement->private_driver) {
-    SetError(error, "AdbcStatementGetOptionDouble: must call AdbcStatementNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, statement);
-  return statement->private_driver->StatementGetOptionDouble(statement, key, value,
-                                                             error);
-}
-
-AdbcStatusCode AdbcStatementGetParameterSchema(struct AdbcStatement* statement,
-                                               struct ArrowSchema* schema,
-                                               struct AdbcError* error) {
-  if (!statement->private_driver) {
-    SetError(error, "AdbcStatementGetParameterSchema: must call AdbcStatementNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, statement);
-  return statement->private_driver->StatementGetParameterSchema(statement, schema, error);
-}
-
-AdbcStatusCode AdbcStatementNew(struct AdbcConnection* connection,
-                                struct AdbcStatement* statement,
-                                struct AdbcError* error) {
-  if (!connection->private_driver) {
-    SetError(error, "AdbcStatementNew: must call AdbcConnectionInit first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, connection);
-  auto status = connection->private_driver->StatementNew(connection, statement, error);
-  statement->private_driver = connection->private_driver;
-  return status;
-}
-
-AdbcStatusCode AdbcStatementPrepare(struct AdbcStatement* statement,
-                                    struct AdbcError* error) {
-  if (!statement->private_driver) {
-    SetError(error, "AdbcStatementPrepare: must call AdbcStatementNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, statement);
-  return statement->private_driver->StatementPrepare(statement, error);
-}
-
-AdbcStatusCode AdbcStatementRelease(struct AdbcStatement* statement,
-                                    struct AdbcError* error) {
-  if (!statement->private_driver) {
-    SetError(error, "AdbcStatementRelease: must call AdbcStatementNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, statement);
-  auto status = statement->private_driver->StatementRelease(statement, error);
-  statement->private_driver = nullptr;
-  return status;
-}
-
-AdbcStatusCode AdbcStatementSetOption(struct AdbcStatement* statement, const char* key,
-                                      const char* value, struct AdbcError* error) {
-  if (!statement->private_driver) {
-    SetError(error, "AdbcStatementSetOption: must call AdbcStatementNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, statement);
-  return statement->private_driver->StatementSetOption(statement, key, value, error);
-}
-
-AdbcStatusCode AdbcStatementSetOptionBytes(struct AdbcStatement* statement,
-                                           const char* key, const uint8_t* value,
-                                           size_t length, struct AdbcError* error) {
-  if (!statement->private_driver) {
-    SetError(error, "AdbcStatementSetOptionBytes: must call AdbcStatementNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, statement);
-  return statement->private_driver->StatementSetOptionBytes(statement, key, value, length,
-                                                            error);
-}
-
-AdbcStatusCode AdbcStatementSetOptionInt(struct AdbcStatement* statement, const char* key,
-                                         int64_t value, struct AdbcError* error) {
-  if (!statement->private_driver) {
-    SetError(error, "AdbcStatementSetOptionInt: must call AdbcStatementNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, statement);
-  return statement->private_driver->StatementSetOptionInt(statement, key, value, error);
-}
-
-AdbcStatusCode AdbcStatementSetOptionDouble(struct AdbcStatement* statement,
-                                            const char* key, double value,
-                                            struct AdbcError* error) {
-  if (!statement->private_driver) {
-    SetError(error, "AdbcStatementSetOptionDouble: must call AdbcStatementNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, statement);
-  return statement->private_driver->StatementSetOptionDouble(statement, key, value,
-                                                             error);
-}
-
-AdbcStatusCode AdbcStatementSetSqlQuery(struct AdbcStatement* statement,
-                                        const char* query, struct AdbcError* error) {
-  if (!statement->private_driver) {
-    SetError(error, "AdbcStatementSetSqlQuery: must call AdbcStatementNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, statement);
-  return statement->private_driver->StatementSetSqlQuery(statement, query, error);
-}
-
-AdbcStatusCode AdbcStatementSetSubstraitPlan(struct AdbcStatement* statement,
-                                             const uint8_t* plan, size_t length,
-                                             struct AdbcError* error) {
-  if (!statement->private_driver) {
-    SetError(error, "AdbcStatementSetSubstraitPlan: must call AdbcStatementNew first");
-    return ADBC_STATUS_INVALID_STATE;
-  }
-  INIT_ERROR(error, statement);
-  return statement->private_driver->StatementSetSubstraitPlan(statement, plan, length,
-                                                              error);
-}
-
-const char* AdbcStatusCodeMessage(AdbcStatusCode code) {
-#define CASE(CONSTANT)         \
-  case ADBC_STATUS_##CONSTANT: \
-    return #CONSTANT;
-
-  switch (code) {
-    CASE(OK);
-    CASE(UNKNOWN);
-    CASE(NOT_IMPLEMENTED);
-    CASE(NOT_FOUND);
-    CASE(ALREADY_EXISTS);
-    CASE(INVALID_ARGUMENT);
-    CASE(INVALID_STATE);
-    CASE(INVALID_DATA);
-    CASE(INTEGRITY);
-    CASE(INTERNAL);
-    CASE(IO);
-    CASE(CANCELLED);
-    CASE(TIMEOUT);
-    CASE(UNAUTHENTICATED);
-    CASE(UNAUTHORIZED);
-    default:
-      return "(invalid code)";
-  }
-#undef CASE
-}
+// AdbcStatusCodeMessage moved to adbc_driver_manager_api.cc (API implementation)
 
 AdbcStatusCode AdbcFindLoadDriver(const char* driver_name, const char* entrypoint,
                                   const int version, const AdbcLoadFlags load_options,
@@ -3260,131 +672,4 @@ AdbcStatusCode AdbcFindLoadDriver(const char* driver_name, const char* entrypoin
     library.Release();
   }
   return status;
-}
-
-AdbcStatusCode AdbcLoadDriver(const char* driver_name, const char* entrypoint,
-                              int version, void* raw_driver, struct AdbcError* error) {
-  // maintain old behavior of allowing relative paths (because dlopen allows it)
-  // but don't enable searching for manifests by default. It will need to be explicitly
-  // enabled by calling AdbcFindLoadDriver directly.
-  return AdbcFindLoadDriver(driver_name, entrypoint, version,
-                            ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS, nullptr, raw_driver,
-                            error);
-}
-
-AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, int version,
-                                          void* raw_driver, struct AdbcError* error) {
-  constexpr std::array<int, 2> kSupportedVersions = {
-      ADBC_VERSION_1_1_0,
-      ADBC_VERSION_1_0_0,
-  };
-
-  if (!raw_driver) {
-    SetError(error, "Must provide non-NULL raw_driver");
-    return ADBC_STATUS_INVALID_ARGUMENT;
-  }
-
-  switch (version) {
-    case ADBC_VERSION_1_0_0:
-    case ADBC_VERSION_1_1_0:
-      break;
-    default:
-      SetError(error, "Only ADBC 1.0.0 and 1.1.0 are supported");
-      return ADBC_STATUS_NOT_IMPLEMENTED;
-  }
-
-#define FILL_DEFAULT(DRIVER, STUB) \
-  if (!DRIVER->STUB) {             \
-    DRIVER->STUB = &STUB;          \
-  }
-#define CHECK_REQUIRED(DRIVER, STUB)                                           \
-  if (!DRIVER->STUB) {                                                         \
-    SetError(error, "Driver does not implement required function Adbc" #STUB); \
-    return ADBC_STATUS_INTERNAL;                                               \
-  }
-
-  // Starting from the passed version, try each (older) version in
-  // succession with the underlying driver until we find one that's
-  // accepted.
-  AdbcStatusCode result = ADBC_STATUS_NOT_IMPLEMENTED;
-  for (const int try_version : kSupportedVersions) {
-    if (try_version > version) continue;
-    result = init_func(try_version, raw_driver, error);
-    if (result != ADBC_STATUS_NOT_IMPLEMENTED) break;
-  }
-  if (result != ADBC_STATUS_OK) {
-    return result;
-  }
-
-  if (version >= ADBC_VERSION_1_0_0) {
-    auto* driver = reinterpret_cast<struct AdbcDriver*>(raw_driver);
-    CHECK_REQUIRED(driver, DatabaseNew);
-    CHECK_REQUIRED(driver, DatabaseInit);
-    CHECK_REQUIRED(driver, DatabaseRelease);
-    FILL_DEFAULT(driver, DatabaseSetOption);
-
-    CHECK_REQUIRED(driver, ConnectionNew);
-    CHECK_REQUIRED(driver, ConnectionInit);
-    CHECK_REQUIRED(driver, ConnectionRelease);
-    FILL_DEFAULT(driver, ConnectionCommit);
-    FILL_DEFAULT(driver, ConnectionGetInfo);
-    FILL_DEFAULT(driver, ConnectionGetObjects);
-    FILL_DEFAULT(driver, ConnectionGetTableSchema);
-    FILL_DEFAULT(driver, ConnectionGetTableTypes);
-    FILL_DEFAULT(driver, ConnectionReadPartition);
-    FILL_DEFAULT(driver, ConnectionRollback);
-    FILL_DEFAULT(driver, ConnectionSetOption);
-
-    FILL_DEFAULT(driver, StatementExecutePartitions);
-    CHECK_REQUIRED(driver, StatementExecuteQuery);
-    CHECK_REQUIRED(driver, StatementNew);
-    CHECK_REQUIRED(driver, StatementRelease);
-    FILL_DEFAULT(driver, StatementBind);
-    FILL_DEFAULT(driver, StatementBindStream);
-    FILL_DEFAULT(driver, StatementGetParameterSchema);
-    FILL_DEFAULT(driver, StatementPrepare);
-    FILL_DEFAULT(driver, StatementSetOption);
-    FILL_DEFAULT(driver, StatementSetSqlQuery);
-    FILL_DEFAULT(driver, StatementSetSubstraitPlan);
-  }
-  if (version >= ADBC_VERSION_1_1_0) {
-    auto* driver = reinterpret_cast<struct AdbcDriver*>(raw_driver);
-    FILL_DEFAULT(driver, ErrorGetDetailCount);
-    FILL_DEFAULT(driver, ErrorGetDetail);
-    FILL_DEFAULT(driver, ErrorFromArrayStream);
-
-    FILL_DEFAULT(driver, DatabaseGetOption);
-    FILL_DEFAULT(driver, DatabaseGetOptionBytes);
-    FILL_DEFAULT(driver, DatabaseGetOptionDouble);
-    FILL_DEFAULT(driver, DatabaseGetOptionInt);
-    FILL_DEFAULT(driver, DatabaseSetOptionBytes);
-    FILL_DEFAULT(driver, DatabaseSetOptionDouble);
-    FILL_DEFAULT(driver, DatabaseSetOptionInt);
-
-    FILL_DEFAULT(driver, ConnectionCancel);
-    FILL_DEFAULT(driver, ConnectionGetOption);
-    FILL_DEFAULT(driver, ConnectionGetOptionBytes);
-    FILL_DEFAULT(driver, ConnectionGetOptionDouble);
-    FILL_DEFAULT(driver, ConnectionGetOptionInt);
-    FILL_DEFAULT(driver, ConnectionGetStatistics);
-    FILL_DEFAULT(driver, ConnectionGetStatisticNames);
-    FILL_DEFAULT(driver, ConnectionSetOptionBytes);
-    FILL_DEFAULT(driver, ConnectionSetOptionDouble);
-    FILL_DEFAULT(driver, ConnectionSetOptionInt);
-
-    FILL_DEFAULT(driver, StatementCancel);
-    FILL_DEFAULT(driver, StatementExecuteSchema);
-    FILL_DEFAULT(driver, StatementGetOption);
-    FILL_DEFAULT(driver, StatementGetOptionBytes);
-    FILL_DEFAULT(driver, StatementGetOptionDouble);
-    FILL_DEFAULT(driver, StatementGetOptionInt);
-    FILL_DEFAULT(driver, StatementSetOptionBytes);
-    FILL_DEFAULT(driver, StatementSetOptionDouble);
-    FILL_DEFAULT(driver, StatementSetOptionInt);
-  }
-
-  return ADBC_STATUS_OK;
-
-#undef FILL_DEFAULT
-#undef CHECK_REQUIRED
 }

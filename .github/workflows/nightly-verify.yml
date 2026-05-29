@@ -99,7 +99,7 @@ jobs:
           shasum --algorithm 512 \
             apache-arrow-adbc-${VERSION}.tar.gz > apache-arrow-adbc-${VERSION}.tar.gz.sha512
 
-      - uses: actions/upload-artifact@v6
+      - uses: actions/upload-artifact@v7
         with:
           name: source
           retention-days: 7
@@ -131,7 +131,7 @@ jobs:
                       grep -E -o '[0-9]+\.[0-9]+\.[0-9]+')
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
 
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: source
           path: ${{ github.workspace }}/apache-arrow-adbc-${{ env.VERSION }}-rc0/
@@ -242,7 +242,7 @@ jobs:
           # printing a loop of DEADLYSIGNAL
           sudo sysctl vm.mmap_rnd_bits=28
           pushd arrow-adbc
-          docker compose run -e PYTHON=3.13 --rm python-debug
+          docker compose run -e PYTHON=3.14 --rm python-debug
 
   source-verify-docker:
     name: "Verify Source (OS)/${{ matrix.os }} ${{ matrix.version }}"

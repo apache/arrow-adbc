@@ -29,7 +29,7 @@ source "${script_dir}/python_util.sh"
 function check_wheels {
     if [[ $(uname) == "Linux" ]]; then
         echo "=== Tag $component wheel with manylinux${MANYLINUX_VERSION} ==="
-        auditwheel repair "$@" -L . -w repaired_wheels --plat manylinux_2_17_${CIBW_ARCHS}
+        auditwheel repair "$@" -L . -w repaired_wheels --plat manylinux_2_28_${CIBW_ARCHS}
     else # macOS
         echo "=== Tag $component wheel with macOS ==="
         delocate-wheel -v -k -w repaired_wheels "$@"
@@ -82,9 +82,8 @@ for component in $COMPONENTS; do
 
         for wheel in repaired_wheels/*.whl; do
             if [[ "$(uname)" = "Linux" ]]; then
-                # We only check 2_17, though in principle everything should work on 2014
-                if ! [[ $(basename "${wheel}") == *manylinux_2_17* ]]; then
-                    echo "Wheel does not support manylinux_2_17: ${wheel}"
+                if ! [[ $(basename "${wheel}") == *manylinux_2_28* ]]; then
+                    echo "Wheel does not support manylinux_2_28: ${wheel}"
                     exit 1
                 fi
             fi

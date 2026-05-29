@@ -421,6 +421,50 @@ AdbcStatusCode PostgresConnectionRollback(struct AdbcConnection* connection,
   return (*ptr)->Rollback(error);
 }
 
+AdbcStatusCode PostgresConnectionBeginIngestPartitions(
+    struct AdbcConnection* connection, const char* target_catalog,
+    const char* target_db_schema, const char* target_table, const char* mode,
+    struct ArrowSchema* schema, struct AdbcIngestHandle* out_handle,
+    struct AdbcError* error) {
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<PostgresConnection>*>(connection->private_data);
+  return (*ptr)->BeginIngestPartitions(target_catalog, target_db_schema, target_table,
+                                       mode, schema, out_handle, error);
+}
+
+AdbcStatusCode PostgresConnectionWriteIngestPartition(
+    struct AdbcConnection* connection, const uint8_t* handle, size_t handle_len,
+    struct ArrowArrayStream* data, struct AdbcIngestReceipt* out_receipt,
+    struct AdbcError* error) {
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<PostgresConnection>*>(connection->private_data);
+  return (*ptr)->WriteIngestPartition(handle, handle_len, data, out_receipt, error);
+}
+
+AdbcStatusCode PostgresConnectionCommitIngestPartitions(
+    struct AdbcConnection* connection, const uint8_t* handle, size_t handle_len,
+    size_t num_receipts, const uint8_t** receipts, const size_t* receipt_lens,
+    int64_t* rows_affected, struct AdbcError* error) {
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<PostgresConnection>*>(connection->private_data);
+  return (*ptr)->CommitIngestPartitions(handle, handle_len, num_receipts, receipts,
+                                        receipt_lens, rows_affected, error);
+}
+
+AdbcStatusCode PostgresConnectionAbortIngestPartitions(
+    struct AdbcConnection* connection, const uint8_t* handle, size_t handle_len,
+    size_t num_receipts, const uint8_t** receipts, const size_t* receipt_lens,
+    struct AdbcError* error) {
+  if (!connection->private_data) return ADBC_STATUS_INVALID_STATE;
+  auto ptr =
+      reinterpret_cast<std::shared_ptr<PostgresConnection>*>(connection->private_data);
+  return (*ptr)->AbortIngestPartitions(handle, handle_len, num_receipts, receipts,
+                                       receipt_lens, error);
+}
+
 AdbcStatusCode PostgresConnectionSetOption(struct AdbcConnection* connection,
                                            const char* key, const char* value,
                                            struct AdbcError* error) {
@@ -560,6 +604,42 @@ AdbcStatusCode AdbcConnectionReadPartition(struct AdbcConnection* connection,
                                            struct AdbcError* error) {
   return PostgresConnectionReadPartition(connection, serialized_partition,
                                          serialized_length, out, error);
+}
+
+AdbcStatusCode AdbcConnectionBeginIngestPartitions(
+    struct AdbcConnection* connection, const char* target_catalog,
+    const char* target_db_schema, const char* target_table, const char* mode,
+    struct ArrowSchema* schema, struct AdbcIngestHandle* out_handle,
+    struct AdbcError* error) {
+  return PostgresConnectionBeginIngestPartitions(connection, target_catalog,
+                                                 target_db_schema, target_table, mode,
+                                                 schema, out_handle, error);
+}
+
+AdbcStatusCode AdbcConnectionWriteIngestPartition(
+    struct AdbcConnection* connection, const uint8_t* handle, size_t handle_len,
+    struct ArrowArrayStream* data, struct AdbcIngestReceipt* out_receipt,
+    struct AdbcError* error) {
+  return PostgresConnectionWriteIngestPartition(connection, handle, handle_len, data,
+                                                out_receipt, error);
+}
+
+AdbcStatusCode AdbcConnectionCommitIngestPartitions(
+    struct AdbcConnection* connection, const uint8_t* handle, size_t handle_len,
+    size_t num_receipts, const uint8_t** receipts, const size_t* receipt_lens,
+    int64_t* rows_affected, struct AdbcError* error) {
+  return PostgresConnectionCommitIngestPartitions(connection, handle, handle_len,
+                                                  num_receipts, receipts, receipt_lens,
+                                                  rows_affected, error);
+}
+
+AdbcStatusCode AdbcConnectionAbortIngestPartitions(
+    struct AdbcConnection* connection, const uint8_t* handle, size_t handle_len,
+    size_t num_receipts, const uint8_t** receipts, const size_t* receipt_lens,
+    struct AdbcError* error) {
+  return PostgresConnectionAbortIngestPartitions(connection, handle, handle_len,
+                                                 num_receipts, receipts, receipt_lens,
+                                                 error);
 }
 
 AdbcStatusCode AdbcConnectionRelease(struct AdbcConnection* connection,
@@ -888,15 +968,23 @@ extern "C" {
 ADBC_EXPORT
 AdbcStatusCode AdbcDriverPostgresqlInit(int version, void* raw_driver,
                                         struct AdbcError* error) {
-  if (version != ADBC_VERSION_1_0_0 && version != ADBC_VERSION_1_1_0) {
+  if (version != ADBC_VERSION_1_0_0 && version != ADBC_VERSION_1_1_0 &&
+      version != ADBC_VERSION_1_2_0) {
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
   if (!raw_driver) return ADBC_STATUS_INVALID_ARGUMENT;
 
   auto* driver = reinterpret_cast<struct AdbcDriver*>(raw_driver);
-  if (version >= ADBC_VERSION_1_1_0) {
+  if (version >= ADBC_VERSION_1_2_0) {
+    std::memset(driver, 0, ADBC_DRIVER_1_2_0_SIZE);
+    driver->ConnectionBeginIngestPartitions = PostgresConnectionBeginIngestPartitions;
+    driver->ConnectionWriteIngestPartition = PostgresConnectionWriteIngestPartition;
+    driver->ConnectionCommitIngestPartitions = PostgresConnectionCommitIngestPartitions;
+    driver->ConnectionAbortIngestPartitions = PostgresConnectionAbortIngestPartitions;
+  } else if (version >= ADBC_VERSION_1_1_0) {
     std::memset(driver, 0, ADBC_DRIVER_1_1_0_SIZE);
-
+  }
+  if (version >= ADBC_VERSION_1_1_0) {
     driver->ErrorGetDetailCount = PostgresErrorGetDetailCount;
     driver->ErrorGetDetail = PostgresErrorGetDetail;
     driver->ErrorFromArrayStream = PostgresErrorFromArrayStream;
