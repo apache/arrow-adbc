@@ -58,12 +58,12 @@ type connectionImpl struct {
 	txn         *flightsql.Txn
 	supportInfo support
 
-	// id is a short random identifier assigned at Open time. It is stamped
-	// onto every log record emitted by this connection (via Logger.With)
+	// id is a short random identifier assigned at Open time and stamped
+	// onto every log record emitted by this connection.
 	id string
 
-	// wall-clock time at which Open() finished initializing
-	// this connection.
+	// openedAt is the wall-clock time at which Open() finished; used to
+	// log connection lifetime at Close.
 	openedAt time.Time
 }
 
@@ -252,12 +252,8 @@ func doGetWithLogger(ctx context.Context, cl *flightsql.Client, endpoint *flight
 	}
 
 	var (
-		cc          interface{}
-		hasFallback bool
-		// attemptErrors collects every per-location attempt failure so that
-		// the final error returned to the caller can describe all the
-		// locations that were attempted (in order) rather than discarding
-		// information when fallback also fails.
+		cc            interface{}
+		hasFallback   bool
 		attemptErrors []string
 	)
 
@@ -309,9 +305,6 @@ func doGetWithLogger(ctx context.Context, cl *flightsql.Client, endpoint *flight
 				"duration", time.Since(start),
 				"err", err,
 			)
-			// Wrap the error with the full attempt history so the diagnostic
-			// trail is preserved even if the caller does not log err.Error()
-			// itself (it may only end up surfaced through the C ADBC layer).
 			return nil, fmt.Errorf("all DoGet attempts failed: %s; final: %w", strings.Join(attemptErrors, "; "), err)
 		}
 		log.DebugContext(ctx, "FlightSQL doGet succeeded via default client fallback",
@@ -1211,11 +1204,8 @@ func (c *connectionImpl) Close() error {
 	}
 
 	closeStart := time.Now()
-	// Snapshot fields needed for the post-close log line before we
-	// tear down c.cl. We deliberately log "starting" + "finished"
-	// separately rather than a single "closed" line because the
-	// underlying CloseSession can block on the server, and operators
-	// triaging a hung shutdown need to see when the close began.
+	// Snapshot fields before tearing down c.cl; log "closing" and
+	// "closed" separately so a hung CloseSession is still visible.
 	logger := safeLogger(c.Logger)
 	connID := c.id
 	openedAt := c.openedAt

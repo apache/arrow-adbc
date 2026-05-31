@@ -93,7 +93,6 @@ type Database interface {
 	adbc.Database
 	adbc.GetSetOptions
 	adbc.DatabaseLogging
-	adbc.OTelTracingInit
 }
 
 // DatabaseImplBase is a struct that provides default implementations of the
@@ -110,78 +109,23 @@ type DatabaseImplBase struct {
 	traceParent        string
 }
 
-// NewDatabaseImplBase instantiates DatabaseImplBase.
-//
-//   - driver is a DriverImplBase containing the common resources from the parent
-//     driver, allowing the Arrow allocator and error handler to be reused.
-func NewDatabaseImplBase(ctx context.Context, driver *DriverImplBase) (DatabaseImplBase, error) {
-	database := DatabaseImplBase{
-		Alloc:       driver.Alloc,
-		ErrorHelper: driver.ErrorHelper,
-		DriverInfo:  driver.DriverInfo,
-		Logger:      nilLogger(),
-		Tracer:      nilTracer(),
-	}
-	err := database.InitTracing(ctx, driver.DriverInfo.GetName(), getDriverVersion(driver.DriverInfo))
-	return database, err
-}
-
-// TracingOptions bundles the configuration knobs that a driver may want
-// to forward to driverbase's OpenTelemetry tracer initialization without
-// requiring each new knob to widen the InitTracing function signature.
-//
-// All fields are optional. When a field is the zero value the
-// corresponding default (typically the OTEL environment variable or a
-// platform-appropriate default path) is used. This struct exists so
-// drivers can honor database-level options loaded from a TOML profile
-// or otherwise supplied through the driver manager.
 type TracingOptions struct {
 	// ExporterName overrides the OTEL_TRACES_EXPORTER environment
-	// variable. Must match one of the values understood by
-	// tryParseTraceExporterType ("none", "otlp", "console", "adbcfile")
-	// when non-empty. Empty falls back to the environment variable.
+	// variable. Must be one of "none", "otlp", "console", or "adbcfile".
 	ExporterName string
 
 	// TracingFolderPath overrides the default on-disk folder used by
-	// the "adbcfile" exporter (which is otherwise
-	// "<user-config-dir>/.adbc/traces"). Ignored for non-file
-	// exporters.
+	// the "adbcfile" exporter. Ignored for other exporters.
 	TracingFolderPath string
 }
 
-// NewDatabaseImplBaseWithExporter instantiates DatabaseImplBase and
-// initializes its OpenTelemetry tracer using the supplied exporter name
-// instead of (or before falling back to) the OTEL_TRACES_EXPORTER
-// environment variable. See NewDatabaseImplBaseWithOptions for a
-// constructor that also accepts a custom on-disk folder for the
-// "adbcfile" exporter.
-func NewDatabaseImplBaseWithExporter(
-	ctx context.Context,
-	driver *DriverImplBase,
-	exporterName string,
-) (DatabaseImplBase, error) {
-	return NewDatabaseImplBaseWithOptions(ctx, driver, TracingOptions{ExporterName: exporterName})
-}
-
-// NewDatabaseImplBaseWithOptions instantiates DatabaseImplBase and
-// initializes its OpenTelemetry tracer using the supplied TracingOptions
-// instead of relying solely on environment variables and default paths.
+// NewDatabaseImplBase instantiates DatabaseImplBase and initializes its
+// OpenTelemetry tracer using the supplied TracingOptions. Empty fields
+// fall back to the defaults documented on TracingOptions.
 //
-// Empty fields on opts fall back to the same defaults that
-// NewDatabaseImplBase uses (OTEL_TRACES_EXPORTER for the exporter and
-// "<user-config-dir>/.adbc/traces" for the adbcfile folder).
-//
-// This constructor exists so drivers can honor database-level options
-// (such as adbc.OptionKeyTelemetryTracesExporter and
-// adbc.OptionKeyTelemetryTracesFolderPath) loaded from a TOML profile
-// or otherwise supplied through the driver manager, without requiring
-// the operator to mutate the host process's environment or filesystem
-// defaults.
-func NewDatabaseImplBaseWithOptions(
-	ctx context.Context,
-	driver *DriverImplBase,
-	opts TracingOptions,
-) (DatabaseImplBase, error) {
+//   - driver is a DriverImplBase containing the common resources from the parent
+//     driver, allowing the Arrow allocator and error handler to be reused.
+func NewDatabaseImplBase(ctx context.Context, driver *DriverImplBase, opts TracingOptions) (DatabaseImplBase, error) {
 	database := DatabaseImplBase{
 		Alloc:       driver.Alloc,
 		ErrorHelper: driver.ErrorHelper,
@@ -189,7 +133,7 @@ func NewDatabaseImplBaseWithOptions(
 		Logger:      nilLogger(),
 		Tracer:      nilTracer(),
 	}
-	err := database.InitTracingWithOptions(
+	err := database.InitTracing(
 		ctx,
 		driver.DriverInfo.GetName(),
 		getDriverVersion(driver.DriverInfo),
@@ -300,43 +244,10 @@ func (db *database) SetLogger(logger *slog.Logger) {
 	}
 }
 
-func (base *database) InitTracing(ctx context.Context, driverName string, driverVersion string) error {
-	return base.Base().InitTracing(ctx, driverName, driverVersion)
-}
-
-func (base *DatabaseImplBase) InitTracing(ctx context.Context, driverName string, driverVersion string) error {
-	return base.InitTracingWithOptions(ctx, driverName, driverVersion, TracingOptions{})
-}
-
-// InitTracingWithExporter initializes the database's OpenTelemetry tracer
-// using the supplied exporter name. See InitTracingWithOptions for the
-// fully parameterized variant; this helper is preserved for callers that
-// only need to override the exporter selection.
-func (base *DatabaseImplBase) InitTracingWithExporter(
-	ctx context.Context,
-	driverName string,
-	driverVersion string,
-	exporterName string,
-) error {
-	return base.InitTracingWithOptions(
-		ctx,
-		driverName,
-		driverVersion,
-		TracingOptions{ExporterName: exporterName},
-	)
-}
-
-// InitTracingWithOptions initializes the database's OpenTelemetry tracer
-// using the supplied TracingOptions. Empty fields fall back to the same
-// defaults that InitTracing uses: the OTEL_TRACES_EXPORTER environment
-// variable for the exporter selection, and "<user-config-dir>/.adbc/traces"
-// for the on-disk folder used by the "adbcfile" exporter.
-//
-// An explicit value on opts takes precedence over the corresponding
-// default; this lets a driver honor per-database options (loaded from a
-// TOML profile or otherwise supplied through the driver manager)
-// without mutating the host process's environment or filesystem layout.
-func (base *DatabaseImplBase) InitTracingWithOptions(
+// InitTracing initializes the database's OpenTelemetry tracer using the
+// supplied TracingOptions. Empty fields fall back to the defaults
+// documented on TracingOptions.
+func (base *DatabaseImplBase) InitTracing(
 	ctx context.Context,
 	driverName string,
 	driverVersion string,
@@ -344,10 +255,7 @@ func (base *DatabaseImplBase) InitTracingWithOptions(
 ) (err error) {
 	fullyQualifiedDriverName := driverNamespace + "." + driverName
 
-	// An explicit exporter passed in via opts overrides whatever was
-	// found in the environment; this lets a driver honor a value loaded
-	// from a TOML profile or supplied as a database option without
-	// having to mutate the process's environment block.
+	// opts.ExporterName takes precedence over OTEL_TRACES_EXPORTER.
 	exporterName := opts.ExporterName
 	if exporterName == "" {
 		exporterName = getExporterName()
@@ -518,11 +426,6 @@ func newOtlpTraceExporters(ctx context.Context) ([]sdktrace.SpanExporter, error)
 func newAdbcFileExporter(driverName, folderPath string) (*stdouttrace.Exporter, error) {
 	fullyQualifiedDriverName := strings.ToLower(driverNamespace + "." + driverName)
 	writerOpts := []rotatingFileWriterOption{WithLogNamePrefix(fullyQualifiedDriverName)}
-	// An explicit folder path takes precedence over the default of
-	// "<user-config-dir>/.adbc/traces"; this lets operators route trace
-	// files into a location their support workflow already collects
-	// (such as a shared diagnostics share) via a TOML profile or
-	// database option, without depending on the local default.
 	if strings.TrimSpace(folderPath) != "" {
 		writerOpts = append(writerOpts, WithTracingFolderPath(folderPath))
 	}

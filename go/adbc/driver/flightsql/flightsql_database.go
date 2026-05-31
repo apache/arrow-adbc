@@ -368,10 +368,6 @@ func (d *databaseImpl) SetOptionDouble(key string, value float64) error {
 }
 
 func (d *databaseImpl) Close() error {
-	// Emit a structured log line on close so that connection / database
-	// lifetime events can be reconstructed end-to-end from the driver's
-	// log stream alone. This is a no-op release otherwise; resources
-	// owned by individual connections are released by connectionImpl.Close.
 	if d.Logger != nil {
 		d.Logger.Info("FlightSQL database closed",
 			"target", d.uri.String(),
@@ -440,11 +436,6 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 	var authValue string
 
 	if d.user != "" || d.pass != "" {
-		// Emit start/finish logs around basic auth so an operator can
-		// distinguish "the driver never tried to authenticate" from
-		// "authentication started but the server never responded" — the
-		// two have very different root causes (option not threaded vs
-		// network/TLS/server fault).
 		authStart := time.Now()
 		d.Logger.InfoContext(ctx, "FlightSQL basic auth started",
 			"target", loc,
@@ -470,11 +461,6 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 			authValue = md.Get("Authorization")[0]
 		}
 
-		// Log only the fact + token length, never the token value. The
-		// length is useful for quick sanity checks (e.g. a zero-length
-		// token would indicate the server returned an empty
-		// Authorization header even though AuthenticateBasicToken
-		// returned no error).
 		d.Logger.InfoContext(ctx, "FlightSQL basic auth succeeded",
 			"target", loc,
 			"user", d.user,
@@ -591,12 +577,8 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		hdrs: make(metadata.MD), timeouts: d.timeout, supportInfo: cnxnSupport,
 		ConnectionImplBase: driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
 	}
-	// Mint a stable per-connection identifier and wrap the inherited
-	// logger so that every subsequent log line (and every statement
-	// created through this connection) carries connection_id. This is the
-	// primary correlation hook between FlightSQL driver logs and any host
-	// application (such as Power Query / Mashup) that records its own
-	// per-connection identifier.
+	// Stamp a stable per-connection ID onto every log line emitted by
+	// this connection (and any statements derived from it).
 	conn.id = newRandomID("conn")
 	conn.openedAt = time.Now()
 	conn.Logger = safeLogger(conn.Logger).With("connection_id", conn.id)
@@ -616,13 +598,8 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 type bearerAuthMiddleware struct {
 	mutex sync.RWMutex
 	hdrs  metadata.MD
-	// logger, when non-nil, receives an Info-level event every time the
-	// bearer token is rotated (either because the server returned a new
-	// Authorization header on a response, or because the driver itself
-	// explicitly set one via SetHeader). The token value is never
-	// logged; only the fact of the rotation plus the new token length
-	// is recorded so an operator can confirm that token-refresh logic
-	// is firing without exposing credential material in the log stream.
+	// logger, when non-nil, receives an Info event each time the bearer
+	// token is rotated. Only token lengths are logged, never values.
 	logger *slog.Logger
 }
 
@@ -634,12 +611,8 @@ func (b *bearerAuthMiddleware) StartCall(ctx context.Context) context.Context {
 }
 
 // rotateAuth atomically replaces the stored Authorization metadata and
-// returns the previous value plus a snapshot of the logger pointer.
-// Splitting this out lets HeadersReceived and SetHeader manage the
-// mutex with defer-style discipline while still performing the logger
-// call outside of the critical section: log handlers are user-supplied
-// and may be slow, so holding b.mutex across them would penalize every
-// concurrent StartCall reader.
+// returns the previous value plus the current logger. Callers invoke
+// the logger outside the critical section.
 func (b *bearerAuthMiddleware) rotateAuth(headers ...string) (previous []string, logger *slog.Logger) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
@@ -658,11 +631,7 @@ func (b *bearerAuthMiddleware) HeadersReceived(ctx context.Context, md metadata.
 	if logger == nil {
 		return
 	}
-	// Compare lengths rather than values so that we never touch the
-	// token contents in the log path. Equal lengths can still indicate
-	// a fresh token (a server might issue tokens of the same shape),
-	// but for the no-op case (server echoed the same header) the
-	// reflected length is what an operator wants to see anyway.
+	// Log lengths, never values, so credentials never reach the log path.
 	var prevLen int
 	if len(previous) > 0 {
 		prevLen = len(previous[0])

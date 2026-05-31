@@ -49,12 +49,7 @@ type reader struct {
 }
 
 // recordReaderConfig bundles the dependencies that newRecordReader
-// needs to spin up its per-endpoint goroutines. Grouping them into a
-// single value keeps the call sites compact and lets new fields be
-// added without rippling another positional argument through every
-// caller. The fields mirror the corresponding members on
-// connectionImpl/statement so callers can populate the struct by
-// straight field copies.
+// needs to spin up its per-endpoint goroutines.
 type recordReaderConfig struct {
 	alloc       memory.Allocator
 	cl          *flightsql.Client
@@ -64,19 +59,9 @@ type recordReaderConfig struct {
 	logger      *slog.Logger
 }
 
-// kicks off a goroutine for each endpoint and returns a reader which
-// gathers all of the records as they come in.
-//
-// cfg.logger may be nil; in that case a no-op logger is used internally.
-// When supplied it receives structured records describing every endpoint
-// stream's lifecycle (start, first batch received, completion, failure).
-// These records are essential when diagnosing transient stream failures
-// such as "[FlightSQL] error reading from server: EOF (Unavailable; DoGet:
-// endpoint N: [])" because they record exactly which endpoint failed, how
-// many batches/rows had already been received, and how long the stream had
-// been open at the time of failure. Without these records the operator
-// otherwise has only the bare gRPC EOF to work with, which carries no
-// progress or location information.
+// newRecordReader kicks off a goroutine for each endpoint and returns a
+// reader which gathers all of the records as they come in. cfg.logger
+// may be nil.
 func newRecordReader(ctx context.Context, cfg recordReaderConfig, opts ...grpc.CallOption) (rdr array.RecordReader, err error) {
 	log := safeLogger(cfg.logger)
 	info := cfg.info
@@ -261,12 +246,9 @@ func newRecordReader(ctx context.Context, cfg recordReaderConfig, opts ...grpc.C
 
 	go func() {
 		err := group.Wait()
-		// Surface the statement/connection identifiers (if any were
-		// propagated through ctx by the caller) on the error returned via
-		// reader.Err() so the most common production failure mode — a
-		// mid-stream EOF reported only after the reader has been handed
-		// off to client code — carries the same correlation IDs that a
-		// synchronous ExecuteQuery error would.
+		// Stamp the statement/connection IDs onto reader.Err() so a
+		// mid-stream failure surfaced asynchronously carries the same
+		// correlation IDs as a synchronous error would.
 		stmtID, connID := operationIDsFromCtx(ctx)
 		reader.err = withOperationIDs(err, stmtID, connID)
 		if reader.err != nil {

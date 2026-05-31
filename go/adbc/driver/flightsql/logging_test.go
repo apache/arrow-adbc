@@ -32,95 +32,23 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// TestIsSensitiveHeader checks the credential-substring denylist that
-// gates header promotion in headerAttrsWithPrefix. The intent of the
-// denylist is to be coarse: false positives (a useful header is
-// skipped) are acceptable, false negatives (a credential header is
-// logged) are not.
-func TestIsSensitiveHeader(t *testing.T) {
-	cases := []struct {
-		name     string
-		input    string
-		want     bool
-		category string
-	}{
-		// Credential headers — must all be flagged.
-		{"authorization", "authorization", true, "credential"},
-		{"authorization_mixed_case", "Authorization", true, "credential"},
-		{"proxy-authorization", "Proxy-Authorization", true, "credential"},
-		{"cookie", "Cookie", true, "credential"},
-		{"set-cookie", "Set-Cookie", true, "credential"},
-		{"x-api-key", "x-api-key", true, "credential"},
-		{"x-auth-token", "X-Auth-Token", true, "credential"},
-		{"x-csrf-token", "X-Csrf-Token", true, "credential"},
-		{"any-password-header", "X-User-Password", true, "credential"},
-		{"any-secret-header", "X-Shared-Secret", true, "credential"},
-		{"private-key", "X-Private-Key", true, "credential"},
-		{"credentials-bin", "x-credentials-bin", true, "credential"},
-		{"apikey-mashed", "MyApikey", true, "credential"},
-
-		// Tracking / correlation headers — must NOT be flagged so they
-		// can be promoted into log records.
-		{"x-request-id", "x-request-id", false, "tracking"},
-		{"x-correlation-id", "x-correlation-id", false, "tracking"},
-		{"traceparent", "traceparent", false, "tracking"},
-		{"tracestate", "tracestate", false, "tracking"},
-		{"x-b3-traceid", "x-b3-traceid", false, "tracking"},
-		{"activityid", "activityid", false, "tracking"},
-		{"activity-id", "activity-id", false, "tracking"},
-		{"x-ms-client-request-id", "x-ms-client-request-id", false, "tracking"},
-		{"x-ms-activity-id", "x-ms-activity-id", false, "tracking"},
-		{"x-pbi-activity-id", "x-pbi-activity-id", false, "tracking"},
-		{"empty", "", false, "edge"},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := isSensitiveHeader(tc.input)
-			if got != tc.want {
-				t.Fatalf("isSensitiveHeader(%q) = %v, want %v (%s)",
-					tc.input, got, tc.want, tc.category)
-			}
-		})
-	}
-}
-
-// TestSensitiveTokenDoesNotCollideWithAllowlist guards against a future
-// edit that adds an entry to wellKnownCorrelationHeaders whose name
-// happens to contain a sensitiveHeaderTokens substring. Such an entry
-// would be silently dropped at log time (because headerAttrsWithPrefix
-// consults isSensitiveHeader before promoting any allow-listed header),
-// so we surface the contradiction here at test time.
-func TestSensitiveTokenDoesNotCollideWithAllowlist(t *testing.T) {
-	for _, h := range wellKnownCorrelationHeaders {
-		if isSensitiveHeader(h) {
-			t.Fatalf("wellKnownCorrelationHeaders entry %q is flagged sensitive by isSensitiveHeader; "+
-				"either rename the header or remove it from the allowlist", h)
-		}
-	}
-}
-
-// TestHeaderAttrsWithPrefix_AllowAndDeny exercises the curated allow-list,
-// the suffix-match path, and the sensitive-header denylist. The function
-// is the engine behind both correlationHeaderAttrs ("hdr_" prefix, used
-// on received headers / trailers) and outgoingCallHeaderAttrs
-// ("out_hdr_" prefix, used on call-time outgoing metadata).
+// TestHeaderAttrsWithPrefix_AllowAndDeny exercises the curated allow-list.
+// The function is the engine behind both correlationHeaderAttrs ("hdr_"
+// prefix, used on received headers / trailers) and outgoingCallHeaderAttrs
+// ("out_hdr_" prefix, used on call-time outgoing metadata). Only headers
+// in wellKnownCorrelationHeaders are emitted; everything else is dropped.
 func TestHeaderAttrsWithPrefix_AllowAndDeny(t *testing.T) {
 	md := metadata.New(map[string]string{
 		// Allow-listed exact match.
 		"x-request-id": "req-1",
-		// Microsoft / PBI allow-listed exact match.
-		"activityid": "act-1",
-		// Suffix-match: ends with -request-id (not on the allow-list
-		// literally, but caught by the suffix rule).
-		"x-vendor-request-id": "vreq-1",
-		// New activity-id suffix rule.
+		// Microsoft / PBI allow-listed exact matches.
+		"activityid":        "act-1",
 		"x-pbi-activity-id": "pbi-act-1",
-		// Credential header — must be filtered.
+		// Not on the allow-list (no suffix-match fallback).
+		"x-vendor-request-id": "vreq-1",
+		// Credential header.
 		"authorization": "Bearer SECRET",
-		// Credential by substring — must be filtered.
-		"x-tenant-token": "tok-1",
-		// Random header with no allow-list / suffix hit — must be
-		// ignored to avoid log spam.
+		// Random header.
 		"x-random-header": "noise",
 	})
 
@@ -133,7 +61,6 @@ func TestHeaderAttrsWithPrefix_AllowAndDeny(t *testing.T) {
 	wantPresent := []string{
 		"hdr_x-request-id",
 		"hdr_activityid",
-		"hdr_x-vendor-request-id",
 		"hdr_x-pbi-activity-id",
 	}
 	for _, k := range wantPresent {
@@ -144,8 +71,8 @@ func TestHeaderAttrsWithPrefix_AllowAndDeny(t *testing.T) {
 	}
 
 	wantAbsent := []string{
+		"hdr_x-vendor-request-id",
 		"hdr_authorization",
-		"hdr_x-tenant-token",
 		"hdr_x-random-header",
 	}
 	for _, k := range wantAbsent {

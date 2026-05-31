@@ -180,24 +180,8 @@ type statement struct {
 	// Bound data for bulk ingest
 	bound      arrow.RecordBatch
 	streamBind array.RecordReader
-
-	// id is a short random identifier assigned when the statement is
-	// created. It is included as an attribute on every log record emitted
-	// for the statement and as a "statement_id" ADBC error detail on every
-	// error surfaced from the statement, so that a single failing
-	// operation can be traced from host-application logs through driver
-	// logs to the server.
-	id string
-	// log is a slog.Logger pre-decorated with connection_id and
-	// statement_id so callers can emit structured records without having
-	// to remember to attach those identifiers. Always non-nil.
-	log *slog.Logger
-	// logQueryPreview is the maximum number of UTF-8 bytes of the SQL
-	// query (or Substrait plan) to include in log records as a
-	// "query_preview" attribute. Zero (the default) disables preview
-	// logging entirely; only a SHA-256 fingerprint and length are
-	// recorded. Configurable via OptionStatementLogQueryPreview.
-	logQueryPreview int
+	id         string
+	log        *slog.Logger
 }
 
 func (s *statement) closePreparedStatement() error {
@@ -270,8 +254,6 @@ func (s *statement) GetOption(key string) (string, error) {
 		return s.timeouts.queryTimeout.String(), nil
 	case OptionTimeoutUpdate:
 		return s.timeouts.updateTimeout.String(), nil
-	case OptionStatementLogQueryPreview:
-		return strconv.Itoa(s.logQueryPreview), nil
 	case adbc.OptionKeyIncremental:
 		if s.incrementalState != nil {
 			return adbc.OptionValueEnabled, nil
@@ -325,8 +307,6 @@ func (s *statement) GetOptionInt(key string) (int64, error) {
 			return 0, err
 		}
 		return int64(val), nil
-	case OptionStatementLogQueryPreview:
-		return int64(s.logQueryPreview), nil
 	}
 
 	return 0, adbc.Error{
@@ -383,16 +363,6 @@ func (s *statement) SetOption(key string, val string) error {
 			}
 		}
 		return s.SetOptionInt(key, int64(size))
-	case OptionStatementLogQueryPreview:
-		n, err := strconv.Atoi(val)
-		if err != nil || n < 0 {
-			return adbc.Error{
-				Msg:  fmt.Sprintf("[Flight SQL] Invalid value for statement option '%s': '%s' is not a non-negative integer", OptionStatementLogQueryPreview, val),
-				Code: adbc.StatusInvalidArgument,
-			}
-		}
-		s.logQueryPreview = n
-		return nil
 	case OptionStatementSubstraitVersion:
 		s.query.substraitVersion = val
 	case adbc.OptionKeyIncremental:
@@ -487,15 +457,6 @@ func (s *statement) SetOptionInt(key string, value int64) error {
 		}
 		s.queueSize = int(value)
 		return nil
-	case OptionStatementLogQueryPreview:
-		if value < 0 {
-			return adbc.Error{
-				Msg:  fmt.Sprintf("[Flight SQL] Invalid value for statement option '%s': '%d' is not a non-negative integer", OptionStatementLogQueryPreview, value),
-				Code: adbc.StatusInvalidArgument,
-			}
-		}
-		s.logQueryPreview = int(value)
-		return nil
 	}
 	return s.SetOptionDouble(key, float64(value))
 }
@@ -538,13 +499,9 @@ func (s *statement) SetSqlQuery(query string) error {
 	return nil
 }
 
-// queryAttrs returns slog attributes that fingerprint the SQL or Substrait
-// payload currently set on this statement, honoring the
-// OptionStatementLogQueryPreview opt-in for inclusion of the SQL text.
-// Always safe to log because no parameter values are surfaced.
 func (s *statement) queryAttrs() []any {
 	if s.query.sqlQuery != "" {
-		return queryFingerprintAttrs(s.query.sqlQuery, s.logQueryPreview)
+		return queryFingerprintAttrs(s.query.sqlQuery)
 	}
 	if s.query.substraitPlan != nil {
 		return substraitFingerprintAttrs(s.query.substraitPlan, s.query.substraitVersion)
@@ -571,11 +528,6 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 		return nil, nrec, err
 	}
 
-	// Emit a structured "start" record so that operators can pair this
-	// driver-side event with the corresponding host-application (Mashup /
-	// Power Query) log entry by statement_id and query fingerprint, even
-	// when the driver fails before any data is returned. The matching
-	// "finished" record is emitted via the deferred function below.
 	startTime := time.Now()
 	startAttrs := append([]any{
 		slog.Bool("prepared", s.prepared != nil),

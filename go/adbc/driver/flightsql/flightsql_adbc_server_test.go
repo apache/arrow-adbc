@@ -729,11 +729,6 @@ func (ts *ErrorDetailsTests) TestBinaryDetails() {
 
 	ts.Equal(int32(codes.FailedPrecondition), adbcErr.VendorCode)
 
-	// Expected detail set:
-	//   - x-header-bin, x-trailer-bin: server-supplied details
-	//   - grpc_code, grpc_message: canonical gRPC code/message added
-	//     by adbcFromFlightStatusWithDetails for every Flight error
-	//   - statement_id, connection_id: driver-attached correlation IDs
 	ts.Equal(6, len(adbcErr.Details))
 
 	headerFound := false
@@ -779,11 +774,6 @@ func (ts *ErrorDetailsTests) TestGetFlightInfo() {
 
 	ts.Equal(int32(codes.Unknown), adbcErr.VendorCode)
 
-	// Expected detail set:
-	//   - grpc-status-details-bin: one server-supplied protobuf detail
-	//   - grpc_code, grpc_message: canonical gRPC code/message added
-	//     by adbcFromFlightStatusWithDetails for every Flight error
-	//   - statement_id, connection_id: driver-attached correlation IDs
 	ts.Equal(5, len(adbcErr.Details))
 
 	var wrapper adbc.ErrorDetail
