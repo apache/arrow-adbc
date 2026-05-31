@@ -432,46 +432,17 @@ developed separately.</p>
 <input checked="checked" id="sd-tab-item-0" name="sd-tab-set-0" type="radio">
 <label class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-0">
 C++</label><div class="sd-tab-content docutils">
-<p>See the <a class="reference external" href="https://duckdb.org/docs/api/adbc.html#c">DuckDB C++ documentation</a>.</p>
+<p>See the <a class="reference external" href="https://duckdb.org/docs/current/clients/adbc#c">DuckDB C++ documentation</a>.</p>
 </div>
 <input id="sd-tab-item-1" name="sd-tab-set-0" type="radio">
 <label class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-1">
 Go</label><div class="sd-tab-content docutils">
-<p>You must have <code class="docutils literal notranslate"><span class="pre">libduckdb.so</span></code> on your <code class="docutils literal notranslate"><span class="pre">LD_LIBRARY_PATH</span></code>, or
-in the same directory as the executable when you run this.  This
-requires CGO and loads the DuckDB driver.</p>
-<div class="highlight-go notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="p">(</span>
-<span class="w">   </span><span class="s">&quot;context&quot;</span>
-
-<span class="w">   </span><span class="s">&quot;github.com/apache/arrow-adbc/go/adbc&quot;</span>
-<span class="w">   </span><span class="s">&quot;github.com/apache/arrow-adbc/go/adbc/drivermgr&quot;</span>
-<span class="p">)</span>
-
-<span class="kd">func</span><span class="w"> </span><span class="nx">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<span class="w">   </span><span class="kd">var</span><span class="w"> </span><span class="nx">drv</span><span class="w"> </span><span class="nx">drivermgr</span><span class="p">.</span><span class="nx">Driver</span>
-<span class="w">   </span><span class="nx">db</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">drv</span><span class="p">.</span><span class="nx">NewDatabase</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">{</span>
-<span class="w">      </span><span class="s">&quot;driver&quot;</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;libduckdb.so&quot;</span><span class="p">,</span>
-<span class="w">      </span><span class="s">&quot;entrypoint&quot;</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;duckdb_adbc_init&quot;</span><span class="p">,</span>
-<span class="w">   </span><span class="p">})</span>
-<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="c1">// handle error</span>
-<span class="w">   </span><span class="p">}</span>
-<span class="w">   </span><span class="k">defer</span><span class="w"> </span><span class="nx">db</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
-
-<span class="w">   </span><span class="nx">cnxn</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">db</span><span class="p">.</span><span class="nx">Open</span><span class="p">(</span><span class="nx">context</span><span class="p">.</span><span class="nx">Background</span><span class="p">())</span>
-<span class="w">   </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
-<span class="w">      </span><span class="c1">// handle error</span>
-<span class="w">   </span><span class="p">}</span>
-<span class="w">   </span><span class="k">defer</span><span class="w"> </span><span class="nx">cnxn</span><span class="p">.</span><span class="nx">Close</span><span class="p">()</span>
-<span class="p">}</span>
-</pre></div>
-</div>
+<p>See the <a class="reference external" href="https://duckdb.org/docs/current/clients/adbc#go">DuckDB Go documentation</a>.</p>
 </div>
 <input id="sd-tab-item-2" name="sd-tab-set-0" type="radio">
 <label class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-2">
 Python</label><div class="sd-tab-content docutils">
-<p>You must have DuckDB 0.9.1 or higher.</p>
-<p>See the <a class="reference external" href="https://duckdb.org/docs/api/adbc.html#python">DuckDB Python documentation</a>.</p>
+<p>See the <a class="reference external" href="https://duckdb.org/docs/current/clients/adbc#python">DuckDB Python documentation</a>.</p>
 </div>
 <input id="sd-tab-item-3" name="sd-tab-set-0" type="radio">
 <label class="sd-tab-label" data-sync-group="tab" data-sync-id="r" for="sd-tab-item-3">
@@ -487,7 +458,8 @@ R</label><div class="sd-tab-content docutils">
 </section>
 <section id="supported-features">
 <h2>Supported Features<a class="headerlink" href="#supported-features" title="Link to this heading">¶</a></h2>
-<p>ADBC support in DuckDB is still in progress.  See <a class="reference external" href="https://github.com/duckdb/duckdb/issues/7141">duckdb/duckdb#7141</a> for details.</p>
+<p>DuckDB version 0.8.0 to 1.4.x supports the ADBC 1.0.0 spec,
+and version 1.5.0 and later support the ADBC 1.1.0 spec.</p>
 </section>
 </section>
 

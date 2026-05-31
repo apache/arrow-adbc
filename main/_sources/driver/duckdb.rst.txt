@@ -50,41 +50,10 @@ ADBC support in DuckDB requires the driver manager.
    .. tab-item:: Go
       :sync: go
 
-      You must have ``libduckdb.so`` on your ``LD_LIBRARY_PATH``, or
-      in the same directory as the executable when you run this.  This
-      requires CGO and loads the DuckDB driver.
-
-      .. code-block:: go
-
-         import (
-            "context"
-
-            "github.com/apache/arrow-adbc/go/adbc"
-            "github.com/apache/arrow-adbc/go/adbc/drivermgr"
-         )
-
-         func main() {
-            var drv drivermgr.Driver
-            db, err := drv.NewDatabase(map[string]string{
-               "driver": "libduckdb.so",
-               "entrypoint": "duckdb_adbc_init",
-            })
-            if err != nil {
-               // handle error
-            }
-            defer db.Close()
-
-            cnxn, err := db.Open(context.Background())
-            if err != nil {
-               // handle error
-            }
-            defer cnxn.Close()
-         }
+      See the `DuckDB Go documentation`_.
 
    .. tab-item:: Python
       :sync: python
-
-      You must have DuckDB 0.9.1 or higher.
 
       See the `DuckDB Python documentation`_.
 
@@ -100,11 +69,12 @@ ADBC support in DuckDB requires the driver manager.
          db <- adbc_database_init(duckdb::duckdb_adbc(), ...)
 
 
-.. _DuckDB C++ documentation: https://duckdb.org/docs/api/adbc.html#c
-.. _DuckDB Python documentation: https://duckdb.org/docs/api/adbc.html#python
+.. _DuckDB C++ documentation: https://duckdb.org/docs/current/clients/adbc#c
+.. _DuckDB Python documentation: https://duckdb.org/docs/current/clients/adbc#python
+.. _DuckDB Go documentation: https://duckdb.org/docs/current/clients/adbc#go
 
 Supported Features
 ==================
 
-ADBC support in DuckDB is still in progress.  See `duckdb/duckdb#7141
-<https://github.com/duckdb/duckdb/issues/7141>`_ for details.
+DuckDB version 0.8.0 to 1.4.x supports the ADBC 1.0.0 spec,
+and version 1.5.0 and later support the ADBC 1.1.0 spec.
