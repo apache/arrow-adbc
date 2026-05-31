@@ -171,9 +171,7 @@ func (s *statement) executeIngest(ctx context.Context) (int64, error) {
 	finishAttrs = append(finishAttrs, correlationHeaderAttrs(header)...)
 	finishAttrs = append(finishAttrs, correlationHeaderAttrs(trailer)...)
 	if err != nil {
-		wrapped := withOperationIDs(
-			adbcFromFlightStatusWithDetails(err, header, trailer, "ExecuteIngest"),
-			s.id, s.cnxn.id)
+		wrapped := adbcFromFlightStatusWithDetails(err, header, trailer, "ExecuteIngest")
 		finishAttrs = append(finishAttrs, "err", wrapped)
 		s.log.WarnContext(ctx, "FlightSQL ExecuteIngest finished with error", finishAttrs...)
 		return -1, wrapped

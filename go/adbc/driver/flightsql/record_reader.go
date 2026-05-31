@@ -126,7 +126,7 @@ func newRecordReader(ctx context.Context, cfg recordReaderConfig, opts ...grpc.C
 				)...,
 			)
 			return nil, adbcFromFlightStatusWithDetails(err, header, trailer,
-				"DoGet: endpoint 0: remote: %s [%s]", firstEndpoint.Location, startSchemaFetch.summary())
+				"DoGet: endpoint 0: remote: %s", firstEndpoint.Location)
 		}
 		schema = rdr.Schema()
 		group.Go(func() error {
@@ -149,7 +149,7 @@ func newRecordReader(ctx context.Context, cfg recordReaderConfig, opts ...grpc.C
 					)...,
 				)
 				return adbcFromFlightStatusWithDetails(err, header, trailer,
-					"DoGet: endpoint 0: remote: %s [%s]", firstEndpoint.Location, progress.summary())
+					"DoGet: endpoint 0: remote: %s", firstEndpoint.Location)
 			}
 			log.DebugContext(ctx, "FlightSQL endpoint stream completed",
 				append(append([]any{}, endpointLogAttrs(0, numEndpoints, firstEndpoint)...),
@@ -203,7 +203,7 @@ func newRecordReader(ctx context.Context, cfg recordReaderConfig, opts ...grpc.C
 					)...,
 				)
 				return adbcFromFlightStatusWithDetails(err, header, trailer,
-					"DoGet: endpoint %d: %s [%s]", logEndpointIndex, endpoint.Location, doGetStart.summary())
+					"DoGet: endpoint %d: %s", logEndpointIndex, endpoint.Location)
 			}
 			defer rdr.Release()
 
@@ -233,7 +233,7 @@ func newRecordReader(ctx context.Context, cfg recordReaderConfig, opts ...grpc.C
 					)...,
 				)
 				return adbcFromFlightStatusWithDetails(err, header, trailer,
-					"DoGet: endpoint %d: %s [%s]", logEndpointIndex, endpoint.Location, progress.summary())
+					"DoGet: endpoint %d: %s", logEndpointIndex, endpoint.Location)
 			}
 			log.DebugContext(ctx, "FlightSQL endpoint stream completed",
 				append(append([]any{}, epAttrs...),
@@ -246,11 +246,7 @@ func newRecordReader(ctx context.Context, cfg recordReaderConfig, opts ...grpc.C
 
 	go func() {
 		err := group.Wait()
-		// Stamp the statement/connection IDs onto reader.Err() so a
-		// mid-stream failure surfaced asynchronously carries the same
-		// correlation IDs as a synchronous error would.
-		stmtID, connID := operationIDsFromCtx(ctx)
-		reader.err = withOperationIDs(err, stmtID, connID)
+		reader.err = err
 		if reader.err != nil {
 			log.WarnContext(ctx, "FlightSQL record reader finished with error",
 				"err", reader.err,

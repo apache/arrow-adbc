@@ -85,20 +85,6 @@ func adbcFromFlightStatusWithDetails(err error, header, trailer metadata.MD, con
 	}
 
 	details := []adbc.ErrorDetail{}
-	// Surface the canonical gRPC status code and message as their own
-	// structured detail entries. The same values appear inside the
-	// formatted Msg (and as "grpc_code"/"grpc_message" slog attributes
-	// in the structured log stream), but applications that consume
-	// adbc.Error.Details directly can filter on them without parsing
-	// the formatted message — and operators triaging a bug report can
-	// join the host-application error log against the driver's log
-	// stream on the same key.
-	details = append(details,
-		&adbc.TextErrorDetail{Name: "grpc_code", Detail: grpcStatus.Code().String()})
-	if gmsg := grpcStatus.Message(); gmsg != "" {
-		details = append(details,
-			&adbc.TextErrorDetail{Name: "grpc_message", Detail: gmsg})
-	}
 	for _, detail := range grpcStatus.Proto().Details {
 		details = append(details, &anyErrorDetail{name: "grpc-status-details-bin", message: detail})
 	}

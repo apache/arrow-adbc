@@ -564,13 +564,11 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 	}()
 
 	if err != nil {
-		return nil, -1, withOperationIDs(
-			adbcFromFlightStatusWithDetails(err, header, trailer, "ExecuteQuery"),
-			s.id, s.cnxn.id)
+		return nil, -1, adbcFromFlightStatusWithDetails(err, header, trailer, "ExecuteQuery")
 	}
 
 	nrec = info.TotalRecords
-	rdr, err = newRecordReader(withOperationIDsCtx(ctx, s.id, s.cnxn.id), recordReaderConfig{
+	rdr, err = newRecordReader(ctx, recordReaderConfig{
 		alloc:       s.alloc,
 		cl:          s.cnxn.cl,
 		info:        info,
@@ -578,9 +576,6 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 		bufferSize:  s.queueSize,
 		logger:      s.log,
 	}, s.timeouts)
-	if err != nil {
-		err = withOperationIDs(err, s.id, s.cnxn.id)
-	}
 	return
 }
 
@@ -628,9 +623,7 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 	}()
 
 	if err != nil {
-		err = withOperationIDs(
-			adbcFromFlightStatusWithDetails(err, header, trailer, "ExecuteQuery"),
-			s.id, s.cnxn.id)
+		err = adbcFromFlightStatusWithDetails(err, header, trailer, "ExecuteQuery")
 	}
 
 	return
@@ -659,9 +652,7 @@ func (s *statement) Prepare(ctx context.Context) error {
 	}()
 
 	if err != nil {
-		return withOperationIDs(
-			adbcFromFlightStatusWithDetails(err, header, trailer, "Prepare"),
-			s.id, s.cnxn.id)
+		return adbcFromFlightStatusWithDetails(err, header, trailer, "Prepare")
 	}
 	s.prepared = prep
 	return nil

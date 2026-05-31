@@ -27,7 +27,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-go/v18/arrow/flight"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/exp/maps"
@@ -470,63 +469,4 @@ func flightInfoLogAttrs(info *flight.FlightInfo) []any {
 		)
 	}
 	return attrs
-}
-
-// withOperationIDs appends "statement_id" and "connection_id" text error
-// details to err when err is an adbc.Error. Non-adbc.Error values are
-// returned unchanged.
-func withOperationIDs(err error, statementID, connectionID string) error {
-	if err == nil {
-		return err
-	}
-	adbcErr, ok := err.(adbc.Error)
-	if !ok {
-		return err
-	}
-	if statementID != "" {
-		adbcErr.Details = append(adbcErr.Details,
-			&adbc.TextErrorDetail{Name: "statement_id", Detail: statementID})
-	}
-	if connectionID != "" {
-		adbcErr.Details = append(adbcErr.Details,
-			&adbc.TextErrorDetail{Name: "connection_id", Detail: connectionID})
-	}
-	return adbcErr
-}
-
-// operationIDsCtxKey is the context.Value key used to propagate
-// statement_id and connection_id into async code paths (e.g. the
-// per-endpoint goroutines in newRecordReader) so errors surfaced via
-// reader.Err() carry the same correlation IDs as synchronous errors.
-type operationIDsCtxKey struct{}
-
-type operationIDs struct {
-	statementID  string
-	connectionID string
-}
-
-// withOperationIDsCtx attaches the given statement and connection IDs to
-// ctx for retrieval by operationIDsFromCtx. Returns ctx unchanged when
-// both identifiers are empty.
-func withOperationIDsCtx(ctx context.Context, statementID, connectionID string) context.Context {
-	if statementID == "" && connectionID == "" {
-		return ctx
-	}
-	return context.WithValue(ctx, operationIDsCtxKey{}, operationIDs{
-		statementID:  statementID,
-		connectionID: connectionID,
-	})
-}
-
-// operationIDsFromCtx returns the statement and connection identifiers
-// previously stored on ctx by withOperationIDsCtx, or empty strings if
-// none were set. Safe to call on any context.
-func operationIDsFromCtx(ctx context.Context) (statementID, connectionID string) {
-	if ctx == nil {
-		return "", ""
-	}
-	if v, ok := ctx.Value(operationIDsCtxKey{}).(operationIDs); ok {
-		return v.statementID, v.connectionID
-	}
-	return "", ""
 }
