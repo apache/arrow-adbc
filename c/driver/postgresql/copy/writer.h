@@ -641,12 +641,13 @@ class PostgresCopyListFieldWriter : public PostgresCopyFieldWriter {
 
     // TODO: the LARGE_LIST should use 64 bit indexes
     int32_t start, end;
+    const int64_t logical = array_view_->offset + index;
     if constexpr (IsFixedSize) {
-      start = index * array_view_->layout.child_size_elements;
+      start = logical * array_view_->layout.child_size_elements;
       end = start + array_view_->layout.child_size_elements;
     } else {
-      start = ArrowArrayViewListChildOffset(array_view_, index);
-      end = ArrowArrayViewListChildOffset(array_view_, index + 1);
+      start = ArrowArrayViewListChildOffset(array_view_, logical);
+      end = ArrowArrayViewListChildOffset(array_view_, logical + 1);
     }
 
     const int32_t dim = end - start;
