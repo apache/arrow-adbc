@@ -267,7 +267,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// <summary>
         /// If possible, gets the file version for the assembly associated with the given Type.
         /// </summary>
-        [SuppressMessage("SingleFile", "IL3000", Justification="Using guard")]
+        [SuppressMessage("SingleFile", "IL3000", Justification = "Using guard")]
         public static string GetAssemblyVersion(Type type)
         {
             var versionAttr = type.Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>();

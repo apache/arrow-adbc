@@ -131,6 +131,13 @@ repos:
       pass_filenames: true
       files: '(^\.pre-commit-config\.yaml$)|(^\.github/workflows/.*\.(yml|yaml)$)'
       entry: "./ci/scripts/run_pre_commit_pin.py"
+    - id: dotnet-format
+      name: C# Format
+      language: system
+      entry: |
+        dotnet format csharp/Apache.Arrow.Adbc.sln --verify-no-changes
+      always_run: true
+      pass_filenames: false
   - repo: https://github.com/doublify/pre-commit-rust
     rev: eeee35a89e69d5772bdee97db1a6a898467b686e  # v1.0
     hooks:

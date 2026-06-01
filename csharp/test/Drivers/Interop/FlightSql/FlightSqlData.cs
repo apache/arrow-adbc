@@ -262,7 +262,7 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
                     StructBehavior = "Strict",
                     Query = "SELECT " +
                             "ARRAY[n_regionkey, n_nationkey] AS \"List\", " +
-                            "struct(n_regionkey, 'Test Value') AS Struct "+
+                            "struct(n_regionkey, 'Test Value') AS Struct " +
                             "FROM nation WHERE n_regionkey = 0 AND n_nationkey = 5",
                     ExpectedValues = new List<ColumnNetTypeArrowTypeValue>()
                     {

@@ -238,7 +238,7 @@ namespace Apache.Arrow.Adbc.Extensions
                         ((Decimal256Array)array).GetString(index) :
                         ((StringArray)array).GetString(index);
                 case ArrowTypeId.LargeString:
-                    return (array, index) =>((LargeStringArray)array).GetString(index);
+                    return (array, index) => ((LargeStringArray)array).GetString(index);
 #if NET6_0_OR_GREATER
                 case ArrowTypeId.Time32:
                     return (array, index) => ((Time32Array)array).GetTime(index);

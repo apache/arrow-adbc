@@ -42,6 +42,6 @@ namespace Apache.Arrow.Adbc.Tests.Metadata
         /// <summary>
         /// The constrains associated with the table.
         /// </summary>
-        public List<AdbcConstraint>? Constraints { get;  set; }
+        public List<AdbcConstraint>? Constraints { get; set; }
     }
 }

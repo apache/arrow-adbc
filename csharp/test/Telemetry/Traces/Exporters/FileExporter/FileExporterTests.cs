@@ -21,11 +21,11 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter;
 using OpenTelemetry;
 using OpenTelemetry.Trace;
 using Xunit;
 using Xunit.Abstractions;
-using Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter;
 
 namespace Apache.Arrow.Adbc.Tests.Telemetry.Traces.Exporters.FileExporter
 {

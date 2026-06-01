@@ -23,7 +23,7 @@ namespace Apache.Arrow.Adbc.Tests.Xunit
     /// Used to specify the order of Xunit tests.
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
-    public  class OrderAttribute : Attribute
+    public class OrderAttribute : Attribute
     {
         public int Order { get; private set; }
 
