@@ -564,6 +564,43 @@ impl From<IngestMode> for OptionValue {
     }
 }
 
+impl FromStr for IngestMode {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            constants::ADBC_INGEST_OPTION_MODE_CREATE => Ok(Self::Create),
+            constants::ADBC_INGEST_OPTION_MODE_APPEND => Ok(Self::Append),
+            constants::ADBC_INGEST_OPTION_MODE_REPLACE => Ok(Self::Replace),
+            constants::ADBC_INGEST_OPTION_MODE_CREATE_APPEND => Ok(Self::CreateAppend),
+            other => Err(Error::with_message_and_status(
+                format!(
+                    "invalid value for option {:?}: {other:?}",
+                    constants::ADBC_INGEST_OPTION_MODE
+                ),
+                Status::InvalidArguments,
+            )),
+        }
+    }
+}
+
+impl TryFrom<&OptionValue> for IngestMode {
+    type Error = Error;
+
+    fn try_from(value: &OptionValue) -> Result<Self, Self::Error> {
+        match value {
+            OptionValue::String(s) => s.parse(),
+            other => Err(Error::with_message_and_status(
+                format!(
+                    "invalid value type for option {:?}: {other:?}",
+                    constants::ADBC_INGEST_OPTION_MODE
+                ),
+                Status::InvalidArguments,
+            )),
+        }
+    }
+}
+
 /// Statistics about the data distribution.
 #[derive(Debug, Clone)]
 pub enum Statistics {
