@@ -45,14 +45,14 @@ namespace Apache.Arrow.Adbc.Tests.Drivers.Interop.FlightSql
         {
             // see https://arrow.apache.org/adbc/main/driver/flight_sql.html
 
-            parameters = new Dictionary<string, string>{};
+            parameters = new Dictionary<string, string> { };
 
-            if(!string.IsNullOrEmpty(environment.Uri))
+            if (!string.IsNullOrEmpty(environment.Uri))
             {
                 parameters.Add(FlightSqlParameters.Uri, environment.Uri!);
             }
 
-            foreach(string key in environment.RPCCallHeaders.Keys)
+            foreach (string key in environment.RPCCallHeaders.Keys)
             {
                 parameters.Add(FlightSqlParameters.OptionRPCCallHeaderPrefix + key, environment.RPCCallHeaders[key]);
             }

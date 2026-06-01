@@ -616,7 +616,8 @@ namespace Apache.Arrow.Adbc.Tests
 
         protected static void AssertContainsAll(string[] expectedTexts, string value)
         {
-            if (expectedTexts == null) { return; };
+            if (expectedTexts == null) { return; }
+
             foreach (string text in expectedTexts)
             {
                 Assert.Contains(text, value);

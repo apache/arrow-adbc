@@ -65,7 +65,7 @@ namespace Apache.Arrow.Adbc.Tests
 
                 int rows = adbcCommand.ExecuteNonQuery();
 
-                Assert.True(expectedResults[i]==rows, Utils.FormatMessage("Expected results are not equal", environmentName));
+                Assert.True(expectedResults[i] == rows, Utils.FormatMessage("Expected results are not equal", environmentName));
             }
         }
 
@@ -187,7 +187,7 @@ namespace Apache.Arrow.Adbc.Tests
                 {
                     var column_schema = reader.GetColumnSchema();
                     DataTable? dataTable = reader.GetSchemaTable();
-                    Assert.True(dataTable != null, Utils.FormatMessage("dataTable is null", environmentName) );
+                    Assert.True(dataTable != null, Utils.FormatMessage("dataTable is null", environmentName));
 
                     Assert.True(reader.FieldCount == sample.ExpectedValues.Count, Utils.FormatMessage($"{sample.ExpectedValues.Count} fields were expected but {reader.FieldCount} fields were returned for the query [{sample.Query}]", environmentName));
 
