@@ -1622,8 +1622,7 @@ TEST_P(PostgresCopyListTest, PostgresCopyWriteListSlicedMatchesDirect) {
   const struct ArrowBuffer ref_buf = ref_tester.WriteBuffer();
 
   // Slice: hide the first 3 rows by setting offset/length on the struct
-  // root and on the list-typed column. nanoarrow does not propagate the
-  // struct's offset down to children, so both levels need updating.
+  // root and on the list-typed column.
   source->offset = 0;
   source->length = 3;
   source->children[0]->offset = 3;

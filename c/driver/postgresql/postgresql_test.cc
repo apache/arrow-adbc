@@ -1937,7 +1937,7 @@ TEST_F(PostgresStatementTest, BindUpsertWithSlicedListParameter) {
       ADBC_STATUS_OK);
 
   // Hide rows 0..2 by setting offset/length on the struct root and on
-  // each child column (nanoarrow does not propagate the struct's offset).
+  // each child column
   bind->offset = 0;
   bind->length = 3;
   bind->children[0]->offset = 3;
