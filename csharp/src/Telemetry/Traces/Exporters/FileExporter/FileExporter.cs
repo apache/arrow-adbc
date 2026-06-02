@@ -38,6 +38,13 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Exporters.FileExporter
 
         private static readonly ConcurrentDictionary<string, Lazy<FileExporterInstance>> s_fileExporters = new();
         private static readonly byte[] s_newLine = Encoding.UTF8.GetBytes(Environment.NewLine);
+        private static readonly JsonSerializerOptions s_serializerOptions = new()
+        {
+            Converters =             {
+                // Unredacts any redacted values in the trace when serializing to JSON, so that the full value is available in the file. This is needed since the file exporter is opt-in and users would expect to see the full value in the file.
+                new UnredactConverter(),
+            },
+        };
 
         private readonly TracingFile _tracingFile;
         private readonly string _fileBaseName;
