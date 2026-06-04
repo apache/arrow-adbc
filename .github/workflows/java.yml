@@ -239,11 +239,11 @@ jobs:
       - name: Download thirdparty driver
         if: matrix.os == 'Linux' && matrix.arch == 'amd64'
         run: |
-          wget https://dbc-cdn.columnar.tech/mssql/v1.3.1/mssql_linux_amd64_v1.3.1.tar.gz
-          echo "e6723cf417403f313fb75c1ac03aea9b9ff857d4a947608c8ae44eacc1aa22b3  mssql_linux_amd64_v1.3.1.tar.gz" > mssql_linux_amd64_v1.3.1.tar.gz.sha256
-          sha256sum -c mssql_linux_amd64_v1.3.1.tar.gz.sha256
+          wget https://dbc-cdn.columnar.tech/mssql/v1.4.0/mssql_linux_amd64_v1.4.0.tar.gz
+          echo "89371ba78ffa8d5037d2a4d5331bc8f125598774e1da6e5b46b3af45a34e288b  mssql_linux_amd64_v1.4.0.tar.gz" > mssql_linux_amd64_v1.4.0.tar.gz.sha256
+          sha256sum -c mssql_linux_amd64_v1.4.0.tar.gz.sha256
 
-          tar xvf mssql_linux_amd64_v1.3.1.tar.gz
+          tar xvf mssql_linux_amd64_v1.4.0.tar.gz
           mkdir -p ~/.config/adbc/drivers/
           mv libadbc_driver_mssql.so ~/.config/adbc/drivers/
           echo "manifest_version = 1" > ~/.config/adbc/drivers/mssql.toml

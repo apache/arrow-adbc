@@ -21,7 +21,10 @@ import static org.apache.arrow.adbc.driver.testsuite.ArrowAssertions.assertSchem
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.io.File;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -55,6 +58,7 @@ import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 class SqlServerIntegrationTest {
   public static final String URI_ENV = "ADBC_MSSQL_TEST_URI";
@@ -89,6 +93,27 @@ class SqlServerIntegrationTest {
     conn.close();
     db.close();
     allocator.close();
+  }
+
+  @Test
+  void profile(@TempDir Path tempDir) throws Exception {
+    File profile = tempDir.resolve("myprofile.toml").toFile();
+    Files.writeString(
+        profile.toPath(),
+        String.format("profile_version = 1\ndriver=\"mssql\"\n[Options]\nuri=\"%s\"\n", URI));
+
+    Map<String, Object> parameters = new HashMap<>();
+    JniDriver.PARAM_PROFILE.set(parameters, "myprofile");
+    JniDriver.PARAM_PROFILE_SEARCH_PATH.set(parameters, tempDir.toAbsolutePath().toString());
+    try (final var db = driver.open(parameters);
+        final var conn = db.connect();
+        final var stmt = conn.createStatement()) {
+      stmt.setSqlQuery("SELECT 1");
+      try (var result = stmt.executeQuery()) {
+        assertThat(result.getReader().loadNextBatch()).isTrue();
+        assertThat(result.getReader().getVectorSchemaRoot().getVector(0).getObject(0)).isEqualTo(1);
+      }
+    }
   }
 
   @Test
@@ -179,11 +204,8 @@ class SqlServerIntegrationTest {
         "CREATE TABLE test_schema.foobar (a INT)",
         "CREATE TABLE foobar (b VARCHAR)");
 
-    // XXX: this appears to get the wrong table
-    // assertSchema(conn.getTableSchema(null, "test_schema", "foobar"))
-    //     .isEqualTo(new Schema(List.of(Field.nullable("a", Types.MinorType.INT.getType()))));
-    assertSchema(conn.getTableSchema(null, null, "foobar"))
-        .isEqualTo(new Schema(List.of(Field.nullable("b", Types.MinorType.VARCHAR.getType()))));
+    assertSchema(conn.getTableSchema(null, "test_schema", "foobar"))
+        .isEqualTo(new Schema(List.of(Field.nullable("a", Types.MinorType.INT.getType()))));
   }
 
   @Test
@@ -200,7 +222,7 @@ class SqlServerIntegrationTest {
     assertThat(e.getStatus()).isEqualTo(AdbcStatusCode.NOT_FOUND);
 
     e = assertThrows(AdbcException.class, () -> conn.setReadOnly(true));
-    assertThat(e.getStatus()).isEqualTo(AdbcStatusCode.INVALID_ARGUMENT);
+    assertThat(e.getStatus()).isEqualTo(AdbcStatusCode.NOT_IMPLEMENTED);
   }
 
   @Test
@@ -364,7 +386,7 @@ class SqlServerIntegrationTest {
 
     AdbcException e = assertThrows(AdbcException.class, () -> conn.setCurrentCatalog("foobar"));
     assertThat(e).hasMessageContaining("Database 'foobar' does not exist");
-    assertThat(e.getStatus()).isEqualTo(AdbcStatusCode.INTERNAL);
+    assertThat(e.getStatus()).isEqualTo(AdbcStatusCode.NOT_FOUND);
 
     // MSSQL does not let you change the search path
     e = assertThrows(AdbcException.class, () -> conn.setCurrentDbSchema("test_schema"));
@@ -558,22 +580,21 @@ class SqlServerIntegrationTest {
       vsr.setRowCount(3);
       stmt.bind(vsr);
 
-      // XXX: appears to be a leak in the driver
-      // AdbcStatement.UpdateResult result = stmt.executeUpdate();
-      // assertThat(result.getAffectedRows()).isEqualTo(3);
+      AdbcStatement.UpdateResult result = stmt.executeUpdate();
+      assertThat(result.getAffectedRows()).isEqualTo(3);
 
-      // iv.setSafe(0, 100);
-      // biv.setSafe(0, 3);
-      // vsr.setRowCount(1);
+      iv.setSafe(0, 100);
+      biv.setSafe(0, 3);
+      vsr.setRowCount(1);
 
-      // result = stmt.executeUpdate();
-      // assertThat(result.getAffectedRows()).isEqualTo(1);
+      result = stmt.executeUpdate();
+      assertThat(result.getAffectedRows()).isEqualTo(1);
 
-      // stmt.setSqlQuery("SELECT i FROM foobar ORDER BY j ASC");
-      // try (AdbcStatement.QueryResult queryResult = stmt.executeQuery()) {
-      //   var values = ArrowToJava.toIntegers(queryResult.getReader(), "i");
-      //   assertThat(values).containsExactly(1, 42, null, 100);
-      // }
+      stmt.setSqlQuery("SELECT i FROM foobar ORDER BY j ASC");
+      try (AdbcStatement.QueryResult queryResult = stmt.executeQuery()) {
+        var values = ArrowToJava.toIntegers(queryResult.getReader(), "i");
+        assertThat(values).containsExactly(1, 42, null, 100);
+      }
     }
   }
 
