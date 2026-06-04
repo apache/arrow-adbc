@@ -38,6 +38,7 @@ import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.adbc.core.IngestOption;
+import org.apache.arrow.adbc.core.StandardStatistics;
 import org.apache.arrow.adbc.core.TypedKey;
 import org.apache.arrow.adbc.driver.testsuite.ArrowToJava;
 import org.apache.arrow.memory.BufferAllocator;
@@ -231,12 +232,12 @@ class PostgresIntegrationTest {
       var schema = (Map<String, ?>) schemas.get(0);
       @SuppressWarnings("unchecked")
       var stats = (List<Map<String, ?>>) schema.get("db_schema_statistics");
-      var seen = new HashSet<Integer>();
+      var seen = new HashSet<Short>();
       for (var stat : stats) {
         assertThat(stat.get("table_name").toString()).isEqualTo("statstable");
         short key = (Short) stat.get("statistic_key");
-        seen.add((int) key);
-        if (key == 5) { // null count
+        seen.add(key);
+        if (key == StandardStatistics.NULL_COUNT.getKey()) {
           var columnName = stat.get("column_name").toString();
           double statisticValue = (Double) stat.get("statistic_value");
           if (columnName.equals("a")) {
@@ -246,13 +247,18 @@ class PostgresIntegrationTest {
           } else {
             throw new AssertionError("Unexpected column name: " + columnName);
           }
-        } else if (key == 6) { // row count
+        } else if (key == StandardStatistics.ROW_COUNT.getKey()) {
           assertThat((Double) stat.get("statistic_value")).isGreaterThan(1.0d);
         }
         assertThat((Boolean) stat.get("statistic_is_approximate")).isTrue();
       }
       assertThat(reader.loadNextBatch()).isFalse();
-      assertThat(seen).contains(0, 1, 5, 6);
+      assertThat(seen)
+          .contains(
+              StandardStatistics.AVERAGE_BYTE_WIDTH.getKey(),
+              StandardStatistics.DISTINCT_COUNT.getKey(),
+              StandardStatistics.NULL_COUNT.getKey(),
+              StandardStatistics.ROW_COUNT.getKey());
     }
   }
 
