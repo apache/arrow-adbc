@@ -100,6 +100,8 @@ public class JniStatement implements AdbcStatement {
       try (final ArrowArrayStream stream = ArrowArrayStream.allocateNew(allocator)) {
         Data.exportArrayStream(allocator, bindStream, stream);
         JniLoader.INSTANCE.statementBindStream(handle, stream);
+        // now owned by the native handle
+        bindStream = null;
       }
     }
   }

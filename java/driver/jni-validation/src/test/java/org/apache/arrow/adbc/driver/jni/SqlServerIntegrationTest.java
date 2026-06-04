@@ -605,6 +605,7 @@ class SqlServerIntegrationTest {
   @Test
   void bindStream() throws Exception {
     // Create temp Arrow file to get an ArrowReader
+    // Note that the field name doesn't really matter
     Schema schema = new Schema(List.of(Field.nullable("i", Types.MinorType.INT.getType())));
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     try (VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator);
@@ -629,7 +630,12 @@ class SqlServerIntegrationTest {
     ArrowStreamReader reader =
         new ArrowStreamReader(new ByteArrayInputStream(baos.toByteArray()), allocator);
     try (var stmt = conn.createStatement()) {
+      stmt.setSqlQuery("SELECT @p1 + 1 AS spam");
       stmt.bind(reader);
+      try (final var result = stmt.executeQuery()) {
+        assertThat(ArrowToJava.toLongs(result.getReader(), "spam"))
+            .containsExactly(2L, 43L, null, 11L, 21L, 31L);
+      }
     }
   }
 
