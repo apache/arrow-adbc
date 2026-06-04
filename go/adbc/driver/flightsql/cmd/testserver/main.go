@@ -38,6 +38,7 @@ import (
 	"math/big"
 	"net"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -78,6 +79,9 @@ var recordedHeadersSchema = arrow.NewSchema([]arrow.Field{
 	{Name: "header", Type: arrow.BinaryTypes.String, Nullable: false},
 	{Name: "value", Type: arrow.BinaryTypes.String, Nullable: false},
 }, nil)
+
+// Not a real plan, just ensuring binary values get passed through correctly
+var substraitPlan = []byte{42, 0, 129, 255}
 
 func StatusWithDetail(code codes.Code, message string, details ...proto.Message) error {
 	p := status.New(code, message).Proto()
@@ -172,6 +176,22 @@ func (srv *ExampleServer) GetFlightInfoPreparedStatement(ctx context.Context, cm
 func (srv *ExampleServer) GetFlightInfoStatement(ctx context.Context, cmd flightsql.StatementQuery, desc *flight.FlightDescriptor) (*flight.FlightInfo, error) {
 	srv.recordHeaders(ctx, "GetFlightInfoStatement")
 	ticket, err := flightsql.CreateStatementQueryTicket(desc.Cmd)
+	if err != nil {
+		return nil, err
+	}
+
+	return &flight.FlightInfo{
+		Endpoint:         []*flight.FlightEndpoint{{Ticket: &flight.Ticket{Ticket: ticket}}},
+		FlightDescriptor: desc,
+		TotalRecords:     -1,
+		TotalBytes:       -1,
+	}, nil
+}
+
+func (srv *ExampleServer) GetFlightInfoSubstraitPlan(ctx context.Context, cmd flightsql.StatementSubstraitPlan, desc *flight.FlightDescriptor) (*flight.FlightInfo, error) {
+	srv.recordHeaders(ctx, "GetFlightInfoSubstraitPlan")
+	log.Printf("GetFlightInfoSubstraitPlan: %v", cmd.GetPlan().Plan)
+	ticket, err := flightsql.CreateStatementQueryTicket(cmd.GetPlan().Plan)
 	if err != nil {
 		return nil, err
 	}
@@ -406,8 +426,16 @@ func (srv *ExampleServer) DoGetPreparedStatement(ctx context.Context, cmd flight
 }
 
 func (srv *ExampleServer) DoGetStatement(ctx context.Context, cmd flightsql.StatementQueryTicket) (schema *arrow.Schema, out <-chan flight.StreamChunk, err error) {
-	schema = arrow.NewSchema([]arrow.Field{{Name: "ints", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
-	rec, _, err := array.RecordFromJSON(memory.DefaultAllocator, schema, strings.NewReader(`[{"ints": 5}]`))
+	log.Printf("DoGetStatement: %v", cmd.GetStatementHandle())
+
+	var rec arrow.RecordBatch
+	if slices.Equal(cmd.GetStatementHandle(), substraitPlan) {
+		schema = arrow.NewSchema([]arrow.Field{{Name: "substrait", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
+		rec, _, err = array.RecordFromJSON(memory.DefaultAllocator, schema, strings.NewReader(`[{"substrait": 5}]`))
+	} else {
+		schema = arrow.NewSchema([]arrow.Field{{Name: "ints", Type: arrow.PrimitiveTypes.Int32, Nullable: true}}, nil)
+		rec, _, err = array.RecordFromJSON(memory.DefaultAllocator, schema, strings.NewReader(`[{"ints": 5}]`))
+	}
 
 	ch := make(chan flight.StreamChunk)
 	go func() {

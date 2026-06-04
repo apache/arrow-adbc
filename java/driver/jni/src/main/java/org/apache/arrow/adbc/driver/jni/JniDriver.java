@@ -63,6 +63,12 @@ public class JniDriver implements AdbcDriver {
   static final String ISOLATION_LEVEL_SNAPSHOT = "adbc.connection.transaction.isolation.snapshot";
   static final String ISOLATION_LEVEL_SERIALIZABLE =
       "adbc.connection.transaction.isolation.serializable";
+  static final TypedKey<Double> PROGRESS =
+      new TypedKey<>("adbc.statement.exec.progress", Double.class);
+  static final TypedKey<Double> MAX_PROGRESS =
+      new TypedKey<>("adbc.statement.exec.max_progress", Double.class);
+  static final TypedKey<Boolean> INCREMENTAL =
+      new TypedKey<>("adbc.statement.exec.incremental", Boolean.class);
 
   static final TypedKey<String> CURRENT_CATALOG =
       new TypedKey<>("adbc.connection.catalog", String.class);

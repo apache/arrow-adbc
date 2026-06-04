@@ -59,6 +59,8 @@ class NativeAdbc {
 
   static native void statementSetSqlQuery(long handle, String query) throws AdbcException;
 
+  static native void statementSetSubstraitPlan(long handle, ByteBuffer plan) throws AdbcException;
+
   static native byte[] statementGetOptionBytes(long handle, String key) throws AdbcException;
 
   static native double statementGetOptionDouble(long handle, String key) throws AdbcException;

@@ -56,6 +56,7 @@ import (
 	"os"
 	"runtime"
 	"runtime/cgo"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"unsafe"
@@ -1621,7 +1622,9 @@ func PanicDummyStatementSetSubstraitPlan(stmt *C.struct_AdbcStatement, plan *C.c
 		return C.ADBC_STATUS_INVALID_STATE
 	}
 
-	return C.AdbcStatusCode(errToAdbcErr(err, st.stmt.SetSubstraitPlan(fromCArr[byte](plan, int(length)))))
+	// XXX: must copy here or the C side may invalidate *plan
+	goPlan := slices.Clone(fromCArr[byte](plan, int(length)))
+	return C.AdbcStatusCode(errToAdbcErr(err, st.stmt.SetSubstraitPlan(goPlan)))
 }
 
 //export PanicDummyStatementBind

@@ -102,6 +102,11 @@ public enum JniLoader {
     NativeAdbc.statementSetSqlQuery(statement.getStatementHandle(), query);
   }
 
+  public void statementSetSubstraitPlan(NativeStatementHandle statement, ByteBuffer plan)
+      throws AdbcException {
+    NativeAdbc.statementSetSubstraitPlan(statement.getStatementHandle(), plan);
+  }
+
   public void statementBind(NativeStatementHandle statement, ArrowArray batch, ArrowSchema schema)
       throws AdbcException {
     NativeAdbc.statementBind(

@@ -18,6 +18,9 @@
 package org.apache.arrow.adbc.driver.jni;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.util.Iterator;
+import java.util.NoSuchElementException;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.TypedKey;
@@ -58,6 +61,11 @@ public class JniStatement implements AdbcStatement {
   }
 
   @Override
+  public void setSubstraitPlan(ByteBuffer plan) throws AdbcException {
+    JniLoader.INSTANCE.statementSetSubstraitPlan(handle, plan);
+  }
+
+  @Override
   public void bind(VectorSchemaRoot root) throws AdbcException {
     clearBind();
     this.bindRoot = root;
@@ -86,6 +94,7 @@ public class JniStatement implements AdbcStatement {
   // The C Data export takes ownership of the data at bind time and ignores subsequent
   // client changes to the bound root. Defer the export until execution so we capture
   // the final state of the VectorSchemaRoot.
+
   private void exportBind() throws AdbcException {
     if (bindRoot != null) {
       try (final ArrowArray batch = ArrowArray.allocateNew(allocator);
@@ -141,6 +150,22 @@ public class JniStatement implements AdbcStatement {
   @Override
   public void prepare() throws AdbcException {
     JniLoader.INSTANCE.statementPrepare(handle);
+  }
+
+  public double getProgress() throws AdbcException {
+    return getOption(JniDriver.PROGRESS);
+  }
+
+  @Override
+  public double getMaxProgress() throws AdbcException {
+    return getOption(JniDriver.MAX_PROGRESS);
+  }
+
+  @Override
+  public Iterator<PartitionResult> pollPartitioned() throws AdbcException {
+    exportBind();
+    setOption(JniDriver.INCREMENTAL, true);
+    return new PartitionPollIterator();
   }
 
   @Override
@@ -204,6 +229,40 @@ public class JniStatement implements AdbcStatement {
     } else {
       throw AdbcException.invalidArgument(
           "[jni] unsupported statement option type " + value.getClass());
+    }
+  }
+
+  public final class PartitionPollIterator implements Iterator<PartitionResult> {
+    @Nullable PartitionResult nextResult;
+    boolean finished = false;
+
+    @Override
+    public boolean hasNext() {
+      if (finished) return false;
+      if (nextResult == null) {
+        NativePartitionResult result;
+        try {
+          result = JniLoader.INSTANCE.statementExecutePartitions(handle);
+        } catch (AdbcException e) {
+          throw new RuntimeException(e);
+        }
+        nextResult = result.importResult(allocator);
+      }
+      if (nextResult.getPartitionDescriptors().isEmpty()) {
+        finished = true;
+        return false;
+      }
+      return true;
+    }
+
+    @Override
+    public PartitionResult next() {
+      if (!hasNext()) {
+        throw new NoSuchElementException("No more partitions");
+      }
+      PartitionResult result = nextResult;
+      nextResult = null;
+      return result;
     }
   }
 }
