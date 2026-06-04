@@ -40,7 +40,6 @@ class NativeAdbc {
   // TODO(lidavidm): we need a way to bind an ArrowReader (or some other suitable interface that
   // doesn't exist in arrow-java; see the discussion around the Avro reader about how ArrowReader
   // isn't a very general interface)
-  @SuppressWarnings("unused")
   static native void statementBindStream(long handle, long stream) throws AdbcException;
 
   static native void statementCancel(long handle) throws AdbcException;

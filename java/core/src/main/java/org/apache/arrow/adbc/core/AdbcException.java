@@ -72,6 +72,11 @@ public class AdbcException extends Exception {
     return new AdbcException(message, /*cause*/ null, AdbcStatusCode.IO, null, 0);
   }
 
+  /** Create a new exception with code {@link AdbcStatusCode#INTERNAL}. */
+  public static AdbcException internal(String message) {
+    return new AdbcException(message, /*cause*/ null, AdbcStatusCode.INTERNAL, null, 0);
+  }
+
   /** Create a new exception with code {@link AdbcStatusCode#INVALID_STATE}. */
   public static AdbcException invalidState(String message) {
     return new AdbcException(message, /*cause*/ null, AdbcStatusCode.INVALID_STATE, null, 0);

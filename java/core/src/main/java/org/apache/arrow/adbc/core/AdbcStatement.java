@@ -83,9 +83,22 @@ public interface AdbcStatement extends AutoCloseable, AdbcOptions {
     throw AdbcException.notImplemented("Statement does not support Substrait plans");
   }
 
-  /** Bind this statement to a VectorSchemaRoot to provide parameter values/bulk data ingestion. */
+  /**
+   * Bind a VectorSchemaRoot to provide parameter values/bulk data ingestion.
+   *
+   * <p>The statement will NOT close the root after use/on close/when other data is bound.
+   */
   default void bind(VectorSchemaRoot root) throws AdbcException {
     throw AdbcException.notImplemented("Statement does not support bind");
+  }
+
+  /**
+   * Bind an ArrowReader to provide parameter values/bulk data ingestion.
+   *
+   * <p>The statement will close the reader after use/on close/when other data is bound.
+   */
+  default void bind(ArrowReader reader) throws AdbcException {
+    throw AdbcException.notImplemented("Statement does not support bindStream");
   }
 
   /**
