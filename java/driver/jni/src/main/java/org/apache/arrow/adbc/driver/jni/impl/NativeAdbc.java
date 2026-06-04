@@ -127,6 +127,16 @@ class NativeAdbc {
   static native void connectionSetOptionString(long handle, String key, String value)
       throws AdbcException;
 
+  static native NativeQueryResult connectionGetStatisticNames(long handle) throws AdbcException;
+
+  static native NativeQueryResult connectionGetStatistics(
+      long handle,
+      String catalogPattern,
+      String dbSchemaPattern,
+      String tableNamePattern,
+      boolean approximate)
+      throws AdbcException;
+
   static native byte[] databaseGetOptionBytes(long handle, String key) throws AdbcException;
 
   static native double databaseGetOptionDouble(long handle, String key) throws AdbcException;

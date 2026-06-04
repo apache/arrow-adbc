@@ -258,6 +258,26 @@ public enum JniLoader {
     NativeAdbc.connectionSetOptionString(connection.getConnectionHandle(), key, value);
   }
 
+  public NativeQueryResult connectionGetStatistics(
+      NativeConnectionHandle connection,
+      String catalogPattern,
+      String dbSchemaPattern,
+      String tableNamePattern,
+      boolean approximate)
+      throws AdbcException {
+    return NativeAdbc.connectionGetStatistics(
+        connection.getConnectionHandle(),
+        catalogPattern,
+        dbSchemaPattern,
+        tableNamePattern,
+        approximate);
+  }
+
+  public NativeQueryResult connectionGetStatisticNames(NativeConnectionHandle connection)
+      throws AdbcException {
+    return NativeAdbc.connectionGetStatisticNames(connection.getConnectionHandle());
+  }
+
   public byte[] databaseGetOptionBytes(NativeDatabaseHandle handle, String key)
       throws AdbcException {
     return NativeAdbc.databaseGetOptionBytes(handle.getDatabaseHandle(), key);

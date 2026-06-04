@@ -1141,6 +1141,45 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionReadPartition(
   return nullptr;
 }
 
+JNIEXPORT jobject JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetStatisticNames(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
+  struct ArrowArrayStream out = {};
+  try {
+    CHECK_ADBC_ERROR(AdbcConnectionGetStatisticNames(conn, &out, &error), error);
+    return MakeNativeQueryResult(env, -1, &out);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+  return nullptr;
+}
+
+JNIEXPORT jobject JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetStatistics(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring catalog,
+    jstring schema, jstring table, jboolean approximate) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
+  struct ArrowArrayStream out = {};
+  try {
+    std::optional<std::string> catalog_str = MaybeGetJniString(env, catalog);
+    std::optional<std::string> schema_str = MaybeGetJniString(env, schema);
+    std::optional<std::string> table_str = MaybeGetJniString(env, table);
+    CHECK_ADBC_ERROR(
+        AdbcConnectionGetStatistics(conn, catalog_str ? catalog_str->c_str() : nullptr,
+                                    schema_str ? schema_str->c_str() : nullptr,
+                                    table_str ? table_str->c_str() : nullptr, approximate,
+                                    &out, &error),
+        error);
+    return MakeNativeQueryResult(env, -1, &out);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+  return nullptr;
+}
+
 JNIEXPORT jbyteArray JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseGetOptionBytes(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key) {
