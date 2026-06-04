@@ -54,7 +54,7 @@ jobs:
         os: [ubuntu-latest, windows-2022, macos-15-intel, macos-latest]
     steps:
       - name: Install C#
-        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
+        uses: actions/setup-dotnet@9a946fdbd5fb07b82b2f5a4466058b876ab72bb2 # v5.3.0
         with:
           dotnet-version: ${{ matrix.dotnet }}
       - name: Checkout ADBC
@@ -100,7 +100,7 @@ jobs:
           submodules: recursive
           persist-credentials: false
       - name: Install .NET 10
-        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
+        uses: actions/setup-dotnet@9a946fdbd5fb07b82b2f5a4466058b876ab72bb2 # v5.3.0
         with:
           # NativeAOT requires net10. Using 10.0.x selects the latest
           # available SDK; preview tags may be needed until GA.
