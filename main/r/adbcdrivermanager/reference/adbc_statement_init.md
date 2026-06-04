@@ -63,11 +63,11 @@ An object of class 'adbc_statement'
 db <- adbc_database_init(adbc_driver_void())
 con <- adbc_connection_init(db)
 adbc_statement_init(con)
-#> <adbc_statement at 0x556b6e698280> 
+#> <adbc_statement at 0x562469186290> 
 #> List of 1
-#>  $ connection:<adbc_connection at 0x556b6e68f3b0> 
+#>  $ connection:<adbc_connection at 0x562468afcc00> 
 #> List of 1
-#>   ..$ database:<adbc_database at 0x556b6e6a52e0> 
+#>   ..$ database:<adbc_database at 0x5624686a1db0> 
 #> List of 1
 #>   .. ..$ driver:<adbc_driver_void> List of 4
 #>   .. .. ..$ load_flags      : int 15
