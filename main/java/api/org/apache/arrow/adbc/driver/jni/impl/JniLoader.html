@@ -148,6 +148,16 @@ loadScripts(document, 'script');</script>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#connectionGetOptionString(org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle,java.lang.String)" class="member-name-link">connectionGetOptionString</a><wbr>(<a href="NativeConnectionHandle.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeConnectionHandle</a>&nbsp;handle,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;key)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="NativeQueryResult.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeQueryResult</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#connectionGetStatisticNames(org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle)" class="member-name-link">connectionGetStatisticNames</a><wbr>(<a href="NativeConnectionHandle.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeConnectionHandle</a>&nbsp;connection)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="NativeQueryResult.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeQueryResult</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#connectionGetStatistics(org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle,java.lang.String,java.lang.String,java.lang.String,boolean)" class="member-name-link">connectionGetStatistics</a><wbr>(<a href="NativeConnectionHandle.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeConnectionHandle</a>&nbsp;connection,
+ <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;catalogPattern,
+ <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;dbSchemaPattern,
+ <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;tableNamePattern,
+ boolean&nbsp;approximate)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="NativeSchemaResult.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeSchemaResult</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#connectionGetTableSchema(org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle,java.lang.String,java.lang.String,java.lang.String)" class="member-name-link">connectionGetTableSchema</a><wbr>(<a href="NativeConnectionHandle.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeConnectionHandle</a>&nbsp;connection,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;catalog,
@@ -799,6 +809,32 @@ not permitted.)</div>
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;key,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;value)</span>
                                throws <span class="exceptions"><a href="../../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></span></div>
+<dl class="notes">
+<dt>Throws:</dt>
+<dd><code><a href="../../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="connectionGetStatistics(org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle,java.lang.String,java.lang.String,java.lang.String,boolean)">
+<h3>connectionGetStatistics</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="NativeQueryResult.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeQueryResult</a></span>&nbsp;<span class="element-name">connectionGetStatistics</span><wbr><span class="parameters">(<a href="NativeConnectionHandle.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeConnectionHandle</a>&nbsp;connection,
+ <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;catalogPattern,
+ <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;dbSchemaPattern,
+ <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;tableNamePattern,
+ boolean&nbsp;approximate)</span>
+                                          throws <span class="exceptions"><a href="../../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></span></div>
+<dl class="notes">
+<dt>Throws:</dt>
+<dd><code><a href="../../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="connectionGetStatisticNames(org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle)">
+<h3>connectionGetStatisticNames</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="NativeQueryResult.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeQueryResult</a></span>&nbsp;<span class="element-name">connectionGetStatisticNames</span><wbr><span class="parameters">(<a href="NativeConnectionHandle.html" title="class in org.apache.arrow.adbc.driver.jni.impl">NativeConnectionHandle</a>&nbsp;connection)</span>
+                                              throws <span class="exceptions"><a href="../../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></span></div>
 <dl class="notes">
 <dt>Throws:</dt>
 <dd><code><a href="../../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></code></dd>
