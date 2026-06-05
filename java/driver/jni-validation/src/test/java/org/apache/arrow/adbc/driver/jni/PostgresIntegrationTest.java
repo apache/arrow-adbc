@@ -23,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -37,6 +38,7 @@ import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.adbc.core.IngestOption;
+import org.apache.arrow.adbc.core.StandardStatistics;
 import org.apache.arrow.adbc.core.TypedKey;
 import org.apache.arrow.adbc.driver.testsuite.ArrowToJava;
 import org.apache.arrow.memory.BufferAllocator;
@@ -45,6 +47,7 @@ import org.apache.arrow.vector.BigIntVector;
 import org.apache.arrow.vector.IntVector;
 import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.complex.ListVector;
 import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.types.Types;
 import org.apache.arrow.vector.types.pojo.Field;
@@ -199,6 +202,64 @@ class PostgresIntegrationTest {
 
     e = assertThrows(AdbcException.class, () -> conn.setReadOnly(true));
     assertThat(e.getStatus()).isEqualTo(AdbcStatusCode.NOT_IMPLEMENTED);
+  }
+
+  @Test
+  void connectionStatisticNames() throws Exception {
+    try (final var reader = conn.getStatisticNames()) {
+      assertThat(reader.loadNextBatch()).isFalse();
+    }
+  }
+
+  @Test
+  void connectionStatistics() throws Exception {
+    try (final var stmt = conn.createStatement()) {
+      stmt.setSqlQuery("DROP TABLE IF EXISTS statstable");
+      stmt.executeUpdate();
+      stmt.setSqlQuery("CREATE TABLE statstable (a INT, b TEXT)");
+      stmt.executeUpdate();
+      stmt.setSqlQuery("INSERT INTO statstable VALUES (1, 'foo'), (2, 'spam and eggs'), (3, NULL)");
+      stmt.executeUpdate();
+      stmt.setSqlQuery("ANALYZE statstable");
+      stmt.executeUpdate();
+    }
+
+    try (final var reader = conn.getStatistics(null, "public", "statstable", true)) {
+      assertThat(reader.loadNextBatch()).isTrue();
+      var catalogDbSchemas = (ListVector) reader.getVectorSchemaRoot().getVector(1);
+      var schemas = catalogDbSchemas.getObject(0);
+      @SuppressWarnings("unchecked")
+      var schema = (Map<String, ?>) schemas.get(0);
+      @SuppressWarnings("unchecked")
+      var stats = (List<Map<String, ?>>) schema.get("db_schema_statistics");
+      var seen = new HashSet<Short>();
+      for (var stat : stats) {
+        assertThat(stat.get("table_name").toString()).isEqualTo("statstable");
+        short key = (Short) stat.get("statistic_key");
+        seen.add(key);
+        if (key == StandardStatistics.NULL_COUNT.getKey()) {
+          var columnName = stat.get("column_name").toString();
+          double statisticValue = (Double) stat.get("statistic_value");
+          if (columnName.equals("a")) {
+            assertThat(statisticValue).isEqualTo(0.0d);
+          } else if (columnName.equals("b")) {
+            assertThat(statisticValue).isGreaterThan(0.0d);
+          } else {
+            throw new AssertionError("Unexpected column name: " + columnName);
+          }
+        } else if (key == StandardStatistics.ROW_COUNT.getKey()) {
+          assertThat((Double) stat.get("statistic_value")).isGreaterThan(1.0d);
+        }
+        assertThat((Boolean) stat.get("statistic_is_approximate")).isTrue();
+      }
+      assertThat(reader.loadNextBatch()).isFalse();
+      assertThat(seen)
+          .contains(
+              StandardStatistics.AVERAGE_BYTE_WIDTH.getKey(),
+              StandardStatistics.DISTINCT_COUNT.getKey(),
+              StandardStatistics.NULL_COUNT.getKey(),
+              StandardStatistics.ROW_COUNT.getKey());
+    }
   }
 
   @Test

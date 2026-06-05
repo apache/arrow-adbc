@@ -37,7 +37,7 @@ public class AdbcException extends Exception {
   private final AdbcStatusCode status;
   private final @Nullable String sqlState;
   private final int vendorCode;
-  private Collection<ErrorDetail> details;
+  private final Collection<ErrorDetail> details;
 
   public AdbcException(
       @Nullable String message,

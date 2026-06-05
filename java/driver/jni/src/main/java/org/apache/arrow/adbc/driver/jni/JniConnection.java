@@ -261,6 +261,21 @@ public class JniConnection implements AdbcConnection {
   }
 
   @Override
+  public ArrowReader getStatistics(
+      String catalogPattern, String dbSchemaPattern, String tableNamePattern, boolean approximate)
+      throws AdbcException {
+    return JniLoader.INSTANCE
+        .connectionGetStatistics(
+            handle, catalogPattern, dbSchemaPattern, tableNamePattern, approximate)
+        .importStream(allocator);
+  }
+
+  @Override
+  public ArrowReader getStatisticNames() throws AdbcException {
+    return JniLoader.INSTANCE.connectionGetStatisticNames(handle).importStream(allocator);
+  }
+
+  @Override
   public void close() {
     handle.close();
   }
