@@ -422,6 +422,10 @@ func (d *databaseImpl) SetOption(key, value string) error {
 				}
 			}
 			d.queryRetryCount = retryCount
+		} else {
+			// when not provided, use the default provided by the underlying SDK
+			// https://github.com/databricks/databricks-sql-go/blob/47829480ca775b0e16c43969414fdf908c0a7894/connector.go#L275
+			d.queryRetryCount = 4
 		}
 	case OptionDownloadThreadCount:
 		if value != "" {
