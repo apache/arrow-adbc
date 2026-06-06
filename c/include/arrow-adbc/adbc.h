@@ -1337,8 +1337,7 @@ typedef void (*AdbcWarningHandler)(const struct AdbcError* warning, void* user_d
 /// driver and the driver manager.
 /// @{
 
-struct AdbcIngestHandle;
-struct AdbcIngestReceipt;
+struct AdbcSerializableHandle;
 
 /// \brief An instance of an initialized database driver.
 ///
@@ -1521,10 +1520,10 @@ struct ADBC_EXPORT AdbcDriver {
 
   AdbcStatusCode (*ConnectionBeginIngestPartitions)(
       struct AdbcConnection*, const char*, const char*, const char*, const char*,
-      struct ArrowSchema*, struct AdbcIngestHandle*, struct AdbcError*);
+      struct ArrowSchema*, struct AdbcSerializableHandle*, struct AdbcError*);
   AdbcStatusCode (*ConnectionWriteIngestPartition)(
       struct AdbcConnection*, const uint8_t*, size_t, struct ArrowArrayStream*,
-      struct AdbcIngestReceipt*, struct AdbcError*);
+      struct AdbcSerializableHandle*, struct AdbcError*);
   AdbcStatusCode (*ConnectionCommitIngestPartitions)(
       struct AdbcConnection*, const uint8_t*, size_t, size_t, const uint8_t**,
       const size_t*, int64_t*, struct AdbcError*);
@@ -2417,53 +2416,33 @@ AdbcStatusCode AdbcConnectionReadPartition(struct AdbcConnection* connection,
 /// \defgroup adbc-connection-ingest-partition Partitioned Bulk Ingest
 /// @{
 
-/// \brief Driver-owned bytes returned by
-/// AdbcConnectionBeginIngestPartitions.
+/// \brief A driver-owned opaque byte buffer with a release callback.
+///
+/// Used by partitioned bulk ingest for both handles (returned by
+/// AdbcConnectionBeginIngestPartitions) and receipts (returned by
+/// AdbcConnectionWriteIngestPartition).
 ///
 /// The bytes are opaque and serializable: the caller may copy
-/// `bytes[0..length)` and ship that copy to workers (other processes
-/// or hosts) which can pass it to AdbcConnectionWriteIngestPartition
-/// directly.
+/// `bytes[0..length)` and ship that copy across processes or hosts.
 ///
 /// The struct itself is owned by the driver.  Call `release` exactly
-/// once to free it.  Releasing the handle does NOT roll back the
-/// ingest — call AdbcConnectionAbortIngestPartitions for that.
+/// once to free it.  Releasing the struct does NOT roll back or
+/// discard any server-side state — call
+/// AdbcConnectionAbortIngestPartitions for that.
 ///
 /// \since ADBC API revision 1.2.0
-struct AdbcIngestHandle {
+struct AdbcSerializableHandle {
   /// \brief The length of `bytes`.
   size_t length;
 
-  /// \brief The serialized handle bytes (driver-owned).
+  /// \brief The serialized bytes (driver-owned).
   const uint8_t* bytes;
 
   /// \brief Private driver state.
   void* private_data;
 
-  /// \brief Release the handle's memory.  Sets `release` to NULL.
-  void (*release)(struct AdbcIngestHandle* self);
-};
-
-/// \brief Driver-owned bytes returned by
-/// AdbcConnectionWriteIngestPartition.
-///
-/// Mirror of AdbcIngestHandle: opaque, serializable, single-use
-/// `release`.  Releasing a receipt does NOT discard the underlying
-/// write; that happens at Commit (commit it) or Abort (drop it).
-///
-/// \since ADBC API revision 1.2.0
-struct AdbcIngestReceipt {
-  /// \brief The length of `bytes`.
-  size_t length;
-
-  /// \brief The serialized receipt bytes (driver-owned).
-  const uint8_t* bytes;
-
-  /// \brief Private driver state.
-  void* private_data;
-
-  /// \brief Release the receipt's memory.  Sets `release` to NULL.
-  void (*release)(struct AdbcIngestReceipt* self);
+  /// \brief Release the memory.  Sets `release` to NULL.
+  void (*release)(struct AdbcSerializableHandle* self);
 };
 /// @}
 
@@ -2531,7 +2510,7 @@ ADBC_EXPORT
 AdbcStatusCode AdbcConnectionBeginIngestPartitions(
     struct AdbcConnection* connection, const char* target_catalog,
     const char* target_db_schema, const char* target_table, const char* mode,
-    struct ArrowSchema* schema, struct AdbcIngestHandle* out_handle,
+    struct ArrowSchema* schema, struct AdbcSerializableHandle* out_handle,
     struct AdbcError* error);
 
 /// \brief Write one partition of a partitioned bulk ingest.
@@ -2572,7 +2551,7 @@ AdbcStatusCode AdbcConnectionBeginIngestPartitions(
 ADBC_EXPORT
 AdbcStatusCode AdbcConnectionWriteIngestPartition(
     struct AdbcConnection* connection, const uint8_t* handle, size_t handle_len,
-    struct ArrowArrayStream* data, struct AdbcIngestReceipt* out_receipt,
+    struct ArrowArrayStream* data, struct AdbcSerializableHandle* out_receipt,
     struct AdbcError* error);
 
 /// \brief Commit a partitioned bulk ingest.
