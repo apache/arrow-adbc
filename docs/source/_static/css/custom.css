@@ -35,3 +35,13 @@ figcaption {
 h1, h2, h3, h4 {
     text-wrap: balance;
 }
+
+p.sd-card-text:has(> .adbc-inline-btn) {
+    display: inline;
+}
+
+.adbc-inline-btn {
+    display: inline-block !important;
+    width: auto !important;
+    margin: 0.2em 0.3em 0.2em 0;
+}

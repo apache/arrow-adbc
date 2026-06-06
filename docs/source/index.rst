@@ -46,72 +46,135 @@ make it more convenient to build analytical applications.
 
 .. _Substrait: https://substrait.io/
 
-.. div::
+.. grid:: 1
+   :margin: 4 4 0 0
+   :gutter: 1
 
-   .. grid::
-      :margin: 4 4 0 0
-      :gutter: 1
+   .. grid-item-card::
 
-      .. grid-item-card::
-         :columns: 12 12 4 4
-
-         Quickstart
+         Client Libraries
          ^^^
 
-         Get started with simple examples in your language of choice.
-
+         Connect to many commmon databases with your language of choice.
          +++
 
          .. button-ref:: cpp/quickstart
             :ref-type: doc
+            :color: info
+
+            Overview
+
+         .. button-ref:: cpp/quickstart
+            :ref-type: doc
             :color: secondary
-            :expand:
+            :class: adbc-inline-btn
 
             C/C++
 
+         .. button-ref:: csharp/quickstart
+            :ref-type: doc
+            :color: secondary
+            :class: adbc-inline-btn
+
+            C#/.NET
+
          .. button-link:: https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc
             :color: secondary
-            :expand:
+            :class: adbc-inline-btn
 
             Go
 
          .. button-ref:: java/quickstart
             :ref-type: doc
             :color: secondary
-            :expand:
+            :class: adbc-inline-btn
 
             Java
 
          .. button-ref:: javascript/index
             :ref-type: doc
             :color: secondary
-            :expand:
+            :class: adbc-inline-btn
 
             JavaScript
 
          .. button-ref:: python/quickstart
             :ref-type: doc
             :color: secondary
-            :expand:
+            :class: adbc-inline-btn
 
             Python
 
          .. button-ref:: r/index
             :ref-type: doc
             :color: secondary
-            :expand:
+            :class: adbc-inline-btn
 
             R
 
          .. button-ref:: rust/quickstart
             :ref-type: doc
             :color: secondary
-            :expand:
+            :class: adbc-inline-btn
 
             Rust
 
-      .. grid-item-card::
-         :columns: 12 4 4 4
+   .. grid-item-card::
+
+         Drivers
+         ^^^
+
+         Learn more about which databases you can connect to with ADBC.
+         +++
+
+         .. button-ref:: driver/index
+            :ref-type: doc
+            :color: info
+
+            Drivers
+
+   .. grid-item-card::
+
+         Driver SDKs
+         ^^^
+
+         Build drivers in your language of choice, usable by client libraries in any language.
+         +++
+
+         .. button-ref:: cpp/quickstart
+            :ref-type: doc
+            :color: info
+
+            Overview
+
+         .. button-ref:: cpp/quickstart
+            :ref-type: doc
+            :color: secondary
+            :class: adbc-inline-btn
+
+            C/C++
+
+         .. button-ref:: csharp/quickstart
+            :ref-type: doc
+            :color: secondary
+            :class: adbc-inline-btn
+
+            C#/.NET
+
+         .. button-link:: https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc
+            :color: secondary
+            :class: adbc-inline-btn
+
+            Go
+
+         .. button-ref:: rust/quickstart
+            :ref-type: doc
+            :color: secondary
+            :class: adbc-inline-btn
+
+            Rust
+
+   .. grid-item-card::
 
          Specification
          ^^^
@@ -122,33 +185,32 @@ make it more convenient to build analytical applications.
 
          .. button-link:: https://arrow.apache.org/blog/2023/01/05/introducing-arrow-adbc/
             :color: secondary
-            :expand:
+            :class: adbc-inline-btn
 
             Introducing ADBC :octicon:`cross-reference`
 
          .. button-ref:: format/specification
             :ref-type: doc
             :color: secondary
-            :expand:
+            :class: adbc-inline-btn
 
             Specification
 
          .. button-ref:: faq
             :ref-type: doc
             :color: secondary
-            :expand:
+            :class: adbc-inline-btn
 
             FAQ
 
          .. button-ref:: glossary
             :ref-type: doc
             :color: secondary
-            :expand:
+            :class: adbc-inline-btn
 
             Glossary
 
-      .. grid-item-card::
-         :columns: 12 4 4 4
+   .. grid-item-card::
 
          Development
          ^^^
@@ -159,19 +221,19 @@ make it more convenient to build analytical applications.
 
          .. button-link:: https://github.com/apache/arrow-adbc/issues
             :color: secondary
-            :expand:
+            :class: adbc-inline-btn
 
             :fab:`github` Issues/Questions
 
          .. button-link:: https://arrow.apache.org/community/
             :color: secondary
-            :expand:
+            :class: adbc-inline-btn
 
             Mailing List :octicon:`cross-reference`
 
          .. button-link:: https://github.com/apache/arrow-adbc/blob/main/CONTRIBUTING.md
             :color: secondary
-            :expand:
+            :class: adbc-inline-btn
 
             Contributing :octicon:`cross-reference`
 
@@ -227,31 +289,18 @@ Why ADBC?
 
 .. toctree::
    :maxdepth: 1
-   :caption: Supported Environments
+   :caption: Connect
    :hidden:
 
-   C/C++ <cpp/index>
-   C#/.NET <csharp/index>
-   Go <https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc>
-   Java <java/index>
-   JavaScript <javascript/index>
-   Python <python/index>
-   R <r/index>
-   Rust <rust/index>
+   Client Libraries <status_client>
+   Drivers <driver/index>
 
 .. toctree::
    :maxdepth: 1
-   :caption: Drivers
+   :caption: Build
    :hidden:
 
-   driver/installation
-   driver/status
-   driver/bigquery
-   driver/duckdb
-   driver/flight_sql
-   driver/jdbc
-   driver/postgresql
-   driver/sqlite
+   Driver SDKs <driver/sdk>
    driver/authoring
 
 .. toctree::
@@ -269,7 +318,21 @@ Why ADBC?
 
 .. toctree::
    :maxdepth: 1
-   :caption: Development
+   :caption: Supported Environments
+   :hidden:
+
+   C/C++ <cpp/index>
+   C#/.NET <csharp/index>
+   Go <https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc>
+   Java <java/index>
+   JavaScript <javascript/index>
+   Python <python/index>
+   R <r/index>
+   Rust <rust/index>
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Contribute
    :hidden:
 
    development/contributing
