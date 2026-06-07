@@ -27,6 +27,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.Map;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.c.ArrowArray;
+import org.apache.arrow.c.ArrowArrayStream;
 import org.apache.arrow.c.ArrowSchema;
 
 /** Singleton wrapper protecting access to JNI functions. */
@@ -105,6 +106,11 @@ public enum JniLoader {
       throws AdbcException {
     NativeAdbc.statementBind(
         statement.getStatementHandle(), batch.memoryAddress(), schema.memoryAddress());
+  }
+
+  public void statementBindStream(NativeStatementHandle statement, ArrowArrayStream stream)
+      throws AdbcException {
+    NativeAdbc.statementBindStream(statement.getStatementHandle(), stream.memoryAddress());
   }
 
   public long statementExecuteUpdate(NativeStatementHandle statement) throws AdbcException {

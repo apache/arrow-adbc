@@ -21,6 +21,8 @@ import static org.apache.arrow.adbc.driver.testsuite.ArrowAssertions.assertSchem
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -50,6 +52,8 @@ import org.apache.arrow.vector.IntVector;
 import org.apache.arrow.vector.VarCharVector;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.ArrowReader;
+import org.apache.arrow.vector.ipc.ArrowStreamReader;
+import org.apache.arrow.vector.ipc.ArrowStreamWriter;
 import org.apache.arrow.vector.types.Types;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
@@ -594,6 +598,43 @@ class SqlServerIntegrationTest {
       try (AdbcStatement.QueryResult queryResult = stmt.executeQuery()) {
         var values = ArrowToJava.toIntegers(queryResult.getReader(), "i");
         assertThat(values).containsExactly(1, 42, null, 100);
+      }
+    }
+  }
+
+  @Test
+  void bindStream() throws Exception {
+    // Create temp Arrow file to get an ArrowReader
+    // Note that the field name doesn't really matter
+    Schema schema = new Schema(List.of(Field.nullable("i", Types.MinorType.INT.getType())));
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    try (VectorSchemaRoot root = VectorSchemaRoot.create(schema, allocator);
+        ArrowStreamWriter writer = new ArrowStreamWriter(root, null, baos)) {
+      writer.start();
+
+      IntVector iv = (IntVector) root.getVector(0);
+
+      iv.setSafe(0, 1);
+      iv.setSafe(1, 42);
+      iv.setNull(2);
+      root.setRowCount(3);
+      writer.writeBatch();
+
+      iv.setSafe(0, 10);
+      iv.setSafe(1, 20);
+      iv.setSafe(2, 30);
+      root.setRowCount(3);
+      writer.writeBatch();
+    }
+
+    ArrowStreamReader reader =
+        new ArrowStreamReader(new ByteArrayInputStream(baos.toByteArray()), allocator);
+    try (var stmt = conn.createStatement()) {
+      stmt.setSqlQuery("SELECT @p1 + 1 AS spam");
+      stmt.bind(reader);
+      try (final var result = stmt.executeQuery()) {
+        assertThat(ArrowToJava.toLongs(result.getReader(), "spam"))
+            .containsExactly(2L, 43L, null, 11L, 21L, 31L);
       }
     }
   }

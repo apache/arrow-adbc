@@ -17,6 +17,7 @@
 
 package org.apache.arrow.adbc.driver.jni;
 
+import java.io.IOException;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.TypedKey;
@@ -25,16 +26,21 @@ import org.apache.arrow.adbc.driver.jni.impl.NativePartitionResult;
 import org.apache.arrow.adbc.driver.jni.impl.NativeQueryResult;
 import org.apache.arrow.adbc.driver.jni.impl.NativeStatementHandle;
 import org.apache.arrow.c.ArrowArray;
+import org.apache.arrow.c.ArrowArrayStream;
 import org.apache.arrow.c.ArrowSchema;
 import org.apache.arrow.c.Data;
 import org.apache.arrow.memory.BufferAllocator;
+import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.VectorSchemaRoot;
+import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.types.pojo.Schema;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 public class JniStatement implements AdbcStatement {
   private final BufferAllocator allocator;
   private final NativeStatementHandle handle;
-  private VectorSchemaRoot bindRoot;
+  private @Nullable VectorSchemaRoot bindRoot;
+  private @Nullable ArrowReader bindStream;
 
   public JniStatement(BufferAllocator allocator, NativeStatementHandle handle) {
     this.allocator = allocator;
@@ -53,23 +59,50 @@ public class JniStatement implements AdbcStatement {
 
   @Override
   public void bind(VectorSchemaRoot root) throws AdbcException {
+    clearBind();
     this.bindRoot = root;
+  }
+
+  @Override
+  public void bind(ArrowReader reader) throws AdbcException {
+    clearBind();
+    this.bindRoot = null;
+    this.bindStream = reader;
+  }
+
+  private void clearBind() throws AdbcException {
+    if (this.bindStream != null) {
+      try {
+        this.bindStream.close();
+      } catch (IOException e) {
+        throw AdbcException.internal("[jni] failed to close previous bind stream").withCause(e);
+      } finally {
+        this.bindStream = null;
+      }
+    }
+    this.bindRoot = null;
   }
 
   // The C Data export takes ownership of the data at bind time and ignores subsequent
   // client changes to the bound root. Defer the export until execution so we capture
   // the final state of the VectorSchemaRoot.
   private void exportBind() throws AdbcException {
-    if (bindRoot == null) {
-      return;
-    }
-    try (final ArrowArray batch = ArrowArray.allocateNew(allocator);
-        final ArrowSchema schema = ArrowSchema.allocateNew(allocator)) {
-      // TODO(lidavidm): we may need a way to separately provide a dictionary provider
-      Data.exportSchema(allocator, bindRoot.getSchema(), null, schema);
-      Data.exportVectorSchemaRoot(allocator, bindRoot, null, batch);
+    if (bindRoot != null) {
+      try (final ArrowArray batch = ArrowArray.allocateNew(allocator);
+          final ArrowSchema schema = ArrowSchema.allocateNew(allocator)) {
+        // TODO(lidavidm): we may need a way to separately provide a dictionary provider
+        Data.exportSchema(allocator, bindRoot.getSchema(), null, schema);
+        Data.exportVectorSchemaRoot(allocator, bindRoot, null, batch);
 
-      JniLoader.INSTANCE.statementBind(handle, batch, schema);
+        JniLoader.INSTANCE.statementBind(handle, batch, schema);
+      }
+    } else if (bindStream != null) {
+      try (final ArrowArrayStream stream = ArrowArrayStream.allocateNew(allocator)) {
+        Data.exportArrayStream(allocator, bindStream, stream);
+        JniLoader.INSTANCE.statementBindStream(handle, stream);
+        // now owned by the native handle
+        bindStream = null;
+      }
     }
   }
 
@@ -111,8 +144,12 @@ public class JniStatement implements AdbcStatement {
   }
 
   @Override
-  public void close() {
-    handle.close();
+  public void close() throws AdbcException {
+    try {
+      AutoCloseables.close(handle, bindStream);
+    } catch (Exception e) {
+      throw AdbcException.internal("[jni] failed to close statement").withCause(e);
+    }
   }
 
   @Override
