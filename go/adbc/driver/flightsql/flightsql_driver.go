@@ -131,7 +131,16 @@ func (d *driverImpl) NewDatabaseWithOptionsContext(ctx context.Context, opts map
 	}
 	delete(opts, adbc.OptionKeyURI)
 
-	dbBase, err := driverbase.NewDatabaseImplBase(ctx, &d.DriverImplBase)
+	tracesExporter := opts[adbc.OptionKeyTelemetryTracesExporter]
+	delete(opts, adbc.OptionKeyTelemetryTracesExporter)
+
+	tracesFolderPath := opts[adbc.OptionKeyTelemetryTracesFolderPath]
+	delete(opts, adbc.OptionKeyTelemetryTracesFolderPath)
+
+	dbBase, err := driverbase.NewDatabaseImplBase(ctx, &d.DriverImplBase, driverbase.TracingOptions{
+		ExporterName:      tracesExporter,
+		TracingFolderPath: tracesFolderPath,
+	})
 	if err != nil {
 		return nil, err
 	}

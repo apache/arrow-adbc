@@ -38,13 +38,6 @@ type DatabaseLogging interface {
 	SetLogger(*slog.Logger)
 }
 
-// OTelTracingInit is a Database that also supports OpenTelemetry tracing.
-//
-// EXPERIMENTAL. Not formally part of the ADBC APIs.
-type OTelTracingInit interface {
-	InitTracing(ctx context.Context, driverName string, driverVersion string) error
-}
-
 // OTelTracing is an interface that supports instrumentation of [OpenTelementry tracing].
 //
 // EXPERIMENTAL. Not formally part of the ADBC APIs.

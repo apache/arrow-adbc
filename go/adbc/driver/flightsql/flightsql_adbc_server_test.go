@@ -768,7 +768,14 @@ func (ts *ErrorDetailsTests) TestGetFlightInfo() {
 
 	ts.Equal(1, len(adbcErr.Details))
 
-	wrapper := adbcErr.Details[0]
+	var wrapper adbc.ErrorDetail
+	for _, d := range adbcErr.Details {
+		if d.Key() == "grpc-status-details-bin" {
+			wrapper = d
+			break
+		}
+	}
+	ts.NotNil(wrapper, "grpc-status-details-bin detail not found")
 	ts.Equal("grpc-status-details-bin", wrapper.Key())
 
 	raw, err := wrapper.Serialize()
@@ -803,7 +810,14 @@ func (ts *ErrorDetailsTests) TestDoGet() {
 
 	ts.Equal(1, len(adbcErr.Details))
 
-	wrapper := adbcErr.Details[0]
+	var wrapper adbc.ErrorDetail
+	for _, d := range adbcErr.Details {
+		if d.Key() == "grpc-status-details-bin" {
+			wrapper = d
+			break
+		}
+	}
+	ts.NotNil(wrapper, "grpc-status-details-bin detail not found")
 	ts.Equal("grpc-status-details-bin", wrapper.Key())
 
 	raw, err := wrapper.Serialize()
