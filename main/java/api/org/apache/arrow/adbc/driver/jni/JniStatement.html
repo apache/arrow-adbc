@@ -122,62 +122,67 @@ implements <a href="../../core/AdbcStatement.html" title="interface in org.apach
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#bind(org.apache.arrow.vector.VectorSchemaRoot)" class="member-name-link">bind</a><wbr>(<a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/VectorSchemaRoot.html" title="class or interface in org.apache.arrow.vector" class="external-link">VectorSchemaRoot</a>&nbsp;root)</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#bind(org.apache.arrow.vector.ipc.ArrowReader)" class="member-name-link">bind</a><wbr>(<a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a>&nbsp;reader)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Bind this statement to a VectorSchemaRoot to provide parameter values/bulk data ingestion.</div>
+<div class="block">Bind an ArrowReader to provide parameter values/bulk data ingestion.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#cancel()" class="member-name-link">cancel</a>()</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#bind(org.apache.arrow.vector.VectorSchemaRoot)" class="member-name-link">bind</a><wbr>(<a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/VectorSchemaRoot.html" title="class or interface in org.apache.arrow.vector" class="external-link">VectorSchemaRoot</a>&nbsp;root)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Cancel execution of a query.</div>
+<div class="block">Bind a VectorSchemaRoot to provide parameter values/bulk data ingestion.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#close()" class="member-name-link">close</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../../core/AdbcStatement.PartitionResult.html" title="class in org.apache.arrow.adbc.core">AdbcStatement.PartitionResult</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#executePartitioned()" class="member-name-link">executePartitioned</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#cancel()" class="member-name-link">cancel</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Cancel execution of a query.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#close()" class="member-name-link">close</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../../core/AdbcStatement.PartitionResult.html" title="class in org.apache.arrow.adbc.core">AdbcStatement.PartitionResult</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#executePartitioned()" class="member-name-link">executePartitioned</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Execute a result set-generating query and get a list of partitions of the result set.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../../core/AdbcStatement.QueryResult.html" title="class in org.apache.arrow.adbc.core">AdbcStatement.QueryResult</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#executeQuery()" class="member-name-link">executeQuery</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../../core/AdbcStatement.QueryResult.html" title="class in org.apache.arrow.adbc.core">AdbcStatement.QueryResult</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#executeQuery()" class="member-name-link">executeQuery</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Execute a result set-generating query and get the result.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/pojo/Schema.html" title="class or interface in org.apache.arrow.vector.types.pojo" class="external-link">Schema</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#executeSchema()" class="member-name-link">executeSchema</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/pojo/Schema.html" title="class or interface in org.apache.arrow.vector.types.pojo" class="external-link">Schema</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#executeSchema()" class="member-name-link">executeSchema</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get the schema of the result set without executing the query.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../../core/AdbcStatement.UpdateResult.html" title="class in org.apache.arrow.adbc.core">AdbcStatement.UpdateResult</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#executeUpdate()" class="member-name-link">executeUpdate</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../../core/AdbcStatement.UpdateResult.html" title="class in org.apache.arrow.adbc.core">AdbcStatement.UpdateResult</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#executeUpdate()" class="member-name-link">executeUpdate</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Execute a query.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>&lt;T&gt;&nbsp;T</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getOption(org.apache.arrow.adbc.core.TypedKey)" class="member-name-link">getOption</a><wbr>(<a href="../../core/TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>&lt;T&gt;&nbsp;T</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getOption(org.apache.arrow.adbc.core.TypedKey)" class="member-name-link">getOption</a><wbr>(<a href="../../core/TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get a generic option.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/pojo/Schema.html" title="class or interface in org.apache.arrow.vector.types.pojo" class="external-link">Schema</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getParameterSchema()" class="member-name-link">getParameterSchema</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/types/pojo/Schema.html" title="class or interface in org.apache.arrow.vector.types.pojo" class="external-link">Schema</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getParameterSchema()" class="member-name-link">getParameterSchema</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get the schema for bound parameters.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#prepare()" class="member-name-link">prepare</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#prepare()" class="member-name-link">prepare</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Turn this statement into a prepared statement.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>&lt;T&gt;&nbsp;void</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#setOption(org.apache.arrow.adbc.core.TypedKey,T)" class="member-name-link">setOption</a><wbr>(<a href="../../core/TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key,
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>&lt;T&gt;&nbsp;void</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#setOption(org.apache.arrow.adbc.core.TypedKey,T)" class="member-name-link">setOption</a><wbr>(<a href="../../core/TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key,
  T&nbsp;value)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Set a generic option.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#setSqlQuery(java.lang.String)" class="member-name-link">setSqlQuery</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#setSqlQuery(java.lang.String)" class="member-name-link">setSqlQuery</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Set a SQL query to be executed on this statement.</div>
 </div>
 </div>
@@ -257,10 +262,29 @@ implements <a href="../../core/AdbcStatement.html" title="interface in org.apach
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">bind</span><wbr><span class="parameters">(<a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/VectorSchemaRoot.html" title="class or interface in org.apache.arrow.vector" class="external-link">VectorSchemaRoot</a>&nbsp;root)</span>
           throws <span class="exceptions"><a href="../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></span></div>
 <div class="block"><span class="descfrm-type-label">Description copied from interface:&nbsp;<code><a href="../../core/AdbcStatement.html#bind(org.apache.arrow.vector.VectorSchemaRoot)">AdbcStatement</a></code></span></div>
-<div class="block">Bind this statement to a VectorSchemaRoot to provide parameter values/bulk data ingestion.</div>
+<div class="block">Bind a VectorSchemaRoot to provide parameter values/bulk data ingestion.
+
+ <p>The statement will NOT close the root after use/on close/when other data is bound.</div>
 <dl class="notes">
 <dt>Specified by:</dt>
 <dd><code><a href="../../core/AdbcStatement.html#bind(org.apache.arrow.vector.VectorSchemaRoot)">bind</a></code>&nbsp;in interface&nbsp;<code><a href="../../core/AdbcStatement.html" title="interface in org.apache.arrow.adbc.core">AdbcStatement</a></code></dd>
+<dt>Throws:</dt>
+<dd><code><a href="../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="bind(org.apache.arrow.vector.ipc.ArrowReader)">
+<h3>bind</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">bind</span><wbr><span class="parameters">(<a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a>&nbsp;reader)</span>
+          throws <span class="exceptions"><a href="../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></span></div>
+<div class="block"><span class="descfrm-type-label">Description copied from interface:&nbsp;<code><a href="../../core/AdbcStatement.html#bind(org.apache.arrow.vector.ipc.ArrowReader)">AdbcStatement</a></code></span></div>
+<div class="block">Bind an ArrowReader to provide parameter values/bulk data ingestion.
+
+ <p>The statement will close the reader after use/on close/when other data is bound.</div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="../../core/AdbcStatement.html#bind(org.apache.arrow.vector.ipc.ArrowReader)">bind</a></code>&nbsp;in interface&nbsp;<code><a href="../../core/AdbcStatement.html" title="interface in org.apache.arrow.adbc.core">AdbcStatement</a></code></dd>
 <dt>Throws:</dt>
 <dd><code><a href="../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></code></dd>
 </dl>
@@ -381,10 +405,13 @@ implements <a href="../../core/AdbcStatement.html" title="interface in org.apach
 <li>
 <section class="detail" id="close()">
 <h3>close</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">close</span>()</div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">close</span>()
+           throws <span class="exceptions"><a href="../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></span></div>
 <dl class="notes">
 <dt>Specified by:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/AutoCloseable.html#close()" title="class or interface in java.lang" class="external-link">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/AutoCloseable.html" title="class or interface in java.lang" class="external-link">AutoCloseable</a></code></dd>
+<dt>Throws:</dt>
+<dd><code><a href="../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></code></dd>
 </dl>
 </section>
 </li>

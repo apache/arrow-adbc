@@ -236,9 +236,15 @@ loadScripts(document, 'script');</script>
 <dd>&nbsp;</dd>
 <dt><a href="org/apache/arrow/adbc/driver/flightsql/FlightSqlClientWithCallOptions.html#beginTransaction(org.apache.arrow.flight.CallOption...)" class="member-name-link">beginTransaction(CallOption...)</a> - Method in class org.apache.arrow.adbc.driver.flightsql.<a href="org/apache/arrow/adbc/driver/flightsql/FlightSqlClientWithCallOptions.html" title="class in org.apache.arrow.adbc.driver.flightsql">FlightSqlClientWithCallOptions</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="org/apache/arrow/adbc/core/AdbcStatement.html#bind(org.apache.arrow.vector.ipc.ArrowReader)" class="member-name-link">bind(ArrowReader)</a> - Method in interface org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/AdbcStatement.html" title="interface in org.apache.arrow.adbc.core">AdbcStatement</a></dt>
+<dd>
+<div class="block">Bind an ArrowReader to provide parameter values/bulk data ingestion.</div>
+</dd>
+<dt><a href="org/apache/arrow/adbc/driver/jni/JniStatement.html#bind(org.apache.arrow.vector.ipc.ArrowReader)" class="member-name-link">bind(ArrowReader)</a> - Method in class org.apache.arrow.adbc.driver.jni.<a href="org/apache/arrow/adbc/driver/jni/JniStatement.html" title="class in org.apache.arrow.adbc.driver.jni">JniStatement</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="org/apache/arrow/adbc/core/AdbcStatement.html#bind(org.apache.arrow.vector.VectorSchemaRoot)" class="member-name-link">bind(VectorSchemaRoot)</a> - Method in interface org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/AdbcStatement.html" title="interface in org.apache.arrow.adbc.core">AdbcStatement</a></dt>
 <dd>
-<div class="block">Bind this statement to a VectorSchemaRoot to provide parameter values/bulk data ingestion.</div>
+<div class="block">Bind a VectorSchemaRoot to provide parameter values/bulk data ingestion.</div>
 </dd>
 <dt><a href="org/apache/arrow/adbc/driver/flightsql/FlightSqlStatement.html#bind(org.apache.arrow.vector.VectorSchemaRoot)" class="member-name-link">bind(VectorSchemaRoot)</a> - Method in class org.apache.arrow.adbc.driver.flightsql.<a href="org/apache/arrow/adbc/driver/flightsql/FlightSqlStatement.html" title="class in org.apache.arrow.adbc.driver.flightsql">FlightSqlStatement</a></dt>
 <dd>&nbsp;</dd>
@@ -1051,6 +1057,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">The database's integrity was affected.</div>
 </dd>
+<dt><a href="org/apache/arrow/adbc/core/AdbcException.html#internal(java.lang.String)" class="member-name-link">internal(String)</a> - Static method in exception org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></dt>
+<dd>
+<div class="block">Create a new exception with code <a href="org/apache/arrow/adbc/core/AdbcStatusCode.html#INTERNAL"><code>AdbcStatusCode.INTERNAL</code></a>.</div>
+</dd>
 <dt><a href="org/apache/arrow/adbc/core/AdbcStatusCode.html#INTERNAL" class="member-name-link">INTERNAL</a> - Enum constant in enum org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/AdbcStatusCode.html" title="enum in org.apache.arrow.adbc.core">AdbcStatusCode</a></dt>
 <dd>
 <div class="block">An error internal to the driver or database occurred.</div>
@@ -1577,6 +1587,8 @@ loadScripts(document, 'script');</script>
 <div class="block">Definitions of standard statistic names/keys.</div>
 </dd>
 <dt><a href="org/apache/arrow/adbc/driver/jni/impl/JniLoader.html#statementBind(org.apache.arrow.adbc.driver.jni.impl.NativeStatementHandle,org.apache.arrow.c.ArrowArray,org.apache.arrow.c.ArrowSchema)" class="member-name-link">statementBind(NativeStatementHandle, ArrowArray, ArrowSchema)</a> - Method in enum org.apache.arrow.adbc.driver.jni.impl.<a href="org/apache/arrow/adbc/driver/jni/impl/JniLoader.html" title="enum in org.apache.arrow.adbc.driver.jni.impl">JniLoader</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="org/apache/arrow/adbc/driver/jni/impl/JniLoader.html#statementBindStream(org.apache.arrow.adbc.driver.jni.impl.NativeStatementHandle,org.apache.arrow.c.ArrowArrayStream)" class="member-name-link">statementBindStream(NativeStatementHandle, ArrowArrayStream)</a> - Method in enum org.apache.arrow.adbc.driver.jni.impl.<a href="org/apache/arrow/adbc/driver/jni/impl/JniLoader.html" title="enum in org.apache.arrow.adbc.driver.jni.impl">JniLoader</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="org/apache/arrow/adbc/driver/jni/impl/JniLoader.html#statementCancel(org.apache.arrow.adbc.driver.jni.impl.NativeStatementHandle)" class="member-name-link">statementCancel(NativeStatementHandle)</a> - Method in enum org.apache.arrow.adbc.driver.jni.impl.<a href="org/apache/arrow/adbc/driver/jni/impl/JniLoader.html" title="enum in org.apache.arrow.adbc.driver.jni.impl">JniLoader</a></dt>
 <dd>&nbsp;</dd>
