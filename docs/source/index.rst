@@ -294,6 +294,7 @@ Why ADBC?
 
    Client Libraries <status_client>
    Drivers <driver/index>
+   Connection Profiles <connection_profiles>
 
 .. toctree::
    :maxdepth: 1
