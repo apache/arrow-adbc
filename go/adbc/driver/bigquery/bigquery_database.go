@@ -42,6 +42,12 @@ type databaseImpl struct {
 	location              string
 	quotaProject          string
 
+	// External-account (Workload Identity Federation) options.
+	externalAccountAudience         string
+	externalAccountImpersonationURL string
+	externalAccountRequestURL       string
+	externalAccountRequestData      string
+
 	impersonateTargetPrincipal string
 	impersonateDelegates       []string
 	impersonateScopes          []string
@@ -56,27 +62,31 @@ type databaseImpl struct {
 
 func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 	conn := &connectionImpl{
-		ConnectionImplBase:         driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
-		authType:                   d.authType,
-		accessToken:                d.accessToken,
-		credentials:                d.credentials,
-		clientID:                   d.clientID,
-		clientSecret:               d.clientSecret,
-		refreshToken:               d.refreshToken,
-		impersonateTargetPrincipal: d.impersonateTargetPrincipal,
-		impersonateDelegates:       d.impersonateDelegates,
-		impersonateScopes:          d.impersonateScopes,
-		impersonateLifetime:        d.impersonateLifetime,
-		accessTokenEndpoint:        d.accessTokenEndpoint,
-		accessTokenServerName:      d.accessTokenServerName,
-		apiEndpoint:                d.apiEndpoint,
-		tableID:                    d.tableID,
-		catalog:                    d.projectID,
-		dbSchema:                   d.datasetID,
-		location:                   d.location,
-		resultRecordBufferSize:     defaultQueryResultBufferSize,
-		prefetchConcurrency:        defaultQueryPrefetchConcurrency,
-		quotaProject:               d.quotaProject,
+		ConnectionImplBase:              driverbase.NewConnectionImplBase(&d.DatabaseImplBase),
+		authType:                        d.authType,
+		accessToken:                     d.accessToken,
+		credentials:                     d.credentials,
+		clientID:                        d.clientID,
+		clientSecret:                    d.clientSecret,
+		refreshToken:                    d.refreshToken,
+		impersonateTargetPrincipal:      d.impersonateTargetPrincipal,
+		impersonateDelegates:            d.impersonateDelegates,
+		impersonateScopes:               d.impersonateScopes,
+		impersonateLifetime:             d.impersonateLifetime,
+		accessTokenEndpoint:             d.accessTokenEndpoint,
+		accessTokenServerName:           d.accessTokenServerName,
+		apiEndpoint:                     d.apiEndpoint,
+		externalAccountAudience:         d.externalAccountAudience,
+		externalAccountImpersonationURL: d.externalAccountImpersonationURL,
+		externalAccountRequestURL:       d.externalAccountRequestURL,
+		externalAccountRequestData:      d.externalAccountRequestData,
+		tableID:                         d.tableID,
+		catalog:                         d.projectID,
+		dbSchema:                        d.datasetID,
+		location:                        d.location,
+		resultRecordBufferSize:          defaultQueryResultBufferSize,
+		prefetchConcurrency:             defaultQueryPrefetchConcurrency,
+		quotaProject:                    d.quotaProject,
 	}
 
 	err := conn.newClient(ctx)
@@ -110,6 +120,14 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 		return d.refreshToken, nil
 	case OptionStringAuthQuotaProject:
 		return d.quotaProject, nil
+	case OptionStringAuthExternalAccountAudience:
+		return d.externalAccountAudience, nil
+	case OptionStringAuthExternalAccountImpersonationURL:
+		return d.externalAccountImpersonationURL, nil
+	case OptionStringAuthExternalAccountRequestURL:
+		return d.externalAccountRequestURL, nil
+	case OptionStringAuthExternalAccountRequestData:
+		return d.externalAccountRequestData, nil
 	case OptionStringAPIEndpoint:
 		return d.apiEndpoint, nil
 	case OptionStringLocation:
@@ -159,6 +177,7 @@ func (d *databaseImpl) SetOption(key string, value string) error {
 			OptionValueAuthTypeJSONCredentialString,
 			OptionValueAuthTypeUserAuthentication,
 			OptionValueAuthTypeAppDefaultCredentials,
+			OptionValueAuthTypeExternalAccount,
 			OptionValueAuthTypeTemporaryAccessToken:
 			d.authType = value
 		default:
@@ -186,6 +205,14 @@ func (d *databaseImpl) SetOption(key string, value string) error {
 		d.accessTokenEndpoint = value
 	case OptionStringAuthAccessTokenServerName:
 		d.accessTokenServerName = value
+	case OptionStringAuthExternalAccountAudience:
+		d.externalAccountAudience = value
+	case OptionStringAuthExternalAccountImpersonationURL:
+		d.externalAccountImpersonationURL = value
+	case OptionStringAuthExternalAccountRequestURL:
+		d.externalAccountRequestURL = value
+	case OptionStringAuthExternalAccountRequestData:
+		d.externalAccountRequestData = value
 	case OptionStringAPIEndpoint:
 		d.apiEndpoint = value
 	case OptionStringLocation:

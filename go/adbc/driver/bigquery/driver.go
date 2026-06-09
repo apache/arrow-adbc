@@ -30,12 +30,12 @@ import (
 )
 
 const (
-	OptionStringAuthType  = "adbc.bigquery.sql.auth_type"
+	OptionStringAuthType    = "adbc.bigquery.sql.auth_type"
 	OptionStringAPIEndpoint = "adbc.bigquery.sql.api_endpoint"
-	OptionStringLocation  = "adbc.bigquery.sql.location"
-	OptionStringProjectID = "adbc.bigquery.sql.project_id"
-	OptionStringDatasetID = "adbc.bigquery.sql.dataset_id"
-	OptionStringTableID   = "adbc.bigquery.sql.table_id"
+	OptionStringLocation    = "adbc.bigquery.sql.location"
+	OptionStringProjectID   = "adbc.bigquery.sql.project_id"
+	OptionStringDatasetID   = "adbc.bigquery.sql.dataset_id"
+	OptionStringTableID     = "adbc.bigquery.sql.table_id"
 
 	OptionValueAuthTypeDefault = "adbc.bigquery.sql.auth_type.auth_bigquery"
 
@@ -53,6 +53,15 @@ const (
 	OptionStringAuthRefreshToken          = "adbc.bigquery.sql.auth.refresh_token"
 	OptionStringAuthAccessTokenEndpoint   = "adbc.bigquery.sql.auth.access_token_endpoint"
 	OptionStringAuthAccessTokenServerName = "adbc.bigquery.sql.auth.access_token_server_name"
+
+	// External-account (Workload Identity Federation): the subject token is
+	// obtained from an external OAuth2 IdP via the client-credentials grant and
+	// exchanged at Google STS.
+	OptionValueAuthTypeExternalAccount              = "adbc.bigquery.sql.auth_type.external_account"
+	OptionStringAuthExternalAccountAudience         = "adbc.bigquery.sql.auth.external_account.audience"
+	OptionStringAuthExternalAccountImpersonationURL = "adbc.bigquery.sql.auth.external_account.impersonation_url"
+	OptionStringAuthExternalAccountRequestURL       = "adbc.bigquery.sql.auth.external_account.request_url"
+	OptionStringAuthExternalAccountRequestData      = "adbc.bigquery.sql.auth.external_account.request_data"
 
 	// OptionStringQueryParameterMode specifies if the query uses positional syntax ("?")
 	// or the named syntax ("@p"). It is illegal to mix positional and named syntax.
@@ -91,6 +100,10 @@ const (
 
 	DefaultAccessTokenEndpoint   = "https://accounts.google.com/o/oauth2/token"
 	DefaultAccessTokenServerName = "google.com"
+
+	// Google STS endpoint and default subject-token type for external-account.
+	DefaultSTSTokenURL      = "https://sts.googleapis.com/v1/token"
+	DefaultSubjectTokenType = "urn:ietf:params:oauth:token-type:jwt"
 
 	OptionStringIngestFileDelimiter = "adbc.bigquery.ingest.csv_delimiter"
 	OptionStringIngestPath          = "adbc.bigquery.ingest.csv_filepath"
