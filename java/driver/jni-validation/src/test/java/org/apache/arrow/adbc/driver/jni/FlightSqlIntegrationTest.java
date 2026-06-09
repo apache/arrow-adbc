@@ -18,22 +18,34 @@
 package org.apache.arrow.adbc.driver.jni;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcDriver;
+import org.apache.arrow.adbc.core.AdbcStatement;
+import org.apache.arrow.adbc.driver.testsuite.ArrowAssertions;
+import org.apache.arrow.adbc.driver.testsuite.ArrowToJava;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.memory.RootAllocator;
+import org.apache.arrow.vector.types.Types;
+import org.apache.arrow.vector.types.pojo.Field;
+import org.apache.arrow.vector.types.pojo.Schema;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+/** Integration tests against the mock test server. */
 public class FlightSqlIntegrationTest {
-  public static final String URI_ENV = "ADBC_SQLITE_FLIGHTSQL_URI";
+  public static final String URI_ENV = "ADBC_TEST_FLIGHTSQL_URI";
   static String URI = System.getenv(URI_ENV);
 
   BufferAllocator allocator;
@@ -55,6 +67,8 @@ public class FlightSqlIntegrationTest {
     Map<String, Object> parameters = new HashMap<>();
     JniDriver.PARAM_DRIVER.set(parameters, "adbc_driver_flightsql");
     AdbcDriver.PARAM_URI.set(parameters, URI);
+    parameters.put("adbc.flight.sql.client_option.tls_skip_verify", "true");
+    parameters.put("adbc.flight.sql.authorization_header", "Basic dXNlcjpwYXNzd29yZA==");
     db = driver.open(parameters);
     conn = db.connect();
   }
@@ -69,30 +83,106 @@ public class FlightSqlIntegrationTest {
   @Test
   void simple() throws Exception {
     try (var stmt = conn.createStatement()) {
+      // smoke test; the server doesn't actually run any query and returns a fixed result
       stmt.setSqlQuery("SELECT 1 + 1 AS sum");
       try (var reader = stmt.executeQuery()) {
-        assertThat(reader.getReader().loadNextBatch()).isTrue();
-        assertThat(reader.getReader().getVectorSchemaRoot().getVector("sum").getObject(0))
-            .isEqualTo(2L);
+        assertThat(ArrowToJava.toIntegers(reader.getReader(), "ints")).containsExactly(5);
       }
     }
   }
 
   @Test
-  void partitioned() throws Exception {
+  void substrait() throws Exception {
     try (var stmt = conn.createStatement()) {
-      stmt.setSqlQuery("SELECT 1 + 1 AS sum");
-      var partitions = stmt.executePartitioned();
-      assertThat(partitions.getPartitionDescriptors().size()).isEqualTo(1);
-      assertThat(partitions.getAffectedRows()).isEqualTo(-1);
-      // The test server doesn't give a schema.
-      assertThat(partitions.getSchema()).isNull();
-
-      try (var reader =
-          conn.readPartition(partitions.getPartitionDescriptors().get(0).getDescriptor())) {
-        assertThat(reader.loadNextBatch()).isTrue();
-        assertThat(reader.getVectorSchemaRoot().getVector("sum").getObject(0)).isEqualTo(2L);
+      stmt.setSubstraitPlan(ByteBuffer.wrap(new byte[] {42, 0, (byte) 129, (byte) 255}));
+      try (var reader = stmt.executeQuery()) {
+        assertThat(ArrowToJava.toIntegers(reader.getReader(), "substrait")).containsExactly(5);
       }
+    }
+  }
+
+  @Test
+  void poll() throws Exception {
+    var expectedSchema = new Schema(List.of(Field.nullable("ints", Types.MinorType.INT.getType())));
+    try (var stmt = conn.createStatement()) {
+      stmt.setSqlQuery("poll");
+      stmt.prepare();
+      var iter = stmt.pollPartitioned();
+      var elements = new ArrayList<AdbcStatement.PartitionResult>();
+      iter.forEachRemaining(elements::add);
+      assertThat(elements).size().isEqualTo(5);
+      assertThat(elements.get(0).getSchema()).isNull();
+      assertThat(elements.get(1).getSchema()).isNull();
+      ArrowAssertions.assertSchema(elements.get(2).getSchema()).isEqualTo(expectedSchema);
+      ArrowAssertions.assertSchema(elements.get(3).getSchema()).isEqualTo(expectedSchema);
+      ArrowAssertions.assertSchema(elements.get(4).getSchema()).isEqualTo(expectedSchema);
+
+      elements.forEach(
+          partitionResult -> {
+            assertThat(partitionResult.getPartitionDescriptors()).size().isEqualTo(1);
+          });
+    }
+  }
+
+  @Test
+  void progress() throws Exception {
+    try (var stmt = conn.createStatement()) {
+      stmt.setSqlQuery("poll");
+      stmt.prepare();
+      var iter = stmt.pollPartitioned();
+      assertThat(stmt.getProgress()).isEqualTo(0.0);
+      assertThat(stmt.getMaxProgress()).isEqualTo(1.0);
+
+      for (int i = 0; i < 5; i++) {
+        assertThat(iter.hasNext()).isTrue();
+        assertThat(stmt.getProgress()).isCloseTo(0.2 * (i + 1), Assertions.offset(0.05));
+        assertThat(stmt.getMaxProgress()).isEqualTo(1.0);
+        assertThat(iter.next()).isNotNull();
+      }
+
+      assertThat(iter.hasNext()).isFalse();
+    }
+  }
+
+  @Test
+  void pollError() throws Exception {
+    try (var stmt = conn.createStatement()) {
+      stmt.setSqlQuery("error_poll_later");
+      stmt.prepare();
+      var iter = stmt.pollPartitioned();
+      assertThat(iter.hasNext()).isTrue();
+      assertThat(iter.next()).isNotNull();
+      assertThatThrownBy(iter::hasNext).hasMessageContaining("expected error");
+    }
+  }
+
+  @Test
+  void pollForever() throws Exception {
+    try (var stmt = conn.createStatement()) {
+      stmt.setSqlQuery("forever");
+      stmt.prepare();
+      var iter = stmt.pollPartitioned();
+      assertThat(iter.hasNext()).isTrue();
+      assertThat(iter.next()).isNotNull();
+      // XXX: rather janky. must cancel on the background; cancelling in between statements has no
+      // effect. we should perhaps reconsider this behavior
+      var t =
+          new Thread(
+              () -> {
+                try {
+                  while (stmt.getProgress() < 0.05) {
+                    Thread.sleep(100);
+                  }
+                  System.out.println("progress: " + stmt.getProgress());
+                  stmt.cancel();
+                } catch (Exception e) {
+                  e.printStackTrace();
+                }
+              });
+      t.start();
+
+      assertThatThrownBy(iter::hasNext).hasMessageContaining("context canceled");
+      t.join(10000);
     }
   }
 }

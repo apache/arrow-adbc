@@ -208,6 +208,93 @@ auto WithJniString(JNIEnv* env, jstring jni_string, Callable&& callable) {
   return callable(view.value);
 }
 
+// Get the contents of a ByteBuffer. We may have to copy, so also take a
+// scratch buffer to hold the copy if needed. If possible, will use
+// DirectByteBuffer so no additional allocation is necessary.
+const uint8_t* GetJniByteBuffer(JNIEnv* env, jobject bytebuffer,
+                                std::vector<uint8_t>& scratch,
+                                size_t& serialized_length) {
+  jclass bb_class = RequireClass(env, "java/nio/ByteBuffer");
+  if (!env->IsInstanceOf(bytebuffer, bb_class)) {
+    ThrowJavaException(env, "java/lang/IllegalArgumentException",
+                       "Argument must be a ByteBuffer");
+    return nullptr;
+  }
+
+  jmethodID bb_remaining = RequireMethod(env, bb_class, "remaining", "()I");
+  jmethodID bb_position = RequireMethod(env, bb_class, "position", "()I");
+
+  jint remaining = env->CallIntMethod(bytebuffer, bb_remaining);
+  if (remaining < 0) {
+    ThrowJavaException(env, "java/lang/IllegalArgumentException",
+                       "ByteBuffer remaining() must be non-negative");
+    return nullptr;
+  } else if (env->ExceptionCheck()) {
+    return nullptr;
+  }
+  serialized_length = static_cast<size_t>(remaining);
+
+  jint position = env->CallIntMethod(bytebuffer, bb_position);
+  if (position < 0) {
+    ThrowJavaException(env, "java/lang/IllegalArgumentException",
+                       "ByteBuffer position() must be non-negative");
+    return nullptr;
+  } else if (env->ExceptionCheck()) {
+    return nullptr;
+  }
+  const size_t offset = static_cast<size_t>(position);
+
+  // fast path (if direct buffer)
+  void* buf = env->GetDirectBufferAddress(bytebuffer);
+  if (buf) {
+    return static_cast<const uint8_t*>(buf) + offset;
+  }
+
+  // middle path (copy from backing array)
+  {
+    jmethodID bb_has_array = RequireMethod(env, bb_class, "hasArray", "()Z");
+    jmethodID bb_array = RequireMethod(env, bb_class, "array", "()[B");
+    jmethodID bb_array_offset = RequireMethod(env, bb_class, "arrayOffset", "()I");
+    jboolean has_array = env->CallBooleanMethod(bytebuffer, bb_has_array);
+    if (env->ExceptionCheck()) return nullptr;
+    if (has_array) {
+      jint array_offset = env->CallIntMethod(bytebuffer, bb_array_offset);
+      if (env->ExceptionCheck()) return nullptr;
+
+      auto array =
+          reinterpret_cast<jbyteArray>(env->CallObjectMethod(bytebuffer, bb_array));
+      if (env->ExceptionCheck()) return nullptr;
+
+      assert(serialized_length <= static_cast<size_t>(env->GetArrayLength(array)));
+      scratch.resize(serialized_length);
+      env->GetByteArrayRegion(array, array_offset + position,
+                              static_cast<jsize>(serialized_length),
+                              reinterpret_cast<jbyte*>(scratch.data()));
+      return scratch.data();
+    }
+  }
+
+  // slow path (copy via invoking Java code to copy into a temp array)
+  {
+    jmethodID bb_get = RequireMethod(env, bb_class, "get", "([B)Ljava/nio/ByteBuffer;");
+    jbyteArray temp = env->NewByteArray(static_cast<jsize>(serialized_length));
+    if (!temp) {
+      ThrowJavaException(env, "java/lang/OutOfMemoryError",
+                         "Failed to allocate byte array to copy ByteBuffer");
+      return nullptr;
+    }
+
+    env->CallObjectMethod(bytebuffer, bb_get, temp);
+    if (env->ExceptionCheck()) return nullptr;
+
+    scratch.resize(serialized_length);
+    env->GetByteArrayRegion(temp, 0, static_cast<jsize>(serialized_length),
+                            reinterpret_cast<jbyte*>(scratch.data()));
+    return scratch.data();
+  }
+  // not reachable
+}
+
 }  // namespace
 
 extern "C" {
@@ -475,11 +562,31 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementExecuteQuery(
 JNIEXPORT void JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementSetSqlQuery(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring query) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
   try {
-    struct AdbcError error = ADBC_ERROR_INIT;
-    auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
     JniStringView query_str(env, query);
     CHECK_ADBC_ERROR(AdbcStatementSetSqlQuery(ptr, query_str.value, &error), error);
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+  }
+}
+
+JNIEXPORT void JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementSetSubstraitPlan(
+    JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jobject plan) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
+  std::vector<uint8_t> allocated_plan;
+  size_t plan_length = 0;
+  try {
+    const uint8_t* plan_ptr = GetJniByteBuffer(env, plan, allocated_plan, plan_length);
+    if (!plan_ptr || env->ExceptionCheck()) {
+      return;  // GetJniByteBuffer failed
+    }
+    assert(plan_ptr != nullptr);
+    CHECK_ADBC_ERROR(AdbcStatementSetSubstraitPlan(ptr, plan_ptr, plan_length, &error),
+                     error);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
@@ -1059,81 +1166,18 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionReadPartition(
   auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
   struct ArrowArrayStream out = {};
   size_t serialized_length = 0;
-  const uint8_t* serialized_partition = nullptr;
   std::vector<uint8_t> allocated_partition;
 
   try {
-    jclass bb_class = RequireClass(env, "java/nio/ByteBuffer");
-    jmethodID bb_remaining = RequireMethod(env, bb_class, "remaining", "()I");
-
-    if (!env->IsInstanceOf(partition, bb_class)) {
-      ThrowJavaException(env, "java/lang/IllegalArgumentException",
-                         "Partition must be a ByteBuffer");
-      return nullptr;
+    const uint8_t* serialized_partition =
+        GetJniByteBuffer(env, partition, allocated_partition, serialized_length);
+    if (!serialized_partition || env->ExceptionCheck()) {
+      return nullptr;  // GetJniByteBuffer failed
     }
-    jint remaining = env->CallIntMethod(partition, bb_remaining);
-    if (remaining < 0) {
-      ThrowJavaException(env, "java/lang/IllegalArgumentException",
-                         "ByteBuffer remaining() must be non-negative");
-      return nullptr;
-    }
-    serialized_length = static_cast<size_t>(remaining);
-
-    // fast path (if direct buffer)
-    void* buf = env->GetDirectBufferAddress(partition);
-    if (buf) {
-      serialized_partition = static_cast<const uint8_t*>(buf);
-    }
-
-    // middle path (backing array)
-    if (!serialized_partition) {
-      jmethodID bb_has_array = RequireMethod(env, bb_class, "hasArray", "()Z");
-      jmethodID bb_array = RequireMethod(env, bb_class, "array", "()[B");
-      jmethodID bb_array_offset = RequireMethod(env, bb_class, "arrayOffset", "()I");
-      jboolean has_array = env->CallBooleanMethod(partition, bb_has_array);
-      if (env->ExceptionCheck()) return nullptr;
-      if (has_array) {
-        jint array_offset = env->CallIntMethod(partition, bb_array_offset);
-        if (env->ExceptionCheck()) return nullptr;
-
-        auto array =
-            reinterpret_cast<jbyteArray>(env->CallObjectMethod(partition, bb_array));
-        if (env->ExceptionCheck()) return nullptr;
-
-        assert(serialized_length <= static_cast<size_t>(env->GetArrayLength(array)));
-        allocated_partition.resize(serialized_length);
-        env->GetByteArrayRegion(array, array_offset,
-                                static_cast<jsize>(serialized_length),
-                                reinterpret_cast<jbyte*>(allocated_partition.data()));
-        serialized_partition = allocated_partition.data();
-      }
-    }
-
-    // slow path (copy)
-    if (!serialized_partition) {
-      jmethodID bb_get = RequireMethod(env, bb_class, "get", "([B)Ljava/nio/ByteBuffer;");
-      jbyteArray temp = env->NewByteArray(static_cast<jsize>(serialized_length));
-      if (!temp) {
-        ThrowJavaException(env, "java/lang/OutOfMemoryError",
-                           "Failed to allocate byte array for partition");
-        return nullptr;
-      }
-
-      env->CallVoidMethod(partition, bb_get, temp);
-      if (env->ExceptionCheck()) return nullptr;
-
-      allocated_partition.resize(serialized_length);
-      env->GetByteArrayRegion(temp, 0, static_cast<jsize>(serialized_length),
-                              reinterpret_cast<jbyte*>(allocated_partition.data()));
-      serialized_partition = allocated_partition.data();
-    }
-
     assert(serialized_partition != nullptr);
-
     CHECK_ADBC_ERROR(AdbcConnectionReadPartition(conn, serialized_partition,
                                                  serialized_length, &out, &error),
                      error);
-
     return MakeNativeQueryResult(env, -1, &out);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);

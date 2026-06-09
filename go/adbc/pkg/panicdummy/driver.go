@@ -1621,7 +1621,9 @@ func PanicDummyStatementSetSubstraitPlan(stmt *C.struct_AdbcStatement, plan *C.c
 		return C.ADBC_STATUS_INVALID_STATE
 	}
 
-	return C.AdbcStatusCode(errToAdbcErr(err, st.stmt.SetSubstraitPlan(fromCArr[byte](plan, int(length)))))
+	// XXX: must copy here or the C side may invalidate *plan
+	goPlan := C.GoBytes(unsafe.Pointer(plan), C.int(length))
+	return C.AdbcStatusCode(errToAdbcErr(err, st.stmt.SetSubstraitPlan(goPlan)))
 }
 
 //export PanicDummyStatementBind
