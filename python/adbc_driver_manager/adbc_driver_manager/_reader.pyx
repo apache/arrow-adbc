@@ -63,6 +63,8 @@ class AdbcRecordBatchReader(pyarrow.RecordBatchReader):
         try:
             reader = pyarrow.RecordBatchReader._import_from_c(int(address))
         except Exception as e:
+            if c_stream.release == NULL:
+                raise
             helper.check_error(e)
         return cls(reader, helper)
 

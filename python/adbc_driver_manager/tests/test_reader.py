@@ -78,3 +78,33 @@ def test_reader_methods():
 
     with _make_reader() as reader:
         assert reader.schema == schema
+
+
+def test_import_invalid_format_raises():
+    """Must raise, not segfault, when pyarrow rejects the schema format."""
+    import ctypes
+
+    original = pyarrow.RecordBatchReader.from_batches(
+        schema, [pyarrow.record_batch([[1, 2, 3, 4]], schema=schema)]
+    )
+    exported = ArrowArrayStreamHandle()
+    original._export_to_c(exported.address)
+
+    # Hook get_schema to poison child's format with something PyArrow rejects.
+    # Struct offsets: stream[0]=get_schema, schema[40]=children, child[0]=format
+    ptr = ctypes.c_void_p
+    bad_fmt = ctypes.c_char_p(b"zzz:invalid")
+    GET_SCHEMA = ctypes.CFUNCTYPE(ctypes.c_int, ptr, ptr)
+    orig_fn = GET_SCHEMA(ptr.from_address(exported.address).value)
+
+    def patched_get_schema(stream_ptr, schema_ptr):
+        orig_fn(stream_ptr, schema_ptr)
+        child_p = ptr.from_address(ptr.from_address(schema_ptr + 40).value).value
+        ptr.from_address(child_p).value = ctypes.cast(bad_fmt, ptr).value
+        return 0
+
+    patched = GET_SCHEMA(patched_get_schema)
+    ptr.from_address(exported.address).value = ctypes.cast(patched, ptr).value
+
+    with pytest.raises(pyarrow.ArrowInvalid, match="zzz:invalid"):
+        AdbcRecordBatchReader._import_from_c(exported.address)
