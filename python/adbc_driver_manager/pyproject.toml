@@ -38,9 +38,6 @@ repository = "https://github.com/apache/arrow-adbc"
 requires = ["Cython >= 3.1.0", "setuptools >= 77.0.0"]
 build-backend = "setuptools.build_meta"
 
-[tool.cibuildwheel]
-enable = ["cpython-freethreading"]
-
 [tool.pytest.ini_options]
 filterwarnings = ["error"]
 markers = [
