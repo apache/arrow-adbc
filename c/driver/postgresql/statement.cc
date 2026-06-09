@@ -919,12 +919,6 @@ void PostgresStatement::ClearResult() {
   reader_->batch_size_hint_bytes_ = batch_size_hint_bytes_;
 }
 
-int PostgresStatement::UseCopy() {
-  if (use_copy_ == -1) {
-    return connection_->VendorName() != "Redshift";
-  } else {
-    return use_copy_;
-  }
-}
+int PostgresStatement::UseCopy() { return use_copy_; }
 
 }  // namespace adbcpq

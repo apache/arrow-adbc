@@ -64,26 +64,13 @@ class PostgresDatabase {
 
   Status InitVersions(PGconn* conn);
   Status RebuildTypeResolver(PGconn* conn);
-  std::string_view VendorName() {
-    if (redshift_server_version_[0] != 0) {
-      return "Redshift";
-    } else {
-      return "PostgreSQL";
-    }
-  }
-  const std::array<int, 3>& VendorVersion() {
-    if (redshift_server_version_[0] != 0) {
-      return redshift_server_version_;
-    } else {
-      return postgres_server_version_;
-    }
-  }
+  std::string_view VendorName() { return "PostgreSQL"; }
+  const std::array<int, 3>& VendorVersion() { return postgres_server_version_; }
 
  private:
   int32_t open_connections_;
   std::string uri_;
   std::shared_ptr<PostgresTypeResolver> type_resolver_;
   std::array<int, 3> postgres_server_version_{};
-  std::array<int, 3> redshift_server_version_{};
 };
 }  // namespace adbcpq
