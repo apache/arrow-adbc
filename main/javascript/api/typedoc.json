@@ -39,7 +39,7 @@
 									"fileName": "lib/error.ts",
 									"line": 22,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/error.ts#L22"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/error.ts#L22"
 								}
 							],
 							"type": {
@@ -60,7 +60,7 @@
 									"fileName": "lib/error.ts",
 									"line": 23,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/error.ts#L23"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/error.ts#L23"
 								}
 							],
 							"type": {
@@ -81,7 +81,7 @@
 									"fileName": "lib/error.ts",
 									"line": 24,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/error.ts#L24"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/error.ts#L24"
 								}
 							],
 							"type": {
@@ -100,7 +100,7 @@
 									"fileName": "lib/error.ts",
 									"line": 26,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/error.ts#L26"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/error.ts#L26"
 								}
 							],
 							"signatures": [
@@ -115,7 +115,7 @@
 											"fileName": "lib/error.ts",
 											"line": 26,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/error.ts#L26"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/error.ts#L26"
 										}
 									],
 									"parameters": [
@@ -202,7 +202,7 @@
 									"fileName": "lib/error.ts",
 									"line": 39,
 									"character": 9,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/error.ts#L39"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/error.ts#L39"
 								}
 							],
 							"signatures": [
@@ -225,7 +225,7 @@
 											"fileName": "lib/error.ts",
 											"line": 39,
 											"character": 9,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/error.ts#L39"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/error.ts#L39"
 										}
 									],
 									"parameters": [
@@ -735,7 +735,7 @@
 							"fileName": "lib/error.ts",
 							"line": 21,
 							"character": 13,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/error.ts#L21"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/error.ts#L21"
 						}
 					],
 					"extendedTypes": [
@@ -765,7 +765,7 @@
 					"fileName": "lib/error.ts",
 					"line": 1,
 					"character": 0,
-					"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/error.ts#L1"
+					"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/error.ts#L1"
 				}
 			]
 		},
@@ -787,7 +787,7 @@
 							"fileName": "lib/index.ts",
 							"line": 79,
 							"character": 14,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L79"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L79"
 						}
 					],
 					"target": 147
@@ -803,7 +803,7 @@
 							"fileName": "lib/index.ts",
 							"line": 79,
 							"character": 30,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L79"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L79"
 						}
 					],
 					"target": 166
@@ -819,7 +819,7 @@
 							"fileName": "lib/index.ts",
 							"line": 79,
 							"character": 49,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L79"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L79"
 						}
 					],
 					"target": 161
@@ -835,7 +835,7 @@
 							"fileName": "lib/index.ts",
 							"line": 80,
 							"character": 9,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L80"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L80"
 						}
 					],
 					"target": 255
@@ -851,7 +851,7 @@
 							"fileName": "lib/index.ts",
 							"line": 80,
 							"character": 20,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L80"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L80"
 						}
 					],
 					"target": 118
@@ -867,7 +867,7 @@
 							"fileName": "lib/index.ts",
 							"line": 80,
 							"character": 31,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L80"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L80"
 						}
 					],
 					"target": 126
@@ -883,7 +883,7 @@
 							"fileName": "lib/index.ts",
 							"line": 80,
 							"character": 44,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L80"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L80"
 						}
 					],
 					"target": 133
@@ -899,7 +899,7 @@
 							"fileName": "lib/index.ts",
 							"line": 80,
 							"character": 54,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L80"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L80"
 						}
 					],
 					"target": 154
@@ -930,7 +930,7 @@
 									"fileName": "lib/index.ts",
 									"line": 88,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L88"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L88"
 								}
 							],
 							"signatures": [
@@ -945,7 +945,7 @@
 											"fileName": "lib/index.ts",
 											"line": 88,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L88"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L88"
 										}
 									],
 									"parameters": [
@@ -983,7 +983,7 @@
 									"fileName": "lib/index.ts",
 									"line": 96,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L96"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L96"
 								}
 							],
 							"signatures": [
@@ -1017,7 +1017,7 @@
 											"fileName": "lib/index.ts",
 											"line": 96,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L96"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L96"
 										}
 									],
 									"type": {
@@ -1062,7 +1062,7 @@
 									"fileName": "lib/index.ts",
 									"line": 105,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L105"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L105"
 								}
 							],
 							"signatures": [
@@ -1085,7 +1085,7 @@
 											"fileName": "lib/index.ts",
 											"line": 105,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L105"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L105"
 										}
 									],
 									"type": {
@@ -1138,7 +1138,7 @@
 							"fileName": "lib/index.ts",
 							"line": 85,
 							"character": 13,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L85"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L85"
 						}
 					],
 					"indexSignatures": [
@@ -1233,7 +1233,7 @@
 									"fileName": "lib/index.ts",
 									"line": 129,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L129"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L129"
 								}
 							],
 							"signatures": [
@@ -1267,7 +1267,7 @@
 											"fileName": "lib/index.ts",
 											"line": 129,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L129"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L129"
 										}
 									],
 									"type": {
@@ -1312,7 +1312,7 @@
 									"fileName": "lib/index.ts",
 									"line": 138,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L138"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L138"
 								}
 							],
 							"signatures": [
@@ -1335,7 +1335,7 @@
 											"fileName": "lib/index.ts",
 											"line": 138,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L138"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L138"
 										}
 									],
 									"parameters": [
@@ -1406,7 +1406,7 @@
 									"fileName": "lib/index.ts",
 									"line": 146,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L146"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L146"
 								}
 							],
 							"signatures": [
@@ -1429,7 +1429,7 @@
 											"fileName": "lib/index.ts",
 											"line": 146,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L146"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L146"
 										}
 									],
 									"parameters": [
@@ -1481,7 +1481,7 @@
 									"fileName": "lib/index.ts",
 									"line": 150,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L150"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L150"
 								}
 							],
 							"signatures": [
@@ -1504,7 +1504,7 @@
 											"fileName": "lib/index.ts",
 											"line": 150,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L150"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L150"
 										}
 									],
 									"parameters": [
@@ -1556,7 +1556,7 @@
 									"fileName": "lib/index.ts",
 									"line": 154,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L154"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L154"
 								}
 							],
 							"signatures": [
@@ -1590,7 +1590,7 @@
 											"fileName": "lib/index.ts",
 											"line": 154,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L154"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L154"
 										}
 									],
 									"parameters": [
@@ -1670,7 +1670,7 @@
 									"fileName": "lib/index.ts",
 									"line": 171,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L171"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L171"
 								}
 							],
 							"signatures": [
@@ -1704,7 +1704,7 @@
 											"fileName": "lib/index.ts",
 											"line": 171,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L171"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L171"
 										}
 									],
 									"parameters": [
@@ -1752,7 +1752,7 @@
 																	"fileName": "lib/index.ts",
 																	"line": 171,
 																	"character": 34,
-																	"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L171"
+																	"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L171"
 																}
 															],
 															"type": {
@@ -1781,7 +1781,7 @@
 																	"fileName": "lib/index.ts",
 																	"line": 171,
 																	"character": 52,
-																	"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L171"
+																	"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L171"
 																}
 															],
 															"type": {
@@ -1808,7 +1808,7 @@
 																	"fileName": "lib/index.ts",
 																	"line": 171,
 																	"character": 71,
-																	"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L171"
+																	"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L171"
 																}
 															],
 															"type": {
@@ -1883,7 +1883,7 @@
 									"fileName": "lib/index.ts",
 									"line": 184,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L184"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L184"
 								}
 							],
 							"signatures": [
@@ -1917,7 +1917,7 @@
 											"fileName": "lib/index.ts",
 											"line": 184,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L184"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L184"
 										}
 									],
 									"type": {
@@ -1972,7 +1972,7 @@
 									"fileName": "lib/index.ts",
 									"line": 193,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L193"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L193"
 								}
 							],
 							"signatures": [
@@ -2006,7 +2006,7 @@
 											"fileName": "lib/index.ts",
 											"line": 193,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L193"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L193"
 										}
 									],
 									"parameters": [
@@ -2099,7 +2099,7 @@
 									"fileName": "lib/index.ts",
 									"line": 202,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L202"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L202"
 								}
 							],
 							"signatures": [
@@ -2143,7 +2143,7 @@
 											"fileName": "lib/index.ts",
 											"line": 202,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L202"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L202"
 										}
 									],
 									"parameters": [
@@ -2252,7 +2252,7 @@
 									"fileName": "lib/index.ts",
 									"line": 206,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L206"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L206"
 								}
 							],
 							"signatures": [
@@ -2296,7 +2296,7 @@
 											"fileName": "lib/index.ts",
 											"line": 206,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L206"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L206"
 										}
 									],
 									"parameters": [
@@ -2405,7 +2405,7 @@
 									"fileName": "lib/index.ts",
 									"line": 237,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L237"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L237"
 								}
 							],
 							"signatures": [
@@ -2439,7 +2439,7 @@
 											"fileName": "lib/index.ts",
 											"line": 237,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L237"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L237"
 										}
 									],
 									"parameters": [
@@ -2551,7 +2551,7 @@
 									"fileName": "lib/index.ts",
 									"line": 248,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L248"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L248"
 								}
 							],
 							"signatures": [
@@ -2595,7 +2595,7 @@
 											"fileName": "lib/index.ts",
 											"line": 248,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L248"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L248"
 										}
 									],
 									"parameters": [
@@ -2707,7 +2707,7 @@
 									"fileName": "lib/index.ts",
 									"line": 280,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L280"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L280"
 								}
 							],
 							"signatures": [
@@ -2741,7 +2741,7 @@
 											"fileName": "lib/index.ts",
 											"line": 280,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L280"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L280"
 										}
 									],
 									"parameters": [
@@ -2838,7 +2838,7 @@
 									"fileName": "lib/index.ts",
 									"line": 293,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L293"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L293"
 								}
 							],
 							"signatures": [
@@ -2861,7 +2861,7 @@
 											"fileName": "lib/index.ts",
 											"line": 293,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L293"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L293"
 										}
 									],
 									"type": {
@@ -2904,7 +2904,7 @@
 									"fileName": "lib/index.ts",
 									"line": 301,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L301"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L301"
 								}
 							],
 							"signatures": [
@@ -2927,7 +2927,7 @@
 											"fileName": "lib/index.ts",
 											"line": 301,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L301"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L301"
 										}
 									],
 									"type": {
@@ -2970,7 +2970,7 @@
 									"fileName": "lib/index.ts",
 									"line": 309,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L309"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L309"
 								}
 							],
 							"signatures": [
@@ -2993,7 +2993,7 @@
 											"fileName": "lib/index.ts",
 											"line": 309,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L309"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L309"
 										}
 									],
 									"type": {
@@ -3054,7 +3054,7 @@
 							"fileName": "lib/index.ts",
 							"line": 121,
 							"character": 13,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L121"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L121"
 						}
 					],
 					"indexSignatures": [
@@ -3149,7 +3149,7 @@
 									"fileName": "lib/index.ts",
 									"line": 333,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L333"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L333"
 								}
 							],
 							"signatures": [
@@ -3172,7 +3172,7 @@
 											"fileName": "lib/index.ts",
 											"line": 333,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L333"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L333"
 										}
 									],
 									"parameters": [
@@ -3236,7 +3236,7 @@
 									"fileName": "lib/index.ts",
 									"line": 341,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L341"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L341"
 								}
 							],
 							"signatures": [
@@ -3259,7 +3259,7 @@
 											"fileName": "lib/index.ts",
 											"line": 341,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L341"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L341"
 										}
 									],
 									"parameters": [
@@ -3330,7 +3330,7 @@
 									"fileName": "lib/index.ts",
 									"line": 355,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L355"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L355"
 								}
 							],
 							"signatures": [
@@ -3353,7 +3353,7 @@
 											"fileName": "lib/index.ts",
 											"line": 355,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L355"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L355"
 										}
 									],
 									"type": {
@@ -3408,7 +3408,7 @@
 									"fileName": "lib/index.ts",
 									"line": 364,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L364"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L364"
 								}
 							],
 							"signatures": [
@@ -3442,7 +3442,7 @@
 											"fileName": "lib/index.ts",
 											"line": 364,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L364"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L364"
 										}
 									],
 									"type": {
@@ -3485,7 +3485,7 @@
 									"fileName": "lib/index.ts",
 									"line": 373,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L373"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L373"
 								}
 							],
 							"signatures": [
@@ -3508,7 +3508,7 @@
 											"fileName": "lib/index.ts",
 											"line": 373,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L373"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L373"
 										}
 									],
 									"parameters": [
@@ -3578,7 +3578,7 @@
 									"fileName": "lib/index.ts",
 									"line": 382,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L382"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L382"
 								}
 							],
 							"signatures": [
@@ -3601,7 +3601,7 @@
 											"fileName": "lib/index.ts",
 											"line": 382,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L382"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L382"
 										}
 									],
 									"parameters": [
@@ -3671,7 +3671,7 @@
 									"fileName": "lib/index.ts",
 									"line": 408,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L408"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L408"
 								}
 							],
 							"signatures": [
@@ -3694,7 +3694,7 @@
 											"fileName": "lib/index.ts",
 											"line": 408,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L408"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L408"
 										}
 									],
 									"type": {
@@ -3746,7 +3746,7 @@
 							"fileName": "lib/index.ts",
 							"line": 325,
 							"character": 13,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L325"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L325"
 						}
 					],
 					"indexSignatures": [
@@ -3844,7 +3844,7 @@
 					"fileName": "lib/index.ts",
 					"line": 1,
 					"character": 0,
-					"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/index.ts#L1"
+					"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/index.ts#L1"
 				}
 			]
 		},
@@ -3919,13 +3919,13 @@
 							"fileName": "lib/types.ts",
 							"line": 34,
 							"character": 13,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L34"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L34"
 						},
 						{
 							"fileName": "lib/types.ts",
 							"line": 46,
 							"character": 12,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L46"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L46"
 						}
 					],
 					"type": {
@@ -3966,7 +3966,7 @@
 											"fileName": "lib/types.ts",
 											"line": 36,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L36"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L36"
 										}
 									],
 									"type": {
@@ -3996,7 +3996,7 @@
 											"fileName": "lib/types.ts",
 											"line": 38,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L38"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L38"
 										}
 									],
 									"type": {
@@ -4026,7 +4026,7 @@
 											"fileName": "lib/types.ts",
 											"line": 40,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L40"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L40"
 										}
 									],
 									"type": {
@@ -4056,7 +4056,7 @@
 											"fileName": "lib/types.ts",
 											"line": 42,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L42"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L42"
 										}
 									],
 									"type": {
@@ -4094,7 +4094,7 @@
 											"fileName": "lib/types.ts",
 											"line": 44,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L44"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L44"
 										}
 									],
 									"type": {
@@ -4182,13 +4182,13 @@
 							"fileName": "lib/types.ts",
 							"line": 34,
 							"character": 13,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L34"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L34"
 						},
 						{
 							"fileName": "lib/types.ts",
 							"line": 46,
 							"character": 12,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L46"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L46"
 						}
 					],
 					"type": {
@@ -4265,13 +4265,13 @@
 							"fileName": "lib/types.ts",
 							"line": 57,
 							"character": 13,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L57"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L57"
 						},
 						{
 							"fileName": "lib/types.ts",
 							"line": 67,
 							"character": 12,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L67"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L67"
 						}
 					],
 					"type": {
@@ -4304,7 +4304,7 @@
 											"fileName": "lib/types.ts",
 											"line": 59,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L59"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L59"
 										}
 									],
 									"type": {
@@ -4334,7 +4334,7 @@
 											"fileName": "lib/types.ts",
 											"line": 61,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L61"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L61"
 										}
 									],
 									"type": {
@@ -4364,7 +4364,7 @@
 											"fileName": "lib/types.ts",
 											"line": 63,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L63"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L63"
 										}
 									],
 									"type": {
@@ -4394,7 +4394,7 @@
 											"fileName": "lib/types.ts",
 											"line": 65,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L65"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L65"
 										}
 									],
 									"type": {
@@ -4465,13 +4465,13 @@
 							"fileName": "lib/types.ts",
 							"line": 57,
 							"character": 13,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L57"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L57"
 						},
 						{
 							"fileName": "lib/types.ts",
 							"line": 67,
 							"character": 12,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L67"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L67"
 						}
 					],
 					"type": {
@@ -4556,13 +4556,13 @@
 							"fileName": "lib/types.ts",
 							"line": 78,
 							"character": 13,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L78"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L78"
 						},
 						{
 							"fileName": "lib/types.ts",
 							"line": 102,
 							"character": 12,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L102"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L102"
 						}
 					],
 					"type": {
@@ -4595,7 +4595,7 @@
 											"fileName": "lib/types.ts",
 											"line": 80,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L80"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L80"
 										}
 									],
 									"type": {
@@ -4625,7 +4625,7 @@
 											"fileName": "lib/types.ts",
 											"line": 82,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L82"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L82"
 										}
 									],
 									"type": {
@@ -4655,7 +4655,7 @@
 											"fileName": "lib/types.ts",
 											"line": 84,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L84"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L84"
 										}
 									],
 									"type": {
@@ -4685,7 +4685,7 @@
 											"fileName": "lib/types.ts",
 											"line": 86,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L86"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L86"
 										}
 									],
 									"type": {
@@ -4715,7 +4715,7 @@
 											"fileName": "lib/types.ts",
 											"line": 88,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L88"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L88"
 										}
 									],
 									"type": {
@@ -4745,7 +4745,7 @@
 											"fileName": "lib/types.ts",
 											"line": 90,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L90"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L90"
 										}
 									],
 									"type": {
@@ -4775,7 +4775,7 @@
 											"fileName": "lib/types.ts",
 											"line": 92,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L92"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L92"
 										}
 									],
 									"type": {
@@ -4805,7 +4805,7 @@
 											"fileName": "lib/types.ts",
 											"line": 94,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L94"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L94"
 										}
 									],
 									"type": {
@@ -4835,7 +4835,7 @@
 											"fileName": "lib/types.ts",
 											"line": 96,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L96"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L96"
 										}
 									],
 									"type": {
@@ -4865,7 +4865,7 @@
 											"fileName": "lib/types.ts",
 											"line": 98,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L98"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L98"
 										}
 									],
 									"type": {
@@ -4895,7 +4895,7 @@
 											"fileName": "lib/types.ts",
 											"line": 100,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L100"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L100"
 										}
 									],
 									"type": {
@@ -4981,13 +4981,13 @@
 							"fileName": "lib/types.ts",
 							"line": 78,
 							"character": 13,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L78"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L78"
 						},
 						{
 							"fileName": "lib/types.ts",
 							"line": 102,
 							"character": 12,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L102"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L102"
 						}
 					],
 					"type": {
@@ -5166,7 +5166,7 @@
 									"fileName": "lib/types.ts",
 									"line": 123,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L123"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L123"
 								}
 							],
 							"type": {
@@ -5195,7 +5195,7 @@
 									"fileName": "lib/types.ts",
 									"line": 128,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L128"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L128"
 								}
 							],
 							"type": {
@@ -5232,7 +5232,7 @@
 									"fileName": "lib/types.ts",
 									"line": 133,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L133"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L133"
 								}
 							],
 							"type": {
@@ -5272,7 +5272,7 @@
 									"fileName": "lib/types.ts",
 									"line": 138,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L138"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L138"
 								}
 							],
 							"type": {
@@ -5324,7 +5324,7 @@
 									"fileName": "lib/types.ts",
 									"line": 144,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L144"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L144"
 								}
 							],
 							"type": {
@@ -5353,7 +5353,7 @@
 									"fileName": "lib/types.ts",
 									"line": 149,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L149"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L149"
 								}
 							],
 							"type": {
@@ -5396,7 +5396,7 @@
 							"fileName": "lib/types.ts",
 							"line": 109,
 							"character": 17,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L109"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L109"
 						}
 					]
 				},
@@ -5448,13 +5448,13 @@
 							"fileName": "lib/types.ts",
 							"line": 160,
 							"character": 13,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L160"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L160"
 						},
 						{
 							"fileName": "lib/types.ts",
 							"line": 170,
 							"character": 12,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L170"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L170"
 						}
 					],
 					"type": {
@@ -5487,7 +5487,7 @@
 											"fileName": "lib/types.ts",
 											"line": 162,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L162"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L162"
 										}
 									],
 									"type": {
@@ -5517,7 +5517,7 @@
 											"fileName": "lib/types.ts",
 											"line": 164,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L164"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L164"
 										}
 									],
 									"type": {
@@ -5547,7 +5547,7 @@
 											"fileName": "lib/types.ts",
 											"line": 166,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L166"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L166"
 										}
 									],
 									"type": {
@@ -5577,7 +5577,7 @@
 											"fileName": "lib/types.ts",
 											"line": 168,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L168"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L168"
 										}
 									],
 									"type": {
@@ -5648,13 +5648,13 @@
 							"fileName": "lib/types.ts",
 							"line": 160,
 							"character": 13,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L160"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L160"
 						},
 						{
 							"fileName": "lib/types.ts",
 							"line": 170,
 							"character": 12,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L170"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L170"
 						}
 					],
 					"type": {
@@ -5737,7 +5737,7 @@
 									"fileName": "lib/types.ts",
 									"line": 178,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L178"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L178"
 								}
 							],
 							"type": {
@@ -5768,7 +5768,7 @@
 									"fileName": "lib/types.ts",
 									"line": 180,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L180"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L180"
 								}
 							],
 							"type": {
@@ -5797,7 +5797,7 @@
 									"fileName": "lib/types.ts",
 									"line": 182,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L182"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L182"
 								}
 							],
 							"type": {
@@ -5826,7 +5826,7 @@
 									"fileName": "lib/types.ts",
 									"line": 184,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L184"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L184"
 								}
 							],
 							"type": {
@@ -5851,7 +5851,7 @@
 							"fileName": "lib/types.ts",
 							"line": 173,
 							"character": 17,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L173"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L173"
 						}
 					]
 				},
@@ -5911,7 +5911,7 @@
 									"fileName": "lib/types.ts",
 									"line": 193,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L193"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L193"
 								}
 							],
 							"type": {
@@ -5942,7 +5942,7 @@
 									"fileName": "lib/types.ts",
 									"line": 195,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L195"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L195"
 								}
 							],
 							"type": {
@@ -5971,7 +5971,7 @@
 									"fileName": "lib/types.ts",
 									"line": 197,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L197"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L197"
 								}
 							],
 							"type": {
@@ -6000,7 +6000,7 @@
 									"fileName": "lib/types.ts",
 									"line": 199,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L199"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L199"
 								}
 							],
 							"type": {
@@ -6029,7 +6029,7 @@
 									"fileName": "lib/types.ts",
 									"line": 201,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L201"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L201"
 								}
 							],
 							"type": {
@@ -6061,7 +6061,7 @@
 									"fileName": "lib/types.ts",
 									"line": 203,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L203"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L203"
 								}
 							],
 							"type": {
@@ -6088,7 +6088,7 @@
 							"fileName": "lib/types.ts",
 							"line": 188,
 							"character": 17,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L188"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L188"
 						}
 					]
 				},
@@ -6118,7 +6118,7 @@
 									"fileName": "lib/types.ts",
 									"line": 219,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L219"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L219"
 								}
 							],
 							"signatures": [
@@ -6152,7 +6152,7 @@
 											"fileName": "lib/types.ts",
 											"line": 219,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L219"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L219"
 										}
 									],
 									"type": {
@@ -6187,7 +6187,7 @@
 									"fileName": "lib/types.ts",
 									"line": 225,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L225"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L225"
 								}
 							],
 							"signatures": [
@@ -6210,7 +6210,7 @@
 											"fileName": "lib/types.ts",
 											"line": 225,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L225"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L225"
 										}
 									],
 									"type": {
@@ -6247,7 +6247,7 @@
 							"fileName": "lib/types.ts",
 							"line": 213,
 							"character": 17,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L213"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L213"
 						}
 					],
 					"implementedBy": [
@@ -6284,7 +6284,7 @@
 									"fileName": "lib/types.ts",
 									"line": 240,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L240"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L240"
 								}
 							],
 							"signatures": [
@@ -6318,7 +6318,7 @@
 											"fileName": "lib/types.ts",
 											"line": 240,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L240"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L240"
 										}
 									],
 									"type": {
@@ -6353,7 +6353,7 @@
 									"fileName": "lib/types.ts",
 									"line": 248,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L248"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L248"
 								}
 							],
 							"signatures": [
@@ -6376,7 +6376,7 @@
 											"fileName": "lib/types.ts",
 											"line": 248,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L248"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L248"
 										}
 									],
 									"parameters": [
@@ -6437,7 +6437,7 @@
 									"fileName": "lib/types.ts",
 									"line": 255,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L255"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L255"
 								}
 							],
 							"signatures": [
@@ -6460,7 +6460,7 @@
 											"fileName": "lib/types.ts",
 											"line": 255,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L255"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L255"
 										}
 									],
 									"parameters": [
@@ -6502,7 +6502,7 @@
 									"fileName": "lib/types.ts",
 									"line": 262,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L262"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L262"
 								}
 							],
 							"signatures": [
@@ -6525,7 +6525,7 @@
 											"fileName": "lib/types.ts",
 											"line": 262,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L262"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L262"
 										}
 									],
 									"parameters": [
@@ -6567,7 +6567,7 @@
 									"fileName": "lib/types.ts",
 									"line": 270,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L270"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L270"
 								}
 							],
 							"signatures": [
@@ -6601,7 +6601,7 @@
 											"fileName": "lib/types.ts",
 											"line": 270,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L270"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L270"
 										}
 									],
 									"parameters": [
@@ -6671,7 +6671,7 @@
 									"fileName": "lib/types.ts",
 									"line": 281,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L281"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L281"
 								}
 							],
 							"signatures": [
@@ -6705,7 +6705,7 @@
 											"fileName": "lib/types.ts",
 											"line": 281,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L281"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L281"
 										}
 									],
 									"parameters": [
@@ -6753,7 +6753,7 @@
 																	"fileName": "lib/types.ts",
 																	"line": 281,
 																	"character": 28,
-																	"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L281"
+																	"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L281"
 																}
 															],
 															"type": {
@@ -6782,7 +6782,7 @@
 																	"fileName": "lib/types.ts",
 																	"line": 281,
 																	"character": 46,
-																	"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L281"
+																	"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L281"
 																}
 															],
 															"type": {
@@ -6809,7 +6809,7 @@
 																	"fileName": "lib/types.ts",
 																	"line": 281,
 																	"character": 65,
-																	"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L281"
+																	"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L281"
 																}
 															],
 															"type": {
@@ -6874,7 +6874,7 @@
 									"fileName": "lib/types.ts",
 									"line": 288,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L288"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L288"
 								}
 							],
 							"signatures": [
@@ -6908,7 +6908,7 @@
 											"fileName": "lib/types.ts",
 											"line": 288,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L288"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L288"
 										}
 									],
 									"type": {
@@ -6953,7 +6953,7 @@
 									"fileName": "lib/types.ts",
 									"line": 297,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L297"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L297"
 								}
 							],
 							"signatures": [
@@ -6987,7 +6987,7 @@
 											"fileName": "lib/types.ts",
 											"line": 297,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L297"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L297"
 										}
 									],
 									"parameters": [
@@ -7070,7 +7070,7 @@
 									"fileName": "lib/types.ts",
 									"line": 310,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L310"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L310"
 								}
 							],
 							"signatures": [
@@ -7114,7 +7114,7 @@
 											"fileName": "lib/types.ts",
 											"line": 310,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L310"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L310"
 										}
 									],
 									"parameters": [
@@ -7213,7 +7213,7 @@
 									"fileName": "lib/types.ts",
 									"line": 323,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L323"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L323"
 								}
 							],
 							"signatures": [
@@ -7257,7 +7257,7 @@
 											"fileName": "lib/types.ts",
 											"line": 323,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L323"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L323"
 										}
 									],
 									"parameters": [
@@ -7356,7 +7356,7 @@
 									"fileName": "lib/types.ts",
 									"line": 337,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L337"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L337"
 								}
 							],
 							"signatures": [
@@ -7390,7 +7390,7 @@
 											"fileName": "lib/types.ts",
 											"line": 337,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L337"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L337"
 										}
 									],
 									"parameters": [
@@ -7492,7 +7492,7 @@
 									"fileName": "lib/types.ts",
 									"line": 351,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L351"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L351"
 								}
 							],
 							"signatures": [
@@ -7536,7 +7536,7 @@
 											"fileName": "lib/types.ts",
 											"line": 351,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L351"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L351"
 										}
 									],
 									"parameters": [
@@ -7638,7 +7638,7 @@
 									"fileName": "lib/types.ts",
 									"line": 363,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L363"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L363"
 								}
 							],
 							"signatures": [
@@ -7672,7 +7672,7 @@
 											"fileName": "lib/types.ts",
 											"line": 363,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L363"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L363"
 										}
 									],
 									"parameters": [
@@ -7759,7 +7759,7 @@
 									"fileName": "lib/types.ts",
 									"line": 369,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L369"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L369"
 								}
 							],
 							"signatures": [
@@ -7782,7 +7782,7 @@
 											"fileName": "lib/types.ts",
 											"line": 369,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L369"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L369"
 										}
 									],
 									"type": {
@@ -7815,7 +7815,7 @@
 									"fileName": "lib/types.ts",
 									"line": 375,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L375"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L375"
 								}
 							],
 							"signatures": [
@@ -7838,7 +7838,7 @@
 											"fileName": "lib/types.ts",
 											"line": 375,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L375"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L375"
 										}
 									],
 									"type": {
@@ -7871,7 +7871,7 @@
 									"fileName": "lib/types.ts",
 									"line": 380,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L380"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L380"
 								}
 							],
 							"signatures": [
@@ -7894,7 +7894,7 @@
 											"fileName": "lib/types.ts",
 											"line": 380,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L380"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L380"
 										}
 									],
 									"type": {
@@ -7945,7 +7945,7 @@
 							"fileName": "lib/types.ts",
 							"line": 234,
 							"character": 17,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L234"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L234"
 						}
 					],
 					"implementedBy": [
@@ -7982,7 +7982,7 @@
 									"fileName": "lib/types.ts",
 									"line": 395,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L395"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L395"
 								}
 							],
 							"signatures": [
@@ -8005,7 +8005,7 @@
 											"fileName": "lib/types.ts",
 											"line": 395,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L395"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L395"
 										}
 									],
 									"parameters": [
@@ -8059,7 +8059,7 @@
 									"fileName": "lib/types.ts",
 									"line": 403,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L403"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L403"
 								}
 							],
 							"signatures": [
@@ -8082,7 +8082,7 @@
 											"fileName": "lib/types.ts",
 											"line": 403,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L403"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L403"
 										}
 									],
 									"parameters": [
@@ -8143,7 +8143,7 @@
 									"fileName": "lib/types.ts",
 									"line": 411,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L411"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L411"
 								}
 							],
 							"signatures": [
@@ -8177,7 +8177,7 @@
 											"fileName": "lib/types.ts",
 											"line": 411,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L411"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L411"
 										}
 									],
 									"type": {
@@ -8222,7 +8222,7 @@
 									"fileName": "lib/types.ts",
 									"line": 418,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L418"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L418"
 								}
 							],
 							"signatures": [
@@ -8256,7 +8256,7 @@
 											"fileName": "lib/types.ts",
 											"line": 418,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L418"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L418"
 										}
 									],
 									"type": {
@@ -8289,7 +8289,7 @@
 									"fileName": "lib/types.ts",
 									"line": 427,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L427"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L427"
 								}
 							],
 							"signatures": [
@@ -8312,7 +8312,7 @@
 											"fileName": "lib/types.ts",
 											"line": 427,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L427"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L427"
 										}
 									],
 									"parameters": [
@@ -8372,7 +8372,7 @@
 									"fileName": "lib/types.ts",
 									"line": 437,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L437"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L437"
 								}
 							],
 							"signatures": [
@@ -8395,7 +8395,7 @@
 											"fileName": "lib/types.ts",
 											"line": 437,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L437"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L437"
 										}
 									],
 									"parameters": [
@@ -8455,7 +8455,7 @@
 									"fileName": "lib/types.ts",
 									"line": 442,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L442"
+									"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L442"
 								}
 							],
 							"signatures": [
@@ -8478,7 +8478,7 @@
 											"fileName": "lib/types.ts",
 											"line": 442,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L442"
+											"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L442"
 										}
 									],
 									"type": {
@@ -8520,7 +8520,7 @@
 							"fileName": "lib/types.ts",
 							"line": 389,
 							"character": 17,
-							"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L389"
+							"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L389"
 						}
 					],
 					"implementedBy": [
@@ -8568,7 +8568,7 @@
 					"fileName": "lib/types.ts",
 					"line": 1,
 					"character": 0,
-					"url": "https://github.com/apache/arrow-adbc/blob/3c97f0b7b7a467fbd1cdb1d0d3e8707f7d47d4dd/javascript/lib/types.ts#L1"
+					"url": "https://github.com/apache/arrow-adbc/blob/b2a31444717bb717d408685dea66238fc3541fcb/javascript/lib/types.ts#L1"
 				}
 			]
 		}
