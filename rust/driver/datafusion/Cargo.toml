@@ -42,7 +42,7 @@ tokio = { version = "1.52", features = ["rt-multi-thread"] }
 prost = "0.14.3"
 
 [dev-dependencies]
-arrow-select = "58"
+arrow-select = ">=58.1, <59"
 
 [lib]
 crate-type = ["lib", "cdylib"]

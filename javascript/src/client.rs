@@ -17,15 +17,15 @@
 
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
-use std::sync::Mutex;
 use std::sync::mpsc;
+use std::sync::Mutex;
 
 use adbc_core::{
-  Connection, Database, Driver, LOAD_FLAG_DEFAULT, Optionable, Statement,
   options::{
     AdbcVersion, InfoCode, ObjectDepth, OptionConnection, OptionDatabase, OptionStatement,
     OptionValue,
   },
+  Connection, Database, Driver, Optionable, Statement, LOAD_FLAG_DEFAULT,
 };
 use adbc_driver_manager::{ManagedConnection, ManagedDatabase, ManagedDriver, ManagedStatement};
 use arrow_array::RecordBatchReader;
