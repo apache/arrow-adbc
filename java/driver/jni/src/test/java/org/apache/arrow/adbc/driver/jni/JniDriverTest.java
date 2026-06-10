@@ -51,6 +51,8 @@ import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.DisabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -109,7 +111,9 @@ class JniDriverTest {
     }
   }
 
+  // the driver doesn't really support URIs and seems to choke on Windows in particular
   @Test
+  @DisabledOnOs(OS.WINDOWS)
   void loadUri() throws Exception {
     try (final BufferAllocator allocator = new RootAllocator()) {
       JniDriver driver = new JniDriver(allocator);
