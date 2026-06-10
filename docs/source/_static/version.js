@@ -53,7 +53,7 @@ function adbcInjectVersionSwitcher() {
             try {
                 let relativePart = window.location.pathname.replace(/^\//, "");
                 // Remove the adbc/ prefix
-                relativePart = relativePart.replace(/^adbc[^\/]+\//, "");
+                relativePart = relativePart.replace(/^adbc\//, "");
                 // Remove the version number
                 relativePart = relativePart.replace(/^[^\/]+\//, "");
                 const newUrl = `${el.getAttribute("href")}/${relativePart}`;
