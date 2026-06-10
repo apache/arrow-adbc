@@ -30,6 +30,9 @@ cdef class _AdbcErrorHelper:
         CArrowArrayStream c_stream
 
     def check_error(self, exception):
+        if self.c_stream.release == NULL:
+            raise exception
+
         cdef:
             CAdbcStatusCode c_status = ADBC_STATUS_OK
             const CAdbcError* error = \
@@ -64,8 +67,6 @@ class AdbcRecordBatchReader(pyarrow.RecordBatchReader):
         try:
             reader = pyarrow.RecordBatchReader._import_from_c(int(address))
         except Exception as e:
-            if c_stream.release == NULL:
-                raise
             helper.check_error(e)
         return cls(reader, helper)
 
