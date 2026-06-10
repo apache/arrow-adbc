@@ -243,14 +243,14 @@ jobs:
     strategy:
       matrix:
         include:
+          # To keep the matrix down, only test Java 11 on some platforms
           - { java: '11', os: Linux, arch: amd64, runner: ubuntu-latest }
-          - { java: '25', os: Linux, arch: amd64, runner: ubuntu-latest }
           - { java: '11', os: macOS, arch: arm64v8, runner: macos-latest }
-          - { java: '25', os: macOS, arch: arm64v8, runner: macos-latest }
-
-          # To keep the matrix down, only test Java 11 on these platforms
-          - { java: '11', os: Linux, arch: arm64v8, runner: ubuntu-24.04-arm }
           - { java: '11', os: Windows, arch: amd64, runner: windows-latest }
+          - { java: '11', os: Linux, arch: arm64v8, runner: ubuntu-24.04-arm }
+
+          - { java: '25', os: Linux, arch: amd64, runner: ubuntu-latest }
+          - { java: '25', os: macOS, arch: arm64v8, runner: macos-latest }
       max-parallel: 4
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
@@ -284,7 +284,7 @@ jobs:
           cat .env | grep -v -e '^#' | grep -e '^ADBC_' | awk NF | sed 's/"//g' | tee -a $GITHUB_ENV
 
       - name: Start Dependencies
-        if: matrix.os == 'Linux' && matrix.arch == 'arm64'
+        if: matrix.os == 'Linux' && matrix.arch == 'arm64v8'
         run: |
           docker compose up --detach --wait flightsql-test flightsql-sqlite-test postgres-test
           cat .env | grep -v -e '^#' | grep -v "MSSQL" | grep -e '^ADBC_' | awk NF | sed 's/"//g' | tee -a $GITHUB_ENV
