@@ -211,13 +211,9 @@ Status PostgresDatabase::InitVersions(PGconn* conn) {
 
   std::string_view version_info = helper.Row(0)[0].value();
   postgres_server_version_ = ParsePrefixedVersion(version_info, "PostgreSQL");
-  redshift_server_version_ = ParsePrefixedVersion(version_info, "Redshift");
 
   return Status::Ok();
 }
-
-// Helpers for building the type resolver from queries
-static std::string BuildPgTypeQuery(bool has_typarray);
 
 static Status InsertPgAttributeResult(
     const PqResultHelper& result, const std::shared_ptr<PostgresTypeResolver>& resolver);
@@ -246,7 +242,9 @@ ORDER BY
   // handle range types because those rows don't have child OID information. Arrays types
   // are inserted after a successful insert of the element type.
   std::string type_query =
-      BuildPgTypeQuery(/*has_typarray*/ redshift_server_version_[0] == 0);
+      "SELECT oid, typname, typreceive, typbasetype, typrelid, typarray FROM "
+      "pg_catalog.pg_type WHERE (typreceive != 0 OR typsend != 0) AND typtype != 'r' AND "
+      "typreceive::TEXT != 'array_recv'";
 
   // Create a new type resolver (this instance's type_resolver_ member
   // will be updated at the end if this succeeds).
@@ -267,20 +265,6 @@ ORDER BY
 
   type_resolver_ = std::move(resolver);
   return Status::Ok();
-}
-
-static std::string BuildPgTypeQuery(bool has_typarray) {
-  std::string maybe_typarray_col;
-  std::string maybe_array_recv_filter;
-  if (has_typarray) {
-    maybe_typarray_col = ", typarray";
-    maybe_array_recv_filter = "AND typreceive::TEXT != 'array_recv'";
-  }
-
-  return std::string() + "SELECT oid, typname, typreceive, typbasetype, typrelid" +
-         maybe_typarray_col + " FROM pg_catalog.pg_type " +
-         " WHERE (typreceive != 0 OR typsend != 0) AND typtype != 'r' " +
-         maybe_array_recv_filter;
 }
 
 static Status InsertPgAttributeResult(
