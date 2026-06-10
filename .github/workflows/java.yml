@@ -168,6 +168,14 @@ jobs:
         run: |
           .\ci\scripts\python_wheel_windows_build.bat %cd% %cd%\build\${{ matrix.vcpkg_arch }}
 
+      - name: Build driver manager (Windows)
+        if: matrix.os == 'Windows'
+        run: |
+          ls -laR $(pwd)/build/${{ matrix.vcpkg_arch }}
+          rm -rf $(pwd)/build/${{ matrix.vcpkg_arch }}/bin/adbc_driver_manager.imp
+          rm -rf $(pwd)/build/${{ matrix.vcpkg_arch }}/bin/adbc_driver_manager.lib
+          rm -rf $(pwd)/build/${{ matrix.vcpkg_arch }}/bin/adbc_driver_manager.dll
+
       # I think static and shared conflict on Windows so build static separately
       - name: Build driver manager (Windows)
         if: matrix.os == 'Windows'
@@ -216,11 +224,15 @@ jobs:
         run: |
           mkdir ~/logs
           find "$VCPKG_ROOT" -name 'build-*.log' -exec cp '{}' ~/logs ';'
+
+          if [[ -d "$(pwd)/build/${{ matrix.vcpkg_arch }}" ]]; then
+            mv "$(pwd)/build/${{ matrix.vcpkg_arch }}" ~/logs/artifacts
+          fi
       - name: Upload failure logs
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: jni-artifacts-${{ matrix.os }}-${{ matrix.arch }}
+          name: jni-debug-logs-${{ matrix.os }}-${{ matrix.arch }}
           retention-days: 7
           path: ~/logs
 
