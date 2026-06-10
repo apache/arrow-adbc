@@ -172,9 +172,8 @@ jobs:
         if: matrix.os == 'Windows'
         run: |
           ls -laR $(pwd)/build/${{ matrix.vcpkg_arch }}
-          rm -rf $(pwd)/build/${{ matrix.vcpkg_arch }}/bin/adbc_driver_manager.imp
-          rm -rf $(pwd)/build/${{ matrix.vcpkg_arch }}/bin/adbc_driver_manager.lib
           rm -rf $(pwd)/build/${{ matrix.vcpkg_arch }}/bin/adbc_driver_manager.dll
+          rm -rf $(pwd)/build/${{ matrix.vcpkg_arch }}/driver_manager
 
       # I think static and shared conflict on Windows so build static separately
       - name: Build driver manager (Windows)

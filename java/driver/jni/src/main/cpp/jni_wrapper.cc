@@ -25,6 +25,7 @@
 #include <utility>
 #include <vector>
 
+#define ADBC_EXPORT
 #include <arrow-adbc/adbc.h>
 #include <arrow-adbc/adbc_driver_manager.h>
 #include <jni.h>
