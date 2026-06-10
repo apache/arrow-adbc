@@ -31,6 +31,7 @@ set VCPKG_TARGET_TRIPLET=x64-windows-static
 set VCPKG_DEFAULT_HOST_TRIPLET=x64-windows-static
 
 IF NOT DEFINED VCPKG_ROOT (echo "Must set VCPKG_ROOT" && exit /B 1)
+IF NOT DEFINED ADBC_BUILD_STATIC SET ADBC_BUILD_STATIC=OFF
 
 %VCPKG_ROOT%\vcpkg install --triplet=%VCPKG_TARGET_TRIPLET% libpq "sqlite3[dbstat,fts3,fts4,fts5,geopoly,json1,limit,math,rtree,session,snapshot,soundex]"
 IF %errorlevel% NEQ 0 EXIT /B %errorlevel%
@@ -42,7 +43,7 @@ cmake ^
       -G "%CMAKE_GENERATOR%" ^
       -A "%CMAKE_GENERATOR_PLATFORM%" ^
       -DADBC_BUILD_SHARED=ON ^
-      -DADBC_BUILD_STATIC=OFF ^
+      -DADBC_BUILD_STATIC=%ADBC_BUILD_STATIC% ^
       -DCMAKE_BUILD_TYPE=%CMAKE_BUILD_TYPE% ^
       -DCMAKE_INSTALL_PREFIX=%build_dir% ^
       -DCMAKE_TOOLCHAIN_FILE=%VCPKG_ROOT%/scripts/buildsystems/vcpkg.cmake ^

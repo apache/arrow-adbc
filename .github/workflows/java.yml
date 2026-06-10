@@ -111,8 +111,10 @@ jobs:
     strategy:
       matrix:
         include:
-          - { os: Linux, arch: amd64, vcpkg_arch: x64, runner: ubuntu-latest }
+          - { os: Linux, arch: amd64, vcpkg_arch: x64, runner: ubuntu-latest, platform: "linux/amd64" }
+          - { os: Linux, arch: arm64v8, vcpkg_arch: arm64, runner: ubuntu-24.04-arm, platform: "linux/arm64/v8" }
           - { os: macOS, arch: arm64v8, vcpkg_arch: arm64, runner: macos-latest }
+          - { os: Windows, arch: amd64, vcpkg_arch: x64, runner: windows-latest }
     env:
       VCPKG_ROOT: "${{ github.workspace }}/vcpkg"
     steps:
@@ -141,8 +143,11 @@ jobs:
       - name: Install Homebrew dependencies
         if: matrix.os == 'macOS'
         run: brew install autoconf bash pkg-config ninja
-      - name: Build artifacts
-        if: matrix.os != 'macOS'
+      - name: Build artifacts (Linux)
+        if: matrix.os == 'Linux'
+        env:
+          ARCH: ${{ matrix.arch }}
+          PLATFORM: ${{ matrix.platform }}
         run: |
           docker compose run python-wheel-manylinux-build
       - name: Build artifacts (macOS)
@@ -156,8 +161,17 @@ jobs:
           export ADBC_USE_ASAN=OFF
           export ADBC_USE_UBSAN=OFF
           ./ci/scripts/python_wheel_unix_build.sh ${{ matrix.arch }} $(pwd) $(pwd)/build
+      - name: Build artifacts (Windows)
+        if: matrix.os == 'Windows'
+        # TODO(https://github.com/apache/arrow-adbc/issues/4269): remove cmd.exe usage
+        shell: cmd # zizmor: ignore[misfeature]
+        run: |
+          set ADBC_BUILD_STATIC=ON
+          .\ci\scripts\python_wheel_windows_build.bat %cd% %cd%\build\${{ matrix.vcpkg_arch }}
       - name: Build JNI artifacts
         run: |
+          ls -l $(pwd)/build/${{ matrix.vcpkg_arch }}
+
           export ADBC_BUILD_STATIC=ON
           export ADBC_BUILD_TESTS=OFF
           export ADBC_USE_ASAN=OFF
@@ -165,10 +179,20 @@ jobs:
           ./ci/scripts/java_build.sh $(pwd)
           ./ci/scripts/java_jni_build.sh $(pwd) $(pwd)/build_jni $(pwd)/build/${{ matrix.vcpkg_arch }}
       - name: Assemble artifacts
+        if: matrix.os != 'Windows'
         run: |
           mkdir artifacts
           cp -r java/driver/jni/src/main/resources/ artifacts/jni
           cp -r build/${{ matrix.vcpkg_arch }}/lib artifacts/driver
+          ls -laR artifacts
+          mv artifacts artifacts-${{ matrix.os }}-${{ matrix.arch }}
+          tar czf artifacts-${{ matrix.os }}-${{ matrix.arch }}.tgz artifacts-${{ matrix.os }}-${{ matrix.arch }}
+      - name: Assemble artifacts (Windows)
+        if: matrix.os == 'Windows'
+        run: |
+          mkdir -p artifacts/driver
+          cp -r java/driver/jni/src/main/resources/ artifacts/jni
+          cp -r build/${{ matrix.vcpkg_arch }}/bin/*.dll artifacts/driver
           ls -laR artifacts
           mv artifacts artifacts-${{ matrix.os }}-${{ matrix.arch }}
           tar czf artifacts-${{ matrix.os }}-${{ matrix.arch }}.tgz artifacts-${{ matrix.os }}-${{ matrix.arch }}
@@ -199,10 +223,15 @@ jobs:
     strategy:
       matrix:
         include:
-          - { java: '11', os: Linux, arch: amd64, vcpkg_arch: x64, runner: ubuntu-latest }
-          - { java: '25', os: Linux, arch: amd64, vcpkg_arch: x64, runner: ubuntu-latest }
-          - { java: '11', os: macOS, arch: arm64v8, vcpkg_arch: arm64, runner: macos-latest }
-          - { java: '25', os: macOS, arch: arm64v8, vcpkg_arch: arm64, runner: macos-latest }
+          - { java: '11', os: Linux, arch: amd64, runner: ubuntu-latest }
+          - { java: '25', os: Linux, arch: amd64, runner: ubuntu-latest }
+          - { java: '11', os: macOS, arch: arm64v8, runner: macos-latest }
+          - { java: '25', os: macOS, arch: arm64v8, runner: macos-latest }
+
+          # To keep the matrix down, only test Java 11 on these platforms
+          - { java: '11', os: Linux, arch: arm64v8, runner: ubuntu-24.04-arm }
+          - { java: '11', os: Windows, arch: amd64, runner: windows-latest }
+      max-parallel: 4
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
@@ -223,11 +252,9 @@ jobs:
         run: |
           set -x
           pushd artifacts
-          for archive in artifacts*.tgz; do
-            tar xvf $archive
-          done
+          tar xvf artifacts-${{ matrix.os }}-${{ matrix.arch }}.tgz
           popd
-          cp -r artifacts/*/jni/adbc_driver_jni java/driver/jni/src/main/resources
+          cp -r artifacts/artifacts-${{ matrix.os }}-${{ matrix.arch }}/jni/adbc_driver_jni java/driver/jni/src/main/resources
           env BUILD_JNI=ON ./ci/scripts/java_build.sh $(pwd)
 
       - name: Start Dependencies
@@ -235,6 +262,12 @@ jobs:
         run: |
           docker compose up --detach --wait flightsql-test flightsql-sqlite-test mssql-test postgres-test
           cat .env | grep -v -e '^#' | grep -e '^ADBC_' | awk NF | sed 's/"//g' | tee -a $GITHUB_ENV
+
+      - name: Start Dependencies
+        if: matrix.os == 'Linux' && matrix.arch == 'arm64'
+        run: |
+          docker compose up --detach --wait flightsql-test flightsql-sqlite-test postgres-test
+          cat .env | grep -v -e '^#' | grep -v "MSSQL" | grep -e '^ADBC_' | awk NF | sed 's/"//g' | tee -a $GITHUB_ENV
 
       - name: Download thirdparty driver
         if: matrix.os == 'Linux' && matrix.arch == 'amd64'
