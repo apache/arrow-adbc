@@ -182,7 +182,7 @@ jobs:
         shell: cmd # zizmor: ignore[misfeature]
         run: |
           cmake -G "Visual Studio 18 2026" -A x64 -DADBC_BUILD_SHARED=OFF -DADBC_BUILD_STATIC=ON -DCMAKE_VERBOSE_MAKEFILE=ON -DADBC_DRIVER_MANAGER=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=%cd%\build\${{ matrix.vcpkg_arch }} -B %cd%\buildmanager %cd%\c || exit /B 1
-          cmake --build %cd%\buildmanager --config RelWithDebInfo --target install --verbose -j || exit /B 1
+          cmake --build %cd%\buildmanager --config Debug --target install --verbose -j || exit /B 1
 
       - name: Build JNI artifacts
         run: |
