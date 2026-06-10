@@ -21,7 +21,7 @@ use std::path::PathBuf;
 mod common;
 
 use adbc_core::options::AdbcVersion;
-use adbc_core::{error::Status, LOAD_FLAG_DEFAULT};
+use adbc_core::{LOAD_FLAG_DEFAULT, error::Status};
 use adbc_driver_manager::ManagedDatabase;
 
 fn write_profile_to_tempfile(tmp_dir: &tempfile::TempDir, name: &str, content: &str) -> PathBuf {
@@ -80,7 +80,9 @@ fn test_env_var_replacement_empty() {
         .expect("Failed to create temporary directory");
 
     // Make sure the env var doesn't exist
-    env::remove_var("ADBC_NONEXISTENT_VAR_12345");
+    unsafe {
+        env::remove_var("ADBC_NONEXISTENT_VAR_12345");
+    }
 
     let profile_content = r#"
 profile_version = 1
