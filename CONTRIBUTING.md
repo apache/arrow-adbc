@@ -217,7 +217,7 @@ $ mamba activate adbc
 $ npm install -g @mermaid-js/mermaid-cli
 ```
 
-To build the HTML documentation:
+To build the HTML documentation once:
 
 ```shell
 $ pushd docs
@@ -226,7 +226,18 @@ $ make html
 
 The output can be found in `build/`.  This does not generate API references
 and results in some warnings, but it is not a problem if you're not working
-with the API documentation.
+with the API documentation.  If you do wish to build the full documentation,
+use the script `ci/scripts/docs_build.sh`.
+
+Usually, you will want to make and preview edits in real-time.  Use
+[`sphinx-autobuild`](https://github.com/sphinx-doc/sphinx-autobuild) (which is
+installed as part of the Conda environment above), which will spawn an HTTP
+server on localhost and rebuild the documentation whenever you make changes:
+
+```shell
+$ pushd docs
+$ sphinx-autobuild source build
+```
 
 Some documentations are maintained as [Mermaid][mermaid] diagrams, which must
 be rendered and checked in.  This can be done as follows:
