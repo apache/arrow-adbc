@@ -60,9 +60,24 @@ Gem::Specification.new do |spec|
   end
 
   required_adbc_glib_version = version_components[0, 3].join(".")
+  repository_url_prefix = "https://packages.apache.org/artifactory/arrow"
   [
+    # Try without additional repository
     ["debian", "libadbc-glib-dev"],
+    # Retry with the Apache Arrow APT repository (it provides libadbc-glib-dev)
+    ["debian",
+     "#{repository_url_prefix}/%{distribution}/" +
+     "apache-arrow-apt-source-latest-%{code_name}.deb"],
+    ["debian", "libadbc-glib-dev"],
+
+    # Try without additional repository
     ["rhel", "adbc-glib-devel"],
+    # Retry with the Apache Arrow release repository (it provides adbc-glib-devel)
+    ["rhel",
+     "#{repository_url_prefix}/almalinux/%{major_version}/" +
+     "apache-arrow-release-latest.rpm"],
+    ["rhel", "adbc-glib-devel"],
+
     ["homebrew", "apache-arrow-adbc-glib"],
   ].each do |platform, package|
     spec.requirements <<
