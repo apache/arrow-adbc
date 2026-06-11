@@ -84,7 +84,9 @@ updates:
     cooldown:
       default-days: 7
   - package-ecosystem: "cargo"
-    directory: "/rust/"
+    directories:
+      - "/rust/"
+      - "/javascript/"
     schedule:
       interval: "weekly"
     commit-message:
