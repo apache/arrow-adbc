@@ -76,6 +76,12 @@ jobs:
         working-directory: rust
         run: |
           rustup toolchain install nightly
+          # adbc_datafusion is excluded from minimal versions testing (see the
+          # --exclude flags below), but its arrow requirement (driven by
+          # datafusion's) would still constrain the workspace-wide resolution.
+          # Drop it from the workspace before generating the lockfile so the
+          # workspace's own minimal arrow version is used.
+          sed -i '/^\[workspace\]$/a exclude = ["driver/datafusion"]' Cargo.toml
           CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback cargo +nightly generate-lockfile -Z direct-minimal-versions
       - name: Use stable Rust
         id: rust
