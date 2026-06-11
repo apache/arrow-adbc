@@ -170,7 +170,9 @@ public class FlightSqlIntegrationTest {
           new Thread(
               () -> {
                 try {
-                  while (stmt.getProgress() < 0.05) {
+                  // try to make sure we get into the hasNext call below first
+                  Thread.sleep(500);
+                  while (stmt.getProgress() < 0.20) {
                     Thread.sleep(100);
                   }
                   System.out.println("progress: " + stmt.getProgress());
