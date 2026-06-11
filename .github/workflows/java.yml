@@ -278,17 +278,74 @@ jobs:
           cp -r artifacts/artifacts-${{ matrix.os }}-${{ matrix.arch }}/jni/adbc_driver_jni java/driver/jni/src/main/resources
           env BUILD_JNI=ON ./ci/scripts/java_build.sh $(pwd)
 
+      - name: Set environment variables
+        if: matrix.os == 'Linux' && matrix.arch == 'amd64'
+        run: |
+          cat .env | grep -v -e '^#' | grep -e '^ADBC_' | awk NF | sed 's/"//g' | tee -a $GITHUB_ENV
+
+      # no mssql
+      - name: Set environment variables
+        if: matrix.os == 'Linux' && matrix.arch == 'arm64v8'
+        run: |
+          cat .env | grep -v -e '^#' | grep -v "MSSQL" | grep -e '^ADBC_' | awk NF | sed 's/"//g' | tee -a $GITHUB_ENV
+
+      # only postgresql
+      - name: Set environment variables
+        if: matrix.os == 'Windows' || matrix.os == 'macOS'
+        run: |
+          cat .env | grep -v -e '^#' | grep "POSTGRESQL" | grep -e '^ADBC_' | awk NF | sed 's/"//g' | tee -a $GITHUB_ENV
+
       - name: Start Dependencies
         if: matrix.os == 'Linux' && matrix.arch == 'amd64'
         run: |
           docker compose up --detach --wait flightsql-test flightsql-sqlite-test mssql-test postgres-test
-          cat .env | grep -v -e '^#' | grep -e '^ADBC_' | awk NF | sed 's/"//g' | tee -a $GITHUB_ENV
 
       - name: Start Dependencies
         if: matrix.os == 'Linux' && matrix.arch == 'arm64v8'
         run: |
           docker compose up --detach --wait flightsql-test flightsql-sqlite-test postgres-test
-          cat .env | grep -v -e '^#' | grep -v "MSSQL" | grep -e '^ADBC_' | awk NF | sed 's/"//g' | tee -a $GITHUB_ENV
+
+      # taking the approach from:
+      # https://github.com/ikalnytskyi/action-setup-postgres/blob/41a676a2118b02582251d839aa50cc5685355a2f/action.yml
+      - name: Install Dependencies
+        if: matrix.os == 'Windows'
+        env:
+          POSTGRESQL_VERSION: 18
+        run: |
+          choco install postgresql${POSTGRESQL_VERSION} \
+            --params "/Password:$ADBC_JDBC_POSTGRESQL_PASSWORD" \
+            --ia "--enable-components server,commandlinetools --extract-only 1" \
+            --no-progress
+
+          export PG_BINDIR=$("$PROGRAMFILES/PostgreSQL/${POSTGRESQL_VERSION}/bin/pg_config.exe" --bindir)
+          echo "$PG_BINDIR" | tee -a $GITHUB_PATH
+
+      - name: Install Dependencies
+        if: matrix.os == 'macOS'
+        env:
+          POSTGRESQL_VERSION: 18
+        run: |
+          export HOMEBREW_GITHUB_ACTIONS=1
+          export HOMEBREW_NO_ENV_HINTS=1
+          export HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1
+          export HOMEBREW_NO_INSTALL_CLEANUP=1
+          export HOMEBREW_NO_INSTALL_UPGRADE=1
+          brew install --quiet postgresql@${POSTGRESQL_VERSION}
+          brew link --quiet --overwrite postgresql@${POSTGRESQL_VERSION}
+
+      - name: Start Dependencies
+        if: matrix.os == 'Windows' || matrix.os == 'macOS'
+        run: |
+          echo "$ADBC_JDBC_POSTGRESQL_PASSWORD" > "$RUNNER_TEMP/postgres_password"
+          initdb \
+            --pgdata="$RUNNER_TEMP/pgdata" \
+            --username "$ADBC_JDBC_POSTGRESQL_USER" \
+            --pwfile="$RUNNER_TEMP/postgres_password" \
+            --auth="scram-sha-256" \
+            --encoding="UTF-8" \
+            --locale="en_US.UTF-8" \
+            --no-instructions
+          pg_ctl start --pgdata="$RUNNER_TEMP/pgdata"
 
       - name: Download thirdparty driver
         if: matrix.os == 'Linux' && matrix.arch == 'amd64'
