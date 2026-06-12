@@ -414,6 +414,7 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_openDatabase(
     jclass nativeHandleKlass = RequireImplClass(env, "NativeDatabaseHandle");
     jmethodID nativeHandleCtor = RequireMethod(env, nativeHandleKlass, "<init>", "(J)V");
     const jsize num_params = env->GetArrayLength(parameters);
+    if (env->ExceptionCheck()) return nullptr;
     if (num_params % 2 != 0) {
       throw AdbcException{
           .code = ADBC_STATUS_INVALID_ARGUMENT,
@@ -431,8 +432,10 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_openDatabase(
     for (jsize i = 0; i < num_params; i += 2) {
       // N.B. assuming String because Java side is typed as String[]
       auto key = reinterpret_cast<jstring>(env->GetObjectArrayElement(parameters, i));
+      if (env->ExceptionCheck()) return nullptr;
       auto value =
           reinterpret_cast<jstring>(env->GetObjectArrayElement(parameters, i + 1));
+      if (env->ExceptionCheck()) return nullptr;
 
       JniStringView key_str(env, key);
       JniStringView value_str(env, value);
@@ -820,8 +823,10 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementGetOptionBytes(
     return nullptr;
   }
   jbyteArray result = env->NewByteArray(static_cast<jsize>(length));
+  if (result == nullptr || env->ExceptionCheck()) return nullptr;
   env->SetByteArrayRegion(result, 0, static_cast<jsize>(length),
                           reinterpret_cast<const jbyte*>(buf.data()));
+  if (env->ExceptionCheck()) return nullptr;
   return result;
 }
 
@@ -899,9 +904,11 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementSetOptionBytes(
   try {
     JniStringView key_str(env, key);
     jsize value_length = env->GetArrayLength(value);
+    if (env->ExceptionCheck()) return;
     std::vector<uint8_t> value_buf(static_cast<size_t>(value_length));
     env->GetByteArrayRegion(value, 0, value_length,
                             reinterpret_cast<jbyte*>(value_buf.data()));
+    if (env->ExceptionCheck()) return;
     CHECK_ADBC_ERROR(AdbcStatementSetOptionBytes(stmt, key_str.value, value_buf.data(),
                                                  value_buf.size(), &error_guard.value),
                      error_guard.value);
@@ -997,11 +1004,13 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetObjects(
     const char** c_table_types = nullptr;
     if (table_types != nullptr) {
       jsize len = env->GetArrayLength(table_types);
+      if (env->ExceptionCheck()) return nullptr;
       table_type_strings.reserve(len);
       table_type_ptrs.reserve(len + 1);
       for (jsize i = 0; i < len; i++) {
         auto element =
             reinterpret_cast<jstring>(env->GetObjectArrayElement(table_types, i));
+        if (env->ExceptionCheck()) return nullptr;
         table_type_strings.push_back(GetJniString(env, element));
         table_type_ptrs.push_back(table_type_strings.back().c_str());
       }
@@ -1040,9 +1049,11 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetInfo(
     std::vector<uint32_t> info_codes_vec;
     if (info_codes != nullptr) {
       jsize len = env->GetArrayLength(info_codes);
+      if (env->ExceptionCheck()) return nullptr;
       info_codes_vec.resize(len);
       env->GetIntArrayRegion(info_codes, 0, len,
                              reinterpret_cast<jint*>(info_codes_vec.data()));
+      if (env->ExceptionCheck()) return nullptr;
       c_info_codes = info_codes_vec.data();
       info_codes_length = static_cast<size_t>(len);
     }
@@ -1133,8 +1144,10 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetOptionBytes(
     return nullptr;
   }
   jbyteArray result = env->NewByteArray(static_cast<jsize>(length));
+  if (result == nullptr || env->ExceptionCheck()) return nullptr;
   env->SetByteArrayRegion(result, 0, static_cast<jsize>(length),
                           reinterpret_cast<const jbyte*>(buf.data()));
+  if (env->ExceptionCheck()) return nullptr;
   return result;
 }
 
@@ -1212,9 +1225,11 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionSetOptionBytes(
   try {
     JniStringView key_str(env, key);
     jsize value_length = env->GetArrayLength(value);
+    if (env->ExceptionCheck()) return;
     std::vector<uint8_t> value_buf(static_cast<size_t>(value_length));
     env->GetByteArrayRegion(value, 0, value_length,
                             reinterpret_cast<jbyte*>(value_buf.data()));
+    if (env->ExceptionCheck()) return;
     CHECK_ADBC_ERROR(AdbcConnectionSetOptionBytes(conn, key_str.value, value_buf.data(),
                                                   value_buf.size(), &error_guard.value),
                      error_guard.value);
@@ -1395,8 +1410,10 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseGetOptionBytes(
     return nullptr;
   }
   jbyteArray result = env->NewByteArray(static_cast<jsize>(length));
+  if (result == nullptr || env->ExceptionCheck()) return nullptr;
   env->SetByteArrayRegion(result, 0, static_cast<jsize>(length),
                           reinterpret_cast<const jbyte*>(buf.data()));
+  if (env->ExceptionCheck()) return nullptr;
   return result;
 }
 
@@ -1474,9 +1491,11 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseSetOptionBytes(
   try {
     JniStringView key_str(env, key);
     jsize value_length = env->GetArrayLength(value);
+    if (env->ExceptionCheck()) return;
     std::vector<uint8_t> value_buf(static_cast<size_t>(value_length));
     env->GetByteArrayRegion(value, 0, value_length,
                             reinterpret_cast<jbyte*>(value_buf.data()));
+    if (env->ExceptionCheck()) return;
     CHECK_ADBC_ERROR(AdbcDatabaseSetOptionBytes(db, key_str.value, value_buf.data(),
                                                 value_buf.size(), &error_guard.value),
                      error_guard.value);
