@@ -91,8 +91,6 @@ def test_check_error_with_released_stream():
     with pytest.raises(ValueError, match="upstream error"):
         helper.check_error(err)
 
-    err = pyarrow.ArrowInvalid(
-        "Invalid or unsupported format string: 'd:5,2,32'"
-    )
+    err = pyarrow.ArrowInvalid("Invalid or unsupported format string: 'd:5,2,32'")
     with pytest.raises(pyarrow.ArrowInvalid, match="unsupported format string"):
         helper.check_error(err)
