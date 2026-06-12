@@ -328,13 +328,19 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_openDatabase(
     jobjectArray parameters) {
   AdbcErrorGuard error_guard;
   try {
+    jclass nativeHandleKlass = RequireImplClass(env, "NativeDatabaseHandle");
+    jmethodID nativeHandleCtor = RequireMethod(env, nativeHandleKlass, "<init>", "(J)V");
+
     auto db = std::make_unique<struct AdbcDatabase>();
     std::memset(db.get(), 0, sizeof(struct AdbcDatabase));
 
     CHECK_ADBC_ERROR(AdbcDatabaseNew(db.get(), &error_guard.error), error_guard.error);
-    CHECK_ADBC_ERROR(AdbcDriverManagerDatabaseSetLoadFlags(
-                         db.get(), ADBC_LOAD_FLAG_DEFAULT, &error_guard.error),
-                     error_guard.error);
+    auto result = AdbcDriverManagerDatabaseSetLoadFlags(db.get(), ADBC_LOAD_FLAG_DEFAULT,
+                                                        &error_guard.error);
+    if (result != ADBC_STATUS_OK) {
+      std::ignore = AdbcDatabaseRelease(db.get(), nullptr);
+    }
+    CHECK_ADBC_ERROR(result, error_guard.error);
 
     const jsize num_params = env->GetArrayLength(parameters);
     if (num_params % 2 != 0) {
@@ -351,18 +357,28 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_openDatabase(
 
       JniStringView key_str(env, key);
       JniStringView value_str(env, value);
-      CHECK_ADBC_ERROR(AdbcDatabaseSetOption(db.get(), key_str.value, value_str.value,
-                                             &error_guard.error),
-                       error_guard.error);
+      result = AdbcDatabaseSetOption(db.get(), key_str.value, value_str.value,
+                                     &error_guard.error);
+      if (result != ADBC_STATUS_OK) {
+        std::ignore = AdbcDatabaseRelease(db.get(), nullptr);
+      }
+      CHECK_ADBC_ERROR(result, error_guard.error);
     }
 
-    CHECK_ADBC_ERROR(AdbcDatabaseInit(db.get(), &error_guard.error), error_guard.error);
+    result = AdbcDatabaseInit(db.get(), &error_guard.error);
+    if (result != ADBC_STATUS_OK) {
+      std::ignore = AdbcDatabaseRelease(db.get(), nullptr);
+    }
+    CHECK_ADBC_ERROR(result, error_guard.error);
 
-    jclass nativeHandleKlass = RequireImplClass(env, "NativeDatabaseHandle");
-    jmethodID nativeHandleCtor = RequireMethod(env, nativeHandleKlass, "<init>", "(J)V");
     jobject object =
         env->NewObject(nativeHandleKlass, nativeHandleCtor,
                        static_cast<jlong>(reinterpret_cast<uintptr_t>(db.get())));
+    if (object == nullptr || env->ExceptionCheck()) {
+      // Failed to construct Java object: try to release ADBC handle
+      std::ignore = AdbcDatabaseRelease(db.get(), nullptr);
+      return nullptr;
+    }
     // Don't release until after we've constructed the object
     db.release();
     return object;
@@ -390,6 +406,10 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_openConnection(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong database_handle) {
   AdbcErrorGuard error_guard;
   try {
+    jclass native_handle_class = RequireImplClass(env, "NativeConnectionHandle");
+    jmethodID native_handle_ctor =
+        RequireMethod(env, native_handle_class, "<init>", "(J)V");
+
     auto conn = std::make_unique<struct AdbcConnection>();
     std::memset(conn.get(), 0, sizeof(struct AdbcConnection));
 
@@ -398,15 +418,20 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_openConnection(
 
     CHECK_ADBC_ERROR(AdbcConnectionNew(conn.get(), &error_guard.error),
                      error_guard.error);
-    CHECK_ADBC_ERROR(AdbcConnectionInit(conn.get(), db, &error_guard.error),
-                     error_guard.error);
+    auto result = AdbcConnectionInit(conn.get(), db, &error_guard.error);
+    if (result != ADBC_STATUS_OK) {
+      std::ignore = AdbcConnectionRelease(conn.get(), nullptr);
+    }
+    CHECK_ADBC_ERROR(result, error_guard.error);
 
-    jclass native_handle_class = RequireImplClass(env, "NativeConnectionHandle");
-    jmethodID native_handle_ctor =
-        RequireMethod(env, native_handle_class, "<init>", "(J)V");
     jobject object =
         env->NewObject(native_handle_class, native_handle_ctor,
                        static_cast<jlong>(reinterpret_cast<uintptr_t>(conn.get())));
+    if (object == nullptr || env->ExceptionCheck()) {
+      // Failed to construct Java object: try to release ADBC handle
+      std::ignore = AdbcConnectionRelease(conn.get(), nullptr);
+      return nullptr;
+    }
     // Don't release until after we've constructed the object
     conn.release();
     return object;
@@ -434,6 +459,10 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_openStatement(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong connection_handle) {
   AdbcErrorGuard error_guard;
   try {
+    jclass native_handle_class = RequireImplClass(env, "NativeStatementHandle");
+    jmethodID native_handle_ctor =
+        RequireMethod(env, native_handle_class, "<init>", "(J)V");
+
     auto stmt = std::make_unique<struct AdbcStatement>();
     std::memset(stmt.get(), 0, sizeof(struct AdbcStatement));
 
@@ -443,12 +472,14 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_openStatement(
     CHECK_ADBC_ERROR(AdbcStatementNew(conn, stmt.get(), &error_guard.error),
                      error_guard.error);
 
-    jclass native_handle_class = RequireImplClass(env, "NativeStatementHandle");
-    jmethodID native_handle_ctor =
-        RequireMethod(env, native_handle_class, "<init>", "(J)V");
     jobject object =
         env->NewObject(native_handle_class, native_handle_ctor,
                        static_cast<jlong>(reinterpret_cast<uintptr_t>(stmt.get())));
+    if (object == nullptr || env->ExceptionCheck()) {
+      // Failed to construct Java object: try to release ADBC handle
+      std::ignore = AdbcStatementRelease(stmt.get(), nullptr);
+      return nullptr;
+    }
     // Don't release until after we've constructed the object
     stmt.release();
     return object;
@@ -473,19 +504,53 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_closeStatement(
 
 jobject MakeNativeQueryResult(JNIEnv* env, jlong rows_affected,
                               struct ArrowArrayStream* out) {
-  jclass native_result_class = RequireImplClass(env, "NativeQueryResult");
-  jmethodID native_result_ctor =
-      RequireMethod(env, native_result_class, "<init>", "(JJ)V");
-  return env->NewObject(native_result_class, native_result_ctor, rows_affected,
-                        static_cast<jlong>(reinterpret_cast<uintptr_t>(out)));
+  // On any failure, release the C struct so its contents don't leak: the Java
+  // side only takes ownership (via snapshot) once construction succeeds.
+  try {
+    jclass native_result_class = RequireImplClass(env, "NativeQueryResult");
+    jmethodID native_result_ctor =
+        RequireMethod(env, native_result_class, "<init>", "(JJ)V");
+    jobject object =
+        env->NewObject(native_result_class, native_result_ctor, rows_affected,
+                       static_cast<jlong>(reinterpret_cast<uintptr_t>(out)));
+    if (object == nullptr || env->ExceptionCheck()) {
+      if (out->release != nullptr) {
+        out->release(out);
+      }
+      return nullptr;
+    }
+    return object;
+  } catch (...) {
+    if (out->release != nullptr) {
+      out->release(out);
+    }
+    throw;
+  }
 }
 
 jobject MakeNativeSchemaResult(JNIEnv* env, struct ArrowSchema* schema) {
-  jclass native_result_class = RequireImplClass(env, "NativeSchemaResult");
-  jmethodID native_result_ctor =
-      RequireMethod(env, native_result_class, "<init>", "(J)V");
-  return env->NewObject(native_result_class, native_result_ctor,
-                        static_cast<jlong>(reinterpret_cast<uintptr_t>(schema)));
+  // On any failure, release the C struct so its contents don't leak: the Java
+  // side only takes ownership (via snapshot) once construction succeeds.
+  try {
+    jclass native_result_class = RequireImplClass(env, "NativeSchemaResult");
+    jmethodID native_result_ctor =
+        RequireMethod(env, native_result_class, "<init>", "(J)V");
+    jobject object =
+        env->NewObject(native_result_class, native_result_ctor,
+                       static_cast<jlong>(reinterpret_cast<uintptr_t>(schema)));
+    if (object == nullptr || env->ExceptionCheck()) {
+      if (schema->release != nullptr) {
+        schema->release(schema);
+      }
+      return nullptr;
+    }
+    return object;
+  } catch (...) {
+    if (schema->release != nullptr) {
+      schema->release(schema);
+    }
+    throw;
+  }
 }
 
 JNIEXPORT void JNICALL
