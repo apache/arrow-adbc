@@ -30,6 +30,9 @@ cdef class _AdbcErrorHelper:
         CArrowArrayStream c_stream
 
     def check_error(self, exception):
+        if self.c_stream.release == NULL:
+            raise exception
+
         cdef:
             CAdbcStatusCode c_status = ADBC_STATUS_OK
             const CAdbcError* error = \

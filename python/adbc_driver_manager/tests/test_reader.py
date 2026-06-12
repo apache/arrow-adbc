@@ -78,3 +78,19 @@ def test_reader_methods() -> None:
 
     with _make_reader() as reader:
         assert reader.schema == schema
+
+
+def test_check_error_with_released_stream():
+    """check_error must re-raise when c_stream.release is NULL."""
+    from adbc_driver_manager._reader import _AdbcErrorHelper
+
+    # Default-constructed helper has a zeroed c_stream (release == NULL)
+    helper = _AdbcErrorHelper.__new__(_AdbcErrorHelper)
+
+    err = ValueError("upstream error")
+    with pytest.raises(ValueError, match="upstream error"):
+        helper.check_error(err)
+
+    err = pyarrow.ArrowInvalid("Invalid or unsupported format string: 'd:5,2,32'")
+    with pytest.raises(pyarrow.ArrowInvalid, match="unsupported format string"):
+        helper.check_error(err)
