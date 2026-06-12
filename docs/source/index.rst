@@ -292,7 +292,7 @@ Why ADBC?
    :caption: Connect
    :hidden:
 
-   Client Libraries <status_client>
+   Client Libraries <client_libraries>
    Drivers <driver/index>
    Connection Profiles <connection_profiles>
 

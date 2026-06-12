@@ -18,3 +18,18 @@
 ===================
 Connection Profiles
 ===================
+
+A connection profile combines a driver name and database options into a reusable, named configuration stored in a TOML file.
+Instead of specifying credentials and settings in application code, you reference a profile by name and the :doc:`ADBC Driver Manager <format/how_manager>` loads it automatically at connection time.
+
+.. code-block:: c
+
+   AdbcDatabase database;
+   AdbcDatabaseNew(&database, &error);
+   AdbcDatabaseSetOption(&database, "uri", "profile://my_postgres_dev", &error);
+   AdbcDatabaseInit(&database, &error);
+
+Profiles are looked up by name from a set of standard filesystem locations, or you can provide an absolute path.
+Sensitive values like passwords or tokens can be injected from environment variables using ``{{ env_var(VAR_NAME) }}`` substitution rather than hardcoding them in the file.
+
+For full details on the profile file format, search paths, option precedence, and how to implement a custom profile provider, see :doc:`format/connection_profiles`.
