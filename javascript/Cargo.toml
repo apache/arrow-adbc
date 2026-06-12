@@ -16,7 +16,7 @@
 # under the License.
 
 [package]
-edition = "2021"
+edition = "2024"
 name = "adbc_driver_manager_node"
 version = "0.24.0"
 license = "Apache-2.0"
