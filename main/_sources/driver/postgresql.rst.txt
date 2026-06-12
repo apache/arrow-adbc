@@ -263,6 +263,10 @@ being read or written.
      - int32
    * - INTERVAL
      - month_day_nano_interval
+   * - JSON
+     - utf8
+   * - JSONB
+     - utf8
    * - NUMERIC
      - utf8 [#numeric-utf8]_
    * - REAL
