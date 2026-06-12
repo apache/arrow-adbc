@@ -36,6 +36,12 @@
 namespace {
 
 struct AdbcErrorGuard {
+  AdbcErrorGuard() = default;
+  AdbcErrorGuard(const AdbcErrorGuard&) = delete;
+  AdbcErrorGuard& operator=(const AdbcErrorGuard&) = delete;
+  AdbcErrorGuard(AdbcErrorGuard&&) = delete;
+  AdbcErrorGuard& operator=(AdbcErrorGuard&&) = delete;
+
   struct AdbcError error = ADBC_ERROR_INIT;
 
   ~AdbcErrorGuard() {
