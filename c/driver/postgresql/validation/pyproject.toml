@@ -24,4 +24,4 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-adbc-drivers-validation = { git = "https://github.com/adbc-drivers/validation", rev = "551046350f8225c5e115ecefec27f86f71e3a4aa" }
+adbc-drivers-validation = { git = "https://github.com/adbc-drivers/validation", rev = "ffb8c9e9b76b2953525e67f5305497587ced1edd" }
