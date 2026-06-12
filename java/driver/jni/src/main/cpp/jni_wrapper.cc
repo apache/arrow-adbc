@@ -208,6 +208,7 @@ struct JniStringView {
     }
 
     env->ReleaseStringUTFChars(jni_string, value);
+    env->DeleteLocalRef(jni_string);
     jni_string = nullptr;
   }
 };
@@ -544,11 +545,15 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementExecutePartitions
     for (size_t i = 0; i < partitions.num_partitions; i++) {
       size_t length = partitions.partition_lengths[i];
       jbyteArray partition = env->NewByteArray(static_cast<jsize>(length));
+      if (partition == nullptr || env->ExceptionCheck()) goto cleanupall;
       env->SetByteArrayRegion(partition, 0, static_cast<jsize>(length),
                               reinterpret_cast<const jbyte*>(partitions.partitions[i]));
       if (env->ExceptionCheck()) goto cleanupall;
       env->CallObjectMethod(result, native_result_add_partition, partition);
       if (env->ExceptionCheck()) goto cleanupall;
+      // The Java side has a reference now, so free the per-iteration local
+      // reference to avoid overflowing the local reference table
+      env->DeleteLocalRef(partition);
     }
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
