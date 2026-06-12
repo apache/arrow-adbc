@@ -32,7 +32,7 @@ adbc_driver_manager = { path = "../rust/driver_manager" }
 arrow-array = { version = ">=58, <60", default-features = false, features = ["ffi"] }
 arrow-ipc = { version = ">=58, <60" }
 arrow-schema = { version = ">=58, <60" }
-thiserror = "1.0"
+thiserror = "2.0"
 
 [build-dependencies]
 napi-build = "2"
