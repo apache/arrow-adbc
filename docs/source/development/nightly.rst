@@ -25,6 +25,9 @@ Nightly builds of some binary packages are available.
              are not intended for normal usage, only for project
              developers.
 
+.. warning:: Artifacts are regularly deleted and there is no guarantee that
+             any specific build will remain accessible.
+
 C/C++
 =====
 
@@ -59,7 +62,39 @@ Both C/C++ and Python packages are available.
 Java
 ====
 
-Not yet available.
+Nightly Java packages, including the JNI bindings, can be installed from an
+alternative package index: https://gemfury.com/arrow-adbc-nightlies
+
+Gemfury maintains documentation on how to use libraries `via Maven
+<https://gemfury.com/guide/maven/install-with-maven/>`_ and `via Gradle
+<https://gemfury.com/guide/maven/install-with-gradle/>`_.
+
+For example, if you are using Apache Maven to build your project:
+
+.. code-block:: xml
+
+   <project>
+     <!-- ... -->
+
+     <!-- Tell Maven to also look at the Gemfury repository -->
+     <repositories>
+       <repository>
+         <id>fury</id>
+         <url>https://maven.fury.io/arrow-adbc-nightlies/</url>
+       </repository>
+     </repositories>
+
+     <!-- Use the version indicated on Gemfury -->
+     <dependencies>
+       <dependency>
+         <groupId>org.apache.arrow.adbc</groupId>
+         <artifactId>adbc-driver-jni</artifactId>
+         <version>0.24.0-20260615.012902-52</version>
+       </dependency>
+     </dependencies>
+
+     <!-- ... -->
+   </project>
 
 Python
 ======
