@@ -78,7 +78,7 @@ Non-goals
   the API guarantees only that handles and receipts are opaque,
   serializable byte strings.
 - Idempotency on the coordinator side.  If the coordinator
-  double-commits (calls ``Commit`` twice on the same handle) the
+  double-commits (calls ``Complete`` twice on the same handle) the
   second call is undefined.
 
 Design overview
@@ -88,11 +88,11 @@ Three new operations on ``AdbcConnection``, plus an ``Abort``:
 
 ::
 
-   coordinator: Begin(table, mode, schema)            → handle
+   coordinator: Begin(schema)                          → handle
    workers:     Write(handle, stream)                 → receipt
                 Write(handle, stream)                 → receipt
                 ...
-   coordinator: Commit(handle, [receipt, receipt, …]) → rows_affected
+   coordinator: Complete(handle, [receipt, receipt, …]) → rows_affected
    (or)         Abort(handle, [receipts...])
 
 The handle and each receipt are **opaque, serializable byte
@@ -105,33 +105,30 @@ connection.
 API surface
 -----------
 
+The target table, mode, and optional catalog/schema are set via the
+existing ``ADBC_INGEST_OPTION_*`` connection options before calling
+``Begin``.  The same option keys used for single-writer
+statement-level ingest apply here at the connection level.
+
 C declarations (see ``adbc.h`` for full doc comments):
 
 .. code-block:: c
 
-   struct AdbcIngestHandle {
+   struct AdbcSerializableHandle {
      size_t length;
      const uint8_t* bytes;
      void* private_data;
-     void (*release)(struct AdbcIngestHandle*);
-   };
-
-   struct AdbcIngestReceipt {
-     size_t length;
-     const uint8_t* bytes;
-     void* private_data;
-     void (*release)(struct AdbcIngestReceipt*);
+     void (*release)(struct AdbcSerializableHandle*);
    };
 
    AdbcConnectionBeginIngestPartitions(
-       conn, target_catalog, target_db_schema, target_table, mode,
-       schema, *out_handle, *error);
+       conn, schema, *out_handle, *error);
 
    AdbcConnectionWriteIngestPartition(
        conn, handle_bytes, handle_len, *data_stream,
        *out_receipt, *error);
 
-   AdbcConnectionCommitIngestPartitions(
+   AdbcConnectionCompleteIngestPartitions(
        conn, handle_bytes, handle_len, num_receipts, receipts,
        receipt_lens, *rows_affected, *error);
 
@@ -159,7 +156,7 @@ Driver-side semantics
   Each ``Write`` call must produce output that can be committed or
   discarded *independently* — no shared state across concurrent
   writes that would cause duplicate rows on retry.
-- **Commit** atomically promotes the union of the supplied receipts
+- **Complete** atomically promotes the union of the supplied receipts
   into the target.  Atomic semantics are driver-specific: RDBMS
   drivers swap staging into target in a transaction; table-format
   drivers write a catalog or transaction-log entry referencing the
@@ -187,7 +184,7 @@ Cross-process flow
           │  copy receipt.bytes; ship back        │
           ▼                  ▼                    ▼
    ┌──────────────────────────────────────────────────────┐
-   │ coordinator: Commit(handle, [r₁, r₂, ..., r_N])      │
+   │ coordinator: Complete(handle, [r₁, r₂, ..., r_N])      │
    └──────────────────────────────────────────────────────┘
 
 Workers may use *different* connections than the coordinator — the
@@ -237,21 +234,21 @@ The chosen pattern (driver-owned struct with a release callback)
 mirrors ``AdbcPartitions`` on the read side, eliminates the orphan
 window, and gives drivers a clean place to free internal state.
 
-4. ``Commit`` and ``Abort`` take raw bytes, not structs
+4. ``Complete`` and ``Abort`` take raw bytes, not structs
 -------------------------------------------------------
 
 Symmetric with ``AdbcConnectionReadPartition``, which takes the raw
 bytes from a ``partitions[i]`` entry rather than the
 ``AdbcPartitions`` struct.  Receipts that traveled across processes
 arrive as raw bytes; forcing the caller to wrap them in
-``AdbcIngestReceipt`` structs (with bogus ``release`` callbacks)
+``AdbcSerializableHandle`` structs (with bogus ``release`` callbacks)
 would be friction without benefit.
 
 5. Lost receipts are handled by handle-scoped sweep, not by receipts
 --------------------------------------------------------------------
 
 If a worker writes data but its receipt is lost in transit, the
-coordinator's receipt list is incomplete.  ``Commit`` will not
+coordinator's receipt list is incomplete.  ``Complete`` will not
 include the orphan (correct: only acknowledged writes are
 committed).  ``Abort``, however, must clean it up — and ``Abort``
 cannot rely on the supplied receipts alone, because the orphan
@@ -264,7 +261,7 @@ optimization (fast-path deletion of known writes); the handle is the
 authority for cleanup scope.  Drivers that cannot enumerate from
 the handle alone cannot correctly implement partitioned ingest.
 
-6. Coordinator may die without calling ``Commit`` or ``Abort``
+6. Coordinator may die without calling ``Complete`` or ``Abort``
 --------------------------------------------------------------
 
 The handle is opaque to the driver outside of ``Write``, so the
