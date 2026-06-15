@@ -344,6 +344,57 @@ const uint8_t* GetJniByteBuffer(JNIEnv* env, jobject bytebuffer,
   // not reachable
 }
 
+jobject MakeNativeQueryResult(JNIEnv* env, jlong rows_affected,
+                              struct ArrowArrayStream* out) {
+  // On any failure, release the C struct so its contents don't leak: the Java
+  // side only takes ownership (via snapshot) once construction succeeds.
+  try {
+    jclass native_result_class = RequireImplClass(env, "NativeQueryResult");
+    jmethodID native_result_ctor =
+        RequireMethod(env, native_result_class, "<init>", "(JJ)V");
+    jobject object =
+        env->NewObject(native_result_class, native_result_ctor, rows_affected,
+                       static_cast<jlong>(reinterpret_cast<uintptr_t>(out)));
+    if (object == nullptr || env->ExceptionCheck()) {
+      if (out->release != nullptr) {
+        out->release(out);
+      }
+      return nullptr;
+    }
+    return object;
+  } catch (...) {
+    if (out->release != nullptr) {
+      out->release(out);
+    }
+    throw;
+  }
+}
+
+jobject MakeNativeSchemaResult(JNIEnv* env, struct ArrowSchema* schema) {
+  // On any failure, release the C struct so its contents don't leak: the Java
+  // side only takes ownership (via snapshot) once construction succeeds.
+  try {
+    jclass native_result_class = RequireImplClass(env, "NativeSchemaResult");
+    jmethodID native_result_ctor =
+        RequireMethod(env, native_result_class, "<init>", "(J)V");
+    jobject object =
+        env->NewObject(native_result_class, native_result_ctor,
+                       static_cast<jlong>(reinterpret_cast<uintptr_t>(schema)));
+    if (object == nullptr || env->ExceptionCheck()) {
+      if (schema->release != nullptr) {
+        schema->release(schema);
+      }
+      return nullptr;
+    }
+    return object;
+  } catch (...) {
+    if (schema->release != nullptr) {
+      schema->release(schema);
+    }
+    throw;
+  }
+}
+
 }  // namespace
 
 extern "C" {
@@ -516,57 +567,6 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_closeStatement(
     delete ptr;
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
-  }
-}
-
-jobject MakeNativeQueryResult(JNIEnv* env, jlong rows_affected,
-                              struct ArrowArrayStream* out) {
-  // On any failure, release the C struct so its contents don't leak: the Java
-  // side only takes ownership (via snapshot) once construction succeeds.
-  try {
-    jclass native_result_class = RequireImplClass(env, "NativeQueryResult");
-    jmethodID native_result_ctor =
-        RequireMethod(env, native_result_class, "<init>", "(JJ)V");
-    jobject object =
-        env->NewObject(native_result_class, native_result_ctor, rows_affected,
-                       static_cast<jlong>(reinterpret_cast<uintptr_t>(out)));
-    if (object == nullptr || env->ExceptionCheck()) {
-      if (out->release != nullptr) {
-        out->release(out);
-      }
-      return nullptr;
-    }
-    return object;
-  } catch (...) {
-    if (out->release != nullptr) {
-      out->release(out);
-    }
-    throw;
-  }
-}
-
-jobject MakeNativeSchemaResult(JNIEnv* env, struct ArrowSchema* schema) {
-  // On any failure, release the C struct so its contents don't leak: the Java
-  // side only takes ownership (via snapshot) once construction succeeds.
-  try {
-    jclass native_result_class = RequireImplClass(env, "NativeSchemaResult");
-    jmethodID native_result_ctor =
-        RequireMethod(env, native_result_class, "<init>", "(J)V");
-    jobject object =
-        env->NewObject(native_result_class, native_result_ctor,
-                       static_cast<jlong>(reinterpret_cast<uintptr_t>(schema)));
-    if (object == nullptr || env->ExceptionCheck()) {
-      if (schema->release != nullptr) {
-        schema->release(schema);
-      }
-      return nullptr;
-    }
-    return object;
-  } catch (...) {
-    if (schema->release != nullptr) {
-      schema->release(schema);
-    }
-    throw;
   }
 }
 
