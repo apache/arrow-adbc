@@ -1518,18 +1518,22 @@ struct ADBC_EXPORT AdbcDriver {
   AdbcStatusCode (*StatementExecuteMulti)(struct AdbcStatement*,
                                           struct AdbcMultiResultSet*, struct AdbcError*);
 
-  AdbcStatusCode (*ConnectionBeginIngestPartitions)(
-      struct AdbcConnection*, const char*, const char*, const char*, const char*,
-      struct ArrowSchema*, struct AdbcSerializableHandle*, struct AdbcError*);
-  AdbcStatusCode (*ConnectionWriteIngestPartition)(
-      struct AdbcConnection*, const uint8_t*, size_t, struct ArrowArrayStream*,
-      struct AdbcSerializableHandle*, struct AdbcError*);
-  AdbcStatusCode (*ConnectionCommitIngestPartitions)(
-      struct AdbcConnection*, const uint8_t*, size_t, size_t, const uint8_t**,
-      const size_t*, int64_t*, struct AdbcError*);
-  AdbcStatusCode (*ConnectionAbortIngestPartitions)(
-      struct AdbcConnection*, const uint8_t*, size_t, size_t, const uint8_t**,
-      const size_t*, struct AdbcError*);
+  AdbcStatusCode (*ConnectionBeginIngestPartitions)(struct AdbcConnection*,
+                                                    struct ArrowSchema*,
+                                                    struct AdbcSerializableHandle*,
+                                                    struct AdbcError*);
+  AdbcStatusCode (*ConnectionWriteIngestPartition)(struct AdbcConnection*, const uint8_t*,
+                                                   size_t, struct ArrowArrayStream*,
+                                                   struct AdbcSerializableHandle*,
+                                                   struct AdbcError*);
+  AdbcStatusCode (*ConnectionCompleteIngestPartitions)(struct AdbcConnection*,
+                                                       const uint8_t*, size_t, size_t,
+                                                       const uint8_t**, const size_t*,
+                                                       int64_t*, struct AdbcError*);
+  AdbcStatusCode (*ConnectionAbortIngestPartitions)(struct AdbcConnection*,
+                                                    const uint8_t*, size_t, size_t,
+                                                    const uint8_t**, const size_t*,
+                                                    struct AdbcError*);
 
   /// @}
 };
@@ -2426,9 +2430,7 @@ AdbcStatusCode AdbcConnectionReadPartition(struct AdbcConnection* connection,
 /// `bytes[0..length)` and ship that copy across processes or hosts.
 ///
 /// The struct itself is owned by the driver.  Call `release` exactly
-/// once to free it.  Releasing the struct does NOT roll back or
-/// discard any server-side state — call
-/// AdbcConnectionAbortIngestPartitions for that.
+/// once to free it.
 ///
 /// \since ADBC API revision 1.2.0
 struct AdbcSerializableHandle {
@@ -2459,7 +2461,7 @@ struct AdbcSerializableHandle {
 /// call AdbcConnectionWriteIngestPartition on their own connections —
 /// the connection does not have to be the same one that created the
 /// handle.  Each write returns an opaque receipt.  The coordinator
-/// collects receipts and calls AdbcConnectionCommitIngestPartitions
+/// collects receipts and calls AdbcConnectionCompleteIngestPartitions
 /// (or AdbcConnectionAbortIngestPartitions on failure).
 ///
 /// Handles and receipts are driver-defined opaque byte strings.  They
@@ -2474,8 +2476,16 @@ struct AdbcSerializableHandle {
 
 /// \brief Begin a partitioned bulk ingest.
 ///
-/// Uses the same semantics as the ADBC_INGEST_OPTION_* options on
-/// AdbcStatement.  For ADBC_INGEST_OPTION_MODE_CREATE,
+/// The target table, mode, and optional catalog/schema are configured
+/// via the ADBC_INGEST_OPTION_* connection options before calling
+/// this function.  The same option keys used for single-writer
+/// statement-level ingest apply here at the connection level:
+/// ADBC_INGEST_OPTION_TARGET_TABLE (required),
+/// ADBC_INGEST_OPTION_MODE (required),
+/// ADBC_INGEST_OPTION_TARGET_CATALOG (optional),
+/// ADBC_INGEST_OPTION_TARGET_DB_SCHEMA (optional).
+///
+/// For ADBC_INGEST_OPTION_MODE_CREATE,
 /// ADBC_INGEST_OPTION_MODE_CREATE_APPEND, and
 /// ADBC_INGEST_OPTION_MODE_REPLACE, `schema` is required and the
 /// driver creates (or recreates) the target table at this call.  For
@@ -2490,10 +2500,6 @@ struct AdbcSerializableHandle {
 ///
 /// \since ADBC API revision 1.2.0
 /// \param[in] connection The coordinator's connection.
-/// \param[in] target_catalog Catalog of the target table, or NULL.
-/// \param[in] target_db_schema Schema of the target table, or NULL.
-/// \param[in] target_table Name of the target table. Required.
-/// \param[in] mode One of ADBC_INGEST_OPTION_MODE_*. Required.
 /// \param[in] schema Arrow schema of the data to be written.
 ///   Required for create/replace/create_append modes; optional for
 ///   append.
@@ -2501,17 +2507,15 @@ struct AdbcSerializableHandle {
 ///   the caller via `out_handle->release`.
 /// \param[out] error Error details, if any.
 /// \return ADBC_STATUS_INVALID_ARGUMENT if mode requires a schema
-///   but none was provided.
+///   but none was provided, or if required options are missing.
 /// \return ADBC_STATUS_ALREADY_EXISTS if append mode is requested
 ///   and the target schema disagrees with the provided schema.
 /// \return ADBC_STATUS_NOT_IMPLEMENTED if the driver does not
 ///   support partitioned ingest.
 ADBC_EXPORT
 AdbcStatusCode AdbcConnectionBeginIngestPartitions(
-    struct AdbcConnection* connection, const char* target_catalog,
-    const char* target_db_schema, const char* target_table, const char* mode,
-    struct ArrowSchema* schema, struct AdbcSerializableHandle* out_handle,
-    struct AdbcError* error);
+    struct AdbcConnection* connection, struct ArrowSchema* schema,
+    struct AdbcSerializableHandle* out_handle, struct AdbcError* error);
 
 /// \brief Write one partition of a partitioned bulk ingest.
 ///
@@ -2554,7 +2558,7 @@ AdbcStatusCode AdbcConnectionWriteIngestPartition(
     struct ArrowArrayStream* data, struct AdbcSerializableHandle* out_receipt,
     struct AdbcError* error);
 
-/// \brief Commit a partitioned bulk ingest.
+/// \brief Complete a partitioned bulk ingest.
 ///
 /// Atomically promotes all writes named by `receipts` into the
 /// target table.  Semantics of "atomic" are driver-specific: RDBMS
@@ -2563,7 +2567,7 @@ AdbcStatusCode AdbcConnectionWriteIngestPartition(
 /// transaction-log entry referencing the data files in the
 /// receipts.
 ///
-/// After Commit returns successfully, the handle is consumed and
+/// After Complete returns successfully, the handle is consumed and
 /// must not be used again.
 ///
 /// Receipts from failed writes, or writes whose receipts were never
@@ -2583,28 +2587,15 @@ AdbcStatusCode AdbcConnectionWriteIngestPartition(
 ///   unknown.  Pass NULL if not wanted.
 /// \param[out] error Error details, if any.
 ADBC_EXPORT
-AdbcStatusCode AdbcConnectionCommitIngestPartitions(
+AdbcStatusCode AdbcConnectionCompleteIngestPartitions(
     struct AdbcConnection* connection, const uint8_t* handle, size_t handle_len,
     size_t num_receipts, const uint8_t** receipts, const size_t* receipt_lens,
     int64_t* rows_affected, struct AdbcError* error);
 
 /// \brief Abort a partitioned bulk ingest.
 ///
-/// Discards all writes scoped to the handle and releases any
-/// driver-side resources.  The handle is consumed.
-///
-/// Drivers must clean up every write scoped to the handle, including
-/// writes whose receipts were lost or never observed — not only
-/// those named in `receipts`.  The handle is the authority for
-/// cleanup scope; `receipts`, when provided, are a hint that allows
-/// the driver to fast-path deletion of known writes.
-///
-/// Abort is best-effort.  If cleanup is incomplete, the driver
-/// returns a warning status and orphaned storage may remain; it is
-/// the driver's responsibility to provide housekeeping (e.g. TTL,
-/// background GC, or documented manual cleanup).  Callers may also
-/// call Abort if the coordinator crashed and was restarted without
-/// the original receipts.
+/// Best-effort: the driver may clean up any resources associated
+/// with the handle.  The handle is consumed.
 ///
 /// \since ADBC API revision 1.2.0
 /// \param[in] connection A connection.
@@ -2615,10 +2606,12 @@ AdbcStatusCode AdbcConnectionCommitIngestPartitions(
 /// \param[in] receipt_lens Array of receipt lengths, or NULL.
 /// \param[out] error Error details, if any.
 ADBC_EXPORT
-AdbcStatusCode AdbcConnectionAbortIngestPartitions(
-    struct AdbcConnection* connection, const uint8_t* handle, size_t handle_len,
-    size_t num_receipts, const uint8_t** receipts, const size_t* receipt_lens,
-    struct AdbcError* error);
+AdbcStatusCode AdbcConnectionAbortIngestPartitions(struct AdbcConnection* connection,
+                                                   const uint8_t* handle,
+                                                   size_t handle_len, size_t num_receipts,
+                                                   const uint8_t** receipts,
+                                                   const size_t* receipt_lens,
+                                                   struct AdbcError* error);
 
 /// @}
 
