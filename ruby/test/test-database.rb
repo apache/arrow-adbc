@@ -44,8 +44,8 @@ class DatabaseTest < Test::Unit::TestCase
               assert_equal([
                               Arrow::Table.new("1" => Arrow::Int64Array.new([1])),
                               -1,
-                            ],
-                            connection.query("SELECT 1"))
+                           ],
+                           connection.query("SELECT 1"))
           end
         end
       end
