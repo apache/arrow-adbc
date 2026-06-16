@@ -18,14 +18,20 @@
 module ADBC
   class Database
     class << self
-      def open(load_flags: LoadFlags::DEFAULT, **options)
+      def new
+        database = super
+        database.set_load_flags(LoadFlags::DEFAULT)
+        database
+      end
+
+      def open(load_flags: nil, **options)
         database = new
         need_release = true
         begin
           options.each do |key, value|
             database.set_option(key.to_s, value)
           end
-          database.set_load_flags(load_flags)
+          database.set_load_flags(load_flags) unless load_flags.nil?
           database.init
           if block_given?
             yield(database)
