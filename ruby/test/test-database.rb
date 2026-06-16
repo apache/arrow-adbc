@@ -54,7 +54,7 @@ class DatabaseTest < Test::Unit::TestCase
         assert_raise(ADBC::Error::NotFound) do
           ADBC::Database.open(driver: "testdriver",
                               uri: ":memory:",
-                              load_flags: ADBC::LoadFlags.new(0)) do |_database|
+                              load_flags: 0) do |_database|
           end
         end
       end
