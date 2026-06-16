@@ -40,12 +40,12 @@ class DatabaseTest < Test::Unit::TestCase
         ADBC::Database.open(driver: "testdriver",
                             uri: ":memory:",
                             load_flags: ADBC::LoadFlags::SEARCH_ENV) do |database|
-          database.connect do |connection|                          
+          database.connect do |connection|
               assert_equal([
                      Arrow::Table.new("1" => Arrow::Int64Array.new([1])),
                      -1,
                    ],
-                   connection.query("SELECT 1"))                    
+                   connection.query("SELECT 1"))
           end
         end
       end
