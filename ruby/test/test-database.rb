@@ -51,13 +51,12 @@ class DatabaseTest < Test::Unit::TestCase
       end
 
       def test_no_flags_cannot_find_driver
-        error = assert_raise_kind_of(ADBC::Error) do
+        assert_raise(ADBC::Error::NotFound) do
           ADBC::Database.open(driver: "testdriver",
                               uri: ":memory:",
                               load_flags: ADBC::LoadFlags.new(0)) do |_database|
           end
         end
-        assert_match(/not enabled at run time/, error.message)
       end
     end
   end
