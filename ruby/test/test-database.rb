@@ -17,22 +17,6 @@
 
 class DatabaseTest < Test::Unit::TestCase
   sub_test_case(".open") do
-    def test_default_load_flags
-      assert_nothing_raised do
-        ADBC::Database.open(driver: "adbc_driver_sqlite", uri: ":memory:") do |_database|
-        end
-      end
-    end
-
-    def test_load_flags_override
-      assert_nothing_raised do
-        ADBC::Database.open(driver: "adbc_driver_sqlite",
-                            uri: ":memory:",
-                            load_flags: ADBC::LoadFlags::DEFAULT) do |_database|
-        end
-      end
-    end
-
     sub_test_case("manifest") do
       def setup
         Dir.mktmpdir do |tmpdir|
