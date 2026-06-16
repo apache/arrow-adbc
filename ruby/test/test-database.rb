@@ -17,21 +17,59 @@
 
 class DatabaseTest < Test::Unit::TestCase
   sub_test_case(".open") do
-    test("applies LoadFlags::DEFAULT when load_flags is not passed") do
+    def test_default_load_flags
       assert_nothing_raised do
         ADBC::Database.open(driver: "adbc_driver_sqlite", uri: ":memory:") do |_database|
         end
       end
     end
 
-    test("load_flags: none disables all search paths") do
-      error = assert_raise_kind_of(ADBC::Error) do
+    def test_load_flags_override
+      assert_nothing_raised do
         ADBC::Database.open(driver: "adbc_driver_sqlite",
                             uri: ":memory:",
-                            load_flags: ADBC::LoadFlags.new(0)) do |_database|
+                            load_flags: ADBC::LoadFlags::DEFAULT) do |_database|
         end
       end
-      assert_match(/not enabled at run time/, error.message)
+    end
+
+    sub_test_case("manifest") do
+      def setup
+        @tmpdir = Dir.mktmpdir
+        File.write(File.join(@tmpdir, "testdriver.toml"), <<~TOML)
+          name = "test driver"
+          version = "0.1.0"
+
+          [Driver]
+          shared = "adbc_driver_sqlite"
+        TOML
+        @original_driver_path = ENV["ADBC_DRIVER_PATH"]
+        ENV["ADBC_DRIVER_PATH"] = @tmpdir
+      end
+
+      def teardown
+        ENV["ADBC_DRIVER_PATH"] = @original_driver_path
+        FileUtils.remove_entry(@tmpdir)
+      end
+
+      def test_search_env_finds_driver
+        assert_nothing_raised do
+          ADBC::Database.open(driver: "testdriver",
+                              uri: ":memory:",
+                              load_flags: ADBC::LoadFlags::SEARCH_ENV) do |_database|
+          end
+        end
+      end
+
+      def test_no_flags_cannot_find_driver
+        error = assert_raise_kind_of(ADBC::Error) do
+          ADBC::Database.open(driver: "testdriver",
+                              uri: ":memory:",
+                              load_flags: ADBC::LoadFlags.new(0)) do |_database|
+          end
+        end
+        assert_match(/not enabled at run time/, error.message)
+      end
     end
   end
 end
