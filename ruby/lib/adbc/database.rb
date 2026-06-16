@@ -23,7 +23,7 @@ module ADBC
         need_release = true
         begin
           options.each do |key, value|
-            database.set_option(key.to_s, value)
+            database.set_option(key, value)
           end
           database.set_load_flags(load_flags) unless load_flags.nil?
           database.init
