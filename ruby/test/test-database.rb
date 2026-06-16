@@ -35,21 +35,21 @@ class DatabaseTest < Test::Unit::TestCase
 
     sub_test_case("manifest") do
       def setup
-        @tmpdir = Dir.mktmpdir
-        File.write(File.join(@tmpdir, "testdriver.toml"), <<~TOML)
-          name = "test driver"
-          version = "0.1.0"
+        Dir.mktmpdir do |tmpdir|
+          File.write(File.join(tmpdir, "testdriver.toml"), <<~TOML)
+            name = "test driver"
+            version = "0.1.0"
 
-          [Driver]
-          shared = "adbc_driver_sqlite"
-        TOML
-        @original_driver_path = ENV["ADBC_DRIVER_PATH"]
-        ENV["ADBC_DRIVER_PATH"] = @tmpdir
-      end
-
-      def teardown
-        ENV["ADBC_DRIVER_PATH"] = @original_driver_path
-        FileUtils.remove_entry(@tmpdir)
+            [Driver]
+            shared = "adbc_driver_sqlite"
+          TOML
+          driver_path, ENV["ADBC_DRIVER_PATH"] = ENV["ADBC_DRIVER_PATH"], tmpdir
+          begin
+            yield
+          ensure
+            ENV["ADBC_DRIVER_PATH"] = driver_path
+          end
+        end
       end
 
       def test_search_env_finds_driver
