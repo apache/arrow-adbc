@@ -48,7 +48,7 @@ typedef enum {
 } GADBCLoadFlags;
 
 /**
- * GADBC_LOAD_FLAGAS_DEFAULT:
+ * GADBC_LOAD_FLAGS_DEFAULT:
  *
  * The default GADBCLoadFlags.
  *
