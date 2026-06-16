@@ -75,6 +75,12 @@ GADBCDatabase* gadbc_database_new(GError** error) {
   AdbcStatusCode status_code = AdbcDatabaseNew(&(priv->adbc_database), &adbc_error);
   priv->initialized =
       gadbc_error_check(error, status_code, &adbc_error, "[adbc][database][new]");
+  if (priv->initialized) {
+    status_code = AdbcDriverManagerDatabaseSetLoadFlags(
+        &(priv->adbc_database), GADBC_LOAD_FLAGS_DEFAULT, &adbc_error);
+    priv->initialized = gadbc_error_check(error, status_code, &adbc_error,
+                                          "[adbc][database][set-load-flags]");
+  }
   if (!priv->initialized) {
     g_object_unref(database);
     return NULL;
