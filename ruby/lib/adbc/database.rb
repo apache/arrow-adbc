@@ -18,12 +18,6 @@
 module ADBC
   class Database
     class << self
-      def new
-        database = super
-        database.set_load_flags(LoadFlags::DEFAULT)
-        database
-      end
-
       def open(load_flags: nil, **options)
         database = new
         need_release = true
