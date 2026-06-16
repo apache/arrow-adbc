@@ -130,7 +130,7 @@ func TestIPCReaderAdapter(t *testing.T) {
 
 	// Test the IPC reader adapter
 	ctx := context.Background()
-	reader, err := newIPCReaderAdapter(ctx, mockRows)
+	reader, err := newIPCReaderAdapter(ctx, mockRows, "test-query-id")
 	require.NoError(t, err)
 	defer reader.Release()
 
@@ -227,7 +227,7 @@ func TestIPCReaderAdapterMultipleStreams(t *testing.T) {
 
 	// Test the adapter
 	ctx := context.Background()
-	reader, err := newIPCReaderAdapter(ctx, mockRows)
+	reader, err := newIPCReaderAdapter(ctx, mockRows, "test-query-id")
 	require.NoError(t, err)
 	defer reader.Release()
 

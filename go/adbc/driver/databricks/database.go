@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"crypto/tls"
@@ -48,6 +49,7 @@ type databaseImpl struct {
 	driverbase.DatabaseImplBase
 
 	// Connection Pool
+	mu           sync.Mutex
 	db           *sql.DB
 	needsRefresh bool // Whether we need to re-initialize
 
@@ -237,29 +239,39 @@ func (d *databaseImpl) initializeConnectionPool(ctx context.Context) (*sql.DB, e
 	return db, nil
 }
 
-func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
-	// Re-initialize the connection pool and settings if anything
-	// has changed, or we have not initialized yet
-	if d.needsRefresh || d.db == nil {
-		db, err := d.initializeConnectionPool(ctx)
+// getOrCreatePool returns the shared connection pool, initializing it if
+// needed. The returned *sql.DB is safe to use outside the lock.
+func (d *databaseImpl) getOrCreatePool(ctx context.Context) (*sql.DB, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
 
-		if err != nil {
-			return nil, err
-		}
-
-		// Close the existing connection pool
-		if d.db != nil {
-			err = d.db.Close()
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		d.db = db
-		d.needsRefresh = false
+	if !d.needsRefresh && d.db != nil {
+		return d.db, nil
 	}
 
-	c, err := d.db.Conn(ctx)
+	db, err := d.initializeConnectionPool(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if d.db != nil {
+		if err = d.db.Close(); err != nil {
+			return nil, err
+		}
+	}
+
+	d.db = db
+	d.needsRefresh = false
+	return d.db, nil
+}
+
+func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
+	db, err := d.getOrCreatePool(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := db.Conn(ctx)
 
 	if err != nil {
 		return nil, err
@@ -281,11 +293,16 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 }
 
 func (d *databaseImpl) Close() error {
-	defer func() {
-		d.needsRefresh = true
-		d.db = nil
-	}()
-	return d.db.Close()
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	if d.db == nil {
+		return nil
+	}
+	err := d.db.Close()
+	d.needsRefresh = true
+	d.db = nil
+	return err
 }
 
 func (d *databaseImpl) GetOption(key string) (string, error) {
@@ -352,10 +369,12 @@ func (d *databaseImpl) GetOption(key string) (string, error) {
 }
 
 func (d *databaseImpl) SetOptions(options map[string]string) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
 	// We need to re-initialize the db/connection pool if options change
 	d.needsRefresh = true
 	for k, v := range options {
-		err := d.SetOption(k, v)
+		err := d.setOptionLocked(k, v)
 		if err != nil {
 			return err
 		}
@@ -364,6 +383,12 @@ func (d *databaseImpl) SetOptions(options map[string]string) error {
 }
 
 func (d *databaseImpl) SetOption(key, value string) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	return d.setOptionLocked(key, value)
+}
+
+func (d *databaseImpl) setOptionLocked(key, value string) error {
 	// We need to re-initialize the db/connection pool if options change
 	d.needsRefresh = true
 	switch key {
