@@ -1,0 +1,4 @@
+--------------------------------------------------------------------------------
+
+This binary distribution statically links SQLite.
+SQLite is public domain.

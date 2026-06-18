@@ -535,30 +535,4 @@ fix(java/driver/jdbc): adjust SQL type mapping for JDBC driver
 
 ## Re-generating 3rd Party Licenses
 
-In order to collect the licenses for our Go-dependencies we leverage the
-tool `github.com/google/go-licenses`. We have a template containing the
-non-go licenses, and then you can install `go-licenses` with:
-
-```shell
-$ go install github.com/google/go-licenses@latest
-```
-
-You can generate the LICENSE.txt with the following command:
-
-```shell
-$ pushd go/adbc && go-licenses report ./... \
-  --ignore github.com/apache/arrow-adbc/go/adbc \
-  --ignore github.com/apache/arrow/go/v11 \
-  --ignore github.com/apache/arrow/go/v12 \
-  --ignore github.com/apache/arrow/go/v13 \
-  --ignore github.com/apache/arrow/go/v14 \
-  --ignore github.com/apache/arrow/go/v15 \
-  --ignore github.com/apache/arrow/go/v16 \
-  --template ../../license.tpl > ../../LICENSE.txt 2> /dev/null
-```
-
-You will have to manually fix up the license, since some packages do not
-fill out their metadata correctly and things like READMEs may end up in
-the license.
-
-[conventional-commits]: https://www.conventionalcommits.org/en/v1.0.0/
+See ci/licenses/README.md.
