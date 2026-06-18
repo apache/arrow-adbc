@@ -24,7 +24,7 @@ module ADBC
     end
 
     def ingest(table_name, values, mode: :create)
-      open_statment do |statement|
+      open_statement do |statement|
         statement.ingest(table_name, values, mode: mode)
       end
     end
