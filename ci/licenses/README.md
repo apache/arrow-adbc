@@ -48,3 +48,12 @@ the license. Then check in the result.
 
 There is not a separate file for the driver manager, as all of its
 dependencies are vendored, and hence covered by the root LICENSE.txt.
+
+After updating, copy the combined license files to the Python wheel
+directories and commit the result:
+
+```
+cat LICENSE.txt ci/licenses/flightsql.txt > python/adbc_driver_flightsql/LICENSE.txt
+cat LICENSE.txt ci/licenses/postgresql.txt > python/adbc_driver_postgresql/LICENSE.txt
+cat LICENSE.txt ci/licenses/sqlite.txt > python/adbc_driver_sqlite/LICENSE.txt
+```
