@@ -21,7 +21,7 @@ go 1.25.0
 
 // Only require 1.25, but prefer 1.26 to build to pick up latest CVE fixes in
 // Go itself.
-toolchain go1.26.1
+toolchain go1.26.4
 
 require (
 	github.com/apache/arrow-go/v18 v18.6.0
