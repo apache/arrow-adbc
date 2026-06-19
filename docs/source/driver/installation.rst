@@ -56,7 +56,6 @@ Install the appropriate driver package.  Packages for ``apt`` and ``dnf`` are pr
 
 You can use ``apt`` on the following platforms:
 
-- Debian GNU/Linux 12 ("bookworm")
 - Debian GNU/Linux 13 ("trixie")
 - Ubuntu 22.04 LTS ("jammy")
 - Ubuntu 24.04 LTS ("noble")
