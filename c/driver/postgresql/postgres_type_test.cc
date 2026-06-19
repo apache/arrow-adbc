@@ -164,6 +164,36 @@ TEST(PostgresTypeTest, PostgresTypeSetSchema) {
   schema.reset();
 
   ArrowSchemaInit(schema.get());
+  EXPECT_EQ(PostgresType(PostgresTypeId::kJson).SetSchema(schema.get()), NANOARROW_OK);
+  EXPECT_STREQ(schema->format, "u");
+  typnameMetadataValue = ArrowCharView("<not found>");
+  ArrowMetadataGetValue(schema->metadata, ArrowCharView("ARROW:extension:name"),
+                        &typnameMetadataValue);
+  EXPECT_EQ(std::string(typnameMetadataValue.data, typnameMetadataValue.size_bytes),
+            "arrow.json");
+  typnameMetadataValue = ArrowCharView("<not found>");
+  ArrowMetadataGetValue(schema->metadata, ArrowCharView("ARROW:extension:metadata"),
+                        &typnameMetadataValue);
+  EXPECT_EQ(std::string(typnameMetadataValue.data, typnameMetadataValue.size_bytes),
+            "<not found>");
+  schema.reset();
+
+  ArrowSchemaInit(schema.get());
+  EXPECT_EQ(PostgresType(PostgresTypeId::kJsonb).SetSchema(schema.get()), NANOARROW_OK);
+  EXPECT_STREQ(schema->format, "u");
+  typnameMetadataValue = ArrowCharView("<not found>");
+  ArrowMetadataGetValue(schema->metadata, ArrowCharView("ARROW:extension:name"),
+                        &typnameMetadataValue);
+  EXPECT_EQ(std::string(typnameMetadataValue.data, typnameMetadataValue.size_bytes),
+            "arrow.json");
+  typnameMetadataValue = ArrowCharView("<not found>");
+  ArrowMetadataGetValue(schema->metadata, ArrowCharView("ARROW:extension:metadata"),
+                        &typnameMetadataValue);
+  EXPECT_EQ(std::string(typnameMetadataValue.data, typnameMetadataValue.size_bytes),
+            "<not found>");
+  schema.reset();
+
+  ArrowSchemaInit(schema.get());
   EXPECT_EQ(PostgresType(PostgresTypeId::kBytea).SetSchema(schema.get()), NANOARROW_OK);
   EXPECT_STREQ(schema->format, "z");
   schema.reset();

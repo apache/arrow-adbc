@@ -51,9 +51,7 @@ $ export ADBC_POSTGRESQL_TEST_URI=postgresql://localhost:5432/postgres?user=post
 
 ### 5. Run Tests
 
-#### Using pixi:
-
 ```bash
 cd c/driver/postgresql/validation
-pixi run validate
+uv run pytest
 ```

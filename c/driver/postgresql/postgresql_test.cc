@@ -1419,6 +1419,10 @@ TEST_F(PostgresStatementTest, SqlIngestJson) {
   ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
   ASSERT_EQ(1, reader.fields.size());
   ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].type);
+  ASSERT_EQ(
+      "arrow.json",
+      std::string_view(reader.fields[0].extension_name.data,
+                       static_cast<size_t>(reader.fields[0].extension_name.size_bytes)));
 
   ASSERT_NO_FATAL_FAILURE(reader.Next());
   ArrowStringView view = ArrowArrayViewGetStringUnsafe(reader.array_view->children[0], 0);
@@ -2357,6 +2361,10 @@ TEST_F(PostgresStatementTest, SqlQueryJsonb) {
   ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
   ASSERT_EQ(1, reader.fields.size());
   ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].type);
+  ASSERT_EQ(
+      "arrow.json",
+      std::string_view(reader.fields[0].extension_name.data,
+                       static_cast<size_t>(reader.fields[0].extension_name.size_bytes)));
 
   ASSERT_NO_FATAL_FAILURE(reader.Next());
   ArrowStringView view = ArrowArrayViewGetStringUnsafe(reader.array_view->children[0], 0);

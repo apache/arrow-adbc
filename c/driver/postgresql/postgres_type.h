@@ -256,10 +256,22 @@ class PostgresType {
       case PostgresTypeId::kText:
       case PostgresTypeId::kName:
       case PostgresTypeId::kEnum:
-      case PostgresTypeId::kJson:
-      case PostgresTypeId::kJsonb:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_STRING));
         break;
+      case PostgresTypeId::kJson:
+      case PostgresTypeId::kJsonb: {
+        NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_STRING));
+        nanoarrow::UniqueBuffer buffer;
+
+        NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderInit(buffer.get(), nullptr));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowMetadataBuilderAppend(buffer.get(), ArrowCharView(kExtensionName),
+                                       ArrowCharView(kJsonExtensionName)));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetMetadata(schema, reinterpret_cast<char*>(buffer->data)));
+
+        break;
+      }
       case PostgresTypeId::kBytea:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BINARY));
         break;
@@ -346,6 +358,7 @@ class PostgresType {
   static constexpr const char* kPostgresTypeKey = "ADBC:postgresql:typname";
   static constexpr const char* kExtensionName = "ARROW:extension:name";
   static constexpr const char* kOpaqueExtensionName = "arrow.opaque";
+  static constexpr const char* kJsonExtensionName = "arrow.json";
   static constexpr const char* kExtensionMetadata = "ARROW:extension:metadata";
 
   ArrowErrorCode AddPostgresTypeMetadata(ArrowSchema* schema,
