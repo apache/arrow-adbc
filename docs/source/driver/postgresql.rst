@@ -264,9 +264,9 @@ being read or written.
    * - INTERVAL
      - month_day_nano_interval
    * - JSON
-     - utf8
+     - utf8 (extension<arrow.json>)
    * - JSONB
-     - utf8
+     - utf8 (extension<arrow.json>)
    * - NUMERIC
      - utf8 [#numeric-utf8]_
    * - REAL

@@ -1,0 +1,73 @@
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
+// part: metadata
+
+[setup]
+drop = "test_json"
+
+[tags]
+sql-type-name = "JSON"
+
+// part: setup_query
+
+CREATE TABLE test_json (
+    idx INT,
+    res JSON
+);
+
+INSERT INTO test_json (idx, res) VALUES (1, NULL);
+INSERT INTO test_json (idx, res) VALUES (2, 'null');
+INSERT INTO test_json (idx, res) VALUES (3, '"foobar"');
+INSERT INTO test_json (idx, res) VALUES (4, '1.0');
+INSERT INTO test_json (idx, res) VALUES (5, 'true');
+INSERT INTO test_json (idx, res) VALUES (6, '[]');
+INSERT INTO test_json (idx, res) VALUES (7, '["spam", "eggs", 2.5, false]');
+INSERT INTO test_json (idx, res) VALUES (8, '{"a": 12345, "b": "hello", "c": [1, 2, 3], "d": {"e": "nested"}}');
+INSERT INTO test_json (idx, res) VALUES (9, '[{"id": 1, "name": "Alice"}, {"id": 2, "name": "Bob"}]');
+
+// part: query
+
+SELECT res FROM test_json ORDER BY idx ASC
+
+// part: expected_schema
+
+{
+    "format": "+s",
+    "children": [
+        {
+            "name": "res",
+            "format": "u",
+            "flags": ["nullable"],
+            "metadata": {
+                "ARROW:extension:name": "arrow.json"
+            }
+        }
+    ]
+}
+
+// part: expected
+
+{"res": null}
+{"res": "null"}
+{"res": "\"foobar\""}
+{"res": "1.0"}
+{"res": "true"}
+{"res": "[]"}
+{"res": "[\"spam\", \"eggs\", 2.5, false]"}
+{"res": "{\"a\": 12345, \"b\": \"hello\", \"c\": [1, 2, 3], \"d\": {\"e\": \"nested\"}}"}
+{"res": "[{\"id\": 1, \"name\": \"Alice\"}, {\"id\": 2, \"name\": \"Bob\"}]"}
