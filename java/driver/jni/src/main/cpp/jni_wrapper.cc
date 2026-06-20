@@ -55,13 +55,15 @@ struct AdbcErrorGuard {
 void ThrowJavaException(JNIEnv* env, const std::string& klass,
                         const std::string& message) {
   jclass exception_klass = env->FindClass(klass.c_str());
-  assert(exception_klass != nullptr);
+  if (exception_klass == nullptr) return;
   jmethodID exception_ctor =
-      env->GetMethodID(exception_klass, "<init>", "(Ljava/lang/String)V");
-  assert(exception_ctor != nullptr);
+      env->GetMethodID(exception_klass, "<init>", "(Ljava/lang/String;)V");
+  if (exception_ctor == nullptr) return;
   jstring message_jni = env->NewStringUTF(message.c_str());
+  if (message_jni == nullptr) return;
   auto exc = static_cast<jthrowable>(
       env->NewObject(exception_klass, exception_ctor, message_jni));
+  if (exc == nullptr) return;
   env->Throw(exc);
 }
 
@@ -73,16 +75,16 @@ struct AdbcException {
 
   void ThrowJavaException(JNIEnv* env) const {
     jclass exception_klass = env->FindClass("org/apache/arrow/adbc/core/AdbcException");
-    assert(exception_klass != nullptr);
+    if (exception_klass == nullptr) return;
     jmethodID exception_ctor =
         env->GetMethodID(exception_klass, "<init>",
                          "(Ljava/lang/String;Ljava/lang/Throwable;"
                          "Lorg/apache/arrow/adbc/core/AdbcStatusCode;"
                          "Ljava/lang/String;I)V");
-    assert(exception_ctor != nullptr);
+    if (exception_ctor == nullptr) return;
 
     jclass status_klass = env->FindClass("org/apache/arrow/adbc/core/AdbcStatusCode");
-    assert(status_klass != nullptr);
+    if (status_klass == nullptr) return;
 
     jfieldID status_field;
 
@@ -113,12 +115,15 @@ struct AdbcException {
         break;
     }
 #undef CASE
+    if (status_field == nullptr) return;
     jobject status_jni = env->GetStaticObjectField(status_klass, status_field);
 
     jstring message_jni = env->NewStringUTF(message.c_str());
+    if (message_jni == nullptr) return;
     auto exc = static_cast<jthrowable>(env->NewObject(
         exception_klass, exception_ctor, message_jni, /*cause=*/nullptr, status_jni,
         /*sqlState=*/nullptr, /*vendorCode=*/0));
+    if (exc == nullptr) return;
     env->Throw(exc);
   }
 };
