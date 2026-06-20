@@ -35,21 +35,47 @@
 
 namespace {
 
-struct AdbcErrorGuard {
-  AdbcErrorGuard() = default;
-  AdbcErrorGuard(const AdbcErrorGuard&) = delete;
-  AdbcErrorGuard& operator=(const AdbcErrorGuard&) = delete;
-  AdbcErrorGuard(AdbcErrorGuard&&) = delete;
-  AdbcErrorGuard& operator=(AdbcErrorGuard&&) = delete;
+template <typename T>
+struct AdbcGuardImpl {};
 
-  struct AdbcError error = ADBC_ERROR_INIT;
+template <>
+struct AdbcGuardImpl<struct AdbcDatabase> {
+  static struct AdbcDatabase Init() {
+    struct AdbcDatabase value = {};
+    std::memset(&value, 0, sizeof(struct AdbcDatabase));
+    return value;
+  }
 
-  ~AdbcErrorGuard() {
-    if (error.release != nullptr) {
-      error.release(&error);
-      error.release = nullptr;
+  static void Release(struct AdbcDatabase& value) {
+    if (value.private_data != nullptr) {
+      std::ignore = AdbcDatabaseRelease(&value, nullptr);
     }
   }
+};
+
+template <>
+struct AdbcGuardImpl<struct AdbcError> {
+  static struct AdbcError Init() { return ADBC_ERROR_INIT; }
+
+  static void Release(struct AdbcError& value) {
+    if (value.release != nullptr) {
+      value.release(&value);
+      value.release = nullptr;
+    }
+  }
+};
+
+template <typename T>
+struct AdbcGuard {
+  T value;
+
+  AdbcGuard() : value{AdbcGuardImpl<T>::Init()} {}
+  ~AdbcGuard() { AdbcGuardImpl<T>::Release(value); }
+
+  AdbcGuard(const AdbcGuard&) = delete;
+  AdbcGuard& operator=(const AdbcGuard&) = delete;
+  AdbcGuard(AdbcGuard&&) = delete;
+  AdbcGuard& operator=(AdbcGuard&&) = delete;
 };
 
 void ThrowJavaException(JNIEnv* env, const std::string& klass,
@@ -323,6 +349,57 @@ const uint8_t* GetJniByteBuffer(JNIEnv* env, jobject bytebuffer,
   // not reachable
 }
 
+jobject MakeNativeQueryResult(JNIEnv* env, jlong rows_affected,
+                              struct ArrowArrayStream* out) {
+  // On any failure, release the C struct so its contents don't leak: the Java
+  // side only takes ownership (via snapshot) once construction succeeds.
+  try {
+    jclass native_result_class = RequireImplClass(env, "NativeQueryResult");
+    jmethodID native_result_ctor =
+        RequireMethod(env, native_result_class, "<init>", "(JJ)V");
+    jobject object =
+        env->NewObject(native_result_class, native_result_ctor, rows_affected,
+                       static_cast<jlong>(reinterpret_cast<uintptr_t>(out)));
+    if (object == nullptr || env->ExceptionCheck()) {
+      if (out->release != nullptr) {
+        out->release(out);
+      }
+      return nullptr;
+    }
+    return object;
+  } catch (...) {
+    if (out->release != nullptr) {
+      out->release(out);
+    }
+    throw;
+  }
+}
+
+jobject MakeNativeSchemaResult(JNIEnv* env, struct ArrowSchema* schema) {
+  // On any failure, release the C struct so its contents don't leak: the Java
+  // side only takes ownership (via snapshot) once construction succeeds.
+  try {
+    jclass native_result_class = RequireImplClass(env, "NativeSchemaResult");
+    jmethodID native_result_ctor =
+        RequireMethod(env, native_result_class, "<init>", "(J)V");
+    jobject object =
+        env->NewObject(native_result_class, native_result_ctor,
+                       static_cast<jlong>(reinterpret_cast<uintptr_t>(schema)));
+    if (object == nullptr || env->ExceptionCheck()) {
+      if (schema->release != nullptr) {
+        schema->release(schema);
+      }
+      return nullptr;
+    }
+    return object;
+  } catch (...) {
+    if (schema->release != nullptr) {
+      schema->release(schema);
+    }
+    throw;
+  }
+}
+
 }  // namespace
 
 extern "C" {
@@ -331,16 +408,10 @@ JNIEXPORT jobject JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_openDatabase(
     JNIEnv* env, [[maybe_unused]] jclass self, [[maybe_unused]] jint version,
     jobjectArray parameters) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   try {
-    auto db = std::make_unique<struct AdbcDatabase>();
-    std::memset(db.get(), 0, sizeof(struct AdbcDatabase));
-
-    CHECK_ADBC_ERROR(AdbcDatabaseNew(db.get(), &error_guard.error), error_guard.error);
-    CHECK_ADBC_ERROR(AdbcDriverManagerDatabaseSetLoadFlags(
-                         db.get(), ADBC_LOAD_FLAG_DEFAULT, &error_guard.error),
-                     error_guard.error);
-
+    jclass nativeHandleKlass = RequireImplClass(env, "NativeDatabaseHandle");
+    jmethodID nativeHandleCtor = RequireMethod(env, nativeHandleKlass, "<init>", "(J)V");
     const jsize num_params = env->GetArrayLength(parameters);
     if (num_params % 2 != 0) {
       throw AdbcException{
@@ -348,6 +419,14 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_openDatabase(
           .message = "[JNI] Must provide even number of parameters",
       };
     }
+
+    AdbcGuard<struct AdbcDatabase> db;
+
+    CHECK_ADBC_ERROR(AdbcDatabaseNew(&db.value, &error_guard.value), error_guard.value);
+    CHECK_ADBC_ERROR(AdbcDriverManagerDatabaseSetLoadFlags(
+                         &db.value, ADBC_LOAD_FLAG_DEFAULT, &error_guard.value),
+                     error_guard.value);
+
     for (jsize i = 0; i < num_params; i += 2) {
       // N.B. assuming String because Java side is typed as String[]
       auto key = reinterpret_cast<jstring>(env->GetObjectArrayElement(parameters, i));
@@ -356,20 +435,25 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_openDatabase(
 
       JniStringView key_str(env, key);
       JniStringView value_str(env, value);
-      CHECK_ADBC_ERROR(AdbcDatabaseSetOption(db.get(), key_str.value, value_str.value,
-                                             &error_guard.error),
-                       error_guard.error);
+      CHECK_ADBC_ERROR(AdbcDatabaseSetOption(&db.value, key_str.value, value_str.value,
+                                             &error_guard.value),
+                       error_guard.value);
     }
+    CHECK_ADBC_ERROR(AdbcDatabaseInit(&db.value, &error_guard.value), error_guard.value);
 
-    CHECK_ADBC_ERROR(AdbcDatabaseInit(db.get(), &error_guard.error), error_guard.error);
-
-    jclass nativeHandleKlass = RequireImplClass(env, "NativeDatabaseHandle");
-    jmethodID nativeHandleCtor = RequireMethod(env, nativeHandleKlass, "<init>", "(J)V");
+    // Copy db to a unique_ptr and then "leak" it (JNI side will release it later)
+    auto handle = std::make_unique<struct AdbcDatabase>(db.value);
+    std::memset(&db.value, 0, sizeof(struct AdbcDatabase));  // prevent double release
     jobject object =
         env->NewObject(nativeHandleKlass, nativeHandleCtor,
-                       static_cast<jlong>(reinterpret_cast<uintptr_t>(db.get())));
+                       static_cast<jlong>(reinterpret_cast<uintptr_t>(handle.get())));
+    if (object == nullptr || env->ExceptionCheck()) {
+      // Failed to construct Java object: try to release ADBC handle
+      std::ignore = AdbcDatabaseRelease(handle.get(), nullptr);
+      return nullptr;
+    }
     // Don't release until after we've constructed the object
-    db.release();
+    handle.release();
     return object;
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
@@ -380,10 +464,10 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_openDatabase(
 JNIEXPORT void JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_closeDatabase(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   try {
     auto* ptr = reinterpret_cast<struct AdbcDatabase*>(static_cast<uintptr_t>(handle));
-    CHECK_ADBC_ERROR(AdbcDatabaseRelease(ptr, &error_guard.error), error_guard.error);
+    CHECK_ADBC_ERROR(AdbcDatabaseRelease(ptr, &error_guard.value), error_guard.value);
     delete ptr;
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
@@ -393,25 +477,34 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_closeDatabase(
 JNIEXPORT jobject JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_openConnection(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong database_handle) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   try {
+    jclass native_handle_class = RequireImplClass(env, "NativeConnectionHandle");
+    jmethodID native_handle_ctor =
+        RequireMethod(env, native_handle_class, "<init>", "(J)V");
+
     auto conn = std::make_unique<struct AdbcConnection>();
     std::memset(conn.get(), 0, sizeof(struct AdbcConnection));
 
     auto* db =
         reinterpret_cast<struct AdbcDatabase*>(static_cast<uintptr_t>(database_handle));
 
-    CHECK_ADBC_ERROR(AdbcConnectionNew(conn.get(), &error_guard.error),
-                     error_guard.error);
-    CHECK_ADBC_ERROR(AdbcConnectionInit(conn.get(), db, &error_guard.error),
-                     error_guard.error);
+    CHECK_ADBC_ERROR(AdbcConnectionNew(conn.get(), &error_guard.value),
+                     error_guard.value);
+    auto result = AdbcConnectionInit(conn.get(), db, &error_guard.value);
+    if (result != ADBC_STATUS_OK) {
+      std::ignore = AdbcConnectionRelease(conn.get(), nullptr);
+    }
+    CHECK_ADBC_ERROR(result, error_guard.value);
 
-    jclass native_handle_class = RequireImplClass(env, "NativeConnectionHandle");
-    jmethodID native_handle_ctor =
-        RequireMethod(env, native_handle_class, "<init>", "(J)V");
     jobject object =
         env->NewObject(native_handle_class, native_handle_ctor,
                        static_cast<jlong>(reinterpret_cast<uintptr_t>(conn.get())));
+    if (object == nullptr || env->ExceptionCheck()) {
+      // Failed to construct Java object: try to release ADBC handle
+      std::ignore = AdbcConnectionRelease(conn.get(), nullptr);
+      return nullptr;
+    }
     // Don't release until after we've constructed the object
     conn.release();
     return object;
@@ -424,10 +517,10 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_openConnection(
 JNIEXPORT void JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_closeConnection(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   try {
     auto* ptr = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
-    CHECK_ADBC_ERROR(AdbcConnectionRelease(ptr, &error_guard.error), error_guard.error);
+    CHECK_ADBC_ERROR(AdbcConnectionRelease(ptr, &error_guard.value), error_guard.value);
     delete ptr;
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
@@ -437,23 +530,29 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_closeConnection(
 JNIEXPORT jobject JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_openStatement(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong connection_handle) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   try {
+    jclass native_handle_class = RequireImplClass(env, "NativeStatementHandle");
+    jmethodID native_handle_ctor =
+        RequireMethod(env, native_handle_class, "<init>", "(J)V");
+
     auto stmt = std::make_unique<struct AdbcStatement>();
     std::memset(stmt.get(), 0, sizeof(struct AdbcStatement));
 
     auto* conn = reinterpret_cast<struct AdbcConnection*>(
         static_cast<uintptr_t>(connection_handle));
 
-    CHECK_ADBC_ERROR(AdbcStatementNew(conn, stmt.get(), &error_guard.error),
-                     error_guard.error);
+    CHECK_ADBC_ERROR(AdbcStatementNew(conn, stmt.get(), &error_guard.value),
+                     error_guard.value);
 
-    jclass native_handle_class = RequireImplClass(env, "NativeStatementHandle");
-    jmethodID native_handle_ctor =
-        RequireMethod(env, native_handle_class, "<init>", "(J)V");
     jobject object =
         env->NewObject(native_handle_class, native_handle_ctor,
                        static_cast<jlong>(reinterpret_cast<uintptr_t>(stmt.get())));
+    if (object == nullptr || env->ExceptionCheck()) {
+      // Failed to construct Java object: try to release ADBC handle
+      std::ignore = AdbcStatementRelease(stmt.get(), nullptr);
+      return nullptr;
+    }
     // Don't release until after we've constructed the object
     stmt.release();
     return object;
@@ -466,40 +565,23 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_openStatement(
 JNIEXPORT void JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_closeStatement(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   try {
     auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
-    CHECK_ADBC_ERROR(AdbcStatementRelease(ptr, &error_guard.error), error_guard.error);
+    CHECK_ADBC_ERROR(AdbcStatementRelease(ptr, &error_guard.value), error_guard.value);
     delete ptr;
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
 }
 
-jobject MakeNativeQueryResult(JNIEnv* env, jlong rows_affected,
-                              struct ArrowArrayStream* out) {
-  jclass native_result_class = RequireImplClass(env, "NativeQueryResult");
-  jmethodID native_result_ctor =
-      RequireMethod(env, native_result_class, "<init>", "(JJ)V");
-  return env->NewObject(native_result_class, native_result_ctor, rows_affected,
-                        static_cast<jlong>(reinterpret_cast<uintptr_t>(out)));
-}
-
-jobject MakeNativeSchemaResult(JNIEnv* env, struct ArrowSchema* schema) {
-  jclass native_result_class = RequireImplClass(env, "NativeSchemaResult");
-  jmethodID native_result_ctor =
-      RequireMethod(env, native_result_class, "<init>", "(J)V");
-  return env->NewObject(native_result_class, native_result_ctor,
-                        static_cast<jlong>(reinterpret_cast<uintptr_t>(schema)));
-}
-
 JNIEXPORT void JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementCancel(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
   try {
-    CHECK_ADBC_ERROR(AdbcStatementCancel(ptr, &error_guard.error), error_guard.error);
+    CHECK_ADBC_ERROR(AdbcStatementCancel(ptr, &error_guard.value), error_guard.value);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
@@ -508,12 +590,12 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementCancel(
 JNIEXPORT jobject JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementGetParameterSchema(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
   struct ArrowSchema schema = {};
   try {
-    CHECK_ADBC_ERROR(AdbcStatementGetParameterSchema(ptr, &schema, &error_guard.error),
-                     error_guard.error);
+    CHECK_ADBC_ERROR(AdbcStatementGetParameterSchema(ptr, &schema, &error_guard.value),
+                     error_guard.value);
     return MakeNativeSchemaResult(env, &schema);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
@@ -524,7 +606,7 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementGetParameterSchem
 JNIEXPORT jobject JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementExecutePartitions(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
   struct ArrowSchema schema = {};
   struct AdbcPartitions partitions = {};
@@ -539,8 +621,8 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementExecutePartitions
         RequireMethod(env, native_result_class, "addPartition", "([B)V");
 
     CHECK_ADBC_ERROR(AdbcStatementExecutePartitions(ptr, &schema, &partitions,
-                                                    &rows_affected, &error_guard.error),
-                     error_guard.error);
+                                                    &rows_affected, &error_guard.value),
+                     error_guard.value);
 
     result = env->NewObject(native_result_class, native_result_ctor, rows_affected,
                             static_cast<jlong>(reinterpret_cast<uintptr_t>(&schema)));
@@ -578,14 +660,14 @@ cleanupall:
 JNIEXPORT jobject JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementExecuteQuery(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   try {
     auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
     struct ArrowArrayStream out = {};
     int64_t rows_affected = 0;
     CHECK_ADBC_ERROR(
-        AdbcStatementExecuteQuery(ptr, &out, &rows_affected, &error_guard.error),
-        error_guard.error);
+        AdbcStatementExecuteQuery(ptr, &out, &rows_affected, &error_guard.value),
+        error_guard.value);
 
     return MakeNativeQueryResult(env, rows_affected, &out);
   } catch (const AdbcException& e) {
@@ -597,12 +679,12 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementExecuteQuery(
 JNIEXPORT void JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementSetSqlQuery(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring query) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
   try {
     JniStringView query_str(env, query);
-    CHECK_ADBC_ERROR(AdbcStatementSetSqlQuery(ptr, query_str.value, &error_guard.error),
-                     error_guard.error);
+    CHECK_ADBC_ERROR(AdbcStatementSetSqlQuery(ptr, query_str.value, &error_guard.value),
+                     error_guard.value);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
@@ -611,7 +693,7 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementSetSqlQuery(
 JNIEXPORT void JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementSetSubstraitPlan(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jobject plan) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
   std::vector<uint8_t> allocated_plan;
   size_t plan_length = 0;
@@ -622,8 +704,8 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementSetSubstraitPlan(
     }
     assert(plan_ptr != nullptr);
     CHECK_ADBC_ERROR(
-        AdbcStatementSetSubstraitPlan(ptr, plan_ptr, plan_length, &error_guard.error),
-        error_guard.error);
+        AdbcStatementSetSubstraitPlan(ptr, plan_ptr, plan_length, &error_guard.value),
+        error_guard.value);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
@@ -632,14 +714,14 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementSetSubstraitPlan(
 JNIEXPORT void JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementBind(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jlong values, jlong schema) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   try {
     auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
     auto* c_batch = reinterpret_cast<struct ArrowArray*>(static_cast<uintptr_t>(values));
     auto* c_schema =
         reinterpret_cast<struct ArrowSchema*>(static_cast<uintptr_t>(schema));
-    CHECK_ADBC_ERROR(AdbcStatementBind(ptr, c_batch, c_schema, &error_guard.error),
-                     error_guard.error);
+    CHECK_ADBC_ERROR(AdbcStatementBind(ptr, c_batch, c_schema, &error_guard.value),
+                     error_guard.value);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
@@ -648,13 +730,13 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementBind(
 JNIEXPORT void JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementBindStream(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jlong stream) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   try {
     auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
     auto* c_stream =
         reinterpret_cast<struct ArrowArrayStream*>(static_cast<uintptr_t>(stream));
-    CHECK_ADBC_ERROR(AdbcStatementBindStream(ptr, c_stream, &error_guard.error),
-                     error_guard.error);
+    CHECK_ADBC_ERROR(AdbcStatementBindStream(ptr, c_stream, &error_guard.value),
+                     error_guard.value);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
@@ -663,13 +745,13 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementBindStream(
 JNIEXPORT jlong JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementExecuteUpdate(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   try {
     auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
     int64_t rows_affected = 0;
     CHECK_ADBC_ERROR(AdbcStatementExecuteQuery(ptr, /*out=*/nullptr, &rows_affected,
-                                               &error_guard.error),
-                     error_guard.error);
+                                               &error_guard.value),
+                     error_guard.value);
     return static_cast<jlong>(rows_affected);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
@@ -680,10 +762,10 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementExecuteUpdate(
 JNIEXPORT void JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementPrepare(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   try {
     auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
-    CHECK_ADBC_ERROR(AdbcStatementPrepare(ptr, &error_guard.error), error_guard.error);
+    CHECK_ADBC_ERROR(AdbcStatementPrepare(ptr, &error_guard.value), error_guard.value);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
@@ -692,12 +774,12 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementPrepare(
 JNIEXPORT jobject JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementExecuteSchema(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   try {
     auto* ptr = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
     struct ArrowSchema schema = {};
-    CHECK_ADBC_ERROR(AdbcStatementExecuteSchema(ptr, &schema, &error_guard.error),
-                     error_guard.error);
+    CHECK_ADBC_ERROR(AdbcStatementExecuteSchema(ptr, &schema, &error_guard.value),
+                     error_guard.value);
 
     return MakeNativeSchemaResult(env, &schema);
   } catch (const AdbcException& e) {
@@ -709,7 +791,7 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementExecuteSchema(
 JNIEXPORT jbyteArray JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementGetOptionBytes(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* stmt = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
 
   std::vector<uint8_t> buf(1024, '\0');
@@ -718,15 +800,15 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementGetOptionBytes(
     JniStringView key_str(env, key);
     CHECK_ADBC_ERROR(
         AdbcStatementGetOptionBytes(stmt, key_str.value, const_cast<uint8_t*>(buf.data()),
-                                    &length, &error_guard.error),
-        error_guard.error);
+                                    &length, &error_guard.value),
+        error_guard.value);
     while (length > buf.size()) {
       // Buffer was too small, resize and try again
       buf.resize(length);
       CHECK_ADBC_ERROR(AdbcStatementGetOptionBytes(stmt, key_str.value,
                                                    const_cast<uint8_t*>(buf.data()),
-                                                   &length, &error_guard.error),
-                       error_guard.error);
+                                                   &length, &error_guard.value),
+                       error_guard.value);
     }
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
@@ -741,14 +823,14 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementGetOptionBytes(
 JNIEXPORT jdouble JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementGetOptionDouble(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* stmt = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
   double value = 0.0;
   try {
     JniStringView key_str(env, key);
     CHECK_ADBC_ERROR(
-        AdbcStatementGetOptionDouble(stmt, key_str.value, &value, &error_guard.error),
-        error_guard.error);
+        AdbcStatementGetOptionDouble(stmt, key_str.value, &value, &error_guard.value),
+        error_guard.value);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
     return 0.0;
@@ -759,14 +841,14 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementGetOptionDouble(
 JNIEXPORT jlong JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementGetOptionLong(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* stmt = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
   int64_t value = 0;
   try {
     JniStringView key_str(env, key);
     CHECK_ADBC_ERROR(
-        AdbcStatementGetOptionInt(stmt, key_str.value, &value, &error_guard.error),
-        error_guard.error);
+        AdbcStatementGetOptionInt(stmt, key_str.value, &value, &error_guard.value),
+        error_guard.value);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
     return 0;
@@ -777,7 +859,7 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementGetOptionLong(
 JNIEXPORT jstring JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementGetOptionString(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* stmt = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
 
   std::vector<char> buf(1024, '\0');
@@ -786,15 +868,15 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementGetOptionString(
     JniStringView key_str(env, key);
     CHECK_ADBC_ERROR(
         AdbcStatementGetOption(stmt, key_str.value, const_cast<char*>(buf.data()),
-                               &length, &error_guard.error),
-        error_guard.error);
+                               &length, &error_guard.value),
+        error_guard.value);
     while (length > buf.size()) {
       // Buffer was too small, resize and try again
       buf.resize(length);
       CHECK_ADBC_ERROR(
           AdbcStatementGetOption(stmt, key_str.value, const_cast<char*>(buf.data()),
-                                 &length, &error_guard.error),
-          error_guard.error);
+                                 &length, &error_guard.value),
+          error_guard.value);
     }
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
@@ -807,7 +889,7 @@ JNIEXPORT void JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementSetOptionBytes(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key,
     jbyteArray value) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* stmt = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
   try {
     JniStringView key_str(env, key);
@@ -816,8 +898,8 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementSetOptionBytes(
     env->GetByteArrayRegion(value, 0, value_length,
                             reinterpret_cast<jbyte*>(value_buf.data()));
     CHECK_ADBC_ERROR(AdbcStatementSetOptionBytes(stmt, key_str.value, value_buf.data(),
-                                                 value_buf.size(), &error_guard.error),
-                     error_guard.error);
+                                                 value_buf.size(), &error_guard.value),
+                     error_guard.value);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
@@ -826,14 +908,14 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementSetOptionBytes(
 JNIEXPORT void JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementSetOptionDouble(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key, jdouble value) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* stmt = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
   try {
     JniStringView key_str(env, key);
     CHECK_ADBC_ERROR(
         AdbcStatementSetOptionDouble(stmt, key_str.value, static_cast<double>(value),
-                                     &error_guard.error),
-        error_guard.error);
+                                     &error_guard.value),
+        error_guard.value);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
@@ -842,14 +924,14 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementSetOptionDouble(
 JNIEXPORT void JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementSetOptionLong(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key, jlong value) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* stmt = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
   try {
     JniStringView key_str(env, key);
     CHECK_ADBC_ERROR(
         AdbcStatementSetOptionInt(stmt, key_str.value, static_cast<int64_t>(value),
-                                  &error_guard.error),
-        error_guard.error);
+                                  &error_guard.value),
+        error_guard.value);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
@@ -858,20 +940,20 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementSetOptionLong(
 JNIEXPORT void JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementSetOptionString(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key, jstring value) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* stmt = reinterpret_cast<struct AdbcStatement*>(static_cast<uintptr_t>(handle));
   try {
     JniStringView key_str(env, key);
     if (value == nullptr) {
       CHECK_ADBC_ERROR(
-          AdbcStatementSetOption(stmt, key_str.value, nullptr, &error_guard.error),
-          error_guard.error);
+          AdbcStatementSetOption(stmt, key_str.value, nullptr, &error_guard.value),
+          error_guard.value);
       return;
     }
     JniStringView value_str(env, value);
     CHECK_ADBC_ERROR(
-        AdbcStatementSetOption(stmt, key_str.value, value_str.value, &error_guard.error),
-        error_guard.error);
+        AdbcStatementSetOption(stmt, key_str.value, value_str.value, &error_guard.value),
+        error_guard.value);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
@@ -880,10 +962,10 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementSetOptionString(
 JNIEXPORT void JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionCancel(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* ptr = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
   try {
-    CHECK_ADBC_ERROR(AdbcConnectionCancel(ptr, &error_guard.error), error_guard.error);
+    CHECK_ADBC_ERROR(AdbcConnectionCancel(ptr, &error_guard.value), error_guard.value);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
@@ -894,7 +976,7 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetObjects(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jint depth, jstring catalog,
     jstring db_schema, jstring table_name, jobjectArray table_types,
     jstring column_name) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   try {
     auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
 
@@ -930,8 +1012,8 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetObjects(
             db_schema_str ? db_schema_str->c_str() : nullptr,
             table_name_str ? table_name_str->c_str() : nullptr, c_table_types,
             column_name_str ? column_name_str->c_str() : nullptr, &out,
-            &error_guard.error),
-        error_guard.error);
+            &error_guard.value),
+        error_guard.value);
 
     return MakeNativeQueryResult(env, -1, &out);
   } catch (const AdbcException& e) {
@@ -943,7 +1025,7 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetObjects(
 JNIEXPORT jobject JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetInfo(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jintArray info_codes) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   try {
     auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
 
@@ -963,8 +1045,8 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetInfo(
     struct ArrowArrayStream out = {};
 
     CHECK_ADBC_ERROR(AdbcConnectionGetInfo(conn, c_info_codes, info_codes_length, &out,
-                                           &error_guard.error),
-                     error_guard.error);
+                                           &error_guard.value),
+                     error_guard.value);
 
     return MakeNativeQueryResult(env, -1, &out);
   } catch (const AdbcException& e) {
@@ -977,7 +1059,7 @@ JNIEXPORT jobject JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetTableSchema(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring catalog,
     jstring db_schema, jstring table_name) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   try {
     auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
 
@@ -990,8 +1072,8 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetTableSchema(
     CHECK_ADBC_ERROR(
         AdbcConnectionGetTableSchema(conn, catalog_str ? catalog_str->c_str() : nullptr,
                                      db_schema_str ? db_schema_str->c_str() : nullptr,
-                                     table_name_str.value, &schema, &error_guard.error),
-        error_guard.error);
+                                     table_name_str.value, &schema, &error_guard.value),
+        error_guard.value);
 
     return MakeNativeSchemaResult(env, &schema);
   } catch (const AdbcException& e) {
@@ -1003,14 +1085,14 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetTableSchema(
 JNIEXPORT jobject JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetTableTypes(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   try {
     auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
 
     struct ArrowArrayStream out = {};
 
-    CHECK_ADBC_ERROR(AdbcConnectionGetTableTypes(conn, &out, &error_guard.error),
-                     error_guard.error);
+    CHECK_ADBC_ERROR(AdbcConnectionGetTableTypes(conn, &out, &error_guard.value),
+                     error_guard.value);
 
     return MakeNativeQueryResult(env, -1, &out);
   } catch (const AdbcException& e) {
@@ -1022,7 +1104,7 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetTableTypes(
 JNIEXPORT jbyteArray JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetOptionBytes(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
 
   std::vector<uint8_t> buf(1024, '\0');
@@ -1031,15 +1113,15 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetOptionBytes(
     JniStringView key_str(env, key);
     CHECK_ADBC_ERROR(AdbcConnectionGetOptionBytes(conn, key_str.value,
                                                   const_cast<uint8_t*>(buf.data()),
-                                                  &length, &error_guard.error),
-                     error_guard.error);
+                                                  &length, &error_guard.value),
+                     error_guard.value);
     while (length > buf.size()) {
       // Buffer was too small, resize and try again
       buf.resize(length);
       CHECK_ADBC_ERROR(AdbcConnectionGetOptionBytes(conn, key_str.value,
                                                     const_cast<uint8_t*>(buf.data()),
-                                                    &length, &error_guard.error),
-                       error_guard.error);
+                                                    &length, &error_guard.value),
+                       error_guard.value);
     }
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
@@ -1054,14 +1136,14 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetOptionBytes(
 JNIEXPORT jdouble JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetOptionDouble(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
   double value = 0.0;
   try {
     JniStringView key_str(env, key);
     CHECK_ADBC_ERROR(
-        AdbcConnectionGetOptionDouble(conn, key_str.value, &value, &error_guard.error),
-        error_guard.error);
+        AdbcConnectionGetOptionDouble(conn, key_str.value, &value, &error_guard.value),
+        error_guard.value);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
     return 0.0;
@@ -1072,14 +1154,14 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetOptionDouble(
 JNIEXPORT jlong JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetOptionLong(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
   int64_t value = 0;
   try {
     JniStringView key_str(env, key);
     CHECK_ADBC_ERROR(
-        AdbcConnectionGetOptionInt(conn, key_str.value, &value, &error_guard.error),
-        error_guard.error);
+        AdbcConnectionGetOptionInt(conn, key_str.value, &value, &error_guard.value),
+        error_guard.value);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
     return 0;
@@ -1090,7 +1172,7 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetOptionLong(
 JNIEXPORT jstring JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetOptionString(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
 
   std::vector<char> buf(1024, '\0');
@@ -1099,15 +1181,15 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetOptionString(
     JniStringView key_str(env, key);
     CHECK_ADBC_ERROR(
         AdbcConnectionGetOption(conn, key_str.value, const_cast<char*>(buf.data()),
-                                &length, &error_guard.error),
-        error_guard.error);
+                                &length, &error_guard.value),
+        error_guard.value);
     while (length > buf.size()) {
       // Buffer was too small, resize and try again
       buf.resize(length);
       CHECK_ADBC_ERROR(
           AdbcConnectionGetOption(conn, key_str.value, const_cast<char*>(buf.data()),
-                                  &length, &error_guard.error),
-          error_guard.error);
+                                  &length, &error_guard.value),
+          error_guard.value);
     }
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
@@ -1120,7 +1202,7 @@ JNIEXPORT void JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionSetOptionBytes(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key,
     jbyteArray value) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
   try {
     JniStringView key_str(env, key);
@@ -1129,8 +1211,8 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionSetOptionBytes(
     env->GetByteArrayRegion(value, 0, value_length,
                             reinterpret_cast<jbyte*>(value_buf.data()));
     CHECK_ADBC_ERROR(AdbcConnectionSetOptionBytes(conn, key_str.value, value_buf.data(),
-                                                  value_buf.size(), &error_guard.error),
-                     error_guard.error);
+                                                  value_buf.size(), &error_guard.value),
+                     error_guard.value);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
@@ -1139,14 +1221,14 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionSetOptionBytes(
 JNIEXPORT void JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionSetOptionDouble(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key, jdouble value) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
   try {
     JniStringView key_str(env, key);
     CHECK_ADBC_ERROR(
         AdbcConnectionSetOptionDouble(conn, key_str.value, static_cast<double>(value),
-                                      &error_guard.error),
-        error_guard.error);
+                                      &error_guard.value),
+        error_guard.value);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
@@ -1155,14 +1237,14 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionSetOptionDouble(
 JNIEXPORT void JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionSetOptionLong(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key, jlong value) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
   try {
     JniStringView key_str(env, key);
     CHECK_ADBC_ERROR(
         AdbcConnectionSetOptionInt(conn, key_str.value, static_cast<int64_t>(value),
-                                   &error_guard.error),
-        error_guard.error);
+                                   &error_guard.value),
+        error_guard.value);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
@@ -1171,20 +1253,20 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionSetOptionLong(
 JNIEXPORT void JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionSetOptionString(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key, jstring value) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
   try {
     JniStringView key_str(env, key);
     if (value == nullptr) {
       CHECK_ADBC_ERROR(
-          AdbcConnectionSetOption(conn, key_str.value, nullptr, &error_guard.error),
-          error_guard.error);
+          AdbcConnectionSetOption(conn, key_str.value, nullptr, &error_guard.value),
+          error_guard.value);
       return;
     }
     JniStringView value_str(env, value);
     CHECK_ADBC_ERROR(
-        AdbcConnectionSetOption(conn, key_str.value, value_str.value, &error_guard.error),
-        error_guard.error);
+        AdbcConnectionSetOption(conn, key_str.value, value_str.value, &error_guard.value),
+        error_guard.value);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
@@ -1193,10 +1275,10 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionSetOptionString(
 JNIEXPORT void JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionCommit(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
   try {
-    CHECK_ADBC_ERROR(AdbcConnectionCommit(conn, &error_guard.error), error_guard.error);
+    CHECK_ADBC_ERROR(AdbcConnectionCommit(conn, &error_guard.value), error_guard.value);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
@@ -1205,10 +1287,10 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionCommit(
 JNIEXPORT void JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionRollback(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
   try {
-    CHECK_ADBC_ERROR(AdbcConnectionRollback(conn, &error_guard.error), error_guard.error);
+    CHECK_ADBC_ERROR(AdbcConnectionRollback(conn, &error_guard.value), error_guard.value);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
@@ -1217,7 +1299,7 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionRollback(
 JNIEXPORT jobject JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionReadPartition(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jobject partition) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
   struct ArrowArrayStream out = {};
   size_t serialized_length = 0;
@@ -1232,8 +1314,8 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionReadPartition(
     assert(serialized_partition != nullptr);
     CHECK_ADBC_ERROR(
         AdbcConnectionReadPartition(conn, serialized_partition, serialized_length, &out,
-                                    &error_guard.error),
-        error_guard.error);
+                                    &error_guard.value),
+        error_guard.value);
     return MakeNativeQueryResult(env, -1, &out);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
@@ -1244,12 +1326,12 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionReadPartition(
 JNIEXPORT jobject JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetStatisticNames(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
   struct ArrowArrayStream out = {};
   try {
-    CHECK_ADBC_ERROR(AdbcConnectionGetStatisticNames(conn, &out, &error_guard.error),
-                     error_guard.error);
+    CHECK_ADBC_ERROR(AdbcConnectionGetStatisticNames(conn, &out, &error_guard.value),
+                     error_guard.value);
     return MakeNativeQueryResult(env, -1, &out);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
@@ -1261,7 +1343,7 @@ JNIEXPORT jobject JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetStatistics(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring catalog,
     jstring schema, jstring table, jboolean approximate) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* conn = reinterpret_cast<struct AdbcConnection*>(static_cast<uintptr_t>(handle));
   struct ArrowArrayStream out = {};
   try {
@@ -1272,8 +1354,8 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetStatistics(
         AdbcConnectionGetStatistics(conn, catalog_str ? catalog_str->c_str() : nullptr,
                                     schema_str ? schema_str->c_str() : nullptr,
                                     table_str ? table_str->c_str() : nullptr, approximate,
-                                    &out, &error_guard.error),
-        error_guard.error);
+                                    &out, &error_guard.value),
+        error_guard.value);
     return MakeNativeQueryResult(env, -1, &out);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
@@ -1284,7 +1366,7 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_connectionGetStatistics(
 JNIEXPORT jbyteArray JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseGetOptionBytes(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* db = reinterpret_cast<struct AdbcDatabase*>(static_cast<uintptr_t>(handle));
 
   std::vector<uint8_t> buf(1024, '\0');
@@ -1293,15 +1375,15 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseGetOptionBytes(
     JniStringView key_str(env, key);
     CHECK_ADBC_ERROR(
         AdbcDatabaseGetOptionBytes(db, key_str.value, const_cast<uint8_t*>(buf.data()),
-                                   &length, &error_guard.error),
-        error_guard.error);
+                                   &length, &error_guard.value),
+        error_guard.value);
     while (length > buf.size()) {
       // Buffer was too small, resize and try again
       buf.resize(length);
       CHECK_ADBC_ERROR(
           AdbcDatabaseGetOptionBytes(db, key_str.value, const_cast<uint8_t*>(buf.data()),
-                                     &length, &error_guard.error),
-          error_guard.error);
+                                     &length, &error_guard.value),
+          error_guard.value);
     }
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
@@ -1316,14 +1398,14 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseGetOptionBytes(
 JNIEXPORT jdouble JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseGetOptionDouble(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* db = reinterpret_cast<struct AdbcDatabase*>(static_cast<uintptr_t>(handle));
   double value = 0.0;
   try {
     JniStringView key_str(env, key);
     CHECK_ADBC_ERROR(
-        AdbcDatabaseGetOptionDouble(db, key_str.value, &value, &error_guard.error),
-        error_guard.error);
+        AdbcDatabaseGetOptionDouble(db, key_str.value, &value, &error_guard.value),
+        error_guard.value);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
     return 0.0;
@@ -1334,14 +1416,14 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseGetOptionDouble(
 JNIEXPORT jlong JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseGetOptionLong(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* db = reinterpret_cast<struct AdbcDatabase*>(static_cast<uintptr_t>(handle));
   int64_t value = 0;
   try {
     JniStringView key_str(env, key);
     CHECK_ADBC_ERROR(
-        AdbcDatabaseGetOptionInt(db, key_str.value, &value, &error_guard.error),
-        error_guard.error);
+        AdbcDatabaseGetOptionInt(db, key_str.value, &value, &error_guard.value),
+        error_guard.value);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
     return 0;
@@ -1352,7 +1434,7 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseGetOptionLong(
 JNIEXPORT jstring JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseGetOptionString(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* db = reinterpret_cast<struct AdbcDatabase*>(static_cast<uintptr_t>(handle));
 
   std::vector<char> buf(1024, '\0');
@@ -1361,15 +1443,15 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseGetOptionString(
     JniStringView key_str(env, key);
     CHECK_ADBC_ERROR(
         AdbcDatabaseGetOption(db, key_str.value, const_cast<char*>(buf.data()), &length,
-                              &error_guard.error),
-        error_guard.error);
+                              &error_guard.value),
+        error_guard.value);
     while (length > buf.size()) {
       // Buffer was too small, resize and try again
       buf.resize(length);
       CHECK_ADBC_ERROR(
           AdbcDatabaseGetOption(db, key_str.value, const_cast<char*>(buf.data()), &length,
-                                &error_guard.error),
-          error_guard.error);
+                                &error_guard.value),
+          error_guard.value);
     }
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
@@ -1382,7 +1464,7 @@ JNIEXPORT void JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseSetOptionBytes(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key,
     jbyteArray value) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* db = reinterpret_cast<struct AdbcDatabase*>(static_cast<uintptr_t>(handle));
   try {
     JniStringView key_str(env, key);
@@ -1391,8 +1473,8 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseSetOptionBytes(
     env->GetByteArrayRegion(value, 0, value_length,
                             reinterpret_cast<jbyte*>(value_buf.data()));
     CHECK_ADBC_ERROR(AdbcDatabaseSetOptionBytes(db, key_str.value, value_buf.data(),
-                                                value_buf.size(), &error_guard.error),
-                     error_guard.error);
+                                                value_buf.size(), &error_guard.value),
+                     error_guard.value);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
@@ -1401,14 +1483,14 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseSetOptionBytes(
 JNIEXPORT void JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseSetOptionDouble(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key, jdouble value) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* db = reinterpret_cast<struct AdbcDatabase*>(static_cast<uintptr_t>(handle));
   try {
     JniStringView key_str(env, key);
     CHECK_ADBC_ERROR(
         AdbcDatabaseSetOptionDouble(db, key_str.value, static_cast<double>(value),
-                                    &error_guard.error),
-        error_guard.error);
+                                    &error_guard.value),
+        error_guard.value);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
@@ -1417,14 +1499,14 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseSetOptionDouble(
 JNIEXPORT void JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseSetOptionLong(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key, jlong value) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* db = reinterpret_cast<struct AdbcDatabase*>(static_cast<uintptr_t>(handle));
   try {
     JniStringView key_str(env, key);
     CHECK_ADBC_ERROR(
         AdbcDatabaseSetOptionInt(db, key_str.value, static_cast<int64_t>(value),
-                                 &error_guard.error),
-        error_guard.error);
+                                 &error_guard.value),
+        error_guard.value);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
@@ -1433,20 +1515,20 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseSetOptionLong(
 JNIEXPORT void JNICALL
 Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseSetOptionString(
     JNIEnv* env, [[maybe_unused]] jclass self, jlong handle, jstring key, jstring value) {
-  AdbcErrorGuard error_guard;
+  AdbcGuard<struct AdbcError> error_guard;
   auto* db = reinterpret_cast<struct AdbcDatabase*>(static_cast<uintptr_t>(handle));
   try {
     JniStringView key_str(env, key);
     if (value == nullptr) {
       CHECK_ADBC_ERROR(
-          AdbcDatabaseSetOption(db, key_str.value, nullptr, &error_guard.error),
-          error_guard.error);
+          AdbcDatabaseSetOption(db, key_str.value, nullptr, &error_guard.value),
+          error_guard.value);
       return;
     }
     JniStringView value_str(env, value);
     CHECK_ADBC_ERROR(
-        AdbcDatabaseSetOption(db, key_str.value, value_str.value, &error_guard.error),
-        error_guard.error);
+        AdbcDatabaseSetOption(db, key_str.value, value_str.value, &error_guard.value),
+        error_guard.value);
   } catch (const AdbcException& e) {
     e.ThrowJavaException(env);
   }
