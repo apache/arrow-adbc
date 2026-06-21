@@ -32,7 +32,7 @@ conda-forge:
 
 You can use ``apt`` on the following platforms:
 
-- Debian GNU/Linux bookworm
+- Debian GNU/Linux trixie
 - Ubuntu 22.04
 
 Prepare the Apache Arrow APT repository:
