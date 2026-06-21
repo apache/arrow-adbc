@@ -33,6 +33,7 @@ import (
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
+	"github.com/apache/arrow-go/v18/arrow/array/arreflect"
 	"github.com/apache/arrow-go/v18/arrow/decimal128"
 	"github.com/apache/arrow-go/v18/arrow/decimal256"
 	"github.com/apache/arrow-go/v18/arrow/memory"
@@ -716,6 +717,8 @@ func (r *rows) Next(dest []driver.Value) error {
 			dest[i] = col.Value(int(r.curRow))
 		case *array.Float64:
 			dest[i] = col.Value(int(r.curRow))
+		case *array.Float16:
+			dest[i] = col.Value(int(r.curRow))
 		case *array.String:
 			dest[i] = col.Value(int(r.curRow))
 		case *array.LargeString:
@@ -738,11 +741,18 @@ func (r *rows) Next(dest []driver.Value) error {
 			dest[i] = col.Value(int(r.curRow))
 		case *array.Decimal256:
 			dest[i] = col.Value(int(r.curRow))
+		case *array.MonthInterval:
+			dest[i] = col.Value(int(r.curRow))
+		case *array.DayTimeInterval:
+			dest[i] = col.Value(int(r.curRow))
+		case *array.MonthDayNanoInterval:
+			dest[i] = col.Value(int(r.curRow))
 		default:
-			return &adbc.Error{
-				Code: adbc.StatusNotImplemented,
-				Msg:  "not yet implemented populating from columns of type " + col.DataType().String(),
+			v, err := arreflect.AtAny(col, int(r.curRow))
+			if err != nil {
+				return err
 			}
+			dest[i] = v
 		}
 	}
 
