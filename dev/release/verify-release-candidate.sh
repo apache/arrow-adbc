@@ -260,30 +260,11 @@ install_dotnet() {
   show_info "dotnet found but it is the wrong version or dotnet not found"
 
   local csharp_bin=${ARROW_TMPDIR}/csharp/bin
-  local dotnet_version=10.0.203
-  local dotnet_platform=
-  case "$(uname)" in
-      Linux)
-          dotnet_platform=linux
-          ;;
-      Darwin)
-          dotnet_platform=macos
-          ;;
-  esac
-  local dotnet_download_thank_you_url=https://dotnet.microsoft.com/download/thank-you/dotnet-sdk-${dotnet_version}-${dotnet_platform}-x64-binaries
-  show_info "Getting .NET download URL from ${dotnet_download_thank_you_url}"
-  curl --fail -L -o "${ARROW_TMPDIR}/dotnetdownload.html" "${dotnet_download_thank_you_url}"
-  local dotnet_download_url=$(grep 'directLink' "${ARROW_TMPDIR}/dotnetdownload.html" | \
-                                  grep -E -o 'https://builds.dotnet[^"]+' | \
-                                  head -n1)
-  if [ -z "${dotnet_download_url}" ]; then
-    echo "Failed to get .NET download URL from ${dotnet_download_thank_you_url}"
-    exit 1
-  fi
-  show_info "Downloading .NET from ${dotnet_download_url}"
+  local dotnet_channel=10.0
   mkdir -p ${csharp_bin}
-  curl -sL ${dotnet_download_url} | \
-      tar xzf - -C ${csharp_bin}
+  show_info "Installing .NET ${dotnet_channel} via dotnet-install.sh"
+  curl --fail -sSL https://dot.net/v1/dotnet-install.sh | \
+      bash /dev/stdin --channel ${dotnet_channel} --install-dir ${csharp_bin}
   PATH=${csharp_bin}:${PATH}
   show_info "Installed C# at $(which csharp) (.NET $(dotnet --version))"
 
