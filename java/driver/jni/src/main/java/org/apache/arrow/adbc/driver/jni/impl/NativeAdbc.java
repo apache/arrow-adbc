@@ -22,7 +22,7 @@ import org.apache.arrow.adbc.core.AdbcException;
 
 /** All the JNI methods. Don't use this directly, prefer {@link JniLoader}. */
 class NativeAdbc {
-  static native NativeDatabaseHandle openDatabase(int version, String[] parameters)
+  static native NativeDatabaseHandle openDatabase(int version, byte[][] parameters)
       throws AdbcException;
 
   static native void closeDatabase(long handle) throws AdbcException;
@@ -57,28 +57,28 @@ class NativeAdbc {
   static native NativeSchemaResult statementGetParameterSchema(long statementHandle)
       throws AdbcException;
 
-  static native void statementSetSqlQuery(long handle, String query) throws AdbcException;
+  static native void statementSetSqlQuery(long handle, byte[] query) throws AdbcException;
 
   static native void statementSetSubstraitPlan(long handle, ByteBuffer plan) throws AdbcException;
 
-  static native byte[] statementGetOptionBytes(long handle, String key) throws AdbcException;
+  static native byte[] statementGetOptionBytes(long handle, byte[] key) throws AdbcException;
 
-  static native double statementGetOptionDouble(long handle, String key) throws AdbcException;
+  static native double statementGetOptionDouble(long handle, byte[] key) throws AdbcException;
 
-  static native long statementGetOptionLong(long handle, String key) throws AdbcException;
+  static native long statementGetOptionLong(long handle, byte[] key) throws AdbcException;
 
-  static native String statementGetOptionString(long handle, String key) throws AdbcException;
+  static native byte[] statementGetOptionString(long handle, byte[] key) throws AdbcException;
 
-  static native void statementSetOptionBytes(long handle, String key, byte[] value)
+  static native void statementSetOptionBytes(long handle, byte[] key, byte[] value)
       throws AdbcException;
 
-  static native void statementSetOptionDouble(long handle, String key, double value)
+  static native void statementSetOptionDouble(long handle, byte[] key, double value)
       throws AdbcException;
 
-  static native void statementSetOptionLong(long handle, String key, long value)
+  static native void statementSetOptionLong(long handle, byte[] key, long value)
       throws AdbcException;
 
-  static native void statementSetOptionString(long handle, String key, String value)
+  static native void statementSetOptionString(long handle, byte[] key, byte[] value)
       throws AdbcException;
 
   static native void connectionCancel(long handle) throws AdbcException;
@@ -86,18 +86,18 @@ class NativeAdbc {
   static native NativeQueryResult connectionGetObjects(
       long handle,
       int depth,
-      String catalog,
-      String dbSchema,
-      String tableName,
-      String[] tableTypes,
-      String columnName)
+      byte[] catalog,
+      byte[] dbSchema,
+      byte[] tableName,
+      byte[][] tableTypes,
+      byte[] columnName)
       throws AdbcException;
 
   static native NativeQueryResult connectionGetInfo(long handle, int[] infoCodes)
       throws AdbcException;
 
   static native NativeSchemaResult connectionGetTableSchema(
-      long handle, String catalog, String dbSchema, String tableName) throws AdbcException;
+      long handle, byte[] catalog, byte[] dbSchema, byte[] tableName) throws AdbcException;
 
   static native NativeQueryResult connectionGetTableTypes(long handle) throws AdbcException;
 
@@ -108,53 +108,53 @@ class NativeAdbc {
   static native NativeQueryResult connectionReadPartition(long handle, ByteBuffer partition)
       throws AdbcException;
 
-  static native byte[] connectionGetOptionBytes(long handle, String key) throws AdbcException;
+  static native byte[] connectionGetOptionBytes(long handle, byte[] key) throws AdbcException;
 
-  static native double connectionGetOptionDouble(long handle, String key) throws AdbcException;
+  static native double connectionGetOptionDouble(long handle, byte[] key) throws AdbcException;
 
-  static native long connectionGetOptionLong(long handle, String key) throws AdbcException;
+  static native long connectionGetOptionLong(long handle, byte[] key) throws AdbcException;
 
-  static native String connectionGetOptionString(long handle, String key) throws AdbcException;
+  static native byte[] connectionGetOptionString(long handle, byte[] key) throws AdbcException;
 
-  static native void connectionSetOptionBytes(long handle, String key, byte[] value)
+  static native void connectionSetOptionBytes(long handle, byte[] key, byte[] value)
       throws AdbcException;
 
-  static native void connectionSetOptionDouble(long handle, String key, double value)
+  static native void connectionSetOptionDouble(long handle, byte[] key, double value)
       throws AdbcException;
 
-  static native void connectionSetOptionLong(long handle, String key, long value)
+  static native void connectionSetOptionLong(long handle, byte[] key, long value)
       throws AdbcException;
 
-  static native void connectionSetOptionString(long handle, String key, String value)
+  static native void connectionSetOptionString(long handle, byte[] key, byte[] value)
       throws AdbcException;
 
   static native NativeQueryResult connectionGetStatisticNames(long handle) throws AdbcException;
 
   static native NativeQueryResult connectionGetStatistics(
       long handle,
-      String catalogPattern,
-      String dbSchemaPattern,
-      String tableNamePattern,
+      byte[] catalogPattern,
+      byte[] dbSchemaPattern,
+      byte[] tableNamePattern,
       boolean approximate)
       throws AdbcException;
 
-  static native byte[] databaseGetOptionBytes(long handle, String key) throws AdbcException;
+  static native byte[] databaseGetOptionBytes(long handle, byte[] key) throws AdbcException;
 
-  static native double databaseGetOptionDouble(long handle, String key) throws AdbcException;
+  static native double databaseGetOptionDouble(long handle, byte[] key) throws AdbcException;
 
-  static native long databaseGetOptionLong(long handle, String key) throws AdbcException;
+  static native long databaseGetOptionLong(long handle, byte[] key) throws AdbcException;
 
-  static native String databaseGetOptionString(long handle, String key) throws AdbcException;
+  static native byte[] databaseGetOptionString(long handle, byte[] key) throws AdbcException;
 
-  static native void databaseSetOptionBytes(long handle, String key, byte[] value)
+  static native void databaseSetOptionBytes(long handle, byte[] key, byte[] value)
       throws AdbcException;
 
-  static native void databaseSetOptionDouble(long handle, String key, double value)
+  static native void databaseSetOptionDouble(long handle, byte[] key, double value)
       throws AdbcException;
 
-  static native void databaseSetOptionLong(long handle, String key, long value)
+  static native void databaseSetOptionLong(long handle, byte[] key, long value)
       throws AdbcException;
 
-  static native void databaseSetOptionString(long handle, String key, String value)
+  static native void databaseSetOptionString(long handle, byte[] key, byte[] value)
       throws AdbcException;
 }

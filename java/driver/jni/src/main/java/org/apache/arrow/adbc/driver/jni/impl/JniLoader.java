@@ -22,6 +22,7 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.Map;
@@ -65,11 +66,11 @@ public enum JniLoader {
   }
 
   public NativeDatabaseHandle openDatabase(Map<String, String> parameters) throws AdbcException {
-    String[] nativeParameters = new String[parameters.size() * 2];
+    byte[][] nativeParameters = new byte[parameters.size() * 2][];
     int index = 0;
     for (Map.Entry<String, String> parameter : parameters.entrySet()) {
-      nativeParameters[index++] = parameter.getKey();
-      nativeParameters[index++] = parameter.getValue();
+      nativeParameters[index++] = stringToUtf8(parameter.getKey());
+      nativeParameters[index++] = stringToUtf8(parameter.getValue());
     }
     return NativeAdbc.openDatabase(1001000, nativeParameters);
   }
@@ -99,7 +100,7 @@ public enum JniLoader {
 
   public void statementSetSqlQuery(NativeStatementHandle statement, String query)
       throws AdbcException {
-    NativeAdbc.statementSetSqlQuery(statement.getStatementHandle(), query);
+    NativeAdbc.statementSetSqlQuery(statement.getStatementHandle(), stringToUtf8(query));
   }
 
   public void statementSetSubstraitPlan(NativeStatementHandle statement, ByteBuffer plan)
@@ -138,42 +139,44 @@ public enum JniLoader {
 
   public byte[] statementGetOptionBytes(NativeStatementHandle handle, String key)
       throws AdbcException {
-    return NativeAdbc.statementGetOptionBytes(handle.getStatementHandle(), key);
+    return NativeAdbc.statementGetOptionBytes(handle.getStatementHandle(), stringToUtf8(key));
   }
 
   public double statementGetOptionDouble(NativeStatementHandle handle, String key)
       throws AdbcException {
-    return NativeAdbc.statementGetOptionDouble(handle.getStatementHandle(), key);
+    return NativeAdbc.statementGetOptionDouble(handle.getStatementHandle(), stringToUtf8(key));
   }
 
   public long statementGetOptionLong(NativeStatementHandle handle, String key)
       throws AdbcException {
-    return NativeAdbc.statementGetOptionLong(handle.getStatementHandle(), key);
+    return NativeAdbc.statementGetOptionLong(handle.getStatementHandle(), stringToUtf8(key));
   }
 
   public String statementGetOptionString(NativeStatementHandle handle, String key)
       throws AdbcException {
-    return NativeAdbc.statementGetOptionString(handle.getStatementHandle(), key);
+    return utf8ToString(
+        NativeAdbc.statementGetOptionString(handle.getStatementHandle(), stringToUtf8(key)));
   }
 
   public void statementSetOptionBytes(NativeStatementHandle handle, String key, byte[] value)
       throws AdbcException {
-    NativeAdbc.statementSetOptionBytes(handle.getStatementHandle(), key, value);
+    NativeAdbc.statementSetOptionBytes(handle.getStatementHandle(), stringToUtf8(key), value);
   }
 
   public void statementSetOptionDouble(NativeStatementHandle handle, String key, double value)
       throws AdbcException {
-    NativeAdbc.statementSetOptionDouble(handle.getStatementHandle(), key, value);
+    NativeAdbc.statementSetOptionDouble(handle.getStatementHandle(), stringToUtf8(key), value);
   }
 
   public void statementSetOptionLong(NativeStatementHandle handle, String key, long value)
       throws AdbcException {
-    NativeAdbc.statementSetOptionLong(handle.getStatementHandle(), key, value);
+    NativeAdbc.statementSetOptionLong(handle.getStatementHandle(), stringToUtf8(key), value);
   }
 
   public void statementSetOptionString(NativeStatementHandle statement, String key, String value)
       throws AdbcException {
-    NativeAdbc.statementSetOptionString(statement.getStatementHandle(), key, value);
+    NativeAdbc.statementSetOptionString(
+        statement.getStatementHandle(), stringToUtf8(key), stringToUtf8(value));
   }
 
   public void connectionCancel(NativeConnectionHandle connection) throws AdbcException {
@@ -192,11 +195,11 @@ public enum JniLoader {
     return NativeAdbc.connectionGetObjects(
         connection.getConnectionHandle(),
         depth,
-        catalog,
-        dbSchema,
-        tableName,
-        tableTypes,
-        columnName);
+        stringToUtf8(catalog),
+        stringToUtf8(dbSchema),
+        stringToUtf8(tableName),
+        stringArrayToUtf8(tableTypes),
+        stringToUtf8(columnName));
   }
 
   public NativeQueryResult connectionGetInfo(NativeConnectionHandle connection, int[] infoCodes)
@@ -208,7 +211,10 @@ public enum JniLoader {
       NativeConnectionHandle connection, String catalog, String dbSchema, String tableName)
       throws AdbcException {
     return NativeAdbc.connectionGetTableSchema(
-        connection.getConnectionHandle(), catalog, dbSchema, tableName);
+        connection.getConnectionHandle(),
+        stringToUtf8(catalog),
+        stringToUtf8(dbSchema),
+        stringToUtf8(tableName));
   }
 
   public NativeQueryResult connectionGetTableTypes(NativeConnectionHandle connection)
@@ -231,42 +237,44 @@ public enum JniLoader {
 
   public byte[] connectionGetOptionBytes(NativeConnectionHandle handle, String key)
       throws AdbcException {
-    return NativeAdbc.connectionGetOptionBytes(handle.getConnectionHandle(), key);
+    return NativeAdbc.connectionGetOptionBytes(handle.getConnectionHandle(), stringToUtf8(key));
   }
 
   public double connectionGetOptionDouble(NativeConnectionHandle handle, String key)
       throws AdbcException {
-    return NativeAdbc.connectionGetOptionDouble(handle.getConnectionHandle(), key);
+    return NativeAdbc.connectionGetOptionDouble(handle.getConnectionHandle(), stringToUtf8(key));
   }
 
   public long connectionGetOptionLong(NativeConnectionHandle handle, String key)
       throws AdbcException {
-    return NativeAdbc.connectionGetOptionLong(handle.getConnectionHandle(), key);
+    return NativeAdbc.connectionGetOptionLong(handle.getConnectionHandle(), stringToUtf8(key));
   }
 
   public String connectionGetOptionString(NativeConnectionHandle handle, String key)
       throws AdbcException {
-    return NativeAdbc.connectionGetOptionString(handle.getConnectionHandle(), key);
+    return utf8ToString(
+        NativeAdbc.connectionGetOptionString(handle.getConnectionHandle(), stringToUtf8(key)));
   }
 
   public void connectionSetOptionBytes(NativeConnectionHandle handle, String key, byte[] value)
       throws AdbcException {
-    NativeAdbc.connectionSetOptionBytes(handle.getConnectionHandle(), key, value);
+    NativeAdbc.connectionSetOptionBytes(handle.getConnectionHandle(), stringToUtf8(key), value);
   }
 
   public void connectionSetOptionDouble(NativeConnectionHandle handle, String key, double value)
       throws AdbcException {
-    NativeAdbc.connectionSetOptionDouble(handle.getConnectionHandle(), key, value);
+    NativeAdbc.connectionSetOptionDouble(handle.getConnectionHandle(), stringToUtf8(key), value);
   }
 
   public void connectionSetOptionLong(NativeConnectionHandle handle, String key, long value)
       throws AdbcException {
-    NativeAdbc.connectionSetOptionLong(handle.getConnectionHandle(), key, value);
+    NativeAdbc.connectionSetOptionLong(handle.getConnectionHandle(), stringToUtf8(key), value);
   }
 
   public void connectionSetOptionString(NativeConnectionHandle connection, String key, String value)
       throws AdbcException {
-    NativeAdbc.connectionSetOptionString(connection.getConnectionHandle(), key, value);
+    NativeAdbc.connectionSetOptionString(
+        connection.getConnectionHandle(), stringToUtf8(key), stringToUtf8(value));
   }
 
   public NativeQueryResult connectionGetStatistics(
@@ -278,9 +286,9 @@ public enum JniLoader {
       throws AdbcException {
     return NativeAdbc.connectionGetStatistics(
         connection.getConnectionHandle(),
-        catalogPattern,
-        dbSchemaPattern,
-        tableNamePattern,
+        stringToUtf8(catalogPattern),
+        stringToUtf8(dbSchemaPattern),
+        stringToUtf8(tableNamePattern),
         approximate);
   }
 
@@ -291,40 +299,61 @@ public enum JniLoader {
 
   public byte[] databaseGetOptionBytes(NativeDatabaseHandle handle, String key)
       throws AdbcException {
-    return NativeAdbc.databaseGetOptionBytes(handle.getDatabaseHandle(), key);
+    return NativeAdbc.databaseGetOptionBytes(handle.getDatabaseHandle(), stringToUtf8(key));
   }
 
   public double databaseGetOptionDouble(NativeDatabaseHandle handle, String key)
       throws AdbcException {
-    return NativeAdbc.databaseGetOptionDouble(handle.getDatabaseHandle(), key);
+    return NativeAdbc.databaseGetOptionDouble(handle.getDatabaseHandle(), stringToUtf8(key));
   }
 
   public long databaseGetOptionLong(NativeDatabaseHandle handle, String key) throws AdbcException {
-    return NativeAdbc.databaseGetOptionLong(handle.getDatabaseHandle(), key);
+    return NativeAdbc.databaseGetOptionLong(handle.getDatabaseHandle(), stringToUtf8(key));
   }
 
   public String databaseGetOptionString(NativeDatabaseHandle handle, String key)
       throws AdbcException {
-    return NativeAdbc.databaseGetOptionString(handle.getDatabaseHandle(), key);
+    return utf8ToString(
+        NativeAdbc.databaseGetOptionString(handle.getDatabaseHandle(), stringToUtf8(key)));
   }
 
   public void databaseSetOptionBytes(NativeDatabaseHandle handle, String key, byte[] value)
       throws AdbcException {
-    NativeAdbc.databaseSetOptionBytes(handle.getDatabaseHandle(), key, value);
+    NativeAdbc.databaseSetOptionBytes(handle.getDatabaseHandle(), stringToUtf8(key), value);
   }
 
   public void databaseSetOptionDouble(NativeDatabaseHandle handle, String key, double value)
       throws AdbcException {
-    NativeAdbc.databaseSetOptionDouble(handle.getDatabaseHandle(), key, value);
+    NativeAdbc.databaseSetOptionDouble(handle.getDatabaseHandle(), stringToUtf8(key), value);
   }
 
   public void databaseSetOptionLong(NativeDatabaseHandle handle, String key, long value)
       throws AdbcException {
-    NativeAdbc.databaseSetOptionLong(handle.getDatabaseHandle(), key, value);
+    NativeAdbc.databaseSetOptionLong(handle.getDatabaseHandle(), stringToUtf8(key), value);
   }
 
   public void databaseSetOptionString(NativeDatabaseHandle handle, String key, String value)
       throws AdbcException {
-    NativeAdbc.databaseSetOptionString(handle.getDatabaseHandle(), key, value);
+    NativeAdbc.databaseSetOptionString(
+        handle.getDatabaseHandle(), stringToUtf8(key), stringToUtf8(value));
+  }
+
+  private static byte[] stringToUtf8(String value) {
+    return value == null ? null : value.getBytes(StandardCharsets.UTF_8);
+  }
+
+  private static byte[][] stringArrayToUtf8(String[] values) {
+    if (values == null) {
+      return null;
+    }
+    byte[][] result = new byte[values.length][];
+    for (int i = 0; i < values.length; i++) {
+      result[i] = stringToUtf8(values[i]);
+    }
+    return result;
+  }
+
+  private static String utf8ToString(byte[] value) {
+    return value == null ? null : new String(value, StandardCharsets.UTF_8);
   }
 }
