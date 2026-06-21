@@ -91,10 +91,12 @@ static const char* kTablesQueryAll =
 // Parameterized on schema_name, table_name
 static const char* kColumnsQueryAll =
     "SELECT attr.attname, attr.attnum, "
-    "pg_catalog.col_description(cls.oid, attr.attnum) "
+    "pg_catalog.col_description(cls.oid, attr.attnum), "
+    "typ.typname "
     "FROM pg_catalog.pg_attribute AS attr "
     "INNER JOIN pg_catalog.pg_class AS cls ON attr.attrelid = cls.oid "
     "INNER JOIN pg_catalog.pg_namespace AS nsp ON nsp.oid = cls.relnamespace "
+    "INNER JOIN pg_catalog.pg_type AS typ ON attr.atttypid = typ.oid "
     "WHERE attr.attnum > 0 AND NOT attr.attisdropped "
     "AND nsp.nspname LIKE $1 AND cls.relname LIKE $2";
 
@@ -306,6 +308,12 @@ class PostgresGetObjectsHelper : public adbc::driver::GetObjectsHelper {
     col.ordinal_position = static_cast<int32_t>(ordinal_position);
     if (!next_column_[2].is_null) {
       col.remarks = next_column_[2].value();
+    }
+    if (!next_column_[3].is_null) {
+      if (!col.xdbc) {
+        col.xdbc = adbc::driver::GetObjectsHelper::ColumnXdbc();
+      }
+      col.xdbc->xdbc_type_name = next_column_[3].value();
     }
 
     return col;
