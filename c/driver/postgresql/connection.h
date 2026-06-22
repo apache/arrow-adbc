@@ -81,6 +81,10 @@ class PostgresConnection {
   const std::array<int, 3>& VendorVersion();
 
  private:
+  friend class PostgresStatement;
+
+  AdbcStatusCode EnsureTransaction(struct AdbcError* error);
+
   std::shared_ptr<PostgresDatabase> database_;
   std::shared_ptr<PostgresTypeResolver> type_resolver_;
   PGconn* conn_;

@@ -526,6 +526,8 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
     return ADBC_STATUS_INVALID_STATE;
   }
 
+  RAISE_ADBC(connection_->EnsureTransaction(error));
+
   // Use a dedicated path to handle parameter binding
   if (bind_.release != nullptr) {
     return ExecuteBind(stream, rows_affected, error);
@@ -638,6 +640,8 @@ AdbcStatusCode PostgresStatement::ExecuteSchema(struct ArrowSchema* schema,
 AdbcStatusCode PostgresStatement::ExecuteIngest(struct ArrowArrayStream* stream,
                                                 int64_t* rows_affected,
                                                 struct AdbcError* error) {
+  RAISE_ADBC(connection_->EnsureTransaction(error));
+
   if (!bind_.release) {
     InternalAdbcSetError(error, "%s",
                          "[libpq] Must Bind() before Execute() for bulk ingestion");
