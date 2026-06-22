@@ -573,19 +573,19 @@ def test_txn_status(postgres: dbapi.Connection) -> None:
             ConnectionOptions.TRANSACTION_STATUS.value
         )
 
-    assert status() == "intrans"
+    assert status() == "idle"
     postgres.rollback()
-    assert status() == "intrans"
+    assert status() == "idle"
 
     with postgres.cursor() as cur:
         cur.execute("SELECT 1")
         assert status() == "active"
         postgres.commit()
-        assert status() == "intrans"
+        assert status() == "idle"
         cur.execute("SELECT 1")
         assert status() == "active"
         postgres.rollback()
-        assert status() == "intrans"
+        assert status() == "idle"
 
 
 def test_connect_conn_kwargs_db_schema(postgres_uri: str, postgres: dbapi.Connection):
