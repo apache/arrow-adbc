@@ -1108,23 +1108,29 @@ TEST_F(PostgresStatementTest, TransactionStatus) {
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
 
   {
+    adbc_validation::StreamReader reader;
     ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT 1", &error),
                 IsOkStatus(&error));
-    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
                 IsOkStatus(&error));
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
 
-    ASSERT_EQ("intrans", ConnectionGetOption(&connection, txn_status, &error));
+    ASSERT_EQ("active", ConnectionGetOption(&connection, txn_status, &error));
 
     ASSERT_THAT(AdbcConnectionRollback(&connection, &error), IsOkStatus(&error));
     ASSERT_EQ("idle", ConnectionGetOption(&connection, txn_status, &error));
   }
   {
+    adbc_validation::StreamReader reader;
     ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT 1", &error),
                 IsOkStatus(&error));
-    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
                 IsOkStatus(&error));
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
 
-    ASSERT_EQ("intrans", ConnectionGetOption(&connection, txn_status, &error));
+    ASSERT_EQ("active", ConnectionGetOption(&connection, txn_status, &error));
 
     ASSERT_THAT(AdbcConnectionCommit(&connection, &error), IsOkStatus(&error));
     ASSERT_EQ("idle", ConnectionGetOption(&connection, txn_status, &error));
