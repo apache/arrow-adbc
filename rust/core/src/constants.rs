@@ -75,6 +75,9 @@ pub const ADBC_OPTION_URI: &str = "uri";
 pub const ADBC_OPTION_USERNAME: &str = "username";
 pub const ADBC_OPTION_PASSWORD: &str = "password";
 
+pub const ADBC_OPTION_VALUE_ENABLED: &str = "true";
+pub const ADBC_OPTION_VALUE_DISABLED: &str = "false";
+
 pub const ADBC_CONNECTION_OPTION_AUTOCOMMIT: &str = "adbc.connection.autocommit";
 pub const ADBC_CONNECTION_OPTION_READ_ONLY: &str = "adbc.connection.readonly";
 pub const ADBC_CONNECTION_OPTION_CURRENT_CATALOG: &str = "adbc.connection.catalog";
