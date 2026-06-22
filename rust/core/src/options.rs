@@ -130,7 +130,10 @@ impl TryFrom<&OptionValue> for bool {
             OptionValue::String(value) if value == ADBC_OPTION_VALUE_ENABLED => Ok(true),
             OptionValue::String(value) if value == ADBC_OPTION_VALUE_DISABLED => Ok(false),
             _ => Err(Error::with_message_and_status(
-                format!("expected \"true\" or \"false\", got {value:?}"),
+                format!(
+                    "expected {ADBC_OPTION_VALUE_ENABLED:?} or {ADBC_OPTION_VALUE_DISABLED:?}, \
+                     got {value:?}"
+                ),
                 Status::InvalidArguments,
             )),
         }
