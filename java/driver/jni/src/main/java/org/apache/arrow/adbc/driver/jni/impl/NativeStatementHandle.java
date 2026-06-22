@@ -32,11 +32,6 @@ public class NativeStatementHandle extends NativeHandle {
 
   @Override
   Closer getCloseFunction() {
-    return handle -> {
-      if (handle == 0) {
-        return;
-      }
-      NativeAdbc.closeStatement(handle);
-    };
+    return NativeAdbc::closeStatement;
   }
 }
