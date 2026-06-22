@@ -490,7 +490,11 @@ AdbcStatusCode PostgresConnection::Commit(struct AdbcError* error) {
 }
 
 AdbcStatusCode PostgresConnection::EnsureTransaction(struct AdbcError* error) {
-  if (autocommit_ || PQtransactionStatus(conn_) != PQTRANS_IDLE) {
+  if (autocommit_) {
+    return ADBC_STATUS_OK;
+  }
+  auto txstatus = PQtransactionStatus(conn_);
+  if (txstatus == PQTRANS_ACTIVE || txstatus == PQTRANS_INTRANS) {
     return ADBC_STATUS_OK;
   }
 
