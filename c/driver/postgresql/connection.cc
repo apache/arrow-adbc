@@ -496,6 +496,11 @@ AdbcStatusCode PostgresConnection::EnsureTransaction(struct AdbcError* error) {
   auto txstatus = PQtransactionStatus(conn_);
   if (txstatus == PQTRANS_ACTIVE || txstatus == PQTRANS_INTRANS) {
     return ADBC_STATUS_OK;
+  } else if (txstatus == PQTRANS_INERROR) {
+    InternalAdbcSetError(error,
+                         "[libpq] cannot start transaction: "
+                         "the connection is in an error state; first rollback");
+    return ADBC_STATUS_INVALID_STATE;
   }
 
   PGresult* result = PQexec(conn_, "BEGIN TRANSACTION");

@@ -738,6 +738,19 @@ def test_transaction(postgres_uri: str) -> None:
             with pytest.raises(dbapi.ProgrammingError) as excinfo:
                 cur2.execute("INSERT INTO test_transaction VALUES (1)")
         assert excinfo.value.sqlstate == "42P01"
+
+        assert (
+            conn2.adbc_connection.get_option(ConnectionOptions.TRANSACTION_STATUS.value)
+            == "inerror"
+        )
+
+        with conn2.cursor() as cur2:
+            with pytest.raises(
+                dbapi.ProgrammingError,
+                match="connection is in an error state; first rollback",
+            ):
+                cur2.execute("INSERT INTO test_transaction VALUES (1)")
+
         conn2.rollback()
 
         with conn1.cursor() as cur1:
@@ -748,6 +761,7 @@ def test_transaction(postgres_uri: str) -> None:
         with conn1.cursor() as cur1:
             with pytest.raises(dbapi.ProgrammingError) as excinfo:
                 cur1.execute("INSERT INTO test_transaction VALUES (1)")
+        assert excinfo.value.sqlstate == "42P01"
 
         conn1.rollback()
 
