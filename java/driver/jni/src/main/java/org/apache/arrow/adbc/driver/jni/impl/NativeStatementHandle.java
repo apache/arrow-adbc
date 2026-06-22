@@ -23,11 +23,20 @@ public class NativeStatementHandle extends NativeHandle {
   }
 
   long getStatementHandle() {
-    return state.nativeHandle;
+    long handle = state.nativeHandle;
+    if (handle == 0) {
+      throw new IllegalStateException("Native statement handle is closed");
+    }
+    return handle;
   }
 
   @Override
   Closer getCloseFunction() {
-    return NativeAdbc::closeStatement;
+    return handle -> {
+      if (handle == 0) {
+        return;
+      }
+      NativeAdbc.closeStatement(handle);
+    };
   }
 }
