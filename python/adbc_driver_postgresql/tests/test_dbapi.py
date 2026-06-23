@@ -573,19 +573,19 @@ def test_txn_status(postgres: dbapi.Connection) -> None:
             ConnectionOptions.TRANSACTION_STATUS.value
         )
 
-    assert status() == "intrans"
+    assert status() == "idle"
     postgres.rollback()
-    assert status() == "intrans"
+    assert status() == "idle"
 
     with postgres.cursor() as cur:
         cur.execute("SELECT 1")
         assert status() == "active"
         postgres.commit()
-        assert status() == "intrans"
+        assert status() == "idle"
         cur.execute("SELECT 1")
         assert status() == "active"
         postgres.rollback()
-        assert status() == "intrans"
+        assert status() == "idle"
 
 
 def test_connect_conn_kwargs_db_schema(postgres_uri: str, postgres: dbapi.Connection):
@@ -723,3 +723,64 @@ def test_bind_null_unknown_inference(postgres: dbapi.Connection) -> None:
         result = cur.fetchone()
         assert result is not None
         assert result[0] is None
+
+
+def test_transaction(postgres_uri: str) -> None:
+    with dbapi.connect(postgres_uri) as conn1, dbapi.connect(postgres_uri) as conn2:
+        with conn1.cursor() as cur1:
+            cur1.execute("DROP TABLE IF EXISTS test_transaction")
+        conn1.commit()
+
+        with conn1.cursor() as cur1:
+            cur1.execute("CREATE TABLE test_transaction (a INTEGER)")
+
+        with conn2.cursor() as cur2:
+            with pytest.raises(dbapi.ProgrammingError) as excinfo:
+                cur2.execute("INSERT INTO test_transaction VALUES (1)")
+        assert excinfo.value.sqlstate == "42P01"
+
+        assert (
+            conn2.adbc_connection.get_option(ConnectionOptions.TRANSACTION_STATUS.value)
+            == "inerror"
+        )
+
+        with conn2.cursor() as cur2:
+            with pytest.raises(
+                dbapi.ProgrammingError,
+                match="connection is in an error state; first rollback",
+            ):
+                cur2.execute("INSERT INTO test_transaction VALUES (1)")
+
+        conn2.rollback()
+
+        with conn1.cursor() as cur1:
+            cur1.execute("INSERT INTO test_transaction VALUES (1)")
+
+        conn1.rollback()
+
+        with conn1.cursor() as cur1:
+            with pytest.raises(dbapi.ProgrammingError) as excinfo:
+                cur1.execute("INSERT INTO test_transaction VALUES (1)")
+        assert excinfo.value.sqlstate == "42P01"
+
+        conn1.rollback()
+
+        with conn1.cursor() as cur1:
+            cur1.execute("CREATE TABLE test_transaction (a INTEGER)")
+        conn1.commit()
+
+        with conn2.cursor() as cur2:
+            cur2.execute("INSERT INTO test_transaction VALUES (1)")
+
+        with conn1.cursor() as cur1:
+            cur1.execute("SELECT COUNT(*) FROM test_transaction")
+            assert cur1.fetchone() == (0,)
+
+            conn2.commit()
+
+            cur1.execute("SELECT COUNT(*) FROM test_transaction")
+            assert cur1.fetchone() == (1,)
+
+        with conn2.cursor() as cur2:
+            cur2.execute("SELECT COUNT(*) FROM test_transaction")
+            assert cur2.fetchone() == (1,)

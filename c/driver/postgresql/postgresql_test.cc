@@ -1103,7 +1103,7 @@ TEST_F(PostgresStatementTest, TransactionStatus) {
                                       ADBC_OPTION_VALUE_DISABLED, &error),
               IsOkStatus(&error));
 
-  ASSERT_EQ("intrans", ConnectionGetOption(&connection, txn_status, &error));
+  ASSERT_EQ("idle", ConnectionGetOption(&connection, txn_status, &error));
 
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
 
@@ -1119,7 +1119,7 @@ TEST_F(PostgresStatementTest, TransactionStatus) {
     ASSERT_EQ("active", ConnectionGetOption(&connection, txn_status, &error));
 
     ASSERT_THAT(AdbcConnectionRollback(&connection, &error), IsOkStatus(&error));
-    ASSERT_EQ("intrans", ConnectionGetOption(&connection, txn_status, &error));
+    ASSERT_EQ("idle", ConnectionGetOption(&connection, txn_status, &error));
   }
   {
     adbc_validation::StreamReader reader;
@@ -1133,8 +1133,58 @@ TEST_F(PostgresStatementTest, TransactionStatus) {
     ASSERT_EQ("active", ConnectionGetOption(&connection, txn_status, &error));
 
     ASSERT_THAT(AdbcConnectionCommit(&connection, &error), IsOkStatus(&error));
-    ASSERT_EQ("intrans", ConnectionGetOption(&connection, txn_status, &error));
+    ASSERT_EQ("idle", ConnectionGetOption(&connection, txn_status, &error));
   }
+}
+
+TEST_F(PostgresStatementTest, RollbackDoesNotChainTransaction) {
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
+                                      ADBC_OPTION_VALUE_DISABLED, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SET TRANSACTION READ ONLY", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcConnectionRollback(&connection, &error), IsOkStatus(&error));
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(AdbcStatementSetOption(&statement, "adbc.postgresql.use_copy",
+                                     ADBC_OPTION_VALUE_DISABLED, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SHOW transaction_read_only", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                        &reader.rows_affected, &error),
+              IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+
+  ASSERT_EQ(reader.array->length, 1);
+  ArrowStringView view = ArrowArrayViewGetStringUnsafe(reader.array_view->children[0], 0);
+  ASSERT_EQ(std::string_view(view.data, static_cast<size_t>(view.size_bytes)), "off");
+}
+
+TEST_F(PostgresConnectionTest, GetObjectsStartsTransaction) {
+  using adbc_validation::ConnectionGetOption;
+  const char* txn_status = "adbc.postgresql.transaction_status";
+
+  ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcConnectionSetOption(&connection, ADBC_CONNECTION_OPTION_AUTOCOMMIT,
+                                      ADBC_OPTION_VALUE_DISABLED, &error),
+              IsOkStatus(&error));
+  ASSERT_EQ("idle", ConnectionGetOption(&connection, txn_status, &error));
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(
+      AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_CATALOGS, nullptr, nullptr,
+                               nullptr, nullptr, nullptr, &reader.stream.value, &error),
+      IsOkStatus(&error));
+  ASSERT_EQ("intrans", ConnectionGetOption(&connection, txn_status, &error));
 }
 
 TEST_F(PostgresStatementTest, IsolationLevels) {

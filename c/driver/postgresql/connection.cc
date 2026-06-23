@@ -478,12 +478,37 @@ AdbcStatusCode PostgresConnection::Commit(struct AdbcError* error) {
     return ADBC_STATUS_OK;
   }
 
-  PGresult* result = PQexec(conn_, "COMMIT; BEGIN TRANSACTION");
+  PGresult* result = PQexec(conn_, "COMMIT");
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
     AdbcStatusCode code = SetError(error, result, "%s%s",
                                    "[libpq] Failed to commit: ", PQerrorMessage(conn_));
     PQclear(result);
     return code;
+  }
+  PQclear(result);
+  return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode PostgresConnection::EnsureTransaction(struct AdbcError* error) {
+  if (autocommit_) {
+    return ADBC_STATUS_OK;
+  }
+  auto txstatus = PQtransactionStatus(conn_);
+  if (txstatus == PQTRANS_ACTIVE || txstatus == PQTRANS_INTRANS) {
+    return ADBC_STATUS_OK;
+  } else if (txstatus == PQTRANS_INERROR) {
+    InternalAdbcSetError(error,
+                         "[libpq] cannot start transaction: "
+                         "the connection is in an error state; first rollback");
+    return ADBC_STATUS_INVALID_STATE;
+  }
+
+  PGresult* result = PQexec(conn_, "BEGIN TRANSACTION");
+  if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+    InternalAdbcSetError(error, "%s%s",
+                         "[libpq] Failed to begin transaction: ", PQerrorMessage(conn_));
+    PQclear(result);
+    return ADBC_STATUS_IO;
   }
   PQclear(result);
   return ADBC_STATUS_OK;
@@ -507,6 +532,7 @@ AdbcStatusCode PostgresConnection::GetInfo(struct AdbcConnection* connection,
         infos.push_back({info_codes[i], std::string(VendorName())});
         break;
       case ADBC_INFO_VENDOR_VERSION: {
+        RAISE_ADBC(EnsureTransaction(error));
         // Gives a version in the form 140000 instead of 14.0.0
         const char* stmt = "SHOW server_version_num";
         auto result_helper = PqResultHelper{conn_, std::string(stmt)};
@@ -586,6 +612,8 @@ AdbcStatusCode PostgresConnection::GetObjects(
       return Status::InvalidArgument("[libpq] GetObjects: invalid depth ", c_depth)
           .ToAdbc(error);
   }
+
+  RAISE_ADBC(EnsureTransaction(error));
 
   auto status = BuildGetObjects(&helper, depth, catalog_filter, schema_filter,
                                 table_filter, column_filter, table_type_filter, out);
@@ -938,6 +966,8 @@ AdbcStatusCode PostgresConnection::GetStatistics(const char* catalog,
     return ADBC_STATUS_NOT_IMPLEMENTED;
   }
 
+  RAISE_ADBC(EnsureTransaction(error));
+
   struct ArrowSchema schema;
   std::memset(&schema, 0, sizeof(schema));
   struct ArrowArray array;
@@ -1011,6 +1041,8 @@ AdbcStatusCode PostgresConnection::GetTableSchema(const char* catalog,
                                                   const char* table_name,
                                                   struct ArrowSchema* schema,
                                                   struct AdbcError* error) {
+  RAISE_ADBC(EnsureTransaction(error));
+
   AdbcStatusCode final_status = ADBC_STATUS_OK;
 
   char* quoted = PQescapeIdentifier(conn_, table_name, strlen(table_name));
@@ -1134,7 +1166,7 @@ AdbcStatusCode PostgresConnection::Rollback(struct AdbcError* error) {
     return ADBC_STATUS_OK;
   }
 
-  PGresult* result = PQexec(conn_, "ROLLBACK AND CHAIN");
+  PGresult* result = PQexec(conn_, "ROLLBACK");
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
     InternalAdbcSetError(error, "%s%s",
                          "[libpq] Failed to rollback: ", PQerrorMessage(conn_));
@@ -1165,16 +1197,16 @@ AdbcStatusCode PostgresConnection::SetOption(const char* key, const char* value,
     }
 
     if (autocommit != autocommit_) {
-      const char* query = autocommit ? "COMMIT" : "BEGIN TRANSACTION";
-
-      PGresult* result = PQexec(conn_, query);
-      if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-        InternalAdbcSetError(error, "%s%s", "[libpq] Failed to update autocommit: ",
-                             PQerrorMessage(conn_));
+      if (autocommit && PQtransactionStatus(conn_) != PQTRANS_IDLE) {
+        PGresult* result = PQexec(conn_, "COMMIT");
+        if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+          InternalAdbcSetError(error, "%s%s", "[libpq] Failed to update autocommit: ",
+                               PQerrorMessage(conn_));
+          PQclear(result);
+          return ADBC_STATUS_IO;
+        }
         PQclear(result);
-        return ADBC_STATUS_IO;
       }
-      PQclear(result);
       autocommit_ = autocommit;
     }
     return ADBC_STATUS_OK;
