@@ -22,7 +22,7 @@ import re
 import sys
 import typing
 
-PING_RE = re.compile(r"@([a-zA-Z0-9\-]+)")
+PING_RE = re.compile(r"(?<![a-zA-Z0-9])@([a-zA-Z0-9\-]+)")
 IGNORED_USERNAMES = {"dependabot"}
 
 
