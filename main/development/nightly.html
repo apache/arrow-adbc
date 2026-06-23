@@ -420,6 +420,11 @@
 are not intended for normal usage, only for project
 developers.</p>
 </div>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Artifacts are regularly deleted and there is no guarantee that
+any specific build will remain accessible.</p>
+</div>
 <section id="c-c">
 <h2>C/C++<a class="headerlink" href="#c-c" title="Link to this heading">¶</a></h2>
 <p>Conda users can install nightly builds from a Conda channel:
@@ -457,7 +462,34 @@ developers.</p>
 </section>
 <section id="java">
 <h2>Java<a class="headerlink" href="#java" title="Link to this heading">¶</a></h2>
-<p>Not yet available.</p>
+<p>Nightly Java packages, including the JNI bindings, can be installed from an
+alternative package index: <a class="reference external" href="https://gemfury.com/arrow-adbc-nightlies">https://gemfury.com/arrow-adbc-nightlies</a></p>
+<p>Gemfury maintains documentation on how to use libraries <a class="reference external" href="https://gemfury.com/guide/maven/install-with-maven/">via Maven</a> and <a class="reference external" href="https://gemfury.com/guide/maven/install-with-gradle/">via Gradle</a>.</p>
+<p>For example, if you are using Apache Maven to build your project:</p>
+<div class="highlight-xml notranslate"><div class="highlight"><pre><span></span><span class="nt">&lt;project&gt;</span>
+<span class="w">  </span><span class="cm">&lt;!-- ... --&gt;</span>
+
+<span class="w">  </span><span class="cm">&lt;!-- Tell Maven to also look at the Gemfury repository --&gt;</span>
+<span class="w">  </span><span class="nt">&lt;repositories&gt;</span>
+<span class="w">    </span><span class="nt">&lt;repository&gt;</span>
+<span class="w">      </span><span class="nt">&lt;id&gt;</span>fury<span class="nt">&lt;/id&gt;</span>
+<span class="w">      </span><span class="nt">&lt;url&gt;</span>https://maven.fury.io/arrow-adbc-nightlies/<span class="nt">&lt;/url&gt;</span>
+<span class="w">    </span><span class="nt">&lt;/repository&gt;</span>
+<span class="w">  </span><span class="nt">&lt;/repositories&gt;</span>
+
+<span class="w">  </span><span class="cm">&lt;!-- Use the version indicated on Gemfury --&gt;</span>
+<span class="w">  </span><span class="nt">&lt;dependencies&gt;</span>
+<span class="w">    </span><span class="nt">&lt;dependency&gt;</span>
+<span class="w">      </span><span class="nt">&lt;groupId&gt;</span>org.apache.arrow.adbc<span class="nt">&lt;/groupId&gt;</span>
+<span class="w">      </span><span class="nt">&lt;artifactId&gt;</span>adbc-driver-jni<span class="nt">&lt;/artifactId&gt;</span>
+<span class="w">      </span><span class="nt">&lt;version&gt;</span>0.24.0-20260615.012902-52<span class="nt">&lt;/version&gt;</span>
+<span class="w">    </span><span class="nt">&lt;/dependency&gt;</span>
+<span class="w">  </span><span class="nt">&lt;/dependencies&gt;</span>
+
+<span class="w">  </span><span class="cm">&lt;!-- ... --&gt;</span>
+<span class="nt">&lt;/project&gt;</span>
+</pre></div>
+</div>
 </section>
 <section id="python">
 <h2>Python<a class="headerlink" href="#python" title="Link to this heading">¶</a></h2>
