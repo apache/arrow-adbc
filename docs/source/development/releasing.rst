@@ -70,7 +70,7 @@ Some steps of the release require being a committer or a PMC member.
 Before creating a Release Candidate
 ===================================
 
-1. Regenerate the LICENSE.txt (see CONTRIBUTING.md) and create a pull request if any changes were needed.
+1. Regenerate the LICENSE.txt (see CONTRIBUTING.md and ci/licenses/README.md) and create a pull request if any changes were needed. Generally, only the license for Go-based drivers will need to be regenerated.
 
 2. Set up your shell environment:
 
