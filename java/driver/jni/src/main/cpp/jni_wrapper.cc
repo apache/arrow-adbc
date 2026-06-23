@@ -639,7 +639,7 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_statementExecutePartitions
       env->SetByteArrayRegion(partition, 0, static_cast<jsize>(length),
                               reinterpret_cast<const jbyte*>(partitions.partitions[i]));
       if (env->ExceptionCheck()) goto cleanupall;
-      env->CallObjectMethod(result, native_result_add_partition, partition);
+      env->CallVoidMethod(result, native_result_add_partition, partition);
       if (env->ExceptionCheck()) goto cleanupall;
       // The Java side has a reference now, so free the per-iteration local
       // reference to avoid overflowing the local reference table

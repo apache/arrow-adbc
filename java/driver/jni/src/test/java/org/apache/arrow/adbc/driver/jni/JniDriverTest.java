@@ -18,6 +18,7 @@
 package org.apache.arrow.adbc.driver.jni;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.File;
@@ -139,6 +140,25 @@ class JniDriverTest {
           assertThat(result.getReader().getVectorSchemaRoot().getVector(0).getObject(0))
               .isEqualTo(1L);
         }
+      }
+    }
+  }
+
+  @Test
+  void statementThrowsAfterClose() throws Exception {
+    try (final BufferAllocator allocator = new RootAllocator()) {
+      JniDriver driver = new JniDriver(allocator);
+      Map<String, Object> parameters = new HashMap<>();
+      JniDriver.PARAM_DRIVER.set(parameters, "adbc_driver_sqlite");
+
+      try (final AdbcDatabase db = driver.open(parameters);
+          final AdbcConnection conn = db.connect()) {
+        final AdbcStatement stmt = conn.createStatement();
+        stmt.close();
+
+        assertThatThrownBy(() -> stmt.setSqlQuery("SELECT 1"))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage("Native statement handle is closed");
       }
     }
   }

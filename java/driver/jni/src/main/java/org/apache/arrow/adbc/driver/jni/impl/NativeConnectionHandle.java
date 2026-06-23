@@ -23,7 +23,11 @@ public class NativeConnectionHandle extends NativeHandle {
   }
 
   long getConnectionHandle() {
-    return state.nativeHandle;
+    long handle = state.nativeHandle;
+    if (handle == 0) {
+      throw new IllegalStateException("Native connection handle is closed");
+    }
+    return handle;
   }
 
   @Override

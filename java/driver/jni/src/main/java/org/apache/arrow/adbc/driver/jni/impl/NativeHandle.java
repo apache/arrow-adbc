@@ -57,6 +57,7 @@ abstract class NativeHandle implements AutoCloseable {
       try {
         closer.close(handle);
       } catch (AdbcException e) {
+        // If we fail to close, the handle will leak, but there's not much we can do anyways
         throw new RuntimeException(e);
       }
     }
