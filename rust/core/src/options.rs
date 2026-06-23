@@ -18,6 +18,7 @@
 //! Various option and configuration types.
 use std::{os::raw::c_int, str::FromStr};
 
+use crate::constants::{ADBC_OPTION_VALUE_DISABLED, ADBC_OPTION_VALUE_ENABLED};
 use crate::{
     constants,
     error::{Error, Status},
@@ -26,6 +27,13 @@ use crate::{
 /// Option value.
 ///
 /// Can be created with various implementations of [From].
+///
+/// # Note: Booleans
+/// ADBC passes booleans as the strings `"true"` ([`ADBC_OPTION_VALUE_ENABLED`])
+/// or `"false"` ([`ADBC_OPTION_VALUE_DISABLED`]).
+///
+/// To reflect this, instead of a special boolean variant, this type implements `From<bool>`
+/// and provides `TryFrom<OptionValue> for bool` which expects [`Self::String`].
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub enum OptionValue {
@@ -80,6 +88,55 @@ impl<const N: usize> From<[u8; N]> for OptionValue {
 impl<const N: usize> From<&[u8; N]> for OptionValue {
     fn from(value: &[u8; N]) -> Self {
         Self::Bytes(value.into())
+    }
+}
+
+impl From<bool> for OptionValue {
+    /// Convert a boolean to the ADBC string equivalent.
+    ///
+    /// Returns `"true"` ([`ADBC_OPTION_VALUE_ENABLED`]) for `true`
+    /// or `"false"` ([`ADBC_OPTION_VALUE_DISABLED`]) for `false`.
+    fn from(value: bool) -> Self {
+        if value {
+            ADBC_OPTION_VALUE_ENABLED.into()
+        } else {
+            ADBC_OPTION_VALUE_DISABLED.into()
+        }
+    }
+}
+
+impl TryFrom<OptionValue> for bool {
+    type Error = Error;
+
+    /// Expects either `"true"` ([`ADBC_OPTION_VALUE_ENABLED`]) for `true`
+    /// or `"false"` ([`ADBC_OPTION_VALUE_DISABLED`]) for `false`.
+    ///
+    /// Returns an error with [`Status::InvalidArguments`] if any other string or value type.
+    fn try_from(value: OptionValue) -> Result<Self, Self::Error> {
+        // Forward to the borrowed implementation
+        <bool as TryFrom<&OptionValue>>::try_from(&value)
+    }
+}
+
+impl TryFrom<&OptionValue> for bool {
+    type Error = Error;
+
+    /// Expects either `"true"` ([`ADBC_OPTION_VALUE_ENABLED`]) for `true`
+    /// or `"false"` ([`ADBC_OPTION_VALUE_DISABLED`]) for `false`.
+    ///
+    /// Returns an error with [`Status::InvalidArguments`] if any other string or value type.
+    fn try_from(value: &OptionValue) -> Result<Self, Self::Error> {
+        match value {
+            OptionValue::String(value) if value == ADBC_OPTION_VALUE_ENABLED => Ok(true),
+            OptionValue::String(value) if value == ADBC_OPTION_VALUE_DISABLED => Ok(false),
+            _ => Err(Error::with_message_and_status(
+                format!(
+                    "expected {ADBC_OPTION_VALUE_ENABLED:?} or {ADBC_OPTION_VALUE_DISABLED:?}, \
+                     got {value:?}"
+                ),
+                Status::InvalidArguments,
+            )),
+        }
     }
 }
 
