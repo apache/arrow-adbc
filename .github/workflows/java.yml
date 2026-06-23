@@ -153,9 +153,6 @@ jobs:
       - name: Build artifacts (macOS)
         if: matrix.os == 'macOS'
         run: |
-          # XXX(https://github.com/apache/arrow-adbc/issues/3382)
-          sudo xcode-select -s "/Applications/Xcode_16.app"
-
           export ADBC_BUILD_STATIC=ON
           export ADBC_BUILD_TESTS=OFF
           export ADBC_USE_ASAN=OFF

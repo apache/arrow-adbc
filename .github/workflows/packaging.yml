@@ -833,12 +833,6 @@ jobs:
           cache: false
           cache-dependency-path: adbc/go/adbc/go.sum
 
-      - name: Downgrade XCode
-        if: matrix.os == 'macos-latest'
-        run: |
-          # XXX(https://github.com/apache/arrow-adbc/issues/3382)
-          sudo xcode-select -s "/Applications/Xcode_16.app"
-
       - name: Build wheel
         env:
           ARCH: ${{ matrix.arch }}
