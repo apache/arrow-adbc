@@ -144,6 +144,29 @@ class JniDriverTest {
     }
   }
 
+  // Ensure strings with characters that differ between UTF-8 and Java's "modifiefd UTF-8" are
+  // properly serialized
+  @Test
+  void queryNonBmpUtf8() throws Exception {
+    try (final BufferAllocator allocator = new RootAllocator()) {
+      JniDriver driver = new JniDriver(allocator);
+      Map<String, Object> parameters = new HashMap<>();
+      JniDriver.PARAM_DRIVER.set(parameters, "adbc_driver_sqlite");
+      String expected = "\uD83D\uDE00";
+
+      try (final AdbcDatabase db = driver.open(parameters);
+          final AdbcConnection conn = db.connect();
+          final AdbcStatement stmt = conn.createStatement()) {
+        stmt.setSqlQuery("SELECT '" + expected + "'");
+        try (final AdbcStatement.QueryResult result = stmt.executeQuery()) {
+          assertThat(result.getReader().loadNextBatch()).isTrue();
+          assertThat(result.getReader().getVectorSchemaRoot().getVector(0).getObject(0))
+              .hasToString(expected);
+        }
+      }
+    }
+  }
+
   @Test
   void statementThrowsAfterClose() throws Exception {
     try (final BufferAllocator allocator = new RootAllocator()) {
