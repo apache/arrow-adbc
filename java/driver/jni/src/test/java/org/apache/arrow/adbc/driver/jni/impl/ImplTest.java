@@ -18,6 +18,7 @@ package org.apache.arrow.adbc.driver.jni.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import org.junit.jupiter.api.Test;
 
@@ -118,5 +119,38 @@ public class ImplTest {
     assertThat(buf.isDirect()).isFalse();
     assertThat(buf.remaining()).isEqualTo(3);
     assertThat(JniLoader.INSTANCE.internalGetByteBuffer(buf)).isEqualTo(new byte[] {1, 2, 3});
+  }
+
+  @Test
+  void childReferencesCloses() throws Exception {
+    ChildReferences refs = new ChildReferences();
+    var flag = new Closeable();
+    refs.addReference(flag);
+    refs.close();
+    assertThat(flag.closed).isTrue();
+  }
+
+  @Test
+  void childReferencesIsWeak() throws Exception {
+    ChildReferences refs = new ChildReferences();
+    var flag = new Closeable();
+    refs.addReference(flag);
+    var ref = new WeakReference<>(flag);
+    //noinspection UnusedAssignment
+    flag = null;
+    System.gc();
+    System.gc();
+
+    assertThat(ref.get()).isNull();
+    refs.close();
+  }
+
+  static final class Closeable implements AutoCloseable {
+    boolean closed = false;
+
+    @Override
+    public void close() throws Exception {
+      closed = true;
+    }
   }
 }
