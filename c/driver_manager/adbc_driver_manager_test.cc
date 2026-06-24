@@ -1731,6 +1731,34 @@ TEST_F(ConnectionProfiles, DotSeparatedKey) {
   UnsetProfilePath();
 }
 
+TEST_F(ConnectionProfiles, DuplicateQuotedKey) {
+  // Regression: a duplicate *quoted* key must report the real key name, not a
+  // copy with its first two characters doubled (vendored toml++ bug, fixed
+  // upstream in marzer/tomlplusplus#300 / PR #302 / commit f22f035).
+  auto filepath = temp_dir / "profile.toml";
+  std::ofstream test_profile_file(filepath);
+  ASSERT_TRUE(test_profile_file.is_open());
+  test_profile_file << "profile_version = 1\n"
+                       "driver = \"adbc_driver_sqlite\"\n"
+                       "[Options]\n"
+                       "\"redshift.db_name\" = \"dev\"\n"
+                       "\"redshift.db_name\" = \"sample_datadev\"\n";
+  test_profile_file.close();
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+
+  // find profile by name using ADBC_PROFILE_PATH
+  SetProfilePath(temp_dir.string().c_str());
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", "profile", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("redshift.db_name"));
+  ASSERT_THAT(error.message, ::testing::Not(::testing::HasSubstr("reredshift")));
+  UnsetProfilePath();
+}
+
 TEST_F(ConnectionProfiles, UseEnvVar) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = toml::parse(R"|(
