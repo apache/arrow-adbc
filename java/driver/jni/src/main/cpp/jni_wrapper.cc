@@ -1562,4 +1562,27 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_databaseSetOptionString(
     e.ThrowJavaException(env);
   }
 }
+
+// wrapper around GetJniByteBuffer for direct unit testing
+JNIEXPORT jbyteArray JNICALL
+Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_internalGetByteBuffer(
+    JNIEnv* env, [[maybe_unused]] jclass self, jobject input) {
+  std::vector<uint8_t> scratch;
+  size_t length = 0;
+  try {
+    const uint8_t* raw = GetJniByteBuffer(env, input, scratch, length);
+    jbyteArray result = env->NewByteArray(static_cast<jsize>(length));
+    if (result == nullptr || env->ExceptionCheck()) return nullptr;
+    if (length > 0) {
+      env->SetByteArrayRegion(result, 0, static_cast<jsize>(length),
+                              reinterpret_cast<const jbyte*>(raw));
+      if (env->ExceptionCheck()) return nullptr;
+    }
+    return result;
+  } catch (const AdbcException& e) {
+    e.ThrowJavaException(env);
+    return nullptr;
+  }
+  return nullptr;
+}
 }

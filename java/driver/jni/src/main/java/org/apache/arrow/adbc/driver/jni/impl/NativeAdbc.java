@@ -157,4 +157,7 @@ class NativeAdbc {
 
   static native void databaseSetOptionString(long handle, byte[] key, byte[] value)
       throws AdbcException;
+
+  // Purely for unit testing.
+  static native byte[] internalGetByteBuffer(ByteBuffer input) throws AdbcException;
 }

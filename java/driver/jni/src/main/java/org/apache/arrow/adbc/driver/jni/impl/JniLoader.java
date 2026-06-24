@@ -338,6 +338,11 @@ public enum JniLoader {
         handle.getDatabaseHandle(), stringToUtf8(key), stringToUtf8(value));
   }
 
+  /** For unit testing only. */
+  byte[] internalGetByteBuffer(ByteBuffer buf) throws AdbcException {
+    return NativeAdbc.internalGetByteBuffer(buf);
+  }
+
   private static byte[] stringToUtf8(String value) {
     return value == null ? null : value.getBytes(StandardCharsets.UTF_8);
   }

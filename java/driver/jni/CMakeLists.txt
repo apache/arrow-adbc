@@ -23,7 +23,7 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/target/headers/org_apache_
                    COMMAND rm -rf ${CMAKE_CURRENT_SOURCE_DIR}/target/headers
                            ${CMAKE_CURRENT_SOURCE_DIR}/target/maven-status
                    COMMAND mvn --file ${CMAKE_CURRENT_SOURCE_DIR}/../.. -Pjni,javah
-                           compile --also-make --projects :adbc-driver-jni
+                           compile --also-make --projects :adbc-driver-jni -Drat.skip=true
                    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/main/java/org/apache/arrow/adbc/driver/jni/impl/NativeAdbc.java
 )
 
