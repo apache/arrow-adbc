@@ -46,8 +46,14 @@ public class MultiDriverIntegrationTest {
   @BeforeAll
   static void beforeAll() {
     Assumptions.assumeFalse(
+        FlightSqlSqliteIntegrationTest.URI == null || FlightSqlSqliteIntegrationTest.URI.isEmpty(),
+        String.format("Must set %s", FlightSqlSqliteIntegrationTest.URI_ENV));
+    Assumptions.assumeFalse(
         PostgresIntegrationTest.URI == null || PostgresIntegrationTest.URI.isEmpty(),
         String.format("Must set %s", PostgresIntegrationTest.URI_ENV));
+    Assumptions.assumeFalse(
+        SqlServerIntegrationTest.URI == null || SqlServerIntegrationTest.URI.isEmpty(),
+        String.format("Must set %s", SqlServerIntegrationTest.URI_ENV));
   }
 
   @BeforeEach
