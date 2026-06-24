@@ -1571,6 +1571,7 @@ Java_org_apache_arrow_adbc_driver_jni_impl_NativeAdbc_internalGetByteBuffer(
   size_t length = 0;
   try {
     const uint8_t* raw = GetJniByteBuffer(env, input, scratch, length);
+    if (raw == nullptr || env->ExceptionCheck()) return nullptr;
     jbyteArray result = env->NewByteArray(static_cast<jsize>(length));
     if (result == nullptr || env->ExceptionCheck()) return nullptr;
     if (length > 0) {
