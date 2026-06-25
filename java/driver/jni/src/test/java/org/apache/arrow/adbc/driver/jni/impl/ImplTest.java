@@ -18,6 +18,7 @@ package org.apache.arrow.adbc.driver.jni.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.Closeable;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import org.junit.jupiter.api.Test;
@@ -138,8 +139,14 @@ public class ImplTest {
     var ref = new WeakReference<>(flag);
     //noinspection UnusedAssignment
     flag = null;
-    System.gc();
-    System.gc();
+
+    for (int i = 0; i < 50; i++) {
+      System.gc();
+      if (ref.get() == null) {
+        break;
+      }
+      Thread.sleep(100);
+    }
 
     assertThat(ref.get()).isNull();
     refs.close();

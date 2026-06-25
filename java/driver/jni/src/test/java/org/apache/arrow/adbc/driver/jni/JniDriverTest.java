@@ -152,7 +152,8 @@ class JniDriverTest {
       JniDriver driver = new JniDriver(allocator);
       Map<String, Object> parameters = new HashMap<>();
       JniDriver.PARAM_DRIVER.set(parameters, "adbc_driver_sqlite");
-      String expected = "\uD83D\uDE00"; // U+1f600 Grinning face in big-endian
+      String expected = "\uD83D\uDE00"; // U+1f600 GRINNING FACE (big-endian UTF-16)
+      // Sanity check that this encodes to what we expect
       assertThat(expected.getBytes(StandardCharsets.UTF_8))
           .isEqualTo(new byte[] {(byte) 0xf0, (byte) 0x9f, (byte) 0x98, (byte) 0x80});
 

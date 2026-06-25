@@ -45,20 +45,27 @@ class TiedArrowReader extends ArrowReader {
 
   @Override
   public void close(boolean closeReadSource) throws IOException {
-    delegate.close(closeReadSource);
-    if (parent != null) {
-      parent.getChildReferences().releaseReference(this);
+    try {
+      delegate.close(closeReadSource);
+    } finally {
+      // release even if we couldn't close properly
+      if (parent != null) {
+        parent.getChildReferences().releaseReference(this);
+      }
+      parent = null;
     }
-    parent = null;
   }
 
   @Override
   public void close() throws IOException {
-    delegate.close();
-    if (parent != null) {
-      parent.getChildReferences().releaseReference(this);
+    try {
+      delegate.close();
+    } finally {
+      if (parent != null) {
+        parent.getChildReferences().releaseReference(this);
+      }
+      parent = null;
     }
-    parent = null;
   }
 
   @Override
