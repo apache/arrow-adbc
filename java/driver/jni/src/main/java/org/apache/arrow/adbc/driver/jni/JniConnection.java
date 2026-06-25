@@ -299,11 +299,12 @@ public class JniConnection implements AdbcConnection, HasChildReferences {
       AutoCloseables.close(childReferences, handle);
     } catch (Exception e) {
       throw AdbcException.internal("[jni] failed to close connection").withCause(e);
-    }
-    final var parent = this.parent;
-    if (parent != null) {
-      parent.getChildReferences().releaseReference(this);
-      this.parent = null;
+    } finally {
+      final var parent = this.parent;
+      if (parent != null) {
+        parent.getChildReferences().releaseReference(this);
+        this.parent = null;
+      }
     }
   }
 

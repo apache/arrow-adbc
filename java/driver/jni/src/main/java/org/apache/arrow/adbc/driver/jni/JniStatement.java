@@ -189,11 +189,12 @@ public class JniStatement implements AdbcStatement, HasChildReferences {
       AutoCloseables.close(childReferences, handle, bindStream);
     } catch (Exception e) {
       throw AdbcException.internal("[jni] failed to close statement").withCause(e);
-    }
-    final var parent = this.parent;
-    if (parent != null) {
-      parent.getChildReferences().releaseReference(this);
-      this.parent = null;
+    } finally {
+      final var parent = this.parent;
+      if (parent != null) {
+        parent.getChildReferences().releaseReference(this);
+        this.parent = null;
+      }
     }
   }
 

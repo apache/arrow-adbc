@@ -50,8 +50,12 @@ public class JniDatabase implements AdbcDatabase, HasChildReferences {
   }
 
   @Override
-  public void close() throws Exception {
-    AutoCloseables.close(childReferences, handle);
+  public void close() throws AdbcException {
+    try {
+      AutoCloseables.close(childReferences, handle);
+    } catch (Exception e) {
+      throw AdbcException.internal("[jni] failed to close database").withCause(e);
+    }
   }
 
   @Override

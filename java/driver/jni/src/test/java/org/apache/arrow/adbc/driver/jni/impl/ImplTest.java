@@ -18,7 +18,6 @@ package org.apache.arrow.adbc.driver.jni.impl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.Closeable;
 import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import org.junit.jupiter.api.Test;

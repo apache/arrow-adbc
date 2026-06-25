@@ -28,20 +28,27 @@ import org.apache.arrow.util.AutoCloseables;
  *
  * <p>You are supposed to close statements before closing the connection (etc.). This class helps
  * track those references to prevent misuse at runtime.
+ *
+ * <p>This class is thread-safe.
  */
 public final class ChildReferences implements AutoCloseable {
   private final Set<AutoCloseable> openReferences;
 
   public ChildReferences() {
-    this.openReferences = Collections.newSetFromMap(new WeakHashMap<>());
+    // TODO(lidavidm): we could use caffeine LoadingCache with weakKeys instead
+    this.openReferences =
+        Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
   }
 
   public void close() throws Exception {
-    try {
-      var closeables = new ArrayList<>(openReferences);
-      AutoCloseables.close(closeables);
-    } finally {
-      openReferences.clear();
+    // synchronizedSet requires explicit synchronization for iteration
+    synchronized (openReferences) {
+      try {
+        var closeables = new ArrayList<>(openReferences);
+        AutoCloseables.close(closeables);
+      } finally {
+        openReferences.clear();
+      }
     }
   }
 
