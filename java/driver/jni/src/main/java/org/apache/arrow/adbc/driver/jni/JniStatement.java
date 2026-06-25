@@ -24,6 +24,8 @@ import java.util.NoSuchElementException;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.TypedKey;
+import org.apache.arrow.adbc.driver.jni.impl.ChildReferences;
+import org.apache.arrow.adbc.driver.jni.impl.HasChildReferences;
 import org.apache.arrow.adbc.driver.jni.impl.JniLoader;
 import org.apache.arrow.adbc.driver.jni.impl.NativePartitionResult;
 import org.apache.arrow.adbc.driver.jni.impl.NativeQueryResult;
@@ -39,15 +41,28 @@ import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.types.pojo.Schema;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-public class JniStatement implements AdbcStatement {
+public class JniStatement implements AdbcStatement, HasChildReferences {
   private final BufferAllocator allocator;
   private final NativeStatementHandle handle;
+  private final ChildReferences childReferences;
+  // Hold the owning connection alive, and try to ensure this statement gets cleaned up before the
+  // connection does
+  private @Nullable HasChildReferences parent;
   private @Nullable VectorSchemaRoot bindRoot;
   private @Nullable ArrowReader bindStream;
 
-  public JniStatement(BufferAllocator allocator, NativeStatementHandle handle) {
+  public JniStatement(
+      BufferAllocator allocator, HasChildReferences parent, NativeStatementHandle handle) {
     this.allocator = allocator;
     this.handle = handle;
+    this.childReferences = new ChildReferences();
+    this.parent = parent;
+    parent.getChildReferences().addReference(this);
+  }
+
+  @Override
+  public ChildReferences getChildReferences() {
+    return childReferences;
   }
 
   @Override
@@ -126,7 +141,7 @@ public class JniStatement implements AdbcStatement {
   public QueryResult executeQuery() throws AdbcException {
     exportBind();
     NativeQueryResult result = JniLoader.INSTANCE.statementExecuteQuery(handle);
-    return new QueryResult(result.rowsAffected(), result.importStream(allocator));
+    return new QueryResult(result.rowsAffected(), result.importStream(allocator, this));
   }
 
   @Override
@@ -171,9 +186,15 @@ public class JniStatement implements AdbcStatement {
   @Override
   public void close() throws AdbcException {
     try {
-      AutoCloseables.close(handle, bindStream);
+      AutoCloseables.close(childReferences, handle, bindStream);
     } catch (Exception e) {
       throw AdbcException.internal("[jni] failed to close statement").withCause(e);
+    } finally {
+      final var parent = this.parent;
+      if (parent != null) {
+        parent.getChildReferences().releaseReference(this);
+        this.parent = null;
+      }
     }
   }
 

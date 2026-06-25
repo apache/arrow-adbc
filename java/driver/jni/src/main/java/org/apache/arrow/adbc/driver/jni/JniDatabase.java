@@ -21,27 +21,41 @@ import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.TypedKey;
+import org.apache.arrow.adbc.driver.jni.impl.ChildReferences;
+import org.apache.arrow.adbc.driver.jni.impl.HasChildReferences;
 import org.apache.arrow.adbc.driver.jni.impl.JniLoader;
 import org.apache.arrow.adbc.driver.jni.impl.NativeDatabaseHandle;
 import org.apache.arrow.memory.BufferAllocator;
+import org.apache.arrow.util.AutoCloseables;
 
-public class JniDatabase implements AdbcDatabase {
+public class JniDatabase implements AdbcDatabase, HasChildReferences {
   private final BufferAllocator allocator;
   private final NativeDatabaseHandle handle;
+  private final ChildReferences childReferences;
 
   public JniDatabase(BufferAllocator allocator, NativeDatabaseHandle handle) {
     this.allocator = allocator;
     this.handle = handle;
+    this.childReferences = new ChildReferences();
+  }
+
+  @Override
+  public ChildReferences getChildReferences() {
+    return childReferences;
   }
 
   @Override
   public AdbcConnection connect() throws AdbcException {
-    return new JniConnection(allocator, JniLoader.INSTANCE.openConnection(handle));
+    return new JniConnection(allocator, this, JniLoader.INSTANCE.openConnection(handle));
   }
 
   @Override
-  public void close() {
-    handle.close();
+  public void close() throws AdbcException {
+    try {
+      AutoCloseables.close(childReferences, handle);
+    } catch (Exception e) {
+      throw AdbcException.internal("[jni] failed to close database").withCause(e);
+    }
   }
 
   @Override

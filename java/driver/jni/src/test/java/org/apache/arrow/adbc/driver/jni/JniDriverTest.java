@@ -144,7 +144,7 @@ class JniDriverTest {
     }
   }
 
-  // Ensure strings with characters that differ between UTF-8 and Java's "modifiefd UTF-8" are
+  // Ensure strings with characters that differ between UTF-8 and Java's "modified UTF-8" are
   // properly serialized
   @Test
   void queryNonBmpUtf8() throws Exception {
@@ -152,7 +152,10 @@ class JniDriverTest {
       JniDriver driver = new JniDriver(allocator);
       Map<String, Object> parameters = new HashMap<>();
       JniDriver.PARAM_DRIVER.set(parameters, "adbc_driver_sqlite");
-      String expected = "\uD83D\uDE00";
+      String expected = "\uD83D\uDE00"; // U+1f600 GRINNING FACE (big-endian UTF-16)
+      // Sanity check that this encodes to what we expect
+      assertThat(expected.getBytes(StandardCharsets.UTF_8))
+          .isEqualTo(new byte[] {(byte) 0xf0, (byte) 0x9f, (byte) 0x98, (byte) 0x80});
 
       try (final AdbcDatabase db = driver.open(parameters);
           final AdbcConnection conn = db.connect();
@@ -183,6 +186,49 @@ class JniDriverTest {
             .isInstanceOf(IllegalStateException.class)
             .hasMessage("Native statement handle is closed");
       }
+    }
+  }
+
+  @Test
+  void connectionClosesStatements() throws Exception {
+    try (final BufferAllocator allocator = new RootAllocator()) {
+      JniDriver driver = new JniDriver(allocator);
+      Map<String, Object> parameters = new HashMap<>();
+      JniDriver.PARAM_DRIVER.set(parameters, "adbc_driver_sqlite");
+
+      try (final AdbcDatabase db = driver.open(parameters)) {
+        final AdbcConnection conn = db.connect();
+        final AdbcStatement stmt = conn.createStatement();
+
+        conn.close();
+
+        assertThatThrownBy(() -> stmt.setSqlQuery("SELECT 1"))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage("Native statement handle is closed");
+      }
+    }
+  }
+
+  @Test
+  void databaseClosesConnections() throws Exception {
+    try (final BufferAllocator allocator = new RootAllocator()) {
+      JniDriver driver = new JniDriver(allocator);
+      Map<String, Object> parameters = new HashMap<>();
+      JniDriver.PARAM_DRIVER.set(parameters, "adbc_driver_sqlite");
+
+      final AdbcDatabase db = driver.open(parameters);
+      final AdbcConnection conn = db.connect();
+      final AdbcStatement stmt = conn.createStatement();
+
+      db.close();
+
+      assertThatThrownBy(() -> stmt.setSqlQuery("SELECT 1"))
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage("Native statement handle is closed");
+
+      assertThatThrownBy(conn::commit)
+          .isInstanceOf(IllegalStateException.class)
+          .hasMessage("Native connection handle is closed");
     }
   }
 

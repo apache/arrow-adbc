@@ -21,6 +21,7 @@ import org.apache.arrow.c.ArrowArrayStream;
 import org.apache.arrow.c.Data;
 import org.apache.arrow.memory.BufferAllocator;
 import org.apache.arrow.vector.ipc.ArrowReader;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 public class NativeQueryResult {
   private final long rowsAffected;
@@ -39,10 +40,11 @@ public class NativeQueryResult {
   }
 
   /** Import the C Data stream into a Java ArrowReader. */
-  public ArrowReader importStream(BufferAllocator allocator) {
+  public ArrowReader importStream(BufferAllocator allocator, @Nullable HasChildReferences parent) {
     try (final ArrowArrayStream cStream = ArrowArrayStream.allocateNew(allocator)) {
       cStream.save(streamSnapshot);
-      return Data.importArrayStream(allocator, cStream);
+      final var reader = Data.importArrayStream(allocator, cStream);
+      return new TiedArrowReader(allocator, reader, parent);
     }
   }
 }

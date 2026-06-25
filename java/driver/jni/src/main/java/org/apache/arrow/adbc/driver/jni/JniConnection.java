@@ -25,26 +25,42 @@ import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.adbc.core.IngestOption;
 import org.apache.arrow.adbc.core.IsolationLevel;
 import org.apache.arrow.adbc.core.TypedKey;
+import org.apache.arrow.adbc.driver.jni.impl.ChildReferences;
+import org.apache.arrow.adbc.driver.jni.impl.HasChildReferences;
 import org.apache.arrow.adbc.driver.jni.impl.JniLoader;
 import org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle;
 import org.apache.arrow.adbc.driver.jni.impl.NativeStatementHandle;
 import org.apache.arrow.memory.BufferAllocator;
+import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.types.pojo.Schema;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-public class JniConnection implements AdbcConnection {
+public class JniConnection implements AdbcConnection, HasChildReferences {
   private final BufferAllocator allocator;
   private final NativeConnectionHandle handle;
+  private final ChildReferences childReferences;
+  // Hold the owning database alive, and try to ensure this connection gets cleaned up before the
+  // database does
+  private @Nullable HasChildReferences parent;
 
-  public JniConnection(BufferAllocator allocator, NativeConnectionHandle handle) {
+  public JniConnection(
+      BufferAllocator allocator, HasChildReferences parent, NativeConnectionHandle handle) {
     this.allocator = allocator;
     this.handle = handle;
+    this.childReferences = new ChildReferences();
+    this.parent = parent;
+    parent.getChildReferences().addReference(this);
+  }
+
+  @Override
+  public ChildReferences getChildReferences() {
+    return childReferences;
   }
 
   @Override
   public AdbcStatement createStatement() throws AdbcException {
-    return new JniStatement(allocator, JniLoader.INSTANCE.openStatement(handle));
+    return new JniStatement(allocator, this, JniLoader.INSTANCE.openStatement(handle));
   }
 
   @Override
@@ -108,7 +124,7 @@ public class JniConnection implements AdbcConnection {
         }
       }
 
-      return new JniStatement(allocator, stmtHandle);
+      return new JniStatement(allocator, this, stmtHandle);
     } catch (Exception e) {
       stmtHandle.close();
       throw e;
@@ -117,7 +133,7 @@ public class JniConnection implements AdbcConnection {
 
   @Override
   public ArrowReader getInfo(int @Nullable [] infoCodes) throws AdbcException {
-    return JniLoader.INSTANCE.connectionGetInfo(handle, infoCodes).importStream(allocator);
+    return JniLoader.INSTANCE.connectionGetInfo(handle, infoCodes).importStream(allocator, this);
   }
 
   @Override
@@ -138,7 +154,7 @@ public class JniConnection implements AdbcConnection {
             tableNamePattern,
             tableTypes,
             columnNamePattern)
-        .importStream(allocator);
+        .importStream(allocator, this);
   }
 
   @Override
@@ -151,7 +167,7 @@ public class JniConnection implements AdbcConnection {
 
   @Override
   public ArrowReader getTableTypes() throws AdbcException {
-    return JniLoader.INSTANCE.connectionGetTableTypes(handle).importStream(allocator);
+    return JniLoader.INSTANCE.connectionGetTableTypes(handle).importStream(allocator, this);
   }
 
   @Override
@@ -257,7 +273,9 @@ public class JniConnection implements AdbcConnection {
 
   @Override
   public ArrowReader readPartition(ByteBuffer descriptor) throws AdbcException {
-    return JniLoader.INSTANCE.connectionReadPartition(handle, descriptor).importStream(allocator);
+    return JniLoader.INSTANCE
+        .connectionReadPartition(handle, descriptor)
+        .importStream(allocator, this);
   }
 
   @Override
@@ -267,17 +285,27 @@ public class JniConnection implements AdbcConnection {
     return JniLoader.INSTANCE
         .connectionGetStatistics(
             handle, catalogPattern, dbSchemaPattern, tableNamePattern, approximate)
-        .importStream(allocator);
+        .importStream(allocator, this);
   }
 
   @Override
   public ArrowReader getStatisticNames() throws AdbcException {
-    return JniLoader.INSTANCE.connectionGetStatisticNames(handle).importStream(allocator);
+    return JniLoader.INSTANCE.connectionGetStatisticNames(handle).importStream(allocator, this);
   }
 
   @Override
-  public void close() {
-    handle.close();
+  public void close() throws AdbcException {
+    try {
+      AutoCloseables.close(childReferences, handle);
+    } catch (Exception e) {
+      throw AdbcException.internal("[jni] failed to close connection").withCause(e);
+    } finally {
+      final var parent = this.parent;
+      if (parent != null) {
+        parent.getChildReferences().releaseReference(this);
+        this.parent = null;
+      }
+    }
   }
 
   @Override
