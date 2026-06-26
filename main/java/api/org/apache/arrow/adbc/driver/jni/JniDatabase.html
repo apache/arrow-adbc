@@ -78,12 +78,12 @@ loadScripts(document, 'script');</script>
 <section class="class-description" id="class-description">
 <dl class="notes">
 <dt>All Implemented Interfaces:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/AutoCloseable.html" title="class or interface in java.lang" class="external-link">AutoCloseable</a></code>, <code><a href="../../core/AdbcDatabase.html" title="interface in org.apache.arrow.adbc.core">AdbcDatabase</a></code>, <code><a href="../../core/AdbcOptions.html" title="interface in org.apache.arrow.adbc.core">AdbcOptions</a></code></dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/AutoCloseable.html" title="class or interface in java.lang" class="external-link">AutoCloseable</a></code>, <code><a href="../../core/AdbcDatabase.html" title="interface in org.apache.arrow.adbc.core">AdbcDatabase</a></code>, <code><a href="../../core/AdbcOptions.html" title="interface in org.apache.arrow.adbc.core">AdbcOptions</a></code>, <code><a href="impl/HasChildReferences.html" title="interface in org.apache.arrow.adbc.driver.jni.impl">HasChildReferences</a></code></dd>
 </dl>
 <hr>
 <div class="type-signature"><span class="modifiers">public class </span><span class="element-name type-name-label">JniDatabase</span>
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>
-implements <a href="../../core/AdbcDatabase.html" title="interface in org.apache.arrow.adbc.core">AdbcDatabase</a></span></div>
+implements <a href="../../core/AdbcDatabase.html" title="interface in org.apache.arrow.adbc.core">AdbcDatabase</a>, <a href="impl/HasChildReferences.html" title="interface in org.apache.arrow.adbc.driver.jni.impl">HasChildReferences</a></span></div>
 </section>
 <section class="summary">
 <ul class="summary-list">
@@ -120,15 +120,18 @@ implements <a href="../../core/AdbcDatabase.html" title="interface in org.apache
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Create a new connection to the database.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>&lt;T&gt;&nbsp;T</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getOption(org.apache.arrow.adbc.core.TypedKey)" class="member-name-link">getOption</a><wbr>(<a href="../../core/TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="impl/ChildReferences.html" title="class in org.apache.arrow.adbc.driver.jni.impl">ChildReferences</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getChildReferences()" class="member-name-link">getChildReferences</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>&lt;T&gt;&nbsp;T</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getOption(org.apache.arrow.adbc.core.TypedKey)" class="member-name-link">getOption</a><wbr>(<a href="../../core/TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Get a generic option.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>&lt;T&gt;&nbsp;void</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#setOption(org.apache.arrow.adbc.core.TypedKey,T)" class="member-name-link">setOption</a><wbr>(<a href="../../core/TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key,
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>&lt;T&gt;&nbsp;void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#setOption(org.apache.arrow.adbc.core.TypedKey,T)" class="member-name-link">setOption</a><wbr>(<a href="../../core/TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key,
  T&nbsp;value)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Set a generic option.</div>
 </div>
 </div>
@@ -164,6 +167,16 @@ implements <a href="../../core/AdbcDatabase.html" title="interface in org.apache
 <h2>Method Details</h2>
 <ul class="member-list">
 <li>
+<section class="detail" id="getChildReferences()">
+<h3>getChildReferences</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="impl/ChildReferences.html" title="class in org.apache.arrow.adbc.driver.jni.impl">ChildReferences</a></span>&nbsp;<span class="element-name">getChildReferences</span>()</div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="impl/HasChildReferences.html#getChildReferences()">getChildReferences</a></code>&nbsp;in interface&nbsp;<code><a href="impl/HasChildReferences.html" title="interface in org.apache.arrow.adbc.driver.jni.impl">HasChildReferences</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
 <section class="detail" id="connect()">
 <h3>connect</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="../../core/AdbcConnection.html" title="interface in org.apache.arrow.adbc.core">AdbcConnection</a></span>&nbsp;<span class="element-name">connect</span>()
@@ -181,10 +194,13 @@ implements <a href="../../core/AdbcDatabase.html" title="interface in org.apache
 <li>
 <section class="detail" id="close()">
 <h3>close</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">close</span>()</div>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">close</span>()
+           throws <span class="exceptions"><a href="../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></span></div>
 <dl class="notes">
 <dt>Specified by:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/AutoCloseable.html#close()" title="class or interface in java.lang" class="external-link">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/AutoCloseable.html" title="class or interface in java.lang" class="external-link">AutoCloseable</a></code></dd>
+<dt>Throws:</dt>
+<dd><code><a href="../../core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></code></dd>
 </dl>
 </section>
 </li>
