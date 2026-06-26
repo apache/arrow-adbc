@@ -17,21 +17,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
-if build_example
-    arrow_glib = dependency('arrow-glib')
-    executable(
-        'sqlite',
-        'sqlite.c',
-        dependencies: [adbc_glib, arrow_glib],
-        link_language: 'c',
-    )
-endif
-
-files = ['README.md', 'sqlite.c']
+files = ['README.md', 'sqlite.lua']
 install_data(
     files,
-    install_dir: join_paths(data_dir, meson.project_name(), 'example'),
+    install_dir: join_paths(data_dir, 'adbc-arrow-glib', 'example', 'lua'),
 )
-
-subdir('lua')
-subdir('vala')
