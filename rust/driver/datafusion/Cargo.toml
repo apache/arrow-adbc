@@ -33,16 +33,16 @@ categories.workspace = true
 [dependencies]
 adbc_core.workspace = true
 adbc_ffi = { workspace = true, optional = true }
-arrow-array = { version = ">=58.3, <59", default-features = false }
-arrow-buffer = { version = ">=58.3, <59", default-features = false }
-arrow-schema = { version = ">=58.3, <59", default-features = false }
+arrow-array = { version = ">=58.3, <60", default-features = false }
+arrow-buffer = { version = ">=58.3, <60", default-features = false }
+arrow-schema = { version = ">=58.3, <60", default-features = false }
 datafusion = { version = "54.0.0", default-features = false }
 datafusion-substrait = { version = "54.0.0", default-features = false }
 tokio = { version = "1.52", features = ["rt-multi-thread"] }
 prost = "0.14.3"
 
 [dev-dependencies]
-arrow-select = ">=58.3, <59"
+arrow-select = ">=58.3, <60"
 
 [lib]
 crate-type = ["lib", "cdylib"]
