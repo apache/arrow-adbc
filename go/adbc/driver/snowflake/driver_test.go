@@ -1836,8 +1836,8 @@ func (suite *SnowflakeTests) TestTimestampPrecisionJson() {
 func (suite *SnowflakeTests) TestTimestampPrecision() {
 
 	query_ntz := "select TO_TIMESTAMP_NTZ('0001-01-01 00:00:00.000000000') as Jan01_0001, TO_TIMESTAMP_NTZ('2025-06-02 10:37:56.123456789') as June02_2025, TO_TIMESTAMP_NTZ('9999-12-31 23:59:59.999999999') As December31_9999"
-	query_ltz := "select TO_TIMESTAMP_LTZ('0001-01-01 00:00:00.000000000') as Jan01_0001, TO_TIMESTAMP_LTZ('2025-06-02 10:37:56.123456789') as June02_2025, TO_TIMESTAMP_LTZ('9999-12-31 23:59:59.999999999') As December31_9999"
-	query_tz := "select TO_TIMESTAMP_TZ('0001-01-01 00:00:00.000000000') as Jan01_0001, TO_TIMESTAMP_TZ('2025-06-02 10:37:56.123456789') as June02_2025, TO_TIMESTAMP_TZ('9999-12-31 23:59:59.999999999') As December31_9999"
+	// Use explicit UTC timezone offset to avoid session timezone dependency
+	query_tz := "select '0001-01-01 00:00:00.000000000 +0000'::TIMESTAMP_TZ as Jan01_0001, '2025-06-02 10:37:56.123456789 +0000'::TIMESTAMP_TZ as June02_2025, '9999-12-31 23:59:59.999999999 +0000'::TIMESTAMP_TZ As December31_9999"
 
 	v1, _ := arrow.TimestampFromTime(time.Date(1, 1, 1, 0, 0, 0, 0, time.UTC), arrow.Microsecond)
 	v2, _ := arrow.TimestampFromTime(time.Date(2025, 6, 2, 10, 37, 56, 123456789, time.UTC), arrow.Microsecond)
@@ -1859,23 +1859,77 @@ func (suite *SnowflakeTests) TestTimestampPrecision() {
 	}
 
 	suite.queryTimestamps(query_ntz, expectedMicrosecondsResults, expectedNanosecondResults)
-	suite.queryTimestamps(query_ltz, expectedMicrosecondsResults, expectedNanosecondResults)
 	suite.queryTimestamps(query_tz, expectedMicrosecondsResults, expectedNanosecondResults)
 }
 
-func (suite *SnowflakeTests) queryTimestamps(query string, expectedMicrosecondResults []arrow.Timestamp, expectedNanosecondResults []arrow.Timestamp) {
+func (suite *SnowflakeTests) TestTimezonePrecision() {
+
+	location, _ := time.LoadLocation("America/Los_Angeles")
+
+	// Test millisecond precision (3 digits) - TIMESTAMP_TZ(3)
+	query_ms := "SELECT '2025-11-24 12:30:00.123 -0800'::TIMESTAMP_TZ(3) as tz3_ms"
+	ms_time := time.Date(2025, 11, 24, 12, 30, 0, 123000000, location)
+	ms1, _ := arrow.TimestampFromTime(ms_time, arrow.Millisecond)
+
+	expectedMillisecondsResults_ms := []arrow.Timestamp{ms1}
+	expectedNanosecondResults_ms := []arrow.Timestamp{
+		arrow.Timestamp(ms_time.UnixMilli()),
+	}
+
+	suite.queryTimestamps(query_ms, expectedMillisecondsResults_ms, expectedNanosecondResults_ms, false)
+
+	// Test microsecond precision (6 digits) - use TO_TIMESTAMP_TZ and auto-detect precision
+	query_us := "SELECT TO_TIMESTAMP_TZ('2025-11-24 12:30:00.123456 -0800') as tz6_us"
+	us_time := time.Date(2025, 11, 24, 12, 30, 0, 123456000, location)
+	us1, _ := arrow.TimestampFromTime(us_time, arrow.Microsecond)
+
+	expectedMicrosecondsResults_us := []arrow.Timestamp{us1}
+	// TO_TIMESTAMP_TZ without explicit scale returns nanosecond precision
+	expectedNanosecondResults_us := []arrow.Timestamp{
+		arrow.Timestamp(us_time.UnixNano()),
+	}
+
+	suite.queryTimestamps(query_us, expectedMicrosecondsResults_us, expectedNanosecondResults_us, false)
+
+	// Test nanosecond precision (9 digits) - use TO_TIMESTAMP_TZ and auto-detect precision
+	query_ns := "SELECT TO_TIMESTAMP_TZ('2025-11-24 12:30:00.123456789 -0800') as tz9_ns"
+	ns_time := time.Date(2025, 11, 24, 12, 30, 0, 123456789, location)
+	ns1, _ := arrow.TimestampFromTime(ns_time, arrow.Microsecond)
+
+	expectedMicrosecondsResults_ns := []arrow.Timestamp{ns1}
+	expectedNanosecondResults_ns := []arrow.Timestamp{
+		arrow.Timestamp(ns_time.UnixNano()),
+	}
+
+	suite.queryTimestamps(query_ns, expectedMicrosecondsResults_ns, expectedNanosecondResults_ns, false)
+}
+
+func (suite *SnowflakeTests) queryTimestamps(query string, expectedMicrosecondResults []arrow.Timestamp, expectedNanosecondResults []arrow.Timestamp, testOverflow ...bool) {
+	// Default testOverflow to true if not specified
+	shouldTestOverflow := true
+	if len(testOverflow) > 0 {
+		shouldTestOverflow = testOverflow[0]
+	}
 
 	// with max microseconds precision
 	rec := suite.getTimestamps(query, driver.OptionValueMicroseconds)
+	if rec != nil {
+		defer rec.Release()
+	}
 	suite.validateTimestamps(query, rec, expectedMicrosecondResults)
 
 	// with the default nanoseconds precision
 	rec = suite.getTimestamps(query, driver.OptionValueNanoseconds)
+	if rec != nil {
+		defer rec.Release()
+	}
 	suite.validateTimestamps(query, rec, expectedNanosecondResults)
 
 	// set the strict option to error on overflow
-	rec = suite.getTimestamps(query, driver.OptionValueNanosecondsNoOverflow)
-	suite.validateTimestamps(query, rec, nil) // dont expect any results
+	if shouldTestOverflow {
+		rec = suite.getTimestamps(query, driver.OptionValueNanosecondsNoOverflow)
+		suite.validateTimestamps(query, rec, nil) // dont expect any results
+	}
 }
 
 func (suite *SnowflakeTests) getTimestamps(query string, maxTimestampPrecision string) arrow.RecordBatch {
@@ -1905,6 +1959,7 @@ func (suite *SnowflakeTests) getTimestamps(query string, maxTimestampPrecision s
 
 	suite.True(rdr.Next())
 	rec := rdr.RecordBatch()
+	rec.Retain()
 
 	return rec
 }

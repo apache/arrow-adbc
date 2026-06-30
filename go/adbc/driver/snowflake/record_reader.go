@@ -184,7 +184,9 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 						continue
 					}
 
-					v, err := getArrowTimestampFromTime(time.Unix(epoch[i], int64(fraction[i])), dt.TimeUnit(), originalArrowUnit, maxTimestampPrecision)
+					// Convert fraction to nanoseconds based on the scale
+					nanoseconds := int64(fraction[i]) * int64(math.Pow10(9-int(srcMeta.Scale)))
+					v, err := getArrowTimestampFromTime(time.Unix(epoch[i], nanoseconds), dt.TimeUnit(), originalArrowUnit, maxTimestampPrecision)
 					if err != nil {
 						return nil, err
 					}
@@ -210,7 +212,9 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 							continue
 						}
 
-						v, err := getArrowTimestampFromTime(time.Unix(epoch[i], int64(fraction[i])), dt.TimeUnit(), originalArrowUnit, maxTimestampPrecision)
+						// Convert fraction to nanoseconds based on the scale
+						nanoseconds := int64(fraction[i]) * int64(math.Pow10(9-int(srcMeta.Scale)))
+						v, err := getArrowTimestampFromTime(time.Unix(epoch[i], nanoseconds), dt.TimeUnit(), originalArrowUnit, maxTimestampPrecision)
 						if err != nil {
 							return nil, err
 						}
@@ -249,7 +253,22 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 						}
 
 						loc := gosnowflake.Location(int(tzoffset[i]) - 1440)
-						v, err := getArrowTimestampFromTime(time.Unix(epoch[i], 0).In(loc), dt.Unit, originalArrowUnit, maxTimestampPrecision)
+						// When there's no fraction field, epoch contains the timestamp in the scale's unit
+						// For scale 0-2: seconds, scale 3-5: milliseconds, scale 6-8: microseconds, scale 9: nanoseconds
+						var t time.Time
+						switch srcMeta.Scale {
+						case 0, 1, 2:
+							t = time.Unix(epoch[i], 0).In(loc)
+						case 3, 4, 5:
+							t = time.UnixMilli(epoch[i]).In(loc)
+						case 6, 7, 8:
+							t = time.UnixMicro(epoch[i]).In(loc)
+						case 9:
+							t = time.Unix(0, epoch[i]).In(loc)
+						default:
+							t = time.Unix(epoch[i], 0).In(loc)
+						}
+						v, err := getArrowTimestampFromTime(t, dt.Unit, originalArrowUnit, maxTimestampPrecision)
 						if err != nil {
 							return nil, err
 						}
@@ -265,8 +284,10 @@ func getTransformer(sc *arrow.Schema, ld gosnowflake.ArrowStreamLoader, useHighP
 							continue
 						}
 
+						// Convert fraction to nanoseconds based on the scale
+						nanoseconds := int64(fraction[i]) * int64(math.Pow10(9-int(srcMeta.Scale)))
 						loc := gosnowflake.Location(int(tzoffset[i]) - 1440)
-						v, err := getArrowTimestampFromTime(time.Unix(epoch[i], int64(fraction[i])).In(loc), dt.Unit, originalArrowUnit, maxTimestampPrecision)
+						v, err := getArrowTimestampFromTime(time.Unix(epoch[i], nanoseconds).In(loc), dt.Unit, originalArrowUnit, maxTimestampPrecision)
 						if err != nil {
 							return nil, err
 						}
@@ -375,12 +396,10 @@ func rowTypesToArrowSchema(_ context.Context, ld gosnowflake.ArrowStreamLoader, 
 			fields[i].Type = arrow.PrimitiveTypes.Date32
 		case "time":
 			fields[i].Type = arrow.FixedWidthTypes.Time64ns
-		case "timestamp_ntz", "timestamp_tz":
-			if maxTimestampPrecision == Microseconds {
-				fields[i].Type = arrow.FixedWidthTypes.Timestamp_us
-			} else {
-				fields[i].Type = arrow.FixedWidthTypes.Timestamp_ns
-			}
+		case "timestamp_ntz":
+			fields[i].Type = &arrow.TimestampType{Unit: getArrowTimeUnit(srcMeta.Scale, maxTimestampPrecision)}
+		case "timestamp_tz":
+			fields[i].Type = &arrow.TimestampType{TimeZone: "UTC", Unit: getArrowTimeUnit(srcMeta.Scale, maxTimestampPrecision)}
 		case "timestamp_ltz":
 			if loc == nil {
 				loc = ld.Location()
