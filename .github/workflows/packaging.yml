@@ -483,7 +483,6 @@ jobs:
             devscripts \
             gpg \
             rpm
-          gem install apt-dists-merge
           (echo "Key-Type: RSA"; \
            echo "Key-Length: 4096"; \
            echo "Name-Real: Test"; \
@@ -497,6 +496,7 @@ jobs:
       - name: Test
         run: |
           pushd adbc/ci/linux-packages
+          bundle install
           rake --trace ${TASK_NAMESPACE}:test
           popd
 
