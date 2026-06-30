@@ -18,6 +18,8 @@
 arrow-c-glib
 glib
 gobject-introspection
+luajit
+luarocks
 meson
 postgresql
 ruby
