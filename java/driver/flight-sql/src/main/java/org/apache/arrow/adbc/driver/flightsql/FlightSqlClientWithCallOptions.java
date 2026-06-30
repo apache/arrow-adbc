@@ -26,12 +26,18 @@ import java.util.List;
 import org.apache.arrow.flight.CallOption;
 import org.apache.arrow.flight.CancelFlightInfoRequest;
 import org.apache.arrow.flight.CancelFlightInfoResult;
+import org.apache.arrow.flight.CloseSessionRequest;
+import org.apache.arrow.flight.CloseSessionResult;
 import org.apache.arrow.flight.FlightDescriptor;
 import org.apache.arrow.flight.FlightEndpoint;
 import org.apache.arrow.flight.FlightInfo;
 import org.apache.arrow.flight.FlightStream;
+import org.apache.arrow.flight.GetSessionOptionsRequest;
+import org.apache.arrow.flight.GetSessionOptionsResult;
 import org.apache.arrow.flight.RenewFlightEndpointRequest;
 import org.apache.arrow.flight.SchemaResult;
+import org.apache.arrow.flight.SetSessionOptionsRequest;
+import org.apache.arrow.flight.SetSessionOptionsResult;
 import org.apache.arrow.flight.Ticket;
 import org.apache.arrow.flight.sql.CancelResult;
 import org.apache.arrow.flight.sql.FlightSqlClient;
@@ -285,6 +291,20 @@ public class FlightSqlClientWithCallOptions implements AutoCloseable {
   public FlightEndpoint renewFlightEndpoint(
       RenewFlightEndpointRequest request, CallOption... options) {
     return client.renewFlightEndpoint(request, combine(options));
+  }
+
+  public SetSessionOptionsResult setSessionOptions(
+      SetSessionOptionsRequest request, CallOption... options) {
+    return client.setSessionOptions(request, combine(options));
+  }
+
+  public GetSessionOptionsResult getSessionOptions(
+      GetSessionOptionsRequest request, CallOption... options) {
+    return client.getSessionOptions(request, combine(options));
+  }
+
+  public CloseSessionResult closeSession(CloseSessionRequest request, CallOption... options) {
+    return client.closeSession(request, combine(options));
   }
 
   @Override
