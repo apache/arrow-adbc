@@ -27,4 +27,7 @@ package org.apache.arrow.adbc.core;
 public interface AdbcDatabase extends AutoCloseable, AdbcOptions {
   /** Create a new connection to the database. */
   AdbcConnection connect() throws AdbcException;
+
+  @Override
+  void close() throws AdbcException;
 }

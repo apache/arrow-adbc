@@ -285,4 +285,7 @@ public interface AdbcStatement extends AutoCloseable, AdbcOptions {
           + '}';
     }
   }
+
+  @Override
+  void close() throws AdbcException;
 }
