@@ -107,7 +107,7 @@ public class JniDriver implements AdbcDriver {
 
   /** Fluent builder-style interface for loading a driver and establishing a connection. */
   public final class Builder {
-    Map<String, String> nativeParameters;
+    private final Map<String, String> nativeParameters;
 
     Builder() {
       this.nativeParameters = new HashMap<>();
@@ -139,7 +139,11 @@ public class JniDriver implements AdbcDriver {
 
     /** Set an arbitrary parameter. */
     public Builder param(TypedKey<String> key, String value) {
-      return param(key.getKey(), value);
+      String k = key.getKey();
+      if (k.startsWith("jni.")) {
+        k = k.substring(4);
+      }
+      return param(k, value);
     }
 
     /** Load the driver. */
