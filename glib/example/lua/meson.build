@@ -1,3 +1,5 @@
+# -*- indent-tabs-mode: nil -*-
+#
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,12 +17,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
-arrow-c-glib
-glib
-gobject-introspection
-luajit
-luarocks
-meson
-postgresql
-ruby
-setuptools
+files = ['README.md', 'sqlite.lua']
+install_data(
+    files,
+    install_dir: join_paths(data_dir, 'adbc-arrow-glib', 'example', 'lua'),
+)
