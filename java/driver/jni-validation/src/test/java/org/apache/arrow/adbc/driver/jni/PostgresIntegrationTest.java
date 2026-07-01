@@ -24,7 +24,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +31,6 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcDatabase;
-import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcInfoCode;
 import org.apache.arrow.adbc.core.AdbcOptions;
@@ -83,10 +81,7 @@ class PostgresIntegrationTest {
     System.err.println("Connecting to PostgreSQL with URI: " + URI);
     allocator = new RootAllocator();
     driver = new JniDriver(allocator);
-    Map<String, Object> parameters = new HashMap<>();
-    JniDriver.PARAM_DRIVER.set(parameters, "adbc_driver_postgresql");
-    AdbcDriver.PARAM_URI.set(parameters, URI);
-    db = driver.open(parameters);
+    db = driver.load().driver("adbc_driver_postgresql").uri(URI).open();
     conn = db.connect();
   }
 

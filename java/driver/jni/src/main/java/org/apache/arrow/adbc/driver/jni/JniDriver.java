@@ -99,4 +99,53 @@ public class JniDriver implements AdbcDriver {
     NativeDatabaseHandle handle = JniLoader.INSTANCE.openDatabase(nativeParameters);
     return new JniDatabase(allocator, handle);
   }
+
+  /** Fluent builder-style interface for loading a driver and establishing a connection. */
+  public Builder load() {
+    return new Builder();
+  }
+
+  /** Fluent builder-style interface for loading a driver and establishing a connection. */
+  public final class Builder {
+    Map<String, String> nativeParameters;
+
+    Builder() {
+      this.nativeParameters = new HashMap<>();
+    }
+
+    /** Load the given driver. */
+    public Builder driver(String driver) {
+      nativeParameters.put("driver", driver);
+      return this;
+    }
+
+    /** Load the given profile. */
+    public Builder profile(String profile) {
+      nativeParameters.put("profile", profile);
+      return this;
+    }
+
+    /** Connect to the given URI. */
+    public Builder uri(String uri) {
+      nativeParameters.put("uri", uri);
+      return this;
+    }
+
+    /** Set an arbitrary parameter. */
+    public Builder param(String key, String value) {
+      nativeParameters.put(key, value);
+      return this;
+    }
+
+    /** Set an arbitrary parameter. */
+    public Builder param(TypedKey<String> key, String value) {
+      return param(key.getKey(), value);
+    }
+
+    /** Load the driver. */
+    public AdbcDatabase open() throws AdbcException {
+      NativeDatabaseHandle handle = JniLoader.INSTANCE.openDatabase(nativeParameters);
+      return new JniDatabase(JniDriver.this.allocator, handle);
+    }
+  }
 }
