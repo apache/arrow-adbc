@@ -459,4 +459,7 @@ public interface AdbcConnection extends AutoCloseable, AdbcOptions {
   default void setIsolationLevel(IsolationLevel level) throws AdbcException {
     throw AdbcException.notImplemented("Connection does not support setting isolation level");
   }
+
+  @Override
+  void close() throws AdbcException;
 }
