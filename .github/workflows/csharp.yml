@@ -19,6 +19,8 @@ name: C#
 
 on:
   push:
+    branches-ignore:
+      - 'dependabot/**'
     paths:
       - '.github/workflows/csharp.yml'
       - 'ci/scripts/csharp_*'
