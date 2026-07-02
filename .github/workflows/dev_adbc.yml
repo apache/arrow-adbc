@@ -25,6 +25,8 @@ on:
       - "dev/**"
       - ".github/workflows/dev_adbc.yml"
   push:
+    branches-ignore:
+      - 'dependabot/**'
     paths:
       - "dev/**"
       - ".github/workflows/dev_adbc.yml"
