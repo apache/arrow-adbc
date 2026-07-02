@@ -38,9 +38,9 @@ Usage
 To connect to a database, supply the "uri" parameter when constructing
 the :c:struct:`AdbcDatabase`.  This should be a filename, `URI
 filename <https://www.sqlite.org/c3ref/open.html#urifilenamesinsqlite3open>`_,
-or ``sqlite://<sqlite filename or URI filename>``.  For example,
-``sqlite://:memory:``, ``sqlite://example.db``, and
-``sqlite://file::memory:?cache=shared`` are all valid.
+or the same SQLite URI filename syntax with a ``sqlite://`` scheme prefix.
+For example, ``sqlite://``, ``sqlite://:memory:``, ``sqlite://example.db``,
+and ``sqlite://file::memory:?cache=shared`` are all valid.
 If omitted, it will default to an in-memory database, but one that is
 shared across all connections.
 

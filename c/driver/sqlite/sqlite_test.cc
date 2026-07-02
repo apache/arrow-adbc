@@ -466,6 +466,33 @@ TEST(SqliteUriWrapper, AbsolutePath) {
   std::filesystem::remove(db_path, ec);
 }
 
+TEST(SqliteUriWrapper, SqliteUriFilename) {
+  struct AdbcError error = {};
+  adbc_validation::Handle<struct AdbcDatabase> database;
+  adbc_validation::Handle<struct AdbcConnection> connection;
+
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "uri",
+                                    "sqlite://file::memory:?cache=shared", &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionNew(&connection.value, &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection.value, &database.value, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  adbc_validation::Handle<struct AdbcStatement> statement;
+  ASSERT_THAT(AdbcStatementNew(&connection.value, &statement.value, &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement.value, "CREATE TABLE uri_wrapper_test (x INTEGER)", &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
+              adbc_validation::IsOkStatus(&error));
+}
+
 class SqliteStatementTest : public ::testing::Test,
                             public adbc_validation::StatementTest {
  public:
