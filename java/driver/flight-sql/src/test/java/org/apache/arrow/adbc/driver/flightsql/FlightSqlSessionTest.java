@@ -14,6 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 package org.apache.arrow.adbc.driver.flightsql;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -31,8 +32,8 @@ import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.adbc.core.TypedKey;
 import org.apache.arrow.flight.CallStatus;
 import org.apache.arrow.flight.CloseSessionRequest;
-import org.apache.arrow.flight.Criteria;
 import org.apache.arrow.flight.CloseSessionResult;
+import org.apache.arrow.flight.Criteria;
 import org.apache.arrow.flight.FlightDescriptor;
 import org.apache.arrow.flight.FlightInfo;
 import org.apache.arrow.flight.FlightServer;
@@ -44,7 +45,6 @@ import org.apache.arrow.flight.PutResult;
 import org.apache.arrow.flight.Result;
 import org.apache.arrow.flight.SchemaResult;
 import org.apache.arrow.flight.SessionOptionValue;
-import org.apache.arrow.flight.SessionOptionValueFactory;
 import org.apache.arrow.flight.SetSessionOptionsRequest;
 import org.apache.arrow.flight.SetSessionOptionsResult;
 import org.apache.arrow.flight.sql.FlightSqlProducer;
@@ -186,8 +186,7 @@ class FlightSqlSessionTest {
   @Test
   void testGetSessionOptionsBlob() throws Exception {
     connection.setOption(
-        new TypedKey<>(
-            FlightSqlConnectionProperties.SESSION_OPTION_PREFIX + "k1", String.class),
+        new TypedKey<>(FlightSqlConnectionProperties.SESSION_OPTION_PREFIX + "k1", String.class),
         "v1");
 
     String blob =
@@ -203,6 +202,36 @@ class FlightSqlSessionTest {
     connection.close();
     connection = null; // prevent double-close in afterEach
     assertThat(producer.closeSessionCalled.get()).isTrue();
+  }
+
+  @Test
+  void testCloseDoesNotThrowWhenServerReturnsUnimplemented() throws Exception {
+    producer.rejectClose.set(true);
+    connection.close(); // must not throw
+    connection = null;
+  }
+
+  @Test
+  void testGetOptionNotImplementedWhenServerUnsupported() throws Exception {
+    producer.rejectGetSession.set(true);
+    AdbcException ex =
+        assertThrows(
+            AdbcException.class,
+            () ->
+                connection.getOption(
+                    new TypedKey<>(
+                        FlightSqlConnectionProperties.SESSION_OPTION_PREFIX + "foo",
+                        String.class)));
+    assertThat(ex.getStatus()).isEqualTo(AdbcStatusCode.NOT_IMPLEMENTED);
+  }
+
+  @Test
+  void testGetSessionOptionsBlobEmptyWhenServerUnsupported() throws Exception {
+    producer.rejectGetSession.set(true);
+    String blob =
+        connection.getOption(
+            new TypedKey<>(FlightSqlConnectionProperties.SESSION_OPTIONS, String.class));
+    assertThat(blob).isEqualTo("{}");
   }
 
   @Test
@@ -222,10 +251,14 @@ class FlightSqlSessionTest {
   static class SessionProducer implements FlightSqlProducer {
     private final Map<String, SessionOptionValue> sessionOptions = new HashMap<>();
     final AtomicBoolean closeSessionCalled = new AtomicBoolean(false);
+    final AtomicBoolean rejectClose = new AtomicBoolean(false);
+    final AtomicBoolean rejectGetSession = new AtomicBoolean(false);
 
     void reset() {
       sessionOptions.clear();
       closeSessionCalled.set(false);
+      rejectClose.set(false);
+      rejectGetSession.set(false);
     }
 
     @Override
@@ -249,6 +282,10 @@ class FlightSqlSessionTest {
         GetSessionOptionsRequest request,
         CallContext context,
         StreamListener<GetSessionOptionsResult> listener) {
+      if (rejectGetSession.get()) {
+        listener.onError(CallStatus.UNIMPLEMENTED.toRuntimeException());
+        return;
+      }
       listener.onNext(new GetSessionOptionsResult(new HashMap<>(sessionOptions)));
       listener.onCompleted();
     }
@@ -258,6 +295,10 @@ class FlightSqlSessionTest {
         CloseSessionRequest request,
         CallContext context,
         StreamListener<CloseSessionResult> listener) {
+      if (rejectClose.get()) {
+        listener.onError(CallStatus.UNIMPLEMENTED.toRuntimeException());
+        return;
+      }
       closeSessionCalled.set(true);
       listener.onNext(new CloseSessionResult(CloseSessionResult.Status.CLOSED));
       listener.onCompleted();
@@ -307,7 +348,9 @@ class FlightSqlSessionTest {
 
     @Override
     public void getStreamPreparedStatement(
-        FlightSql.CommandPreparedStatementQuery cmd, CallContext ctx, ServerStreamListener listener) {
+        FlightSql.CommandPreparedStatementQuery cmd,
+        CallContext ctx,
+        ServerStreamListener listener) {
       listener.error(CallStatus.UNIMPLEMENTED.toRuntimeException());
     }
 
