@@ -207,7 +207,7 @@ public class FlightSqlConnection implements AdbcConnection {
   public void close() throws Exception {
     try {
       clientCache.invalidateAll();
-    }finally {
+    } finally {
       AutoCloseables.close(allocator);
     }
   }
