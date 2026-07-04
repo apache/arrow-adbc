@@ -124,7 +124,14 @@ final class FlightSqlSessionUtil {
     }
     if (type == Boolean.class) {
       if (raw instanceof Boolean) return (T) raw;
-      return (T) Boolean.valueOf(Boolean.parseBoolean(String.valueOf(raw)));
+      String s = String.valueOf(raw);
+      if ("true".equalsIgnoreCase(s)) return (T) Boolean.TRUE;
+      if ("false".equalsIgnoreCase(s)) return (T) Boolean.FALSE;
+      throw AdbcException.invalidArgument(
+          "[Flight SQL] Session option '"
+              + optionName
+              + "' cannot be parsed as Boolean: "
+              + raw);
     }
     if (type == String[].class) {
       if (raw instanceof String[]) return (T) raw;
