@@ -320,9 +320,13 @@ public class FlightSqlConnection implements AdbcConnection {
       if (e.status().code() != FlightStatusCode.UNIMPLEMENTED) {
         throw FlightSqlDriverUtil.fromFlightException(e);
       }
+    } finally {
+      try {
+        clientCache.invalidateAll();
+      } finally {
+        AutoCloseables.close(client, allocator);
+      }
     }
-    clientCache.invalidateAll();
-    AutoCloseables.close(client, allocator);
   }
 
   @Override
