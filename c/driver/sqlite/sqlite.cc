@@ -65,8 +65,8 @@ std::string_view GetColumnText(sqlite3_stmt* stmt, int index) {
 
 std::string NormalizeUriForOpen(std::string_view uri) {
   if (uri.rfind(kUriWrapperPrefix, 0) == 0) {
-    return std::string{kSqliteUriPrefix} +
-           std::string{uri.substr(kUriWrapperPrefix.size())};
+    return std::string(kSqliteUriPrefix) +
+           std::string(uri.substr(kUriWrapperPrefix.size()));
   }
   return std::string{uri};
 }
