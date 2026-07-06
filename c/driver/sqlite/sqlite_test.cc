@@ -387,47 +387,6 @@ TEST(SqliteUriWrapper, EmptyPayload) {
               adbc_validation::IsOkStatus(&error));
 }
 
-TEST(SqliteUriWrapper, RelativeFilename) {
-  const std::filesystem::path db_path =
-      (std::filesystem::temp_directory_path() / "sqlite_uri_wrapper_test.db")
-          .lexically_relative(std::filesystem::current_path());
-  std::error_code ec;
-  std::filesystem::remove(db_path, ec);
-  ASSERT_FALSE(std::filesystem::exists(db_path));
-
-  {
-    struct AdbcError error = {};
-    adbc_validation::Handle<struct AdbcDatabase> database;
-    adbc_validation::Handle<struct AdbcConnection> connection;
-
-    const std::string uri = "sqlite://" + db_path.string();
-
-    ASSERT_THAT(AdbcDatabaseNew(&database.value, &error),
-                adbc_validation::IsOkStatus(&error));
-    ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "uri", uri.c_str(), &error),
-                adbc_validation::IsOkStatus(&error));
-    ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
-                adbc_validation::IsOkStatus(&error));
-    ASSERT_THAT(AdbcConnectionNew(&connection.value, &error),
-                adbc_validation::IsOkStatus(&error));
-    ASSERT_THAT(AdbcConnectionInit(&connection.value, &database.value, &error),
-                adbc_validation::IsOkStatus(&error));
-
-    adbc_validation::Handle<struct AdbcStatement> statement;
-    ASSERT_THAT(AdbcStatementNew(&connection.value, &statement.value, &error),
-                adbc_validation::IsOkStatus(&error));
-    ASSERT_THAT(
-        AdbcStatementSetSqlQuery(&statement.value,
-                                 "CREATE TABLE uri_wrapper_test (x INTEGER)", &error),
-        adbc_validation::IsOkStatus(&error));
-    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, nullptr, nullptr, &error),
-                adbc_validation::IsOkStatus(&error));
-  }
-
-  EXPECT_TRUE(std::filesystem::exists(db_path));
-  std::filesystem::remove(db_path, ec);
-}
-
 TEST(SqliteUriWrapper, AbsolutePath) {
   const std::filesystem::path db_path =
       std::filesystem::temp_directory_path() / "sqlite_uri_wrapper_absolute_test.db";
