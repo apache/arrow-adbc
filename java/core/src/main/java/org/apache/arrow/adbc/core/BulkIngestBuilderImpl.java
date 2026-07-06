@@ -122,7 +122,8 @@ class BulkIngestBuilderImpl implements BulkIngestBuilder {
 
   @Override
   public <T> BulkIngestBuilder option(TypedKey<T> key, T value) throws AdbcException {
-    options.add(Map.entry(key, value));
+    // redundant cast - make ErrorProne happy
+    options.add(Map.entry(key, Objects.requireNonNull((Object) value)));
     return this;
   }
 
@@ -145,7 +146,7 @@ class BulkIngestBuilderImpl implements BulkIngestBuilder {
         ingestOptions.add(IngestOption.targetDbSchema(targetSchema));
       }
       IngestOption[] varargs = ingestOptions.toArray(new IngestOption[0]);
-      statement = connection.bulkIngest(targetTable, mode, varargs);
+      statement = connection.bulkIngest(Objects.requireNonNull(targetTable), mode, varargs);
 
       if (root != null) {
         statement.bind(root);
