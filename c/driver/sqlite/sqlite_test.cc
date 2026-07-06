@@ -388,7 +388,9 @@ TEST(SqliteUriWrapper, EmptyPayload) {
 }
 
 TEST(SqliteUriWrapper, RelativeFilename) {
-  const std::filesystem::path db_path = "sqlite_uri_wrapper_test.db";
+  const std::filesystem::path db_path =
+      (std::filesystem::temp_directory_path() / "sqlite_uri_wrapper_test.db")
+          .lexically_relative(std::filesystem::current_path());
   std::error_code ec;
   std::filesystem::remove(db_path, ec);
   ASSERT_FALSE(std::filesystem::exists(db_path));
@@ -428,7 +430,7 @@ TEST(SqliteUriWrapper, RelativeFilename) {
 
 TEST(SqliteUriWrapper, AbsolutePath) {
   const std::filesystem::path db_path =
-      std::filesystem::absolute("sqlite_uri_wrapper_absolute_test.db");
+      std::filesystem::temp_directory_path() / "sqlite_uri_wrapper_absolute_test.db";
   std::error_code ec;
   std::filesystem::remove(db_path, ec);
   ASSERT_FALSE(std::filesystem::exists(db_path));
@@ -474,7 +476,7 @@ TEST(SqliteUriWrapper, SqliteUriFilename) {
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error),
               adbc_validation::IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "uri",
-                                    "sqlite://file::memory:?cache=shared", &error),
+                                    "sqlite://:memory:?cache=shared", &error),
               adbc_validation::IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
               adbc_validation::IsOkStatus(&error));
