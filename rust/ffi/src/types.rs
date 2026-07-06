@@ -579,6 +579,88 @@ unsafe extern "C" fn release_ffi_error(error: *mut FFI_AdbcError) {
     }
 }
 
+/// Release variant for an error handed back to a caller that did not opt into the
+/// ADBC 1.1.0 layout: it frees only the message and never touches `private_data`,
+/// which belongs to the caller and was left untouched by [`set_error_out`].
+unsafe extern "C" fn release_ffi_error_message_only(error: *mut FFI_AdbcError) {
+    match error.as_mut() {
+        None => (),
+        Some(error) => {
+            if !error.message.is_null() {
+                // SAFETY: `error.message` was necessarily obtained with `CString::into_raw`.
+                drop(CString::from_raw(error.message));
+                error.message = null_mut();
+            }
+            error.release = None;
+        }
+    }
+}
+
+/// Write `error` into a caller-provided `AdbcError` out-pointer, respecting the
+/// ADBC struct-compatibility rule for `private_data` / `private_driver`.
+///
+/// Those two fields were added in ADBC 1.1.0; a caller opts into them by setting
+/// `vendor_code` to [`ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA`] before the call. Per
+/// `c/include/arrow-adbc/adbc.h`, a driver may touch them only then — otherwise it
+/// must not write past the 1.0.0-sized prefix, since for a 1.0.0 caller the fields
+/// may not exist or may hold caller-owned state. Writing the whole struct
+/// unconditionally (as this exporter did before) clobbers memory the caller owns.
+///
+/// [`ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA`]: adbc_core::constants::ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA
+#[doc(hidden)]
+pub unsafe fn set_error_out(err_out: *mut FFI_AdbcError, error: Error) {
+    if err_out.is_null() {
+        return;
+    }
+
+    // Read the caller's opt-in signal before we overwrite anything.
+    let opted_in = (*err_out).vendor_code == constants::ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA;
+
+    // Release any previous error still held in the struct so that reusing an
+    // error across calls does not leak it, as the C reference implementation
+    // does (`InternalAdbcSetErrorVariadic`, c/driver/common/utils.c).
+    if let Some(release) = (*err_out).release {
+        release(err_out);
+    }
+
+    let mut ffi_error = FFI_AdbcError::try_from(error).unwrap_or_else(Into::into);
+
+    if opted_in {
+        // Extended-layout caller: it owns the extended fields. Preserve the
+        // driver handle the driver manager stashed there and overwrite the whole
+        // struct. The sentinel must survive in `vendor_code`: `adbc.h` forbids
+        // consumers from reading `private_data`/`private_driver` unless
+        // `vendor_code` is the sentinel (and this crate's own
+        // `Error::try_from(&FFI_AdbcError)` gates on it), so the driver's own
+        // vendor code is not representable on this path — exactly as in the C
+        // reference, which leaves `vendor_code` untouched.
+        ffi_error.vendor_code = constants::ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA;
+        ffi_error.private_driver = (*err_out).private_driver;
+        std::ptr::write_unaligned(err_out, ffi_error);
+    } else {
+        // 1.0.0-compatible caller: we must not touch `private_data` /
+        // `private_driver`. Drop any structured details (they live in
+        // `private_data`, which we may not expose) and hand back only the
+        // message with a release that frees just the message.
+        if !ffi_error.private_data.is_null() {
+            // SAFETY: a non-null `private_data` here was produced by
+            // `FFI_AdbcError::try_from` via `Box::into_raw` of `ErrorPrivateData`.
+            drop(Box::from_raw(
+                ffi_error.private_data as *mut ErrorPrivateData,
+            ));
+            ffi_error.private_data = null_mut();
+        }
+        let out = &mut *err_out;
+        out.message = ffi_error.message;
+        out.vendor_code = ffi_error.vendor_code;
+        out.sqlstate = ffi_error.sqlstate;
+        out.release = Some(release_ffi_error_message_only);
+        // Prevent `ffi_error`'s `Drop` from freeing the message we just moved.
+        ffi_error.message = null_mut();
+        ffi_error.release = None;
+    }
+}
+
 impl Drop for FFI_AdbcError {
     fn drop(&mut self) {
         if let Some(release) = self.release {
@@ -689,5 +771,123 @@ mod tests {
         assert!(ffi_error.message.is_null());
         assert!(ffi_error.release.is_none());
         // Drop here is a no-op because release is None.
+    }
+
+    #[test]
+    fn test_set_error_out_preserves_caller_private_fields() {
+        // A caller that did not opt into the 1.1.0 layout leaves `vendor_code` at
+        // something other than the sentinel. `set_error_out` must then leave
+        // `private_data` / `private_driver` untouched, even when the error carries
+        // details that would otherwise be stashed in `private_data`. This mirrors
+        // the C++ validation suite's `StatementTest.ErrorCompatibility`.
+        let canary_data = 0x1234_usize as *mut c_void;
+        let canary_driver = 0x5678_usize as *const FFI_AdbcDriver;
+        let mut out = FFI_AdbcError {
+            message: null_mut(),
+            vendor_code: 0,
+            sqlstate: [0; 5],
+            release: None,
+            private_data: canary_data,
+            private_driver: canary_driver,
+        };
+
+        let error = Error {
+            message: "boom".into(),
+            status: Status::Internal,
+            vendor_code: 0,
+            sqlstate: [0; 5],
+            details: Some(vec![("key".to_string(), b"value".to_vec())]),
+        };
+        unsafe { set_error_out(&mut out, error) };
+
+        // The extended fields are untouched.
+        assert_eq!(out.private_data, canary_data);
+        assert_eq!(out.private_driver, canary_driver);
+        // The message was written and a message-only release installed.
+        assert!(!out.message.is_null());
+        assert!(out.release.is_some());
+
+        // Releasing frees only the message and must not touch the canary.
+        unsafe { (out.release.unwrap())(&mut out) };
+        assert!(out.message.is_null());
+        assert!(out.release.is_none());
+        assert_eq!(out.private_data, canary_data);
+        assert_eq!(out.private_driver, canary_driver);
+        // Drop here is a no-op because release is None.
+    }
+
+    #[test]
+    fn test_set_error_out_extended_layout_overwrites() {
+        // A caller that opted in (vendor_code == sentinel) gets the full struct,
+        // including details in `private_data`; `private_driver` is preserved so the
+        // driver manager keeps its handle.
+        let canary_driver = 0x5678_usize as *const FFI_AdbcDriver;
+        let mut out = FFI_AdbcError {
+            message: null_mut(),
+            vendor_code: constants::ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA,
+            sqlstate: [0; 5],
+            release: None,
+            private_data: null_mut(),
+            private_driver: canary_driver,
+        };
+
+        let error = Error {
+            message: "boom".into(),
+            status: Status::Internal,
+            vendor_code: 0,
+            sqlstate: [0; 5],
+            details: Some(vec![("key".to_string(), b"value".to_vec())]),
+        };
+        unsafe { set_error_out(&mut out, error) };
+
+        assert!(!out.message.is_null());
+        assert!(!out.private_data.is_null()); // details stashed here
+        assert_eq!(out.private_driver, canary_driver); // preserved
+        // The sentinel survives: consumers may only read private_data while
+        // vendor_code holds it (adbc.h), so the details above stay reachable.
+        assert_eq!(
+            out.vendor_code,
+            constants::ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA
+        );
+        assert!(out.release.is_some());
+
+        // The full release frees both the message and the details in private_data.
+        unsafe { (out.release.unwrap())(&mut out) };
+        assert!(out.message.is_null());
+        assert!(out.private_data.is_null());
+        // Drop here is a no-op because release is None.
+    }
+
+    #[test]
+    fn test_set_error_out_releases_a_previous_error_on_reuse() {
+        // Writing into a struct that still holds an earlier error releases it
+        // first (as the C reference does), instead of leaking its message.
+        let mut out = FFI_AdbcError {
+            message: null_mut(),
+            vendor_code: 0,
+            sqlstate: [0; 5],
+            release: None,
+            private_data: null_mut(),
+            private_driver: null(),
+        };
+        let error = |msg: &str| Error {
+            message: msg.into(),
+            status: Status::Internal,
+            vendor_code: 0,
+            sqlstate: [0; 5],
+            details: None,
+        };
+
+        unsafe { set_error_out(&mut out, error("first")) };
+        let first_message = out.message;
+        assert!(!first_message.is_null());
+
+        unsafe { set_error_out(&mut out, error("second")) };
+        assert!(!out.message.is_null());
+        let message = unsafe { CStr::from_ptr(out.message) };
+        assert_eq!(message.to_str().unwrap(), "second");
+
+        unsafe { (out.release.unwrap())(&mut out) };
+        assert!(out.message.is_null());
     }
 }
