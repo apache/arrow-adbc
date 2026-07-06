@@ -72,19 +72,6 @@ type databaseImpl struct {
 	oauthToken    credentials.PerRPCCredentials
 }
 
-func getDriverInfoString(info *driverbase.DriverInfo, code adbc.InfoCode, fallback string) string {
-	value, ok := info.GetInfoForInfoCode(code)
-	if !ok {
-		return fallback
-	}
-
-	str, ok := value.(string)
-	if !ok || str == "" {
-		return fallback
-	}
-	return str
-}
-
 func (d *databaseImpl) SetOptions(cnOptions map[string]string) error {
 	var tlsConfig tls.Config
 
@@ -421,7 +408,8 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 		target = "unix:" + uri.Path
 	}
 
-	driverVersion := getDriverInfoString(d.DriverInfo, adbc.InfoDriverVersion, "unknown")
+	dv, _ := d.DriverInfo.GetInfoForInfoCode(adbc.InfoDriverVersion)
+	driverVersion := dv.(string)
 	dialOpts := append(d.dialOpts.opts, grpc.WithConnectParams(d.timeout.connectParams()), grpc.WithTransportCredentials(creds), grpc.WithUserAgent("ADBC Flight SQL Driver "+driverVersion))
 	dialOpts = append(dialOpts, d.userDialOpts...)
 
@@ -594,16 +582,10 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 	conn.id = newRandomID("conn")
 	conn.openedAt = time.Now()
 	conn.Logger = safeLogger(conn.Logger).With("connection_id", conn.id)
-	driverVersion := getDriverInfoString(d.DriverInfo, adbc.InfoDriverVersion, "unknown")
-	driverArrowVersion := getDriverInfoString(d.DriverInfo, adbc.InfoDriverArrowVersion, "unknown")
-	driverADBCVersion := getDriverInfoString(d.DriverInfo, adbc.InfoDriverADBCVersion, "unknown")
 	conn.Logger.InfoContext(ctx, "FlightSQL connection opened",
 		"target", d.uri.String(),
 		"transactionsSupported", cnxnSupport.transactions,
 		"driver", infoDriverName,
-		"driver_version", driverVersion,
-		"driver_arrow_version", driverArrowVersion,
-		"driver_adbc_version", driverADBCVersion,
 	)
 
 	return driverbase.NewConnectionBuilder(conn).
