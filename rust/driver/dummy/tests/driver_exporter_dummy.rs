@@ -19,20 +19,24 @@
 /// directly using the Rust API (native) and through the exported driver via the
 /// driver manager (exported). That allows us to test that data correctly round-trip
 /// between C and Rust.
+use std::ffi::CString;
 use std::ops::Deref;
 use std::sync::Arc;
 
+use arrow_array::ffi_stream::FFI_ArrowArrayStream;
 use arrow_array::{Array, Float64Array, Int64Array, RecordBatch, RecordBatchReader, StringArray};
 use arrow_schema::{DataType, Field, Schema};
 use arrow_select::concat::concat_batches;
 
 use adbc_core::Statement;
+use adbc_core::constants::ADBC_STATUS_OK;
 use adbc_core::options::{
     AdbcVersion, InfoCode, IngestMode, IsolationLevel, ObjectDepth, OptionConnection,
     OptionDatabase, OptionStatement,
 };
 use adbc_core::{Connection, Database, Driver, Optionable, schemas};
 use adbc_driver_manager::{ManagedConnection, ManagedDatabase, ManagedDriver, ManagedStatement};
+use adbc_ffi::{FFI_AdbcConnection, FFI_AdbcDatabase, FFI_AdbcError, FFI_AdbcStatement, FFIDriver};
 
 use adbc_dummy::{DummyConnection, DummyDatabase, DummyDriver, DummyStatement, SingleBatchReader};
 
@@ -588,6 +592,70 @@ fn test_statement_execute_query() {
     let exported_data = exported_statement.execute_update().unwrap();
     let native_data = native_statement.execute_update().unwrap();
     assert_eq!(exported_data, native_data);
+}
+
+// Driven at the C ABI (unlike the other tests): the driver manager passes a NULL
+// `rows_affected` on the query path, so the -1 the exporter must write there is not
+// observable through the high-level `Statement::execute`.
+#[test]
+fn test_statement_execute_query_sets_rows_affected() {
+    let driver = DummyDriver::ffi_driver();
+    let mut error = FFI_AdbcError::default();
+    let err = &mut error as *mut FFI_AdbcError;
+
+    unsafe {
+        let mut database = FFI_AdbcDatabase::default();
+        assert_eq!(
+            driver.DatabaseNew.unwrap()(&mut database, err),
+            ADBC_STATUS_OK
+        );
+        assert_eq!(
+            driver.DatabaseInit.unwrap()(&mut database, err),
+            ADBC_STATUS_OK
+        );
+
+        let mut connection = FFI_AdbcConnection::default();
+        assert_eq!(
+            driver.ConnectionNew.unwrap()(&mut connection, err),
+            ADBC_STATUS_OK
+        );
+        assert_eq!(
+            driver.ConnectionInit.unwrap()(&mut connection, &mut database, err),
+            ADBC_STATUS_OK
+        );
+
+        let mut statement = FFI_AdbcStatement::default();
+        assert_eq!(
+            driver.StatementNew.unwrap()(&mut connection, &mut statement, err),
+            ADBC_STATUS_OK
+        );
+        let query = CString::new("SELECT 1").unwrap();
+        assert_eq!(
+            driver.StatementSetSqlQuery.unwrap()(&mut statement, query.as_ptr(), err),
+            ADBC_STATUS_OK
+        );
+
+        // Seed `rows_affected` with a value the exporter must overwrite with -1.
+        let mut stream = FFI_ArrowArrayStream::empty();
+        let mut rows_affected: i64 = 42;
+        assert_eq!(
+            driver.StatementExecuteQuery.unwrap()(
+                &mut statement,
+                &mut stream,
+                &mut rows_affected,
+                err,
+            ),
+            ADBC_STATUS_OK
+        );
+        assert_eq!(
+            rows_affected, -1,
+            "a query must report rows_affected = -1 (not known), not a stale value"
+        );
+
+        driver.StatementRelease.unwrap()(&mut statement, err);
+        driver.ConnectionRelease.unwrap()(&mut connection, err);
+        driver.DatabaseRelease.unwrap()(&mut database, err);
+    }
 }
 
 #[test]
