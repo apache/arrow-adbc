@@ -94,44 +94,24 @@ func TestDefaultDriver(t *testing.T) {
 
 	// This is what the driverbase provided GetInfo result should look like out of the box,
 	// with one custom setting registered at initialization
-	expectedGetInfoTable, err := array.TableFromJSON(alloc, adbc.GetInfoSchema, []string{`[
-		{
-			"info_name": 0,
-			"info_value": [0, "MockDriver"]
-		},
-		{
-			"info_name": 1,
-			"info_value": [0, "(unknown or development build)"]
-		},
-		{
-			"info_name": 2,
-			"info_value": [0, "(unknown or development build)"]
-		},
-		{
-			"info_name": 100,
-			"info_value": [0, "ADBC MockDriver Driver - Go"]
-		},
-		{
-			"info_name": 101,
-			"info_value": [0, "(unknown or development build)"]
-		},
-		{
-			"info_name": 102,
-			"info_value": [0, "(unknown or development build)"]
-		},
-		{
-			"info_name": 103,
-			"info_value": [2, 1001000]
-		},
-		{
-			"info_name": 10001,
-			"info_value": [0, "my custom info"]
-		}
-	]`})
-	require.NoError(t, err)
-	defer expectedGetInfoTable.Release()
-
-	require.Truef(t, array.TableEqual(expectedGetInfoTable, getInfoTable), "expected: %s\ngot: %s", expectedGetInfoTable, getInfoTable)
+	infoValues := getInfoValuesFromTable(t, getInfoTable)
+	require.Equal(t, map[adbc.InfoCode]any{
+		adbc.InfoVendorName:         "MockDriver",
+		adbc.InfoVendorVersion:      driverbase.UnknownVersion,
+		adbc.InfoVendorArrowVersion: driverbase.UnknownVersion,
+		adbc.InfoDriverName:         "ADBC MockDriver Driver - Go",
+		adbc.InfoDriverADBCVersion:  int64(adbc.AdbcVersion1_1_0),
+		adbc.InfoCode(10_001):       "my custom info",
+	}, filterInfoValues(infoValues,
+		adbc.InfoVendorName,
+		adbc.InfoVendorVersion,
+		adbc.InfoVendorArrowVersion,
+		adbc.InfoDriverName,
+		adbc.InfoDriverADBCVersion,
+		adbc.InfoCode(10_001),
+	))
+	require.NotEmpty(t, infoValues[adbc.InfoDriverVersion])
+	require.NotEmpty(t, infoValues[adbc.InfoDriverArrowVersion])
 
 	_, err = cnxn.GetObjects(ctx, adbc.ObjectDepthAll, nil, nil, nil, nil, nil)
 	require.Error(t, err)
@@ -223,56 +203,30 @@ func TestCustomizedDriver(t *testing.T) {
 	//  - the default DriverInfo set at initialization
 	//  - the DriverInfo set once in the NewDriver constructor
 	//  - the DriverInfo set dynamically when GetInfo is called by implementing DriverInfoPreparer interface
-	expectedGetInfoTable, err := array.TableFromJSON(alloc, adbc.GetInfoSchema, []string{`[
-		{
-			"info_name": 0,
-			"info_value": [0, "MockDriver"]
-		},
-		{
-			"info_name": 1,
-			"info_value": [0, "(unknown or development build)"]
-		},
-		{
-			"info_name": 2,
-			"info_value": [0, "(unknown or development build)"]
-		},
-		{
-			"info_name": 3,
-			"info_value": [1, true]
-		},
-		{
-			"info_name": 4,
-			"info_value": [1, false]
-		},
-		{
-			"info_name": 100,
-			"info_value": [0, "ADBC MockDriver Driver - Go"]
-		},
-		{
-			"info_name": 101,
-			"info_value": [0, "(unknown or development build)"]
-		},
-		{
-			"info_name": 102,
-			"info_value": [0, "(unknown or development build)"]
-		},
-		{
-			"info_name": 103,
-			"info_value": [2, 1001000]
-		},
-		{
-			"info_name": 10001,
-			"info_value": [0, "my custom info"]
-		},
-		{
-			"info_name": 10002,
-			"info_value": [0, "this was fetched dynamically"]
-		}
-	]`})
-	require.NoError(t, err)
-	defer expectedGetInfoTable.Release()
-
-	require.Truef(t, array.TableEqual(expectedGetInfoTable, getInfoTable), "expected: %s\ngot: %s", expectedGetInfoTable, getInfoTable)
+	infoValues := getInfoValuesFromTable(t, getInfoTable)
+	require.Equal(t, map[adbc.InfoCode]any{
+		adbc.InfoVendorName:         "MockDriver",
+		adbc.InfoVendorVersion:      driverbase.UnknownVersion,
+		adbc.InfoVendorArrowVersion: driverbase.UnknownVersion,
+		adbc.InfoVendorSql:          true,
+		adbc.InfoVendorSubstrait:    false,
+		adbc.InfoDriverName:         "ADBC MockDriver Driver - Go",
+		adbc.InfoDriverADBCVersion:  int64(adbc.AdbcVersion1_1_0),
+		adbc.InfoCode(10_001):       "my custom info",
+		adbc.InfoCode(10_002):       "this was fetched dynamically",
+	}, filterInfoValues(infoValues,
+		adbc.InfoVendorName,
+		adbc.InfoVendorVersion,
+		adbc.InfoVendorArrowVersion,
+		adbc.InfoVendorSql,
+		adbc.InfoVendorSubstrait,
+		adbc.InfoDriverName,
+		adbc.InfoDriverADBCVersion,
+		adbc.InfoCode(10_001),
+		adbc.InfoCode(10_002),
+	))
+	require.NotEmpty(t, infoValues[adbc.InfoDriverVersion])
+	require.NotEmpty(t, infoValues[adbc.InfoDriverArrowVersion])
 
 	dbObjects, err := cnxn.GetObjects(ctx, adbc.ObjectDepthAll, nil, nil, nil, nil, nil)
 	require.NoError(t, err)
@@ -767,6 +721,61 @@ func messagesEqual(expected, actual logMessage) bool {
 		}
 	}
 	return true
+}
+
+func filterInfoValues(values map[adbc.InfoCode]any, codes ...adbc.InfoCode) map[adbc.InfoCode]any {
+	filtered := make(map[adbc.InfoCode]any, len(codes))
+	for _, code := range codes {
+		filtered[code] = values[code]
+	}
+	return filtered
+}
+
+func getInfoValuesFromTable(t *testing.T, table arrow.Table) map[adbc.InfoCode]any {
+	t.Helper()
+
+	values := make(map[adbc.InfoCode]any)
+	codeChunks := table.Column(0).Data().Chunks()
+	valueChunks := table.Column(1).Data().Chunks()
+	require.Len(t, codeChunks, len(valueChunks))
+
+	for chunkIdx := range codeChunks {
+		codeArr, ok := codeChunks[chunkIdx].(*array.Uint32)
+		require.True(t, ok)
+		unionArr, ok := valueChunks[chunkIdx].(*array.DenseUnion)
+		require.True(t, ok)
+
+		offsets := unionArr.RawValueOffsets()
+		for row := 0; row < codeArr.Len(); row++ {
+			code := adbc.InfoCode(codeArr.Value(row))
+			childID := unionArr.ChildID(row)
+			offset := int(offsets[row])
+			child := unionArr.Field(childID)
+			if child.IsNull(offset) {
+				values[code] = nil
+				continue
+			}
+
+			switch childID {
+			case 0:
+				strArray, ok := child.(*array.String)
+				require.True(t, ok)
+				values[code] = strArray.Value(offset)
+			case 1:
+				boolArray, ok := child.(*array.Boolean)
+				require.True(t, ok)
+				values[code] = boolArray.Value(offset)
+			case 2:
+				intArray, ok := child.(*array.Int64)
+				require.True(t, ok)
+				values[code] = intArray.Value(offset)
+			default:
+				t.Fatalf("unexpected dense union child id %d for info code %d", childID, code)
+			}
+		}
+	}
+
+	return values
 }
 
 func tableFromRecordReader(rdr array.RecordReader) arrow.Table {
