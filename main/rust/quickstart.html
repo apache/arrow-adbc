@@ -414,10 +414,15 @@
           <section id="quickstart">
 <h1>Quickstart<a class="headerlink" href="#quickstart" title="Link to this heading">¶</a></h1>
 <p>Here we’ll briefly tour using ADBC with the <a class="reference external" href="https://datafusion.apache.org/">DataFusion</a> driver.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The DataFusion driver is maintained by a third party, the ADBC Driver Foundry (<a class="reference external" href="https://adbc-drivers.org">https://adbc-drivers.org</a>). We’re using it here since we don’t maintain any Rust-based drivers directly.</p>
+</div>
 <section id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h2>
 <p>Add a dependency on <code class="docutils literal notranslate"><span class="pre">adbc_core</span></code> and <code class="docutils literal notranslate"><span class="pre">adbc_datafusion</span></code>:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>cargo<span class="w"> </span>add<span class="w"> </span>adbc_core<span class="w"> </span>adbc_datafusion
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>cargo<span class="w"> </span>add<span class="w"> </span>adbc_core
+cargo<span class="w"> </span>add<span class="w"> </span>--git<span class="w"> </span>https://github.com/adbc-drivers/datafusion<span class="w"> </span>adbc-driver-datafusion
 </pre></div>
 </div>
 <div class="admonition note">
@@ -444,7 +449,7 @@ connections can share.)</p>
 <div class="highlight-rust notranslate"><div class="highlight"><pre><span></span><span class="c1">// These traits must be in scope</span>
 <span class="k">use</span><span class="w"> </span><span class="n">adbc_core</span><span class="p">::{</span><span class="n">Connection</span><span class="p">,</span><span class="w"> </span><span class="n">Database</span><span class="p">,</span><span class="w"> </span><span class="n">Driver</span><span class="p">,</span><span class="w"> </span><span class="n">Statement</span><span class="p">};</span>
 
-<span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">adbc_datafusion</span><span class="p">::</span><span class="n">DataFusionDriver</span><span class="w"> </span><span class="p">{};</span>
+<span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">adbc_driver_datafusion</span><span class="p">::</span><span class="n">DataFusionDriver</span><span class="w"> </span><span class="p">{};</span>
 <span class="kd">let</span><span class="w"> </span><span class="n">db</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">driver</span><span class="p">.</span><span class="n">new_database</span><span class="p">().</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to create database handle&quot;</span><span class="p">);</span>
 <span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">conn</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">db</span><span class="p">.</span><span class="n">new_connection</span><span class="p">().</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to create connection&quot;</span><span class="p">);</span>
 </pre></div>

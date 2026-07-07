@@ -23,6 +23,8 @@ Here we'll briefly tour using ADBC with the `DataFusion`_ driver.
 
 .. _DataFusion: https://datafusion.apache.org/
 
+.. note:: The DataFusion driver is maintained by a third party, the ADBC Driver Foundry (https://adbc-drivers.org). We're using it here since we don't maintain any Rust-based drivers directly.
+
 Installation
 ============
 
@@ -30,7 +32,8 @@ Add a dependency on ``adbc_core`` and ``adbc_datafusion``:
 
 .. code-block:: shell
 
-   cargo add adbc_core adbc_datafusion
+   cargo add adbc_core
+   cargo add --git https://github.com/adbc-drivers/datafusion adbc-driver-datafusion
 
 .. note:: If you get a compiler error (E0308, mismatched types) and a note about
           multiple versions of the arrow crates in the dependency graph when you
@@ -59,7 +62,7 @@ connections can share.)
    // These traits must be in scope
    use adbc_core::{Connection, Database, Driver, Statement};
 
-   let mut driver = adbc_datafusion::DataFusionDriver {};
+   let mut driver = adbc_driver_datafusion::DataFusionDriver {};
    let db = driver.new_database().expect("Failed to create database handle");
    let mut conn = db.new_connection().expect("Failed to create connection");
 
