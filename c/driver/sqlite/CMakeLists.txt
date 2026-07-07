@@ -30,14 +30,15 @@ else()
   set(SQLite3_INCLUDE_DIRS)
 endif()
 
-# Check for sqlite3_load_extension() in sqlite3.h
-if(EXISTS "${SQLite3_INCLUDE_DIRS}/sqlite3.h")
-  file(READ "${SQLite3_INCLUDE_DIRS}/sqlite3.h" ADBC_SQLITE_H_CONTENT)
-  string(FIND "${ADBC_SQLITE_H_CONTENT}" "sqlite3_load_extension"
-              ADBC_SQLITE_WITH_LOAD_EXTENSION)
-endif()
+# Check whether sqlite3_load_extension() is available.
+include(CheckSymbolExists)
+set(CMAKE_REQUIRED_INCLUDES ${SQLite3_INCLUDE_DIRS})
+set(CMAKE_REQUIRED_LIBRARIES ${SQLite3_LINK_LIBRARIES})
+check_symbol_exists(sqlite3_load_extension "sqlite3.h" ADBC_SQLITE_WITH_LOAD_EXTENSION)
+unset(CMAKE_REQUIRED_INCLUDES)
+unset(CMAKE_REQUIRED_LIBRARIES)
 
-if(ADBC_SQLITE_WITH_LOAD_EXTENSION EQUAL -1)
+if(NOT ADBC_SQLITE_WITH_LOAD_EXTENSION)
   set(ADBC_SQLITE_COMPILE_DEFINES "-DADBC_SQLITE_WITH_NO_LOAD_EXTENSION")
 endif()
 
