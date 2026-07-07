@@ -132,7 +132,7 @@ impl<DriverType: Driver + Default + 'static> FFIDriver for DriverType {
             StatementSetSubstraitPlan: Some(statement_set_substrait_plan::<DriverType>),
             ErrorGetDetailCount: Some(error_get_detail_count),
             ErrorGetDetail: Some(error_get_detail),
-            ErrorFromArrayStream: None, // TODO(alexandreyc): what to do with this?
+            ErrorFromArrayStream: Some(crate::exported_stream::error_from_array_stream),
             DatabaseGetOption: Some(database_get_option::<DriverType>),
             DatabaseGetOptionBytes: Some(database_get_option_bytes::<DriverType>),
             DatabaseGetOptionDouble: Some(database_get_option_double::<DriverType>),
@@ -1117,7 +1117,7 @@ extern "C" fn connection_get_table_types<DriverType: Driver + 'static>(
 
         let reader = check_err!(connection.get_table_types(), error);
         let reader = Box::new(reader);
-        let reader = FFI_ArrowArrayStream::new(reader);
+        let reader = crate::exported_stream::export_reader(reader);
         unsafe { std::ptr::write_unaligned(out, reader) };
 
         ADBC_STATUS_OK
@@ -1185,7 +1185,7 @@ extern "C" fn connection_get_info<DriverType: Driver + 'static>(
 
         let reader = check_err!(connection.get_info(info_codes), error);
         let reader = Box::new(reader);
-        let reader = FFI_ArrowArrayStream::new(reader);
+        let reader = crate::exported_stream::export_reader(reader);
         unsafe { std::ptr::write_unaligned(out, reader) };
 
         ADBC_STATUS_OK
@@ -1263,7 +1263,7 @@ extern "C" fn connection_get_statistic_names<DriverType: Driver + 'static>(
 
         let reader = check_err!(connection.get_statistic_names(), error);
         let reader = Box::new(reader);
-        let reader = FFI_ArrowArrayStream::new(reader);
+        let reader = crate::exported_stream::export_reader(reader);
         unsafe { std::ptr::write_unaligned(out, reader) };
 
         ADBC_STATUS_OK
@@ -1292,7 +1292,7 @@ extern "C" fn connection_read_partition<DriverType: Driver + 'static>(
             unsafe { std::slice::from_raw_parts(serialized_partition, serialized_length) };
         let reader = check_err!(connection.read_partition(partition), error);
         let reader = Box::new(reader);
-        let reader = FFI_ArrowArrayStream::new(reader);
+        let reader = crate::exported_stream::export_reader(reader);
         unsafe { std::ptr::write_unaligned(out, reader) };
 
         ADBC_STATUS_OK
@@ -1326,7 +1326,7 @@ extern "C" fn connection_get_statistics<DriverType: Driver + 'static>(
         let reader = connection.get_statistics(catalog, db_schema, table_name, approximate);
         let reader = check_err!(reader, error);
         let reader = Box::new(reader);
-        let reader = FFI_ArrowArrayStream::new(reader);
+        let reader = crate::exported_stream::export_reader(reader);
         unsafe { std::ptr::write_unaligned(out, reader) };
 
         ADBC_STATUS_OK
@@ -1383,7 +1383,7 @@ extern "C" fn connection_get_objects<DriverType: Driver + 'static>(
         );
         let reader = check_err!(reader, error);
         let reader = Box::new(reader);
-        let reader = FFI_ArrowArrayStream::new(reader);
+        let reader = crate::exported_stream::export_reader(reader);
         unsafe { std::ptr::write_unaligned(out, reader) };
 
         ADBC_STATUS_OK
@@ -1726,7 +1726,7 @@ extern "C" fn statement_execute_query<DriverType: Driver + 'static>(
         if !out.is_null() {
             let reader = check_err!(statement.execute(), error);
             let reader = Box::new(reader);
-            let reader = FFI_ArrowArrayStream::new(reader);
+            let reader = crate::exported_stream::export_reader(reader);
             unsafe { std::ptr::write_unaligned(out, reader) };
         } else {
             let rows_affected_value = check_err!(statement.execute_update(), error).unwrap_or(-1);

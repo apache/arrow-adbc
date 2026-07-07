@@ -43,3 +43,8 @@ arrow-array = { version = ">=58, <60", default-features = false, features = [
 arrow-buffer = { version = ">=58, <60", default-features = false }
 arrow-schema = { version = ">=58, <60", default-features = false }
 arrow-select = { version = ">=58, <60", default-features = false }
+# The floor matters for the minimal-versions CI job: libc 0.2.0 (the "0.2"
+# minimum) predates the errno constants used by adbc_ffi and conflicts with
+# rustix's own floor. 0.2.182 matches the lowest version the rest of the
+# workspace already requires.
+libc = { version = "0.2.182", default-features = false }
