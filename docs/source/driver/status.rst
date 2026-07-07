@@ -51,7 +51,6 @@ Feature Support
    ../../../csharp/src/Drivers/Databricks/readme.md
    ../../../csharp/src/Drivers/FlightSql/README.md
    ../../../java/driver/flight-sql/README.md
-   ../../../rust/driver/datafusion/README.md
    ./duckdb => ../../../c/integration/duckdb/README.md [#duckdb]
    ./flight_sql => ../../../c/driver/flightsql/README.md
    ./jdbc => ../../../java/driver/jdbc/README.md
