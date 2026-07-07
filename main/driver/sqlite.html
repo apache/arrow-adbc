@@ -464,9 +464,27 @@ R</label><div class="sd-tab-content docutils">
 <section id="usage">
 <h2>Usage<a class="headerlink" href="#usage" title="Link to this heading">¶</a></h2>
 <p>To connect to a database, supply the “uri” parameter when constructing
-the <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/group__adbc-database.html#structAdbcDatabase" title="(in ADBC C vversion)"><code class="xref c c-struct docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>.  This should be a filename or <a class="reference external" href="https://www.sqlite.org/c3ref/open.html#urifilenamesinsqlite3open">URI
-filename</a>.
-If omitted, it will default to an in-memory database, but one that is
+the <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/group__adbc-database.html#structAdbcDatabase" title="(in ADBC C vversion)"><code class="xref c c-struct docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a>.  This should be a filename, <a class="reference external" href="https://www.sqlite.org/c3ref/open.html#urifilenamesinsqlite3open">URI
+filename</a>,
+or SQLite URI filename syntax with <code class="docutils literal notranslate"><span class="pre">sqlite://</span></code> instead of <code class="docutils literal notranslate"><span class="pre">file:</span></code>.
+For example, <code class="docutils literal notranslate"><span class="pre">sqlite://</span></code>, <code class="docutils literal notranslate"><span class="pre">sqlite://:memory:</span></code>,
+<code class="docutils literal notranslate"><span class="pre">sqlite://example.db</span></code>, and <code class="docutils literal notranslate"><span class="pre">sqlite://:memory:?cache=shared</span></code> are all valid.
+Please note that when using the <code class="docutils literal notranslate"><span class="pre">sqlite://</span></code> scheme, the remainder of the
+URI must not itself start with <code class="docutils literal notranslate"><span class="pre">file:</span></code>.</p>
+<p>Valid examples:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">sqlite://</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sqlite://:memory:</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sqlite://example.db</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sqlite:///tmp/example.db</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sqlite://:memory:?cache=shared</span></code></p></li>
+</ul>
+<p>Invalid examples:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">sqlite://file:example.db</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sqlite://file::memory:?cache=shared</span></code></p></li>
+</ul>
+<p>If omitted, it will default to an in-memory database, but one that is
 shared across all connections.</p>
 <div class="sd-tab-set docutils">
 <input checked="checked" id="sd-tab-item-4" name="sd-tab-set-1" type="radio">
