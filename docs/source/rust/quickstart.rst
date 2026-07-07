@@ -23,7 +23,7 @@ Here we'll briefly tour using ADBC with the `DataFusion`_ driver.
 
 .. _DataFusion: https://datafusion.apache.org/
 
-.. note:: The DataFusion driver is maintained by a third party. We're using it here since we don't maintain any Rust-based drivers directly.
+.. note:: The DataFusion driver is maintained by a third party, the ADBC Driver Foundry (https://adbc-drivers.org). We're using it here since we don't maintain any Rust-based drivers directly.
 
 Installation
 ============
