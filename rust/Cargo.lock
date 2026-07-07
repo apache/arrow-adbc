@@ -159,6 +159,7 @@ dependencies = [
  "arrow-schema",
  "chrono",
  "chrono-tz",
+ "futures",
  "half",
  "hashbrown 0.17.1",
  "num-complex",
