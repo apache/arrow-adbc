@@ -46,7 +46,7 @@ class PostgreSQLQuirks(model.DriverQuirks):
         statement_rows_affected_ddl=False,
         current_catalog="postgres",
         current_schema="public",
-        supported_xdbc_fields=[],
+        supported_xdbc_fields=["xdbc_type_name"],
     )
     setup = model.DriverSetup(
         database={
