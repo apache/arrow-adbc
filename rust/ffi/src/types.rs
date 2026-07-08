@@ -776,15 +776,16 @@ mod tests {
         // `private_data` / `private_driver` untouched, even when the error carries
         // details that would otherwise be stashed in `private_data`. This mirrors
         // the C++ validation suite's `StatementTest.ErrorCompatibility`.
-        let canary_data = 0x1234_usize as *mut c_void;
-        let canary_driver = 0x5678_usize as *const FFI_AdbcDriver;
+        let mut canary_data = 0x1234;
+        let canary_ptr = (&raw mut canary_data) as *mut c_void;
+        let canary_driver: FFI_AdbcDriver = Default::default();
         let mut out = FFI_AdbcError {
             message: null_mut(),
             vendor_code: 0,
             sqlstate: [0; 5],
             release: None,
-            private_data: canary_data,
-            private_driver: canary_driver,
+            private_data: canary_ptr,
+            private_driver: &raw const canary_driver,
         };
 
         let error = Error {
@@ -797,8 +798,8 @@ mod tests {
         unsafe { export_error(&mut out, error) };
 
         // The extended fields are untouched.
-        assert_eq!(out.private_data, canary_data);
-        assert_eq!(out.private_driver, canary_driver);
+        assert_eq!(out.private_data, canary_ptr);
+        assert_eq!(out.private_driver, &raw const canary_driver);
         // The message was written and a message-only release installed.
         assert!(!out.message.is_null());
         assert!(out.release.is_some());
@@ -807,8 +808,8 @@ mod tests {
         unsafe { (out.release.unwrap())(&mut out) };
         assert!(out.message.is_null());
         assert!(out.release.is_none());
-        assert_eq!(out.private_data, canary_data);
-        assert_eq!(out.private_driver, canary_driver);
+        assert_eq!(out.private_data, canary_ptr);
+        assert_eq!(out.private_driver, &raw const canary_driver);
         // Drop here is a no-op because release is None.
     }
 
@@ -817,14 +818,14 @@ mod tests {
         // A caller that opted in (vendor_code == sentinel) gets the full struct,
         // including details in `private_data`; `private_driver` is preserved so the
         // driver manager keeps its handle.
-        let canary_driver = 0x5678_usize as *const FFI_AdbcDriver;
+        let canary_driver: FFI_AdbcDriver = Default::default();
         let mut out = FFI_AdbcError {
             message: null_mut(),
             vendor_code: constants::ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA,
             sqlstate: [0; 5],
             release: None,
             private_data: null_mut(),
-            private_driver: canary_driver,
+            private_driver: &raw const canary_driver,
         };
 
         let error = Error {
@@ -838,7 +839,7 @@ mod tests {
 
         assert!(!out.message.is_null());
         assert!(!out.private_data.is_null()); // details stashed here
-        assert_eq!(out.private_driver, canary_driver); // preserved
+        assert_eq!(out.private_driver, &raw const canary_driver); // preserved
         // The sentinel survives: consumers may only read private_data while
         // vendor_code holds it (adbc.h), so the details above stay reachable.
         assert_eq!(
