@@ -238,7 +238,7 @@ macro_rules! check_err {
             Err(error) => {
                 let error = adbc_core::error::Error::from(error);
                 let status: adbc_core::error::AdbcStatusCode = error.status.into();
-                unsafe { $crate::set_error_out($err_out, error) };
+                unsafe { $crate::export_error($err_out, error) };
                 return status;
             }
         }
@@ -279,7 +279,7 @@ macro_rules! pointer_as_mut {
                     format!("Passed null pointer for argument {:?}", stringify!($ptr)),
                     adbc_core::error::Status::InvalidArguments,
                 );
-                unsafe { $crate::set_error_out($err_out, error) };
+                unsafe { $crate::export_error($err_out, error) };
                 return adbc_core::error::Status::InvalidArguments.into();
             }
         }
@@ -508,7 +508,7 @@ fn catch_panic<F: FnOnce() -> AdbcStatusCode + std::panic::UnwindSafe>(
                 format!("Uncaught panic in driver: {message}"),
                 Status::Internal,
             );
-            unsafe { crate::set_error_out(error, err) };
+            unsafe { crate::export_error(error, err) };
             Status::Internal.into()
         }
     }
