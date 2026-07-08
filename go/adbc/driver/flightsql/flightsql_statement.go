@@ -809,15 +809,15 @@ func (s *statement) GetParameterSchema() (*arrow.Schema, error) {
 //
 // If the driver does not support partitioned results, this will return
 // an error with a StatusNotImplemented code.
-func (s *statement) ExecutePartitions(ctx context.Context) (sc *arrow.Schema, out adbc.Partitions, nrec int64, err error) {
-	ctx, span := internal.StartSpan(ctx, "FlightSQLStatement.ExecutePartitions", s.cnxn)
-	defer func() { internal.EndSpan(span, err) }()
-
+func (s *statement) ExecutePartitions(ctx context.Context) (*arrow.Schema, adbc.Partitions, int64, error) {
 	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
 
 	var (
 		info *flight.FlightInfo
 		poll *flight.PollInfo
+		out  adbc.Partitions
+		sc   *arrow.Schema
+		err  error
 	)
 
 	var header, trailer metadata.MD
@@ -931,9 +931,6 @@ func (s *statement) ExecutePartitions(ctx context.Context) (sc *arrow.Schema, ou
 
 // ExecuteSchema gets the schema of the result set of a query without executing it.
 func (s *statement) ExecuteSchema(ctx context.Context) (schema *arrow.Schema, err error) {
-	ctx, span := internal.StartSpan(ctx, "FlightSQLStatement.ExecuteSchema", s.cnxn)
-	defer func() { internal.EndSpan(span, err) }()
-
 	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
 
 	if s.prepared != nil {
