@@ -103,9 +103,12 @@ extends <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/ja
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="AdbcConnection.html" title="interface in org.apache.arrow.adbc.core">AdbcConnection</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#connect()" class="member-name-link">connect</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#close()" class="member-name-link">close</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">&nbsp;</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="AdbcConnection.html" title="interface in org.apache.arrow.adbc.core">AdbcConnection</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#connect()" class="member-name-link">connect</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Create a new connection to the database.</div>
 </div>
 </div>
@@ -114,9 +117,6 @@ extends <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/ja
 <div class="inherited-list">
 <h3 id="methods-inherited-from-class-org.apache.arrow.adbc.core.AdbcOptions">Methods inherited from interface&nbsp;org.apache.arrow.adbc.core.<a href="AdbcOptions.html" title="interface in org.apache.arrow.adbc.core">AdbcOptions</a></h3>
 <code><a href="AdbcOptions.html#getOption(org.apache.arrow.adbc.core.TypedKey)">getOption</a>, <a href="AdbcOptions.html#setOption(org.apache.arrow.adbc.core.TypedKey,T)">setOption</a></code></div>
-<div class="inherited-list">
-<h3 id="methods-inherited-from-class-java.lang.AutoCloseable">Methods inherited from interface&nbsp;java.lang.<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/AutoCloseable.html" title="class or interface in java.lang" class="external-link">AutoCloseable</a></h3>
-<code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/AutoCloseable.html#close()" title="class or interface in java.lang" class="external-link">close</a></code></div>
 </section>
 </li>
 </ul>
@@ -135,6 +135,19 @@ extends <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/ja
                 throws <span class="exceptions"><a href="AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></span></div>
 <div class="block">Create a new connection to the database.</div>
 <dl class="notes">
+<dt>Throws:</dt>
+<dd><code><a href="AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="close()">
+<h3>close</h3>
+<div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="element-name">close</span>()
+    throws <span class="exceptions"><a href="AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></span></div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/AutoCloseable.html#close()" title="class or interface in java.lang" class="external-link">close</a></code>&nbsp;in interface&nbsp;<code><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/AutoCloseable.html" title="class or interface in java.lang" class="external-link">AutoCloseable</a></code></dd>
 <dt>Throws:</dt>
 <dd><code><a href="AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></code></dd>
 </dl>
