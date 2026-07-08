@@ -309,10 +309,15 @@ public class FlightSqlStatement implements AdbcStatement {
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() throws AdbcException {
     // TODO(https://github.com/apache/arrow/issues/39814): this is annotated wrongly upstream
     if (preparedStatement != null) {
-      AutoCloseables.close(preparedStatement);
+      try {
+        AutoCloseables.close(preparedStatement);
+      } catch (Exception e) {
+        throw AdbcException.internal("[Flight SQL] Could not close prepared statement")
+            .withCause(e);
+      }
     }
   }
 
