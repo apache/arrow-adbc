@@ -48,7 +48,7 @@ the :c:struct:`AdbcDatabase`.
          struct AdbcDatabase database;
          AdbcDatabaseNew(&database, nullptr);
          AdbcDatabaseSetOption(&database, "driver", "adbc_driver_flightsql", nullptr);
-         AdbcDatabaseSetOption(&database, "uri", "grpc://localhost:8080", nullptr);
+         AdbcDatabaseSetOption(&database, "uri", "flightsql://localhost:8080?transport=tcp", nullptr);
          AdbcDatabaseInit(&database, nullptr);
 
    .. tab-item:: Python
@@ -64,7 +64,7 @@ the :c:struct:`AdbcDatabase`.
          headers = {"foo": "bar"}
 
          with connect(
-             "grpc+tls://localhost:8080",
+             "flightsql://localhost:8080",
              db_kwargs={
                  DatabaseOptions.AUTHORIZATION_HEADER.value: "Bearer <token>",
                  DatabaseOptions.TLS_SKIP_VERIFY.value: "true",
@@ -80,6 +80,45 @@ the :c:struct:`AdbcDatabase`.
       :sync: go
 
       .. recipe:: ../../../go/adbc/driver/flightsql/example_usage_test.go
+
+URI Format
+----------
+
+The "uri" option accepts URIs using the ``flightsql://`` scheme.  The
+transport is selected with the ``transport`` query parameter, which is
+matched case-insensitively:
+
+``flightsql://<host>:<port>``
+    Connect over gRPC with TLS (secure).  This is the default when no
+    ``transport`` query parameter is given.
+
+``flightsql://<host>:<port>?transport=tls``
+    Same as above; an explicit way to request TLS (secure).
+
+``flightsql://<host>:<port>?transport=tcp``
+    Connect over gRPC without TLS (plaintext).
+
+``flightsql:///<path/to/socket>?transport=unix``
+    Connect over gRPC via a Unix domain socket at the given path.
+
+An unrecognized ``transport`` value (anything other than ``tls``,
+``tcp``, or ``unix``) is rejected with an error rather than silently
+falling back to a default.  Similarly, supplying a host with
+``transport=unix``, or a socket path with ``transport=tcp`` or the
+default TLS transport, is rejected as an invalid combination.
+
+.. note:: For backwards compatibility, the driver also still accepts
+          the following legacy schemes, each equivalent to a
+          ``flightsql://`` URI with the given ``transport``:
+
+          =====================  =========================
+          Legacy scheme           Equivalent ``transport``
+          =====================  =========================
+          ``grpc://``              ``tcp``
+          ``grpc+tcp://``          ``tcp``
+          ``grpc+tls://``          ``tls`` (default)
+          ``grpc+unix://``         ``unix``
+          =====================  =========================
 
 Supported Features
 ==================
