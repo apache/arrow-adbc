@@ -47,6 +47,15 @@ pub struct FFI_AdbcError {
 
 #[repr(C)]
 #[derive(Debug)]
+pub struct FFI_AdbcErrorV100 {
+    pub message: *mut c_char,
+    pub vendor_code: i32,
+    pub sqlstate: [c_char; 5],
+    pub release: Option<unsafe extern "C" fn(*mut Self)>,
+}
+
+#[repr(C)]
+#[derive(Debug)]
 pub struct FFI_AdbcErrorDetail {
     /// The metadata key.
     pub key: *const c_char,
@@ -555,6 +564,37 @@ impl TryFrom<Error> for FFI_AdbcError {
     }
 }
 
+impl From<NulError> for FFI_AdbcErrorV100 {
+    fn from(value: NulError) -> Self {
+        let message = CString::new(format!(
+            "Interior null byte was found at position {}",
+            value.nul_position()
+        ))
+        .unwrap();
+        FFI_AdbcErrorV100 {
+            message: message.into_raw(),
+            vendor_code: 0,
+            sqlstate: [0; 5],
+            release: Some(release_ffi_error_v100),
+        }
+    }
+}
+
+impl TryFrom<Error> for FFI_AdbcErrorV100 {
+    type Error = NulError;
+
+    fn try_from(value: Error) -> Result<Self, Self::Error> {
+        // TODO: instead of dying on an interior NUL, just truncate or replace
+        let message = CString::new(value.message)?;
+        Ok(FFI_AdbcErrorV100 {
+            message: message.into_raw(),
+            release: Some(release_ffi_error_v100),
+            vendor_code: value.vendor_code,
+            sqlstate: value.sqlstate,
+        })
+    }
+}
+
 unsafe extern "C" fn release_ffi_error(error: *mut FFI_AdbcError) {
     match error.as_mut() {
         None => (),
@@ -576,6 +616,44 @@ unsafe extern "C" fn release_ffi_error(error: *mut FFI_AdbcError) {
             }
             error.release = None;
         }
+    }
+}
+
+unsafe extern "C" fn release_ffi_error_v100(error: *mut FFI_AdbcErrorV100) {
+    match error.as_mut() {
+        None => (),
+        Some(error) => {
+            if !error.message.is_null() {
+                // SAFETY: `error.message` was necessarily obtained with `CString::into_raw`.
+                drop(CString::from_raw(error.message));
+                error.message = null_mut();
+            }
+            error.release = None;
+        }
+    }
+}
+
+/// Export an error into an FFI error, accounting for the v1.0.0/v1.1.0 ABI
+/// extension.
+#[doc(hidden)]
+pub unsafe fn export_error(err_out: *mut FFI_AdbcError, error: Error) {
+    if err_out.is_null() {
+        return;
+    }
+
+    let is_v110 = (*err_out).vendor_code == constants::ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA;
+    if let Some(release) = (*err_out).release {
+        release(err_out);
+    }
+    if is_v110 {
+        let mut ffi_error = FFI_AdbcError::try_from(error).unwrap_or_else(Into::into);
+        ffi_error.vendor_code = constants::ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA;
+        ffi_error.private_driver = (*err_out).private_driver;
+        std::ptr::write_unaligned(err_out, ffi_error);
+    } else {
+        let ffi_error = FFI_AdbcErrorV100::try_from(error).unwrap_or_else(Into::into);
+        let out = &mut *(err_out as *mut FFI_AdbcErrorV100);
+        std::ptr::write_unaligned(out, ffi_error);
     }
 }
 
@@ -689,5 +767,124 @@ mod tests {
         assert!(ffi_error.message.is_null());
         assert!(ffi_error.release.is_none());
         // Drop here is a no-op because release is None.
+    }
+
+    #[test]
+    fn test_set_error_out_preserves_caller_private_fields() {
+        // A caller that did not opt into the 1.1.0 layout leaves `vendor_code` at
+        // something other than the sentinel. `export_error` must then leave
+        // `private_data` / `private_driver` untouched, even when the error carries
+        // details that would otherwise be stashed in `private_data`. This mirrors
+        // the C++ validation suite's `StatementTest.ErrorCompatibility`.
+        let mut canary_data = 0x1234;
+        let canary_ptr = (&raw mut canary_data) as *mut c_void;
+        let canary_driver: FFI_AdbcDriver = Default::default();
+        let mut out = FFI_AdbcError {
+            message: null_mut(),
+            vendor_code: 0,
+            sqlstate: [0; 5],
+            release: None,
+            private_data: canary_ptr,
+            private_driver: &raw const canary_driver,
+        };
+
+        let error = Error {
+            message: "boom".into(),
+            status: Status::Internal,
+            vendor_code: 0,
+            sqlstate: [0; 5],
+            details: Some(vec![("key".to_string(), b"value".to_vec())]),
+        };
+        unsafe { export_error(&mut out, error) };
+
+        // The extended fields are untouched.
+        assert_eq!(out.private_data, canary_ptr);
+        assert_eq!(out.private_driver, &raw const canary_driver);
+        // The message was written and a message-only release installed.
+        assert!(!out.message.is_null());
+        assert!(out.release.is_some());
+
+        // Releasing frees only the message and must not touch the canary.
+        unsafe { (out.release.unwrap())(&mut out) };
+        assert!(out.message.is_null());
+        assert!(out.release.is_none());
+        assert_eq!(out.private_data, canary_ptr);
+        assert_eq!(out.private_driver, &raw const canary_driver);
+        // Drop here is a no-op because release is None.
+    }
+
+    #[test]
+    fn test_set_error_out_extended_layout_overwrites() {
+        // A caller that opted in (vendor_code == sentinel) gets the full struct,
+        // including details in `private_data`; `private_driver` is preserved so the
+        // driver manager keeps its handle.
+        let canary_driver: FFI_AdbcDriver = Default::default();
+        let mut out = FFI_AdbcError {
+            message: null_mut(),
+            vendor_code: constants::ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA,
+            sqlstate: [0; 5],
+            release: None,
+            private_data: null_mut(),
+            private_driver: &raw const canary_driver,
+        };
+
+        let error = Error {
+            message: "boom".into(),
+            status: Status::Internal,
+            vendor_code: 0,
+            sqlstate: [0; 5],
+            details: Some(vec![("key".to_string(), b"value".to_vec())]),
+        };
+        unsafe { export_error(&mut out, error) };
+
+        assert!(!out.message.is_null());
+        assert!(!out.private_data.is_null()); // details stashed here
+        assert_eq!(out.private_driver, &raw const canary_driver); // preserved
+        // The sentinel survives: consumers may only read private_data while
+        // vendor_code holds it (adbc.h), so the details above stay reachable.
+        assert_eq!(
+            out.vendor_code,
+            constants::ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA
+        );
+        assert!(out.release.is_some());
+
+        // The full release frees both the message and the details in private_data.
+        unsafe { (out.release.unwrap())(&mut out) };
+        assert!(out.message.is_null());
+        assert!(out.private_data.is_null());
+        // Drop here is a no-op because release is None.
+    }
+
+    #[test]
+    fn test_set_error_out_releases_a_previous_error_on_reuse() {
+        // Writing into a struct that still holds an earlier error releases it
+        // first (as the C reference does), instead of leaking its message.
+        let mut out = FFI_AdbcError {
+            message: null_mut(),
+            vendor_code: 0,
+            sqlstate: [0; 5],
+            release: None,
+            private_data: null_mut(),
+            private_driver: null(),
+        };
+        let error = |msg: &str| Error {
+            message: msg.into(),
+            status: Status::Internal,
+            vendor_code: 0,
+            sqlstate: [0; 5],
+            details: None,
+        };
+
+        unsafe { export_error(&mut out, error("first")) };
+        let first_message = out.message;
+        assert!(!first_message.is_null());
+
+        unsafe { export_error(&mut out, error("second")) };
+        assert!(!out.message.is_null());
+        let message = unsafe { CStr::from_ptr(out.message) };
+        assert_eq!(message.to_str().unwrap(), "second");
+
+        unsafe { (out.release.unwrap())(&mut out) };
+        assert!(out.message.is_null());
     }
 }
