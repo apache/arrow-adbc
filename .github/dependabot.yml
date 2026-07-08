@@ -86,7 +86,6 @@ updates:
   - package-ecosystem: "cargo"
     directories:
       - "/rust/"
-      - "/javascript/"
     schedule:
       interval: "weekly"
     commit-message:
@@ -96,5 +95,24 @@ updates:
         applies-to: version-updates
         patterns:
           - "arrow-*"
+    cooldown:
+      default-days: 7
+  - package-ecosystem: "cargo"
+    directories:
+      - "/javascript/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(javascript): "
+    groups:
+      arrow:
+        applies-to: version-updates
+        patterns:
+          - "arrow-*"
+      napi:
+        applies-to: version-updates
+        patterns:
+          - "napi"
+          - "napi-*"
     cooldown:
       default-days: 7
