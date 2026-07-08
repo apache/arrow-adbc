@@ -58,6 +58,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
+	_ "modernc.org/sqlite"
 )
 
 type HeaderServerMiddleware struct {
@@ -314,6 +315,56 @@ func TestADBCFlightSQL(t *testing.T) {
 	suite.Run(t, &TLSTests{Quirks: &FlightSQLQuirks{db: db}})
 	suite.Run(t, &ConnectionTests{})
 	suite.Run(t, &DomainSocketTests{db: db})
+}
+
+func TestFlightSQLTracingProducesTraceFiles(t *testing.T) {
+	db, err := sql.Open("sqlite", fmt.Sprintf("file:%s-%d?mode=memory&cache=private", strings.ToLower(t.Name()), time.Now().UnixNano()))
+	require.NoError(t, err)
+	defer func() { require.NoError(t, db.Close()) }()
+
+	q := &FlightSQLQuirks{db: db}
+	drv := q.SetupDriver(t)
+	defer q.TearDownDriver(t, drv)
+
+	traceDir := t.TempDir()
+	opts := q.DatabaseOptions()
+	opts[adbc.OptionKeyTelemetryTracesExporter] = string(adbc.TelemetryExporterAdbcFile)
+	opts[adbc.OptionKeyTelemetryTracesFolderPath] = traceDir
+
+	adbcDB, err := drv.NewDatabase(opts)
+	require.NoError(t, err)
+
+	cnxn, err := adbcDB.Open(context.Background())
+	require.NoError(t, err)
+
+	stmt, err := cnxn.NewStatement()
+	require.NoError(t, err)
+	require.NoError(t, stmt.SetSqlQuery("SELECT 1"))
+
+	reader, _, err := stmt.ExecuteQuery(context.Background())
+	require.NoError(t, err)
+	for reader.Next() {
+	}
+	reader.Release()
+
+	validation.CheckedClose(t, stmt)
+	validation.CheckedClose(t, cnxn)
+	validation.CheckedClose(t, adbcDB)
+
+	files, err := filepath.Glob(filepath.Join(traceDir, "*.jsonl"))
+	require.NoError(t, err)
+	require.NotEmpty(t, files)
+
+	var traceOutput strings.Builder
+	for _, file := range files {
+		data, err := os.ReadFile(file)
+		require.NoError(t, err)
+		traceOutput.Write(data)
+	}
+
+	output := traceOutput.String()
+	require.Contains(t, output, "FlightSQLDatabase.Open")
+	require.Contains(t, output, "FlightSQLStatement.ExecuteQuery")
 }
 
 // Run the test suite, but validating that a header set on the database is ALWAYS passed
