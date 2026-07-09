@@ -21,44 +21,79 @@ import org.apache.arrow.vector.ipc.ArrowReader;
 
 /** A fluent builder-style interface for configuring and executing a bulk ingest. */
 public interface BulkIngestBuilder extends AutoCloseable {
+  /** Create the target table; fail if already exists. */
   BulkIngestBuilder create() throws AdbcException;
 
+  /** Append to the target table; fail if not found. */
   BulkIngestBuilder append() throws AdbcException;
 
+  /** Drop (if exists) and create the target table. */
   BulkIngestBuilder replace() throws AdbcException;
 
+  /** Create the target table if necessary, append if already exists. */
   BulkIngestBuilder createAppend() throws AdbcException;
 
+  /**
+   * How to handle an already-existing/non-existent target table. Default is {@link
+   * BulkIngestMode#CREATE}.
+   */
   BulkIngestBuilder mode(BulkIngestMode mode) throws AdbcException;
 
+  /**
+   * Ingest data from the given root.
+   *
+   * <p>Like {@link AdbcStatement#bind(VectorSchemaRoot)}, this ingest will NOT close the given
+   * root. If a different root or stream is bound, this root will simply be forgotten.
+   */
   BulkIngestBuilder bind(VectorSchemaRoot root) throws AdbcException;
 
+  /**
+   * Ingest data from the given reader.
+   *
+   * <p>Like {@link AdbcStatement#bind(ArrowReader)}, this ingest WILL close the given stream. If a
+   * different root or stream is bound, this stream will be closed.
+   */
   BulkIngestBuilder bind(ArrowReader stream) throws AdbcException;
 
+  /** Ingest into a table with the given name (required). */
   BulkIngestBuilder targetTable(String table) throws AdbcException;
 
+  /** Ingest into a table in the given schema. */
   BulkIngestBuilder targetSchema(String schema) throws AdbcException;
 
+  /** Ingest into a table in the given catalog. */
   BulkIngestBuilder targetCatalog(String catalog) throws AdbcException;
 
+  /** Ingest into a temporary table. */
   default BulkIngestBuilder temporary() throws AdbcException {
     return this.temporary(true);
   }
 
+  /** Whether to ingest into a temporary table or not. */
   BulkIngestBuilder temporary(boolean isTemporary) throws AdbcException;
 
+  /** Set an arbitrary ingest option. */
   BulkIngestBuilder option(IngestOption option) throws AdbcException;
 
+  /** Set a statement option before ingest. */
   <T> BulkIngestBuilder option(TypedKey<T> key, T value) throws AdbcException;
 
+  /** Convert this builder to an {@link AdbcStatement} (low-level API for further control). */
   AdbcStatement toStatement() throws AdbcException;
 
+  /**
+   * Execute the bulk ingest.
+   *
+   * <p>This will consume the bound stream, if any. To ingest again, bind a new stream or root or
+   * update data in the already-bound root.
+   */
   default AdbcStatement.UpdateResult ingest() throws AdbcException {
     try (var statement = toStatement()) {
       return statement.executeUpdate();
     }
   }
 
+  /** Clean up any state in this bulk ingest. */
   @Override
   void close() throws AdbcException;
 }
