@@ -27,17 +27,28 @@ else()
   # vcpkg
   find_package(unofficial-sqlite3 CONFIG REQUIRED)
   set(SQLite3_LINK_LIBRARIES unofficial::sqlite3::sqlite3)
-  set(SQLite3_INCLUDE_DIRS)
+  get_target_property(SQLite3_INCLUDE_DIRS unofficial::sqlite3::sqlite3
+                      INTERFACE_INCLUDE_DIRECTORIES)
+  if(NOT SQLite3_INCLUDE_DIRS)
+    set(SQLite3_INCLUDE_DIRS)
+  endif()
 endif()
 
-# Check for sqlite3_load_extension() in sqlite3.h
-if(EXISTS "${SQLite3_INCLUDE_DIRS}/sqlite3.h")
-  file(READ "${SQLite3_INCLUDE_DIRS}/sqlite3.h" ADBC_SQLITE_H_CONTENT)
-  string(FIND "${ADBC_SQLITE_H_CONTENT}" "sqlite3_load_extension"
-              ADBC_SQLITE_WITH_LOAD_EXTENSION)
-endif()
+# Check whether sqlite3_load_extension() is declared in sqlite3.h. Compile a
+# static library instead of an executable so no linking happens: imported
+# targets in CMAKE_REQUIRED_LIBRARIES don't propagate into try_compile on
+# older CMake, and only the declaration matters (builds with
+# SQLITE_OMIT_LOAD_EXTENSION, like Apple's system SQLite, omit it).
+include(CheckSymbolExists)
+set(ADBC_SQLITE_SAVED_TRY_COMPILE_TARGET_TYPE ${CMAKE_TRY_COMPILE_TARGET_TYPE})
+set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+set(CMAKE_REQUIRED_INCLUDES ${SQLite3_INCLUDE_DIRS})
+check_symbol_exists(sqlite3_load_extension "sqlite3.h" ADBC_SQLITE_WITH_LOAD_EXTENSION)
+unset(CMAKE_REQUIRED_INCLUDES)
+set(CMAKE_TRY_COMPILE_TARGET_TYPE ${ADBC_SQLITE_SAVED_TRY_COMPILE_TARGET_TYPE})
+unset(ADBC_SQLITE_SAVED_TRY_COMPILE_TARGET_TYPE)
 
-if(ADBC_SQLITE_WITH_LOAD_EXTENSION EQUAL -1)
+if(NOT ADBC_SQLITE_WITH_LOAD_EXTENSION)
   set(ADBC_SQLITE_COMPILE_DEFINES "-DADBC_SQLITE_WITH_NO_LOAD_EXTENSION")
 endif()
 
