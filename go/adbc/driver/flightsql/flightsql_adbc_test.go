@@ -1172,44 +1172,16 @@ func (suite *DomainSocketTests) TestSimpleQueryDomainSocket() {
 	suite.NoError(reader.Err())
 }
 
-func TestFlightSQLSchemeUnixSocket(t *testing.T) {
-	// See DomainSocketTests.SetupSuite for why this is skipped on Windows.
-	if runtime.GOOS == "windows" {
-		t.Skip()
-	}
-
-	alloc := memory.NewCheckedAllocator(memory.DefaultAllocator)
-	defer alloc.AssertSize(t, 0)
-
-	tempDir, err := os.MkdirTemp("", "adbc-flight-sql-tests-*")
-	require.NoError(t, err)
-	defer func() {
-		require.NoError(t, os.RemoveAll(tempDir))
-	}()
-
-	listenSocket := filepath.Join(tempDir, "adbc.sock")
-	listener, err := net.Listen("unix", listenSocket)
-	require.NoError(t, err)
-
-	server := flight.NewServerWithMiddleware(nil)
-	server.RegisterFlightService(&flight.BaseFlightServer{})
-	server.InitListener(listener)
-	go func() {
-		// Explicitly ignore error
-		_ = server.Serve()
-	}()
-	defer server.Shutdown()
-
-	drv := driver.NewDriver(alloc)
-	db, err := drv.NewDatabase(map[string]string{
-		adbc.OptionKeyURI: "flightsql://" + listenSocket + "?transport=unix",
+func (suite *DomainSocketTests) TestFlightSQLSchemeUnixSocket() {
+	db, err := suite.Driver.NewDatabase(map[string]string{
+		adbc.OptionKeyURI: "flightsql://" + suite.server.Addr().String() + "?transport=unix",
 	})
-	require.NoError(t, err)
-	defer validation.CheckedClose(t, db)
+	suite.Require().NoError(err)
+	defer validation.CheckedClose(suite.T(), db)
 
-	cnxn, err := db.Open(context.Background())
-	require.NoError(t, err)
-	defer validation.CheckedClose(t, cnxn)
+	cnxn, err := db.Open(suite.ctx)
+	suite.Require().NoError(err)
+	defer validation.CheckedClose(suite.T(), cnxn)
 }
 
 func TestFlightSQLSchemeInvalidURIs(t *testing.T) {

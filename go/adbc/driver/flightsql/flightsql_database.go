@@ -428,7 +428,7 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 			creds = insecure.NewCredentials()
 			target = "unix:" + uri.Path
 		default:
-			return nil, adbc.Error{Msg: fmt.Sprintf("Invalid URI '%s': unrecognized transport %q (expected \"tls\", \"tcp\", or \"unix\")", loc, transport), Code: adbc.StatusInvalidArgument}
+			return nil, adbc.Error{Msg: fmt.Sprintf("Invalid URI '%s': unrecognized transport '%s' (expected 'tls', 'tcp', or 'unix')", loc, transport), Code: adbc.StatusInvalidArgument}
 		}
 	}
 
