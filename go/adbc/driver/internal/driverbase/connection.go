@@ -154,6 +154,7 @@ func (base *ConnectionImplBase) Rollback(context.Context) error {
 
 func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (reader array.RecordReader, err error) {
 	_, span := internal.StartSpan(ctx, "ConnectionImplBase.GetInfo", base)
+	// TODO(apache/arrow-adbc#4494): replace with a shared telemetry helper.
 	defer internal.EndSpan(span, err)
 
 	if len(infoCodes) == 0 {
