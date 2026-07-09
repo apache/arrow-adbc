@@ -156,6 +156,9 @@ class DriverQuirks {
   /// \brief Return the SQL to reference the bind parameter of the given index
   virtual std::string BindParameter(int index) const { return "?"; }
 
+  /// \brief SQL type name for a 64-bit floating-point CAST target.
+  virtual std::string FloatCastTypeName() const { return "FLOAT"; }
+
   /// \brief For a given Arrow type of ingested data, what Arrow type
   ///   will the database return when that column is selected?
   virtual ArrowType IngestSelectRoundTripType(ArrowType ingest_type) const {
