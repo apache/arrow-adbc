@@ -945,6 +945,32 @@ func (suite *TLSTests) TestSimpleQuery() {
 	suite.NoError(reader.Err())
 }
 
+func (suite *TLSTests) TestFlightSQLSchemeDefaultTLS() {
+	db, err := suite.Driver.NewDatabase(map[string]string{
+		adbc.OptionKeyURI: "flightsql://" + suite.Quirks.s.Addr().String(),
+		"adbc.flight.sql.client_option.tls_skip_verify": "true",
+	})
+	suite.Require().NoError(err)
+	defer validation.CheckedClose(suite.T(), db)
+
+	cnxn, err := db.Open(suite.ctx)
+	suite.Require().NoError(err)
+	defer validation.CheckedClose(suite.T(), cnxn)
+}
+
+func (suite *TLSTests) TestFlightSQLSchemeExplicitTLS() {
+	db, err := suite.Driver.NewDatabase(map[string]string{
+		adbc.OptionKeyURI: "flightsql://" + suite.Quirks.s.Addr().String() + "?transport=tls",
+		"adbc.flight.sql.client_option.tls_skip_verify": "true",
+	})
+	suite.Require().NoError(err)
+	defer validation.CheckedClose(suite.T(), db)
+
+	cnxn, err := db.Open(suite.ctx)
+	suite.Require().NoError(err)
+	defer validation.CheckedClose(suite.T(), cnxn)
+}
+
 func (suite *TLSTests) TestInvalidOptions() {
 	db, err := suite.Driver.NewDatabase(map[string]string{
 		adbc.OptionKeyURI: "grpc+tls://" + suite.Quirks.s.Addr().String(),
@@ -1046,6 +1072,18 @@ func (suite *ConnectionTests) TestGetInfo() {
 	suite.Require().True(driverArrowVersion)
 }
 
+func (suite *ConnectionTests) TestFlightSQLSchemeTCP() {
+	db, err := suite.Driver.NewDatabase(map[string]string{
+		adbc.OptionKeyURI: "flightsql://" + suite.server.Addr().String() + "?transport=tcp",
+	})
+	suite.Require().NoError(err)
+	defer validation.CheckedClose(suite.T(), db)
+
+	cnxn, err := db.Open(suite.ctx)
+	suite.Require().NoError(err)
+	defer validation.CheckedClose(suite.T(), cnxn)
+}
+
 type DomainSocketTests struct {
 	suite.Suite
 
@@ -1132,4 +1170,74 @@ func (suite *DomainSocketTests) TestSimpleQueryDomainSocket() {
 	for reader.Next() {
 	}
 	suite.NoError(reader.Err())
+}
+
+func TestFlightSQLSchemeUnixSocket(t *testing.T) {
+	// See DomainSocketTests.SetupSuite for why this is skipped on Windows.
+	if runtime.GOOS == "windows" {
+		t.Skip()
+	}
+
+	alloc := memory.NewCheckedAllocator(memory.DefaultAllocator)
+	defer alloc.AssertSize(t, 0)
+
+	tempDir, err := os.MkdirTemp("", "adbc-flight-sql-tests-*")
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, os.RemoveAll(tempDir))
+	}()
+
+	listenSocket := filepath.Join(tempDir, "adbc.sock")
+	listener, err := net.Listen("unix", listenSocket)
+	require.NoError(t, err)
+
+	server := flight.NewServerWithMiddleware(nil)
+	server.RegisterFlightService(&flight.BaseFlightServer{})
+	server.InitListener(listener)
+	go func() {
+		// Explicitly ignore error
+		_ = server.Serve()
+	}()
+	defer server.Shutdown()
+
+	drv := driver.NewDriver(alloc)
+	db, err := drv.NewDatabase(map[string]string{
+		adbc.OptionKeyURI: "flightsql://" + listenSocket + "?transport=unix",
+	})
+	require.NoError(t, err)
+	defer validation.CheckedClose(t, db)
+
+	cnxn, err := db.Open(context.Background())
+	require.NoError(t, err)
+	defer validation.CheckedClose(t, cnxn)
+}
+
+func TestFlightSQLSchemeInvalidURIs(t *testing.T) {
+	alloc := memory.NewCheckedAllocator(memory.DefaultAllocator)
+	defer alloc.AssertSize(t, 0)
+	drv := driver.NewDriver(alloc)
+
+	tests := []struct {
+		name string
+		uri  string
+	}{
+		{"unrecognized transport", "flightsql://localhost:1234?transport=bogus"},
+		{"host with unix transport", "flightsql://localhost:1234/socket?transport=unix"},
+		{"path with tcp transport", "flightsql://localhost:1234/socket?transport=tcp"},
+		{"path with default (tls) transport", "flightsql://localhost:1234/socket"},
+		{"unix transport without a path", "flightsql://?transport=unix"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db, err := drv.NewDatabase(map[string]string{
+				adbc.OptionKeyURI: tt.uri,
+			})
+			require.NoError(t, err)
+			defer validation.CheckedClose(t, db)
+
+			_, err = db.Open(context.Background())
+			require.Error(t, err)
+		})
+	}
 }
