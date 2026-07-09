@@ -1780,8 +1780,8 @@ void StatementTest::TestSqlPartitionedInts() {
   ASSERT_THAT(AdbcStatementExecutePartitions(&statement, &schema.value, &partitions.value,
                                              &rows_affected, &error),
               IsOkStatus(&error));
-  // Assume only 1 partition
-  ASSERT_EQ(1, partitions->num_partitions);
+  // Engines may split the query into one or more partitions.
+  ASSERT_GE(partitions->num_partitions, 1);
   ASSERT_THAT(rows_affected, ::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1)));
   // it's allowed for Executepartitions to return a nil schema if one is not available
   if (schema->release != nullptr) {
@@ -1789,38 +1789,43 @@ void StatementTest::TestSqlPartitionedInts() {
   }
 
   Handle<struct AdbcConnection> connection2;
-  StreamReader reader;
   ASSERT_THAT(AdbcConnectionNew(&connection2.value, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcConnectionInit(&connection2.value, &database, &error),
               IsOkStatus(&error));
-  ASSERT_THAT(AdbcConnectionReadPartition(&connection2.value, partitions->partitions[0],
-                                          partitions->partition_lengths[0],
-                                          &reader.stream.value, &error),
-              IsOkStatus(&error));
 
-  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
-  ASSERT_EQ(1, reader.schema->n_children);
+  std::vector<int64_t> all_values;
+  for (size_t partition = 0; partition < partitions->num_partitions; partition++) {
+    StreamReader reader;
+    ASSERT_THAT(
+        AdbcConnectionReadPartition(&connection2.value, partitions->partitions[partition],
+                                    partitions->partition_lengths[partition],
+                                    &reader.stream.value, &error),
+        IsOkStatus(&error));
 
-  ASSERT_NO_FATAL_FAILURE(reader.Next());
-  ASSERT_NE(nullptr, reader.array->release);
-  ASSERT_EQ(1, reader.array->length);
-  ASSERT_EQ(1, reader.array->n_children);
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_EQ(1, reader.schema->n_children);
 
-  switch (reader.fields[0].type) {
-    case NANOARROW_TYPE_INT32:
-      ASSERT_NO_FATAL_FAILURE(
-          CompareArray<int32_t>(reader.array_view->children[0], {42}));
-      break;
-    case NANOARROW_TYPE_INT64:
-      ASSERT_NO_FATAL_FAILURE(
-          CompareArray<int64_t>(reader.array_view->children[0], {42}));
-      break;
-    default:
-      FAIL() << "Unexpected data type: " << reader.fields[0].type;
+    while (true) {
+      ASSERT_NO_FATAL_FAILURE(reader.Next());
+      if (reader.array->release == nullptr) break;
+      ASSERT_EQ(1, reader.array->n_children);
+
+      switch (reader.fields[0].type) {
+        case NANOARROW_TYPE_INT32:
+        case NANOARROW_TYPE_INT64:
+          break;
+        default:
+          FAIL() << "Unexpected data type: " << reader.fields[0].type;
+      }
+
+      for (int64_t row = 0; row < reader.array->length; row++) {
+        all_values.push_back(
+            ArrowArrayViewGetIntUnsafe(reader.array_view->children[0], row));
+      }
+    }
   }
 
-  ASSERT_NO_FATAL_FAILURE(reader.Next());
-  ASSERT_EQ(nullptr, reader.array->release);
+  ASSERT_THAT(all_values, ::testing::UnorderedElementsAre(42));
 }
 
 void StatementTest::TestSqlPrepareGetParameterSchema() {
