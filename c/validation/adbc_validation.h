@@ -167,6 +167,12 @@ class DriverQuirks {
     return default_sql;
   }
 
+  /// \brief Quote a SQL identifier (table or column name) for the driver's
+  ///   dialect. Defaults to ANSI SQL double-quoting.
+  virtual std::string QuoteIdentifier(std::string_view name) const {
+    return '"' + std::string(name) + '"';
+  }
+
   /// \brief For a given Arrow type of ingested data, what Arrow type
   ///   will the database return when that column is selected?
   virtual ArrowType IngestSelectRoundTripType(ArrowType ingest_type) const {
