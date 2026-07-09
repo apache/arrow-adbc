@@ -328,7 +328,20 @@ func TestFlightSQLTracingProducesTraceFiles(t *testing.T) {
 	drv := q.SetupDriver(t)
 	defer q.TearDownDriver(t, drv)
 
-	traceDir := t.TempDir()
+	traceDir, err := os.MkdirTemp("", strings.ToLower(t.Name())+"-")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		var rmErr error
+		for i := 0; i < 10; i++ {
+			rmErr = os.RemoveAll(traceDir)
+			if rmErr == nil || errors.Is(rmErr, os.ErrNotExist) {
+				return
+			}
+			time.Sleep(100 * time.Millisecond)
+		}
+		require.NoError(t, rmErr)
+	})
+
 	opts := q.DatabaseOptions()
 	opts[adbc.OptionKeyTelemetryTracesExporter] = string(adbc.TelemetryExporterAdbcFile)
 	opts[adbc.OptionKeyTelemetryTracesFolderPath] = traceDir
