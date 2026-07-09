@@ -481,7 +481,7 @@ type support struct {
 	transactions bool
 }
 
-func (d *databaseImpl) Open(ctx context.Context) (cnxn adbc.Connection, err error) {
+func (d *databaseImpl) Open(ctx context.Context) (_ adbc.Connection, err error) {
 	ctx, span := internal.StartSpan(ctx, "FlightSQLDatabase.Open", d)
 	defer func() { internal.EndSpan(span, err) }()
 
@@ -592,12 +592,11 @@ func (d *databaseImpl) Open(ctx context.Context) (cnxn adbc.Connection, err erro
 		"driver", infoDriverName,
 	)
 
-	cnxn = driverbase.NewConnectionBuilder(conn).
+	return driverbase.NewConnectionBuilder(conn).
 		WithDriverInfoPreparer(conn).
 		WithAutocommitSetter(conn).
 		WithCurrentNamespacer(conn).
-		Connection()
-	return cnxn, nil
+		Connection(), nil
 }
 
 type bearerAuthMiddleware struct {
