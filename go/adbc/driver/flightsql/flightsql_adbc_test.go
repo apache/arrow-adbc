@@ -297,9 +297,39 @@ func (s *FlightSQLQuirks) SampleTableSchemaMetadata(tblName string, dt arrow.Dat
 func (s *FlightSQLQuirks) Catalog() string  { return "main" }
 func (s *FlightSQLQuirks) DBSchema() string { return "" }
 
-func TestADBCFlightSQL(t *testing.T) {
-	db, err := example.CreateDB()
+func createFlightSQLTestDB(t *testing.T) *sql.DB {
+	t.Helper()
+
+	db, err := sql.Open("sqlite", fmt.Sprintf("file:%s-%d?mode=memory&cache=private", strings.ToLower(t.Name()), time.Now().UnixNano()))
 	require.NoError(t, err)
+
+	_, err = db.Exec(`
+	CREATE TABLE foreignTable (
+		id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+		foreignName varchar(100),
+		value int);
+
+	CREATE TABLE intTable (
+		id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+		keyName varchar(100),
+		value int,
+		foreignId int references foreignTable(id));
+
+	INSERT INTO foreignTable (foreignName, value) VALUES ('keyOne', 1);
+	INSERT INTO foreignTable (foreignName, value) VALUES ('keyTwo', 0);
+	INSERT INTO foreignTable (foreignName, value) VALUES ('keyThree', -1);
+	INSERT INTO intTable (keyName, value, foreignId) VALUES ('one', 1, 1);
+	INSERT INTO intTable (keyName, value, foreignId) VALUES ('zero', 0, 1);
+	INSERT INTO intTable (keyName, value, foreignId) VALUES ('negative one', -1, 1);
+	INSERT INTO intTable (keyName, value, foreignId) VALUES (NULL, NULL, NULL);
+	`)
+	require.NoError(t, err)
+
+	return db
+}
+
+func TestADBCFlightSQL(t *testing.T) {
+	db := createFlightSQLTestDB(t)
 	defer validation.CheckedClose(t, db)
 
 	q := &FlightSQLQuirks{db: db}
@@ -318,9 +348,8 @@ func TestADBCFlightSQL(t *testing.T) {
 }
 
 func TestFlightSQLTracingProducesTraceFiles(t *testing.T) {
-	db, err := sql.Open("sqlite", fmt.Sprintf("file:%s-%d?mode=memory&cache=private", strings.ToLower(t.Name()), time.Now().UnixNano()))
-	require.NoError(t, err)
-	defer func() { require.NoError(t, db.Close()) }()
+	db := createFlightSQLTestDB(t)
+	defer validation.CheckedClose(t, db)
 
 	q := &FlightSQLQuirks{db: db}
 	drv := q.SetupDriver(t)
@@ -331,25 +360,28 @@ func TestFlightSQLTracingProducesTraceFiles(t *testing.T) {
 	opts[adbc.OptionKeyTelemetryTracesExporter] = string(adbc.TelemetryExporterAdbcFile)
 	opts[adbc.OptionKeyTelemetryTracesFolderPath] = traceDir
 
-	adbcDB, err := drv.NewDatabase(opts)
-	require.NoError(t, err)
+	func() {
+		adbcDB, err := drv.NewDatabase(opts)
+		require.NoError(t, err)
+		defer validation.CheckedClose(t, adbcDB)
 
-	cnxn, err := adbcDB.Open(context.Background())
-	require.NoError(t, err)
+		cnxn, err := adbcDB.Open(context.Background())
+		require.NoError(t, err)
+		defer validation.CheckedClose(t, cnxn)
 
-	stmt, err := cnxn.NewStatement()
-	require.NoError(t, err)
-	require.NoError(t, stmt.SetSqlQuery("SELECT 1"))
+		stmt, err := cnxn.NewStatement()
+		require.NoError(t, err)
+		defer validation.CheckedClose(t, stmt)
 
-	reader, _, err := stmt.ExecuteQuery(context.Background())
-	require.NoError(t, err)
-	for reader.Next() {
-	}
-	reader.Release()
+		require.NoError(t, stmt.SetSqlQuery("SELECT 1"))
+		reader, _, err := stmt.ExecuteQuery(context.Background())
+		require.NoError(t, err)
+		defer reader.Release()
 
-	validation.CheckedClose(t, stmt)
-	validation.CheckedClose(t, cnxn)
-	validation.CheckedClose(t, adbcDB)
+		for reader.Next() {
+		}
+		require.NoError(t, reader.Err())
+	}()
 
 	files, err := filepath.Glob(filepath.Join(traceDir, "*.jsonl"))
 	require.NoError(t, err)
