@@ -297,39 +297,9 @@ func (s *FlightSQLQuirks) SampleTableSchemaMetadata(tblName string, dt arrow.Dat
 func (s *FlightSQLQuirks) Catalog() string  { return "main" }
 func (s *FlightSQLQuirks) DBSchema() string { return "" }
 
-func createFlightSQLTestDB(t *testing.T) *sql.DB {
-	t.Helper()
-
-	db, err := sql.Open("sqlite", fmt.Sprintf("file:%s-%d?mode=memory&cache=private", strings.ToLower(t.Name()), time.Now().UnixNano()))
-	require.NoError(t, err)
-
-	_, err = db.Exec(`
-	CREATE TABLE foreignTable (
-		id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-		foreignName varchar(100),
-		value int);
-
-	CREATE TABLE intTable (
-		id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-		keyName varchar(100),
-		value int,
-		foreignId int references foreignTable(id));
-
-	INSERT INTO foreignTable (foreignName, value) VALUES ('keyOne', 1);
-	INSERT INTO foreignTable (foreignName, value) VALUES ('keyTwo', 0);
-	INSERT INTO foreignTable (foreignName, value) VALUES ('keyThree', -1);
-	INSERT INTO intTable (keyName, value, foreignId) VALUES ('one', 1, 1);
-	INSERT INTO intTable (keyName, value, foreignId) VALUES ('zero', 0, 1);
-	INSERT INTO intTable (keyName, value, foreignId) VALUES ('negative one', -1, 1);
-	INSERT INTO intTable (keyName, value, foreignId) VALUES (NULL, NULL, NULL);
-	`)
-	require.NoError(t, err)
-
-	return db
-}
-
 func TestADBCFlightSQL(t *testing.T) {
-	db := createFlightSQLTestDB(t)
+	db, err := example.CreateDB()
+	require.NoError(t, err)
 	defer validation.CheckedClose(t, db)
 
 	q := &FlightSQLQuirks{db: db}
@@ -348,7 +318,10 @@ func TestADBCFlightSQL(t *testing.T) {
 }
 
 func TestFlightSQLTracingProducesTraceFiles(t *testing.T) {
-	db := createFlightSQLTestDB(t)
+	// TODO: Reuse example.CreateDB() here after apache/arrow-go#916 isolates
+	// the shared in-memory SQLite database per call.
+	db, err := sql.Open("sqlite", fmt.Sprintf("file:%s-%d?mode=memory&cache=private", strings.ToLower(t.Name()), time.Now().UnixNano()))
+	require.NoError(t, err)
 	defer validation.CheckedClose(t, db)
 
 	q := &FlightSQLQuirks{db: db}
