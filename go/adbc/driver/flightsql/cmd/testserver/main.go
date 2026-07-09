@@ -452,6 +452,14 @@ func (srv *ExampleServer) DoGetStatement(ctx context.Context, cmd flightsql.Stat
 
 func (srv *ExampleServer) DoPutPreparedStatementQuery(ctx context.Context, cmd flightsql.PreparedStatementQuery, reader flight.MessageReader, writer flight.MetadataWriter) ([]byte, error) {
 	srv.recordHeaders(ctx, "DoPutPreparedStatementQuery")
+	// Drain the bound-parameter stream before returning. gRPC tears the stream
+	// down as soon as this handler returns, so if the server returns without
+	// consuming the client's request messages the client's in-flight parameter
+	// send can race the teardown and surface as a spurious "EOF (Unknown)"
+	// instead of the real response. Draining removes that race and matches
+	// gRPC's contract that a handler consume the full request stream.
+	for reader.Next() {
+	}
 	switch string(cmd.GetPreparedStatementHandle()) {
 	case "error_do_put":
 		return nil, status.Error(codes.Unknown, "expected error (DoPut)")
