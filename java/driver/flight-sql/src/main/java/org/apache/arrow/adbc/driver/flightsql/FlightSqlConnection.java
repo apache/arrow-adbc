@@ -87,6 +87,8 @@ public class FlightSqlConnection implements AdbcConnection {
     this.callOptions = new CallOption[0];
     FlightSqlClient flightSqlClient = new FlightSqlClient(createInitialConnection(location));
     this.client = new FlightSqlClientWithCallOptions(flightSqlClient, callOptions);
+    final Location primaryLocation = location;
+    final FlightSqlClientWithCallOptions primaryClient = this.client;
     this.clientCache =
         Caffeine.newBuilder()
             .expireAfterAccess(5, TimeUnit.MINUTES)
@@ -94,7 +96,7 @@ public class FlightSqlConnection implements AdbcConnection {
                 (@Nullable Location key,
                     @Nullable FlightSqlClientWithCallOptions value,
                     RemovalCause cause) -> {
-                  if (value == null) return;
+                  if (value == null || value == primaryClient) return;
                   try {
                     value.close();
                   } catch (Exception ex) {
@@ -106,6 +108,9 @@ public class FlightSqlConnection implements AdbcConnection {
                 })
             .build(
                 loc -> {
+                  if (loc.equals(primaryLocation)) {
+                    return primaryClient;
+                  }
                   FlightClient client = buildClient(loc);
                   client.handshake(callOptions);
                   return new FlightSqlClientWithCallOptions(
