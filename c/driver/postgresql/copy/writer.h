@@ -274,6 +274,15 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
     ArrowDecimalInit(&decimal, bitwidth_, precision_, scale_);
     ArrowArrayViewGetDecimalUnsafe(array_view_, index, &decimal);
 
+#if defined(__SIZEOF_INT128__)
+    if constexpr (T == NANOARROW_TYPE_DECIMAL128) {
+      const ArrowErrorCode fast_res = WriteDecimal128Fast(buffer, &decimal, error);
+      if (fast_res != ENOTSUP) {
+        return fast_res;
+      }
+    }
+#endif
+
     const int16_t sign = ArrowDecimalSign(&decimal) > 0 ? kNumericPos : kNumericNeg;
 
     // Convert decimal to string and split into integer/fractional parts
@@ -358,6 +367,129 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
   }
 
  private:
+#if defined(__SIZEOF_INT128__)
+  ArrowErrorCode WriteDecimal128Fast(ArrowBuffer* buffer, struct ArrowDecimal* decimal,
+                                     ArrowError* error) const {
+    constexpr int kDecDigits = 4;
+    constexpr int kMaxPgDigits = 48;
+
+    unsigned __int128 value =
+        (static_cast<unsigned __int128>(decimal->words[decimal->high_word_index]) << 64) |
+        static_cast<unsigned __int128>(decimal->words[decimal->low_word_index]);
+
+    const int16_t sign = ArrowDecimalSign(decimal) > 0 ? kNumericPos : kNumericNeg;
+    if (sign == kNumericNeg) {
+      value = ~value + 1;
+    }
+
+    if (value == 0) {
+      constexpr int16_t ndigits = 0;
+      constexpr int16_t weight = 0;
+      constexpr int16_t dscale = 0;
+      constexpr int32_t field_size_bytes =
+          sizeof(ndigits) + sizeof(weight) + sizeof(sign) + sizeof(dscale);
+
+      NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, field_size_bytes, error));
+      NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, ndigits, error));
+      NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, weight, error));
+      NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, sign, error));
+      NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, dscale, error));
+      return ADBC_STATUS_OK;
+    }
+
+    int effective_scale = scale_;
+    if (effective_scale > 0) {
+      while (effective_scale > 0 && value % 10 == 0) {
+        value /= 10;
+        effective_scale--;
+      }
+    } else if (effective_scale < 0) {
+      if (!MultiplyPow10(&value, -effective_scale)) {
+        return ENOTSUP;
+      }
+      effective_scale = 0;
+    }
+
+    if (effective_scale > (std::numeric_limits<int16_t>::max)()) {
+      return ENOTSUP;
+    }
+
+    const int frac_groups = (effective_scale + kDecDigits - 1) / kDecDigits;
+    const int alignment_zeros = frac_groups * kDecDigits - effective_scale;
+    if (!MultiplyPow10(&value, alignment_zeros)) {
+      return ENOTSUP;
+    }
+
+    int16_t reversed_digits[kMaxPgDigits];
+    int n_digits = 0;
+    while (value != 0) {
+      if (n_digits >= kMaxPgDigits) {
+        return ENOTSUP;
+      }
+      reversed_digits[n_digits++] = static_cast<int16_t>(value % 10000);
+      value /= 10000;
+    }
+
+    const int weight_int = n_digits - frac_groups - 1;
+    if (weight_int < (std::numeric_limits<int16_t>::min)() ||
+        weight_int > (std::numeric_limits<int16_t>::max)()) {
+      return ENOTSUP;
+    }
+
+    int first_digit = 0;
+    while (first_digit < n_digits && reversed_digits[first_digit] == 0) {
+      first_digit++;
+    }
+
+    const int canonical_digits = n_digits - first_digit;
+    if (canonical_digits == 0) {
+      constexpr int16_t ndigits = 0;
+      constexpr int16_t weight = 0;
+      constexpr int16_t dscale = 0;
+      constexpr int32_t field_size_bytes =
+          sizeof(ndigits) + sizeof(weight) + sizeof(sign) + sizeof(dscale);
+
+      NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, field_size_bytes, error));
+      NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, ndigits, error));
+      NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, weight, error));
+      NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, sign, error));
+      NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, dscale, error));
+      return ADBC_STATUS_OK;
+    }
+
+    const int16_t ndigits = static_cast<int16_t>(canonical_digits);
+    const int16_t weight = static_cast<int16_t>(weight_int);
+    const int16_t dscale = static_cast<int16_t>(effective_scale);
+    const int32_t field_size_bytes = sizeof(ndigits) + sizeof(weight) + sizeof(sign) +
+                                     sizeof(dscale) + ndigits * sizeof(int16_t);
+
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, field_size_bytes, error));
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, ndigits, error));
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, weight, error));
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, sign, error));
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, dscale, error));
+
+    const size_t pg_digit_bytes = sizeof(int16_t) * canonical_digits;
+    NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, pg_digit_bytes));
+    for (int i = n_digits - 1; i >= first_digit; i--) {
+      WriteUnsafe<int16_t>(buffer, reversed_digits[i]);
+    }
+
+    return ADBC_STATUS_OK;
+  }
+
+  static bool MultiplyPow10(unsigned __int128* value, int zeros) {
+    constexpr unsigned __int128 max_value = ~static_cast<unsigned __int128>(0);
+    for (int i = 0; i < zeros; i++) {
+      if (*value > max_value / 10) {
+        return false;
+      }
+      *value *= 10;
+    }
+    return true;
+  }
+#endif
+
   // Helper struct for organizing data flow between functions
   struct DecimalParts {
     std::string integer_part;     // e.g., "12300" or "123"
