@@ -22,12 +22,16 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"log/slog"
 	"strconv"
 	"time"
 
+	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-go/v18/arrow/flight"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/exp/maps"
 	"golang.org/x/exp/slices"
@@ -54,28 +58,28 @@ const maxLoggedBlobBytes = 32
 // endpointLogAttrs builds slog attributes describing a Flight endpoint
 // (index, ticket length, locations) for per-endpoint log records. Ticket
 // contents are intentionally never logged.
-func endpointLogAttrs(endpointIndex, numEndpoints int, endpoint *flight.FlightEndpoint) []any {
-	attrs := []any{
-		slog.Int("endpointIndex", endpointIndex),
-		slog.Int("numEndpoints", numEndpoints),
+func endpointLogAttrs(endpointIndex, numEndpoints int, endpoint *flight.FlightEndpoint) []attribute.KeyValue {
+	attrs := []attribute.KeyValue{
+		attribute.Int("endpointIndex", endpointIndex),
+		attribute.Int("numEndpoints", numEndpoints),
 	}
 	if endpoint == nil {
 		return attrs
 	}
 	if endpoint.Ticket != nil {
-		attrs = append(attrs, slog.Int("ticketBytes", len(endpoint.Ticket.Ticket)))
+		attrs = append(attrs, attribute.Int("ticketBytes", len(endpoint.Ticket.Ticket)))
 	}
 	if len(endpoint.Location) == 0 {
-		attrs = append(attrs, slog.String("locations", "<empty: using default client connection>"))
+		attrs = append(attrs, attribute.String("locations", "<empty: using default client connection>"))
 	} else {
 		uris := make([]string, 0, len(endpoint.Location))
 		for _, loc := range endpoint.Location {
 			uris = append(uris, loc.Uri)
 		}
-		attrs = append(attrs, slog.Any("locations", uris))
+		attrs = append(attrs, attribute.StringSlice("locations", uris))
 	}
 	if endpoint.ExpirationTime != nil {
-		attrs = append(attrs, slog.Time("expirationTime", endpoint.ExpirationTime.AsTime()))
+		attrs = append(attrs, attribute.String("expirationTime", endpoint.ExpirationTime.AsTime().Format(time.RFC3339)))
 	}
 	return attrs
 }
@@ -109,20 +113,20 @@ func (p *streamProgress) recordBatch(rows int64, bytes int64) {
 }
 
 // logAttrs returns slog attributes summarizing this stream's progress.
-func (p *streamProgress) logAttrs() []any {
-	attrs := []any{
-		slog.Int64("batchesRead", p.batchesRead),
-		slog.Int64("recordsRead", p.recordsRead),
-		slog.Int64("approxBytesRead", p.bytesEstimate),
-		slog.Duration("elapsed", time.Since(p.start)),
+func (p *streamProgress) logAttrs() []attribute.KeyValue {
+	attrs := []attribute.KeyValue{
+		attribute.Int64("batchesRead", p.batchesRead),
+		attribute.Int64("recordsRead", p.recordsRead),
+		attribute.Int64("approxBytesRead", p.bytesEstimate),
+		attribute.Float64("elapsed", time.Since(p.start).Seconds()),
 	}
 	if !p.firstBatchAt.IsZero() {
-		attrs = append(attrs, slog.Duration("timeToFirstBatch", p.firstBatchAt.Sub(p.start)))
+		attrs = append(attrs, attribute.Float64("timeToFirstBatch", p.firstBatchAt.Sub(p.start).Seconds()))
 	} else {
-		attrs = append(attrs, slog.String("timeToFirstBatch", "never"))
+		attrs = append(attrs, attribute.String("timeToFirstBatch", "never"))
 	}
 	if !p.lastBatchAt.IsZero() {
-		attrs = append(attrs, slog.Duration("timeSinceLastBatch", time.Since(p.lastBatchAt)))
+		attrs = append(attrs, attribute.Float64("timeSinceLastBatch", time.Since(p.lastBatchAt).Seconds()))
 	}
 	return attrs
 }
@@ -143,46 +147,64 @@ func formatInt(n int64) string {
 	return strconv.FormatInt(n, 10)
 }
 
-func makeUnaryLoggingInterceptor(logger *slog.Logger) grpc.UnaryClientInterceptor {
-	interceptor := func(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
+func makeUnaryLoggingInterceptor(tracing adbc.OTelTracing) grpc.UnaryClientInterceptor {
+	interceptor := func(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) (err error) {
+		var span trace.Span
+		ctx, span = internal.StartSpan(ctx, method, tracing)
+		defer internal.EndSpan(span, err)
+
 		start := time.Now()
 		// Ignore errors
 		outgoing, _ := metadata.FromOutgoingContext(ctx)
-		err := invoker(ctx, method, req, reply, cc, opts...)
-		if logger.Enabled(ctx, slog.LevelDebug) {
-			args := []any{"target", cc.Target(), "duration", time.Since(start), "err", err, "metadata", outgoing}
-			args = append(args, outgoingCallHeaderAttrs(ctx)...)
-			args = append(args, grpcStatusAttrs(err)...)
-			logger.DebugContext(ctx, method, args...)
-		} else {
-			keys := maps.Keys(outgoing)
-			slices.Sort(keys)
-			args := []any{"target", cc.Target(), "duration", time.Since(start), "err", err, "metadata", keys}
-			// Surface curated outbound correlation IDs regardless of level.
-			args = append(args, outgoingCallHeaderAttrs(ctx)...)
-			args = append(args, grpcStatusAttrs(err)...)
-			logger.InfoContext(ctx, method, args...)
+		err = invoker(ctx, method, req, reply, cc, opts...)
+		if err != nil {
+			span.RecordError(err)
+		}
+		if span.IsRecording() {
+			attrs := []attribute.KeyValue{
+				attribute.String("target", cc.Target()),
+				attribute.Float64("duration_seconds", time.Since(start).Seconds()),
+				attribute.String("metadata", fmt.Sprint(outgoing)),
+			}
+			attrs = append(attrs, outgoingCallHeaderAttrs(ctx)...)
+			attrs = append(attrs, grpcStatusAttrs(err)...)
+			span.AddEvent(method, trace.WithAttributes(attrs...))
 		}
 		return err
 	}
 	return interceptor
 }
 
-func makeStreamLoggingInterceptor(logger *slog.Logger) grpc.StreamClientInterceptor {
-	interceptor := func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
+func makeStreamLoggingInterceptor(tracing adbc.OTelTracing) grpc.StreamClientInterceptor {
+	interceptor := func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (stream grpc.ClientStream, err error) {
+		var span trace.Span
+		ctx, span = internal.StartSpan(ctx, method, tracing)
+		defer internal.EndSpan(span, err)
 		start := time.Now()
 		// Ignore errors
 		outgoing, _ := metadata.FromOutgoingContext(ctx)
-		stream, err := streamer(ctx, desc, cc, method, opts...)
+		stream, err = streamer(ctx, desc, cc, method, opts...)
 		if err != nil {
-			args := []any{"target", cc.Target(), "duration", time.Since(start), "err", err}
+			args := []attribute.KeyValue{
+				attribute.String("target", cc.Target()),
+				attribute.Float64("duration_seconds", time.Since(start).Seconds()),
+				attribute.String("err_summary", err.Error()),
+			}
 			args = append(args, outgoingCallHeaderAttrs(ctx)...)
 			args = append(args, grpcStatusAttrs(err)...)
-			logger.InfoContext(ctx, method, args...)
+			span.RecordError(err, trace.WithAttributes(args...))
 			return stream, err
 		}
 
-		return &loggedStream{ClientStream: stream, logger: logger, ctx: ctx, method: method, start: start, target: cc.Target(), outgoing: outgoing}, err
+		return &loggedStream{
+			ClientStream: stream,
+			span:         span,
+			ctx:          ctx,
+			method:       method,
+			start:        start,
+			target:       cc.Target(),
+			outgoing:     outgoing,
+		}, err
 	}
 	return interceptor
 }
@@ -190,7 +212,7 @@ func makeStreamLoggingInterceptor(logger *slog.Logger) grpc.StreamClientIntercep
 type loggedStream struct {
 	grpc.ClientStream
 
-	logger   *slog.Logger
+	span     trace.Span
 	ctx      context.Context
 	method   string
 	start    time.Time
@@ -215,31 +237,36 @@ func (stream *loggedStream) RecvMsg(m any) error {
 		loggedErr = nil
 	}
 
+	errSummary := ""
+	if loggedErr != nil {
+		errSummary = loggedErr.Error()
+	}
+
 	// Capture trailers from the terminated stream; they often carry
 	// server-side diagnostic information for failure triage.
 	trailer := stream.Trailer()
 
-	if stream.logger.Enabled(stream.ctx, slog.LevelDebug) {
-		stream.logger.DebugContext(stream.ctx, stream.method,
-			"target", stream.target,
-			"duration", time.Since(stream.start),
-			"err", loggedErr,
-			"recvMessages", stream.recvCount,
-			"metadata", stream.outgoing,
-			"trailer", trailer,
-		)
+	if stream.span.IsRecording() {
+		stream.span.AddEvent(stream.method, trace.WithAttributes(
+			attribute.String("target", stream.target),
+			attribute.Float64("duration_seconds", time.Since(stream.start).Seconds()),
+			attribute.String("err_summary", errSummary),
+			attribute.Int64("recv_messages", stream.recvCount),
+			attribute.String("metadata", fmt.Sprint(stream.outgoing)),
+			attribute.String("trailer", fmt.Sprint(trailer)),
+		))
 	} else {
 		keys := maps.Keys(stream.outgoing)
 		slices.Sort(keys)
 		trailerKeys := maps.Keys(trailer)
 		slices.Sort(trailerKeys)
-		args := []any{
-			"target", stream.target,
-			"duration", time.Since(stream.start),
-			"err", loggedErr,
-			"recvMessages", stream.recvCount,
-			"metadata", keys,
-			"trailer", trailerKeys,
+		args := []attribute.KeyValue{
+			attribute.String("target", stream.target),
+			attribute.Float64("duration_seconds", time.Since(stream.start).Seconds()),
+			attribute.String("err_summary", errSummary),
+			attribute.Int64("recv_messages", stream.recvCount),
+			attribute.String("metadata", fmt.Sprint(keys)),
+			attribute.String("trailer", fmt.Sprint(trailerKeys)),
 		}
 		// Promote curated correlation headers from the trailer.
 		args = append(args, correlationHeaderAttrs(trailer)...)
@@ -250,7 +277,7 @@ func (stream *loggedStream) RecvMsg(m any) error {
 		if loggedErr != nil {
 			args = append(args, grpcStatusAttrs(loggedErr)...)
 		}
-		stream.logger.InfoContext(stream.ctx, stream.method, args...)
+		stream.span.AddEvent(stream.method, trace.WithAttributes(args...))
 	}
 	return err
 }
@@ -289,14 +316,14 @@ var wellKnownCorrelationHeaders = []string{
 // correlationHeaderAttrs (incoming) and outgoingCallHeaderAttrs
 // (outbound). Only headers in wellKnownCorrelationHeaders are emitted;
 // returns nil when none are present.
-func headerAttrsWithPrefix(md metadata.MD, prefix string) []any {
+func headerAttrsWithPrefix(md metadata.MD, prefix string) []attribute.KeyValue {
 	if len(md) == 0 {
 		return nil
 	}
-	out := make([]any, 0, 4)
+	out := make([]attribute.KeyValue, 0, 4)
 	for _, k := range wellKnownCorrelationHeaders {
 		if vals := md.Get(k); len(vals) > 0 {
-			out = append(out, slog.Any(prefix+k, vals))
+			out = append(out, attribute.StringSlice(prefix+k, vals))
 		}
 	}
 	return out
@@ -305,13 +332,13 @@ func headerAttrsWithPrefix(md metadata.MD, prefix string) []any {
 // correlationHeaderAttrs returns slog attributes for well-known correlation
 // headers present in md (typically incoming headers/trailers). Uses the
 // "hdr_" prefix; only allow-listed headers are emitted.
-func correlationHeaderAttrs(md metadata.MD) []any {
+func correlationHeaderAttrs(md metadata.MD) []attribute.KeyValue {
 	return headerAttrsWithPrefix(md, "hdr_")
 }
 
 // outgoingCallHeaderAttrs returns slog attributes for well-known correlation
 // headers on ctx's outbound gRPC metadata. Uses the "out_hdr_" prefix.
-func outgoingCallHeaderAttrs(ctx context.Context) []any {
+func outgoingCallHeaderAttrs(ctx context.Context) []attribute.KeyValue {
 	if ctx == nil {
 		return nil
 	}
@@ -324,7 +351,7 @@ func outgoingCallHeaderAttrs(ctx context.Context) []any {
 
 // grpcStatusAttrs returns "grpc_code" and "grpc_message" slog attributes
 // for the gRPC status embedded in err, or nil if err has no status.
-func grpcStatusAttrs(err error) []any {
+func grpcStatusAttrs(err error) []attribute.KeyValue {
 	if err == nil {
 		return nil
 	}
@@ -332,9 +359,9 @@ func grpcStatusAttrs(err error) []any {
 	if !ok {
 		return nil
 	}
-	return []any{
-		slog.String("grpc_code", st.Code().String()),
-		slog.String("grpc_message", st.Message()),
+	return []attribute.KeyValue{
+		attribute.String("grpc_code", st.Code().String()),
+		attribute.String("grpc_message", st.Message()),
 	}
 }
 
@@ -397,33 +424,33 @@ func newRandomID(prefix string) string {
 // queryFingerprintAttrs builds slog attributes identifying a SQL query
 // without exposing it: length and a SHA-256 prefix. The query text itself
 // is never logged because it can embed end-user PII as literals.
-func queryFingerprintAttrs(query string) []any {
+func queryFingerprintAttrs(query string) []attribute.KeyValue {
 	if query == "" {
-		return []any{slog.String("query_type", "empty")}
+		return []attribute.KeyValue{attribute.String("query_type", "empty")}
 	}
 	h := sha256.Sum256([]byte(query))
-	return []any{
-		slog.String("query_type", "sql"),
-		slog.Int("query_length", len(query)),
-		slog.String("query_sha256_prefix", hex.EncodeToString(h[:8])),
+	return []attribute.KeyValue{
+		attribute.String("query_type", "sql"),
+		attribute.Int("query_length", len(query)),
+		attribute.String("query_sha256_prefix", hex.EncodeToString(h[:8])),
 	}
 }
 
 // substraitFingerprintAttrs builds slog attributes identifying a Substrait
 // plan: length, SHA-256 prefix, and protocol version. Plan bytes are never
 // logged.
-func substraitFingerprintAttrs(plan []byte, version string) []any {
+func substraitFingerprintAttrs(plan []byte, version string) []attribute.KeyValue {
 	if len(plan) == 0 {
-		return []any{slog.String("query_type", "substrait_empty")}
+		return []attribute.KeyValue{attribute.String("query_type", "substrait_empty")}
 	}
 	h := sha256.Sum256(plan)
-	attrs := []any{
-		slog.String("query_type", "substrait"),
-		slog.Int("substrait_plan_bytes", len(plan)),
-		slog.String("substrait_plan_sha256_prefix", hex.EncodeToString(h[:8])),
+	attrs := []attribute.KeyValue{
+		attribute.String("query_type", "substrait"),
+		attribute.Int("substrait_plan_bytes", len(plan)),
+		attribute.String("substrait_plan_sha256_prefix", hex.EncodeToString(h[:8])),
 	}
 	if version != "" {
-		attrs = append(attrs, slog.String("substrait_version", version))
+		attrs = append(attrs, attribute.String("substrait_version", version))
 	}
 	return attrs
 }
@@ -432,30 +459,30 @@ func substraitFingerprintAttrs(plan []byte, version string) []any {
 // descriptor type and command prefix, AppMetadata prefix (some backends
 // embed a server-side query handle there), and advisory record/byte
 // counts. Returns nil for a nil info.
-func flightInfoLogAttrs(info *flight.FlightInfo) []any {
+func flightInfoLogAttrs(info *flight.FlightInfo) []attribute.KeyValue {
 	if info == nil {
 		return nil
 	}
-	attrs := []any{
-		slog.Int("numEndpoints", len(info.Endpoint)),
-		slog.Int64("totalRecords", info.TotalRecords),
-		slog.Int64("totalBytes", info.TotalBytes),
-		slog.Bool("haveSchemaInFlightInfo", len(info.Schema) > 0),
+	attrs := []attribute.KeyValue{
+		attribute.Int("numEndpoints", len(info.Endpoint)),
+		attribute.Int64("totalRecords", info.TotalRecords),
+		attribute.Int64("totalBytes", info.TotalBytes),
+		attribute.Bool("haveSchemaInFlightInfo", len(info.Schema) > 0),
 	}
 	if desc := info.FlightDescriptor; desc != nil {
-		attrs = append(attrs, slog.String("descriptorType", desc.Type.String()))
+		attrs = append(attrs, attribute.String("descriptorType", desc.Type.String()))
 		if len(desc.Cmd) > 0 {
 			limit := len(desc.Cmd)
 			if limit > maxLoggedBlobBytes {
 				limit = maxLoggedBlobBytes
 			}
 			attrs = append(attrs,
-				slog.Int("descriptorCmdBytes", len(desc.Cmd)),
-				slog.String("descriptorCmdPrefixHex", hex.EncodeToString(desc.Cmd[:limit])),
+				attribute.Int("descriptorCmdBytes", len(desc.Cmd)),
+				attribute.String("descriptorCmdPrefixHex", hex.EncodeToString(desc.Cmd[:limit])),
 			)
 		}
 		if len(desc.Path) > 0 {
-			attrs = append(attrs, slog.Any("descriptorPath", desc.Path))
+			attrs = append(attrs, attribute.String("descriptorPath", fmt.Sprint(desc.Path)))
 		}
 	}
 	if len(info.AppMetadata) > 0 {
@@ -464,8 +491,8 @@ func flightInfoLogAttrs(info *flight.FlightInfo) []any {
 			limit = maxLoggedBlobBytes
 		}
 		attrs = append(attrs,
-			slog.Int("appMetadataBytes", len(info.AppMetadata)),
-			slog.String("appMetadataPrefixHex", hex.EncodeToString(info.AppMetadata[:limit])),
+			attribute.Int("appMetadataBytes", len(info.AppMetadata)),
+			attribute.String("appMetadataPrefixHex", hex.EncodeToString(info.AppMetadata[:limit])),
 		)
 	}
 	return attrs

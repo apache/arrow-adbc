@@ -20,14 +20,15 @@ package flightsql
 import (
 	"context"
 	"fmt"
-	"log/slog"
-	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/flight/flightsql"
 	pb "github.com/apache/arrow-go/v18/arrow/flight/gen/flight"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
@@ -105,7 +106,14 @@ func createRecordReaderFromBatch(batch arrow.RecordBatch) (array.RecordReader, e
 
 // executeIngest performs bulk ingestion using the FlightSQL client's ExecuteIngest method.
 // This is called from the statement when a target table has been set for bulk ingest.
-func (s *statement) executeIngest(ctx context.Context) (int64, error) {
+func (s *statement) executeIngest(ctx context.Context) (nRows int64, err error) {
+	var span trace.Span
+	ctx, span = internal.StartSpan(ctx, "statement.executeIngest", s)
+	defer func() {
+		span.SetAttributes(attribute.Int64("ingested.row_count", nRows))
+		internal.EndSpan(span, err)
+	}()
+
 	if s.streamBind == nil && s.bound == nil {
 		return -1, adbc.Error{
 			Msg:  "[Flight SQL Statement] must call Bind before bulk ingestion",
@@ -113,7 +121,6 @@ func (s *statement) executeIngest(ctx context.Context) (int64, error) {
 		}
 	}
 
-	startTime := time.Now()
 	catalogStr := ""
 	if s.catalog != nil {
 		catalogStr = *s.catalog
@@ -122,16 +129,16 @@ func (s *statement) executeIngest(ctx context.Context) (int64, error) {
 	if s.dbSchema != nil {
 		dbSchemaStr = *s.dbSchema
 	}
-	startAttrs := []any{
-		slog.String("target_table", s.targetTable),
-		slog.String("mode", s.ingestMode),
-		slog.String("catalog", catalogStr),
-		slog.String("db_schema", dbSchemaStr),
-		slog.Bool("temporary", s.temporary),
-		slog.Bool("streamBind", s.streamBind != nil),
-		slog.Bool("recordBound", s.bound != nil),
+	startAttrs := []attribute.KeyValue{
+		attribute.String("target_table", s.targetTable),
+		attribute.String("mode", s.ingestMode),
+		attribute.String("catalog", catalogStr),
+		attribute.String("db_schema", dbSchemaStr),
+		attribute.Bool("temporary", s.temporary),
+		attribute.Bool("streamBind", s.streamBind != nil),
+		attribute.Bool("recordBound", s.bound != nil),
 	}
-	s.log.InfoContext(ctx, "FlightSQL ExecuteIngest start", startAttrs...)
+	span.SetAttributes(startAttrs...)
 
 	opts := ingestOptions{
 		targetTable: s.targetTable,
@@ -145,16 +152,11 @@ func (s *statement) executeIngest(ctx context.Context) (int64, error) {
 
 	// Get the record reader to ingest
 	var rdr array.RecordReader
-	var err error
 	if s.streamBind != nil {
 		rdr = s.streamBind
 	} else {
 		rdr, err = createRecordReaderFromBatch(s.bound)
 		if err != nil {
-			s.log.WarnContext(ctx, "FlightSQL ExecuteIngest finished with error",
-				slog.Duration("duration", time.Since(startTime)),
-				"err", err,
-			)
 			return -1, err
 		}
 	}
@@ -163,20 +165,17 @@ func (s *statement) executeIngest(ctx context.Context) (int64, error) {
 	var header, trailer metadata.MD
 	callOpts := append([]grpc.CallOption{}, grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
 
-	nRows, err := s.cnxn.cl.ExecuteIngest(ctx, rdr, ingestOpts, callOpts...)
-	finishAttrs := []any{
-		slog.Duration("duration", time.Since(startTime)),
-		slog.Int64("rowsIngested", nRows),
+	nRows, err = s.cnxn.cl.ExecuteIngest(ctx, rdr, ingestOpts, callOpts...)
+	finishAttrs := []attribute.KeyValue{
+		attribute.Int64("rowsIngested", nRows),
 	}
 	finishAttrs = append(finishAttrs, correlationHeaderAttrs(header)...)
 	finishAttrs = append(finishAttrs, correlationHeaderAttrs(trailer)...)
 	if err != nil {
-		wrapped := adbcFromFlightStatusWithDetails(err, header, trailer, "ExecuteIngest")
-		finishAttrs = append(finishAttrs, "err", wrapped)
-		s.log.WarnContext(ctx, "FlightSQL ExecuteIngest finished with error", finishAttrs...)
-		return -1, wrapped
+		err = adbcFromFlightStatusWithDetails(err, header, trailer, "ExecuteIngest")
+		return -1, err
 	}
-	s.log.InfoContext(ctx, "FlightSQL ExecuteIngest finished", finishAttrs...)
+	span.SetAttributes(finishAttrs...)
 
 	return nRows, nil
 }

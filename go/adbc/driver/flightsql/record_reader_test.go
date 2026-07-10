@@ -83,7 +83,7 @@ func (f *testFlightService) DoGet(request *flight.Ticket, stream flight.FlightSe
 	return nil
 }
 
-func getFlightClientTest(ctx context.Context, loc string) (*flightsql.Client, error) {
+func getFlightClientTest(_ context.Context, loc string) (*flightsql.Client, error) {
 	uri, err := url.Parse(loc)
 	if err != nil {
 		return nil, err

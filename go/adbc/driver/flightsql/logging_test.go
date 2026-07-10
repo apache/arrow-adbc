@@ -26,6 +26,7 @@ import (
 	"log/slog"
 	"testing"
 
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -296,15 +297,16 @@ func TestSafeLogger_AlwaysWrapsOtel(t *testing.T) {
 // (which is what slog.Any / slog.String produce). The map's values are
 // taken from the slog.Value's String() representation so callers can do
 // straightforward equality assertions without unwrapping Value kinds.
-func slogAttrsToMap(t *testing.T, attrs []any) map[string]string {
+func slogAttrsToMap(t *testing.T, attrs []attribute.KeyValue) map[string]string {
 	t.Helper()
 	out := make(map[string]string, len(attrs))
 	for i, a := range attrs {
-		attr, ok := a.(slog.Attr)
+		var iface interface{} = a
+		attr, ok := iface.(attribute.KeyValue)
 		if !ok {
-			t.Fatalf("attrs[%d] is %T, want slog.Attr (value=%v)", i, a, a)
+			t.Fatalf("attrs[%d] is %T, want attribute.KeyValue (value=%v)", i, a, a)
 		}
-		out[attr.Key] = attr.Value.String()
+		out[string(attr.Key)] = attr.Value.String()
 	}
 	return out
 }

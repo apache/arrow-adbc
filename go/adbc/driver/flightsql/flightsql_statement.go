@@ -20,7 +20,6 @@ package flightsql
 import (
 	"context"
 	"fmt"
-	"log/slog"
 	"math"
 	"strconv"
 	"strings"
@@ -29,12 +28,17 @@ import (
 	"unsafe"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/flight"
 	"github.com/apache/arrow-go/v18/arrow/flight/flightsql"
 	"github.com/apache/arrow-go/v18/arrow/memory"
 	"github.com/bluele/gcache"
+	"go.opentelemetry.io/otel/attribute"
+	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
@@ -156,6 +160,7 @@ type incrementalState struct {
 }
 
 type statement struct {
+	driverbase.StatementImplBase
 	alloc       memory.Allocator
 	cnxn        *connectionImpl
 	clientCache gcache.Cache
@@ -181,7 +186,6 @@ type statement struct {
 	bound      arrow.RecordBatch
 	streamBind array.RecordReader
 	id         string
-	log        *slog.Logger
 }
 
 func (s *statement) closePreparedStatement() error {
@@ -481,25 +485,34 @@ func (s *statement) SetOptionDouble(key string, value float64) error {
 // The query can then be executed with any of the Execute methods.
 // For queries expected to be executed repeatedly, Prepare should be
 // called before execution.
-func (s *statement) SetSqlQuery(query string) error {
+func (s *statement) SetSqlQuery(query string) (err error) {
+	var span trace.Span
+	_, span = internal.StartSpan(context.Background(), "statement.SetSqlQuery", s,
+		trace.WithAttributes(
+			append(
+				s.queryAttrs(),
+				semconv.DBQueryTextKey.String(query),
+			)...,
+		))
+	defer func() {
+		span.SetAttributes(semconv.DBQueryTextKey.String(query))
+		internal.EndSpan(span, err)
+	}()
 	if s.prepared != nil {
-		if err := s.closePreparedStatement(); err != nil {
+		if err = s.closePreparedStatement(); err != nil {
 			return err
 		}
 		s.prepared = nil
 	}
-	if err := s.clearIncrementalQuery(); err != nil {
+	if err = s.clearIncrementalQuery(); err != nil {
 		return err
 	}
 	s.targetTable = ""
 	s.query.setSqlQuery(query)
-	if s.log != nil {
-		s.log.Debug("FlightSQL SetSqlQuery", s.queryAttrs()...)
-	}
 	return nil
 }
 
-func (s *statement) queryAttrs() []any {
+func (s *statement) queryAttrs() []attribute.KeyValue {
 	if s.query.sqlQuery != "" {
 		return queryFingerprintAttrs(s.query.sqlQuery)
 	}
@@ -507,9 +520,9 @@ func (s *statement) queryAttrs() []any {
 		return substraitFingerprintAttrs(s.query.substraitPlan, s.query.substraitVersion)
 	}
 	if s.targetTable != "" {
-		return []any{slog.String("query_type", "ingest"), slog.String("target_table", s.targetTable)}
+		return []attribute.KeyValue{attribute.String("query_type", "ingest"), attribute.String("target_table", s.targetTable)}
 	}
-	return []any{slog.String("query_type", "none")}
+	return []attribute.KeyValue{attribute.String("query_type", "none")}
 }
 
 // ExecuteQuery executes the current query or prepared statement
@@ -518,16 +531,33 @@ func (s *statement) queryAttrs() []any {
 //
 // This invalidates any prior result sets on this statement.
 func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, nrec int64, err error) {
+	var span trace.Span
+	ctx, span = internal.StartSpan(ctx, "statement.ExecuteQuery", s, trace.WithAttributes(
+		append(
+			s.queryAttrs(),
+			attribute.Bool("prepared", s.prepared != nil),
+			attribute.Bool("hasTxn", s.cnxn.txn != nil),
+		)...))
+	defer func() {
+		span.SetAttributes(semconv.DBResponseReturnedRowsKey.Int64(nrec))
+		internal.EndSpan(span, err)
+	}()
+
+	// startTime := time.Now()
+	span.AddEvent("start")
+
 	if err := s.clearIncrementalQuery(); err != nil {
 		return nil, -1, err
 	}
 
 	// Reject staged binds if no ingest target was provided
 	if s.targetTable == "" && s.prepared == nil && (s.bound != nil || s.streamBind != nil) {
-		return nil, -1, adbc.Error{
+		nrec = -1
+		err = adbc.Error{
 			Msg:  "[Flight SQL Statement] must set IngestTargetTable before bulk ingestion",
 			Code: adbc.StatusInvalidState,
 		}
+		return nil, nrec, err
 	}
 
 	// Handle bulk ingest
@@ -535,13 +565,6 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 		nrec, err = s.executeIngest(ctx)
 		return nil, nrec, err
 	}
-
-	startTime := time.Now()
-	startAttrs := append([]any{
-		slog.Bool("prepared", s.prepared != nil),
-		slog.Bool("hasTxn", s.cnxn.txn != nil),
-	}, s.queryAttrs()...)
-	s.log.InfoContext(ctx, "FlightSQL ExecuteQuery start", startAttrs...)
 
 	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
 	var info *flight.FlightInfo
@@ -554,25 +577,21 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 	}
 
 	defer func() {
-		finishAttrs := []any{
-			slog.Duration("duration", time.Since(startTime)),
-			slog.String("phase", "GetFlightInfo"),
+		finishAttrs := []attribute.KeyValue{
+			// attribute.Duration("duration", time.Since(startTime)),
+			attribute.String("phase", "GetFlightInfo"),
 		}
 		if info != nil {
 			finishAttrs = append(finishAttrs, flightInfoLogAttrs(info)...)
 		}
 		finishAttrs = append(finishAttrs, correlationHeaderAttrs(header)...)
 		finishAttrs = append(finishAttrs, correlationHeaderAttrs(trailer)...)
-		if err != nil {
-			finishAttrs = append(finishAttrs, "err", err)
-			s.log.WarnContext(ctx, "FlightSQL ExecuteQuery finished with error", finishAttrs...)
-		} else {
-			s.log.InfoContext(ctx, "FlightSQL ExecuteQuery finished", finishAttrs...)
-		}
+		span.AddEvent("finished", trace.WithAttributes(finishAttrs...))
 	}()
 
 	if err != nil {
-		return nil, -1, adbcFromFlightStatusWithDetails(err, header, trailer, "ExecuteQuery")
+		err = adbcFromFlightStatusWithDetails(err, header, trailer, "ExecuteQuery")
+		return nil, -1, err
 	}
 
 	nrec = info.TotalRecords
@@ -582,7 +601,7 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 		info:        info,
 		clientCache: s.clientCache,
 		bufferSize:  s.queueSize,
-		logger:      s.log,
+		tracing:     s,
 	}, s.timeouts)
 	return
 }
@@ -590,6 +609,17 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 // ExecuteUpdate executes a statement that does not generate a result
 // set. It returns the number of rows affected if known, otherwise -1.
 func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
+	var span trace.Span
+	var finishAttrs []attribute.KeyValue
+	ctx, span = internal.StartSpan(ctx, "statement.ExecuteUpdate", s, trace.WithAttributes(
+		attribute.Bool("prepared", s.prepared != nil),
+		attribute.Bool("hasTxn", s.cnxn.txn != nil),
+	))
+	defer func() {
+		span.SetAttributes(finishAttrs...)
+		internal.EndSpan(span, err)
+	}()
+
 	if err := s.clearIncrementalQuery(); err != nil {
 		return -1, err
 	}
@@ -607,12 +637,12 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 		return s.executeIngest(ctx)
 	}
 
-	startTime := time.Now()
-	startAttrs := append([]any{
-		slog.Bool("prepared", s.prepared != nil),
-		slog.Bool("hasTxn", s.cnxn.txn != nil),
+	// startTime := time.Now()
+	startAttrs := append([]attribute.KeyValue{
+		attribute.Bool("prepared", s.prepared != nil),
+		attribute.Bool("hasTxn", s.cnxn.txn != nil),
 	}, s.queryAttrs()...)
-	s.log.InfoContext(ctx, "FlightSQL ExecuteUpdate start", startAttrs...)
+	span.AddEvent("start", trace.WithAttributes(startAttrs...))
 
 	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
 	var header, trailer metadata.MD
@@ -624,18 +654,9 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 	}
 
 	defer func() {
-		finishAttrs := []any{
-			slog.Duration("duration", time.Since(startTime)),
-			slog.Int64("rowsAffected", n),
-		}
+		finishAttrs = append(finishAttrs, attribute.Int64("rowsAffected", n))
 		finishAttrs = append(finishAttrs, correlationHeaderAttrs(header)...)
 		finishAttrs = append(finishAttrs, correlationHeaderAttrs(trailer)...)
-		if err != nil {
-			finishAttrs = append(finishAttrs, "err", err)
-			s.log.WarnContext(ctx, "FlightSQL ExecuteUpdate finished with error", finishAttrs...)
-		} else {
-			s.log.InfoContext(ctx, "FlightSQL ExecuteUpdate finished", finishAttrs...)
-		}
 	}()
 
 	if err != nil {
@@ -647,28 +668,28 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 
 // Prepare turns this statement into a prepared statement to be executed
 // multiple times. This invalidates any prior result sets.
-func (s *statement) Prepare(ctx context.Context) error {
-	startTime := time.Now()
-	s.log.InfoContext(ctx, "FlightSQL Prepare start", s.queryAttrs()...)
+func (s *statement) Prepare(ctx context.Context) (err error) {
+	var span trace.Span
+	ctx, span = internal.StartSpan(ctx, "statement.Prepare", s, trace.WithAttributes(s.queryAttrs()...))
+	finishAttrs := []attribute.KeyValue{}
+	defer func() {
+		span.SetAttributes(finishAttrs...)
+		internal.EndSpan(span, err)
+	}()
 
 	ctx = metadata.NewOutgoingContext(ctx, s.hdrs)
 	var header, trailer metadata.MD
-	prep, err := s.query.prepare(ctx, s.cnxn, grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
+	var prep *flightsql.PreparedStatement
+	prep, err = s.query.prepare(ctx, s.cnxn, grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
 
 	defer func() {
-		finishAttrs := []any{slog.Duration("duration", time.Since(startTime))}
 		finishAttrs = append(finishAttrs, correlationHeaderAttrs(header)...)
 		finishAttrs = append(finishAttrs, correlationHeaderAttrs(trailer)...)
-		if err != nil {
-			finishAttrs = append(finishAttrs, "err", err)
-			s.log.WarnContext(ctx, "FlightSQL Prepare finished with error", finishAttrs...)
-		} else {
-			s.log.InfoContext(ctx, "FlightSQL Prepare finished", finishAttrs...)
-		}
 	}()
 
 	if err != nil {
-		return adbcFromFlightStatusWithDetails(err, header, trailer, "Prepare")
+		err = adbcFromFlightStatusWithDetails(err, header, trailer, "Prepare")
+		return err
 	}
 	s.prepared = prep
 	return nil

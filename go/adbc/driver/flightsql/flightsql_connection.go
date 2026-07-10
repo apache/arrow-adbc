@@ -23,7 +23,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
 	"math"
 	"strings"
 	"time"
@@ -39,6 +38,8 @@ import (
 	flightproto "github.com/apache/arrow-go/v18/arrow/flight/gen/flight"
 	"github.com/apache/arrow-go/v18/arrow/ipc"
 	"github.com/bluele/gcache"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	grpccodes "google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -232,22 +233,38 @@ var adbcToFlightSQLInfo = map[adbc.InfoCode]flightsql.SqlInfo{
 	adbc.InfoVendorSubstraitMaxVersion: flightsql.SqlInfoFlightSqlServerSubstraitMaxVersion,
 }
 
-// doGetWithLogger performs DoGet against an endpoint's locations, logging each
+// doGetWithTracing performs DoGet against an endpoint's locations, logging each
 // attempt and joining all per-location failures into the returned error so the
 // caller can see every location that was tried. logger may be nil.
-func doGetWithLogger(ctx context.Context, cl *flightsql.Client, endpoint *flight.FlightEndpoint, clientCache gcache.Cache, logger *slog.Logger, opts ...grpc.CallOption) (rdr *flight.Reader, err error) {
-	log := safeLogger(logger)
+func doGetWithTracing(
+	ctx context.Context,
+	cl *flightsql.Client,
+	endpoint *flight.FlightEndpoint,
+	clientCache gcache.Cache,
+	tracing adbc.OTelTracing,
+	opts ...grpc.CallOption,
+) (rdr *flight.Reader, err error) {
+	var span trace.Span
+	ctx, span = internal.StartSpan(ctx, "flightsql_connection.doGet", tracing)
+	defer func() {
+		internal.EndSpan(span, err)
+	}()
+
+	const prefix string = "flightsql_connection.doGet"
 	if len(endpoint.Location) == 0 {
-		log.DebugContext(ctx, "FlightSQL doGet",
-			"phase", "noLocations",
-		)
+		span.AddEvent(prefix + ".noLocations")
 		start := time.Now()
 		rdr, err = cl.DoGet(ctx, endpoint.Ticket, opts...)
-		log.DebugContext(ctx, "FlightSQL doGet",
-			"phase", "defaultClientResult",
-			"duration", time.Since(start),
-			"err", err,
-		)
+		if err != nil {
+			span.RecordError(err, trace.WithAttributes(
+				attribute.String("phase", prefix+".defaultClientResult"),
+				attribute.Float64("duration_seconds", time.Since(start).Seconds()),
+			))
+		} else {
+			span.AddEvent(prefix+".defaultClientResult.success", trace.WithAttributes(
+				attribute.Float64("duration_seconds", time.Since(start).Seconds()),
+			))
+		}
 		return rdr, err
 	}
 
@@ -267,12 +284,11 @@ func doGetWithLogger(ctx context.Context, cl *flightsql.Client, endpoint *flight
 		cc, err = clientCache.Get(loc.Uri)
 		if err != nil {
 			attemptErrors = append(attemptErrors, fmt.Sprintf("clientCache.Get(%q): %s", loc.Uri, err.Error()))
-			log.WarnContext(ctx, "FlightSQL doGet location attempt failed",
-				"phase", "clientCacheGet",
-				"location", loc.Uri,
-				"duration", time.Since(start),
-				"err", err,
-			)
+			span.RecordError(err, trace.WithAttributes(
+				attribute.String("phase", prefix+".clientCacheGet"),
+				attribute.String("location", loc.Uri),
+				attribute.Float64("duration_seconds", time.Since(start).Seconds()),
+			))
 			continue
 		}
 
@@ -280,20 +296,19 @@ func doGetWithLogger(ctx context.Context, cl *flightsql.Client, endpoint *flight
 		rdr, err = conn.DoGet(ctx, endpoint.Ticket, opts...)
 		if err != nil {
 			attemptErrors = append(attemptErrors, fmt.Sprintf("DoGet(%q): %s", loc.Uri, err.Error()))
-			log.WarnContext(ctx, "FlightSQL doGet location attempt failed",
-				"phase", "doGet",
-				"location", loc.Uri,
-				"duration", time.Since(start),
-				"err", err,
-			)
+			span.RecordError(err, trace.WithAttributes(
+				attribute.String("phase", prefix+".conn.doGet"),
+				attribute.String("location", loc.Uri),
+				attribute.Float64("duration_seconds", time.Since(start).Seconds()),
+			))
 			continue
 		}
 
-		log.DebugContext(ctx, "FlightSQL doGet succeeded",
-			"location", loc.Uri,
-			"duration", time.Since(start),
-		)
-		return
+		span.AddEvent(prefix+".doGet.success", trace.WithAttributes(
+			attribute.String("location", loc.Uri),
+			attribute.Float64("duration_seconds", time.Since(start).Seconds()),
+		))
+		return rdr, nil
 	}
 
 	if hasFallback {
@@ -301,15 +316,15 @@ func doGetWithLogger(ctx context.Context, cl *flightsql.Client, endpoint *flight
 		rdr, err = cl.DoGet(ctx, endpoint.Ticket, opts...)
 		if err != nil {
 			attemptErrors = append(attemptErrors, fmt.Sprintf("DoGet(fallback to default client): %s", err.Error()))
-			log.WarnContext(ctx, "FlightSQL doGet fallback to default client failed",
-				"duration", time.Since(start),
-				"err", err,
-			)
+			span.RecordError(err, trace.WithAttributes(
+				attribute.String("phase", prefix+".defaultClientFallback"),
+				attribute.Float64("duration_seconds", time.Since(start).Seconds()),
+			))
 			return nil, fmt.Errorf("all DoGet attempts failed: %s; final: %w", strings.Join(attemptErrors, "; "), err)
 		}
-		log.DebugContext(ctx, "FlightSQL doGet succeeded via default client fallback",
-			"duration", time.Since(start),
-		)
+		span.AddEvent(prefix+".defaultClientFallback.success", trace.WithAttributes(
+			attribute.Float64("duration_seconds", time.Since(start).Seconds()),
+		))
 		return rdr, nil
 	}
 
@@ -704,7 +719,7 @@ func (c *connectionImpl) PrepareDriverInfo(ctx context.Context, infoCodes []adbc
 	// No error, go get the SqlInfo from the server
 	for i, endpoint := range info.Endpoint {
 		var header, trailer metadata.MD
-		rdr, err := doGetWithLogger(ctx, c.cl, endpoint, c.clientCache, c.Logger, grpc.Header(&header), grpc.Trailer(&trailer), c.timeouts)
+		rdr, err := doGetWithTracing(ctx, c.cl, endpoint, c.clientCache, c, grpc.Header(&header), grpc.Trailer(&trailer), c.timeouts)
 		if err != nil {
 			return adbcFromFlightStatusWithDetails(err, header, trailer, "GetInfo(DoGet): endpoint %d: %s", i, endpoint.Location)
 		}
@@ -769,7 +784,7 @@ func (c *connectionImpl) readInfo(ctx context.Context, expectedSchema *arrow.Sch
 		info:        info,
 		clientCache: c.clientCache,
 		bufferSize:  5,
-		logger:      c.Logger,
+		tracing:     c,
 	}, opts...)
 	if err != nil {
 		return nil, adbcFromFlightStatus(err, "DoGet")
@@ -967,7 +982,7 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 
 	header = metadata.MD{}
 	trailer = metadata.MD{}
-	rdr, err := doGetWithLogger(ctx, c.cl, info.Endpoint[0], c.clientCache, c.Logger, c.timeouts, grpc.Header(&header), grpc.Trailer(&trailer))
+	rdr, err := doGetWithTracing(ctx, c.cl, info.Endpoint[0], c.clientCache, c, c.timeouts, grpc.Header(&header), grpc.Trailer(&trailer))
 	if err != nil {
 		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetTableSchema(DoGet)")
 	}
@@ -1043,7 +1058,7 @@ func (c *connectionImpl) GetTableTypes(ctx context.Context) (array.RecordReader,
 		info:        info,
 		clientCache: c.clientCache,
 		bufferSize:  5,
-		logger:      c.Logger,
+		tracing:     c,
 	})
 }
 
@@ -1096,21 +1111,15 @@ func (c *connectionImpl) Rollback(ctx context.Context) error {
 // NewStatement initializes a new statement object tied to this connection
 func (c *connectionImpl) NewStatement() (adbc.Statement, error) {
 	id := newRandomID("stmt")
-	// Build a statement-scoped logger so every record emitted for this
-	// statement carries both connection_id (inherited from c.Logger via the
-	// With() called in databaseImpl.Open) and statement_id. The discard
-	// fallback in safeLogger keeps callers free of nil-checks if no logger
-	// is wired up by the host.
-	log := safeLogger(c.Logger).With("statement_id", id)
 	return &statement{
-		alloc:       c.db.Alloc,
-		clientCache: c.clientCache,
-		hdrs:        c.hdrs.Copy(),
-		queueSize:   5,
-		timeouts:    c.timeouts,
-		cnxn:        c,
-		id:          id,
-		log:         log,
+		StatementImplBase: driverbase.NewStatementImplBase(c.Base(), c.ErrorHelper),
+		alloc:             c.db.Alloc,
+		clientCache:       c.clientCache,
+		hdrs:              c.hdrs.Copy(),
+		queueSize:         5,
+		timeouts:          c.timeouts,
+		cnxn:              c,
+		id:                id,
 	}, nil
 }
 
@@ -1195,28 +1204,34 @@ func (c *connectionImpl) prepareSubstrait(ctx context.Context, plan flightsql.Su
 }
 
 // Close closes this connection and releases any associated resources.
-func (c *connectionImpl) Close() error {
+func (c *connectionImpl) Close() (err error) {
+	args := []attribute.KeyValue{
+		attribute.String("connection_id", c.id),
+	}
+	ctx, span := internal.StartSpan(context.Background(), "connectionImpl.Close", c)
+	defer func() {
+		span.SetAttributes(args...)
+		internal.EndSpan(span, err)
+	}()
 	if c.cl == nil {
-		return adbc.Error{
+		err = adbc.Error{
 			Msg:  "[Flight SQL Connection] trying to close already closed connection",
 			Code: adbc.StatusInvalidState,
 		}
+		return err
 	}
 
-	closeStart := time.Now()
 	// Snapshot fields before tearing down c.cl; log "closing" and
 	// "closed" separately so a hung CloseSession is still visible.
-	logger := safeLogger(c.Logger)
-	connID := c.id
-	openedAt := c.openedAt
 
-	logger.Info("FlightSQL connection closing",
-		"connection_id", connID,
-	)
+	connectionID := c.id
+	span.AddEvent("closing", trace.WithAttributes(
+		attribute.String("connection_id", connectionID),
+	))
 
-	ctx := metadata.NewOutgoingContext(context.Background(), c.hdrs)
+	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
 	var header, trailer metadata.MD
-	_, err := c.cl.CloseSession(ctx, &flight.CloseSessionRequest{}, grpc.Header(&header), grpc.Trailer(&trailer), c.timeouts)
+	_, err = c.cl.CloseSession(ctx, &flight.CloseSessionRequest{}, grpc.Header(&header), grpc.Trailer(&trailer), c.timeouts)
 	if err != nil {
 		grpcStatus := grpcstatus.Convert(err)
 		// Ignore unimplemented
@@ -1231,22 +1246,17 @@ func (c *connectionImpl) Close() error {
 	err = c.cl.Close()
 	c.cl = nil
 
-	args := []any{
-		"connection_id", connID,
-		"close_duration", time.Since(closeStart),
-	}
-	if !openedAt.IsZero() {
-		args = append(args, "lifetime", time.Since(openedAt))
-	}
-	if err != nil {
-		args = append(args, "err", err)
-		args = append(args, grpcStatusAttrs(err)...)
-		logger.Info("FlightSQL connection closed with error", args...)
-	} else {
-		logger.Info("FlightSQL connection closed", args...)
-	}
+	span.AddEvent("closed", trace.WithAttributes(
+		attribute.String("connection_id", connectionID),
+	))
 
-	return adbcFromFlightStatus(err, "Close")
+	if !c.openedAt.IsZero() {
+		args = append(args, attribute.Float64("lifetime_seconds", time.Since(c.openedAt).Seconds()))
+	}
+	args = append(args, grpcStatusAttrs(err)...)
+
+	err = adbcFromFlightStatus(err, "Close")
+	return err
 }
 
 // ReadPartition constructs a statement for a partition of a query. The
@@ -1271,7 +1281,7 @@ func (c *connectionImpl) ReadPartition(ctx context.Context, serializedPartition 
 	}
 
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
-	rdr, err = doGetWithLogger(ctx, c.cl, info.Endpoint[0], c.clientCache, c.Logger, c.timeouts)
+	rdr, err = doGetWithTracing(ctx, c.cl, info.Endpoint[0], c.clientCache, c, c.timeouts)
 	if err != nil {
 		return nil, adbcFromFlightStatus(err, "ReadPartition(DoGet)")
 	}

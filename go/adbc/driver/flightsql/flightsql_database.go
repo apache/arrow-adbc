@@ -30,11 +30,14 @@ import (
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/flight"
 	"github.com/apache/arrow-go/v18/arrow/flight/flightsql"
 	"github.com/bluele/gcache"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
@@ -376,11 +379,18 @@ func (d *databaseImpl) Close() error {
 	return nil
 }
 
-func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddle *bearerAuthMiddleware, cookies flight.CookieMiddleware) (*flightsql.Client, error) {
+func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddle *bearerAuthMiddleware, cookies flight.CookieMiddleware) (client *flightsql.Client, err error) {
+	var exitAttrs []attribute.KeyValue
+	var span trace.Span
+	ctx, span = internal.StartSpan(ctx, "flightsql_database.getFlightClient", d)
+	defer func() {
+		span.SetAttributes(exitAttrs...)
+		internal.EndSpan(span, err)
+	}()
 	middleware := []flight.ClientMiddleware{
 		{
-			Unary:  makeUnaryLoggingInterceptor(d.Logger),
-			Stream: makeStreamLoggingInterceptor(d.Logger),
+			Unary:  makeUnaryLoggingInterceptor(d),
+			Stream: makeStreamLoggingInterceptor(d),
 		},
 		flight.CreateClientMiddleware(authMiddle),
 		{
@@ -393,9 +403,11 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 		middleware = append(middleware, flight.CreateClientMiddleware(cookies))
 	}
 
-	uri, err := url.Parse(loc)
+	var uri *url.URL
+	uri, err = url.Parse(loc)
 	if err != nil {
-		return nil, adbc.Error{Msg: fmt.Sprintf("Invalid URI '%s': %s", loc, err), Code: adbc.StatusInvalidArgument}
+		err = adbc.Error{Msg: fmt.Sprintf("Invalid URI '%s': %s", loc, err), Code: adbc.StatusInvalidArgument}
+		return nil, err
 	}
 	creds := d.creds
 
@@ -417,7 +429,7 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 		dialOpts = append(dialOpts, grpc.WithPerRPCCredentials(d.oauthToken))
 	}
 
-	d.Logger.DebugContext(ctx, "new client", "location", loc)
+	span.AddEvent("new_client", trace.WithAttributes(attribute.String("location", loc)))
 	cl, err := flightsql.NewClient(target, nil, middleware, dialOpts...)
 	if err != nil {
 		return nil, adbc.Error{
@@ -429,38 +441,44 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 	cl.Alloc = d.Alloc
 	// Authorization header is already set, continue
 	if len(authMiddle.hdrs.Get("authorization")) > 0 {
-		d.Logger.DebugContext(ctx, "reusing auth token", "location", loc)
+		span.SetAttributes(attribute.Bool("reusing_auth_token", true))
 		return cl, nil
 	}
+	span.SetAttributes(attribute.Bool("reusing_auth_token", false))
 
 	var authValue string
 
 	if d.user != "" || d.pass != "" {
 		authStart := time.Now()
-		d.Logger.InfoContext(ctx, "FlightSQL basic auth started",
-			"target", loc,
-			"user", d.user,
-		)
+		span.AddEvent("basic_auth.start", trace.WithAttributes(
+			attribute.String("target", loc),
+			attribute.String("user", d.user),
+		))
 		var header, trailer metadata.MD
 		ctx, err = cl.Client.AuthenticateBasicToken(ctx, d.user, d.pass, grpc.Header(&header), grpc.Trailer(&trailer), d.timeout)
 		if err != nil {
-			args := []any{
-				"target", loc,
-				"user", d.user,
-				"duration", time.Since(authStart),
-				"err", err,
+			exitAttrs = []attribute.KeyValue{
+				attribute.String("target", loc),
+				attribute.String("user", d.user),
+				attribute.String("err", err.Error()),
 			}
-			args = append(args, correlationHeaderAttrs(header)...)
-			args = append(args, correlationHeaderAttrs(trailer)...)
-			args = append(args, grpcStatusAttrs(err)...)
-			d.Logger.InfoContext(ctx, "FlightSQL basic auth failed", args...)
-			return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "AuthenticateBasicToken")
+			exitAttrs = append(exitAttrs, correlationHeaderAttrs(header)...)
+			exitAttrs = append(exitAttrs, correlationHeaderAttrs(trailer)...)
+			exitAttrs = append(exitAttrs, grpcStatusAttrs(err)...)
+			err = adbcFromFlightStatusWithDetails(err, header, trailer, "AuthenticateBasicToken")
+			return nil, err
 		}
 
 		if md, ok := metadata.FromOutgoingContext(ctx); ok {
 			authValue = md.Get("Authorization")[0]
 		}
 
+		span.AddEvent("basic_auth.end", trace.WithAttributes(
+			attribute.String("target", loc),
+			attribute.String("user", d.user),
+			attribute.Float64("duration_seconds", time.Since(authStart).Seconds()),
+			attribute.Int("token_length", len(authValue)),
+		))
 		d.Logger.InfoContext(ctx, "FlightSQL basic auth succeeded",
 			"target", loc,
 			"user", d.user,
@@ -538,7 +556,7 @@ func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
 		const int32code = 3
 
 		for _, endpoint := range info.Endpoint {
-			rdr, err := doGetWithLogger(ctx, cl, endpoint, cache, d.Logger, d.timeout)
+			rdr, err := doGetWithTracing(ctx, cl, endpoint, cache, d, d.timeout)
 			if err != nil {
 				continue
 			}
