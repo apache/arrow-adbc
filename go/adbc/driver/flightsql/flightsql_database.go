@@ -30,6 +30,7 @@ import (
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/flight"
@@ -373,7 +374,7 @@ func (d *databaseImpl) Close() error {
 			"target", d.uri.String(),
 		)
 	}
-	return nil
+	return d.DatabaseImplBase.Close()
 }
 
 func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddle *bearerAuthMiddleware, cookies flight.CookieMiddleware) (*flightsql.Client, error) {
@@ -480,7 +481,11 @@ type support struct {
 	transactions bool
 }
 
-func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
+func (d *databaseImpl) Open(ctx context.Context) (_ adbc.Connection, err error) {
+	ctx, span := internal.StartSpan(ctx, "FlightSQLDatabase.Open", d)
+	// TODO(apache/arrow-adbc#4494): replace with a shared telemetry helper.
+	defer func() { internal.EndSpan(span, err) }()
+
 	authMiddle := &bearerAuthMiddleware{hdrs: d.hdrs.Copy(), logger: safeLogger(d.Logger)}
 	var cookies flight.CookieMiddleware
 	if d.enableCookies {

@@ -154,7 +154,8 @@ func (base *ConnectionImplBase) Rollback(context.Context) error {
 
 func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (reader array.RecordReader, err error) {
 	_, span := internal.StartSpan(ctx, "ConnectionImplBase.GetInfo", base)
-	defer internal.EndSpan(span, err)
+	// TODO(apache/arrow-adbc#4494): replace with a shared telemetry helper.
+	defer func() { internal.EndSpan(span, err) }()
 
 	if len(infoCodes) == 0 {
 		infoCodes = base.DriverInfo.InfoSupportedCodes()
