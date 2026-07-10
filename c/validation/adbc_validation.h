@@ -163,8 +163,8 @@ class DriverQuirks {
   /// whose SQL dialect differs can override this and switch on \p query_id
   /// to substitute an equivalent query.
   virtual std::string RewriteSql(std::string_view query_id,
-                                 std::string_view default_sql) const {
-    return std::string(default_sql);
+                                 std::string default_sql) const {
+    return default_sql;
   }
 
   /// \brief For a given Arrow type of ingested data, what Arrow type
