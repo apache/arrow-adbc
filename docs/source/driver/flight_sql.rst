@@ -245,7 +245,18 @@ Environment variables
 
     When ``otlp`` is selected, the driver follows the standard
     OpenTelemetry OTLP environment configuration for endpoints,
-    headers, and related exporter settings.
+    headers, and related exporter settings. Common variables include:
+
+    - ``OTEL_EXPORTER_OTLP_ENDPOINT``
+    - ``OTEL_EXPORTER_OTLP_TRACES_ENDPOINT``
+    - ``OTEL_EXPORTER_OTLP_HEADERS``
+    - ``OTEL_EXPORTER_OTLP_TRACES_HEADERS``
+    - ``OTEL_EXPORTER_OTLP_PROTOCOL``
+    - ``OTEL_EXPORTER_OTLP_TRACES_PROTOCOL``
+
+    For the complete set of supported OTLP environment variables, see
+    the `OpenTelemetry exporter configuration documentation
+    <https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/>`_.
 
 There is no dedicated environment variable for the ``adbcfile`` output
 folder. Use ``adbc.telemetry.traces_folder_path`` to override the
