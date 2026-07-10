@@ -15,12 +15,19 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-=====================
-ADBC Client Libraries
-=====================
+================
+Client Libraries
+================
 
-ADBC client libraries let you connect to databases and execute queries from your language of choice.
-Because all ADBC drivers expose the same :doc:`standard C ABI <format/specification>`, a single client library can work with any driver regardless of what language the driver was written in.
+ADBC client libraries let you connect to databases and execute queries from your language or languages of choice.
+Because all ADBC :doc:`drivers <driver/index>` expose the same :doc:`standard C ABI <format/specification>`, a single client library can generally use drivers written any language using the same client API.
+
+The client libraries in a particular language always provide bindings to the ADBC API and most also offer a driver manager.
+
+Driver Managers
+===============
+
+...
 
 .. list-table::
    :header-rows: 1
@@ -29,19 +36,19 @@ Because all ADBC drivers expose the same :doc:`standard C ABI <format/specificat
      - Package
      - Documentation
    * - C/C++
-     - ``conda install libadbc-driver-manager``
+     - ``conda install adbc-driver-manager-cpp``
      - :doc:`cpp/index`
    * - C#/.NET
-     - NuGet: `Apache.Arrow.Adbc <https://www.nuget.org/packages/Apache.Arrow.Adbc>`__
+     - ``dotnet add package Apache.Arrow.Adbc``
      - :doc:`csharp/index`
    * - Go
      - ``go get github.com/apache/arrow-adbc/go/adbc``
      - `pkg.go.dev <https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc>`__
    * - Java
-     - Maven: ``org.apache.arrow.adbc:adbc-driver-manager``
+     - ``org.apache.arrow.adbc:adbc-driver-manager``
      - :doc:`java/index`
    * - JavaScript
-     - npm: ``@apache-arrow/adbc``
+     - ``npm install @apache-arrow/adbc-driver-manager``
      - :doc:`javascript/index`
    * - Python
      - ``pip install adbc_driver_manager``
@@ -49,8 +56,48 @@ Because all ADBC drivers expose the same :doc:`standard C ABI <format/specificat
    * - R
      - ``install.packages("adbcdrivermanager")``
      - :doc:`r/index`
+   * - Ruby
+     - ``gem install red-adbc``
+     - :doc:`ruby/index`
    * - Rust
      - ``cargo add adbc_core``
+     - :doc:`rust/index`
+
+Bindings
+========
+
+.. list-table::
+   :header-rows: 1
+
+   * - Language
+     - Package
+     - Documentation
+   * - C/C++
+     - Just vendor ``adbc.h``
+     - :doc:`cpp/index`
+   * - C#/.NET
+     - ``dotnet add package Apache.Arrow.Adbc``
+     - :doc:`csharp/index`
+   * - Go
+     - ``go get github.com/apache/arrow-adbc/go/adbc``
+     - `pkg.go.dev <https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc>`__
+   * - Java
+     - ``org.apache.arrow.adbc:adbc-core``
+     - :doc:`java/index`
+   * - JavaScript
+     - ``npm install @apache-arrow/adbc-driver-manager``
+     - :doc:`javascript/index`
+   * - Python
+     - ``pip install adbc_driver_manager``
+     - :doc:`python/index`
+   * - R
+     - ``install.packages("adbcdrivermanager")``
+     - :doc:`r/index`
+   * - Ruby
+     - ``gem install red-adbc``
+     - :doc:`ruby/index`
+   * - Rust
+     - ``cargo add adbc_driver_manager``
      - :doc:`rust/index`
 
 Using a Client Library

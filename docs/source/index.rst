@@ -46,196 +46,136 @@ make it more convenient to build analytical applications.
 
 .. _Substrait: https://substrait.io/
 
-.. grid:: 1
+.. grid:: 1 2 3 4
    :margin: 4 4 0 0
-   :gutter: 1
+   :gutter: 2
 
    .. grid-item-card::
+      :columns: 12 4 4 4
 
-         Client Libraries
-         ^^^
+      Connect
+      ^^^^^^^
 
-         Connect to many commmon databases with your language of choice.
-         +++
+      Connect to many different databases with ADBC using your language(s) of choice.
 
-         .. button-ref:: cpp/quickstart
-            :ref-type: doc
-            :color: info
+      +++
 
-            Overview
-
-         .. button-ref:: cpp/quickstart
+      .. button-ref:: client_libraries
             :ref-type: doc
             :color: secondary
-            :class: adbc-inline-btn
+            :expand:
 
-            C/C++
+            Client Libraries
 
-         .. button-ref:: csharp/quickstart
+      .. button-ref:: driver/index
             :ref-type: doc
             :color: secondary
-            :class: adbc-inline-btn
-
-            C#/.NET
-
-         .. button-link:: https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc
-            :color: secondary
-            :class: adbc-inline-btn
-
-            Go
-
-         .. button-ref:: java/quickstart
-            :ref-type: doc
-            :color: secondary
-            :class: adbc-inline-btn
-
-            Java
-
-         .. button-ref:: javascript/index
-            :ref-type: doc
-            :color: secondary
-            :class: adbc-inline-btn
-
-            JavaScript
-
-         .. button-ref:: python/quickstart
-            :ref-type: doc
-            :color: secondary
-            :class: adbc-inline-btn
-
-            Python
-
-         .. button-ref:: r/index
-            :ref-type: doc
-            :color: secondary
-            :class: adbc-inline-btn
-
-            R
-
-         .. button-ref:: rust/quickstart
-            :ref-type: doc
-            :color: secondary
-            :class: adbc-inline-btn
-
-            Rust
-
-   .. grid-item-card::
-
-         Drivers
-         ^^^
-
-         Learn more about which databases you can connect to with ADBC.
-         +++
-
-         .. button-ref:: driver/index
-            :ref-type: doc
-            :color: info
+            :expand:
 
             Drivers
 
-   .. grid-item-card::
-
-         Driver SDKs
-         ^^^
-
-         Build drivers in your language of choice, usable by client libraries in any language.
-         +++
-
-         .. button-ref:: cpp/quickstart
-            :ref-type: doc
-            :color: info
-
-            Overview
-
-         .. button-ref:: cpp/quickstart
+      .. button-ref:: integrations
             :ref-type: doc
             :color: secondary
-            :class: adbc-inline-btn
+            :expand:
 
-            C/C++
+            Integrations
 
-         .. button-ref:: csharp/quickstart
+      .. button-ref:: connection_profiles
             :ref-type: doc
             :color: secondary
-            :class: adbc-inline-btn
+            :expand:
 
-            C#/.NET
-
-         .. button-link:: https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc
-            :color: secondary
-            :class: adbc-inline-btn
-
-            Go
-
-         .. button-ref:: rust/quickstart
-            :ref-type: doc
-            :color: secondary
-            :class: adbc-inline-btn
-
-            Rust
+            Connection Profiles
 
    .. grid-item-card::
+      :columns: 12 4 4 4
 
-         Specification
-         ^^^
+      Build
+      ^^^^^
 
-         Learn about the underlying API specification.
+      Learn how ADBC drivers are built and learn how to build your own.
 
-         +++
+      +++
 
-         .. button-link:: https://arrow.apache.org/blog/2023/01/05/introducing-arrow-adbc/
-            :color: secondary
-            :class: adbc-inline-btn
-
-            Introducing ADBC :octicon:`cross-reference`
-
-         .. button-ref:: format/specification
+      .. button-ref:: driver/sdk
             :ref-type: doc
             :color: secondary
-            :class: adbc-inline-btn
+            :expand:
 
-            Specification
+            Driver SDKs
 
-         .. button-ref:: faq
+      .. button-ref:: driver/authoring
             :ref-type: doc
             :color: secondary
-            :class: adbc-inline-btn
+            :expand:
 
-            FAQ
+            Writing New Drivers
 
-         .. button-ref:: glossary
-            :ref-type: doc
-            :color: secondary
-            :class: adbc-inline-btn
+      .. button-ref:: format/specification
+         :ref-type: doc
+         :color: secondary
+         :expand:
 
-            Glossary
+         ADBC Specification
 
    .. grid-item-card::
+      :columns: 12 4 4 4
 
-         Development
-         ^^^
+      Learn
+      ^^^^^
 
-         Report bugs, ask questions, and contribute to Apache Arrow.
+      Learn more about ADBC.
 
-         +++
+      +++
 
-         .. button-link:: https://github.com/apache/arrow-adbc/issues
-            :color: secondary
-            :class: adbc-inline-btn
+      .. button-link:: https://arrow.apache.org/blog/2023/01/05/introducing-arrow-adbc/
+         :color: secondary
+         :expand:
 
-            :fab:`github` Issues/Questions
+         Introducing ADBC :octicon:`cross-reference`
 
-         .. button-link:: https://arrow.apache.org/community/
-            :color: secondary
-            :class: adbc-inline-btn
+      .. button-ref:: faq
+         :ref-type: doc
+         :color: secondary
+         :expand:
 
-            Mailing List :octicon:`cross-reference`
+         FAQ
 
-         .. button-link:: https://github.com/apache/arrow-adbc/blob/main/CONTRIBUTING.md
-            :color: secondary
-            :class: adbc-inline-btn
+      .. button-ref:: glossary
+         :ref-type: doc
+         :color: secondary
+         :expand:
 
-            Contributing :octicon:`cross-reference`
+         Glossary
+
+   .. grid-item-card::
+      :columns: 12 4 4 4
+
+      Development
+      ^^^^^^^^^^^
+
+      Report bugs, ask questions, and contribute to Apache Arrow.
+
+      +++
+
+      .. button-link:: https://github.com/apache/arrow-adbc/issues
+         :color: secondary
+         :expand:
+
+         :fab:`github` Issues/Questions
+
+      .. button-link:: https://arrow.apache.org/community/
+         :color: secondary
+         :expand:
+
+         Mailing List :octicon:`cross-reference`
+
+      .. button-link:: https://github.com/apache/arrow-adbc/blob/main/CONTRIBUTING.md
+         :color: secondary
+         :expand:
+
+         Contributing :octicon:`cross-reference`
 
 Why ADBC?
 =========
@@ -281,19 +221,12 @@ Why ADBC?
 
 .. toctree::
    :maxdepth: 1
-   :hidden:
-
-   faq
-   glossary
-   genindex
-
-.. toctree::
-   :maxdepth: 1
    :caption: Connect
    :hidden:
 
    Client Libraries <client_libraries>
    Drivers <driver/index>
+   Integrations <integrations>
    Connection Profiles <connection_profiles>
 
 .. toctree::
@@ -302,6 +235,7 @@ Why ADBC?
    :hidden:
 
    Driver SDKs <driver/sdk>
+   Driver Manifests <format/driver_manifests>
    driver/authoring
 
 .. toctree::
@@ -329,6 +263,7 @@ Why ADBC?
    JavaScript <javascript/index>
    Python <python/index>
    R <r/index>
+   Ruby <ruby/index>
    Rust <rust/index>
 
 .. toctree::
@@ -340,3 +275,12 @@ Why ADBC?
    development/nightly
    development/versioning
    development/releasing
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Resources
+   :hidden:
+
+   faq
+   glossary
+   genindex

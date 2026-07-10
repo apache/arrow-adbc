@@ -1,0 +1,14 @@
+- Make sure we don't create any 404s. For example, installation.rst needs to redirect or exist because GDAL (and probably others) link to it.
+- Mention Go database/sql
+
+
+From David
+
+- Installing Drivers should probably mention PyPI etc for completeness, not only dbc? (Perhaps with the caveat that only a few drivers and ecosystems have packages)
+- I'm not sure what the difference between "Driver Managers" and "Bindings" is supposed to be. Also do we want to mention things like the database/sql adapter?
+- I think Go and Rust are reasonable choices for sdk.rst. Also we should make it clear that Java doesn't enjoy the same portability as its peers
+- Do we actually need to list SDKs separately or can we just have it as part of writing drivers generally?
+- I wonder if we could do more for the landing page...at the least if we could hide the right sidebar that would be nice, but also there's 13 different links right away and I think that's overwhelming :sweat_smile:
+- Could client libraries and integrations be folded together?
+- Maybe we can ~mimic the dbc landing page for our page? (1), pick your ecosystem, (2), find a driver, (3), look at tutorials/usage info (and we can link the quickstarts repo as well as other docs pages, Postgres recipes, etc.)
+- The Contributing card can be moved to contributing.rst (which can link CONTRIBUTING.md, the issue tracker, mailing list)

@@ -19,13 +19,17 @@
 Drivers
 =======
 
-To connect to a database with ADBC, you need a :doc:`client library <..//client_libraries>` and a driver for your database.
-This page aims to cover what ADBC drivers are available and links to learn more about them.
+To connect to a database with ADBC, you need:
 
-Official Drivers
-================
+1. A :doc:`client library <../client_libraries>`
+2. A driver for each database you want to use
 
-The following drivers are developed inside the ADBC project and can be considered official:
+The ADBC project is primarily focused on developing the :doc:`ADBC standard <../format/specification>` and :doc:`client libraries <../client_libraries>` and not on building and distributing driver binaries. While some driver binaries are available directly from the project, many more driver binaries are available from :ref:`third parties<driver-index-third-party>`.
+
+Apache Drivers
+==============
+
+The following drivers are developed by the ADBC project.
 
 .. list-table::
    :header-rows: 1
@@ -84,21 +88,80 @@ The following drivers are developed inside the ADBC project and can be considere
      - Yes
 
 
+.. _driver-index-third-party:
+
 Third-Party Drivers
 ===================
 
 .. note::
-   Any projects linked in this section are not official Apache Software Foundation (ASF) projects and any software distributed by them should not be considered official products of the ASF.
+   Any projects linked in this section are not part of the Apache Software Foundation (ASF) and any software distributed by them should not be considered official products of the ASF.
 
 Many more drivers are available outside of this project from a variety of sources:
 
 - `DuckDB <https://arrow.apache.org/adbc/current/driver/duckdb.html>`__: ADBC support is built directly into DuckDB.
-- `ADBC Driver Foundry <https://github.com/adbc-drivers/>`__: Community-governed project focused on growing the ADBC ecosystem.
+- `ADBC Driver Foundry <https://docs.adbc-drivers.org/>`__: Community-governed project focused on growing the ADBC ecosystem.
 
 If you've developed a driver or are interested in developing one, we recommend reaching out to the `ADBC Driver Foundry <https://github.com/adbc-drivers/>`__.
 
 Installing Drivers
 ==================
+
+Apache Driver Packages
+----------------------
+
+Apache ADBC driver packages are available on the following platforms:
+
+- **PyPI** (Python): ``adbc-driver-flightsql``, ``adbc-driver-postgresql``, ``adbc-driver-sqlite``
+- **conda-forge** (Python): ``adbc-driver-flightsql``, ``adbc-driver-postgresql``, ``adbc-driver-sqlite``
+- **conda-forge** (C/C++ libraries): ``adbc-driver-flightsql-go``, ``adbc-driver-manager-cpp``, ``adbc-driver-postgresql-cpp``, ``adbc-driver-sqlite-cpp``
+- **CRAN** (R): ``adbcpostgresql``, ``adbcsqlite``
+- **R-multiverse** (R): ``adbcflightsql``
+- **Maven Central** (Java): ``org.apache.arrow.adbc:adbc-driver-flight-sql``, ``org.apache.arrow.adbc:adbc-driver-jdbc``
+- **APT/DNF** (C/C++): ``libadbc-driver-flightsql-dev``, ``libadbc-driver-postgresql-dev``, ``libadbc-driver-sqlite-dev``
+
+Or by driver:
+
+.. list-table::
+   :header-rows: 1
+
+   * - Driver
+     - Python (PyPI / conda-forge)
+     - R
+     - Java (Maven Central) [#pkg-groupid]_
+     - C/C++ (conda-forge)
+     - C/C++ (APT/DNF)
+   * - Apache Arrow Flight SQL
+     - ``adbc-driver-flightsql``
+     - ``adbcflightsql`` [#pkg-rmultiverse]_
+     - ``adbc-driver-flight-sql``
+     - ``adbc-driver-flightsql-go``
+     - ``libadbc-driver-flightsql-dev``
+   * - JDBC
+     - —
+     - —
+     - ``adbc-driver-jdbc``
+     - —
+     - —
+   * - PostgreSQL
+     - ``adbc-driver-postgresql``
+     - ``adbcpostgresql``
+     - —
+     - ``adbc-driver-postgresql-cpp``
+     - ``libadbc-driver-postgresql-dev``
+   * - SQLite
+     - ``adbc-driver-sqlite``
+     - ``adbcsqlite``
+     - —
+     - ``adbc-driver-sqlite-cpp``
+     - ``libadbc-driver-sqlite-dev``
+
+.. [#pkg-groupid] Group ID: ``org.apache.arrow.adbc``
+.. [#pkg-rmultiverse] Available from R-multiverse, not CRAN
+
+See the :doc:`installation` page for full details.
+
+Third-Party Packages
+--------------------
 
 .. note:: Columnar is not part of the Apache Software Foundation and dbc is not an official Apache Software Foundation project.
 
@@ -137,8 +200,8 @@ Driver Manager Loadable
 
 An :doc:`ADBC Driver Manager <..//format/how_manager>` dynamically loads a driver into an application at run-time and requires the driver to be built as a dynamic or shared library.
 
-Retired Official Drivers
-=========================
+Migrated Apache Drivers
+=======================
 
 A number of drivers were previously published from the ADBC project but have since been migrated to the `ADBC Driver Foundry <https://github.com/adbc-driverse>`__, where development continues. Packages on platforms such as PyPI and Conda Forge are still available but are not being updated.
 
