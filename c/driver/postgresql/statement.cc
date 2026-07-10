@@ -367,8 +367,11 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(const std::string& current_sch
                                                   const struct ArrowSchema& source_schema,
                                                   std::string* escaped_table,
                                                   std::string* escaped_field_list,
+                                                  PostgresType* copy_target_types,
+                                                  bool* has_copy_target_types,
                                                   struct AdbcError* error) {
   PGconn* conn = connection_->conn();
+  *has_copy_target_types = false;
 
   if (!ingest_.db_schema.empty() && ingest_.temporary) {
     InternalAdbcSetError(error, "[libpq] Cannot set both %s and %s",
@@ -452,6 +455,8 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(const std::string& current_sch
   }
   create += *escaped_table;
   create += " (";
+  std::vector<std::string> source_field_names;
+  source_field_names.reserve(source_schema.n_children);
 
   for (int64_t i = 0; i < source_schema.n_children; i++) {
     if (i > 0) {
@@ -468,6 +473,7 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(const std::string& current_sch
     }
     create += escaped;
     *escaped_field_list += escaped;
+    source_field_names.emplace_back(unescaped);
     PQfreemem(escaped);
 
     PostgresType pg_type;
@@ -480,6 +486,12 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(const std::string& current_sch
   }
 
   if (ingest_.mode == IngestMode::kAppend) {
+    AdbcStatusCode status = ResolveCopyTargetTypes(*escaped_table, source_field_names,
+                                                   copy_target_types, error);
+    if (status != ADBC_STATUS_OK) {
+      return status;
+    }
+    *has_copy_target_types = true;
     return ADBC_STATUS_OK;
   }
 
@@ -497,6 +509,57 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(const std::string& current_sch
     return code;
   }
   PQclear(result);
+  if (ingest_.mode == IngestMode::kCreateAppend) {
+    AdbcStatusCode status = ResolveCopyTargetTypes(*escaped_table, source_field_names,
+                                                   copy_target_types, error);
+    if (status != ADBC_STATUS_OK) {
+      return status;
+    }
+    *has_copy_target_types = true;
+  }
+  return ADBC_STATUS_OK;
+}
+
+AdbcStatusCode PostgresStatement::ResolveCopyTargetTypes(
+    const std::string& escaped_table, const std::vector<std::string>& source_field_names,
+    PostgresType* copy_target_types, struct AdbcError* error) {
+  PqResultHelper result_helper{connection_->conn(),
+                               "SELECT attr.attname, attr.atttypid "
+                               "FROM pg_catalog.pg_attribute AS attr "
+                               "WHERE attr.attrelid = $1::regclass::oid "
+                               "AND attr.attnum > 0 AND NOT attr.attisdropped"};
+  RAISE_STATUS(error, result_helper.Execute({escaped_table}));
+
+  std::vector<std::pair<std::string, uint32_t>> table_fields;
+  table_fields.reserve(result_helper.NumRows());
+  for (auto row : result_helper) {
+    table_fields.emplace_back(
+        row[0].data, static_cast<uint32_t>(std::strtol(row[1].data, /*str_end=*/nullptr,
+                                                       /*base=*/10)));
+  }
+
+  *copy_target_types = PostgresType(PostgresTypeId::kRecord);
+  for (const auto& field_name : source_field_names) {
+    auto it = std::find_if(table_fields.begin(), table_fields.end(),
+                           [&](const auto& item) { return item.first == field_name; });
+    if (it == table_fields.end()) {
+      InternalAdbcSetError(error,
+                           "[libpq] Column \"%s\" does not exist in target table %s",
+                           field_name.c_str(), escaped_table.c_str());
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+
+    PostgresType pg_type;
+    if (type_resolver_->FindWithDefault(it->second, &pg_type) != NANOARROW_OK) {
+      InternalAdbcSetError(error,
+                           "[libpq] Could not resolve PostgreSQL type oid %" PRIu32
+                           " for column \"%s\"",
+                           it->second, field_name.c_str());
+      return ADBC_STATUS_NOT_IMPLEMENTED;
+    }
+    copy_target_types->AppendChild(field_name, pg_type);
+  }
+
   return ADBC_STATUS_OK;
 }
 
@@ -674,11 +737,13 @@ AdbcStatusCode PostgresStatement::ExecuteIngest(struct ArrowArrayStream* stream,
   std::memset(&bind_, 0, sizeof(bind_));
   std::string escaped_table;
   std::string escaped_field_list;
+  PostgresType copy_target_types;
+  bool has_copy_target_types = false;
   RAISE_STATUS(error, bind_stream.Begin([&]() -> Status {
     struct AdbcError tmp_error = ADBC_ERROR_INIT;
-    AdbcStatusCode status_code =
-        CreateBulkTable(current_schema, bind_stream.bind_schema.value, &escaped_table,
-                        &escaped_field_list, &tmp_error);
+    AdbcStatusCode status_code = CreateBulkTable(
+        current_schema, bind_stream.bind_schema.value, &escaped_table,
+        &escaped_field_list, &copy_target_types, &has_copy_target_types, &tmp_error);
     return Status::FromAdbc(status_code, tmp_error);
   }));
 
@@ -697,9 +762,10 @@ AdbcStatusCode PostgresStatement::ExecuteIngest(struct ArrowArrayStream* stream,
   }
 
   PQclear(result);
-  RAISE_STATUS(error,
-               bind_stream.ExecuteCopy(connection_->conn(), *connection_->type_resolver(),
-                                       rows_affected));
+  RAISE_STATUS(
+      error, bind_stream.ExecuteCopy(connection_->conn(), *connection_->type_resolver(),
+                                     has_copy_target_types ? &copy_target_types : nullptr,
+                                     rows_affected));
   return ADBC_STATUS_OK;
 }
 

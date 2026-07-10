@@ -140,7 +140,12 @@ class PostgresStatement {
                                  const struct ArrowSchema& source_schema,
                                  std::string* escaped_table,
                                  std::string* escaped_field_list,
-                                 struct AdbcError* error);
+                                 PostgresType* copy_target_types,
+                                 bool* has_copy_target_types, struct AdbcError* error);
+  AdbcStatusCode ResolveCopyTargetTypes(
+      const std::string& escaped_table,
+      const std::vector<std::string>& source_field_names, PostgresType* copy_target_types,
+      struct AdbcError* error);
   AdbcStatusCode ExecuteIngest(struct ArrowArrayStream* stream, int64_t* rows_affected,
                                struct AdbcError* error);
   AdbcStatusCode ExecuteBind(struct ArrowArrayStream* stream, int64_t* rows_affected,

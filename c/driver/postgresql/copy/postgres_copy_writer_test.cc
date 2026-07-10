@@ -41,7 +41,7 @@ class PostgresCopyStreamWriteTester {
                       const PostgresTypeResolver& type_resolver,
                       struct ArrowError* error = nullptr) {
     NANOARROW_RETURN_NOT_OK(writer_.Init(schema));
-    NANOARROW_RETURN_NOT_OK(writer_.InitFieldWriters(type_resolver, error));
+    NANOARROW_RETURN_NOT_OK(writer_.InitFieldWriters(type_resolver, nullptr, error));
     NANOARROW_RETURN_NOT_OK(writer_.SetArray(array));
     return NANOARROW_OK;
   }
