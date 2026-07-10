@@ -192,6 +192,76 @@ The options used for creating the Flight RPC client can be customized.
 
     Python: :attr:`adbc_driver_flightsql.DatabaseOptions.WITH_COOKIE_MIDDLEWARE`
 
+OpenTelemetry Tracing
+---------------------
+
+The Go-based Flight SQL driver can emit OpenTelemetry traces for
+connection and statement activity.
+
+Tracing can be configured with database options or with environment
+variables.
+
+Database options
+~~~~~~~~~~~~~~~~
+
+``adbc.telemetry.traces_exporter``
+    Selects the traces exporter to use when the driver initializes its
+    tracer provider.
+
+    Supported values:
+
+    - ``none``: disable driver-managed trace exporting
+    - ``otlp``: export traces via OpenTelemetry OTLP exporters
+    - ``console``: write traces to standard output
+    - ``adbcfile``: write traces to rotated ``.jsonl`` files
+
+    When this option is set, it takes precedence over the
+    ``OTEL_TRACES_EXPORTER`` environment variable. If neither is set,
+    the driver falls back to the process-global OpenTelemetry tracer
+    provider.
+
+``adbc.telemetry.traces_folder_path``
+    Overrides the output folder used by the ``adbcfile`` exporter.
+    This option is ignored for other exporters.
+
+    If unset, the ``adbcfile`` exporter writes traces under the user's
+    configuration directory in:
+
+    - Windows: ``%APPDATA%\.adbc\traces``
+    - macOS: ``~/Library/Application Support/.adbc/traces``
+    - Linux: ``$XDG_CONFIG_HOME/.adbc/traces`` or ``~/.config/.adbc/traces``
+
+``adbc.telemetry.trace_parent``
+    Sets the W3C Trace Context ``traceparent`` value used as the parent
+    for spans started by the driver.
+
+Environment variables
+~~~~~~~~~~~~~~~~~~~~~
+
+``OTEL_TRACES_EXPORTER``
+    Selects the traces exporter when
+    ``adbc.telemetry.traces_exporter`` is not set. Supported values are
+    ``none``, ``otlp``, ``console``, and ``adbcfile``.
+
+    When ``otlp`` is selected, the driver follows the standard
+    OpenTelemetry OTLP environment configuration for endpoints,
+    headers, and related exporter settings.
+
+There is no dedicated environment variable for the ``adbcfile`` output
+folder. Use ``adbc.telemetry.traces_folder_path`` to override the
+default location.
+
+Structured Logging
+------------------
+
+The Go-based Flight SQL driver also supports structured client-side
+logging via:
+
+``ADBC_DRIVER_FLIGHTSQL_LOG_LEVEL``
+    Supported values are ``debug``, ``info``, ``warn``, and ``error``.
+
+The logging setting is independent from trace exporter configuration.
+
 Custom Call Headers
 -------------------
 
