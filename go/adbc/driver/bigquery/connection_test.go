@@ -22,6 +22,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -119,6 +120,41 @@ func TestCustomAccessTokenEndpoint(t *testing.T) {
 	}
 	if conn.accessTokenServerName != "" {
 		t.Errorf("Expected access token server name to be blank, but got %s", conn.accessTokenServerName)
+	}
+}
+
+// getAccessToken previously built its transport without a Proxy function,
+// silently bypassing HTTPS_PROXY/NO_PROXY (dbt-labs/dbt-core#14470). The
+// wiring is pinned structurally because http.ProxyFromEnvironment caches the
+// proxy environment on first use, which makes an in-process env-based
+// end-to-end check order-dependent on other tests.
+func TestTokenExchangeTransportUsesEnvProxy(t *testing.T) {
+	conn := &connectionImpl{accessTokenServerName: "example.com"}
+	tr := conn.newTokenExchangeTransport()
+	if tr.Proxy == nil {
+		t.Fatal("token-exchange transport must set Proxy so HTTPS_PROXY/NO_PROXY are honored")
+	}
+	got := reflect.ValueOf(tr.Proxy).Pointer()
+	want := reflect.ValueOf(http.ProxyFromEnvironment).Pointer()
+	if got != want {
+		t.Errorf("token-exchange transport Proxy must be http.ProxyFromEnvironment")
+	}
+	if tr.TLSClientConfig == nil || tr.TLSClientConfig.ServerName != "example.com" {
+		t.Errorf("token-exchange transport must preserve TLS ServerName, got %+v", tr.TLSClientConfig)
+	}
+}
+
+// A failing token-exchange request (e.g. an unreachable or misconfigured
+// proxy) must surface as an error to the caller, not kill the process.
+func TestGetAccessTokenReturnsErrorOnRequestFailure(t *testing.T) {
+	conn := &connectionImpl{
+		clientID:            "test-client-id",
+		clientSecret:        "test-client-secret",
+		refreshToken:        "test-refresh-token",
+		accessTokenEndpoint: "http://127.0.0.1:1",
+	}
+	if _, err := conn.getAccessToken(); err == nil {
+		t.Fatal("expected an error for an unreachable token endpoint")
 	}
 }
 
