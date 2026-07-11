@@ -1027,13 +1027,20 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
       NANOARROW_RETURN_NOT_OK(
           ArrowSchemaViewInit(&child_schema_view, schema->children[0], error));
       PostgresType child_type;
-      NANOARROW_RETURN_NOT_OK(PostgresType::FromSchema(type_resolver, schema->children[0],
-                                                       &child_type, error));
+      const PostgresType* target_child_type = nullptr;
+      if (target_type != nullptr && target_type->type_id() == PostgresTypeId::kArray &&
+          target_type->n_children() == 1) {
+        target_child_type = &target_type->child(0);
+        child_type = *target_child_type;
+      } else {
+        NANOARROW_RETURN_NOT_OK(PostgresType::FromSchema(
+            type_resolver, schema->children[0], &child_type, error));
+      }
 
       std::unique_ptr<PostgresCopyFieldWriter> child_writer;
-      NANOARROW_RETURN_NOT_OK(MakeCopyFieldWriter(schema->children[0],
-                                                  array_view->children[0], type_resolver,
-                                                  nullptr, &child_writer, error));
+      NANOARROW_RETURN_NOT_OK(
+          MakeCopyFieldWriter(schema->children[0], array_view->children[0], type_resolver,
+                              target_child_type, &child_writer, error));
 
       if (schema_view.type == NANOARROW_TYPE_FIXED_SIZE_LIST) {
         using T = PostgresCopyListFieldWriter<true>;

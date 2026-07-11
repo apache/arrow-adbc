@@ -1385,11 +1385,11 @@ TEST_F(PostgresStatementTest, SqlIngestAppendIntegerIntoNumeric) {
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
               IsOkStatus(&error));
 
-  ASSERT_THAT(
-      AdbcStatementSetSqlQuery(
-          &statement,
-          "SELECT amount::text FROM numeric_ingest ORDER BY amount NULLS FIRST", &error),
-      IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement,
+                                       "SELECT amount::text FROM numeric_ingest "
+                                       "ORDER BY numeric_ingest.amount NULLS FIRST",
+                                       &error),
+              IsOkStatus(&error));
 
   adbc_validation::StreamReader reader;
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
@@ -1401,6 +1401,60 @@ TEST_F(PostgresStatementTest, SqlIngestAppendIntegerIntoNumeric) {
   ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareArray<std::string>(
       reader.array_view->children[0],
       {std::nullopt, "-7.00", "1.00", "42.00", "9999.00"}));
+}
+
+TEST_F(PostgresStatementTest, SqlIngestAppendIntegerListIntoNumericArray) {
+  ASSERT_THAT(quirks()->DropTable(&connection, "numeric_array_ingest", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement,
+                  "CREATE TABLE numeric_array_ingest (amounts NUMERIC(20, 2)[])", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
+
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> batch;
+  struct ArrowError na_error;
+
+  ASSERT_EQ(adbc_validation::MakeSchema(
+                &schema.value,
+                {adbc_validation::SchemaField::Nested("amounts", NANOARROW_TYPE_LIST,
+                                                      {{"item", NANOARROW_TYPE_INT64}})}),
+            ADBC_STATUS_OK);
+  ASSERT_EQ(
+      adbc_validation::MakeBatch<std::vector<int64_t>>(
+          &schema.value, &batch.value, &na_error,
+          {std::vector<int64_t>{1, 42}, std::vector<int64_t>{-7, 9999}, std::nullopt}),
+      ADBC_STATUS_OK);
+
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                     "numeric_array_ingest", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
+                                     ADBC_INGEST_OPTION_MODE_APPEND, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &batch.value, &schema.value, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement,
+                  "SELECT amounts::text FROM numeric_array_ingest ORDER BY ctid", &error),
+              IsOkStatus(&error));
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                        &reader.rows_affected, &error),
+              IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NE(nullptr, reader.array->release);
+  ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareArray<std::string>(
+      reader.array_view->children[0], {"{1.00,42.00}", "{-7.00,9999.00}", std::nullopt}));
 }
 
 TEST_F(PostgresStatementTest, SqlIngestAppendIntegerBoundsIntoNumeric) {
