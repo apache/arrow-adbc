@@ -29,6 +29,7 @@ import (
 	"unsafe"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/flight"
@@ -530,6 +531,10 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 		}
 	}
 
+	ctx, span := internal.StartSpan(ctx, "FlightSQLStatement.ExecuteQuery", s.cnxn)
+	// TODO(apache/arrow-adbc#4494): replace with a shared telemetry helper.
+	defer func() { internal.EndSpan(span, err) }()
+
 	// Handle bulk ingest
 	if s.targetTable != "" {
 		nrec, err = s.executeIngest(ctx)
@@ -602,6 +607,10 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 		}
 	}
 
+	ctx, span := internal.StartSpan(ctx, "FlightSQLStatement.ExecuteUpdate", s.cnxn)
+	// TODO(apache/arrow-adbc#4494): replace with a shared telemetry helper.
+	defer func() { internal.EndSpan(span, err) }()
+
 	// Handle bulk ingest
 	if s.targetTable != "" {
 		return s.executeIngest(ctx)
@@ -647,7 +656,11 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 
 // Prepare turns this statement into a prepared statement to be executed
 // multiple times. This invalidates any prior result sets.
-func (s *statement) Prepare(ctx context.Context) error {
+func (s *statement) Prepare(ctx context.Context) (err error) {
+	ctx, span := internal.StartSpan(ctx, "FlightSQLStatement.Prepare", s.cnxn)
+	// TODO(apache/arrow-adbc#4494): replace with a shared telemetry helper.
+	defer func() { internal.EndSpan(span, err) }()
+
 	startTime := time.Now()
 	s.log.InfoContext(ctx, "FlightSQL Prepare start", s.queryAttrs()...)
 

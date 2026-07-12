@@ -44,14 +44,12 @@ main() {
   cargo publish --all-features -p adbc_core
   cargo publish --all-features -p adbc_ffi
   cargo publish --all-features -p adbc_driver_manager
-  cargo publish --all-features -p adbc_datafusion
   popd
 
   echo "Success! The released Cargo crates are available here:"
   echo "  https://crates.io/crates/adbc_core"
   echo "  https://crates.io/crates/adbc_driver_ffi"
   echo "  https://crates.io/crates/adbc_driver_manager"
-  echo "  https://crates.io/crates/adbc_datafusion"
 }
 
 main "$@"

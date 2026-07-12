@@ -118,6 +118,23 @@ class SqlServerIntegrationTest {
         assertThat(result.getReader().getVectorSchemaRoot().getVector(0).getObject(0)).isEqualTo(1);
       }
     }
+
+    // Also use the fluent API
+    var builder =
+        driver
+            .load()
+            .profile("myprofile")
+            .uri(URI)
+            .param(JniDriver.PARAM_PROFILE_SEARCH_PATH, tempDir.toAbsolutePath().toString());
+    try (final var db = builder.open();
+        final var conn = db.connect();
+        final var stmt = conn.createStatement()) {
+      stmt.setSqlQuery("SELECT 1");
+      try (var result = stmt.executeQuery()) {
+        assertThat(result.getReader().loadNextBatch()).isTrue();
+        assertThat(result.getReader().getVectorSchemaRoot().getVector(0).getObject(0)).isEqualTo(1);
+      }
+    }
   }
 
   @Test

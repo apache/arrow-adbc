@@ -20,6 +20,7 @@ package driverbase
 import (
 	"context"
 	"errors"
+	"io"
 	"log/slog"
 	"os"
 	"strings"
@@ -423,7 +424,24 @@ func newOtlpTraceExporters(ctx context.Context) ([]sdktrace.SpanExporter, error)
 	return []sdktrace.SpanExporter{grpcExporter, httpExporter}, nil
 }
 
-func newAdbcFileExporter(driverName, folderPath string) (*stdouttrace.Exporter, error) {
+type closableSpanExporter struct {
+	exporter sdktrace.SpanExporter
+	closer   io.Closer
+}
+
+func (e *closableSpanExporter) ExportSpans(ctx context.Context, spans []sdktrace.ReadOnlySpan) error {
+	return e.exporter.ExportSpans(ctx, spans)
+}
+
+func (e *closableSpanExporter) Shutdown(ctx context.Context) error {
+	err := e.exporter.Shutdown(ctx)
+	if e.closer != nil {
+		err = errors.Join(err, e.closer.Close())
+	}
+	return err
+}
+
+func newAdbcFileExporter(driverName, folderPath string) (sdktrace.SpanExporter, error) {
 	fullyQualifiedDriverName := strings.ToLower(driverNamespace + "." + driverName)
 	writerOpts := []rotatingFileWriterOption{WithLogNamePrefix(fullyQualifiedDriverName)}
 	if strings.TrimSpace(folderPath) != "" {
@@ -433,7 +451,12 @@ func newAdbcFileExporter(driverName, folderPath string) (*stdouttrace.Exporter, 
 	if err != nil {
 		return nil, err
 	}
-	return stdouttrace.New(stdouttrace.WithWriter(fileWriter))
+	exporter, err := stdouttrace.New(stdouttrace.WithWriter(fileWriter))
+	if err != nil {
+		_ = fileWriter.Close()
+		return nil, err
+	}
+	return &closableSpanExporter{exporter: exporter, closer: fileWriter}, nil
 }
 
 func newTracerProvider(exporters ...sdktrace.SpanExporter) (*sdktrace.TracerProvider, error) {

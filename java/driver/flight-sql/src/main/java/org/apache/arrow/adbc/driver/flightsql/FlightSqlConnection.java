@@ -239,7 +239,7 @@ public class FlightSqlConnection implements AdbcConnection {
       throw AdbcException.invalidArgument("[Flight SQL] Session option name must not be empty");
     }
     final Object raw =
-        FlightSqlSessionUtil.require(fetchSessionOptionsOrEmpty(), name)
+        FlightSqlSessionUtil.require(fetchSessionOptions(), name)
             .acceptVisitor(FlightSqlSessionUtil.TO_JAVA);
     if (raw == null) {
       throw new AdbcException(
@@ -313,7 +313,7 @@ public class FlightSqlConnection implements AdbcConnection {
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() throws AdbcException {
     try {
       client.closeSession(new CloseSessionRequest());
     } catch (FlightRuntimeException e) {
@@ -324,7 +324,11 @@ public class FlightSqlConnection implements AdbcConnection {
       try {
         clientCache.invalidateAll();
       } finally {
-        AutoCloseables.close(client, allocator);
+        try {
+          AutoCloseables.close(client, allocator);
+        } catch (Exception e) {
+          throw AdbcException.internal("[Flight SQL] Failed to close connection").withCause(e);
+        }
       }
     }
   }
@@ -332,6 +336,14 @@ public class FlightSqlConnection implements AdbcConnection {
   @Override
   public String toString() {
     return "FlightSqlConnection{" + "client=" + client + '}';
+  }
+
+  private Map<String, SessionOptionValue> fetchSessionOptions() throws AdbcException {
+    try {
+      return client.getSessionOptions(new GetSessionOptionsRequest()).getSessionOptions();
+    } catch (FlightRuntimeException e) {
+      throw FlightSqlDriverUtil.fromFlightException(e);
+    }
   }
 
   private Map<String, SessionOptionValue> fetchSessionOptionsOrEmpty() throws AdbcException {

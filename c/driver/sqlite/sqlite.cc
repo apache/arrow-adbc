@@ -43,6 +43,8 @@ namespace status = adbc::driver::status;
 namespace {
 constexpr std::string_view kDefaultUri =
     "file:adbc_driver_sqlite?mode=memory&cache=shared";
+constexpr std::string_view kUriWrapperPrefix = "sqlite://";
+constexpr std::string_view kSqliteUriPrefix = "file:";
 constexpr std::string_view kConnectionOptionEnableLoadExtension =
     "adbc.sqlite.load_extension.enabled";
 constexpr std::string_view kConnectionOptionLoadExtensionPath =
@@ -59,6 +61,14 @@ std::string_view GetColumnText(sqlite3_stmt* stmt, int index) {
       reinterpret_cast<const char*>(sqlite3_column_text(stmt, index)),
       static_cast<size_t>(sqlite3_column_bytes(stmt, index)),
   };
+}
+
+std::string NormalizeUriForOpen(std::string_view uri) {
+  if (uri.rfind(kUriWrapperPrefix, 0) == 0) {
+    return std::string(kSqliteUriPrefix) +
+           std::string(uri.substr(kUriWrapperPrefix.size()));
+  }
+  return std::string{uri};
 }
 
 class SqliteMutexGuard {
@@ -514,8 +524,9 @@ class SqliteDatabase : public driver::Database<SqliteDatabase> {
   [[maybe_unused]] constexpr static std::string_view kErrorPrefix = "[SQLite]";
 
   Result<sqlite3*> OpenConnection() {
+    std::string normalized_uri = NormalizeUriForOpen(uri_);
     sqlite3* conn;
-    int rc = sqlite3_open_v2(uri_.c_str(), &conn,
+    int rc = sqlite3_open_v2(normalized_uri.c_str(), &conn,
                              SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_URI,
                              /*zVfs=*/nullptr);
     if (rc != SQLITE_OK) {

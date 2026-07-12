@@ -58,7 +58,7 @@ jobs:
           - false
         include:
           - os: ubuntu-latest
-            minimal-versions: true # Test can be built with older arrow except adbc_datafusion
+            minimal-versions: true # Test can be built with older arrow
           - os: windows-latest
             minimal-versions: true # Test can be built with older windows specific deps
     name: Rust ${{ matrix.os }} ${{ matrix.minimal-versions && '(minimal versions for adbc_core)' || '' }}
@@ -67,7 +67,7 @@ jobs:
       CARGO_INCREMENTAL: 0
       RUSTFLAGS: "-Adead_code" # TODO(alexandreyc): remove this line when implementation is complete
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -76,12 +76,6 @@ jobs:
         working-directory: rust
         run: |
           rustup toolchain install nightly
-          # adbc_datafusion is excluded from minimal versions testing (see the
-          # --exclude flags below), but its arrow requirement (driven by
-          # datafusion's) would still constrain the workspace-wide resolution.
-          # Drop it from the workspace before generating the lockfile so the
-          # workspace's own minimal arrow version is used.
-          sed -i '/^\[workspace\]$/a exclude = ["driver/datafusion"]' Cargo.toml
           CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback cargo +nightly generate-lockfile -Z direct-minimal-versions
       - name: Use stable Rust
         id: rust
@@ -91,7 +85,7 @@ jobs:
       - name: Get required Go version
         run: |
           (. ./.env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -187,22 +181,18 @@ jobs:
         working-directory: rust
         run: >
           cargo test --all-targets --workspace
-          ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
       - name: Test (All Features)
         working-directory: rust
         run: >
           cargo test --all-targets --all-features --workspace
-          ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
       - name: Doctests
         working-directory: rust
         run: >
           cargo test --doc --all-features --workspace
-          ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
       - name: Check docs
         working-directory: rust
         run: >
           cargo doc --all-features --workspace
-          ${{ matrix.minimal-versions && '--exclude adbc_datafusion' || '' }}
       - name: Install cargo-msrv
         if: matrix.os == 'ubuntu-latest'
         run: |
@@ -216,35 +206,12 @@ jobs:
           tar xz -f "${cargo_msrv_archive}" --wildcards --strip-components=1 -C "$HOME/.local/bin" "*/cargo-msrv"
           rm "${cargo_msrv_archive}"
 
-      - name: Verify MSRV (Minimum Supported Rust Version) except adbc_datafusion
+      - name: Verify MSRV (Minimum Supported Rust Version)
         if: matrix.os == 'ubuntu-latest' && matrix.minimal-versions
         working-directory: rust
         run: |
-          # Verify MSRV for each package except adbc_datafusion which requires a newer Rust version
-          find . -mindepth 2 -name Cargo.toml -not -path "*/datafusion/*" | while read -r dir
+          find . -mindepth 2 -name Cargo.toml | while read -r dir
           do
             echo "Checking package '$dir'"
             cargo msrv verify --manifest-path "$dir" || exit 1
           done
-
-      - name: Verify MSRV (Minimum Supported Rust Version) of adbc_datafusion
-        if: matrix.os == 'ubuntu-latest' && ! matrix.minimal-versions
-        working-directory: rust
-        run: |
-          cargo msrv verify --manifest-path "./driver/datafusion/Cargo.toml" || exit 1
-
-      - name: Verify supports the latest arrow
-        if: matrix.os == 'ubuntu-latest' && ! matrix.minimal-versions
-        working-directory: rust
-        run: |
-          # Update arrow to the latest version in the lock file
-          cargo update \
-            -p arrow-array \
-            -p arrow-buffer \
-            -p arrow-schema \
-            -p arrow-select
-
-          # If the lock file was updated, run the tests except for adbc_datafusion
-          if ! git diff --quiet Cargo.lock; then
-            cargo test --all-targets --all-features --workspace --exclude adbc_datafusion
-          fi

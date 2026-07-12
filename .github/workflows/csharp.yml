@@ -19,6 +19,8 @@ name: C#
 
 on:
   push:
+    branches-ignore:
+      - 'dependabot/**'
     paths:
       - '.github/workflows/csharp.yml'
       - 'ci/scripts/csharp_*'
@@ -54,11 +56,11 @@ jobs:
         os: [ubuntu-latest, windows-2022, macos-15-intel, macos-latest]
     steps:
       - name: Install C#
-        uses: actions/setup-dotnet@9a946fdbd5fb07b82b2f5a4466058b876ab72bb2 # v5.3.0
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
         with:
           dotnet-version: ${{ matrix.dotnet }}
       - name: Checkout ADBC
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
           submodules: recursive
@@ -94,13 +96,13 @@ jobs:
             lib-name: Apache.Arrow.Adbc.TestFixture.Native.dylib
     steps:
       - name: Checkout ADBC
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
           submodules: recursive
           persist-credentials: false
       - name: Install .NET 10
-        uses: actions/setup-dotnet@9a946fdbd5fb07b82b2f5a4466058b876ab72bb2 # v5.3.0
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
         with:
           # NativeAOT requires net10. Using 10.0.x selects the latest
           # available SDK; preview tags may be needed until GA.

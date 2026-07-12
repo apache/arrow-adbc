@@ -21,7 +21,7 @@ go 1.25.0
 
 // Only require 1.25, but prefer 1.26 to build to pick up latest CVE fixes in
 // Go itself.
-toolchain go1.26.4
+toolchain go1.26.5
 
 require (
 	github.com/apache/arrow-go/v18 v18.6.0
@@ -38,10 +38,10 @@ require (
 	golang.org/x/exp v0.0.0-20260112195511-716be5621a96
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/sync v0.21.0
-	golang.org/x/tools v0.46.0
-	google.golang.org/grpc v1.81.1
+	golang.org/x/tools v0.47.0
+	google.golang.org/grpc v1.82.0
 	google.golang.org/protobuf v1.36.11
-	modernc.org/sqlite v1.52.0
+	modernc.org/sqlite v1.53.0
 )
 
 require (
@@ -76,7 +76,7 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260526163538-3dc84a4a5aaa // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
-	modernc.org/libc v1.72.3 // indirect
+	modernc.org/libc v1.73.4 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 )

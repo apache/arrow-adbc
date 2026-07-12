@@ -475,6 +475,9 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsPrimaryKey) {
   struct AdbcGetObjectsColumn* column = InternalAdbcGetObjectsDataGetColumnByName(
       *get_objects_data, "postgres", "public", "adbc_pkey_test", "id");
   ASSERT_NE(column, nullptr) << "could not find id column on adbc_pkey_test table";
+  auto xdbc_type_name =
+      std::string(column->xdbc_type_name.data, column->xdbc_type_name.size_bytes);
+  ASSERT_EQ(xdbc_type_name, "int4");
 
   ASSERT_EQ(table->n_table_constraints, 1)
       << "expected 1 constraint on adbc_pkey_test table, found: "
