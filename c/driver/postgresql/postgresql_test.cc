@@ -1802,12 +1802,22 @@ TEST_F(PostgresStatementTest, SqlIngestJsonb) {
                 IsOkStatus(&error));
     ASSERT_THAT(AdbcStatementBind(&statement, &batch.value, &schema.value, &error),
                 IsOkStatus(&error));
-    // TODO(https://github.com/apache/arrow-adbc/issues/3293): we need a
-    // different extension type for JSONB so the driver can know to generate
-    // the appropriate COPY representation
-    // (JSON-representation-version-prefixed JSON string).
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
-                IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+                IsOkStatus(&error));
+
+    ASSERT_THAT(AdbcStatementSetSqlQuery(
+                    &statement, "SELECT j::text FROM jsontable ORDER BY ctid", &error),
+                IsOkStatus(&error));
+
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_NE(nullptr, reader.array->release);
+    ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareArray<std::string>(
+        reader.array_view->children[0], {R"({"a": 1, "b": [1, 2, 3]})", std::nullopt}));
   }
 }
 

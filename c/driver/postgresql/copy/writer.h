@@ -818,6 +818,26 @@ class PostgresCopyBinaryFieldWriter : public PostgresCopyFieldWriter {
   }
 };
 
+class PostgresCopyJsonbFieldWriter : public PostgresCopyFieldWriter {
+ public:
+  ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
+    struct ArrowBufferView buffer_view = ArrowArrayViewGetBytesUnsafe(array_view_, index);
+    if (buffer_view.size_bytes >= (std::numeric_limits<int32_t>::max)()) {
+      ArrowErrorSet(error, "[libpq] JSON value at row %" PRId64 " is too large", index);
+      return EOVERFLOW;
+    }
+
+    const int32_t field_size_bytes = static_cast<int32_t>(buffer_view.size_bytes) + 1;
+    constexpr int8_t kJsonbVersion = 1;
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, field_size_bytes, error));
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int8_t>(buffer, kJsonbVersion, error));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowBufferAppend(buffer, buffer_view.data.as_uint8, buffer_view.size_bytes));
+
+    return ADBC_STATUS_OK;
+  }
+};
+
 class PostgresCopyBinaryDictFieldWriter : public PostgresCopyFieldWriter {
  public:
   ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
@@ -967,6 +987,25 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
     std::unique_ptr<PostgresCopyFieldWriter>* out, ArrowError* error) {
   struct ArrowSchemaView schema_view;
   NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema, error));
+
+  const bool is_arrow_json =
+      schema_view.extension_name.data != nullptr &&
+      std::string_view(schema_view.extension_name.data,
+                       schema_view.extension_name.size_bytes) == "arrow.json";
+  if (target_type != nullptr && target_type->type_id() == PostgresTypeId::kJsonb &&
+      is_arrow_json) {
+    switch (schema_view.type) {
+      case NANOARROW_TYPE_STRING:
+      case NANOARROW_TYPE_LARGE_STRING:
+      case NANOARROW_TYPE_STRING_VIEW: {
+        using T = PostgresCopyJsonbFieldWriter;
+        *out = T::Create<T>(array_view);
+        return NANOARROW_OK;
+      }
+      default:
+        break;
+    }
+  }
 
   if (target_type != nullptr && target_type->type_id() == PostgresTypeId::kNumeric) {
     switch (schema_view.type) {
