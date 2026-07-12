@@ -239,7 +239,7 @@ public class FlightSqlConnection implements AdbcConnection {
       throw AdbcException.invalidArgument("[Flight SQL] Session option name must not be empty");
     }
     final Object raw =
-        FlightSqlSessionUtil.require(fetchSessionOptions(), name)
+        FlightSqlSessionUtil.require(fetchSessionOptionsOrEmpty(), name)
             .acceptVisitor(FlightSqlSessionUtil.TO_JAVA);
     if (raw == null) {
       throw new AdbcException(
