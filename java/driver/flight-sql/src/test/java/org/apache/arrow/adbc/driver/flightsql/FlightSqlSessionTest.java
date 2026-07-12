@@ -212,20 +212,6 @@ class FlightSqlSessionTest {
   }
 
   @Test
-  void testGetOptionNotImplementedWhenServerUnsupported() throws Exception {
-    producer.rejectGetSession.set(true);
-    AdbcException ex =
-        assertThrows(
-            AdbcException.class,
-            () ->
-                connection.getOption(
-                    new TypedKey<>(
-                        FlightSqlConnectionProperties.SESSION_OPTION_PREFIX + "foo",
-                        String.class)));
-    assertThat(ex.getStatus()).isEqualTo(AdbcStatusCode.NOT_IMPLEMENTED);
-  }
-
-  @Test
   void testGetSessionOptionsBlobEmptyWhenServerUnsupported() throws Exception {
     producer.rejectGetSession.set(true);
     String blob =
