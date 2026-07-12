@@ -239,7 +239,7 @@ public class FlightSqlConnection implements AdbcConnection {
       throw AdbcException.invalidArgument("[Flight SQL] Session option name must not be empty");
     }
     final Object raw =
-        FlightSqlSessionUtil.require(fetchSessionOptions(), name)
+        FlightSqlSessionUtil.require(fetchSessionOptionsOrEmpty(), name)
             .acceptVisitor(FlightSqlSessionUtil.TO_JAVA);
     if (raw == null) {
       throw new AdbcException(
@@ -261,7 +261,7 @@ public class FlightSqlConnection implements AdbcConnection {
       throw AdbcException.invalidArgument(
           "[Flight SQL] null value not allowed for key: "
               + k
-              + " — use adbc.flight.sql.session.optionerase.<name> to erase an option");
+              + " - use adbc.flight.sql.session.optionerase.<name> to erase an option");
     }
 
     if (k.startsWith(FlightSqlConnectionProperties.SESSION_OPTION_ERASE_PREFIX)) {
@@ -332,14 +332,6 @@ public class FlightSqlConnection implements AdbcConnection {
   @Override
   public String toString() {
     return "FlightSqlConnection{" + "client=" + client + '}';
-  }
-
-  private Map<String, SessionOptionValue> fetchSessionOptions() throws AdbcException {
-    try {
-      return client.getSessionOptions(new GetSessionOptionsRequest()).getSessionOptions();
-    } catch (FlightRuntimeException e) {
-      throw FlightSqlDriverUtil.fromFlightException(e);
-    }
   }
 
   private Map<String, SessionOptionValue> fetchSessionOptionsOrEmpty() throws AdbcException {

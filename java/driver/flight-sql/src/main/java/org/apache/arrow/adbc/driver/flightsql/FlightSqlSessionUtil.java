@@ -89,12 +89,9 @@ final class FlightSqlSessionUtil {
     try {
       return MAPPER.readValue(json, String[].class);
     } catch (JsonProcessingException e) {
-      throw new AdbcException(
-          "[Flight SQL] Expected JSON array for string list option, got: " + json,
-          e,
-          AdbcStatusCode.INVALID_ARGUMENT,
-          null,
-          0);
+      throw AdbcException.invalidArgument(
+              "[Flight SQL] Expected JSON array for string list option, got: " + json)
+          .withCause(e);
     }
   }
 
