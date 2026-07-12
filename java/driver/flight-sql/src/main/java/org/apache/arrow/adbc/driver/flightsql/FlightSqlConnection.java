@@ -338,14 +338,6 @@ public class FlightSqlConnection implements AdbcConnection {
     return "FlightSqlConnection{" + "client=" + client + '}';
   }
 
-  private Map<String, SessionOptionValue> fetchSessionOptions() throws AdbcException {
-    try {
-      return client.getSessionOptions(new GetSessionOptionsRequest()).getSessionOptions();
-    } catch (FlightRuntimeException e) {
-      throw FlightSqlDriverUtil.fromFlightException(e);
-    }
-  }
-
   private Map<String, SessionOptionValue> fetchSessionOptionsOrEmpty() throws AdbcException {
     try {
       return client.getSessionOptions(new GetSessionOptionsRequest()).getSessionOptions();
