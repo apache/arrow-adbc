@@ -41,6 +41,19 @@ main() {
     local -r source_dir="${1}"
     local -r install_dir="${2}"
 
+    # Some R installations (e.g. conda-forge r-base < 4.6) have no C++20
+    # toolchain configured, failing CXX_STD = CXX20 packages with
+    # "C++20 standard requested but CXX20 is not defined".
+    if [[ -z "$(R CMD config CXX20 2>/dev/null || true)" ]]; then
+        export R_MAKEVARS_USER="$(mktemp)"
+        cat > "${R_MAKEVARS_USER}" <<EOF
+CXX20 = $(R CMD config CXX)
+CXX20STD = -std=gnu++20
+CXX20FLAGS = $(R CMD config CXXFLAGS)
+CXX20PICFLAGS = $(R CMD config CXXPICFLAGS)
+EOF
+    fi
+
     R_LIBS_USER="${install_dir}" R -e 'install.packages("nanoarrow", repos = "https://cloud.r-project.org/")' --vanilla
 
     if [[ "${BUILD_DRIVER_MANAGER}" -gt 0 ]]; then

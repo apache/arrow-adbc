@@ -25,6 +25,14 @@ export DH_OPTIONS
 
 export DEB_BUILD_MAINT_OPTIONS=reproducible=-timeless
 
+# Jammy's libstdc++6 runtime (GCC 12) lacks the GLIBCXX_3.4.31+ symbols
+# referenced by code built with g++-13 (required for C++20 <format>), so link
+# libstdc++ statically to keep the packages installable on stock jammy.
+VERSION_CODENAME := $(shell . /etc/os-release && echo $${VERSION_CODENAME})
+ifeq ($(VERSION_CODENAME),jammy)
+export DEB_LDFLAGS_MAINT_APPEND = -static-libstdc++
+endif
+
 %:
 	dh $@ --with gir
 

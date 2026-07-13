@@ -18,7 +18,7 @@
 ARG FROM=ubuntu:jammy
 FROM ${FROM}
 
-ENV IMAGE_VERSION=2026-01-27
+ENV IMAGE_VERSION=2026-07-13
 
 RUN \
   echo "debconf debconf/frontend select Noninteractive" | \
@@ -62,4 +62,17 @@ RUN \
     valac && \
   apt install -y -V -t $(lsb_release --codename --short)-backports ${quiet} \
     golang-1.21 && \
+  apt clean
+
+# Jammy ships at most GCC 12, but C++20 <format> needs GCC 13 or later.
+RUN \
+  quiet=$([ "${DEBUG}" = "yes" ] || echo "-qq") && \
+  apt update ${quiet} && \
+  apt install -y -V ${quiet} \
+    software-properties-common && \
+  add-apt-repository -y ppa:ubuntu-toolchain-r/test && \
+  apt install -y -V ${quiet} \
+    g++-13 && \
+  update-alternatives --install /usr/bin/cc cc /usr/bin/gcc-13 100 && \
+  update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++-13 100 && \
   apt clean
