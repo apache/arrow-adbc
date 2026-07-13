@@ -368,14 +368,16 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
 
  private:
 #if defined(__SIZEOF_INT128__)
+  __extension__ using UInt128 = unsigned __int128;
+
   ArrowErrorCode WriteDecimal128Fast(ArrowBuffer* buffer, struct ArrowDecimal* decimal,
                                      ArrowError* error) const {
     constexpr int kDecDigits = 4;
     constexpr int kMaxPgDigits = 48;
 
-    unsigned __int128 value =
-        (static_cast<unsigned __int128>(decimal->words[decimal->high_word_index]) << 64) |
-        static_cast<unsigned __int128>(decimal->words[decimal->low_word_index]);
+    UInt128 value =
+        (static_cast<UInt128>(decimal->words[decimal->high_word_index]) << 64) |
+        static_cast<UInt128>(decimal->words[decimal->low_word_index]);
 
     const int16_t sign = ArrowDecimalSign(decimal) > 0 ? kNumericPos : kNumericNeg;
     if (sign == kNumericNeg) {
@@ -478,8 +480,8 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
     return ADBC_STATUS_OK;
   }
 
-  static bool MultiplyPow10(unsigned __int128* value, int zeros) {
-    constexpr unsigned __int128 max_value = ~static_cast<unsigned __int128>(0);
+  static bool MultiplyPow10(UInt128* value, int zeros) {
+    constexpr UInt128 max_value = ~static_cast<UInt128>(0);
     for (int i = 0; i < zeros; i++) {
       if (*value > max_value / 10) {
         return false;
