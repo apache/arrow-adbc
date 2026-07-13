@@ -2338,7 +2338,10 @@ void StatementTest::TestSqlQueryInts() {
 
 void StatementTest::TestSqlQueryFloats() {
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
-  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT CAST(1.5 AS FLOAT)", &error),
+  std::string query =
+      quirks()->RewriteSql("StatementTest::TestSqlQueryFloats::cast-1.5-as-float",
+                           "SELECT CAST(1.5 AS FLOAT)");
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query.c_str(), &error),
               IsOkStatus(&error));
 
   {
@@ -2735,7 +2738,10 @@ void StatementTest::TestSqlSchemaFloats() {
   }
 
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
-  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT CAST(1.5 AS FLOAT)", &error),
+  std::string query =
+      quirks()->RewriteSql("StatementTest::TestSqlSchemaFloats::cast-1.5-as-float",
+                           "SELECT CAST(1.5 AS FLOAT)");
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query.c_str(), &error),
               IsOkStatus(&error));
 
   nanoarrow::UniqueSchema schema;
