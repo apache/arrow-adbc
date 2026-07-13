@@ -19,11 +19,14 @@
 /// directly using the Rust API (native) and through the exported driver via the
 /// driver manager (exported). That allows us to test that data correctly round-trip
 /// between C and Rust.
+use std::collections::HashSet;
 use std::ffi::CString;
 use std::ops::Deref;
 use std::sync::Arc;
 
-use arrow_array::ffi_stream::FFI_ArrowArrayStream;
+use arrow_array::cast::AsArray;
+use arrow_array::ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream};
+use arrow_array::types::UInt32Type;
 use arrow_array::{Array, Float64Array, Int64Array, RecordBatch, RecordBatchReader, StringArray};
 use arrow_schema::{DataType, Field, Schema};
 use arrow_select::concat::concat_batches;
@@ -365,7 +368,99 @@ fn test_connection_get_info() {
             .unwrap(),
     );
     assert_eq!(exported_info.schema(), *schemas::GET_INFO_SCHEMA.deref());
+    // The dummy driver recognizes `DriverName` but not `DriverAdbcVersion`, whose row is omitted.
+    assert_eq!(exported_info.num_rows(), 1);
     assert_eq!(exported_info, native_info);
+
+    let vendor_codes: HashSet<InfoCode> = [InfoCode::Other(adbc_dummy::VENDOR_INFO_CODE)].into();
+    let exported_info = concat_reader(
+        exported_connection
+            .get_info(Some(vendor_codes.clone()))
+            .unwrap(),
+    );
+    let native_info = concat_reader(native_connection.get_info(Some(vendor_codes)).unwrap());
+    assert_eq!(exported_info.num_rows(), 1);
+    assert_eq!(
+        exported_info
+            .column(0)
+            .as_primitive::<UInt32Type>()
+            .value(0),
+        adbc_dummy::VENDOR_INFO_CODE
+    );
+    assert_eq!(exported_info, native_info);
+}
+
+// Driven at the C ABI (unlike the other tests) to exercise the exporter's raw `u32` code
+// handling: codes without a dedicated `InfoCode` variant must reach the driver as
+// `InfoCode::Other` (so it can answer vendor-specific codes), and per the ADBC spec the driver
+// ignores requests for codes it doesn't recognize (the row is omitted) rather than failing the
+// call.
+#[test]
+fn test_connection_get_info_ignores_unrecognized_codes() {
+    let driver = DummyDriver::ffi_driver();
+    let mut error = FFI_AdbcError::default();
+    let err = &mut error as *mut FFI_AdbcError;
+
+    unsafe {
+        let mut database = FFI_AdbcDatabase::default();
+        assert_eq!(
+            driver.DatabaseNew.unwrap()(&mut database, err),
+            ADBC_STATUS_OK
+        );
+        assert_eq!(
+            driver.DatabaseInit.unwrap()(&mut database, err),
+            ADBC_STATUS_OK
+        );
+
+        let mut connection = FFI_AdbcConnection::default();
+        assert_eq!(
+            driver.ConnectionNew.unwrap()(&mut connection, err),
+            ADBC_STATUS_OK
+        );
+        assert_eq!(
+            driver.ConnectionInit.unwrap()(&mut connection, &mut database, err),
+            ADBC_STATUS_OK
+        );
+
+        let info_codes: [u32; 3] = [
+            Into::<u32>::into(&InfoCode::DriverName),
+            adbc_dummy::VENDOR_INFO_CODE,
+            u32::MAX,
+        ];
+        let mut stream = FFI_ArrowArrayStream::empty();
+        assert_eq!(
+            driver.ConnectionGetInfo.unwrap()(
+                &mut connection,
+                info_codes.as_ptr(),
+                info_codes.len(),
+                &mut stream,
+                err,
+            ),
+            ADBC_STATUS_OK,
+            "an unrecognized info code must be ignored, not fail the call"
+        );
+
+        let info = concat_reader(ArrowArrayStreamReader::try_new(stream).unwrap());
+        let returned_codes: HashSet<u32> = info
+            .column(0)
+            .as_primitive::<UInt32Type>()
+            .values()
+            .iter()
+            .copied()
+            .collect();
+        assert_eq!(
+            returned_codes,
+            [
+                Into::<u32>::into(&InfoCode::DriverName),
+                adbc_dummy::VENDOR_INFO_CODE
+            ]
+            .into(),
+            "the vendor-specific code must be answered and the unrecognized one omitted"
+        );
+
+        driver.ConnectionRelease.unwrap()(&mut connection, err);
+        driver.DatabaseRelease.unwrap()(&mut database, err);
+    }
 }
 
 #[test]
