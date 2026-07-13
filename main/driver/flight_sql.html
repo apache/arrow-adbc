@@ -742,6 +742,86 @@ is <code class="docutils literal notranslate"><span class="pre">false</span></co
 </dd>
 </dl>
 </section>
+<section id="opentelemetry-tracing">
+<h3>OpenTelemetry Tracing<a class="headerlink" href="#opentelemetry-tracing" title="Link to this heading">¶</a></h3>
+<p>The Go-based Flight SQL driver can emit OpenTelemetry traces for
+connection and statement activity.</p>
+<p>Tracing can be configured with database options or with environment
+variables.</p>
+<section id="database-options">
+<h4>Database options<a class="headerlink" href="#database-options" title="Link to this heading">¶</a></h4>
+<dl>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.telemetry.traces_exporter</span></code></dt><dd><p>Selects the traces exporter to use when the driver initializes its
+tracer provider.</p>
+<p>Supported values:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">none</span></code>: disable driver-managed trace exporting</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">otlp</span></code>: export traces via OpenTelemetry OTLP exporters</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">console</span></code>: write traces to standard output</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">adbcfile</span></code>: write traces to rotated <code class="docutils literal notranslate"><span class="pre">.jsonl</span></code> files</p></li>
+</ul>
+<p>When this option is set, it takes precedence over the
+<code class="docutils literal notranslate"><span class="pre">OTEL_TRACES_EXPORTER</span></code> environment variable. If neither is set,
+the driver falls back to the process-global OpenTelemetry tracer
+provider.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.telemetry.traces_folder_path</span></code></dt><dd><p>Overrides the output folder used by the <code class="docutils literal notranslate"><span class="pre">adbcfile</span></code> exporter.
+This option is ignored for other exporters.</p>
+<p>If unset, the <code class="docutils literal notranslate"><span class="pre">adbcfile</span></code> exporter writes traces under the user’s
+configuration directory in:</p>
+<ul class="simple">
+<li><p>Windows: <code class="docutils literal notranslate"><span class="pre">%APPDATA%\.adbc\traces</span></code></p></li>
+<li><p>macOS: <code class="docutils literal notranslate"><span class="pre">~/Library/Application</span> <span class="pre">Support/.adbc/traces</span></code></p></li>
+<li><p>Linux: <code class="docutils literal notranslate"><span class="pre">$XDG_CONFIG_HOME/.adbc/traces</span></code> or <code class="docutils literal notranslate"><span class="pre">~/.config/.adbc/traces</span></code></p></li>
+</ul>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>These default paths reflect the current implementation. See
+<a class="reference external" href="https://github.com/apache/arrow-adbc/issues/4501">issue #4501</a>
+for the planned config-path redesign.</p>
+</div>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">adbc.telemetry.trace_parent</span></code></dt><dd><p>Sets the W3C Trace Context <code class="docutils literal notranslate"><span class="pre">traceparent</span></code> value used as the parent
+for spans started by the driver.</p>
+</dd>
+</dl>
+</section>
+<section id="environment-variables">
+<h4>Environment variables<a class="headerlink" href="#environment-variables" title="Link to this heading">¶</a></h4>
+<dl>
+<dt><code class="docutils literal notranslate"><span class="pre">OTEL_TRACES_EXPORTER</span></code></dt><dd><p>Selects the traces exporter when
+<code class="docutils literal notranslate"><span class="pre">adbc.telemetry.traces_exporter</span></code> is not set. Supported values are
+<code class="docutils literal notranslate"><span class="pre">none</span></code>, <code class="docutils literal notranslate"><span class="pre">otlp</span></code>, <code class="docutils literal notranslate"><span class="pre">console</span></code>, and <code class="docutils literal notranslate"><span class="pre">adbcfile</span></code>.</p>
+<p>When <code class="docutils literal notranslate"><span class="pre">otlp</span></code> is selected, the driver follows the standard
+OpenTelemetry OTLP environment configuration for endpoints,
+headers, and related exporter settings. Common variables include:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">OTEL_EXPORTER_OTLP_ENDPOINT</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">OTEL_EXPORTER_OTLP_TRACES_ENDPOINT</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">OTEL_EXPORTER_OTLP_HEADERS</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">OTEL_EXPORTER_OTLP_TRACES_HEADERS</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">OTEL_EXPORTER_OTLP_PROTOCOL</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">OTEL_EXPORTER_OTLP_TRACES_PROTOCOL</span></code></p></li>
+</ul>
+<p>For the complete set of supported OTLP environment variables, see
+the <a class="reference external" href="https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/">OpenTelemetry exporter configuration documentation</a>.</p>
+</dd>
+</dl>
+<p>There is no dedicated environment variable for the <code class="docutils literal notranslate"><span class="pre">adbcfile</span></code> output
+folder. Use <code class="docutils literal notranslate"><span class="pre">adbc.telemetry.traces_folder_path</span></code> to override the
+default location.</p>
+</section>
+</section>
+<section id="structured-logging">
+<h3>Structured Logging<a class="headerlink" href="#structured-logging" title="Link to this heading">¶</a></h3>
+<p>The Go-based Flight SQL driver also supports structured client-side
+logging via:</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">ADBC_DRIVER_FLIGHTSQL_LOG_LEVEL</span></code></dt><dd><p>Supported values are <code class="docutils literal notranslate"><span class="pre">debug</span></code>, <code class="docutils literal notranslate"><span class="pre">info</span></code>, <code class="docutils literal notranslate"><span class="pre">warn</span></code>, and <code class="docutils literal notranslate"><span class="pre">error</span></code>.</p>
+</dd>
+</dl>
+<p>The logging setting is independent from trace exporter configuration.</p>
+</section>
 <section id="custom-call-headers">
 <h3>Custom Call Headers<a class="headerlink" href="#custom-call-headers" title="Link to this heading">¶</a></h3>
 <p>Custom HTTP headers can be attached to requests via options that apply
@@ -1014,6 +1094,12 @@ United States and other countries.
 <li><a class="reference internal" href="#authentication">Authentication</a></li>
 <li><a class="reference internal" href="#bulk-ingestion">Bulk Ingestion</a></li>
 <li><a class="reference internal" href="#client-options">Client Options</a></li>
+<li><a class="reference internal" href="#opentelemetry-tracing">OpenTelemetry Tracing</a><ul>
+<li><a class="reference internal" href="#database-options">Database options</a></li>
+<li><a class="reference internal" href="#environment-variables">Environment variables</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#structured-logging">Structured Logging</a></li>
 <li><a class="reference internal" href="#custom-call-headers">Custom Call Headers</a></li>
 <li><a class="reference internal" href="#oauth-2-0-options">OAuth 2.0 Options</a></li>
 <li><a class="reference internal" href="#distributed-result-sets">Distributed Result Sets</a></li>
