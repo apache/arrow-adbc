@@ -773,7 +773,10 @@ jobs:
           - os: macos-latest
             arch: arm64v8
     env:
-      MACOSX_DEPLOYMENT_TARGET: "10.15"
+      # std::format (via <format> in the C++ driver framework) instantiates
+      # libc++'s floating-point formatter, which calls std::to_chars, available
+      # in libc++ starting with macOS 13.3.
+      MACOSX_DEPLOYMENT_TARGET: "13.3"
       PYTHON: "/Library/Frameworks/Python.framework/Versions/3.14/bin/python3.14"
       # Where to install vcpkg
       VCPKG_ROOT: "${{ github.workspace }}/vcpkg"
