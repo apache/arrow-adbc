@@ -37,8 +37,8 @@
 #include <vector>
 
 #include <arrow-adbc/adbc.h>
-#include <format>
 #include <libpq-fe.h>
+#include <format>
 
 #include "database.h"
 #include "driver/common/utils.h"
