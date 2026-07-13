@@ -25,10 +25,9 @@ To statically link and use *multiple* drivers, the following limitations hold:
 
    - ``-DADBC_BUILD_STATIC=ON``
    - ``-DADBC_DEFINE_COMMON_ENTRYPOINTS=OFF``
-   - ``-DADBC_WITH_VENDORED_FMT=OFF``
    - ``-DADBC_WITH_VENDORED_NANOARROW=OFF``
 
-#. You must provide ``fmt`` and ``nanoarrow`` dependencies.  (This may be
+#. You must provide the ``nanoarrow`` dependency.  (This may be
    relaxed in the future.)
 #. You must explicitly link all the required transitive dependencies.  This
    is:

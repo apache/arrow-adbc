@@ -44,7 +44,6 @@ install_headers('include/adbc.h')
 install_headers('include/arrow-adbc/adbc.h', subdir: 'arrow-adbc')
 driver_dir = include_directories('driver')
 nanoarrow_dep = dependency('nanoarrow')
-fmt_dep = dependency('fmt')
 safe_math_dir = include_directories('vendor/portable-snippets/include')
 
 if get_option('tests').enabled()

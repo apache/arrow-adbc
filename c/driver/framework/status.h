@@ -27,7 +27,7 @@
 #include <vector>
 
 #if defined(ADBC_FRAMEWORK_USE_FMT)
-#include <fmt/core.h>
+#include <format>
 #endif
 
 #include <arrow-adbc/adbc.h>
@@ -331,7 +331,7 @@ namespace adbc::driver::status::fmt {
 #define STATUS_CTOR(NAME, CODE)                                                     \
   template <typename... Args>                                                       \
   static Status NAME(std::string_view format_string, Args&&... args) {              \
-    auto message = ::fmt::vformat(format_string, ::fmt::make_format_args(args...)); \
+    auto message = std::vformat(format_string, std::make_format_args(args...));     \
     return Status(ADBC_STATUS_##CODE, std::move(message));                          \
   }
 

@@ -30,7 +30,7 @@ adbc_postgres_driver_lib = library(
     ],
     include_directories: [include_dir, c_dir, safe_math_dir],
     link_with: [adbc_common_lib, adbc_framework_lib],
-    dependencies: [nanoarrow_dep, fmt_dep, libpq_dep],
+    dependencies: [nanoarrow_dep, libpq_dep],
 )
 
 pkg.generate(

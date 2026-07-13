@@ -25,7 +25,7 @@
 #include <arrow-adbc/adbc.h>
 #include <libpq-fe.h>
 
-#include <fmt/core.h>
+#include <format>
 
 #include "driver/framework/status.h"
 
@@ -73,7 +73,7 @@ AdbcStatusCode SetError(struct AdbcError* error, PGresult* result, const char* f
 
 template <typename... Args>
 Status MakeStatus(PGresult* result, const char* format_string, Args&&... args) {
-  auto message = ::fmt::vformat(format_string, ::fmt::make_format_args(args...));
+  auto message = std::vformat(format_string, std::make_format_args(args...));
 
   AdbcStatusCode code = ADBC_STATUS_IO;
   char sqlstate_out[5];

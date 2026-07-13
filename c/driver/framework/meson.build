@@ -20,6 +20,6 @@ adbc_framework_lib = library(
     sources: ['objects.cc', 'utility.cc'],
     include_directories: [include_dir, c_dir],
     link_with: [adbc_common_lib],
-    dependencies: [nanoarrow_dep, fmt_dep],
+    dependencies: [nanoarrow_dep],
     install: true,
 )
