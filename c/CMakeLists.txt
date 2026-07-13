@@ -37,7 +37,13 @@ if(NOT ADBC_DEFINE_COMMON_ENTRYPOINTS)
 endif()
 
 if(ADBC_WITH_VENDORED_FMT)
+  # Always build the vendored fmt as a static library, even when the rest of the
+  # build uses BUILD_SHARED_LIBS=ON (e.g. the distro %cmake macro in rpm packaging).
+  # This is necessary starting with fmt 11 which stopped hardcoding a static build.
+  set(_adbc_saved_build_shared_libs "${BUILD_SHARED_LIBS}")
+  set(BUILD_SHARED_LIBS OFF)
   add_subdirectory(vendor/fmt EXCLUDE_FROM_ALL)
+  set(BUILD_SHARED_LIBS "${_adbc_saved_build_shared_libs}")
   set_target_properties(fmt PROPERTIES POSITION_INDEPENDENT_CODE ON)
 else()
   find_package(fmt REQUIRED)

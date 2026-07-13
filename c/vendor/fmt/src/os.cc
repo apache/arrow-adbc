@@ -12,47 +12,51 @@
 
 #include "fmt/os.h"
 
-#include <climits>
+#ifndef FMT_MODULE
+#  include <climits>
 
-#if FMT_USE_FCNTL
-#  include <sys/stat.h>
-#  include <sys/types.h>
+#  if FMT_USE_FCNTL
+#    include <sys/stat.h>
+#    include <sys/types.h>
 
-#  ifdef _WRS_KERNEL    // VxWorks7 kernel
-#    include <ioLib.h>  // getpagesize
+#    ifdef _WRS_KERNEL    // VxWorks7 kernel
+#      include <ioLib.h>  // getpagesize
+#    endif
+
+#    ifndef _WIN32
+#      include <unistd.h>
+#    else
+#      ifndef WIN32_LEAN_AND_MEAN
+#        define WIN32_LEAN_AND_MEAN
+#      endif
+#      include <io.h>
+#    endif  // _WIN32
+#  endif    // FMT_USE_FCNTL
+
+#  ifdef _WIN32
+#    include <windows.h>
 #  endif
-
-#  ifndef _WIN32
-#    include <unistd.h>
-#  else
-#    ifndef WIN32_LEAN_AND_MEAN
-#      define WIN32_LEAN_AND_MEAN
-#    endif
-#    include <io.h>
-
-#    ifndef S_IRUSR
-#      define S_IRUSR _S_IREAD
-#    endif
-#    ifndef S_IWUSR
-#      define S_IWUSR _S_IWRITE
-#    endif
-#    ifndef S_IRGRP
-#      define S_IRGRP 0
-#    endif
-#    ifndef S_IWGRP
-#      define S_IWGRP 0
-#    endif
-#    ifndef S_IROTH
-#      define S_IROTH 0
-#    endif
-#    ifndef S_IWOTH
-#      define S_IWOTH 0
-#    endif
-#  endif  // _WIN32
-#endif    // FMT_USE_FCNTL
+#endif
 
 #ifdef _WIN32
-#  include <windows.h>
+#  ifndef S_IRUSR
+#    define S_IRUSR _S_IREAD
+#  endif
+#  ifndef S_IWUSR
+#    define S_IWUSR _S_IWRITE
+#  endif
+#  ifndef S_IRGRP
+#    define S_IRGRP 0
+#  endif
+#  ifndef S_IWGRP
+#    define S_IWGRP 0
+#  endif
+#  ifndef S_IROTH
+#    define S_IROTH 0
+#  endif
+#  ifndef S_IWOTH
+#    define S_IWOTH 0
+#  endif
 #endif
 
 namespace {
@@ -156,7 +160,7 @@ void detail::format_windows_error(detail::buffer<char>& out, int error_code,
 }
 
 void report_windows_error(int error_code, const char* message) noexcept {
-  report_error(detail::format_windows_error, error_code, message);
+  do_report_error(detail::format_windows_error, error_code, message);
 }
 #endif  // _WIN32
 
@@ -188,6 +192,8 @@ int buffered_file::descriptor() const {
 #    undef fileno
 #  endif
   int fd = FMT_POSIX_CALL(fileno(file_));
+#elif defined(_WIN32)
+  int fd = _fileno(file_);
 #else
   int fd = fileno(file_);
 #endif
@@ -368,30 +374,25 @@ long getpagesize() {
 }
 #  endif
 
-namespace detail {
-
-void file_buffer::grow(buffer<char>& buf, size_t) {
-  if (buf.size() == buf.capacity()) static_cast<file_buffer&>(buf).flush();
+void ostream::grow(buffer<char>& buf, size_t) {
+  if (buf.size() == buf.capacity()) static_cast<ostream&>(buf).flush();
 }
 
-file_buffer::file_buffer(cstring_view path, const ostream_params& params)
+ostream::ostream(cstring_view path, const detail::ostream_params& params)
     : buffer<char>(grow), file_(path, params.oflag) {
   set(new char[params.buffer_size], params.buffer_size);
 }
 
-file_buffer::file_buffer(file_buffer&& other)
+ostream::ostream(ostream&& other) noexcept
     : buffer<char>(grow, other.data(), other.size(), other.capacity()),
       file_(std::move(other.file_)) {
   other.clear();
   other.set(nullptr, 0);
 }
 
-file_buffer::~file_buffer() {
+ostream::~ostream() {
   flush();
   delete[] data();
 }
-}  // namespace detail
-
-ostream::~ostream() = default;
 #endif  // FMT_USE_FCNTL
 FMT_END_NAMESPACE

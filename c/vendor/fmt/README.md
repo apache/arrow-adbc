@@ -24,12 +24,12 @@ Try {fmt} in [Compiler Explorer](https://godbolt.org/z/8Mx1EW73v).
 
 # Features
 
-- Simple [format API](https://fmt.dev/latest/api.html) with positional
+- Simple [format API](https://fmt.dev/latest/api/) with positional
   arguments for localization
 - Implementation of [C++20
   std::format](https://en.cppreference.com/w/cpp/utility/format) and
   [C++23 std::print](https://en.cppreference.com/w/cpp/io/print)
-- [Format string syntax](https://fmt.dev/latest/syntax.html) similar
+- [Format string syntax](https://fmt.dev/latest/syntax/) similar
   to Python\'s
   [format](https://docs.python.org/3/library/stdtypes.html#str.format)
 - Fast IEEE 754 floating-point formatter with correct rounding,
@@ -37,17 +37,17 @@ Try {fmt} in [Compiler Explorer](https://godbolt.org/z/8Mx1EW73v).
   [Dragonbox](https://github.com/jk-jeon/dragonbox) algorithm
 - Portable Unicode support
 - Safe [printf
-  implementation](https://fmt.dev/latest/api.html#printf-formatting)
+  implementation](https://fmt.dev/latest/api/#printf-formatting)
   including the POSIX extension for positional arguments
 - Extensibility: [support for user-defined
-  types](https://fmt.dev/latest/api.html#formatting-user-defined-types)
+  types](https://fmt.dev/latest/api/#formatting-user-defined-types)
 - High performance: faster than common standard library
   implementations of `(s)printf`, iostreams, `to_string` and
   `to_chars`, see [Speed tests](#speed-tests) and [Converting a
   hundred million integers to strings per
   second](http://www.zverovich.net/2020/06/13/fast-int-to-string-revisited.html)
 - Small code size both in terms of source code with the minimum
-  configuration consisting of just three files, `core.h`, `format.h`
+  configuration consisting of just three files, `base.h`, `format.h`
   and `format-inl.h`, and compiled code; see [Compile time and code
   bloat](#compile-time-and-code-bloat)
 - Reliability: the library has an extensive set of
@@ -58,8 +58,8 @@ Try {fmt} in [Compiler Explorer](https://godbolt.org/z/8Mx1EW73v).
   buffer overflow errors
 - Ease of use: small self-contained code base, no external
   dependencies, permissive MIT
-  [license](https://github.com/fmtlib/fmt/blob/master/LICENSE.rst)
-- [Portability](https://fmt.dev/latest/index.html#portability) with
+  [license](https://github.com/fmtlib/fmt/blob/master/LICENSE)
+- [Portability](https://fmt.dev/latest/#portability) with
   consistent output across platforms and support for older compilers
 - Clean warning-free codebase even on high warning levels such as
   `-Wall -Wextra -pedantic`
@@ -74,7 +74,7 @@ See the [documentation](https://fmt.dev) for more details.
 **Print to stdout** ([run](https://godbolt.org/z/Tevcjh))
 
 ``` c++
-#include <fmt/core.h>
+#include <fmt/base.h>
 
 int main() {
   fmt::print("Hello, world!\n");
@@ -243,7 +243,7 @@ header-only library so it doesn\'t provide any linkage options.
 ## Running the tests
 
 Please refer to [Building the
-library](https://fmt.dev/latest/usage.html#building-the-library) for
+library](https://fmt.dev/latest/get-started/#building-from-source) for
 instructions on how to build the library and run the unit tests.
 
 Benchmarks reside in a separate repository,
@@ -265,8 +265,7 @@ or the bloat test:
 
 # Migrating code
 
-[clang-tidy](https://clang.llvm.org/extra/clang-tidy/) v17 (not yet
-released) provides the
+[clang-tidy](https://clang.llvm.org/extra/clang-tidy/) v18 provides the
 [modernize-use-std-print](https://clang.llvm.org/extra/clang-tidy/checks/modernize/use-std-print.html)
 check that is capable of converting occurrences of `printf` and
 `fprintf` to `fmt::print` if configured to do so. (By default it
@@ -292,13 +291,14 @@ converts to `std::print`.)
 - [ccache](https://ccache.dev/): a compiler cache
 - [ClickHouse](https://github.com/ClickHouse/ClickHouse): an
   analytical database management system
+- [ContextVision](https://www.contextvision.com/): medical imaging software
 - [Contour](https://github.com/contour-terminal/contour/): a modern
   terminal emulator
 - [CUAUV](https://cuauv.org/): Cornell University\'s autonomous
   underwater vehicle
 - [Drake](https://drake.mit.edu/): a planning, control, and analysis
   toolbox for nonlinear dynamical systems (MIT)
-- [Envoy](https://lyft.github.io/envoy/): C++ L7 proxy and
+- [Envoy](https://github.com/envoyproxy/envoy): C++ L7 proxy and
   communication bus (Lyft)
 - [FiveM](https://fivem.net/): a modification framework for GTA V
 - [fmtlog](https://github.com/MengRao/fmtlog): a performant
@@ -457,7 +457,7 @@ second](http://www.zverovich.net/2020/06/13/fast-int-to-string-revisited.html).
 
 # Documentation License
 
-The [Format String Syntax](https://fmt.dev/latest/syntax.html) section
+The [Format String Syntax](https://fmt.dev/latest/syntax/) section
 in the documentation is based on the one from Python [string module
 documentation](https://docs.python.org/3/library/string.html#module-string).
 For this reason, the documentation is distributed under the Python
