@@ -837,6 +837,8 @@ func (c *connectionImpl) authOptions(ctx context.Context) ([]option.ClientOption
 	return authOptions, nil
 }
 
+const bigQueryRESTPath = "bigquery/v2/"
+
 func (c *connectionImpl) newClient(ctx context.Context) error {
 	if c.catalog == "" {
 		return adbc.Error{
@@ -849,12 +851,20 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	// Storage Read is gRPC, not REST, and has no "bigquery/v2/" segment.
+	// REST api path is kept separate from authOptions so it isn't broken by the
+	// append below.
+	//
+	// NOTE: Interim until Storage Read gets its own endpoint handling parameter
+	// from foundry merge.
+	restOptions := append([]option.ClientOption{}, authOptions...)
 	if c.apiEndpoint != "" {
-		// Safe to append: the default endpoint is already assumed by the client, so this only adds a user-specified override.
-		authOptions = append(authOptions, option.WithEndpoint(c.apiEndpoint))
+		// WithEndpoint replaces the whole BasePath, default value and all.
+		restOptions = append(restOptions, option.WithEndpoint(c.apiEndpoint+bigQueryRESTPath))
 	}
 
-	storageReadClient, err := bigquery.NewClient(ctx, c.catalog, authOptions...)
+	storageReadClient, err := bigquery.NewClient(ctx, c.catalog, restOptions...)
 	if err != nil {
 		return err
 	}
@@ -872,7 +882,7 @@ func (c *connectionImpl) newClient(ctx context.Context) error {
 	// Create a second client without the Storage API enabled
 	// since the Storage API returns null values for pseudo columns, for example _PARTITIONDATE
 	// EnableStorageReadClient should not be invoked for this client
-	client, err := bigquery.NewClient(ctx, c.catalog, authOptions...)
+	client, err := bigquery.NewClient(ctx, c.catalog, restOptions...)
 	if err != nil {
 		return err
 	}
