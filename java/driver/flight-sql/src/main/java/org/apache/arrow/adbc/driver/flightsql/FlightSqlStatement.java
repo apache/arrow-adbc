@@ -170,7 +170,7 @@ public class FlightSqlStatement implements AdbcStatement {
         statement.setParameters(new NonOwningRoot(bindParams));
         client.executePreparedUpdate(statement);
       } finally {
-        statement.close();
+        statement.close(connectionOptions);
       }
     } catch (FlightRuntimeException e) {
       // XXX: FlightSqlClient.executeUpdate does some extra wrapping that we need to undo
@@ -313,7 +313,7 @@ public class FlightSqlStatement implements AdbcStatement {
     // TODO(https://github.com/apache/arrow/issues/39814): this is annotated wrongly upstream
     if (preparedStatement != null) {
       try {
-        AutoCloseables.close(preparedStatement);
+        preparedStatement.close(connectionOptions);
       } catch (Exception e) {
         throw AdbcException.internal("[Flight SQL] Could not close prepared statement")
             .withCause(e);
