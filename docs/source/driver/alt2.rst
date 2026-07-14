@@ -189,7 +189,6 @@ ADBC drivers come from several sources:
 - **Apache Software Foundation**: A few drivers (PostgreSQL, SQLite, Flight SQL) are maintained by the ASF for historical reasons
 - **ADBC Driver Foundry**: A community-governed project focused on growing the ADBC ecosystem (`docs <https://docs.adbc-drivers.org/>`__)
 - **Database Vendors**: Some databases like DuckDB and ClickHouse provide their own ADBC drivers
-- **Columnar**: A third-party vendor providing drivers for enterprise databases
 
 .. note:: Projects linked in this section are not part of the Apache Software Foundation. Columnar is not part of the Apache Software Foundation and `dbc` is not an official Apache Software Foundation project.
 
