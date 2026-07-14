@@ -21,6 +21,7 @@ Integrations
 
 TODO
 
+- Go database/sql
 - pandas
 - polars
 - dplyr

@@ -19,17 +19,14 @@
 Drivers
 =======
 
-To connect to a database with ADBC, you need:
-
-1. A :doc:`client library <../client_libraries>`
-2. A driver for each database you want to use
-
 The ADBC project is primarily focused on developing the :doc:`ADBC standard <../format/specification>` and :doc:`client libraries <../client_libraries>` and not on building and distributing driver binaries. While some driver binaries are available directly from the project, many more driver binaries are available from :ref:`third parties<driver-index-third-party>`.
+
+.. _driver-index-apache:
 
 Apache Drivers
 ==============
 
-The following drivers are developed by the ADBC project.
+The following drivers are developed and published by the ADBC project:
 
 .. list-table::
    :header-rows: 1
@@ -96,7 +93,7 @@ Third-Party Drivers
 .. note::
    Any projects linked in this section are not part of the Apache Software Foundation (ASF) and any software distributed by them should not be considered official products of the ASF.
 
-Many more drivers are available outside of this project from a variety of sources:
+The majority of ADBC drivers are available from various third parties:
 
 - `DuckDB <https://arrow.apache.org/adbc/current/driver/duckdb.html>`__: ADBC support is built directly into DuckDB.
 - `ADBC Driver Foundry <https://docs.adbc-drivers.org/>`__: Community-governed project focused on growing the ADBC ecosystem.

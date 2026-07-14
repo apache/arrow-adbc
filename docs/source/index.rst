@@ -40,11 +40,165 @@ Apache Arrow ADBC
          **Cross-language**, **Arrow-native** database access.
 
 ADBC is a set of APIs and libraries for Arrow-native access to databases.
-Execute SQL and Substrait_ queries, query database catalogs, and more, all
+Execute SQL queries, insert bulk data, query database catalogs, and more, all
 using Arrow data to eliminate unnecessary data copies, speed up access, and
 make it more convenient to build analytical applications.
 
+Getting Started
+---------------
+
+To connect to a database with ADBC, you need two things:
+
+.. card:: :octicon:`plug` Drivers
+
+   The majority of ADBC drivers are published by :ref:`third-parties <driver-index-third-party>` but :ref:`a few <driver-index-apache>` are available from the ADBC project for historical reasons.
+
+   **Third-Party Driver Vendors**
+
+   - `DuckDB <https://duckdb.org/docs/lts/clients/adbc>`_
+   - `ADBC Driver Foundry <https://adbc-drivers.org>`_
+
+   .. NOTE::
+      All first and third-party drivers are packaged by a third-party, `Columnar <https://columnar.tech>`_, and can be installed with their command line tool dbc_ by running ``dbc install <driver>``. Visit the `dbc docs <dbc_>`_ to see what drivers are available.
+
+   See :doc:`Drivers<driver/index>` for more information on drivers.
+
+.. _dbc: https://docs.columnar.tech/dbc
 .. _Substrait: https://substrait.io/
+
+
+.. card:: :octicon:`code` Client Libraries
+
+   You can connect to a database with ADBC using a growing set of programming languages:
+
+   .. tab-set::
+
+      .. tab-item:: Python
+
+         .. code-block:: bash
+
+            pip install adbc-driver-manager
+
+         See the :doc:`Python Quickstart <python/quickstart>` for usage instructions.
+
+      .. tab-item:: C/C++
+
+         See the :doc:`C/C++ Quickstart <cpp/quickstart>` for installation and usage instructions.
+
+      .. tab-item:: C#
+
+         .. code-block:: bash
+
+            dotnet add package Apache.Arrow.Adbc.Client
+
+         See the :doc:`C# Quickstart <csharp/quickstart>` for usage instructions.
+
+      .. tab-item:: Go
+
+         .. code-block:: bash
+
+            go get github.com/apache/arrow-adbc/go/adbc
+
+         See the `Go Documentation <https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc>`_ for usage instructions.
+
+      .. tab-item:: Java
+
+         .. code-block:: xml
+
+            <dependency>
+            <groupId>org.apache.arrow.adbc</groupId>
+            <artifactId>adbc-driver-manager</artifactId>
+            </dependency>
+
+         See the :doc:`Java Quickstart <java/quickstart>` for usage instructions.
+
+      .. tab-item:: JS
+
+         .. code-block:: bash
+
+            npm install @apache-arrow/adbc
+
+         See the :doc:`JavaScript Quickstart <javascript/quickstart>` for usage instructions.
+
+      .. tab-item:: R
+
+         .. code-block:: r
+
+            install.packages("adbcdrivermanager")
+
+         See the :doc:`R Quickstart <r/quickstart>` for usage instructions.
+
+      .. tab-item:: Ruby
+
+         .. code-block:: bash
+
+            bundle add adbc
+
+         See the :doc:`Ruby Quickstart <ruby/quickstart>` for usage instructions.
+
+      .. tab-item:: Rust
+
+         .. code-block:: bash
+
+            cargo add arrow-adbc
+
+         See the :doc:`Rust Quickstart <rust/quickstart>` for usage instructions.
+
+Why ADBC?
+=========
+
+.. grid:: 1 2 2 2
+   :margin: 4 4 0 0
+   :gutter: 1
+
+   .. grid-item-card:: Arrow-native
+      :link: https://arrow.apache.org/
+
+      Execute queries and get back results in Arrow format, eliminating extra
+      data copies for Arrow-native backends.
+
+      +++
+      Learn about Apache Arrow
+
+   .. grid-item-card:: Backend-agnostic
+      :link: driver/status
+      :link-type: doc
+
+      Connect to all kinds of databases, even ones that aren't Arrow-native.
+      ADBC drivers optimize conversion to/from Arrow where required, saving
+      work for developers.
+
+      +++
+      See Supported Drivers
+
+   .. grid-item-card:: Cross-language
+
+      Work in C/C++, C#, Go, Java, Python, R, Ruby, Rust, and more.
+
+   .. grid-item-card:: Full-featured
+
+      Execute SQL and Substrait, query database catalogs, inspect table
+      schemas, and more.  ADBC handles common tasks without having to pull in
+      another database client.
+
+   .. grid-item-card:: Language-native
+
+      Use language-native APIs that you're already familiar with, like DBAPI
+      in Python, ``database/sql`` in Go, or DBI in R.
+
+More
+====
+
+(TODO: Fill this in or rework section below)
+
+- Integrations
+- Building Drivers
+- Specification
+
+Old Content
+===========
+
+(TODO: Rework this)
 
 .. grid:: 1 2 3 4
    :margin: 4 4 0 0
@@ -176,48 +330,6 @@ make it more convenient to build analytical applications.
          :expand:
 
          Contributing :octicon:`cross-reference`
-
-Why ADBC?
-=========
-
-.. grid:: 1 2 2 2
-   :margin: 4 4 0 0
-   :gutter: 1
-
-   .. grid-item-card:: Arrow-native
-      :link: https://arrow.apache.org/
-
-      Execute queries and get back results in Arrow format, eliminating extra
-      data copies for Arrow-native backends.
-
-      +++
-      Learn about Apache Arrow
-
-   .. grid-item-card:: Backend-agnostic
-      :link: driver/status
-      :link-type: doc
-
-      Connect to all kinds of databases, even ones that aren't Arrow-native.
-      ADBC drivers optimize conversion to/from Arrow where required, saving
-      work for developers.
-
-      +++
-      See Supported Drivers
-
-   .. grid-item-card:: Cross-language
-
-      Work in C/C++, C#, Go, Java, Python, R, Ruby, Rust, and more.
-
-   .. grid-item-card:: Full-featured
-
-      Execute SQL and Substrait, query database catalogs, inspect table
-      schemas, and more.  ADBC handles common tasks without having to pull in
-      another database client.
-
-   .. grid-item-card:: Language-native
-
-      Use language-native APIs that you're already familiar with, like DBAPI
-      in Python, ``database/sql`` in Go, or DBI in R.
 
 .. toctree::
    :maxdepth: 1
