@@ -407,6 +407,30 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 	case "grpc+unix":
 		creds = insecure.NewCredentials()
 		target = "unix:" + uri.Path
+	case "flightsql":
+		transport := strings.ToLower(uri.Query().Get("transport"))
+		switch transport {
+		case "", "tls":
+			if uri.Path != "" {
+				return nil, adbc.Error{Msg: fmt.Sprintf("Invalid URI '%s': a socket path is only valid with transport=unix", loc), Code: adbc.StatusInvalidArgument}
+			}
+		case "tcp":
+			if uri.Path != "" {
+				return nil, adbc.Error{Msg: fmt.Sprintf("Invalid URI '%s': a socket path is only valid with transport=unix", loc), Code: adbc.StatusInvalidArgument}
+			}
+			creds = insecure.NewCredentials()
+		case "unix":
+			if uri.Host != "" {
+				return nil, adbc.Error{Msg: fmt.Sprintf("Invalid URI '%s': a host is not valid with transport=unix", loc), Code: adbc.StatusInvalidArgument}
+			}
+			if uri.Path == "" {
+				return nil, adbc.Error{Msg: fmt.Sprintf("Invalid URI '%s': transport=unix requires a socket path", loc), Code: adbc.StatusInvalidArgument}
+			}
+			creds = insecure.NewCredentials()
+			target = "unix:" + uri.Path
+		default:
+			return nil, adbc.Error{Msg: fmt.Sprintf("Invalid URI '%s': unrecognized transport '%s' (expected 'tls', 'tcp', or 'unix')", loc, transport), Code: adbc.StatusInvalidArgument}
+		}
 	}
 
 	dv, _ := d.DriverInfo.GetInfoForInfoCode(adbc.InfoDriverVersion)
