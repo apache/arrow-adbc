@@ -57,7 +57,7 @@ Driver Managers
      - ``install.packages("adbcdrivermanager")``
      - :doc:`r/index`
    * - Ruby
-     - ``gem install red-adbc``
+     - ``gem install red-adbc`` or ``bundle add red-adbc``
      - :doc:`ruby/index`
    * - Rust
      - ``cargo add adbc_core``
@@ -94,7 +94,7 @@ Bindings
      - ``install.packages("adbcdrivermanager")``
      - :doc:`r/index`
    * - Ruby
-     - ``gem install red-adbc``
+     - ``gem install red-adbc`` or ``bundle add red-adbc``
      - :doc:`ruby/index`
    * - Rust
      - ``cargo add adbc_driver_manager``

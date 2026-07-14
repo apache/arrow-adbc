@@ -19,7 +19,7 @@
 Quickstart
 ==========
 
-Here we'll briefly tour basic features of ADBC with the SQLite driver.
+Here we'll briefly tour basic features of ADBC with Python using the SQLite driver.
 
 Installation
 ============
@@ -181,3 +181,26 @@ We can get the Arrow schema of a table:
    >>> conn.adbc_get_table_schema("sample")
    ints: int64
    strs: string
+
+Installing Drivers
+==================
+
+You'll need to install an ADBC driver for the database you want to connect to. The easiest way is using `dbc <https://docs.columnar.tech/dbc>`_:
+
+.. code-block:: shell
+
+   # Install dbc
+   curl -fsSL https://dbc.sh | sh
+
+   # Install a driver (e.g., PostgreSQL)
+   dbc install postgresql
+
+You can also build drivers from source or use other installation methods. See the :doc:`driver documentation </driver/index>` for more details.
+
+Next Steps
+==========
+
+- Check out the :doc:`Python API documentation <index>` for more details
+- See the :doc:`driver status </driver/status>` to see which databases are supported
+- Explore more examples in the `adbc-quickstarts repository <https://github.com/columnar-tech/adbc-quickstarts/tree/main/python>`_
+- Explore the `Python source code <https://github.com/apache/arrow-adbc/tree/main/python>`_ for additional examples

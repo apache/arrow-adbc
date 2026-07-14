@@ -19,7 +19,7 @@
 Quickstart
 ==========
 
-Here we'll briefly tour basic features of ADBC with the PostgreSQL driver.
+Here we'll briefly tour basic features of ADBC with R using the PostgreSQL driver.
 
 Installation
 ============
@@ -96,7 +96,7 @@ You can use parameterized queries for safe SQL execution:
 Installing Drivers
 ==================
 
-For production use, you'll need to install an ADBC driver. The easiest way is using `dbc <https://docs.columnar.tech/dbc>`_:
+You'll need to install an ADBC driver for the database you want to connect to. The easiest way is using `dbc <https://docs.columnar.tech/dbc>`_:
 
 .. code-block:: shell
 
@@ -114,3 +114,4 @@ Next Steps
 - Check out the :doc:`R API documentation <index>` for more details
 - See the :doc:`driver status </driver/status>` to see which databases are supported
 - Explore more examples in the `adbc-quickstarts repository <https://github.com/columnar-tech/adbc-quickstarts/tree/main/r>`_
+- Explore the `R source code <https://github.com/apache/arrow-adbc/tree/main/r>`_ for additional examples

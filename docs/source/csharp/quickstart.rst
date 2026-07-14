@@ -19,7 +19,7 @@
 Quickstart
 ==========
 
-Here we'll briefly tour basic features of ADBC with C#/.NET.
+Here we'll briefly tour basic features of ADBC with C# using the PostgreSQL driver.
 
 Installation
 ============
@@ -136,7 +136,7 @@ Use parameterized queries for safe SQL execution:
 Installing Drivers
 ==================
 
-For production use, you'll need to install an ADBC driver. The easiest way is using `dbc <https://docs.columnar.tech/dbc>`_:
+You'll need to install an ADBC driver for the database you want to connect to. The easiest way is using `dbc <https://docs.columnar.tech/dbc>`_:
 
 .. code-block:: shell
 
@@ -156,11 +156,12 @@ C# ADBC also includes native drivers for some databases:
    # BigQuery native driver
    dotnet add package Apache.Arrow.Adbc.Drivers.BigQuery
 
-You can also import native C/C++ drivers. See the :doc:`driver documentation </driver/index>` for more details.
+You can also build drivers from source or use other installation methods. See the :doc:`driver documentation </driver/index>` for more details.
 
 Next Steps
 ==========
 
-- Check out the :doc:`C#/.NET documentation <index>` for more details
+- Check out the :doc:`C#/.NET API documentation <index>` for more details
 - See the :doc:`driver status </driver/status>` to see which databases are supported
+- Explore more examples in the `adbc-quickstarts repository <https://github.com/columnar-tech/adbc-quickstarts/tree/main/csharp>`_
 - Explore the `C# source code <https://github.com/apache/arrow-adbc/tree/main/csharp>`_ for additional examples

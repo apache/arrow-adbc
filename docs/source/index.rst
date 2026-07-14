@@ -59,7 +59,7 @@ To connect to a database with ADBC, you need two things:
    - `ADBC Driver Foundry <https://adbc-drivers.org>`_
 
    .. NOTE::
-      All first and third-party drivers are packaged by a third-party, `Columnar <https://columnar.tech>`_, and can be installed with their command line tool dbc_ by running ``dbc install <driver>``. Visit the `dbc docs <dbc_>`_ to see what drivers are available.
+      All first and third-party drivers are packaged by a third-party, `Columnar <https://columnar.tech>`_, and can be installed with their command line tool `dbc`_ by running ``dbc install <driver>``. Visit the `dbc docs <dbc_>`_ to see what drivers are available.
 
    See :doc:`Drivers<driver/index>` for more information on drivers.
 
@@ -132,7 +132,7 @@ To connect to a database with ADBC, you need two things:
 
          .. code-block:: bash
 
-            bundle add adbc
+            bundle add red-adbc
 
          See the :doc:`Ruby Quickstart <ruby/quickstart>` for usage instructions.
 
@@ -186,14 +186,41 @@ Why ADBC?
       Use language-native APIs that you're already familiar with, like DBAPI
       in Python, ``database/sql`` in Go, or DBI in R.
 
-More
-====
+More Resources
+==============
 
-(TODO: Fill this in or rework section below)
+.. grid:: 1 2 2 2
+   :margin: 4 4 0 0
+   :gutter: 1
 
-- Integrations
-- Building Drivers
-- Specification
+   .. grid-item-card:: Examples & Tutorials
+      :link: https://github.com/columnar-tech/adbc-quickstarts
+
+      Working examples and tutorials for multiple languages and databases in the `adbc-quickstarts repository <https://github.com/columnar-tech/adbc-quickstarts>`_.
+
+      +++
+      :octicon:`cross-reference` View on GitHub
+
+   .. grid-item-card:: Integrations
+
+      Learn how ADBC works with popular data tools and frameworks.
+
+      +++
+      :doc:`integrations`
+
+   .. grid-item-card:: Building Drivers
+
+      Learn how to build your own ADBC driver.
+
+      +++
+      :doc:`driver/sdk`
+
+   .. grid-item-card:: Specification
+
+      Technical specification of the ADBC API.
+
+      +++
+      :doc:`format/specification`
 
 Old Content
 ===========
@@ -338,6 +365,8 @@ Old Content
 
    Client Libraries <client_libraries>
    Drivers <driver/index>
+   Drivers (Cards View) <driver/alt1>
+   Drivers (Database Sections) <driver/alt2>
    Integrations <integrations>
    Connection Profiles <connection_profiles>
 

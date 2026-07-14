@@ -19,8 +19,7 @@
 Quickstart
 ==========
 
-Here we'll briefly tour basic features of ADBC with the SQLite driver for
-Node.js.
+Here we'll briefly tour basic features of ADBC with JavaScript using the SQLite driver for Node.js.
 
 Installation
 ============
@@ -251,3 +250,26 @@ queries:
    }
 
    await stmt.close();
+
+Installing Drivers
+==================
+
+You'll need to install an ADBC driver for the database you want to connect to. The easiest way is using `dbc <https://docs.columnar.tech/dbc>`_:
+
+.. code-block:: shell
+
+   # Install dbc
+   curl -fsSL https://dbc.sh | sh
+
+   # Install a driver (e.g., PostgreSQL)
+   dbc install postgresql
+
+The JavaScript driver manager can also load drivers from conda-forge or PyPI as shown in the Installation section above. See the :doc:`driver documentation </driver/index>` for more details.
+
+Next Steps
+==========
+
+- Check out the :doc:`JavaScript API documentation <index>` for more details
+- See the :doc:`driver status </driver/status>` to see which databases are supported
+- Explore more examples in the `adbc-quickstarts repository <https://github.com/columnar-tech/adbc-quickstarts/tree/main/javascript>`_
+- Explore the `JavaScript source code <https://github.com/apache/arrow-adbc/tree/main/js>`_ for additional examples

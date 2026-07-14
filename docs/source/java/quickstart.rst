@@ -19,7 +19,7 @@
 Quickstart
 ==========
 
-Here we'll briefly tour basic features of ADBC with the PostgreSQL driver for Java.
+Here we'll briefly tour basic features of ADBC with Java using the PostgreSQL driver.
 
 Installation
 ============
@@ -80,3 +80,26 @@ specifically the default database "postgres".
 Note that creating a statement is also wrapped in the try-with-resources block.
 Assuming we have a table "foo" in the database, an example for setting and executing the
 query is also provided.
+
+Installing Drivers
+==================
+
+You'll need to install an ADBC driver for the database you want to connect to. The easiest way is using `dbc <https://docs.columnar.tech/dbc>`_:
+
+.. code-block:: shell
+
+   # Install dbc
+   curl -fsSL https://dbc.sh | sh
+
+   # Install a driver (e.g., PostgreSQL)
+   dbc install postgresql
+
+You can also build drivers from source or use other installation methods. See the :doc:`driver documentation </driver/index>` for more details.
+
+Next Steps
+==========
+
+- Check out the :doc:`Java API documentation <index>` for more details
+- See the :doc:`driver status </driver/status>` to see which databases are supported
+- Explore more examples in the `adbc-quickstarts repository <https://github.com/columnar-tech/adbc-quickstarts/tree/main/java>`_
+- Explore the `Java source code <https://github.com/apache/arrow-adbc/tree/main/java>`_ for additional examples

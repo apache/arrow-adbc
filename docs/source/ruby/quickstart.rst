@@ -19,7 +19,7 @@
 Quickstart
 ==========
 
-Here we'll briefly tour basic features of ADBC with the PostgreSQL driver.
+Here we'll briefly tour basic features of ADBC with Ruby using the PostgreSQL driver.
 
 Installation
 ============
@@ -112,18 +112,17 @@ ADBC returns results as Arrow tables, which you can process using the Arrow Ruby
 Installing Drivers
 ==================
 
-For production use, you'll need to install an ADBC driver. The easiest way is using `dbc <https://docs.columnar.tech/dbc>`_:
+You'll need to install an ADBC driver for the database you want to connect to. The easiest way is using `dbc <https://docs.columnar.tech/dbc>`_:
 
 .. code-block:: shell
 
    # Install dbc
    curl -fsSL https://dbc.sh | sh
 
-   # Install a driver (e.g., PostgreSQL) at user level
-   dbc install --level user postgresql
+   # Install a driver (e.g., PostgreSQL)
+   dbc install postgresql
 
-.. note::
-   Ruby ADBC typically requires ``--level user`` when installing drivers with ``dbc`` to ensure proper library discovery.
+You can also build drivers from source or use other installation methods. See the :doc:`driver documentation </driver/index>` for more details.
 
 Next Steps
 ==========
@@ -131,3 +130,4 @@ Next Steps
 - Check out the :doc:`Ruby API documentation <index>` for more details
 - See the :doc:`driver status </driver/status>` to see which databases are supported
 - Explore more examples in the `adbc-quickstarts repository <https://github.com/columnar-tech/adbc-quickstarts/tree/main/ruby>`_
+- Explore the `Ruby source code <https://github.com/apache/arrow-adbc/tree/main/ruby>`_ for additional examples

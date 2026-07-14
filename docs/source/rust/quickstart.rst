@@ -19,7 +19,7 @@
 Quickstart
 ==========
 
-Here we'll briefly tour using ADBC with the `DataFusion`_ driver.
+Here we'll briefly tour basic features of ADBC with Rust using the `DataFusion`_ driver.
 
 .. _DataFusion: https://datafusion.apache.org/
 
@@ -85,3 +85,26 @@ We can then execute the query to get an Arrow ``RecordBatchReader``:
        let batch = batch.expect("Failed to read batch");
        println!("{:?}", batch);
    }
+
+Installing Drivers
+==================
+
+You'll need to install an ADBC driver for the database you want to connect to. The easiest way is using `dbc <https://docs.columnar.tech/dbc>`_:
+
+.. code-block:: shell
+
+   # Install dbc
+   curl -fsSL https://dbc.sh | sh
+
+   # Install a driver (e.g., PostgreSQL)
+   dbc install postgresql
+
+You can also build drivers from source or use other installation methods. See the :doc:`driver documentation </driver/index>` for more details.
+
+Next Steps
+==========
+
+- Check out the :doc:`Rust API documentation <index>` for more details
+- See the :doc:`driver status </driver/status>` to see which databases are supported
+- Explore more examples in the `adbc-quickstarts repository <https://github.com/columnar-tech/adbc-quickstarts/tree/main/rust>`_
+- Explore the `Rust source code <https://github.com/apache/arrow-adbc/tree/main/rust>`_ for additional examples

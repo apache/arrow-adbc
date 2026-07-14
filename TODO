@@ -1,6 +1,8 @@
 - Make sure we don't create any 404s. For example, installation.rst needs to redirect or exist because GDAL (and probably others) link to it.
 - Mention Go database/sql
-
+- Verify C# package names in client_libraries.rst: Apache.Arrow.Adbc vs Apache.Arrow.Adbc.Client
+- Re-do drivers page with subheadings for databases
+- Re-do index page with cards?
 
 From David
 

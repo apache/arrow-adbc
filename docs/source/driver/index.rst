@@ -95,7 +95,7 @@ Third-Party Drivers
 
 The majority of ADBC drivers are available from various third parties:
 
-- `DuckDB <https://arrow.apache.org/adbc/current/driver/duckdb.html>`__: ADBC support is built directly into DuckDB.
+- `DuckDB <https://duckdb.org/docs/api/adbc>`__: ADBC support is built directly into DuckDB.
 - `ADBC Driver Foundry <https://docs.adbc-drivers.org/>`__: Community-governed project focused on growing the ADBC ecosystem.
 
 If you've developed a driver or are interested in developing one, we recommend reaching out to the `ADBC Driver Foundry <https://github.com/adbc-drivers/>`__.
@@ -160,14 +160,14 @@ See the :doc:`installation` page for full details.
 Third-Party Packages
 --------------------
 
-.. note:: Columnar is not part of the Apache Software Foundation and dbc is not an official Apache Software Foundation project.
+.. note:: Columnar is not part of the Apache Software Foundation and `dbc` is not an official Apache Software Foundation project.
 
 Packages for many of the official and third-party drivers are available from `Columnar <https://columnar.tech>`__ and can be installed with their CLI tool, `dbc <https://docs.columnar.tech/dbc>`__.
 
 .. button-link:: https://columnar.tech/dbc
   :color: primary
 
-  Learn about dbc :octicon:`cross-reference`
+  Learn about ``dbc`` :octicon:`cross-reference`
 
 .. _driver-index-language:
 
@@ -226,3 +226,11 @@ A number of drivers were previously published from the ADBC project but have sin
 
 conda-forge (adbc-driver-bigquery, libadbc-driver-bigquery), PyPI, R-multiverse
 conda-forge (adbc-driver-snowflake, libadbc-driver-snowflake), crates.io, Go, NuGet, PyPI, R-multiverse
+
+Alternative Views
+=================
+
+The driver information on this page can also be viewed in alternative formats:
+
+- :doc:`Cards View <alt1>` - Visual grid layout with cards for each database
+- :doc:`Database Sections <alt2>` - Detailed sections with installation tables
