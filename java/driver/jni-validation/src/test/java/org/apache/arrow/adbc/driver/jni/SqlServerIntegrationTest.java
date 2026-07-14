@@ -322,6 +322,7 @@ class SqlServerIntegrationTest {
   void bulkIngestTarget() throws Exception {
     runSetup(
         "DROP TABLE IF EXISTS secondary.foobar",
+        "DROP TABLE IF EXISTS secondary.spam",
         "DROP SCHEMA IF EXISTS secondary",
         "CREATE SCHEMA secondary");
 
@@ -386,6 +387,81 @@ class SqlServerIntegrationTest {
 
     try (AdbcStatement stmt = conn.createStatement()) {
       stmt.setSqlQuery("SELECT value FROM #foobar ORDER BY ndx");
+      try (var result = stmt.executeQuery()) {
+        var values = ArrowToJava.toStrings(result.getReader(), "value");
+        assertThat(values).containsExactly(null, "foobar");
+      }
+    }
+  }
+
+  @Test
+  void bulkIngestFluent() throws Exception {
+    final Schema schema =
+        new Schema(
+            List.of(
+                Field.nullable("ndx", Types.MinorType.INT.getType()),
+                Field.nullable("value", Types.MinorType.VARCHAR.getType())));
+    try (VectorSchemaRoot vsr = VectorSchemaRoot.create(schema, allocator)) {
+      IntVector iv = (IntVector) vsr.getVector(0);
+      VarCharVector vv = (VarCharVector) vsr.getVector(1);
+
+      try (var ingest = conn.bulkIngest().targetTable("spam").temporary()) {
+        iv.setSafe(0, 1);
+        iv.setSafe(1, 2);
+        vv.setNull(0);
+        vv.setSafe(1, "foobar".getBytes(StandardCharsets.UTF_8));
+        vsr.setRowCount(2);
+
+        ingest.bind(vsr);
+        assertThat(ingest.ingest().getAffectedRows()).isEqualTo(2);
+      }
+    }
+
+    try (AdbcStatement stmt = conn.createStatement()) {
+      stmt.setSqlQuery("SELECT value FROM #spam ORDER BY ndx");
+      try (var result = stmt.executeQuery()) {
+        var values = ArrowToJava.toStrings(result.getReader(), "value");
+        assertThat(values).containsExactly(null, "foobar");
+      }
+    }
+  }
+
+  @Test
+  void bulkIngestFluentLowLevel() throws Exception {
+    runSetup(
+        "DROP TABLE IF EXISTS secondary.foobar",
+        "DROP TABLE IF EXISTS secondary.spam",
+        "DROP SCHEMA IF EXISTS secondary",
+        "CREATE SCHEMA secondary");
+
+    final Schema schema =
+        new Schema(
+            List.of(
+                Field.nullable("ndx", Types.MinorType.INT.getType()),
+                Field.nullable("value", Types.MinorType.VARCHAR.getType())));
+    try (VectorSchemaRoot vsr = VectorSchemaRoot.create(schema, allocator)) {
+      IntVector iv = (IntVector) vsr.getVector(0);
+      VarCharVector vv = (VarCharVector) vsr.getVector(1);
+
+      var key = new TypedKey<>("adbc.ingest.target_db_schema", String.class);
+      try (var ingest =
+          conn.bulkIngest()
+              .targetTable("spam")
+              .option(key, "secondary")
+              .option(IngestOption.NOT_TEMPORARY)) {
+        iv.setSafe(0, 1);
+        iv.setSafe(1, 2);
+        vv.setNull(0);
+        vv.setSafe(1, "foobar".getBytes(StandardCharsets.UTF_8));
+        vsr.setRowCount(2);
+
+        ingest.bind(vsr);
+        assertThat(ingest.ingest().getAffectedRows()).isEqualTo(2);
+      }
+    }
+
+    try (AdbcStatement stmt = conn.createStatement()) {
+      stmt.setSqlQuery("SELECT value FROM secondary.spam ORDER BY ndx");
       try (var result = stmt.executeQuery()) {
         var values = ArrowToJava.toStrings(result.getReader(), "value");
         assertThat(values).containsExactly(null, "foobar");
