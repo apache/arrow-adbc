@@ -151,12 +151,12 @@ void StatementTest::TestSqlIngestType(SchemaField field,
   ASSERT_THAT(rows_affected,
               ::testing::AnyOf(::testing::Eq(values.size()), ::testing::Eq(-1)));
 
-  ASSERT_THAT(AdbcStatementSetSqlQuery(
-                  &statement,
-                  ("SELECT * FROM " + quirks()->QuoteIdentifier("bulk_ingest") +
-                   " ORDER BY " + quirks()->QuoteIdentifier("col") + " ASC NULLS FIRST")
-                      .c_str(),
-                  &error),
+  std::string select_query = quirks()->RewriteSql(
+      std::string("StatementTest::TestSqlIngestType::select-bulk-ingest::") +
+          ArrowTypeString(field.type),
+      "SELECT * FROM " + quirks()->QuoteIdentifier("bulk_ingest") + " ORDER BY " +
+          quirks()->QuoteIdentifier("col") + " ASC NULLS FIRST");
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, select_query.c_str(), &error),
               IsOkStatus(&error));
   {
     StreamReader reader;
@@ -365,12 +365,11 @@ void StatementTest::TestSqlIngestTemporalType(const char* timezone) {
   ASSERT_THAT(rows_affected,
               ::testing::AnyOf(::testing::Eq(values.size()), ::testing::Eq(-1)));
 
-  ASSERT_THAT(AdbcStatementSetSqlQuery(
-                  &statement,
-                  ("SELECT * FROM " + quirks()->QuoteIdentifier("bulk_ingest") +
-                   " ORDER BY " + quirks()->QuoteIdentifier("col") + " ASC NULLS FIRST")
-                      .c_str(),
-                  &error),
+  std::string select_query = quirks()->RewriteSql(
+      "StatementTest::TestSqlIngestTemporalType::select-bulk-ingest",
+      "SELECT * FROM " + quirks()->QuoteIdentifier("bulk_ingest") + " ORDER BY " +
+          quirks()->QuoteIdentifier("col") + " ASC NULLS FIRST");
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, select_query.c_str(), &error),
               IsOkStatus(&error));
   {
     StreamReader reader;
@@ -514,12 +513,11 @@ void StatementTest::TestSqlIngestInterval() {
   ASSERT_THAT(rows_affected,
               ::testing::AnyOf(::testing::Eq(values.size()), ::testing::Eq(-1)));
 
-  ASSERT_THAT(AdbcStatementSetSqlQuery(
-                  &statement,
-                  ("SELECT * FROM " + quirks()->QuoteIdentifier("bulk_ingest") +
-                   " ORDER BY " + quirks()->QuoteIdentifier("col") + " ASC NULLS FIRST")
-                      .c_str(),
-                  &error),
+  std::string select_query = quirks()->RewriteSql(
+      "StatementTest::TestSqlIngestInterval::select-bulk-ingest",
+      "SELECT * FROM " + quirks()->QuoteIdentifier("bulk_ingest") + " ORDER BY " +
+          quirks()->QuoteIdentifier("col") + " ASC NULLS FIRST");
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, select_query.c_str(), &error),
               IsOkStatus(&error));
   {
     StreamReader reader;
@@ -598,11 +596,13 @@ void StatementTest::TestSqlIngestStreamZeroArrays() {
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
               IsOkStatus(&error));
 
-  ASSERT_THAT(
-      AdbcStatementSetSqlQuery(
-          &statement,
-          ("SELECT * FROM " + quirks()->QuoteIdentifier("bulk_ingest")).c_str(), &error),
-      IsOkStatus(&error));
+  {
+    std::string select_query = quirks()->RewriteSql(
+        "StatementTest::TestSqlIngestStreamZeroArrays::select-bulk-ingest",
+        "SELECT * FROM " + quirks()->QuoteIdentifier("bulk_ingest"));
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, select_query.c_str(), &error),
+                IsOkStatus(&error));
+  }
 
   {
     StreamReader reader;
@@ -723,11 +723,13 @@ void StatementTest::TestSqlIngestAppend() {
   ASSERT_THAT(rows_affected, ::testing::AnyOf(::testing::Eq(2), ::testing::Eq(-1)));
 
   // Read data back
-  ASSERT_THAT(
-      AdbcStatementSetSqlQuery(
-          &statement,
-          ("SELECT * FROM " + quirks()->QuoteIdentifier("bulk_ingest")).c_str(), &error),
-      IsOkStatus(&error));
+  {
+    std::string select_query =
+        quirks()->RewriteSql("StatementTest::TestSqlIngestAppend::select-bulk-ingest",
+                             "SELECT * FROM " + quirks()->QuoteIdentifier("bulk_ingest"));
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, select_query.c_str(), &error),
+                IsOkStatus(&error));
+  }
   {
     StreamReader reader;
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
@@ -785,11 +787,13 @@ void StatementTest::TestSqlIngestReplace() {
   ASSERT_THAT(rows_affected, ::testing::AnyOf(::testing::Eq(1), ::testing::Eq(-1)));
 
   // Read data back
-  ASSERT_THAT(
-      AdbcStatementSetSqlQuery(
-          &statement,
-          ("SELECT * FROM " + quirks()->QuoteIdentifier("bulk_ingest")).c_str(), &error),
-      IsOkStatus(&error));
+  {
+    std::string select_query =
+        quirks()->RewriteSql("StatementTest::TestSqlIngestReplace::select-bulk-ingest",
+                             "SELECT * FROM " + quirks()->QuoteIdentifier("bulk_ingest"));
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, select_query.c_str(), &error),
+                IsOkStatus(&error));
+  }
   {
     StreamReader reader;
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
@@ -833,11 +837,13 @@ void StatementTest::TestSqlIngestReplace() {
   ASSERT_THAT(rows_affected, ::testing::AnyOf(::testing::Eq(2), ::testing::Eq(-1)));
 
   // Read data back
-  ASSERT_THAT(
-      AdbcStatementSetSqlQuery(
-          &statement,
-          ("SELECT * FROM " + quirks()->QuoteIdentifier("bulk_ingest")).c_str(), &error),
-      IsOkStatus(&error));
+  {
+    std::string select_query =
+        quirks()->RewriteSql("StatementTest::TestSqlIngestReplace::select-bulk-ingest",
+                             "SELECT * FROM " + quirks()->QuoteIdentifier("bulk_ingest"));
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, select_query.c_str(), &error),
+                IsOkStatus(&error));
+  }
   {
     StreamReader reader;
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
@@ -909,11 +915,13 @@ void StatementTest::TestSqlIngestCreateAppend() {
   ASSERT_THAT(rows_affected, ::testing::AnyOf(::testing::Eq(2), ::testing::Eq(-1)));
 
   // Read data back
-  ASSERT_THAT(
-      AdbcStatementSetSqlQuery(
-          &statement,
-          ("SELECT * FROM " + quirks()->QuoteIdentifier("bulk_ingest")).c_str(), &error),
-      IsOkStatus(&error));
+  {
+    std::string select_query = quirks()->RewriteSql(
+        "StatementTest::TestSqlIngestCreateAppend::select-bulk-ingest",
+        "SELECT * FROM " + quirks()->QuoteIdentifier("bulk_ingest"));
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, select_query.c_str(), &error),
+                IsOkStatus(&error));
+  }
   {
     StreamReader reader;
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
@@ -1060,14 +1068,12 @@ void StatementTest::TestSqlIngestMultipleConnections() {
     ASSERT_THAT(AdbcConnectionInit(&connection2, &database, &error), IsOkStatus(&error));
     ASSERT_THAT(AdbcStatementNew(&connection2, &statement, &error), IsOkStatus(&error));
 
-    ASSERT_THAT(
-        AdbcStatementSetSqlQuery(
-            &statement,
-            ("SELECT * FROM " + quirks()->QuoteIdentifier("bulk_ingest") + " ORDER BY " +
-             quirks()->QuoteIdentifier("int64s") + " DESC NULLS LAST")
-                .c_str(),
-            &error),
-        IsOkStatus(&error));
+    std::string select_query = quirks()->RewriteSql(
+        "StatementTest::TestSqlIngestMultipleConnections::select-bulk-ingest",
+        "SELECT * FROM " + quirks()->QuoteIdentifier("bulk_ingest") + " ORDER BY " +
+            quirks()->QuoteIdentifier("int64s") + " DESC NULLS LAST");
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, select_query.c_str(), &error),
+                IsOkStatus(&error));
 
     {
       StreamReader reader;
@@ -1107,13 +1113,14 @@ void StatementTest::TestSqlIngestSample() {
               IsOkStatus(&error));
 
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
-  ASSERT_THAT(AdbcStatementSetSqlQuery(
-                  &statement,
-                  ("SELECT * FROM " + quirks()->QuoteIdentifier("bulk_ingest") +
-                   " ORDER BY int64s ASC NULLS FIRST")
-                      .c_str(),
-                  &error),
-              IsOkStatus(&error));
+  {
+    std::string select_query =
+        quirks()->RewriteSql("StatementTest::TestSqlIngestSample::select-bulk-ingest",
+                             "SELECT * FROM " + quirks()->QuoteIdentifier("bulk_ingest") +
+                                 " ORDER BY int64s ASC NULLS FIRST");
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, select_query.c_str(), &error),
+                IsOkStatus(&error));
+  }
   StreamReader reader;
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
                                         &reader.rows_affected, &error),
@@ -1922,10 +1929,9 @@ void StatementTest::TestSqlPrepareSelectParams() {
   }
 
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
-  std::string query = "SELECT ";
-  query += quirks()->BindParameter(0);
-  query += ", ";
-  query += quirks()->BindParameter(1);
+  std::string query = quirks()->RewriteSql(
+      "StatementTest::TestSqlPrepareSelectParams::select-params",
+      "SELECT " + quirks()->BindParameter(0) + ", " + quirks()->BindParameter(1));
   ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query.c_str(), &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementPrepare(&statement, &error), IsOkStatus(&error));
@@ -2023,8 +2029,10 @@ void StatementTest::TestSqlPrepareUpdate() {
               IsOkStatus(&error));
 
   // Prepare
-  std::string query = "INSERT INTO " + quirks()->QuoteIdentifier("bulk_ingest") +
-                      " VALUES (" + quirks()->BindParameter(0) + ")";
+  std::string query =
+      quirks()->RewriteSql("StatementTest::TestSqlPrepareUpdate::insert-bulk-ingest",
+                           "INSERT INTO " + quirks()->QuoteIdentifier("bulk_ingest") +
+                               " VALUES (" + quirks()->BindParameter(0) + ")");
   ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query.c_str(), &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementPrepare(&statement, &error), IsOkStatus(&error));
@@ -2040,11 +2048,13 @@ void StatementTest::TestSqlPrepareUpdate() {
               IsOkStatus(&error));
 
   // Read data back
-  ASSERT_THAT(
-      AdbcStatementSetSqlQuery(
-          &statement,
-          ("SELECT * FROM " + quirks()->QuoteIdentifier("bulk_ingest")).c_str(), &error),
-      IsOkStatus(&error));
+  {
+    std::string select_query =
+        quirks()->RewriteSql("StatementTest::TestSqlPrepareUpdate::select-bulk-ingest",
+                             "SELECT * FROM " + quirks()->QuoteIdentifier("bulk_ingest"));
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, select_query.c_str(), &error),
+                IsOkStatus(&error));
+  }
   {
     StreamReader reader;
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
@@ -2121,8 +2131,10 @@ void StatementTest::TestSqlPrepareUpdateStream() {
   MakeStream(&stream.value, &schema.value, std::move(batches));
 
   // Prepare
-  std::string query = "INSERT INTO " + quirks()->QuoteIdentifier("bulk_ingest") +
-                      " VALUES (" + quirks()->BindParameter(0) + ")";
+  std::string query = quirks()->RewriteSql(
+      "StatementTest::TestSqlPrepareUpdateStream::insert-bulk-ingest",
+      "INSERT INTO " + quirks()->QuoteIdentifier("bulk_ingest") + " VALUES (" +
+          quirks()->BindParameter(0) + ")");
   ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query.c_str(), &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementPrepare(&statement, &error), IsOkStatus(&error));
@@ -2134,11 +2146,13 @@ void StatementTest::TestSqlPrepareUpdateStream() {
               IsOkStatus(&error));
 
   // Read data back
-  ASSERT_THAT(
-      AdbcStatementSetSqlQuery(
-          &statement,
-          ("SELECT * FROM " + quirks()->QuoteIdentifier("bulk_ingest")).c_str(), &error),
-      IsOkStatus(&error));
+  {
+    std::string select_query = quirks()->RewriteSql(
+        "StatementTest::TestSqlPrepareUpdateStream::select-bulk-ingest",
+        "SELECT * FROM " + quirks()->QuoteIdentifier("bulk_ingest"));
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, select_query.c_str(), &error),
+                IsOkStatus(&error));
+  }
   {
     StreamReader reader;
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
@@ -2224,9 +2238,13 @@ void StatementTest::TestSqlBind() {
 
   ASSERT_THAT(quirks()->DropTable(&connection, "bindtest", &error), IsOkStatus(&error));
 
-  ASSERT_THAT(AdbcStatementSetSqlQuery(
-                  &statement, "CREATE TABLE bindtest (col1 INTEGER, col2 TEXT)", &error),
-              IsOkStatus(&error));
+  {
+    std::string create_query =
+        quirks()->RewriteSql("StatementTest::TestSqlBind::create-table-bindtest",
+                             "CREATE TABLE bindtest (col1 INTEGER, col2 TEXT)");
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, create_query.c_str(), &error),
+                IsOkStatus(&error));
+  }
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
               IsOkStatus(&error));
 
@@ -2244,9 +2262,10 @@ void StatementTest::TestSqlBind() {
       &schema.value, &array.value, &na_error, int_values, string_values);
   ASSERT_THAT(batch_result, IsOkErrno());
 
-  auto insert_query = std::string("INSERT INTO bindtest VALUES (") +
-                      quirks()->BindParameter(0) + ", " + quirks()->BindParameter(1) +
-                      ")";
+  auto insert_query = quirks()->RewriteSql("StatementTest::TestSqlBind::insert-bindtest",
+                                           std::string("INSERT INTO bindtest VALUES (") +
+                                               quirks()->BindParameter(0) + ", " +
+                                               quirks()->BindParameter(1) + ")");
   ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, insert_query.c_str(), &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementPrepare(&statement, &error), IsOkStatus(&error));
@@ -2257,10 +2276,13 @@ void StatementTest::TestSqlBind() {
               IsOkStatus(&error));
   ASSERT_THAT(rows_affected, ::testing::AnyOf(::testing::Eq(-1), ::testing::Eq(3)));
 
-  ASSERT_THAT(
-      AdbcStatementSetSqlQuery(
-          &statement, "SELECT * FROM bindtest ORDER BY col1 ASC NULLS FIRST", &error),
-      IsOkStatus(&error));
+  {
+    std::string select_query =
+        quirks()->RewriteSql("StatementTest::TestSqlBind::select-bindtest",
+                             "SELECT * FROM bindtest ORDER BY col1 ASC NULLS FIRST");
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, select_query.c_str(), &error),
+                IsOkStatus(&error));
+  }
   {
     StreamReader reader;
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
@@ -2284,9 +2306,13 @@ void StatementTest::TestSqlQueryEmpty() {
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
 
   ASSERT_THAT(quirks()->DropTable(&connection, "queryempty", &error), IsOkStatus(&error));
-  ASSERT_THAT(
-      AdbcStatementSetSqlQuery(&statement, "CREATE TABLE queryempty (FOO INT)", &error),
-      IsOkStatus(&error));
+  {
+    std::string create_query =
+        quirks()->RewriteSql("StatementTest::TestSqlQueryEmpty::create-table-queryempty",
+                             "CREATE TABLE queryempty (FOO INT)");
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, create_query.c_str(), &error),
+                IsOkStatus(&error));
+  }
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
               IsOkStatus(&error));
 
@@ -2472,9 +2498,13 @@ void StatementTest::TestSqlQueryInsertRollback() {
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
 
   std::string table = quirks()->QuoteIdentifier("rollbacktest");
-  ASSERT_THAT(AdbcStatementSetSqlQuery(
-                  &statement, ("CREATE TABLE " + table + " (a INT)").c_str(), &error),
-              IsOkStatus(&error));
+  {
+    std::string create_query = quirks()->RewriteSql(
+        "StatementTest::TestSqlQueryInsertRollback::create-table-rollbacktest",
+        "CREATE TABLE " + table + " (a INT)");
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, create_query.c_str(), &error),
+                IsOkStatus(&error));
+  }
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
               IsOkStatus(&error));
 
@@ -2572,9 +2602,13 @@ void StatementTest::TestSqlQueryRowsAffectedDelete() {
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
 
   std::string table = quirks()->QuoteIdentifier("delete_test");
-  ASSERT_THAT(AdbcStatementSetSqlQuery(
-                  &statement, ("CREATE TABLE " + table + " (foo INT)").c_str(), &error),
-              IsOkStatus(&error));
+  {
+    std::string create_query = quirks()->RewriteSql(
+        "StatementTest::TestSqlQueryRowsAffectedDelete::create-table-delete-test",
+        "CREATE TABLE " + table + " (foo INT)");
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, create_query.c_str(), &error),
+                IsOkStatus(&error));
+  }
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
               IsOkStatus(&error));
 
@@ -2604,9 +2638,13 @@ void StatementTest::TestSqlQueryRowsAffectedDeleteStream() {
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
 
   std::string table = quirks()->QuoteIdentifier("delete_test");
-  ASSERT_THAT(AdbcStatementSetSqlQuery(
-                  &statement, ("CREATE TABLE " + table + " (foo INT)").c_str(), &error),
-              IsOkStatus(&error));
+  {
+    std::string create_query = quirks()->RewriteSql(
+        "StatementTest::TestSqlQueryRowsAffectedDeleteStream::create-table-delete-test",
+        "CREATE TABLE " + table + " (foo INT)");
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, create_query.c_str(), &error),
+                IsOkStatus(&error));
+  }
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
               IsOkStatus(&error));
 
