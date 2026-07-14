@@ -22,20 +22,23 @@ import org.apache.arrow.vector.ipc.ArrowReader;
 /** A fluent builder-style interface for configuring and executing a bulk ingest. */
 public interface BulkIngestBuilder extends AutoCloseable {
   /** Create the target table; fail if already exists. */
-  BulkIngestBuilder create() throws AdbcException;
+  BulkIngestBuilder createMode() throws AdbcException;
 
   /** Append to the target table; fail if not found. */
-  BulkIngestBuilder append() throws AdbcException;
+  BulkIngestBuilder appendMode() throws AdbcException;
 
   /** Drop (if exists) and create the target table. */
-  BulkIngestBuilder replace() throws AdbcException;
+  BulkIngestBuilder replaceMode() throws AdbcException;
 
   /** Create the target table if necessary, append if already exists. */
-  BulkIngestBuilder createAppend() throws AdbcException;
+  BulkIngestBuilder createAppendMode() throws AdbcException;
 
   /**
    * How to handle an already-existing/non-existent target table. Default is {@link
    * BulkIngestMode#CREATE}.
+   *
+   * <p>Also see the convenience methods {@link #createMode()}, {@link #appendMode()}, {@link
+   * #replaceMode()}, and {@link #createAppendMode()}.
    */
   BulkIngestBuilder mode(BulkIngestMode mode) throws AdbcException;
 
@@ -78,7 +81,12 @@ public interface BulkIngestBuilder extends AutoCloseable {
   /** Set a statement option before ingest. */
   <T> BulkIngestBuilder option(TypedKey<T> key, T value) throws AdbcException;
 
-  /** Convert this builder to an {@link AdbcStatement} (low-level API for further control). */
+  /**
+   * Convert this builder to an {@link AdbcStatement} (low-level API for further control) without
+   * executing.
+   *
+   * <p>The caller is responsible for closing the returned statement.
+   */
   AdbcStatement toStatement() throws AdbcException;
 
   /**

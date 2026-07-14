@@ -84,7 +84,7 @@ class BulkIngestBuilderTest {
           .temporary(true)
           .targetCatalog("catalog")
           .targetSchema("schema")
-          .createAppend()
+          .createAppendMode()
           .ingest();
     }
     assertThat(connection.targetTable).isEqualTo("foobar");

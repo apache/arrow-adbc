@@ -40,25 +40,25 @@ class BulkIngestBuilderImpl implements BulkIngestBuilder {
   }
 
   @Override
-  public BulkIngestBuilder create() {
+  public BulkIngestBuilder createMode() {
     mode = BulkIngestMode.CREATE;
     return this;
   }
 
   @Override
-  public BulkIngestBuilder append() {
+  public BulkIngestBuilder appendMode() {
     mode = BulkIngestMode.APPEND;
     return this;
   }
 
   @Override
-  public BulkIngestBuilder replace() {
+  public BulkIngestBuilder replaceMode() {
     mode = BulkIngestMode.REPLACE;
     return this;
   }
 
   @Override
-  public BulkIngestBuilder createAppend() {
+  public BulkIngestBuilder createAppendMode() {
     mode = BulkIngestMode.CREATE_APPEND;
     return this;
   }
