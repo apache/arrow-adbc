@@ -424,7 +424,7 @@ jobs:
           mv apache-arrow-adbc-$VERSION.tar.gz adbc/ci/linux-packages/
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@0dafeac902942906541bc140009cdbf32665b601  # v1.315.0
+        uses: ruby/setup-ruby@d45b1a4e94b71acab930e56e79c6aa188764e7f9  # v1.316.0
         with:
           ruby-version: ruby
 
@@ -437,7 +437,7 @@ jobs:
           lookup-only: true
 
       - name: Login to GitHub Container registry
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee  # v4.2.0
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0  # v4.4.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
