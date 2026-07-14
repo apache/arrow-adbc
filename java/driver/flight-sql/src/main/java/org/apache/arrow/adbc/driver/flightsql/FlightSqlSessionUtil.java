@@ -26,6 +26,7 @@ import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.adbc.core.TypedKey;
 import org.apache.arrow.flight.NoOpSessionOptionValueVisitor;
 import org.apache.arrow.flight.SessionOptionValue;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 /** Package-private helpers for Flight SQL session option serialization and type conversion. */
 final class FlightSqlSessionUtil {
@@ -67,9 +68,9 @@ final class FlightSqlSessionUtil {
 
   /** Serializes all session options to a JSON object string. */
   static String toJson(Map<String, SessionOptionValue> opts) throws AdbcException {
-    Map<String, Object> map = new LinkedHashMap<>();
+    Map<String, @Nullable Object> map = new LinkedHashMap<>();
     for (Map.Entry<String, SessionOptionValue> e : opts.entrySet()) {
-      Object v = e.getValue().acceptVisitor(TO_JAVA);
+      @Nullable Object v = e.getValue().acceptVisitor(TO_JAVA);
       // JSON does not support NaN or Infinity; represent them as null
       if (v instanceof Double && !Double.isFinite((Double) v)) {
         v = null;
@@ -102,7 +103,7 @@ final class FlightSqlSessionUtil {
    * {@code AdbcConnection} implementation.
    */
   @SuppressWarnings("unchecked")
-  static <T> T cast(TypedKey<T> key, Object raw, String optionName) throws AdbcException {
+  static <T> @Nullable T cast(TypedKey<T> key, Object raw, String optionName) throws AdbcException {
     final Class<T> type = key.getType();
     if (type == String.class) {
       if (raw instanceof String[]) {
@@ -121,11 +122,7 @@ final class FlightSqlSessionUtil {
     }
     if (type == Boolean.class) {
       if (raw instanceof Boolean) return (T) raw;
-      String s = String.valueOf(raw);
-      if ("true".equalsIgnoreCase(s)) return (T) Boolean.TRUE;
-      if ("false".equalsIgnoreCase(s)) return (T) Boolean.FALSE;
-      throw AdbcException.invalidArgument(
-          "[Flight SQL] Session option '" + optionName + "' cannot be parsed as Boolean: " + raw);
+      return (T) Boolean.valueOf(parseStrictBoolean(String.valueOf(raw), optionName));
     }
     if (type == String[].class) {
       if (raw instanceof String[]) return (T) raw;
@@ -144,12 +141,13 @@ final class FlightSqlSessionUtil {
       }
     } catch (NumberFormatException e) {
       throw AdbcException.invalidArgument(
-          "[Flight SQL] Session option '"
-              + optionName
-              + "' cannot be parsed as "
-              + type.getSimpleName()
-              + ": "
-              + raw);
+              "[Flight SQL] Session option '"
+                  + optionName
+                  + "' cannot be parsed as "
+                  + type.getSimpleName()
+                  + ": "
+                  + raw)
+          .withCause(e);
     }
     return null;
   }
@@ -167,6 +165,14 @@ final class FlightSqlSessionUtil {
           0);
     }
     return val;
+  }
+
+  /** Strictly parses "true"/"false" (case-insensitive); rejects anything else. */
+  static boolean parseStrictBoolean(String s, String optionName) throws AdbcException {
+    if ("true".equalsIgnoreCase(s)) return true;
+    if ("false".equalsIgnoreCase(s)) return false;
+    throw AdbcException.invalidArgument(
+        "[Flight SQL] Session option '" + optionName + "' cannot be parsed as Boolean: " + s);
   }
 
   private FlightSqlSessionUtil() {}

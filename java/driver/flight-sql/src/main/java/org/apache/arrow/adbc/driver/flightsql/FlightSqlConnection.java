@@ -257,30 +257,29 @@ public class FlightSqlConnection implements AdbcConnection {
   public <T> void setOption(TypedKey<T> key, T value) throws AdbcException {
     final String k = key.getKey();
 
-    if (value == null) {
-      throw AdbcException.invalidArgument(
-          "[Flight SQL] null value not allowed for key: "
-              + k
-              + " - use adbc.flight.sql.session.optionerase.<name> to erase an option");
-    }
-
     if (k.startsWith(FlightSqlConnectionProperties.SESSION_OPTION_ERASE_PREFIX)) {
       final String name =
           k.substring(FlightSqlConnectionProperties.SESSION_OPTION_ERASE_PREFIX.length());
       doSetSessionOption(name, SessionOptionValueFactory.makeEmptySessionOptionValue());
 
     } else if (k.startsWith(FlightSqlConnectionProperties.SESSION_OPTION_BOOL_PREFIX)) {
+      if (value == null) {
+        throw invalidNullValue(k);
+      }
       final String name =
           k.substring(FlightSqlConnectionProperties.SESSION_OPTION_BOOL_PREFIX.length());
       final boolean b;
       if (value instanceof Boolean) {
         b = (Boolean) value;
       } else {
-        b = Boolean.parseBoolean(value.toString());
+        b = FlightSqlSessionUtil.parseStrictBoolean(value.toString(), name);
       }
       doSetSessionOption(name, SessionOptionValueFactory.makeSessionOptionValue(b));
 
     } else if (k.startsWith(FlightSqlConnectionProperties.SESSION_OPTION_STRING_LIST_PREFIX)) {
+      if (value == null) {
+        throw invalidNullValue(k);
+      }
       final String name =
           k.substring(FlightSqlConnectionProperties.SESSION_OPTION_STRING_LIST_PREFIX.length());
       final String[] arr;
@@ -292,6 +291,9 @@ public class FlightSqlConnection implements AdbcConnection {
       doSetSessionOption(name, SessionOptionValueFactory.makeSessionOptionValue(arr));
 
     } else if (k.startsWith(FlightSqlConnectionProperties.SESSION_OPTION_PREFIX)) {
+      if (value == null) {
+        throw invalidNullValue(k);
+      }
       final String name = k.substring(FlightSqlConnectionProperties.SESSION_OPTION_PREFIX.length());
       final SessionOptionValue sv;
       if (value instanceof Long) {
@@ -310,6 +312,13 @@ public class FlightSqlConnection implements AdbcConnection {
     } else {
       AdbcConnection.super.setOption(key, value);
     }
+  }
+
+  private static AdbcException invalidNullValue(String key) {
+    return AdbcException.invalidArgument(
+        "[Flight SQL] null value not allowed for key: "
+            + key
+            + " - use adbc.flight.sql.session.optionerase.<name> to erase an option");
   }
 
   @Override
