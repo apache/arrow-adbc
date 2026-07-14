@@ -15,15 +15,11 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-============
-Integrations
-============
+====================
+Tools & Integrations
+====================
 
 ADBC works alongside many popular data tools and frameworks. This page describes how ADBC fits into each ecosystem.
-
-.. contents:: Tools
-   :local:
-   :depth: 1
 
 ----
 
@@ -109,7 +105,7 @@ See :doc:`driver/duckdb` for details on using DuckDB as an ADBC driver.
 Using the DuckDB ``adbc`` extension
 ------------------------------------
 
-The ``adbc`` extension (available for DuckDB 1.4.5+ and 1.5.4+) allows DuckDB to read from and write to any database that has an ADBC driver:
+The `adbc extension <https://duckdb.org/community_extensions/extensions/adbc.html>`_ (available for DuckDB 1.4.5+ and 1.5.4+) allows DuckDB to read from and write to any database that has an ADBC driver:
 
 .. code-block:: sql
 
@@ -127,6 +123,8 @@ The ``adbc`` extension (available for DuckDB 1.4.5+ and 1.5.4+) allows DuckDB to
    CALL adbc_execute('profile://my_postgres', 'TRUNCATE staging.temp_load');
 
 Connections are specified using ADBC :doc:`connection profiles <connection_profiles>`. Drivers are installed with :ref:`dbc <dbc>`.
+
+For details on the ``adbc_scanner`` functionality, see the `adbc_scanner documentation <https://duckdb.org/community_extensions/extensions/adbc_scanner>`_.
 
 ----
 

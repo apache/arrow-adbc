@@ -86,3 +86,8 @@ h1, h2, h3, h4 {
 .driver-cards .sd-card-body p:last-child {
     margin-bottom: 0;
 }
+
+/* Make index page h2 headings smaller */
+html[data-content_root="./"] h2 {
+    font-size: 1.5rem;
+}

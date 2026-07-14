@@ -19,6 +19,9 @@
 Drivers (Alternative View 2)
 ============================
 
+The ADBC project is primarily focused on developing the :doc:`ADBC standard <../format/specification>` and :doc:`client libraries <../client_libraries>` and not on building and distributing driver binaries. While some driver binaries are available directly from the project, many more driver binaries are available from :ref:`third parties<driver-index-third-party>`.
+
+
 ADBC drivers are available for many popular databases. Most drivers are developed and published by third parties, with a few maintained by the Apache Software Foundation for historical reasons.
 
 .. note:: This is an alternative view of the :doc:`drivers page <index>`. The information is the same, just presented differently.
@@ -192,9 +195,18 @@ ADBC drivers come from several sources:
 
 .. note:: Projects linked in this section are not part of the Apache Software Foundation. Columnar is not part of the Apache Software Foundation and `dbc` is not an official Apache Software Foundation project.
 
+**Have a driver to add?**
+
+If you've developed an ADBC driver and would like it listed in the documentation:
+
+1. `Open an issue <https://github.com/apache/arrow-adbc/issues/new>`__ on the Apache Arrow ADBC repository with details about your driver (name, database, language, repository URL, package names)
+2. Or submit a pull request directly to add your driver to this page
+
+If you're interested in developing a new driver, we recommend reaching out to the `ADBC Driver Foundry <https://github.com/adbc-drivers/>`__.
+
 More Information
 ================
 
 - :doc:`Driver Status <status>` - Detailed status and feature support for each driver
 - :doc:`Installation Guide <installation>` - Complete installation instructions
-- :doc:`Building Drivers <sdk>` - Learn how to build your own ADBC driver
+- :doc:`Building Drivers <authoring>` - Learn how to build your own ADBC driver

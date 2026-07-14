@@ -47,105 +47,33 @@ make it more convenient to build analytical applications.
 Getting Started
 ---------------
 
-To connect to a database with ADBC, you need two things:
+.. grid:: 1 1 2 3
+   :gutter: 3
 
-.. card:: :octicon:`plug` Drivers
+   .. grid-item-card:: :octicon:`plug` Available Drivers
+      :link: driver/index
+      :link-type: doc
 
-   The majority of ADBC drivers are published by :ref:`third-parties <driver-index-third-party>` but :ref:`a few <driver-index-apache>` are available from the ADBC project for historical reasons.
+      Connect to a growing list of databases using ADBC drivers.
 
-   **Third-Party Driver Vendors**
+   .. grid-item-card:: :octicon:`code` Client Libraries
+      :link: client_libraries
+      :link-type: doc
 
-   - `DuckDB <https://duckdb.org/docs/lts/clients/adbc>`_
-   - `ADBC Driver Foundry <https://adbc-drivers.org>`_
+      Use ADBC from C/C++, C#, Go, Java, JavaScript, Python, R, Ruby, and Rust.
 
-   .. NOTE::
-      All first and third-party drivers are packaged by a third-party, `Columnar <https://columnar.tech>`_, and can be installed with their command line tool `dbc`_ by running ``dbc install <driver>``. Visit the `dbc docs <dbc_>`_ to see what drivers are available.
+   .. grid-item-card:: :octicon:`tools` Building Drivers
+      :link: driver/authoring
+      :link-type: doc
 
-   See :doc:`Drivers<driver/index>` for more information on drivers.
+      Build your own ADBC driver using the driver SDKs available in multiple languages.
+
 
 .. _dbc: https://docs.columnar.tech/dbc
 .. _Substrait: https://substrait.io/
 
-
-.. card:: :octicon:`code` Client Libraries
-
-   You can connect to a database with ADBC using a growing set of programming languages:
-
-   .. tab-set::
-
-      .. tab-item:: Python
-
-         .. code-block:: bash
-
-            pip install adbc-driver-manager
-
-         See the :doc:`Python Quickstart <python/quickstart>` for usage instructions.
-
-      .. tab-item:: C/C++
-
-         See the :doc:`C/C++ Quickstart <cpp/quickstart>` for installation and usage instructions.
-
-      .. tab-item:: C#
-
-         .. code-block:: bash
-
-            dotnet add package Apache.Arrow.Adbc.Client
-
-         See the :doc:`C# Quickstart <csharp/quickstart>` for usage instructions.
-
-      .. tab-item:: Go
-
-         .. code-block:: bash
-
-            go get github.com/apache/arrow-adbc/go/adbc
-
-         See the `Go Documentation <https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc>`_ for usage instructions.
-
-      .. tab-item:: Java
-
-         .. code-block:: xml
-
-            <dependency>
-            <groupId>org.apache.arrow.adbc</groupId>
-            <artifactId>adbc-driver-manager</artifactId>
-            </dependency>
-
-         See the :doc:`Java Quickstart <java/quickstart>` for usage instructions.
-
-      .. tab-item:: JS
-
-         .. code-block:: bash
-
-            npm install @apache-arrow/adbc
-
-         See the :doc:`JavaScript Quickstart <javascript/quickstart>` for usage instructions.
-
-      .. tab-item:: R
-
-         .. code-block:: r
-
-            install.packages("adbcdrivermanager")
-
-         See the :doc:`R Quickstart <r/quickstart>` for usage instructions.
-
-      .. tab-item:: Ruby
-
-         .. code-block:: bash
-
-            bundle add red-adbc
-
-         See the :doc:`Ruby Quickstart <ruby/quickstart>` for usage instructions.
-
-      .. tab-item:: Rust
-
-         .. code-block:: bash
-
-            cargo add arrow-adbc
-
-         See the :doc:`Rust Quickstart <rust/quickstart>` for usage instructions.
-
 Why ADBC?
-=========
+---------
 
 .. grid:: 1 2 2 2
    :margin: 4 4 0 0
@@ -187,7 +115,7 @@ Why ADBC?
       in Python, ``database/sql`` in Go, or DBI in R.
 
 More Resources
-==============
+--------------
 
 .. grid:: 1 2 2 2
    :margin: 4 4 0 0
@@ -201,7 +129,7 @@ More Resources
       +++
       :octicon:`cross-reference` View on GitHub
 
-   .. grid-item-card:: Integrations
+   .. grid-item-card:: Tools & Integrations
 
       Learn how ADBC works with popular data tools and frameworks.
 
@@ -213,7 +141,7 @@ More Resources
       Learn how to build your own ADBC driver.
 
       +++
-      :doc:`driver/sdk`
+      :doc:`driver/authoring`
 
    .. grid-item-card:: Specification
 
@@ -223,7 +151,7 @@ More Resources
       :doc:`format/specification`
 
 Old Content
-===========
+-----------
 
 (TODO: Rework this)
 
@@ -260,7 +188,7 @@ Old Content
             :color: secondary
             :expand:
 
-            Integrations
+            Tools & Integrations
 
       .. button-ref:: connection_profiles
             :ref-type: doc
@@ -278,13 +206,6 @@ Old Content
       Learn how ADBC drivers are built and learn how to build your own.
 
       +++
-
-      .. button-ref:: driver/sdk
-            :ref-type: doc
-            :color: secondary
-            :expand:
-
-            Driver SDKs
 
       .. button-ref:: driver/authoring
             :ref-type: doc
@@ -367,7 +288,7 @@ Old Content
    Drivers <driver/index>
    Drivers (Cards View) <driver/alt1>
    Drivers (Database Sections) <driver/alt2>
-   Integrations <integrations>
+   Tools & Integrations <integrations>
    Connection Profiles <connection_profiles>
 
 .. toctree::
@@ -375,22 +296,8 @@ Old Content
    :caption: Build
    :hidden:
 
-   Driver SDKs <driver/sdk>
+   Writing New Drivers <driver/authoring>
    Driver Manifests <format/driver_manifests>
-   driver/authoring
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Specification
-   :hidden:
-
-   format/specification
-   format/versioning
-   format/comparison
-   format/how_manager
-   format/driver_manifests
-   format/connection_profiles
-   format/related_work
 
 .. toctree::
    :maxdepth: 1
@@ -406,6 +313,19 @@ Old Content
    R <r/index>
    Ruby <ruby/index>
    Rust <rust/index>
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Specification
+   :hidden:
+
+   format/specification
+   format/versioning
+   format/comparison
+   format/how_manager
+   format/driver_manifests
+   format/connection_profiles
+   format/related_work
 
 .. toctree::
    :maxdepth: 1

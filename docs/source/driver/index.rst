@@ -98,7 +98,14 @@ The majority of ADBC drivers are available from various third parties:
 - `DuckDB <https://duckdb.org/docs/api/adbc>`__: ADBC support is built directly into DuckDB.
 - `ADBC Driver Foundry <https://docs.adbc-drivers.org/>`__: Community-governed project focused on growing the ADBC ecosystem.
 
-If you've developed a driver or are interested in developing one, we recommend reaching out to the `ADBC Driver Foundry <https://github.com/adbc-drivers/>`__.
+**Have a driver to add?**
+
+If you've developed an ADBC driver and would like it listed in the documentation:
+
+1. `Open an issue <https://github.com/apache/arrow-adbc/issues/new>`__ on the Apache Arrow ADBC repository with details about your driver (name, database, language, repository URL, package names)
+2. Or submit a pull request directly to add your driver to this page
+
+If you're interested in developing a new driver, we recommend reaching out to the `ADBC Driver Foundry <https://github.com/adbc-drivers/>`__.
 
 Installing Drivers
 ==================
@@ -114,6 +121,10 @@ Apache ADBC driver packages are available on the following platforms:
 - **CRAN** (R): ``adbcpostgresql``, ``adbcsqlite``
 - **R-multiverse** (R): ``adbcflightsql``
 - **Maven Central** (Java): ``org.apache.arrow.adbc:adbc-driver-flight-sql``, ``org.apache.arrow.adbc:adbc-driver-jdbc``
+- **NuGet** (C#): ``Apache.Arrow.Adbc.Drivers.FlightSql``, ``Apache.Arrow.Adbc.Drivers.BigQuery``, ``Apache.Arrow.Adbc.Drivers.Apache`` (Hive/Impala/Spark/Databricks), ``Apache.Arrow.Adbc.Drivers.Interop.FlightSql``
+- **npm** (JavaScript): ``@apache-arrow/adbc-driver-manager`` (with platform-specific packages: ``-darwin-arm64``, ``-darwin-x64``, ``-linux-arm64-gnu``, ``-linux-x64-gnu``, ``-win32-x64-msvc``)
+- **crates.io** (Rust): ``adbc_core``, ``adbc_driver_manager``, ``adbc_ffi``
+- **RubyGems** (Ruby): ``red-adbc``
 - **APT/DNF** (C/C++): ``libadbc-driver-flightsql-dev``, ``libadbc-driver-postgresql-dev``, ``libadbc-driver-sqlite-dev``
 
 Or by driver:
@@ -125,23 +136,48 @@ Or by driver:
      - Python (PyPI / conda-forge)
      - R
      - Java (Maven Central) [#pkg-groupid]_
+     - C# (NuGet) [#pkg-csharp]_
      - C/C++ (conda-forge)
      - C/C++ (APT/DNF)
    * - Apache Arrow Flight SQL
      - ``adbc-driver-flightsql``
      - ``adbcflightsql`` [#pkg-rmultiverse]_
      - ``adbc-driver-flight-sql``
+     - ``Apache.Arrow.Adbc.Drivers.FlightSql``
      - ``adbc-driver-flightsql-go``
      - ``libadbc-driver-flightsql-dev``
+   * - Apache Arrow Flight SQL (Interop)
+     - —
+     - —
+     - —
+     - ``Apache.Arrow.Adbc.Drivers.Interop.FlightSql``
+     - —
+     - —
+   * - BigQuery
+     - —
+     - —
+     - —
+     - ``Apache.Arrow.Adbc.Drivers.BigQuery``
+     - —
+     - —
+   * - Apache Hive/Impala/Spark/Databricks
+     - —
+     - —
+     - —
+     - ``Apache.Arrow.Adbc.Drivers.Apache``
+     - —
+     - —
    * - JDBC
      - —
      - —
      - ``adbc-driver-jdbc``
      - —
      - —
+     - —
    * - PostgreSQL
      - ``adbc-driver-postgresql``
      - ``adbcpostgresql``
+     - —
      - —
      - ``adbc-driver-postgresql-cpp``
      - ``libadbc-driver-postgresql-dev``
@@ -149,13 +185,54 @@ Or by driver:
      - ``adbc-driver-sqlite``
      - ``adbcsqlite``
      - —
+     - —
      - ``adbc-driver-sqlite-cpp``
      - ``libadbc-driver-sqlite-dev``
 
 .. [#pkg-groupid] Group ID: ``org.apache.arrow.adbc``
+.. [#pkg-csharp] Group ID: ``Apache.Arrow.Adbc.Drivers``
 .. [#pkg-rmultiverse] Available from R-multiverse, not CRAN
 
 See the :doc:`installation` page for full details.
+
+Client Library and Driver Manager Packages
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+In addition to driver packages, the following client library and driver manager packages are available:
+
+.. list-table::
+   :header-rows: 1
+
+   * - Language
+     - Package Manager
+     - Package Name(s)
+   * - Python
+     - PyPI / conda-forge
+     - ``adbc-driver-manager``
+   * - C/C++
+     - conda-forge
+     - ``adbc-driver-manager-cpp``
+   * - C#/.NET
+     - NuGet
+     - ``Apache.Arrow.Adbc``, ``Apache.Arrow.Adbc.Client``
+   * - Go
+     - Go modules
+     - ``github.com/apache/arrow-adbc/go/adbc``
+   * - Java
+     - Maven Central
+     - ``org.apache.arrow.adbc:adbc-driver-manager``, ``org.apache.arrow.adbc:adbc-core``
+   * - JavaScript
+     - npm
+     - ``@apache-arrow/adbc-driver-manager``
+   * - R
+     - CRAN
+     - ``adbcdrivermanager``
+   * - Ruby
+     - RubyGems
+     - ``red-adbc``
+   * - Rust
+     - crates.io
+     - ``adbc_core``, ``adbc_driver_manager``, ``adbc_ffi``
 
 Third-Party Packages
 --------------------
@@ -200,11 +277,7 @@ An :doc:`ADBC Driver Manager <..//format/how_manager>` dynamically loads a drive
 Migrated Apache Drivers
 =======================
 
-A number of drivers were previously published from the ADBC project but have since been migrated to the `ADBC Driver Foundry <https://github.com/adbc-driverse>`__, where development continues. Packages on platforms such as PyPI and Conda Forge are still available but are not being updated.
-
-- Google BigQuery (Go): Migrated to `github.com/adbc-drivers/bigquery <https://github.com/adbc-drivers/bigquery>`__
-- Databricks (Go): Migrated to `github.com/adbc-drivers/databricks <https://github.com/adbc-drivers/databricks>`__
-- Snowflake (Go): Migrated to `github.com/adbc-drivers/snowflake <https://github.com/adbc-drivers/snowflake>`__
+A number of drivers were previously published from the ADBC project but have since been migrated to the `ADBC Driver Foundry <https://github.com/adbc-drivers>`__, where development continues. Packages on platforms such as PyPI and Conda Forge are still available but are not being updated.
 
 .. list-table::
    :header-rows: 1
@@ -212,20 +285,35 @@ A number of drivers were previously published from the ADBC project but have sin
    * - Driver
      - Implementation
      - New Repository
+     - Deprecated Packages
    * - Databricks
      - Go
      - `github.com/adbc-drivers/databricks <https://github.com/adbc-drivers/databricks>`__
+     - Go: ``github.com/apache/arrow-adbc/go/adbc/driver/databricks``
    * - Google BigQuery
      - Go
      - `github.com/adbc-drivers/bigquery <https://github.com/adbc-drivers/bigquery>`__
+     - | **Go**: ``github.com/apache/arrow-adbc/go/adbc/driver/bigquery``
+       | **Python**: ``adbc-driver-bigquery`` (PyPI, conda-forge)
+       | **R**: ``adbcbigquery`` (R-multiverse)
+       | **C/C++**: ``libadbc-driver-bigquery`` (conda-forge, APT/DNF)
    * - Snowflake
      - Go
      - `github.com/adbc-drivers/snowflake <https://github.com/adbc-drivers/snowflake>`__
+     - | **Go**: ``github.com/apache/arrow-adbc/go/adbc/driver/snowflake``
+       | **Python**: ``adbc-driver-snowflake`` (PyPI, conda-forge)
+       | **R**: ``adbcsnowflake`` (R-multiverse)
+       | **Rust**: ``adbc_driver_snowflake`` (crates.io)
+       | **C/C++**: ``libadbc-driver-snowflake`` (conda-forge, APT/DNF)
+       | **C#**: ``Apache.Arrow.Adbc.Drivers.Interop.Snowflake`` (NuGet)
+   * - DataFusion
+     - Rust
+     - Removed [#pkg-datafusion]_
+     - **Rust**: ``adbc_driver_datafusion`` (crates.io)
 
-!! TODO: Note retired packages
+.. [#pkg-datafusion] The DataFusion driver was removed as of ADBC 0.24.0
 
-conda-forge (adbc-driver-bigquery, libadbc-driver-bigquery), PyPI, R-multiverse
-conda-forge (adbc-driver-snowflake, libadbc-driver-snowflake), crates.io, Go, NuGet, PyPI, R-multiverse
+These deprecated packages are no longer maintained by the Apache Arrow ADBC project. Users should migrate to the ADBC Driver Foundry versions or use alternative drivers.
 
 Alternative Views
 =================
