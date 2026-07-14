@@ -181,6 +181,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Do not create the table and append data; error if the table does not exist (<a href="org/apache/arrow/adbc/core/AdbcStatusCode.html#NOT_FOUND"><code>AdbcStatusCode.NOT_FOUND</code></a>) or does not match the schema of the data to append (<a href="org/apache/arrow/adbc/core/AdbcStatusCode.html#ALREADY_EXISTS"><code>AdbcStatusCode.ALREADY_EXISTS</code></a>).</div>
 </dd>
+<dt><a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html#appendMode()" class="member-name-link">appendMode()</a> - Method in interface org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></dt>
+<dd>
+<div class="block">Append to the target table; fail if not found.</div>
+</dd>
 <dt><a href="org/apache/arrow/adbc/driver/testsuite/ArrowAssertions.html" class="type-name-link" title="class in org.apache.arrow.adbc.driver.testsuite">ArrowAssertions</a> - Class in <a href="org/apache/arrow/adbc/driver/testsuite/package-summary.html">org.apache.arrow.adbc.driver.testsuite</a></dt>
 <dd>
 <div class="block">AssertJ assertions for Arrow.</div>
@@ -242,11 +246,19 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Bind an ArrowReader to provide parameter values/bulk data ingestion.</div>
 </dd>
+<dt><a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html#bind(org.apache.arrow.vector.ipc.ArrowReader)" class="member-name-link">bind(ArrowReader)</a> - Method in interface org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></dt>
+<dd>
+<div class="block">Ingest data from the given reader.</div>
+</dd>
 <dt><a href="org/apache/arrow/adbc/driver/jni/JniStatement.html#bind(org.apache.arrow.vector.ipc.ArrowReader)" class="member-name-link">bind(ArrowReader)</a> - Method in class org.apache.arrow.adbc.driver.jni.<a href="org/apache/arrow/adbc/driver/jni/JniStatement.html" title="class in org.apache.arrow.adbc.driver.jni">JniStatement</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="org/apache/arrow/adbc/core/AdbcStatement.html#bind(org.apache.arrow.vector.VectorSchemaRoot)" class="member-name-link">bind(VectorSchemaRoot)</a> - Method in interface org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/AdbcStatement.html" title="interface in org.apache.arrow.adbc.core">AdbcStatement</a></dt>
 <dd>
 <div class="block">Bind a VectorSchemaRoot to provide parameter values/bulk data ingestion.</div>
+</dd>
+<dt><a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html#bind(org.apache.arrow.vector.VectorSchemaRoot)" class="member-name-link">bind(VectorSchemaRoot)</a> - Method in interface org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></dt>
+<dd>
+<div class="block">Ingest data from the given root.</div>
 </dd>
 <dt><a href="org/apache/arrow/adbc/driver/flightsql/FlightSqlStatement.html#bind(org.apache.arrow.vector.VectorSchemaRoot)" class="member-name-link">bind(VectorSchemaRoot)</a> - Method in class org.apache.arrow.adbc.driver.flightsql.<a href="org/apache/arrow/adbc/driver/flightsql/FlightSqlStatement.html" title="class in org.apache.arrow.adbc.driver.flightsql">FlightSqlStatement</a></dt>
 <dd>&nbsp;</dd>
@@ -270,9 +282,13 @@ loadScripts(document, 'script');</script>
 <dd>&nbsp;</dd>
 <dt><a href="org/apache/arrow/adbc/driver/jdbc/JdbcQuirks.Builder.html#%3Cinit%3E(java.lang.String)" class="member-name-link">Builder(String)</a> - Constructor for class org.apache.arrow.adbc.driver.jdbc.<a href="org/apache/arrow/adbc/driver/jdbc/JdbcQuirks.Builder.html" title="class in org.apache.arrow.adbc.driver.jdbc">JdbcQuirks.Builder</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="org/apache/arrow/adbc/core/AdbcConnection.html#bulkIngest()" class="member-name-link">bulkIngest()</a> - Method in interface org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/AdbcConnection.html" title="interface in org.apache.arrow.adbc.core">AdbcConnection</a></dt>
+<dd>
+<div class="block">Bulk ingest Arrow data into a table, using a fluent builder-style API.</div>
+</dd>
 <dt><a href="org/apache/arrow/adbc/core/AdbcConnection.html#bulkIngest(java.lang.String,org.apache.arrow.adbc.core.BulkIngestMode)" class="member-name-link">bulkIngest(String, BulkIngestMode)</a> - Method in interface org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/AdbcConnection.html" title="interface in org.apache.arrow.adbc.core">AdbcConnection</a></dt>
 <dd>
-<div class="block">Create a new statement to bulk insert a <a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/VectorSchemaRoot.html" title="class or interface in org.apache.arrow.vector" class="external-link"><code>VectorSchemaRoot</code></a> into a table.</div>
+<div class="block">Create a new statement to bulk ingest Arrow data into a table.</div>
 </dd>
 <dt><a href="org/apache/arrow/adbc/driver/flightsql/FlightSqlConnection.html#bulkIngest(java.lang.String,org.apache.arrow.adbc.core.BulkIngestMode)" class="member-name-link">bulkIngest(String, BulkIngestMode)</a> - Method in class org.apache.arrow.adbc.driver.flightsql.<a href="org/apache/arrow/adbc/driver/flightsql/FlightSqlConnection.html" title="class in org.apache.arrow.adbc.driver.flightsql">FlightSqlConnection</a></dt>
 <dd>&nbsp;</dd>
@@ -282,7 +298,7 @@ loadScripts(document, 'script');</script>
 <dd>&nbsp;</dd>
 <dt><a href="org/apache/arrow/adbc/core/AdbcConnection.html#bulkIngest(java.lang.String,org.apache.arrow.adbc.core.BulkIngestMode,org.apache.arrow.adbc.core.IngestOption...)" class="member-name-link">bulkIngest(String, BulkIngestMode, IngestOption...)</a> - Method in interface org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/AdbcConnection.html" title="interface in org.apache.arrow.adbc.core">AdbcConnection</a></dt>
 <dd>
-<div class="block">Create a new statement to bulk insert a <a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/VectorSchemaRoot.html" title="class or interface in org.apache.arrow.vector" class="external-link"><code>VectorSchemaRoot</code></a> into a table.</div>
+<div class="block">Create a new statement to bulk ingest Arrow data into a table.</div>
 </dd>
 <dt><a href="org/apache/arrow/adbc/driver/jni/JniConnection.html#bulkIngest(java.lang.String,org.apache.arrow.adbc.core.BulkIngestMode,org.apache.arrow.adbc.core.IngestOption...)" class="member-name-link">bulkIngest(String, BulkIngestMode, IngestOption...)</a> - Method in class org.apache.arrow.adbc.driver.jni.<a href="org/apache/arrow/adbc/driver/jni/JniConnection.html" title="class in org.apache.arrow.adbc.driver.jni">JniConnection</a></dt>
 <dd>&nbsp;</dd>
@@ -292,6 +308,10 @@ loadScripts(document, 'script');</script>
 <dd>&nbsp;</dd>
 <dt><a href="org/apache/arrow/adbc/driver/testsuite/AbstractStatementTest.html#bulkIngestAppendNotFound()" class="member-name-link">bulkIngestAppendNotFound()</a> - Method in class org.apache.arrow.adbc.driver.testsuite.<a href="org/apache/arrow/adbc/driver/testsuite/AbstractStatementTest.html" title="class in org.apache.arrow.adbc.driver.testsuite">AbstractStatementTest</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html" class="type-name-link" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a> - Interface in <a href="org/apache/arrow/adbc/core/package-summary.html">org.apache.arrow.adbc.core</a></dt>
+<dd>
+<div class="block">A fluent builder-style interface for configuring and executing a bulk ingest.</div>
+</dd>
 <dt><a href="org/apache/arrow/adbc/driver/testsuite/AbstractStatementTest.html#bulkIngestCreateConflict()" class="member-name-link">bulkIngestCreateConflict()</a> - Method in class org.apache.arrow.adbc.driver.testsuite.<a href="org/apache/arrow/adbc/driver/testsuite/AbstractStatementTest.html" title="class in org.apache.arrow.adbc.driver.testsuite">AbstractStatementTest</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="org/apache/arrow/adbc/core/BulkIngestMode.html" class="type-name-link" title="enum in org.apache.arrow.adbc.core">BulkIngestMode</a> - Enum in <a href="org/apache/arrow/adbc/core/package-summary.html">org.apache.arrow.adbc.core</a></dt>
@@ -356,6 +376,10 @@ loadScripts(document, 'script');</script>
 <dt><a href="org/apache/arrow/adbc/core/AdbcStatement.QueryResult.html#close()" class="member-name-link">close()</a> - Method in class org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/AdbcStatement.QueryResult.html" title="class in org.apache.arrow.adbc.core">AdbcStatement.QueryResult</a></dt>
 <dd>
 <div class="block">Close the contained reader.</div>
+</dd>
+<dt><a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html#close()" class="member-name-link">close()</a> - Method in interface org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></dt>
+<dd>
+<div class="block">Clean up any state in this bulk ingest.</div>
 </dd>
 <dt><a href="org/apache/arrow/adbc/driver/flightsql/FlightSqlClientWithCallOptions.html#close()" class="member-name-link">close()</a> - Method in class org.apache.arrow.adbc.driver.flightsql.<a href="org/apache/arrow/adbc/driver/flightsql/FlightSqlClientWithCallOptions.html" title="class in org.apache.arrow.adbc.driver.flightsql">FlightSqlClientWithCallOptions</a></dt>
 <dd>&nbsp;</dd>
@@ -455,6 +479,14 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Insert data; create the table if it does not exist, or error (<a href="org/apache/arrow/adbc/core/AdbcStatusCode.html#ALREADY_EXISTS"><code>AdbcStatusCode.ALREADY_EXISTS</code></a>) if the table exists, but the schema does not match the schema
  of the data to append.</div>
+</dd>
+<dt><a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html#createAppendMode()" class="member-name-link">createAppendMode()</a> - Method in interface org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></dt>
+<dd>
+<div class="block">Create the target table if necessary, append if already exists.</div>
+</dd>
+<dt><a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html#createMode()" class="member-name-link">createMode()</a> - Method in interface org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></dt>
+<dd>
+<div class="block">Create the target table; fail if already exists.</div>
 </dd>
 <dt><a href="org/apache/arrow/adbc/core/AdbcConnection.html#createStatement()" class="member-name-link">createStatement()</a> - Method in interface org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/AdbcConnection.html" title="interface in org.apache.arrow.adbc.core">AdbcConnection</a></dt>
 <dd>
@@ -1067,6 +1099,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Import the C Data stream into a Java ArrowReader.</div>
 </dd>
+<dt><a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html#ingest()" class="member-name-link">ingest()</a> - Method in interface org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></dt>
+<dd>
+<div class="block">Execute the bulk ingest.</div>
+</dd>
 <dt><a href="org/apache/arrow/adbc/core/IngestOption.html" class="type-name-link" title="interface in org.apache.arrow.adbc.core">IngestOption</a> - Interface in <a href="org/apache/arrow/adbc/core/package-summary.html">org.apache.arrow.adbc.core</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="org/apache/arrow/adbc/core/IngestOption.TargetNamespaceIngestOption.html" class="type-name-link" title="class in org.apache.arrow.adbc.core">IngestOption.TargetNamespaceIngestOption</a> - Class in <a href="org/apache/arrow/adbc/core/package-summary.html">org.apache.arrow.adbc.core</a></dt>
@@ -1267,6 +1303,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">The min value statistic.</div>
 </dd>
+<dt><a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html#mode(org.apache.arrow.adbc.core.BulkIngestMode)" class="member-name-link">mode(BulkIngestMode)</a> - Method in interface org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></dt>
+<dd>
+<div class="block">How to handle an already-existing/non-existent target table.</div>
+</dd>
 <dt><a href="org/apache/arrow/adbc/driver/jdbc/StandardJdbcQuirks.html#MS_SQL_SERVER" class="member-name-link">MS_SQL_SERVER</a> - Static variable in class org.apache.arrow.adbc.driver.jdbc.<a href="org/apache/arrow/adbc/driver/jdbc/StandardJdbcQuirks.html" title="class in org.apache.arrow.adbc.driver.jdbc">StandardJdbcQuirks</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="org/apache/arrow/adbc/driver/flightsql/FlightSqlConnectionProperties.html#MTLS_CERT_CHAIN" class="member-name-link">MTLS_CERT_CHAIN</a> - Static variable in interface org.apache.arrow.adbc.driver.flightsql.<a href="org/apache/arrow/adbc/driver/flightsql/FlightSqlConnectionProperties.html" title="interface in org.apache.arrow.adbc.driver.flightsql">FlightSqlConnectionProperties</a></dt>
@@ -1337,6 +1377,14 @@ loadScripts(document, 'script');</script>
 <dd>&nbsp;</dd>
 <dt><a href="org/apache/arrow/adbc/driver/jni/impl/JniLoader.html#openStatement(org.apache.arrow.adbc.driver.jni.impl.NativeConnectionHandle)" class="member-name-link">openStatement(NativeConnectionHandle)</a> - Method in enum org.apache.arrow.adbc.driver.jni.impl.<a href="org/apache/arrow/adbc/driver/jni/impl/JniLoader.html" title="enum in org.apache.arrow.adbc.driver.jni.impl">JniLoader</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html#option(org.apache.arrow.adbc.core.IngestOption)" class="member-name-link">option(IngestOption)</a> - Method in interface org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></dt>
+<dd>
+<div class="block">Set an arbitrary ingest option.</div>
+</dd>
+<dt><a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html#option(org.apache.arrow.adbc.core.TypedKey,T)" class="member-name-link">option(TypedKey&lt;T&gt;, T)</a> - Method in interface org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></dt>
+<dd>
+<div class="block">Set a statement option before ingest.</div>
+</dd>
 <dt><a href="org/apache/arrow/adbc/core/package-summary.html">org.apache.arrow.adbc.core</a> - package org.apache.arrow.adbc.core</dt>
 <dd>
 <div class="block">ADBC (Arrow Database Connectivity) is an API standard for Arrow-based database access.</div>
@@ -1511,6 +1559,10 @@ loadScripts(document, 'script');</script>
 <dt><a href="org/apache/arrow/adbc/core/BulkIngestMode.html#REPLACE" class="member-name-link">REPLACE</a> - Enum constant in enum org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/BulkIngestMode.html" title="enum in org.apache.arrow.adbc.core">BulkIngestMode</a></dt>
 <dd>
 <div class="block">Create the table and insert data; drop the original table if it already exists.</div>
+</dd>
+<dt><a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html#replaceMode()" class="member-name-link">replaceMode()</a> - Method in interface org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></dt>
+<dd>
+<div class="block">Drop (if exists) and create the target table.</div>
 </dd>
 <dt><a href="org/apache/arrow/adbc/core/AdbcConnection.html#rollback()" class="member-name-link">rollback()</a> - Method in interface org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/AdbcConnection.html" title="interface in org.apache.arrow.adbc.core">AdbcConnection</a></dt>
 <dd>
@@ -1717,6 +1769,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Display catalogs, database schemas, and tables.</div>
 </dd>
+<dt><a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html#targetCatalog(java.lang.String)" class="member-name-link">targetCatalog(String)</a> - Method in interface org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></dt>
+<dd>
+<div class="block">Ingest into a table in the given catalog.</div>
+</dd>
 <dt><a href="org/apache/arrow/adbc/core/IngestOption.html#targetCatalog(java.lang.String)" class="member-name-link">targetCatalog(String)</a> - Static method in interface org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/IngestOption.html" title="interface in org.apache.arrow.adbc.core">IngestOption</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="org/apache/arrow/adbc/core/IngestOption.html#targetDbSchema(java.lang.String)" class="member-name-link">targetDbSchema(String)</a> - Static method in interface org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/IngestOption.html" title="interface in org.apache.arrow.adbc.core">IngestOption</a></dt>
@@ -1725,6 +1781,22 @@ loadScripts(document, 'script');</script>
 <dd>&nbsp;</dd>
 <dt><a href="org/apache/arrow/adbc/core/IngestOption.TargetNamespaceIngestOption.html#%3Cinit%3E(java.lang.String,java.lang.String)" class="member-name-link">TargetNamespaceIngestOption(String, String)</a> - Constructor for class org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/IngestOption.TargetNamespaceIngestOption.html" title="class in org.apache.arrow.adbc.core">IngestOption.TargetNamespaceIngestOption</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html#targetSchema(java.lang.String)" class="member-name-link">targetSchema(String)</a> - Method in interface org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></dt>
+<dd>
+<div class="block">Ingest into a table in the given schema.</div>
+</dd>
+<dt><a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html#targetTable(java.lang.String)" class="member-name-link">targetTable(String)</a> - Method in interface org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></dt>
+<dd>
+<div class="block">Ingest into a table with the given name (required).</div>
+</dd>
+<dt><a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html#temporary()" class="member-name-link">temporary()</a> - Method in interface org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></dt>
+<dd>
+<div class="block">Ingest into a temporary table.</div>
+</dd>
+<dt><a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html#temporary(boolean)" class="member-name-link">temporary(boolean)</a> - Method in interface org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></dt>
+<dd>
+<div class="block">Whether to ingest into a temporary table or not.</div>
+</dd>
 <dt><a href="org/apache/arrow/adbc/core/IngestOption.html#TEMPORARY" class="member-name-link">TEMPORARY</a> - Static variable in interface org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/IngestOption.html" title="interface in org.apache.arrow.adbc.core">IngestOption</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="org/apache/arrow/adbc/core/AdbcStatusCode.html#TIMEOUT" class="member-name-link">TIMEOUT</a> - Enum constant in enum org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/AdbcStatusCode.html" title="enum in org.apache.arrow.adbc.core">AdbcStatusCode</a></dt>
@@ -1755,6 +1827,11 @@ loadScripts(document, 'script');</script>
 <dd>&nbsp;</dd>
 <dt><a href="org/apache/arrow/adbc/driver/testsuite/ArrowToJava.html#toObjects(org.apache.arrow.vector.ValueVector)" class="member-name-link">toObjects(ValueVector)</a> - Static method in class org.apache.arrow.adbc.driver.testsuite.<a href="org/apache/arrow/adbc/driver/testsuite/ArrowToJava.html" title="class in org.apache.arrow.adbc.driver.testsuite">ArrowToJava</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html#toStatement()" class="member-name-link">toStatement()</a> - Method in interface org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></dt>
+<dd>
+<div class="block">Convert this builder to an <a href="org/apache/arrow/adbc/core/AdbcStatement.html" title="interface in org.apache.arrow.adbc.core"><code>AdbcStatement</code></a> (low-level API for further control) without
+ executing.</div>
+</dd>
 <dt><a href="org/apache/arrow/adbc/core/AdbcException.html#toString()" class="member-name-link">toString()</a> - Method in exception org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/AdbcException.html" title="class in org.apache.arrow.adbc.core">AdbcException</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="org/apache/arrow/adbc/core/AdbcStatement.PartitionResult.html#toString()" class="member-name-link">toString()</a> - Method in class org.apache.arrow.adbc.core.<a href="org/apache/arrow/adbc/core/AdbcStatement.PartitionResult.html" title="class in org.apache.arrow.adbc.core">AdbcStatement.PartitionResult</a></dt>

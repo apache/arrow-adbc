@@ -123,48 +123,68 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
-<div class="col-first even-row-color"><code>default void</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">AdbcStatement.</span><code><a href="../AdbcStatement.html#bind(org.apache.arrow.vector.ipc.ArrowReader)" class="member-name-link">bind</a><wbr>(<a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a>&nbsp;reader)</code></div>
+<div class="col-first even-row-color"><code><a href="../BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">BulkIngestBuilder.</span><code><a href="../BulkIngestBuilder.html#appendMode()" class="member-name-link">appendMode</a>()</code></div>
 <div class="col-last even-row-color">
+<div class="block">Append to the target table; fail if not found.</div>
+</div>
+<div class="col-first odd-row-color"><code>default void</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">AdbcStatement.</span><code><a href="../AdbcStatement.html#bind(org.apache.arrow.vector.ipc.ArrowReader)" class="member-name-link">bind</a><wbr>(<a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a>&nbsp;reader)</code></div>
+<div class="col-last odd-row-color">
 <div class="block">Bind an ArrowReader to provide parameter values/bulk data ingestion.</div>
 </div>
-<div class="col-first odd-row-color"><code>default void</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">AdbcStatement.</span><code><a href="../AdbcStatement.html#bind(org.apache.arrow.vector.VectorSchemaRoot)" class="member-name-link">bind</a><wbr>(<a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/VectorSchemaRoot.html" title="class or interface in org.apache.arrow.vector" class="external-link">VectorSchemaRoot</a>&nbsp;root)</code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code>default void</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">AdbcStatement.</span><code><a href="../AdbcStatement.html#bind(org.apache.arrow.vector.VectorSchemaRoot)" class="member-name-link">bind</a><wbr>(<a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/VectorSchemaRoot.html" title="class or interface in org.apache.arrow.vector" class="external-link">VectorSchemaRoot</a>&nbsp;root)</code></div>
+<div class="col-last even-row-color">
 <div class="block">Bind a VectorSchemaRoot to provide parameter values/bulk data ingestion.</div>
 </div>
-<div class="col-first even-row-color"><code>default <a href="../AdbcStatement.html" title="interface in org.apache.arrow.adbc.core">AdbcStatement</a></code></div>
-<div class="col-second even-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#bulkIngest(java.lang.String,org.apache.arrow.adbc.core.BulkIngestMode)" class="member-name-link">bulkIngest</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;targetTableName,
- <a href="../BulkIngestMode.html" title="enum in org.apache.arrow.adbc.core">BulkIngestMode</a>&nbsp;mode)</code></div>
+<div class="col-first odd-row-color"><code><a href="../BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">BulkIngestBuilder.</span><code><a href="../BulkIngestBuilder.html#bind(org.apache.arrow.vector.ipc.ArrowReader)" class="member-name-link">bind</a><wbr>(<a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/ipc/ArrowReader.html" title="class or interface in org.apache.arrow.vector.ipc" class="external-link">ArrowReader</a>&nbsp;stream)</code></div>
+<div class="col-last odd-row-color">
+<div class="block">Ingest data from the given reader.</div>
+</div>
+<div class="col-first even-row-color"><code><a href="../BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">BulkIngestBuilder.</span><code><a href="../BulkIngestBuilder.html#bind(org.apache.arrow.vector.VectorSchemaRoot)" class="member-name-link">bind</a><wbr>(<a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/VectorSchemaRoot.html" title="class or interface in org.apache.arrow.vector" class="external-link">VectorSchemaRoot</a>&nbsp;root)</code></div>
 <div class="col-last even-row-color">
-<div class="block">Create a new statement to bulk insert a <a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/VectorSchemaRoot.html" title="class or interface in org.apache.arrow.vector" class="external-link"><code>VectorSchemaRoot</code></a> into a table.</div>
+<div class="block">Ingest data from the given root.</div>
 </div>
 <div class="col-first odd-row-color"><code>default <a href="../AdbcStatement.html" title="interface in org.apache.arrow.adbc.core">AdbcStatement</a></code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#bulkIngest(java.lang.String,org.apache.arrow.adbc.core.BulkIngestMode,org.apache.arrow.adbc.core.IngestOption...)" class="member-name-link">bulkIngest</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;targetTableName,
+<div class="col-second odd-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#bulkIngest(java.lang.String,org.apache.arrow.adbc.core.BulkIngestMode)" class="member-name-link">bulkIngest</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;targetTableName,
+ <a href="../BulkIngestMode.html" title="enum in org.apache.arrow.adbc.core">BulkIngestMode</a>&nbsp;mode)</code></div>
+<div class="col-last odd-row-color">
+<div class="block">Create a new statement to bulk ingest Arrow data into a table.</div>
+</div>
+<div class="col-first even-row-color"><code>default <a href="../AdbcStatement.html" title="interface in org.apache.arrow.adbc.core">AdbcStatement</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#bulkIngest(java.lang.String,org.apache.arrow.adbc.core.BulkIngestMode,org.apache.arrow.adbc.core.IngestOption...)" class="member-name-link">bulkIngest</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;targetTableName,
  <a href="../BulkIngestMode.html" title="enum in org.apache.arrow.adbc.core">BulkIngestMode</a>&nbsp;mode,
  <a href="../IngestOption.html" title="interface in org.apache.arrow.adbc.core">IngestOption</a>...&nbsp;options)</code></div>
+<div class="col-last even-row-color">
+<div class="block">Create a new statement to bulk ingest Arrow data into a table.</div>
+</div>
+<div class="col-first odd-row-color"><code>default void</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#cancel()" class="member-name-link">cancel</a>()</code></div>
 <div class="col-last odd-row-color">
-<div class="block">Create a new statement to bulk insert a <a href="https://arrow.apache.org/java/main/reference/org.apache.arrow.vector/org/apache/arrow/vector/VectorSchemaRoot.html" title="class or interface in org.apache.arrow.vector" class="external-link"><code>VectorSchemaRoot</code></a> into a table.</div>
+<div class="block">Cancel execution of a query.</div>
 </div>
 <div class="col-first even-row-color"><code>default void</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#cancel()" class="member-name-link">cancel</a>()</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">AdbcStatement.</span><code><a href="../AdbcStatement.html#cancel()" class="member-name-link">cancel</a>()</code></div>
 <div class="col-last even-row-color">
 <div class="block">Cancel execution of a query.</div>
 </div>
-<div class="col-first odd-row-color"><code>default void</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">AdbcStatement.</span><code><a href="../AdbcStatement.html#cancel()" class="member-name-link">cancel</a>()</code></div>
-<div class="col-last odd-row-color">
-<div class="block">Cancel execution of a query.</div>
-</div>
-<div class="col-first even-row-color"><code>void</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#close()" class="member-name-link">close</a>()</code></div>
-<div class="col-last even-row-color">&nbsp;</div>
 <div class="col-first odd-row-color"><code>void</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">AdbcDatabase.</span><code><a href="../AdbcDatabase.html#close()" class="member-name-link">close</a>()</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#close()" class="member-name-link">close</a>()</code></div>
 <div class="col-last odd-row-color">&nbsp;</div>
 <div class="col-first even-row-color"><code>void</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">AdbcStatement.</span><code><a href="../AdbcStatement.html#close()" class="member-name-link">close</a>()</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">AdbcDatabase.</span><code><a href="../AdbcDatabase.html#close()" class="member-name-link">close</a>()</code></div>
 <div class="col-last even-row-color">&nbsp;</div>
+<div class="col-first odd-row-color"><code>void</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">AdbcStatement.</span><code><a href="../AdbcStatement.html#close()" class="member-name-link">close</a>()</code></div>
+<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-first even-row-color"><code>void</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">BulkIngestBuilder.</span><code><a href="../BulkIngestBuilder.html#close()" class="member-name-link">close</a>()</code></div>
+<div class="col-last even-row-color">
+<div class="block">Clean up any state in this bulk ingest.</div>
+</div>
 <div class="col-first odd-row-color"><code>default void</code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#commit()" class="member-name-link">commit</a>()</code></div>
 <div class="col-last odd-row-color">
@@ -174,6 +194,16 @@ loadScripts(document, 'script');</script>
 <div class="col-second even-row-color"><span class="type-name-label">AdbcDatabase.</span><code><a href="../AdbcDatabase.html#connect()" class="member-name-link">connect</a>()</code></div>
 <div class="col-last even-row-color">
 <div class="block">Create a new connection to the database.</div>
+</div>
+<div class="col-first odd-row-color"><code><a href="../BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">BulkIngestBuilder.</span><code><a href="../BulkIngestBuilder.html#createAppendMode()" class="member-name-link">createAppendMode</a>()</code></div>
+<div class="col-last odd-row-color">
+<div class="block">Create the target table if necessary, append if already exists.</div>
+</div>
+<div class="col-first even-row-color"><code><a href="../BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">BulkIngestBuilder.</span><code><a href="../BulkIngestBuilder.html#createMode()" class="member-name-link">createMode</a>()</code></div>
+<div class="col-last even-row-color">
+<div class="block">Create the target table; fail if already exists.</div>
 </div>
 <div class="col-first odd-row-color"><code><a href="../AdbcStatement.html" title="interface in org.apache.arrow.adbc.core">AdbcStatement</a></code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#createStatement()" class="member-name-link">createStatement</a>()</code></div>
@@ -295,10 +325,31 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color">
 <div class="block">Get a list of table types supported by the database.</div>
 </div>
+<div class="col-first odd-row-color"><code>default <a href="../AdbcStatement.UpdateResult.html" title="class in org.apache.arrow.adbc.core">AdbcStatement.UpdateResult</a></code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">BulkIngestBuilder.</span><code><a href="../BulkIngestBuilder.html#ingest()" class="member-name-link">ingest</a>()</code></div>
+<div class="col-last odd-row-color">
+<div class="block">Execute the bulk ingest.</div>
+</div>
+<div class="col-first even-row-color"><code><a href="../BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">BulkIngestBuilder.</span><code><a href="../BulkIngestBuilder.html#mode(org.apache.arrow.adbc.core.BulkIngestMode)" class="member-name-link">mode</a><wbr>(<a href="../BulkIngestMode.html" title="enum in org.apache.arrow.adbc.core">BulkIngestMode</a>&nbsp;mode)</code></div>
+<div class="col-last even-row-color">
+<div class="block">How to handle an already-existing/non-existent target table.</div>
+</div>
 <div class="col-first odd-row-color"><code><a href="../AdbcDatabase.html" title="interface in org.apache.arrow.adbc.core">AdbcDatabase</a></code></div>
 <div class="col-second odd-row-color"><span class="type-name-label">AdbcDriver.</span><code><a href="../AdbcDriver.html#open(java.util.Map)" class="member-name-link">open</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Map.html" title="class or interface in java.util" class="external-link">Map</a>&lt;<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>,<wbr><a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&gt;&nbsp;parameters)</code></div>
 <div class="col-last odd-row-color">
 <div class="block">Open a database via this driver.</div>
+</div>
+<div class="col-first even-row-color"><code><a href="../BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">BulkIngestBuilder.</span><code><a href="../BulkIngestBuilder.html#option(org.apache.arrow.adbc.core.IngestOption)" class="member-name-link">option</a><wbr>(<a href="../IngestOption.html" title="interface in org.apache.arrow.adbc.core">IngestOption</a>&nbsp;option)</code></div>
+<div class="col-last even-row-color">
+<div class="block">Set an arbitrary ingest option.</div>
+</div>
+<div class="col-first odd-row-color"><code>&lt;T&gt;&nbsp;<a href="../BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">BulkIngestBuilder.</span><code><a href="../BulkIngestBuilder.html#option(org.apache.arrow.adbc.core.TypedKey,T)" class="member-name-link">option</a><wbr>(<a href="../TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key,
+ T&nbsp;value)</code></div>
+<div class="col-last odd-row-color">
+<div class="block">Set a statement option before ingest.</div>
 </div>
 <div class="col-first even-row-color"><code>default <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/util/Iterator.html" title="class or interface in java.util" class="external-link">Iterator</a>&lt;<a href="../AdbcStatement.PartitionResult.html" title="class in org.apache.arrow.adbc.core">AdbcStatement.PartitionResult</a>&gt;</code></div>
 <div class="col-second even-row-color"><span class="type-name-label">AdbcStatement.</span><code><a href="../AdbcStatement.html#pollPartitioned()" class="member-name-link">pollPartitioned</a>()</code></div>
@@ -315,59 +366,95 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color">
 <div class="block">Create a result set from a serialized PartitionDescriptor.</div>
 </div>
-<div class="col-first odd-row-color"><code>default void</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#rollback()" class="member-name-link">rollback</a>()</code></div>
+<div class="col-first odd-row-color"><code><a href="../BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">BulkIngestBuilder.</span><code><a href="../BulkIngestBuilder.html#replaceMode()" class="member-name-link">replaceMode</a>()</code></div>
 <div class="col-last odd-row-color">
+<div class="block">Drop (if exists) and create the target table.</div>
+</div>
+<div class="col-first even-row-color"><code>default void</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#rollback()" class="member-name-link">rollback</a>()</code></div>
+<div class="col-last even-row-color">
 <div class="block">Rollback the pending transaction.</div>
 </div>
-<div class="col-first even-row-color"><code>default void</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#setAutoCommit(boolean)" class="member-name-link">setAutoCommit</a><wbr>(boolean&nbsp;enableAutoCommit)</code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code>default void</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#setAutoCommit(boolean)" class="member-name-link">setAutoCommit</a><wbr>(boolean&nbsp;enableAutoCommit)</code></div>
+<div class="col-last odd-row-color">
 <div class="block">Toggle whether autocommit is enabled.</div>
 </div>
-<div class="col-first odd-row-color"><code>default void</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#setCurrentCatalog(java.lang.String)" class="member-name-link">setCurrentCatalog</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;catalog)</code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code>default void</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#setCurrentCatalog(java.lang.String)" class="member-name-link">setCurrentCatalog</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;catalog)</code></div>
+<div class="col-last even-row-color">
 <div class="block">Set the current catalog.</div>
 </div>
-<div class="col-first even-row-color"><code>default void</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#setCurrentDbSchema(java.lang.String)" class="member-name-link">setCurrentDbSchema</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;dbSchema)</code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code>default void</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#setCurrentDbSchema(java.lang.String)" class="member-name-link">setCurrentDbSchema</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;dbSchema)</code></div>
+<div class="col-last odd-row-color">
 <div class="block">Set the current schema.</div>
 </div>
-<div class="col-first odd-row-color"><code>default void</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#setIsolationLevel(org.apache.arrow.adbc.core.IsolationLevel)" class="member-name-link">setIsolationLevel</a><wbr>(<a href="../IsolationLevel.html" title="enum in org.apache.arrow.adbc.core">IsolationLevel</a>&nbsp;level)</code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code>default void</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#setIsolationLevel(org.apache.arrow.adbc.core.IsolationLevel)" class="member-name-link">setIsolationLevel</a><wbr>(<a href="../IsolationLevel.html" title="enum in org.apache.arrow.adbc.core">IsolationLevel</a>&nbsp;level)</code></div>
+<div class="col-last even-row-color">
 <div class="block">Change the isolation level used by transactions.</div>
 </div>
-<div class="col-first even-row-color"><code>default &lt;T&gt;&nbsp;void</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">AdbcOptions.</span><code><a href="../AdbcOptions.html#setOption(org.apache.arrow.adbc.core.TypedKey,T)" class="member-name-link">setOption</a><wbr>(<a href="../TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key,
+<div class="col-first odd-row-color"><code>default &lt;T&gt;&nbsp;void</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">AdbcOptions.</span><code><a href="../AdbcOptions.html#setOption(org.apache.arrow.adbc.core.TypedKey,T)" class="member-name-link">setOption</a><wbr>(<a href="../TypedKey.html" title="class in org.apache.arrow.adbc.core">TypedKey</a>&lt;T&gt;&nbsp;key,
  T&nbsp;value)</code></div>
-<div class="col-last even-row-color">
+<div class="col-last odd-row-color">
 <div class="block">Set a generic option.</div>
 </div>
-<div class="col-first odd-row-color"><code>default void</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">AdbcStatement.</span><code><a href="../AdbcStatement.html#setOption(java.lang.String,java.lang.Object)" class="member-name-link">setOption</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;key,
+<div class="col-first even-row-color"><code>default void</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">AdbcStatement.</span><code><a href="../AdbcStatement.html#setOption(java.lang.String,java.lang.Object)" class="member-name-link">setOption</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;key,
  <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;value)</code></div>
-<div class="col-last odd-row-color">
+<div class="col-last even-row-color">
 <div class="block"><span class="deprecated-label">Deprecated.</span>
 <div class="deprecation-comment">Prefer <a href="../AdbcOptions.html#setOption(org.apache.arrow.adbc.core.TypedKey,T)"><code>AdbcOptions.setOption(TypedKey, Object)</code></a>.</div>
 </div>
 </div>
-<div class="col-first even-row-color"><code>default void</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#setReadOnly(boolean)" class="member-name-link">setReadOnly</a><wbr>(boolean&nbsp;isReadOnly)</code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code>default void</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">AdbcConnection.</span><code><a href="../AdbcConnection.html#setReadOnly(boolean)" class="member-name-link">setReadOnly</a><wbr>(boolean&nbsp;isReadOnly)</code></div>
+<div class="col-last odd-row-color">
 <div class="block">Toggle whether the connection is read-only.</div>
 </div>
-<div class="col-first odd-row-color"><code>default void</code></div>
-<div class="col-second odd-row-color"><span class="type-name-label">AdbcStatement.</span><code><a href="../AdbcStatement.html#setSqlQuery(java.lang.String)" class="member-name-link">setSqlQuery</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query)</code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code>default void</code></div>
+<div class="col-second even-row-color"><span class="type-name-label">AdbcStatement.</span><code><a href="../AdbcStatement.html#setSqlQuery(java.lang.String)" class="member-name-link">setSqlQuery</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;query)</code></div>
+<div class="col-last even-row-color">
 <div class="block">Set a SQL query to be executed on this statement.</div>
 </div>
-<div class="col-first even-row-color"><code>default void</code></div>
-<div class="col-second even-row-color"><span class="type-name-label">AdbcStatement.</span><code><a href="../AdbcStatement.html#setSubstraitPlan(java.nio.ByteBuffer)" class="member-name-link">setSubstraitPlan</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;plan)</code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code>default void</code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">AdbcStatement.</span><code><a href="../AdbcStatement.html#setSubstraitPlan(java.nio.ByteBuffer)" class="member-name-link">setSubstraitPlan</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;plan)</code></div>
+<div class="col-last odd-row-color">
 <div class="block">Set a Substrait plan to be executed on this statement.</div>
+</div>
+<div class="col-first even-row-color"><code><a href="../BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">BulkIngestBuilder.</span><code><a href="../BulkIngestBuilder.html#targetCatalog(java.lang.String)" class="member-name-link">targetCatalog</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;catalog)</code></div>
+<div class="col-last even-row-color">
+<div class="block">Ingest into a table in the given catalog.</div>
+</div>
+<div class="col-first odd-row-color"><code><a href="../BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">BulkIngestBuilder.</span><code><a href="../BulkIngestBuilder.html#targetSchema(java.lang.String)" class="member-name-link">targetSchema</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;schema)</code></div>
+<div class="col-last odd-row-color">
+<div class="block">Ingest into a table in the given schema.</div>
+</div>
+<div class="col-first even-row-color"><code><a href="../BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">BulkIngestBuilder.</span><code><a href="../BulkIngestBuilder.html#targetTable(java.lang.String)" class="member-name-link">targetTable</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;table)</code></div>
+<div class="col-last even-row-color">
+<div class="block">Ingest into a table with the given name (required).</div>
+</div>
+<div class="col-first odd-row-color"><code>default <a href="../BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">BulkIngestBuilder.</span><code><a href="../BulkIngestBuilder.html#temporary()" class="member-name-link">temporary</a>()</code></div>
+<div class="col-last odd-row-color">
+<div class="block">Ingest into a temporary table.</div>
+</div>
+<div class="col-first even-row-color"><code><a href="../BulkIngestBuilder.html" title="interface in org.apache.arrow.adbc.core">BulkIngestBuilder</a></code></div>
+<div class="col-second even-row-color"><span class="type-name-label">BulkIngestBuilder.</span><code><a href="../BulkIngestBuilder.html#temporary(boolean)" class="member-name-link">temporary</a><wbr>(boolean&nbsp;isTemporary)</code></div>
+<div class="col-last even-row-color">
+<div class="block">Whether to ingest into a temporary table or not.</div>
+</div>
+<div class="col-first odd-row-color"><code><a href="../AdbcStatement.html" title="interface in org.apache.arrow.adbc.core">AdbcStatement</a></code></div>
+<div class="col-second odd-row-color"><span class="type-name-label">BulkIngestBuilder.</span><code><a href="../BulkIngestBuilder.html#toStatement()" class="member-name-link">toStatement</a>()</code></div>
+<div class="col-last odd-row-color">
+<div class="block">Convert this builder to an <a href="../AdbcStatement.html" title="interface in org.apache.arrow.adbc.core"><code>AdbcStatement</code></a> (low-level API for further control) without
+ executing.</div>
 </div>
 </div>
 </section>
