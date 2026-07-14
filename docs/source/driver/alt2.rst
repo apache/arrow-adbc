@@ -76,7 +76,7 @@ ClickHouse
 
 **Written In:** Go
 
-**Source:** `ClickHouse/adbc-driver-clickhouse <https://github.com/ClickHouse/adbc-driver-clickhouse>`__
+**Source:** `adbc-drivers/clickhouse <https://github.com/adbc-drivers/clickhouse>`__
 
 **Packages:** :package-badge:`dbc|clickhouse|https://dbc-cdn.columnar.tech`
 

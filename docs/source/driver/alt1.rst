@@ -136,7 +136,7 @@ Available Drivers
 
       **Source**
 
-      `ClickHouse/adbc-driver-clickhouse <https://github.com/ClickHouse/adbc-driver-clickhouse>`__
+      `adbc-drivers/clickhouse <https://github.com/adbc-drivers/clickhouse>`__
 
       **Packages**
 
