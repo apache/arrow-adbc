@@ -180,6 +180,86 @@ class PostgresCopyNetworkEndianFieldWriter : public PostgresCopyFieldWriter {
   }
 };
 
+class PostgresCopyIntegerNumericFieldWriter : public PostgresCopyFieldWriter {
+ public:
+  explicit PostgresCopyIntegerNumericFieldWriter(bool is_signed)
+      : is_signed_(is_signed) {}
+
+  ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
+    uint64_t value;
+    int16_t sign = kNumericPos;
+    if (is_signed_) {
+      const int64_t raw = ArrowArrayViewGetIntUnsafe(array_view_, index);
+      if (raw < 0) {
+        sign = kNumericNeg;
+        value = static_cast<uint64_t>(-(raw + 1)) + 1;
+      } else {
+        value = static_cast<uint64_t>(raw);
+      }
+    } else {
+      value = ArrowArrayViewGetUIntUnsafe(array_view_, index);
+    }
+
+    if (value == 0) {
+      return WriteZero(buffer, error);
+    }
+
+    constexpr int kMaxUInt64PgDigits = 5;
+    int16_t reversed_digits[kMaxUInt64PgDigits];
+    int n_digits = 0;
+    while (value != 0) {
+      reversed_digits[n_digits++] = static_cast<int16_t>(value % 10000);
+      value /= 10000;
+    }
+
+    int first_digit = 0;
+    while (first_digit < n_digits && reversed_digits[first_digit] == 0) {
+      first_digit++;
+    }
+
+    const int16_t ndigits = static_cast<int16_t>(n_digits - first_digit);
+    const int16_t weight = static_cast<int16_t>(n_digits - 1);
+    constexpr int16_t dscale = 0;
+    const int32_t field_size_bytes = sizeof(ndigits) + sizeof(weight) + sizeof(sign) +
+                                     sizeof(dscale) + ndigits * sizeof(int16_t);
+
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, field_size_bytes, error));
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, ndigits, error));
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, weight, error));
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, sign, error));
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, dscale, error));
+
+    const size_t pg_digit_bytes = sizeof(int16_t) * ndigits;
+    NANOARROW_RETURN_NOT_OK(ArrowBufferReserve(buffer, pg_digit_bytes));
+    for (int i = n_digits - 1; i >= first_digit; i--) {
+      WriteUnsafe<int16_t>(buffer, reversed_digits[i]);
+    }
+
+    return ADBC_STATUS_OK;
+  }
+
+ private:
+  static ArrowErrorCode WriteZero(ArrowBuffer* buffer, ArrowError* error) {
+    constexpr int16_t ndigits = 0;
+    constexpr int16_t weight = 0;
+    constexpr int16_t sign = kNumericPos;
+    constexpr int16_t dscale = 0;
+    constexpr int32_t field_size_bytes =
+        sizeof(ndigits) + sizeof(weight) + sizeof(sign) + sizeof(dscale);
+
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, field_size_bytes, error));
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, ndigits, error));
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, weight, error));
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, sign, error));
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int16_t>(buffer, dscale, error));
+    return ADBC_STATUS_OK;
+  }
+
+  static constexpr int16_t kNumericPos = 0x0000;
+  static constexpr int16_t kNumericNeg = 0x4000;
+  const bool is_signed_;
+};
+
 class PostgresCopyFloatFieldWriter : public PostgresCopyFieldWriter {
  public:
   ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
@@ -883,10 +963,41 @@ class PostgresCopyTimestampFieldWriter : public PostgresCopyFieldWriter {
 
 static inline ArrowErrorCode MakeCopyFieldWriter(
     struct ArrowSchema* schema, struct ArrowArrayView* array_view,
-    const PostgresTypeResolver& type_resolver,
+    const PostgresTypeResolver& type_resolver, const PostgresType* target_type,
     std::unique_ptr<PostgresCopyFieldWriter>* out, ArrowError* error) {
   struct ArrowSchemaView schema_view;
   NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema, error));
+
+  if (target_type != nullptr && target_type->type_id() == PostgresTypeId::kNumeric) {
+    switch (schema_view.type) {
+      case NANOARROW_TYPE_INT8:
+      case NANOARROW_TYPE_INT16:
+      case NANOARROW_TYPE_INT32:
+      case NANOARROW_TYPE_INT64: {
+        using T = PostgresCopyIntegerNumericFieldWriter;
+        *out = T::Create<T>(array_view, /*is_signed=*/true);
+        return NANOARROW_OK;
+      }
+      case NANOARROW_TYPE_UINT8:
+      case NANOARROW_TYPE_UINT16:
+      case NANOARROW_TYPE_UINT32:
+      case NANOARROW_TYPE_UINT64: {
+        using T = PostgresCopyIntegerNumericFieldWriter;
+        *out = T::Create<T>(array_view, /*is_signed=*/false);
+        return NANOARROW_OK;
+      }
+      case NANOARROW_TYPE_NA:
+      case NANOARROW_TYPE_DECIMAL128:
+      case NANOARROW_TYPE_DECIMAL256:
+        break;
+      default:
+        ArrowErrorSet(error,
+                      "COPY Writer from Arrow type '%s' to PostgreSQL numeric is not "
+                      "implemented",
+                      ArrowTypeString(schema_view.type));
+        return ENOTSUP;
+    }
+  }
 
   switch (schema_view.type) {
     case NANOARROW_TYPE_NA:
@@ -1050,13 +1161,20 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
       NANOARROW_RETURN_NOT_OK(
           ArrowSchemaViewInit(&child_schema_view, schema->children[0], error));
       PostgresType child_type;
-      NANOARROW_RETURN_NOT_OK(PostgresType::FromSchema(type_resolver, schema->children[0],
-                                                       &child_type, error));
+      const PostgresType* target_child_type = nullptr;
+      if (target_type != nullptr && target_type->type_id() == PostgresTypeId::kArray &&
+          target_type->n_children() == 1) {
+        target_child_type = &target_type->child(0);
+        child_type = *target_child_type;
+      } else {
+        NANOARROW_RETURN_NOT_OK(PostgresType::FromSchema(
+            type_resolver, schema->children[0], &child_type, error));
+      }
 
       std::unique_ptr<PostgresCopyFieldWriter> child_writer;
-      NANOARROW_RETURN_NOT_OK(MakeCopyFieldWriter(schema->children[0],
-                                                  array_view->children[0], type_resolver,
-                                                  &child_writer, error));
+      NANOARROW_RETURN_NOT_OK(
+          MakeCopyFieldWriter(schema->children[0], array_view->children[0], type_resolver,
+                              target_child_type, &child_writer, error));
 
       if (schema_view.type == NANOARROW_TYPE_FIXED_SIZE_LIST) {
         using T = PostgresCopyListFieldWriter<true>;
@@ -1114,16 +1232,20 @@ class PostgresCopyStreamWriter {
   }
 
   ArrowErrorCode InitFieldWriters(const PostgresTypeResolver& type_resolver,
-                                  ArrowError* error) {
+                                  const PostgresType* target_types, ArrowError* error) {
     if (schema_->release == nullptr) {
       return EINVAL;
     }
 
     for (int64_t i = 0; i < schema_->n_children; i++) {
       std::unique_ptr<PostgresCopyFieldWriter> child_writer;
+      const PostgresType* target_type = nullptr;
+      if (target_types != nullptr && i < target_types->n_children()) {
+        target_type = &target_types->child(i);
+      }
       NANOARROW_RETURN_NOT_OK(MakeCopyFieldWriter(schema_->children[i],
                                                   array_view_->children[i], type_resolver,
-                                                  &child_writer, error));
+                                                  target_type, &child_writer, error));
       root_writer_->AppendChild(std::move(child_writer));
     }
 
