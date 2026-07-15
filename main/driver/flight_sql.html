@@ -473,7 +473,7 @@ C++</label><div class="sd-tab-content docutils">
 <span class="k">struct</span><span class="w"> </span><span class="nc">AdbcDatabase</span><span class="w"> </span><span class="n">database</span><span class="p">;</span>
 <span class="n">AdbcDatabaseNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">);</span>
 <span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;driver&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;adbc_driver_flightsql&quot;</span><span class="p">,</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">);</span>
-<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;uri&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;grpc://localhost:8080&quot;</span><span class="p">,</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">);</span>
+<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;uri&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;flightsql://localhost:8080?transport=tcp&quot;</span><span class="p">,</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">);</span>
 <span class="n">AdbcDatabaseInit</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">);</span>
 </pre></div>
 </div>
@@ -491,7 +491,7 @@ Python</label><div class="sd-tab-content docutils">
 <span class="n">headers</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;foo&quot;</span><span class="p">:</span> <span class="s2">&quot;bar&quot;</span><span class="p">}</span>
 
 <span class="k">with</span> <span class="n">connect</span><span class="p">(</span>
-    <span class="s2">&quot;grpc+tls://localhost:8080&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;flightsql://localhost:8080&quot;</span><span class="p">,</span>
     <span class="n">db_kwargs</span><span class="o">=</span><span class="p">{</span>
         <span class="n">DatabaseOptions</span><span class="o">.</span><span class="n">AUTHORIZATION_HEADER</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="s2">&quot;Bearer &lt;token&gt;&quot;</span><span class="p">,</span>
         <span class="n">DatabaseOptions</span><span class="o">.</span><span class="n">TLS_SKIP_VERIFY</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">,</span>
@@ -649,6 +649,57 @@ Go</label><div class="sd-tab-content docutils">
 </div>
 </div>
 </div>
+<section id="uri-format">
+<h3>URI Format<a class="headerlink" href="#uri-format" title="Link to this heading">¶</a></h3>
+<p>The “uri” option accepts URIs using the <code class="docutils literal notranslate"><span class="pre">flightsql://</span></code> scheme.  The
+transport is selected with the <code class="docutils literal notranslate"><span class="pre">transport</span></code> query parameter, which is
+matched case-insensitively:</p>
+<dl class="simple">
+<dt><code class="docutils literal notranslate"><span class="pre">flightsql://&lt;host&gt;:&lt;port&gt;</span></code></dt><dd><p>Connect over gRPC with TLS (secure).  This is the default when no
+<code class="docutils literal notranslate"><span class="pre">transport</span></code> query parameter is given.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">flightsql://&lt;host&gt;:&lt;port&gt;?transport=tls</span></code></dt><dd><p>Same as above; an explicit way to request TLS (secure).</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">flightsql://&lt;host&gt;:&lt;port&gt;?transport=tcp</span></code></dt><dd><p>Connect over gRPC without TLS (plaintext).</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">flightsql:///&lt;path/to/socket&gt;?transport=unix</span></code></dt><dd><p>Connect over gRPC via a Unix domain socket at the given path.</p>
+</dd>
+</dl>
+<p>An unrecognized <code class="docutils literal notranslate"><span class="pre">transport</span></code> value (anything other than <code class="docutils literal notranslate"><span class="pre">tls</span></code>,
+<code class="docutils literal notranslate"><span class="pre">tcp</span></code>, or <code class="docutils literal notranslate"><span class="pre">unix</span></code>) is rejected with an error rather than silently
+falling back to a default.  Similarly, supplying a host with
+<code class="docutils literal notranslate"><span class="pre">transport=unix</span></code>, or a socket path with <code class="docutils literal notranslate"><span class="pre">transport=tcp</span></code> or the
+default TLS transport, is rejected as an invalid combination.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>For backwards compatibility, the driver also still accepts
+the following legacy schemes, each equivalent to a
+<code class="docutils literal notranslate"><span class="pre">flightsql://</span></code> URI with the given <code class="docutils literal notranslate"><span class="pre">transport</span></code>:</p>
+<div class="table-wrapper docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Legacy scheme</p></th>
+<th class="head"><p>Equivalent <code class="docutils literal notranslate"><span class="pre">transport</span></code></p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">grpc://</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">tcp</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">grpc+tcp://</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">tcp</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">grpc+tls://</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">tls</span></code> (default)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">grpc+unix://</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">unix</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
 </section>
 <section id="supported-features">
 <h2>Supported Features<a class="headerlink" href="#supported-features" title="Link to this heading">¶</a></h2>
@@ -1089,7 +1140,10 @@ United States and other countries.
             <ul>
 <li><a class="reference internal" href="#">Flight SQL Driver</a><ul>
 <li><a class="reference internal" href="#installation">Installation</a></li>
-<li><a class="reference internal" href="#usage">Usage</a></li>
+<li><a class="reference internal" href="#usage">Usage</a><ul>
+<li><a class="reference internal" href="#uri-format">URI Format</a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#supported-features">Supported Features</a><ul>
 <li><a class="reference internal" href="#authentication">Authentication</a></li>
 <li><a class="reference internal" href="#bulk-ingestion">Bulk Ingestion</a></li>

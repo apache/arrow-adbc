@@ -88,7 +88,8 @@
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://arrow.apache.org/adbc/current/r/adbcdrivermanager/" class="external-link">adbcdrivermanager</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Use the driver manager to connect to a database. This example URI is</span></span>
-<span><span class="co"># grpc://localhost:8080 and uses a Go FlightSQL/SQLite server docker image</span></span>
+<span><span class="co"># flightsql://localhost:8080?transport=tcp and uses a Go FlightSQL/SQLite</span></span>
+<span><span class="co"># server docker image</span></span>
 <span><span class="va">uri</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Sys.getenv.html" class="external-link">Sys.getenv</a></span><span class="op">(</span><span class="st">"ADBC_FLIGHTSQL_TEST_URI"</span><span class="op">)</span></span>
 <span><span class="va">db</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_database_init.html" class="external-link">adbc_database_init</a></span><span class="op">(</span><span class="fu">adbcflightsql</span><span class="fu">::</span><span class="fu"><a href="reference/adbcflightsql.html">adbcflightsql</a></span><span class="op">(</span><span class="op">)</span>, uri <span class="op">=</span> <span class="va">uri</span><span class="op">)</span></span>
 <span><span class="va">con</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_connection_init.html" class="external-link">adbc_connection_init</a></span><span class="op">(</span><span class="va">db</span><span class="op">)</span></span>
