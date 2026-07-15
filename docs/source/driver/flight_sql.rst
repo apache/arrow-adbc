@@ -227,15 +227,9 @@ Database options
     If unset, the ``adbcfile`` exporter writes traces under the user's
     configuration directory in:
 
-    - Windows: ``%APPDATA%\.adbc\traces``
-    - macOS: ``~/Library/Application Support/.adbc/traces``
-    - Linux: ``$XDG_CONFIG_HOME/.adbc/traces`` or ``~/.config/.adbc/traces``
-
-    .. note::
-
-       These default paths reflect the current implementation. See
-       `issue #4501 <https://github.com/apache/arrow-adbc/issues/4501>`_
-       for the planned config-path redesign.
+    - Windows: ``%APPDATA%\ADBC\Traces``
+    - macOS: ``~/Library/Application Support/ADBC/Traces``
+    - Linux: ``$XDG_CONFIG_HOME/adbc/traces`` or ``~/.config/adbc/traces``
 
 ``adbc.telemetry.trace_parent``
     Sets the W3C Trace Context ``traceparent`` value used as the parent

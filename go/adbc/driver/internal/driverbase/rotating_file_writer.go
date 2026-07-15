@@ -22,6 +22,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -156,8 +157,13 @@ func getDefaultTracingFolderPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	fullPath := filepath.Join(userConfigDir, ".adbc", "traces")
-	return fullPath, nil
+
+	switch runtime.GOOS {
+	case "darwin", "windows":
+		return filepath.Join(userConfigDir, "ADBC", "Traces"), nil
+	default:
+		return filepath.Join(userConfigDir, "adbc", "traces"), nil
+	}
 }
 
 // Closes the rotating file write
