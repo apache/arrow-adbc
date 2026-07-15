@@ -23,8 +23,8 @@ Drivers (Unified Table)
 
    <span class="th-hint">(click for docs)</span>
 
-An ADBC driver lets you connect to a database and get results back as Arrow
-data.
+An ADBC driver lets you connect to a database, run queries, and exchange data in
+Arrow format.
 
 .. _driver-table:
 
