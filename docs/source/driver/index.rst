@@ -254,9 +254,9 @@ Driver Language
 You may notice in the table at the top of this page that some drivers have been implemented in multiple languages.
 While ADBC was designed to make it possible to use a driver written in one language with a :doc:`client library <..//client_libraries>` written in any other language, there are some good reasons why a driver may get implemented multiple times and in different languages:
 
-1. To take advantage of langauge-specific runtime features. Example: Apache Arrow Flight SQL's Java and C# implementations can take advantage of features of those platforms such as memory management, JIT compilation, concurrency mechanisms, amongst others.
+1. To take advantage of language-specific runtime features. Example: Apache Arrow Flight SQL's Java and C# implementations can take advantage of features of those platforms such as memory management, JIT compilation, concurrency mechanisms, amongst others.
 2. Wrapped SDKs: Some ADBC drivers wrap official SDKs for the target database and the language the best SDK for a particular database is written in can change over time. ADBC's C ABI makes rewriting a driver in another language a stable experience for the user.
-3. Language preference: ADBC's C ABI gives developers the freedom to write drivers in their langauge of choice.
+3. Language preference: ADBC's C ABI gives developers the freedom to write drivers in their language of choice.
 
 .. _driver-index-status:
 
@@ -322,3 +322,4 @@ The driver information on this page can also be viewed in alternative formats:
 
 - :doc:`Cards View <alt1>` - Visual grid layout with cards for each database
 - :doc:`Database Sections <alt2>` - Detailed sections with installation tables
+- :doc:`Unified Table <alt3>` - Single scannable table of all drivers

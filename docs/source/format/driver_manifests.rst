@@ -324,6 +324,8 @@ The construction of the platform tuple is: ``<OS>_<Architecture>``, for example:
    (glibc) or MinGW, the tuple should have the appropriate suffix for that
    environment. i.e. ``linux_amd64_musl`` or ``windows_amd64_mingw``.
 
+.. _driver-manifest-discovery:
+
 Manifest Location and Discovery
 -------------------------------
 

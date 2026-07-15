@@ -288,6 +288,7 @@ Old Content
    Drivers <driver/index>
    Drivers (Cards View) <driver/alt1>
    Drivers (Database Sections) <driver/alt2>
+   Drivers (Unified Table) <driver/alt3>
    Tools & Integrations <integrations>
    Connection Profiles <connection_profiles>
 

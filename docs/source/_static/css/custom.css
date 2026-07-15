@@ -91,3 +91,43 @@ h1, h2, h3, h4 {
 html[data-content_root="./"] h2 {
     font-size: 1.5rem;
 }
+
+/* Icon-only links (e.g. GitHub source links in the driver table) */
+a.icon-link {
+    color: var(--color-foreground-muted);
+    font-size: 1.15rem;
+    text-decoration: none;
+}
+
+a.icon-link:hover {
+    color: var(--color-brand-content);
+}
+
+/* Unified driver table: keep it compact and scannable */
+table.driver-table {
+    width: 100%;
+}
+
+table.driver-table td,
+table.driver-table th {
+    vertical-align: middle;
+}
+
+/* Install column reads as a command, not prose */
+table.driver-table td code,
+table.driver-table td .docutils.literal {
+    white-space: nowrap;
+}
+
+/* Center the icon in the Repo column (last column) */
+table.driver-table td:last-child,
+table.driver-table th:last-child {
+    text-align: center;
+}
+
+/* Secondary hint text in a table header (e.g. "(click for docs)") */
+table.driver-table th .th-hint {
+    font-weight: normal;
+    font-size: 0.8em;
+    opacity: 0.75;
+}

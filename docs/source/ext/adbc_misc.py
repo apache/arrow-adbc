@@ -395,11 +395,39 @@ def package_badge_role(name, rawtext, text, lineno, inliner, options={}, content
     return [ref_node], []
 
 
+def iconlink_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
+    """Create an icon-only link (e.g. a GitHub logo linking to a repo).
+
+    Usage: :iconlink:`fa-classes|URL|tooltip`
+    Example: :iconlink:`fa-brands fa-github|https://github.com/apache/arrow-adbc|Source`
+
+    The ``tooltip`` is used as the link's accessible label (``title`` and
+    ``aria-label``) so the icon-only link remains usable without visible text.
+    """
+    parts = text.split("|")
+    if len(parts) != 3:
+        msg = inliner.reporter.error(
+            f"iconlink must have exactly 3 parts separated by |, got: {text}",
+            line=lineno,
+        )
+        return [inliner.problematic(rawtext, rawtext, msg)], [msg]
+
+    fa_classes, url, tooltip = [p.strip() for p in parts]
+
+    icon_html = (
+        f'<a class="icon-link" href="{url}" title="{tooltip}" '
+        f'aria-label="{tooltip}"><i class="{fa_classes}" aria-hidden="true">'
+        f"</i></a>"
+    )
+    return [docutils.nodes.raw("", icon_html, format="html")], []
+
+
 def setup(app) -> None:
     app.add_directive("adbc_driver_installation", DriverInstallationDirective)
     app.add_directive("adbc_driver_status", DriverStatusDirective)
     app.add_directive("adbc_driver_status_table", DriverStatusTableDirective)
     app.add_role("package-badge", package_badge_role)
+    app.add_role("iconlink", iconlink_role)
 
     return {
         "version": "0.1",
