@@ -103,6 +103,8 @@ updates:
       interval: "weekly"
     commit-message:
       prefix: "chore(rust): "
+    cooldown:
+      default-days: 7
   - package-ecosystem: "cargo"
     directories:
       - "/javascript/"
