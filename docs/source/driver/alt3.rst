@@ -137,9 +137,10 @@ installed, install any driver by its slug:
 dbc installs both the driver's shared library and its
 :term:`driver manifest` to a location where an ADBC client library can find the
 driver by its slug. If you download a driver from the registry manually instead,
-you'll need to install the shared library to the correct location yourself, and
-then either create a driver manifest for it or, for a driver that doesn't use
-the default entrypoint, pass the required entrypoint in your application code.
+you'll need to install the shared library to the correct location yourself and
+create a driver manifest for it, or else pass the full path to the shared
+library in your application code, plus the entrypoint if the driver does not
+use the default entrypoint name.
 See :doc:`ADBC Driver Manager and Manifests <../format/driver_manifests>` for
 details.
 

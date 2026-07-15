@@ -35,7 +35,10 @@ overall approach.
           Amazon Redshift. As Redshift does not support reading or writing COPY
           in PostgreSQL binary format, however, the optimizations that
           accelerate queries are not enabled when connecting to Redshift. There
-          may also be other differences in functionality.
+          may also be other differences in functionality. For Redshift, we
+          recommend using the `Redshift-specific driver
+          <https://docs.adbc-drivers.org/drivers/redshift/>`__ from the ADBC
+          Driver Foundry.
 
 Installation
 ============
