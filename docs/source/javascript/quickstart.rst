@@ -35,13 +35,36 @@ Installation
 
 .. note::
 
-   Node.js 22+, Deno 2.0+, or Bun 1.1+ are required.
+   Node.js 22+, Deno 2.0+, or Bun 1.1+ are required. This does not work in the
+   browser: the driver manager loads driver shared libraries from the
+   filesystem, which browsers cannot do.
 
-To use any driver with the JavaScript driver manager, you'll need install the
-appropriate driver shared library for your platform separately and pass the
-absolute path to the driver manager.
+To use any driver with the JavaScript driver manager, you need the driver's
+shared library on your machine.
 
-Some examples for the SQLite driver are provided below for convenience:
+The easiest way to get it is with `dbc <https://docs.columnar.tech/dbc/>`__,
+which installs prebuilt driver binaries from the `ADBC Driver Registry
+<https://dbc-cdn.columnar.tech>`__:
+
+.. code-block:: shell
+
+   dbc install sqlite
+
+``dbc`` installs both the shared library and a :term:`driver manifest` to a
+location the driver manager searches, so you can then load the driver by its
+short name (``driver: 'sqlite'``, as shown below) without hard-coding a path.
+
+.. note::
+
+   The `ADBC Driver Registry <https://dbc-cdn.columnar.tech>`__ and
+   `dbc <https://docs.columnar.tech/dbc/>`__ are not part of the Apache Arrow
+   project.
+
+Alternatively, some drivers ship as packages on registries like conda-forge and
+PyPI. These give you the shared library but not a manifest, so you must pass the
+library's absolute path to the driver manager (or move it into a
+:doc:`search path </format/driver_manifests>` and create a manifest for it).
+The commands below install the SQLite driver and print the path to it:
 
 `conda-forge <https://conda-forge.org/>`_:
 
