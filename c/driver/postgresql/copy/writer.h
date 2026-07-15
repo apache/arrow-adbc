@@ -700,10 +700,7 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
       int16_t val{};
       std::from_chars(chunk.data(), chunk.data() + chunk.size(), val);
 
-      // Skip trailing zeros
-      if (val != 0 || !digits.empty()) {
-        digits.insert(digits.begin(), val);
-      }
+      digits.insert(digits.begin(), val);
       i -= chunk_size;
     }
 
