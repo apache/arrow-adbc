@@ -127,6 +127,56 @@ Get started with ADBC in your language of choice:
 
       See the :doc:`Rust Quickstart <rust/quickstart>` for usage instructions.
 
+Packages
+========
+
+The client library package for each language:
+
+.. list-table::
+   :header-rows: 1
+   :widths: 15 15 30 40
+
+   * - Language
+     - Package Manager
+     - Package
+     - Documentation
+   * - Python
+     - pip / conda
+     - ``adbc-driver-manager``
+     - :doc:`Python Quickstart <python/quickstart>`
+   * - C/C++
+     - various
+     - See quickstart
+     - :doc:`C/C++ Quickstart <cpp/quickstart>`
+   * - C#
+     - dotnet
+     - ``Apache.Arrow.Adbc.Client``
+     - :doc:`C# Quickstart <csharp/quickstart>`
+   * - Go
+     - go
+     - ``github.com/apache/arrow-adbc/go/adbc``
+     - `Go Documentation ↗ <https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc>`__
+   * - Java
+     - Maven
+     - ``org.apache.arrow.adbc``: ``adbc-core``, ``adbc-driver-manager``, ``adbc-driver-jni``
+     - :doc:`Java Quickstart <java/quickstart>`
+   * - JavaScript / TypeScript
+     - npm
+     - ``@apache-arrow/adbc-driver-manager``
+     - :doc:`JavaScript Quickstart <javascript/quickstart>`
+   * - R
+     - CRAN / conda
+     - ``adbcdrivermanager``
+     - :doc:`R Quickstart <r/quickstart>`
+   * - Ruby
+     - bundler
+     - ``red-adbc``
+     - :doc:`Ruby Quickstart <ruby/quickstart>`
+   * - Rust
+     - cargo
+     - ``adbc_core``, ``adbc_driver_manager``
+     - :doc:`Rust Quickstart <rust/quickstart>`
+
 Using a Client Library
 ======================
 
@@ -136,3 +186,8 @@ For example, Python exposes a `DBAPI 2.0 (PEP 249) <https://peps.python.org/pep-
 
 To use a client library you need both the library itself and a :doc:`driver <driver/index>` for the database you want to connect to.
 The :doc:`ADBC Driver Manager <format/how_manager>` handles loading the driver at run-time, so in most languages you install a separate package per driver (e.g. ``adbc_driver_sqlite`` in Python) alongside the client library.
+
+More information
+================
+
+- `ADBC Quickstarts <https://github.com/columnar-tech/adbc-quickstarts>`__ — simple, runnable examples for getting started with many of these drivers
