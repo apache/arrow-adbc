@@ -44,7 +44,7 @@ Because drivers expose a :doc:`standard C ABI <../format/specification>`, a driv
      - :doc:`../rust/quickstart`
      - API definitions are still maturing. Drivers can be compiled to a C ABI shared library for use from other languages.
 
-Go is generally the recommended choice for new drivers.
+Go and Rust are generally the recommended choice for new drivers.
 C/C++ drivers have historically had dependency conflicts (e.g. with grpcio or pyarrow in Python processes), whereas Go and Rust libraries are easier to package and distribute without conflict.
 
 In Go, some frameworks are available for driver
