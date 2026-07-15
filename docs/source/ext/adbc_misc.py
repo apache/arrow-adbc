@@ -365,11 +365,11 @@ def package_badge_role(name, rawtext, text, lineno, inliner, options={}, content
     Usage: :package-badge:`PackageManager|package-name|URL`
     Example: :package-badge:`PyPI|adbc-driver-postgresql|https://pypi.org/project/adbc-driver-postgresql/`
     """
-    parts = text.split('|')
+    parts = text.split("|")
     if len(parts) != 3:
         msg = inliner.reporter.error(
-            f'package-badge must have exactly 3 parts separated by |, got: {text}',
-            line=lineno
+            f"package-badge must have exactly 3 parts separated by |, got: {text}",
+            line=lineno,
         )
         return [inliner.problematic(rawtext, rawtext, msg)], [msg]
 
@@ -377,25 +377,20 @@ def package_badge_role(name, rawtext, text, lineno, inliner, options={}, content
 
     # Create the two-part badge structure
     # Left part (label): darker background
-    left_node = docutils.nodes.inline(
-        '', left_text,
-        classes=['package-badge-left']
-    )
+    left_node = docutils.nodes.inline("", left_text, classes=["package-badge-left"])
 
     # Right part (value): lighter background
-    right_node = docutils.nodes.inline(
-        '', right_text,
-        classes=['package-badge-right']
-    )
+    right_node = docutils.nodes.inline("", right_text, classes=["package-badge-right"])
 
     # Container to hold both parts together
     container = docutils.nodes.inline(
-        '', '', left_node, right_node,
-        classes=['package-badge-container']
+        "", "", left_node, right_node, classes=["package-badge-container"]
     )
 
     # Wrap in a reference/link
-    ref_node = docutils.nodes.reference('', '', container, refuri=url, classes=['package-badge-link'])
+    ref_node = docutils.nodes.reference(
+        "", "", container, refuri=url, classes=["package-badge-link"]
+    )
 
     return [ref_node], []
 
