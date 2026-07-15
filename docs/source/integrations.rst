@@ -97,34 +97,48 @@ DuckDB
 
 `DuckDB <https://duckdb.org>`_ integrates with ADBC in two ways:
 
-1. **DuckDB as an ADBC driver** — DuckDB exposes an ADBC interface so you can connect to a DuckDB database from any ADBC client library.
-2. **DuckDB as an ADBC client** — DuckDB's community ``adbc`` extension lets you query *other* databases (PostgreSQL, Snowflake, BigQuery, etc.) directly from SQL using ADBC drivers.
+1. **DuckDB itself is an ADBC driver** — DuckDB (technically libduckdb) exposes an ADBC interface so you can connect to a DuckDB database from any ADBC client library. See :doc:`driver/duckdb` for details on using DuckDB as an ADBC driver.
+2. **DuckDB extensions** — Two DuckDB community extensions, `adbc <https://duckdb.org/community_extensions/extensions/adbc.html>`_ and `adbc_scanner <https://duckdb.org/community_extensions/extensions/adbc_scanner>`_, let you query *other* databases from DuckDB using ADBC drivers.
 
-See :doc:`driver/duckdb` for details on using DuckDB as an ADBC driver.
+----
 
-Using the DuckDB ``adbc`` extension
-------------------------------------
+databow
+=======
 
-The `adbc extension <https://duckdb.org/community_extensions/extensions/adbc.html>`_ (available for DuckDB 1.4.5+ and 1.5.4+) allows DuckDB to read from and write to any database that has an ADBC driver:
+`databow <https://docs.columnar.tech/databow/>`_ is a command-line tool for querying databases via ADBC. It provides an interactive SQL shell with syntax highlighting, formatted output, and support for exporting results to JSON, CSV, or Arrow IPC files.
 
-.. code-block:: sql
+**Highlights:**
 
-   INSTALL adbc FROM community;
-   LOAD adbc;
+- Interactive SQL shell with command history and navigation
+- Syntax highlighting for SQL queries
+- Formatted table output with dynamic column widths
+- Export results to JSON, CSV, or Arrow IPC formats
+- Fast and lightweight (built in Rust)
 
-   -- Read from an external database using a connection profile
-   SELECT * FROM read_adbc('profile://my_postgres', 'SELECT * FROM orders');
+**Installation:**
 
-   -- Attach an external database as a DuckDB catalog
-   ATTACH 'profile://my_postgres' AS pg (TYPE adbc);
-   SELECT * FROM pg.public.orders;
+.. code-block:: bash
 
-   -- Execute arbitrary DDL/DML on the remote database
-   CALL adbc_execute('profile://my_postgres', 'TRUNCATE staging.temp_load');
+   # Install with uv
+   uv tool install databow
 
-Connections are specified using ADBC :doc:`connection profiles <connection_profiles>`. Drivers are installed with :ref:`dbc <dbc>`.
+   # Install with Cargo
+   cargo install databow
 
-For details on the ``adbc_scanner`` functionality, see the `adbc_scanner documentation <https://duckdb.org/community_extensions/extensions/adbc_scanner>`_.
+**Usage:**
+
+.. code-block:: bash
+
+   # Interactive mode
+   databow --driver duckdb
+
+   # Execute a query and exit
+   databow --driver duckdb --query "SELECT 42 AS the_answer"
+
+   # Export results to a file
+   databow --driver duckdb --query "SELECT * FROM orders" --output results.json
+
+See the `databow documentation <https://docs.columnar.tech/databow/>`_ for more details.
 
 ----
 
@@ -214,6 +228,30 @@ In R, `dplyr <https://dplyr.tidyverse.org>`_ accesses databases through the `DBI
    orders <- tbl(con, "orders") |>
      filter(status == "shipped") |>
      collect()
+
+----
+
+Ruby Active Record
+==================
+
+`Active Record <https://guides.rubyonrails.org/active_record_basics.html>`_ is Ruby on Rails' database abstraction layer. The `activerecord-adbc-adapter <https://github.com/apache/arrow-adbc/tree/main/ruby/lib/adbc/activerecord>`_ gem allows you to use ADBC drivers as Active Record database adapters, enabling efficient Arrow-based data transfer for Rails applications.
+
+.. code-block:: ruby
+
+   # In your Gemfile
+   gem 'red-adbc'
+   gem 'activerecord-adbc-adapter'
+
+   # In config/database.yml
+   development:
+     adapter: adbc
+     driver: postgresql
+     uri: postgresql://localhost:5432/mydb
+
+   # Use Active Record as normal
+   Order.where(status: 'shipped').limit(10)
+
+The adapter supports standard Active Record operations including queries, associations, migrations, and transactions. See the `activerecord-adbc-adapter documentation <https://github.com/apache/arrow-adbc/tree/main/ruby/lib/adbc/activerecord>`_ for configuration options.
 
 ----
 

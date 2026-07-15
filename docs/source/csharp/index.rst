@@ -19,7 +19,15 @@
 C#/.NET
 =======
 
-The ADBC C# libraries are under development, supporting:
+.. toctree::
+   :maxdepth: 2
 
-- A native driver to Google BigQuery
-- A way to import/export native (C/C++) drivers
+   quickstart
+   driver_manager
+
+The ADBC C# libraries support:
+
+- A :doc:`driver manager <driver_manager>` for dynamically loading ADBC drivers at runtime
+- Native drivers (Google BigQuery, Apache Hive/Impala/Spark/Databricks)
+- Interop with native (C/C++) drivers via Flight SQL
+- A client library for working with ADBC connections

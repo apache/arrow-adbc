@@ -15,15 +15,11 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-============================
-Drivers (Alternative View 1)
-============================
-
-The ADBC project is primarily focused on developing the :doc:`ADBC standard <../format/specification>` and :doc:`client libraries <../client_libraries>` and not on building and distributing driver binaries. While some driver binaries are available directly from the project, many more driver binaries are available from :ref:`third parties<driver-index-third-party>`.
+====================
+Drivers (Cards View)
+====================
 
 ADBC drivers are available for many popular databases. Most drivers are developed and published by third parties, with a few maintained by the Apache Software Foundation for historical reasons.
-
-.. note:: This is an alternative view of the :doc:`drivers page <index>`. The information is the same, just presented differently.
 
 Available Drivers
 =================
@@ -43,6 +39,8 @@ Available Drivers
 
       Go
 
+      **Docs:** `Redshift Driver Docs <https://docs.adbc-drivers.org/drivers/redshift>`__
+
       **Source**
 
       `adbc-drivers/redshift <https://github.com/adbc-drivers/redshift>`__
@@ -61,13 +59,15 @@ Available Drivers
 
       Go
 
+      **Docs:** :doc:`Flight SQL Driver <flight_sql>` | `Flight SQL Docs <https://arrow.apache.org/adbc/current/driver/flight_sql.html>`__
+
       **Source**
 
       `apache/arrow-adbc <https://github.com/apache/arrow-adbc>`__
 
       **Packages**
 
-      :package-badge:`dbc|flightsql|https://dbc-cdn.columnar.tech` :package-badge:`PyPI|adbc-driver-flightsql|https://pypi.org/project/adbc-driver-flightsql/` :package-badge:`Conda|adbc-driver-flightsql|https://anaconda.org/conda-forge/adbc-driver-flightsql` :package-badge:`R-universe|adbcflightsql|https://r-universe.dev/search/?q=adbcflightsql`
+      :package-badge:`PyPI|adbc-driver-flightsql|https://pypi.org/project/adbc-driver-flightsql/` :package-badge:`Conda|adbc-driver-flightsql|https://anaconda.org/conda-forge/adbc-driver-flightsql` :package-badge:`R-universe|adbcflightsql|https://r-universe.dev/search/?q=adbcflightsql` :package-badge:`dbc|flightsql|https://dbc-cdn.columnar.tech`
 
    .. grid-item-card::
       :class-header: sd-bg-secondary sd-text-white
@@ -79,6 +79,8 @@ Available Drivers
       **Written In**
 
       Java
+
+      **Docs:** :doc:`Flight SQL Driver <flight_sql>` | `Flight SQL Docs <https://arrow.apache.org/adbc/current/driver/flight_sql.html>`__
 
       **Source**
 
@@ -99,6 +101,8 @@ Available Drivers
 
       C#
 
+      **Docs:** :doc:`Flight SQL Driver <flight_sql>` | `Flight SQL Docs <https://arrow.apache.org/adbc/current/driver/flight_sql.html>`__
+
       **Source**
 
       `apache/arrow-adbc <https://github.com/apache/arrow-adbc>`__
@@ -117,14 +121,16 @@ Available Drivers
 
       Rust
 
+      **Docs:** `DataFusion Driver Docs <https://docs.adbc-drivers.org/drivers/datafusion>`__
+
       **Source**
 
       `adbc-drivers/datafusion <https://github.com/adbc-drivers/datafusion>`__
 
       **Packages**
 
-      :package-badge:`dbc|datafusion|https://dbc-cdn.columnar.tech`
       :package-badge:`crates.io|adbc_datafusion|https://crates.io/crates/adbc_datafusion`
+      :package-badge:`dbc|datafusion|https://dbc-cdn.columnar.tech`
    .. grid-item-card::
       :class-header: sd-bg-secondary sd-text-white
 
@@ -135,6 +141,8 @@ Available Drivers
       **Written In**
 
       Go
+
+      **Docs:** `ClickHouse Driver Docs <https://docs.adbc-drivers.org/drivers/clickhouse>`__
 
       **Source**
 
@@ -154,14 +162,16 @@ Available Drivers
 
       Go
 
+      **Docs:** `Databricks Driver Docs <https://docs.adbc-drivers.org/drivers/databricks>`__
+
       **Source**
 
       `adbc-drivers/databricks <https://github.com/adbc-drivers/databricks>`__
 
       **Packages**
 
-      :package-badge:`dbc|databricks|https://dbc-cdn.columnar.tech`
       :package-badge:`pip|adbc-driver-databricks|https://pypi.org/project/adbc-driver-databricks/`
+      :package-badge:`dbc|databricks|https://dbc-cdn.columnar.tech`
    .. grid-item-card::
       :class-header: sd-bg-secondary sd-text-white
 
@@ -173,7 +183,7 @@ Available Drivers
 
       C++
 
-      **Docs:** `DuckDB ADBC Docs <https://duckdb.org/docs/api/adbc>`__
+      **Docs:** :doc:`DuckDB Driver <duckdb>` | `DuckDB ADBC Docs <https://duckdb.org/docs/stable/clients/adbc>`__
 
       **Source**
 
@@ -181,9 +191,7 @@ Available Drivers
 
       **Packages**
 
-      ADBC support is built directly into DuckDB.
-
-      :package-badge:`dbc|duckdb|https://dbc-cdn.columnar.tech`
+      ADBC support is built directly into DuckDB. :package-badge:`dbc|duckdb|https://dbc-cdn.columnar.tech`
    .. grid-item-card::
       :class-header: sd-bg-secondary sd-text-white
 
@@ -194,6 +202,8 @@ Available Drivers
       **Written In**
 
       Go
+
+      **Docs:** `Exasol Driver Docs <https://docs.adbc-drivers.org/drivers/exasol/index.html>`__
 
       **Source**
 
@@ -213,13 +223,15 @@ Available Drivers
 
       Go
 
+      **Docs:** :doc:`BigQuery Driver <bigquery>` | `BigQuery Driver Docs <https://docs.adbc-drivers.org/drivers/bigquery>`__
+
       **Source**
 
       `adbc-drivers/bigquery <https://github.com/adbc-drivers/bigquery>`__
 
       **Packages**
 
-      :package-badge:`dbc|bigquery|https://dbc-cdn.columnar.tech` :package-badge:`PyPI|adbc-driver-bigquery|https://pypi.org/project/adbc-driver-bigquery/` :package-badge:`Conda|adbc-driver-bigquery|https://anaconda.org/conda-forge/adbc-driver-bigquery` :package-badge:`R-universe|adbcbigquery|https://r-universe.dev/search/?q=adbcbigquery`
+      :package-badge:`PyPI|adbc-driver-bigquery|https://pypi.org/project/adbc-driver-bigquery/` :package-badge:`Conda|adbc-driver-bigquery|https://anaconda.org/conda-forge/adbc-driver-bigquery` :package-badge:`R-universe|adbcbigquery|https://r-universe.dev/search/?q=adbcbigquery` :package-badge:`dbc|bigquery|https://dbc-cdn.columnar.tech`
 
    .. grid-item-card::
       :class-header: sd-bg-secondary sd-text-white
@@ -231,6 +243,8 @@ Available Drivers
       **Written In**
 
       C#
+
+      **Docs:** :doc:`BigQuery Driver <bigquery>`
 
       **Source**
 
@@ -250,6 +264,8 @@ Available Drivers
 
       Go
 
+      **Docs:** `SQL Server Driver Docs <https://docs.adbc-drivers.org/drivers/mssql>`__
+
       **Packages**
 
       :package-badge:`dbc|mssql|https://dbc-cdn.columnar.tech`
@@ -263,6 +279,8 @@ Available Drivers
       **Written In**
 
       Go
+
+      **Docs:** `MySQL Driver Docs <https://docs.adbc-drivers.org/drivers/mysql>`__
 
       **Source**
 
@@ -282,16 +300,18 @@ Available Drivers
 
       C/C++
 
+      **Docs:** :doc:`PostgreSQL Driver <postgresql>` | `PostgreSQL Docs <https://arrow.apache.org/adbc/current/driver/postgresql.html>`__
+
       **Source**
 
       `apache/arrow-adbc <https://github.com/apache/arrow-adbc>`__
 
       **Packages**
 
-      :package-badge:`dbc|postgresql|https://dbc-cdn.columnar.tech`
       :package-badge:`pip|adbc-driver-postgresql|https://pypi.org/project/adbc-driver-postgresql/`
       :package-badge:`conda|adbc-driver-postgresql|https://anaconda.org/conda-forge/adbc-driver-postgresql`
       :package-badge:`CRAN|adbcpostgresql|https://cran.r-project.org/package=adbcpostgresql`
+      :package-badge:`dbc|postgresql|https://dbc-cdn.columnar.tech`
    .. grid-item-card::
       :class-header: sd-bg-secondary sd-text-white
 
@@ -303,13 +323,15 @@ Available Drivers
 
       Go
 
+      **Docs:** `Snowflake Driver Docs <https://docs.adbc-drivers.org/drivers/snowflake/index.html>`__
+
       **Source**
 
       `adbc-drivers/snowflake <https://github.com/adbc-drivers/snowflake>`__
 
       **Packages**
 
-      :package-badge:`dbc|snowflake|https://dbc-cdn.columnar.tech` :package-badge:`PyPI|adbc-driver-snowflake|https://pypi.org/project/adbc-driver-snowflake/` :package-badge:`Conda|adbc-driver-snowflake|https://anaconda.org/conda-forge/adbc-driver-snowflake` :package-badge:`R-universe|adbcsnowflake|https://r-universe.dev/search/?q=adbcsnowflake`
+      :package-badge:`PyPI|adbc-driver-snowflake|https://pypi.org/project/adbc-driver-snowflake/` :package-badge:`Conda|adbc-driver-snowflake|https://anaconda.org/conda-forge/adbc-driver-snowflake` :package-badge:`R-universe|adbcsnowflake|https://r-universe.dev/search/?q=adbcsnowflake` :package-badge:`dbc|snowflake|https://dbc-cdn.columnar.tech`
    .. grid-item-card::
       :class-header: sd-bg-secondary sd-text-white
 
@@ -321,13 +343,15 @@ Available Drivers
 
       C/C++
 
+      **Docs:** :doc:`SQLite Driver <sqlite>` | `SQLite Docs <https://arrow.apache.org/adbc/current/driver/sqlite.html>`__
+
       **Source**
 
       `apache/arrow-adbc <https://github.com/apache/arrow-adbc>`__
 
       **Packages**
 
-      :package-badge:`dbc|sqlite|https://dbc-cdn.columnar.tech` :package-badge:`PyPI|adbc-driver-sqlite|https://pypi.org/project/adbc-driver-sqlite/` :package-badge:`Conda|adbc-driver-sqlite|https://anaconda.org/conda-forge/adbc-driver-sqlite` :package-badge:`CRAN|adbcsqlite|https://cran.r-project.org/package=adbcsqlite`
+      :package-badge:`PyPI|adbc-driver-sqlite|https://pypi.org/project/adbc-driver-sqlite/` :package-badge:`Conda|adbc-driver-sqlite|https://anaconda.org/conda-forge/adbc-driver-sqlite` :package-badge:`CRAN|adbcsqlite|https://cran.r-project.org/package=adbcsqlite` :package-badge:`dbc|sqlite|https://dbc-cdn.columnar.tech`
 
    .. grid-item-card::
       :class-header: sd-bg-secondary sd-text-white
@@ -339,6 +363,8 @@ Available Drivers
       **Written In**
 
       Go
+
+      **Docs:** `Trino Driver Docs <https://docs.columnar.tech/drivers/trino>`__
 
       **Source**
 
