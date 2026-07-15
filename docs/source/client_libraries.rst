@@ -85,7 +85,4 @@ The :doc:`ADBC Driver Manager <format/how_manager>` handles loading the driver a
 More information
 ================
 
-ADBC Quickstarts
-^^^^^^^^^^^^^^^^
-
-The quickstart links in the table above are the best place to learn how to use each client library. In addition, `Columnar <https://columnar.tech>`_ maintains `columnar-tech/adbc-quickstarts <https://github.com/columnar-tech/adbc-quickstarts>`_ which shows basic examples for many language and driver combinations.
+- `ADBC Quickstarts <https://github.com/columnar-tech/adbc-quickstarts>`__ — simple, runnable examples for getting started with many of these drivers
