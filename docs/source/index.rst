@@ -89,7 +89,7 @@ Why ADBC?
       Learn about Apache Arrow
 
    .. grid-item-card:: Backend-agnostic
-      :link: driver/status
+      :link: driver/index
       :link-type: doc
 
       Connect to all kinds of databases, even ones that aren't Arrow-native.
@@ -100,19 +100,26 @@ Why ADBC?
       See Supported Drivers
 
    .. grid-item-card:: Cross-language
+      :link: client_libraries
+      :link-type: doc
 
-      Work in C/C++, C#, Go, Java, Python, R, Ruby, Rust, and more.
+      Work in C/C++, C#, Go, Java, JavaScript/TypeScript, Python, R, Ruby,
+      Rust, and more. Use idiomatic APIs like DBAPI in Python,
+      ``database/sql`` in Go, and DBI in R.
+
+      +++
+      See Client Libraries
 
    .. grid-item-card:: Full-featured
+      :link: format/comparison
+      :link-type: doc
 
       Execute SQL and Substrait, query database catalogs, inspect table
       schemas, and more.  ADBC handles common tasks without having to pull in
       another database client.
 
-   .. grid-item-card:: Language-native
-
-      Use language-native APIs that you're already familiar with, like DBAPI
-      in Python, ``database/sql`` in Go, or DBI in R.
+      +++
+      Compare to Other APIs
 
 More Resources
 --------------

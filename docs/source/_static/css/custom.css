@@ -92,6 +92,11 @@ html[data-content_root="./"] h2 {
     font-size: 1.5rem;
 }
 
+/* Add spacing between the icon and the text in card titles */
+.sd-card-title .sd-octicon {
+    margin-right: 0.5rem;
+}
+
 /* Icon-only links (e.g. GitHub source links in the driver table) */
 a.icon-link {
     color: var(--color-foreground-muted);
