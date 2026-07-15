@@ -82,10 +82,10 @@ For example, Python exposes a `DBAPI 2.0 (PEP 249) <https://peps.python.org/pep-
 To use a client library you need both the library itself and a :doc:`driver <driver/index>` for the database you want to connect to.
 The :doc:`ADBC Driver Manager <format/how_manager>` handles loading the driver at run-time, so in most languages you install a separate package per driver (e.g. ``adbc_driver_sqlite`` in Python) alongside the client library.
 
-Resources
-=========
+More information
+================
 
-Colummnar ADBC Quickstarts
-^^^^^^^^^^^^^^^^^^^^^^^^^^
+ADBC Quickstarts
+^^^^^^^^^^^^^^^^
 
 The quickstart links in the table above are the best place to learn how to use each client library. In addition, `Columnar <https://columnar.tech>`_ maintains `columnar-tech/adbc-quickstarts <https://github.com/columnar-tech/adbc-quickstarts>`_ which shows basic examples for many language and driver combinations.
