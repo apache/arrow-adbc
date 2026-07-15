@@ -20,7 +20,7 @@ Writing New Drivers
 ===================
 
 ADBC drivers can be written in C/C++, C#, Go, Java, or Rust.
-Because drivers expose a :doc:`standard C ABI <../format/specification>`, a driver written in any of these languages can be used from client libraries in any other language — so the implementation language is largely a matter of ecosystem fit and preference.
+Because drivers expose a :doc:`standard C ABI <../format/specification>`, a driver written in any of these languages can be used from client libraries in any other language, so the implementation language is largely a matter of ecosystem fit and preference.
 
 .. list-table::
    :header-rows: 1
