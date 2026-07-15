@@ -19,10 +19,23 @@
 Client Libraries
 ================
 
-ADBC client libraries let you connect to databases and execute queries from your language or languages of choice.
-Because all ADBC :doc:`drivers <driver/index>` expose the same :doc:`standard C ABI <format/specification>`, a single client library can generally use drivers written any language using the same client API.
+ADBC client libraries let you connect to databases and execute queries from your language of choice.
+Because most ADBC :doc:`drivers <driver/index>` expose the same :doc:`standard C ABI <format/specification>`, a single client library can generally use drivers written in any language through the same client API.
 
-The client libraries in a particular language always provide bindings to the ADBC API and most also offer a driver manager.
+.. note:: **"Client library" and "driver manager"**
+
+   On this page we use the terms **client library** and **driver manager**
+   interchangeably. More precisely, the *driver manager* is the part of a client
+   library that dynamically loads ADBC driver shared libraries and forwards your
+   calls to them; the client library wraps that machinery in an API that feels
+   idiomatic in your language.
+
+   The package names are, unfortunately, not consistent about this. Some are
+   named for the driver manager (Python's ``adbc-driver-manager``, R's
+   ``adbcdrivermanager``), while others are named for ADBC itself (C#'s
+   ``Apache.Arrow.Adbc.Client``, Ruby's ``red-adbc``). They all give you the
+   same thing: a way to load drivers and talk to databases from your language.
+   We apologize for the confusion.
 
 Quick Start
 ===========
@@ -41,7 +54,11 @@ Get started with ADBC in your language of choice:
 
    .. tab-item:: C/C++
 
-      See the :doc:`C/C++ Quickstart <cpp/quickstart>` for installation and usage instructions.
+      .. code-block:: bash
+
+         conda install libadbc-driver-manager
+
+      Or vendor ``adbc.h`` directly. See the :doc:`C/C++ Quickstart <cpp/quickstart>` for installation and usage instructions.
 
    .. tab-item:: C#
 
@@ -49,7 +66,7 @@ Get started with ADBC in your language of choice:
 
          dotnet add package Apache.Arrow.Adbc.Client
 
-      See the :doc:`C# Quickstart <csharp/quickstart>` for usage instructions.
+      Or install ``Apache.Arrow.Adbc`` for the lower-level API. See the :doc:`C# Quickstart <csharp/quickstart>` for usage instructions.
 
    .. tab-item:: Go
 
@@ -64,13 +81,21 @@ Get started with ADBC in your language of choice:
       .. code-block:: xml
 
          <dependency>
-         <groupId>org.apache.arrow.adbc</groupId>
-         <artifactId>adbc-driver-manager</artifactId>
+           <groupId>org.apache.arrow.adbc</groupId>
+           <artifactId>adbc-core</artifactId>
+         </dependency>
+         <dependency>
+           <groupId>org.apache.arrow.adbc</groupId>
+           <artifactId>adbc-driver-manager</artifactId>
+         </dependency>
+         <dependency>
+           <groupId>org.apache.arrow.adbc</groupId>
+           <artifactId>adbc-driver-jni</artifactId>
          </dependency>
 
       See the :doc:`Java Quickstart <java/quickstart>` for usage instructions.
 
-   .. tab-item:: JavaScript
+   .. tab-item:: JS/TS
 
       .. code-block:: bash
 
@@ -98,85 +123,9 @@ Get started with ADBC in your language of choice:
 
       .. code-block:: bash
 
-         cargo add arrow-adbc
+         cargo add adbc_core adbc_driver_manager
 
       See the :doc:`Rust Quickstart <rust/quickstart>` for usage instructions.
-
-Driver Managers
-===============
-
-...
-
-.. list-table::
-   :header-rows: 1
-
-   * - Language
-     - Package
-     - Documentation
-   * - C/C++
-     - ``conda install adbc-driver-manager-cpp``
-     - :doc:`cpp/index`
-   * - C#/.NET
-     - ``dotnet add package Apache.Arrow.Adbc`` or ``dotnet add package Apache.Arrow.Adbc.Client``
-     - :doc:`csharp/index`
-   * - Go
-     - ``go get github.com/apache/arrow-adbc/go/adbc``
-     - `pkg.go.dev <https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc>`__
-   * - Java
-     - ``org.apache.arrow.adbc:adbc-driver-manager``
-     - :doc:`java/index`
-   * - JavaScript
-     - ``npm install @apache-arrow/adbc-driver-manager``
-     - :doc:`javascript/index`
-   * - Python
-     - ``pip install adbc_driver_manager``
-     - :doc:`python/index`
-   * - R
-     - ``install.packages("adbcdrivermanager")``
-     - :doc:`r/index`
-   * - Ruby
-     - ``gem install red-adbc`` or ``bundle add red-adbc``
-     - :doc:`ruby/index`
-   * - Rust
-     - ``cargo add adbc_core``
-     - :doc:`rust/index`
-
-Bindings
-========
-
-.. list-table::
-   :header-rows: 1
-
-   * - Language
-     - Package
-     - Documentation
-   * - C/C++
-     - Just vendor ``adbc.h``
-     - :doc:`cpp/index`
-   * - C#/.NET
-     - ``dotnet add package Apache.Arrow.Adbc`` or ``dotnet add package Apache.Arrow.Adbc.Client``
-     - :doc:`csharp/index`
-   * - Go
-     - ``go get github.com/apache/arrow-adbc/go/adbc``
-     - `pkg.go.dev <https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc>`__
-   * - Java
-     - ``org.apache.arrow.adbc:adbc-core``
-     - :doc:`java/index`
-   * - JavaScript
-     - ``npm install @apache-arrow/adbc-driver-manager``
-     - :doc:`javascript/index`
-   * - Python
-     - ``pip install adbc_driver_manager``
-     - :doc:`python/index`
-   * - R
-     - ``install.packages("adbcdrivermanager")``
-     - :doc:`r/index`
-   * - Ruby
-     - ``gem install red-adbc`` or ``bundle add red-adbc``
-     - :doc:`ruby/index`
-   * - Rust
-     - ``cargo add adbc_core`` or ``cargo add adbc_driver_manager``
-     - :doc:`rust/index`
 
 Using a Client Library
 ======================
