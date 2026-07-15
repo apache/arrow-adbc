@@ -39,10 +39,11 @@ Apache Arrow ADBC
 
          **Cross-language**, **Arrow-native** database access.
 
-ADBC is a set of APIs and libraries for Arrow-native access to databases.
-Execute SQL queries, insert bulk data, query database catalogs, and more, all
-using Arrow data to eliminate unnecessary data copies, speed up access, and
-make it more convenient to build analytical applications.
+ADBC is a set of APIs and libraries for fast, Arrow-native access to
+databases. Execute SQL queries, fetch results, insert bulk data, query
+catalogs, and more, all using Arrow to eliminate unnecessary data copies,
+speed up access, and make it more convenient to build analytical and AI
+applications.
 
 Getting Started
 ---------------
