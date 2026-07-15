@@ -88,7 +88,7 @@ Creating a Database and Connection
 ==================================
 
 The entry point is :external+js_adbc:jsclass:`AdbcDatabase`.  Pass a ``driver``
-option to identify the backend — either a short name (resolved via
+option to identify the backend—either a short name (resolved via
 :doc:`/format/driver_manifests` search paths) or absolute path to a driver
 shared library:
 

@@ -28,7 +28,7 @@ ADBC works alongside many popular data tools and frameworks. This page describes
 dbc
 ===
 
-`dbc <https://docs.columnar.tech/dbc>`_ is a command-line tool from `Columnar <https://columnar.tech>`_ for installing and managing ADBC drivers on your system. It handles downloading driver binaries, placing them in standard locations, and keeping them up to date — so you don't have to build drivers from source or manage shared libraries by hand.
+`dbc <https://docs.columnar.tech/dbc>`_ is a command-line tool from `Columnar <https://columnar.tech>`_ for installing and managing ADBC drivers on your system. It handles downloading driver binaries, placing them in standard locations, and keeping them up to date—so you don't have to build drivers from source or manage shared libraries by hand.
 
 Installation
 ------------
@@ -245,4 +245,4 @@ The adapter supports standard Active Record operations including queries, associ
 Add your own here!
 ==================
 
-Using ADBC with a tool not listed here? Contributions to this page are welcome — open a pull request on `GitHub <https://github.com/apache/arrow-adbc>`_.
+Using ADBC with a tool not listed here? Contributions to this page are welcome—open a pull request on `GitHub <https://github.com/apache/arrow-adbc>`_.

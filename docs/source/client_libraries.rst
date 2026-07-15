@@ -93,8 +93,11 @@ Client libraries provide a language-native interface on top of the ADBC API.
 They handle loading drivers, managing connections, and converting results into idiomatic types for each language.
 For example, Python exposes a `DBAPI 2.0 (PEP 249) <https://peps.python.org/pep-0249/>`__-style interface, Go uses ``database/sql``, and R uses DBI.
 
-To use a client library you need both the library itself and a :doc:`driver <driver/index>` for the database you want to connect to.
-The :doc:`ADBC Driver Manager <format/how_manager>` handles loading the driver at run-time, so in most languages you install a separate package per driver (e.g. ``adbc_driver_sqlite`` in Python) alongside the client library.
+A client library on its own can't talk to a database—it also needs a
+:doc:`driver <driver/index>` for the database you want to connect to.
+The client library loads the driver at run-time, so you install the client
+library once and then add a driver for each database you use.
+See :doc:`Drivers <driver/index>` for the full list of available drivers and how to install them.
 
 More information
 ================
