@@ -305,7 +305,6 @@ Old Content
    :hidden:
 
    Writing New Drivers <driver/authoring>
-   Driver Manifests <format/driver_manifests>
 
 .. toctree::
    :maxdepth: 1

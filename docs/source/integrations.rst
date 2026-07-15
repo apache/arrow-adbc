@@ -107,38 +107,24 @@ databow
 
 `databow <https://docs.columnar.tech/databow/>`_ is a command-line tool for querying databases via ADBC. It provides an interactive SQL shell with syntax highlighting, formatted output, and support for exporting results to JSON, CSV, or Arrow IPC files.
 
-**Highlights:**
-
-- Interactive SQL shell with command history and navigation
-- Syntax highlighting for SQL queries
-- Formatted table output with dynamic column widths
-- Export results to JSON, CSV, or Arrow IPC formats
-- Fast and lightweight (built in Rust)
-
-**Installation:**
-
-.. code-block:: bash
-
-   # Install with uv
-   uv tool install databow
-
-   # Install with Cargo
-   cargo install databow
-
-**Usage:**
-
-.. code-block:: bash
-
-   # Interactive mode
-   databow --driver duckdb
-
-   # Execute a query and exit
-   databow --driver duckdb --query "SELECT 42 AS the_answer"
-
-   # Export results to a file
-   databow --driver duckdb --query "SELECT * FROM orders" --output results.json
-
 See the `databow documentation <https://docs.columnar.tech/databow/>`_ for more details.
+
+----
+
+GDAL
+====
+
+`GDAL <https://gdal.org>`_ (Geospatial Data Abstraction Library) supports reading and writing spatial data from databases via ADBC through its `ADBC OGR driver <https://gdal.org/en/stable/drivers/vector/adbc.html>`_. This lets you use any ADBC-compatible database as a vector data source.
+
+.. code-block:: bash
+
+   # List layers in a PostGIS database
+   ogrinfo ADBC:postgresql://localhost:5432/geodata
+
+   # Convert a layer to GeoJSON
+   ogr2ogr output.geojson ADBC:postgresql://localhost:5432/geodata my_spatial_table
+
+See the `GDAL ADBC driver documentation <https://gdal.org/en/stable/drivers/vector/adbc.html>`_ for full details.
 
 ----
 
@@ -234,7 +220,7 @@ In R, `dplyr <https://dplyr.tidyverse.org>`_ accesses databases through the `DBI
 Ruby Active Record
 ==================
 
-`Active Record <https://guides.rubyonrails.org/active_record_basics.html>`_ is Ruby on Rails' database abstraction layer. The `activerecord-adbc-adapter <https://github.com/apache/arrow-adbc/tree/main/ruby/lib/adbc/activerecord>`_ gem allows you to use ADBC drivers as Active Record database adapters, enabling efficient Arrow-based data transfer for Rails applications.
+The `activerecord-adbc-adapter <https://github.com/apache/arrow-adbc/tree/main/ruby/lib/adbc/activerecord>`_ gem allows you to use ADBC drivers as Active Record database adapters, enabling efficient Arrow-based data transfer for Rails applications.
 
 .. code-block:: ruby
 
@@ -255,22 +241,6 @@ The adapter supports standard Active Record operations including queries, associ
 
 ----
 
-GDAL
-====
-
-`GDAL <https://gdal.org>`_ (Geospatial Data Abstraction Library) supports reading and writing spatial data from databases via ADBC through its `ADBC OGR driver <https://gdal.org/en/stable/drivers/vector/adbc.html>`_. This lets you use any ADBC-compatible database as a vector data source.
-
-.. code-block:: bash
-
-   # List layers in a PostGIS database
-   ogrinfo ADBC:postgresql://localhost:5432/geodata
-
-   # Convert a layer to GeoJSON
-   ogr2ogr output.geojson ADBC:postgresql://localhost:5432/geodata my_spatial_table
-
-See the `GDAL ADBC driver documentation <https://gdal.org/en/stable/drivers/vector/adbc.html>`_ for full details.
-
-----
 
 Add your own here!
 ==================
