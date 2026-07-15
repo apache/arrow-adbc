@@ -59,22 +59,32 @@ Installation
 
          pipx install dbc
 
+   .. tab-item:: npm
+
+      .. code-block:: bash
+
+         npm install -g @columnar-tech/dbc
+
    .. tab-item:: Windows (PowerShell)
 
       .. code-block:: powershell
 
          powershell -ExecutionPolicy ByPass -c "irm https://dbc.columnar.tech/install.ps1 | iex"
 
-   .. tab-item:: Windows (winget)
+   .. tab-item:: Windows (WinGet)
 
       .. code-block:: bash
 
-         winget install dbc
+         winget install Columnar.dbc
+
+   .. tab-item:: Windows (MSI)
+
+      Download the installer: https://dbc.columnar.tech/latest/dbc-latest-x64.msi
 
 Usage
 -----
 
-Once installed, use ``dbc install`` to add a driver, and ``dbc list`` to see what is available:
+Once installed, use ``dbc install`` to add a driver, and ``dbc search`` to see what is available:
 
 .. code-block:: bash
 
@@ -83,12 +93,12 @@ Once installed, use ``dbc install`` to add a driver, and ``dbc list`` to see wha
    dbc install snowflake
    dbc install sqlite
 
-   # List available and installed drivers
-   dbc list
+   # List available drivers
+   dbc search
 
 After a driver is installed, ADBC client libraries (and tools like DuckDB's ``adbc`` extension) can load it automatically by name.
 
-See the `dbc documentation <https://docs.columnar.tech/dbc>`_ for the full list of available drivers and advanced usage.
+See the `dbc documentation <https://docs.columnar.tech/dbc>`_ for advanced usage.
 
 ----
 
@@ -99,6 +109,16 @@ DuckDB
 
 1. **DuckDB itself is an ADBC driver** — DuckDB (technically libduckdb) exposes an ADBC interface so you can connect to a DuckDB database from any ADBC client library. See :doc:`driver/duckdb` for details on using DuckDB as an ADBC driver.
 2. **DuckDB extensions** — Two DuckDB community extensions, `adbc <https://duckdb.org/community_extensions/extensions/adbc.html>`_ and `adbc_scanner <https://duckdb.org/community_extensions/extensions/adbc_scanner>`_, let you query *other* databases from DuckDB using ADBC drivers.
+
+----
+
+Apache DataFusion
+=================
+
+`Apache DataFusion <https://datafusion.apache.org>`_ integrates with ADBC in two ways:
+
+1. **DataFusion is available as an ADBC driver** — the `DataFusion ADBC driver <https://docs.adbc-drivers.org/drivers/datafusion/>`_ lets you run DataFusion queries from any ADBC client library.
+2. **ADBC table provider** — the `ADBC table provider for DataFusion <https://github.com/datafusion-contrib/datafusion-table-providers#adbc>`_ lets you query *other* databases from DataFusion. A table provider exposes an external data source as a table in DataFusion, so you can register a database table via an ADBC driver and query it with DataFusion SQL alongside your other data sources.
 
 ----
 
@@ -165,7 +185,7 @@ pandas
 
 ADBC connections are compatible with ``pd.read_sql``, ``pd.read_sql_query``, and ``pd.read_sql_table``.
 
-See the recipe :ref:`Using Pandas and ADBC <recipe-postgresql-statement-nocopy>` for more examples.
+See the recipe :ref:`Using Pandas and ADBC <recipe-postgresql-pandas>` for more examples.
 
 ----
 
@@ -220,7 +240,7 @@ In R, `dplyr <https://dplyr.tidyverse.org>`_ accesses databases through the `DBI
 Ruby Active Record
 ==================
 
-The `activerecord-adbc-adapter <https://github.com/apache/arrow-adbc/tree/main/ruby/lib/adbc/activerecord>`_ gem allows you to use ADBC drivers as Active Record database adapters, enabling efficient Arrow-based data transfer for Rails applications.
+The `activerecord-adbc-adapter <https://github.com/red-data-tools/activerecord-adbc-adapter>`_ gem allows you to use ADBC drivers as Active Record database adapters, enabling efficient Arrow-based data transfer for Rails applications.
 
 .. code-block:: ruby
 
@@ -237,7 +257,7 @@ The `activerecord-adbc-adapter <https://github.com/apache/arrow-adbc/tree/main/r
    # Use Active Record as normal
    Order.where(status: 'shipped').limit(10)
 
-The adapter supports standard Active Record operations including queries, associations, migrations, and transactions. See the `activerecord-adbc-adapter documentation <https://github.com/apache/arrow-adbc/tree/main/ruby/lib/adbc/activerecord>`_ for configuration options.
+The adapter supports standard Active Record operations including queries, associations, migrations, and transactions. See the `activerecord-adbc-adapter documentation <https://www.rubydoc.info/gems/activerecord-adbc-adapter/>`_ for configuration options.
 
 ----
 

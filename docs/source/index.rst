@@ -104,7 +104,7 @@ Why ADBC?
       :link: client_libraries
       :link-type: doc
 
-      Work in C/C++, C#, Go, Java, JavaScript/TypeScript, Python, R, Ruby,
+      Work in C/C++, C#, Go, Java, JavaScript / TypeScript, Python, R, Ruby,
       Rust, and more. Use idiomatic APIs like DBAPI in Python,
       ``database/sql`` in Go, and DBI in R.
 

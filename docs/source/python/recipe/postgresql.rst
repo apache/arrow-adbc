@@ -78,6 +78,8 @@ Connection pooling with SQLAlchemy
 
 .. recipe:: postgresql_pool.py
 
+.. _recipe-postgresql-pandas:
+
 Using Pandas and ADBC
 =====================
 
