@@ -62,11 +62,11 @@ Getting Started
 
       Use ADBC from C/C++, C#, Go, Java, JavaScript, Python, R, Ruby, and Rust.
 
-   .. grid-item-card:: :octicon:`tools` Building Drivers
+   .. grid-item-card:: :octicon:`tools` Writing Drivers
       :link: driver/authoring
       :link-type: doc
 
-      Build your own ADBC driver using the driver SDKs available in multiple languages.
+      Create your own ADBC driver using the driver SDKs available in multiple languages.
 
 
 .. _dbc: https://docs.columnar.tech/dbc
