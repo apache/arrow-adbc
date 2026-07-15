@@ -106,8 +106,8 @@ driver in the table below is packaged this way.
 
 .. [#slug] The **slug** is the short name a driver is known by. It is the name
    you hand to a :doc:`client library <../client_libraries>` to load the
-   driver — either as a plain name (``postgresql``) or as a URI
-   (``postgresql://``). Given a slug, the client library
+   driver — either as the driver name (``postgresql``) or as the URI scheme
+   (``postgresql://``). Given this name, the client library
    :ref:`searches for a matching driver manifest <driver-manifest-discovery>`
    (``postgresql.toml``) that tells it which shared library to load. The same
    slug is what you pass when :ref:`installing a driver <driver-table-install>`.
