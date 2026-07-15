@@ -97,6 +97,12 @@ updates:
           - "arrow-*"
     cooldown:
       default-days: 7
+  - package-ecosystem: "rust-toolchain"
+    directory: "/ci/rust-nightly/"
+    schedule:
+      interval: "weekly"
+    commit-message:
+      prefix: "chore(rust): "
   - package-ecosystem: "cargo"
     directories:
       - "/javascript/"
