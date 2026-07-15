@@ -765,7 +765,7 @@ AdbcStatusCode PostgresStatement::ExecuteIngest(struct ArrowArrayStream* stream,
   RAISE_STATUS(
       error, bind_stream.ExecuteCopy(connection_->conn(), *connection_->type_resolver(),
                                      has_copy_target_types ? &copy_target_types : nullptr,
-                                     rows_affected));
+                                     disable_decimal_fast_path_, rows_affected));
   return ADBC_STATUS_OK;
 }
 
@@ -799,6 +799,8 @@ AdbcStatusCode PostgresStatement::GetOption(const char* key, char* value, size_t
     } else {
       result = "false";
     }
+  } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_DISABLE_DECIMAL_FAST_PATH) == 0) {
+    result = disable_decimal_fast_path_ ? "true" : "false";
   } else {
     InternalAdbcSetError(error, "[libpq] Unknown statement option '%s'", key);
     return ADBC_STATUS_NOT_FOUND;
@@ -942,6 +944,16 @@ AdbcStatusCode PostgresStatement::SetOption(const char* key, const char* value,
       use_copy_ = true;
     } else if (std::strcmp(value, ADBC_OPTION_VALUE_DISABLED) == 0) {
       use_copy_ = false;
+    } else {
+      InternalAdbcSetError(error, "[libpq] Invalid value '%s' for option '%s'", value,
+                           key);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+  } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_DISABLE_DECIMAL_FAST_PATH) == 0) {
+    if (std::strcmp(value, ADBC_OPTION_VALUE_ENABLED) == 0) {
+      disable_decimal_fast_path_ = true;
+    } else if (std::strcmp(value, ADBC_OPTION_VALUE_DISABLED) == 0) {
+      disable_decimal_fast_path_ = false;
     } else {
       InternalAdbcSetError(error, "[libpq] Invalid value '%s' for option '%s'", value,
                            key);

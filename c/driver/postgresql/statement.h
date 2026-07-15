@@ -35,6 +35,9 @@
 
 #define ADBC_POSTGRESQL_OPTION_USE_COPY "adbc.postgresql.use_copy"
 
+#define ADBC_POSTGRESQL_OPTION_DISABLE_DECIMAL_FAST_PATH \
+  "adbc.postgresql.disable_decimal_fast_path"
+
 namespace adbcpq {
 class PostgresConnection;
 class PostgresStatement;
@@ -100,6 +103,7 @@ class PostgresStatement {
         query_(),
         prepared_(false),
         use_copy_(-1),
+        disable_decimal_fast_path_(false),
         reader_(nullptr),
         batch_size_hint_bytes_(kDefaultBatchSizeHintBytes) {
     std::memset(&bind_, 0, sizeof(bind_));
@@ -170,6 +174,7 @@ class PostgresStatement {
 
   // Options
   int use_copy_;
+  bool disable_decimal_fast_path_;
 
   struct {
     std::string db_schema;

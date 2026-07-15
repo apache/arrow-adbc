@@ -20,8 +20,10 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
+#include <fstream>
 #include <limits>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <variant>
@@ -2524,6 +2526,35 @@ TEST_F(PostgresStatementTest, SetUseCopyFalse) {
   ASSERT_EQ(reader.array->release, nullptr);
 }
 
+TEST_F(PostgresStatementTest, SetDisableDecimalFastPath) {
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+  ASSERT_EQ(adbc_validation::StatementGetOption(
+                &statement, "adbc.postgresql.disable_decimal_fast_path", &error),
+            "false");
+
+  ASSERT_THAT(
+      AdbcStatementSetOption(&statement, "adbc.postgresql.disable_decimal_fast_path",
+                             "not true or false", &error),
+      IsStatus(ADBC_STATUS_INVALID_ARGUMENT));
+
+  ASSERT_THAT(
+      AdbcStatementSetOption(&statement, "adbc.postgresql.disable_decimal_fast_path",
+                             ADBC_OPTION_VALUE_ENABLED, &error),
+      IsOkStatus(&error));
+  ASSERT_EQ(adbc_validation::StatementGetOption(
+                &statement, "adbc.postgresql.disable_decimal_fast_path", &error),
+            "true");
+
+  ASSERT_THAT(
+      AdbcStatementSetOption(&statement, "adbc.postgresql.disable_decimal_fast_path",
+                             ADBC_OPTION_VALUE_DISABLED, &error),
+      IsOkStatus(&error));
+  ASSERT_EQ(adbc_validation::StatementGetOption(
+                &statement, "adbc.postgresql.disable_decimal_fast_path", &error),
+            "false");
+}
+
 TEST_F(PostgresStatementTest, SqlQueryInt2vector) {
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
 
@@ -3133,7 +3164,84 @@ struct DecimalTestCase {
   const std::vector<std::optional<std::string>> expected;
 };
 
-class PostgresDecimalTest : public ::testing::TestWithParam<DecimalTestCase> {
+struct DecimalFixtureGroup {
+  struct Value {
+    std::optional<int64_t> coefficient;
+    std::optional<std::string> digits;
+    std::optional<std::string> expected;
+  };
+
+  int32_t precision;
+  int32_t scale;
+  std::vector<Value> values;
+};
+
+static DecimalFixtureGroup::Value DecimalCoefficientValue(
+    int64_t coefficient, std::optional<std::string> expected) {
+  return {coefficient, std::nullopt, std::move(expected)};
+}
+
+static void AppendDecimalFixtureValue(std::vector<DecimalFixtureGroup>* groups,
+                                      int32_t precision, int32_t scale,
+                                      DecimalFixtureGroup::Value value) {
+  if (groups->empty() || groups->back().precision != precision ||
+      groups->back().scale != scale) {
+    groups->push_back({precision, scale, {}});
+  }
+
+  groups->back().values.push_back(std::move(value));
+}
+
+static std::vector<DecimalFixtureGroup> LoadGeneratedDecimalFixtureGroups() {
+  std::ifstream input(ADBC_POSTGRESQL_TESTDATA_DIR "/numeric_roundtrip_fixtures.csv");
+  if (!input.is_open()) {
+    ADD_FAILURE() << "Failed to open numeric fixture file at "
+                  << ADBC_POSTGRESQL_TESTDATA_DIR << "/numeric_roundtrip_fixtures.csv";
+    return {};
+  }
+
+  std::string line;
+  if (!std::getline(input, line)) {
+    ADD_FAILURE() << "Numeric fixture file is empty";
+    return {};
+  }
+
+  std::vector<DecimalFixtureGroup> groups;
+  while (std::getline(input, line)) {
+    if (line.empty()) continue;
+
+    std::stringstream line_stream(line);
+    std::string precision_str;
+    std::string scale_str;
+    std::string coefficient_str;
+    std::string expected_str;
+
+    if (!std::getline(line_stream, precision_str, ',') ||
+        !std::getline(line_stream, scale_str, ',') ||
+        !std::getline(line_stream, coefficient_str, ',') ||
+        !std::getline(line_stream, expected_str)) {
+      ADD_FAILURE() << "Malformed numeric fixture row: " << line;
+      return {};
+    }
+
+    const int32_t precision = std::stoi(precision_str);
+    const int32_t scale = std::stoi(scale_str);
+    const int64_t coefficient = std::stoll(coefficient_str);
+
+    AppendDecimalFixtureValue(&groups, precision, scale,
+                              DecimalCoefficientValue(coefficient, expected_str));
+  }
+
+  return groups;
+}
+
+static const std::vector<DecimalFixtureGroup>& DecimalFixtureGroups() {
+  static const std::vector<DecimalFixtureGroup> groups =
+      LoadGeneratedDecimalFixtureGroups();
+  return groups;
+}
+
+class PostgresDecimalTestBase : public ::testing::Test {
  public:
   void SetUp() override {
     ASSERT_THAT(AdbcDatabaseNew(&database_, &error_), IsOkStatus(&error_));
@@ -3172,6 +3280,12 @@ class PostgresDecimalTest : public ::testing::TestWithParam<DecimalTestCase> {
   struct AdbcConnection connection_ = {};
   struct AdbcStatement statement_ = {};
 };
+
+class PostgresDecimalTest : public PostgresDecimalTestBase,
+                            public ::testing::WithParamInterface<DecimalTestCase> {};
+
+class PostgresDecimalFixtureRoundTripTest : public PostgresDecimalTestBase,
+                                            public ::testing::WithParamInterface<bool> {};
 
 TEST_P(PostgresDecimalTest, SelectValue) {
   adbc_validation::Handle<struct ArrowSchema> schema;
@@ -3272,6 +3386,112 @@ TEST_P(PostgresDecimalTest, SelectValue) {
   }
 }
 
+TEST_P(PostgresDecimalFixtureRoundTripTest, Decimal128FixtureRoundTrip) {
+  const bool disable_decimal_fast_path = GetParam();
+  const char* fast_path_value =
+      disable_decimal_fast_path ? ADBC_OPTION_VALUE_ENABLED : ADBC_OPTION_VALUE_DISABLED;
+
+  ASSERT_THAT(
+      AdbcStatementSetOption(&statement_, "adbc.postgresql.disable_decimal_fast_path",
+                             fast_path_value, &error_),
+      IsOkStatus(&error_));
+
+  const auto& groups = DecimalFixtureGroups();
+  ASSERT_FALSE(groups.empty());
+
+  auto run_group = [&](const DecimalFixtureGroup& group) {
+    SCOPED_TRACE("precision=" + std::to_string(group.precision) +
+                 " scale=" + std::to_string(group.scale) + " disable_decimal_fast_path=" +
+                 std::string(disable_decimal_fast_path ? "true" : "false"));
+
+    ASSERT_THAT(quirks_.DropTable(&connection_, "bulk_ingest", &error_),
+                IsOkStatus(&error_));
+
+    adbc_validation::Handle<struct ArrowSchema> schema;
+    adbc_validation::Handle<struct ArrowArray> array;
+    struct ArrowError na_error;
+
+    std::vector<ArrowDecimal> decimals(group.values.size());
+    std::vector<std::optional<ArrowDecimal*>> values;
+    std::vector<std::optional<std::string>> expected;
+    values.reserve(group.values.size());
+    expected.reserve(group.values.size());
+    for (size_t i = 0; i < group.values.size(); i++) {
+      const auto& value = group.values[i];
+      expected.push_back(value.expected);
+      if (!value.coefficient.has_value() && !value.digits.has_value()) {
+        values.push_back(std::nullopt);
+        continue;
+      }
+
+      ArrowDecimalInit(&decimals[i], /*bitwidth=*/128, group.precision, group.scale);
+      if (value.coefficient.has_value()) {
+        ArrowDecimalSetInt(&decimals[i], *value.coefficient);
+      } else {
+        ArrowStringView digits_view;
+        digits_view.data = value.digits->data();
+        digits_view.size_bytes = static_cast<int64_t>(value.digits->size());
+        ArrowDecimalSetDigits(&decimals[i], digits_view);
+      }
+      values.push_back(&decimals[i]);
+    }
+
+    ArrowSchemaInit(&schema.value);
+    ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema.value, 1), 0);
+    ASSERT_EQ(
+        ArrowSchemaSetTypeDecimal(schema.value.children[0], NANOARROW_TYPE_DECIMAL128,
+                                  group.precision, group.scale),
+        0);
+    ASSERT_EQ(ArrowSchemaSetName(schema.value.children[0], "amount"), 0);
+    ASSERT_THAT(adbc_validation::MakeBatch<ArrowDecimal*>(&schema.value, &array.value,
+                                                          &na_error, values),
+                adbc_validation::IsOkErrno());
+
+    ASSERT_THAT(AdbcStatementSetOption(&statement_, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                       "bulk_ingest", &error_),
+                IsOkStatus(&error_));
+    ASSERT_THAT(AdbcStatementBind(&statement_, &array.value, &schema.value, &error_),
+                IsOkStatus(&error_));
+
+    int64_t rows_affected = 0;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement_, nullptr, &rows_affected, &error_),
+                IsOkStatus(&error_));
+    ASSERT_THAT(rows_affected,
+                ::testing::AnyOf(::testing::Eq(static_cast<int64_t>(values.size())),
+                                 ::testing::Eq(-1)));
+
+    ASSERT_THAT(
+        AdbcStatementSetSqlQuery(
+            &statement_, "SELECT amount::text AS amount FROM bulk_ingest ORDER BY ctid",
+            &error_),
+        IsOkStatus(&error_));
+
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement_, &reader.stream.value,
+                                          &reader.rows_affected, &error_),
+                IsOkStatus(&error_));
+    ASSERT_THAT(reader.rows_affected,
+                ::testing::AnyOf(::testing::Eq(static_cast<int64_t>(values.size())),
+                                 ::testing::Eq(-1)));
+
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_NE(nullptr, reader.array->release);
+    ASSERT_EQ(static_cast<int64_t>(values.size()), reader.array->length);
+    ASSERT_EQ(1, reader.array->n_children);
+
+    ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareArray<std::string>(
+        reader.array_view->children[0], expected));
+
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(nullptr, reader.array->release);
+  };
+
+  for (const auto& group : groups) {
+    run_group(group);
+  }
+}
+
 static std::vector<std::array<uint64_t, 4>> kDecimalData = {
     // -12345600000
     {18446744061363951616ULL, 18446744073709551615ULL, 0, 0},
@@ -3360,3 +3580,7 @@ INSTANTIATE_TEST_SUITE_P(Decimal256LargeTests, PostgresDecimalTest,
                          testing::ValuesIn(kDecimal256LargeCases));
 INSTANTIATE_TEST_SUITE_P(Decimal256LargeNoScale, PostgresDecimalTest,
                          testing::ValuesIn(kDecimal256LargeNoScaleCases));
+INSTANTIATE_TEST_SUITE_P(Decimal128FixtureRoundTrip, PostgresDecimalFixtureRoundTripTest,
+                         testing::Bool(), [](const testing::TestParamInfo<bool>& info) {
+                           return info.param ? "SlowPath" : "FastPath";
+                         });
