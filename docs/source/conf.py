@@ -35,6 +35,8 @@ author = "the Apache Arrow Developers"
 release = "24 (dev)"
 # Needed to generate version switcher
 version = release
+# Override Sphinx's default title to capitalize "Documentation"
+html_title = f"{project} {release} Documentation"
 # For linking to latest downloads
 latest_release = "23"
 

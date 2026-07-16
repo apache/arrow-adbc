@@ -132,12 +132,16 @@ table.driver-table th .th-hint {
     opacity: 0.75;
 }
 
-/* Emphasize the documentation title in the sidebar with a box */
+/* Shrink the sidebar logo slightly */
+.sidebar-logo {
+    max-width: 95%;
+    margin-left: 0;
+    margin-right: auto;
+}
+
+/* Emphasize and align the documentation title in the sidebar */
 .sidebar-brand-text {
-    display: block;
-    margin: 0.5rem auto 0;
-    padding: 0.4rem 0.75rem;
-    border: 1px solid currentColor;
-    background: var(--color-background-secondary);
-    font-weight: 600;
+    font-weight: 700;
+    margin-left: 12px;
+    font-size: 1.6rem;
 }
