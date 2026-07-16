@@ -2049,9 +2049,10 @@ void StatementTest::TestSqlPrepareUpdate() {
 
   // Read data back
   {
-    std::string select_query =
-        quirks()->RewriteSql("StatementTest::TestSqlPrepareUpdate::select-bulk-ingest",
-                             "SELECT * FROM " + quirks()->QuoteIdentifier("bulk_ingest"));
+    std::string select_query = quirks()->RewriteSql(
+        "StatementTest::TestSqlPrepareUpdate::select-bulk-ingest",
+        "SELECT * FROM " + quirks()->QuoteIdentifier("bulk_ingest") + " ORDER BY " +
+            quirks()->QuoteIdentifier("int64s") + " ASC NULLS FIRST");
     ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, select_query.c_str(), &error),
                 IsOkStatus(&error));
   }
@@ -2073,7 +2074,7 @@ void StatementTest::TestSqlPrepareUpdate() {
     ASSERT_EQ(1, reader.array->n_children);
 
     ASSERT_NO_FATAL_FAILURE(CompareArray<int64_t>(
-        reader.array_view->children[0], {42, -42, std::nullopt, 42, -42, std::nullopt}));
+        reader.array_view->children[0], {std::nullopt, std::nullopt, -42, -42, 42, 42}));
 
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(nullptr, reader.array->release);
@@ -2149,7 +2150,8 @@ void StatementTest::TestSqlPrepareUpdateStream() {
   {
     std::string select_query = quirks()->RewriteSql(
         "StatementTest::TestSqlPrepareUpdateStream::select-bulk-ingest",
-        "SELECT * FROM " + quirks()->QuoteIdentifier("bulk_ingest"));
+        "SELECT * FROM " + quirks()->QuoteIdentifier("bulk_ingest") + " ORDER BY " +
+            quirks()->QuoteIdentifier("ints") + " ASC NULLS FIRST");
     ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, select_query.c_str(), &error),
                 IsOkStatus(&error));
   }
@@ -2171,7 +2173,7 @@ void StatementTest::TestSqlPrepareUpdateStream() {
     ASSERT_EQ(1, reader.array->n_children);
 
     ASSERT_NO_FATAL_FAILURE(CompareArray<int64_t>(
-        reader.array_view->children[0], {1, 2, std::nullopt, 3, std::nullopt, 3}));
+        reader.array_view->children[0], {std::nullopt, std::nullopt, 1, 2, 3, 3}));
 
     ASSERT_NO_FATAL_FAILURE(reader.Next());
     ASSERT_EQ(nullptr, reader.array->release);
