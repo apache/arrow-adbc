@@ -121,7 +121,7 @@ public class FlightSqlConnection implements AdbcConnection {
 
   @Override
   public AdbcStatement createStatement() throws AdbcException {
-    return new FlightSqlStatement(allocator, client, clientCache, quirks);
+    return new FlightSqlStatement(allocator, client, clientCache, quirks, callOptions);
   }
 
   @Override
@@ -152,7 +152,7 @@ public class FlightSqlConnection implements AdbcConnection {
   public AdbcStatement bulkIngest(String targetTableName, BulkIngestMode mode)
       throws AdbcException {
     return FlightSqlStatement.ingestRoot(
-        allocator, client, clientCache, quirks, targetTableName, mode);
+        allocator, client, clientCache, quirks, targetTableName, mode, callOptions);
   }
 
   @Override

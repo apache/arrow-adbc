@@ -29,6 +29,7 @@ import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.adbc.core.PartitionDescriptor;
 import org.apache.arrow.adbc.sql.SqlQuirks;
+import org.apache.arrow.flight.CallOption;
 import org.apache.arrow.flight.FlightEndpoint;
 import org.apache.arrow.flight.FlightInfo;
 import org.apache.arrow.flight.FlightRuntimeException;
@@ -47,6 +48,8 @@ public class FlightSqlStatement implements AdbcStatement {
   private final FlightSqlClientWithCallOptions client;
   private final LoadingCache<Location, FlightSqlClientWithCallOptions> clientCache;
   private final SqlQuirks quirks;
+  private final CallOption[] connectionOptions;
+
 
   // State for SQL queries
   private @Nullable String sqlQuery;
@@ -59,7 +62,8 @@ public class FlightSqlStatement implements AdbcStatement {
       BufferAllocator allocator,
       FlightSqlClientWithCallOptions client,
       LoadingCache<Location, FlightSqlClientWithCallOptions> clientCache,
-      SqlQuirks quirks) {
+      SqlQuirks quirks,
+      CallOption... connectionOptions) {
     this.allocator = allocator;
     this.client = client;
     this.clientCache = clientCache;
@@ -68,6 +72,7 @@ public class FlightSqlStatement implements AdbcStatement {
     this.preparedStatement = null;
     this.bulkOperation = null;
     this.bindRoot = null;
+    this.connectionOptions = connectionOptions;
   }
 
   static FlightSqlStatement ingestRoot(
@@ -76,10 +81,11 @@ public class FlightSqlStatement implements AdbcStatement {
       LoadingCache<Location, FlightSqlClientWithCallOptions> clientCache,
       SqlQuirks quirks,
       String targetTableName,
-      BulkIngestMode mode) {
+      BulkIngestMode mode,
+      CallOption... connectionOptions) {
     Objects.requireNonNull(targetTableName);
     final FlightSqlStatement statement =
-        new FlightSqlStatement(allocator, client, clientCache, quirks);
+        new FlightSqlStatement(allocator, client, clientCache, quirks, connectionOptions);
     statement.bulkOperation = new BulkState(mode, targetTableName);
     return statement;
   }
