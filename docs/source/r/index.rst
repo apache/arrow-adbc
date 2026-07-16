@@ -19,6 +19,11 @@
 R
 ===
 
+.. toctree::
+   :hidden:
+
+   quickstart
+
 ADBC in R is implemented as a suite of R packages. Most users will
 interact with ADBC via the `adbcdrivermanager <adbcdrivermanager/index.html>`_
 package and use drivers that are also distributed as R packages. In

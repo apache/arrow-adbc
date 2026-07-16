@@ -19,6 +19,11 @@
 Ruby
 ====
 
+.. toctree::
+   :hidden:
+
+   quickstart
+
 Red ADBC is the Ruby binding for ADBC, built on top of ADBC GLib.
 It is distributed as the ``red-adbc`` gem on `RubyGems <https://rubygems.org/gems/red-adbc>`__.
 
