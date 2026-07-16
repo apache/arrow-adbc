@@ -160,6 +160,15 @@ the ``profile://`` scheme:
          with dbapi.connect(uri="profile://myprofile") as con:
              ...
 
+   .. tab-item:: R
+
+      .. code-block:: r
+
+         library(adbcdrivermanager)
+
+         db <- adbc_database_init(uri = "profile://myprofile")
+         con <- adbc_connection_init(db)
+
    .. tab-item:: Ruby
 
       .. code-block:: ruby
