@@ -242,7 +242,8 @@ identifies who maintains each driver:
 Have a driver to add?
 =====================
 
-If you've developed an ADBC driver and would like it listed here,
+If you've developed a high-quality ADBC driver, made it freely available for
+public use under a permissive license, and would like it listed here,
 `open an issue <https://github.com/apache/arrow-adbc/issues/new>`__ on the
 Apache Arrow ADBC repository with the details (name, database, repository URL,
 package names) and we'll help get it added.
