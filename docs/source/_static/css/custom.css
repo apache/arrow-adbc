@@ -131,3 +131,13 @@ table.driver-table th .th-hint {
     font-size: 0.8em;
     opacity: 0.75;
 }
+
+/* Emphasize the documentation title in the sidebar with a box */
+.sidebar-brand-text {
+    display: block;
+    margin: 0.5rem auto 0;
+    padding: 0.4rem 0.75rem;
+    border: 1px solid currentColor;
+    background: var(--color-background-secondary);
+    font-weight: 600;
+}
