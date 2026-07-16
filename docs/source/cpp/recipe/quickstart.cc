@@ -32,9 +32,33 @@
 ///
 /// .. code-block:: shell
 ///
-///    mamba install cmake compilers libadbc-driver-manager libadbc-driver-sqlite
+///    mamba install cmake compilers libadbc-driver-manager
+///
+/// Installing Drivers
+/// ==================
+///
+/// You'll need to install an ADBC driver for the database you want to
+/// connect to. The easiest way is using dbc_:
+///
+/// .. code-block:: shell
+///
+///    # Install dbc
+///    curl -fsSL https://dbc.sh | sh
+///
+///    # Install a driver (e.g., SQLite)
+///    dbc install sqlite
+///
+/// You can also build drivers from source or use other installation
+/// methods. See the :doc:`driver documentation </driver/index>` for
+/// more details.
+///
+/// .. note:: dbc is a third-party tool and not part of the Apache
+///           Software Foundation. Some drivers, including SQLite, also
+///           have packages distributed by the ASF, but the usage
+///           differs based on the driver.
 ///
 /// .. _conda-forge: https://conda-forge.org/
+/// .. _dbc: https://columnar.tech/dbc
 
 /// Building
 /// ========
@@ -51,8 +75,8 @@
 ///
 /// .. _CMake: https://cmake.org/
 
-/// Using ADBC
-/// ==========
+/// Basic Example
+/// =============
 ///
 /// Let's start with some includes:
 
@@ -110,7 +134,7 @@ int main() {
   CHECK_ADBC(AdbcDatabaseNew(&database, &error));
   /// The way the driver manager knows what driver we want is via the
   /// ``driver`` option.
-  CHECK_ADBC(AdbcDatabaseSetOption(&database, "driver", "adbc_driver_sqlite", &error));
+  CHECK_ADBC(AdbcDatabaseSetOption(&database, "driver", "sqlite", &error));
   CHECK_ADBC(AdbcDatabaseInit(&database, &error));
 
   /// Creating a Connection
