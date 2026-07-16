@@ -19,39 +19,100 @@
 Writing New Drivers
 ===================
 
-ADBC drivers can be written in C/C++, C#, Go, Java, or Rust.
-Because drivers expose a :doc:`standard C ABI <../format/specification>`, a driver written in any of these languages can be used from client libraries in any other language, so the implementation language is largely a matter of ecosystem fit and preference.
+Interested in building an ADBC driver? The best place to start is the **ADBC
+Driver Foundry**, a community project that hosts most ADBC drivers and provides
+the frameworks, templates, testing tools, and distribution infrastructure for
+building and shipping them.
 
-.. list-table::
-   :header-rows: 1
+.. button-link:: https://docs.adbc-drivers.org/building-drivers/
+   :color: primary
 
-   * - Language
-     - Documentation
-     - Notes
-   * - C/C++
-     - :doc:`../cpp/index`
-     - Drivers are loadable by the Driver Manager and usable from all client languages.
-   * - C#
-     - :doc:`../csharp/index`
-     - Can experimentally export drivers for use from other languages via the C ABI.
-   * - Go
-     - `go/adbc <https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc>`__
-     - Recommended for new drivers; easiest to package and distribute. Drivers are loadable by the Driver Manager and usable from all client languages.
-   * - Java
-     - :doc:`../java/index`
-     - Drivers are usable from Java client libraries.
-   * - Rust
-     - :doc:`../rust/quickstart`
-     - API definitions are still maturing. Drivers can be compiled to a C ABI shared library for use from other languages.
+   Building Drivers guide (ADBC Driver Foundry) :octicon:`link-external`
 
-Go and Rust are generally the recommended choice for new drivers.
-C/C++ drivers have historically had dependency conflicts (e.g. with grpcio or pyarrow in Python processes), whereas Go and Rust libraries are easier to package and distribute without conflict.
+The rest of this page gives a brief orientation. For anything beyond
+that—project templates, frameworks, validation tests, packaging, and
+distribution—follow the guide above.
 
-In Go, some frameworks are available for driver
-authors. `go/adbc/driver/internal/driverbase`_ manages much of the boilerplate
-and basic state management for drivers.  `go/adbc/pkg`_ can template out a C
-ABI wrapper around the Go driver.  Especially if the driver is planned to go
-upstream, we recommend driver authors consider using these frameworks.
+.. note::
 
-.. _go/adbc/driver/internal/driverbase: https://github.com/apache/arrow-adbc/tree/main/go/adbc/driver/internal/driverbase
-.. _go/adbc/pkg: https://github.com/apache/arrow-adbc/tree/main/go/adbc/pkg
+   The ADBC project itself focuses on the :doc:`ADBC standard
+   <../format/specification>` and :doc:`client libraries <../client_libraries>`,
+   not on building and distributing drivers. In most cases, new drivers should
+   be developed in the ADBC Driver Foundry, not in the ``apache/arrow-adbc``
+   repository.
+
+   The ADBC Driver Foundry is an independent community project, separate from
+   the Apache Arrow project.
+
+What language should I use?
+===========================
+
+Most ADBC drivers are built as shared libraries (``.so`` / ``.dll`` /
+``.dylib``) in a portable systems language (like C/C++, Go, or Rust). A
+single shared library can be loaded by any :doc:`ADBC client library
+<../client_libraries>` and used from any language, so the implementation
+language does not affect which languages can use the driver.
+
+- **Go** and **Rust** are the most common choices, and have the most examples,
+  templates, and framework tooling available (see below). If you're starting
+  fresh, one of these is usually the easiest path.
+- **C/C++** also works, but the build is more involved, and C/C++ drivers have
+  historically hit dependency conflicts inside host processes.
+
+In principle a shared-library driver can be written in other languages, such as
+C# or Java, but in practice this has not been done.
+
+Separately, a driver can be built as a language-specific package that runs
+directly on a managed runtime (for example, a NuGet package for .NET or a Maven
+package for the JVM) rather than as a loadable shared library. Such a driver can
+only be used from that runtime. This is less common, but the Driver Foundry can
+accommodate it too.
+
+Driver frameworks
+=================
+
+The ADBC Driver Foundry maintains frameworks for Go and Rust that provide base
+implementations of the ADBC interfaces, so you implement only what's specific to
+your database:
+
+- **Go**: `driverbase-go <https://github.com/adbc-drivers/driverbase-go>`__
+- **Rust**: `driverbase-rs <https://github.com/adbc-drivers/driverbase-rs>`__
+
+For Rust, `template-rs <https://github.com/adbc-drivers/template-rs>`__
+generates a ready-to-build driver crate to start from.
+
+.. note::
+
+   A Go ``driverbase`` also exists in this repository, under
+   `go/adbc/driver/internal/driverbase
+   <https://github.com/apache/arrow-adbc/tree/main/go/adbc/driver/internal/driverbase>`__.
+   It remains only for historical reasons (the Flight SQL driver depends on it)
+   and is not intended for new work. New Go drivers should use `driverbase-go
+   <https://github.com/adbc-drivers/driverbase-go>`__ instead.
+
+Why the Driver Foundry, not this repository?
+============================================
+
+.. _authoring-why-foundry:
+
+Building and distributing driver binaries is a non-goal of the core ADBC
+project, and routing every driver through ``apache/arrow-adbc`` bottlenecks
+on its maintainers. The Driver Foundry instead gives each driver its own
+repository and maintainers, while its shared frameworks and validation suite
+keep drivers consistent and standards-conformant. It also handles testing,
+security vulnerability scanning and patching, packaging, and distribution—including
+prebuilt, signed, notarized binaries on the
+`ADBC Driver Registry <https://dbc-cdn.columnar.tech/>`__.
+Vendors such as dbt Labs and Microsoft build on Foundry-maintained drivers.
+
+The ADBC maintainers generally decline pull requests adding new drivers to
+``apache/arrow-adbc`` and direct you instead to the Foundry.
+
+The ADBC Driver Registry, like the Foundry, is maintained independently of the
+Apache Arrow project.
+
+.. note::
+
+   A small number of drivers (PostgreSQL, SQLite, and Flight SQL) are still
+   maintained in this repository for historical reasons. See :doc:`Drivers
+   <index>` for the full list of available drivers and who maintains each one.
