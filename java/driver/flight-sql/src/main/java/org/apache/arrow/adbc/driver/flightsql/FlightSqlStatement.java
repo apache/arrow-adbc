@@ -37,7 +37,6 @@ import org.apache.arrow.flight.Location;
 import org.apache.arrow.flight.impl.Flight;
 import org.apache.arrow.flight.sql.FlightSqlClient;
 import org.apache.arrow.memory.BufferAllocator;
-import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
@@ -49,7 +48,6 @@ public class FlightSqlStatement implements AdbcStatement {
   private final LoadingCache<Location, FlightSqlClientWithCallOptions> clientCache;
   private final SqlQuirks quirks;
   private final CallOption[] connectionOptions;
-
 
   // State for SQL queries
   private @Nullable String sqlQuery;
