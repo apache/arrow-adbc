@@ -75,7 +75,7 @@ driver in the table below is packaged this way.
      - ``exasol``
      - Vendor
      - :iconlink:`fa-brands fa-github|https://github.com/exasol/adbc-driver-exasol|GitHub repository`
-   * - :doc:`Apache Arrow Flight SQL <flight_sql>`
+   * - :doc:`Apache Arrow Flight SQL <flight_sql>` [#compat-flightsql]_
      - ``flightsql``
      - ASF
      - :iconlink:`fa-brands fa-github|https://github.com/apache/arrow-adbc/tree/main/go/adbc/driver/flightsql|GitHub repository`
@@ -83,11 +83,11 @@ driver in the table below is packaged this way.
      - ``mssql``
      - Foundry
      - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/mssql|GitHub repository`
-   * - `MySQL/MariaDB <https://docs.adbc-drivers.org/drivers/mysql/>`__
+   * - `MySQL/MariaDB <https://docs.adbc-drivers.org/drivers/mysql/>`__ [#compat-mysql]_
      - ``mysql``
      - Foundry
      - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/mysql|GitHub repository`
-   * - :doc:`PostgreSQL <postgresql>`
+   * - :doc:`PostgreSQL <postgresql>` [#compat-postgresql]_
      - ``postgresql``
      - ASF
      - :iconlink:`fa-brands fa-github|https://github.com/apache/arrow-adbc/tree/main/c/driver/postgresql|GitHub repository`
@@ -130,7 +130,15 @@ driver in the table below is packaged this way.
 .. [#maintainer] See :ref:`Who maintains these drivers? <driver-table-maintainers>`
    for what **ASF**, **Foundry**, and **Vendor** mean.
 .. [#duckdb] ADBC support is built directly into DuckDB; installing the
-   ``duckdb`` driver fetches a prebuilt binary.
+   ``duckdb`` driver fetches a prebuilt binary. This driver is also compatible
+   with MotherDuck.
+.. [#compat-flightsql] This driver works with Flight SQL-compatible systems,
+   including Apache Doris, Dremio, GizmoSQL, InfluxDB, Sail, and StarRocks.
+.. [#compat-mysql] This driver also works with MySQL-compatible systems including
+   TiDB and Vitess.
+.. [#compat-postgresql] This driver also works with PostgreSQL wire
+   protocol-compatible systems, including CedarDB, Citus, CockroachDB, CrateDB,
+   Neon, ParadeDB, TimescaleDB, Yellowbrick, and YugabyteDB.
 
 .. _driver-table-install:
 
