@@ -49,6 +49,7 @@ Getting Started
 ---------------
 
 .. grid:: 1 1 2 3
+   :margin: 4 4 0 0
    :gutter: 3
 
    .. grid-item-card:: :octicon:`plug` Available Drivers
@@ -83,19 +84,20 @@ Why ADBC?
    .. grid-item-card:: Arrow-native
       :link: https://arrow.apache.org/
 
-      Execute queries and get back results in Arrow format, eliminating extra
-      data copies for Arrow-native backends.
+      Execute queries and get back results in Arrow columnar format,
+      eliminating extra data copies when working with Arrow-native
+      databases and engines.
 
       +++
       Learn about Apache Arrow
 
-   .. grid-item-card:: Backend-agnostic
+   .. grid-item-card:: Multi-database
       :link: driver/index
       :link-type: doc
 
-      Connect to all kinds of databases, even ones that aren't Arrow-native.
-      ADBC drivers optimize conversion to/from Arrow where required, saving
-      work for developers.
+      A vendor-neutral standard for connecting to all kinds of databases, even
+      ones that aren't Arrow-native. ADBC drivers optimize conversion to/from
+      Arrow where required.
 
       +++
       See Supported Drivers
@@ -122,86 +124,28 @@ Why ADBC?
       +++
       Compare to Other APIs
 
-Old Content
------------
+More Resources
+--------------
 
-(TODO: Rework this)
-
-.. grid:: 1 2 3 4
+.. grid:: 1 2 2 2
    :margin: 4 4 0 0
    :gutter: 2
 
-   .. grid-item-card::
-      :columns: 12 4 4 4
-
-      Connect
-      ^^^^^^^
-
-      Connect to many different databases with ADBC using your language(s) of choice.
-
-      +++
-
-      .. button-ref:: client_libraries
-            :ref-type: doc
-            :color: secondary
-            :expand:
-
-            Client Libraries
-
-      .. button-ref:: driver/index
-            :ref-type: doc
-            :color: secondary
-            :expand:
-
-            Drivers
+   .. grid-item-card:: Explore
 
       .. button-ref:: integrations
-            :ref-type: doc
-            :color: secondary
-            :expand:
-
-            Tools & Integrations
-
-      .. button-ref:: connection_profiles
-            :ref-type: doc
-            :color: secondary
-            :expand:
-
-            Connection Profiles
-
-   .. grid-item-card::
-      :columns: 12 4 4 4
-
-      Build
-      ^^^^^
-
-      Learn how ADBC drivers are built and learn how to build your own.
-
-      +++
-
-      .. button-ref:: driver/authoring
-            :ref-type: doc
-            :color: secondary
-            :expand:
-
-            Writing New Drivers
-
-      .. button-ref:: format/specification
          :ref-type: doc
          :color: secondary
          :expand:
 
-         ADBC Specification
+         Tools & Integrations
 
-   .. grid-item-card::
-      :columns: 12 4 4 4
+      .. button-ref:: connection_profiles
+         :ref-type: doc
+         :color: secondary
+         :expand:
 
-      Learn
-      ^^^^^
-
-      Learn more about ADBC.
-
-      +++
+         Connection Profiles
 
       .. button-link:: https://arrow.apache.org/blog/2023/01/05/introducing-arrow-adbc/
          :color: secondary
@@ -223,21 +167,13 @@ Old Content
 
          Glossary
 
-   .. grid-item-card::
-      :columns: 12 4 4 4
-
-      Development
-      ^^^^^^^^^^^
-
-      Report bugs, ask questions, and contribute to Apache Arrow.
-
-      +++
+   .. grid-item-card:: Community
 
       .. button-link:: https://github.com/apache/arrow-adbc/issues
          :color: secondary
          :expand:
 
-         :fab:`github` Issues/Questions
+         :fab:`github` Issues / Questions
 
       .. button-link:: https://arrow.apache.org/community/
          :color: secondary
@@ -250,6 +186,12 @@ Old Content
          :expand:
 
          Contributing :octicon:`cross-reference`
+
+      .. button-link:: https://docs.adbc-drivers.org
+         :color: secondary
+         :expand:
+
+         Driver Foundry Docs :octicon:`cross-reference`
 
 .. toctree::
    :maxdepth: 1
