@@ -119,9 +119,9 @@ table.driver-table td .docutils.literal {
     white-space: nowrap;
 }
 
-/* Center the icon in the Repo column (last column) */
-table.driver-table td:last-child,
-table.driver-table th:last-child {
+/* Center the icon in the Repo column (last column) of the main driver table */
+table.driver-table-main td:last-child,
+table.driver-table-main th:last-child {
     text-align: center;
 }
 

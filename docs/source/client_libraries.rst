@@ -102,4 +102,4 @@ See :doc:`Drivers <driver/index>` for the full list of available drivers and how
 More information
 ================
 
-- `ADBC Quickstarts <https://github.com/columnar-tech/adbc-quickstarts>`__ — simple, runnable examples for getting started with many of these drivers
+- `ADBC Quickstarts <https://github.com/columnar-tech/adbc-quickstarts>`__ — simple, runnable examples for getting started in each of these languages, across a range of databases
