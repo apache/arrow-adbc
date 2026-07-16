@@ -2526,35 +2526,6 @@ TEST_F(PostgresStatementTest, SetUseCopyFalse) {
   ASSERT_EQ(reader.array->release, nullptr);
 }
 
-TEST_F(PostgresStatementTest, SetDisableDecimalFastPath) {
-  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
-
-  ASSERT_EQ(adbc_validation::StatementGetOption(
-                &statement, "adbc.postgresql.disable_decimal_fast_path", &error),
-            "false");
-
-  ASSERT_THAT(
-      AdbcStatementSetOption(&statement, "adbc.postgresql.disable_decimal_fast_path",
-                             "not true or false", &error),
-      IsStatus(ADBC_STATUS_INVALID_ARGUMENT));
-
-  ASSERT_THAT(
-      AdbcStatementSetOption(&statement, "adbc.postgresql.disable_decimal_fast_path",
-                             ADBC_OPTION_VALUE_ENABLED, &error),
-      IsOkStatus(&error));
-  ASSERT_EQ(adbc_validation::StatementGetOption(
-                &statement, "adbc.postgresql.disable_decimal_fast_path", &error),
-            "true");
-
-  ASSERT_THAT(
-      AdbcStatementSetOption(&statement, "adbc.postgresql.disable_decimal_fast_path",
-                             ADBC_OPTION_VALUE_DISABLED, &error),
-      IsOkStatus(&error));
-  ASSERT_EQ(adbc_validation::StatementGetOption(
-                &statement, "adbc.postgresql.disable_decimal_fast_path", &error),
-            "false");
-}
-
 TEST_F(PostgresStatementTest, SqlQueryInt2vector) {
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
 
@@ -3167,7 +3138,6 @@ struct DecimalTestCase {
 struct DecimalFixtureGroup {
   struct Value {
     std::optional<int64_t> coefficient;
-    std::optional<std::string> digits;
     std::optional<std::string> expected;
   };
 
@@ -3178,7 +3148,7 @@ struct DecimalFixtureGroup {
 
 static DecimalFixtureGroup::Value DecimalCoefficientValue(
     int64_t coefficient, std::optional<std::string> expected) {
-  return {coefficient, std::nullopt, std::move(expected)};
+  return {coefficient, std::move(expected)};
 }
 
 static void AppendDecimalFixtureValue(std::vector<DecimalFixtureGroup>* groups,
@@ -3419,20 +3389,13 @@ TEST_P(PostgresDecimalFixtureRoundTripTest, Decimal128FixtureRoundTrip) {
     for (size_t i = 0; i < group.values.size(); i++) {
       const auto& value = group.values[i];
       expected.push_back(value.expected);
-      if (!value.coefficient.has_value() && !value.digits.has_value()) {
+      if (!value.coefficient.has_value()) {
         values.push_back(std::nullopt);
         continue;
       }
 
       ArrowDecimalInit(&decimals[i], /*bitwidth=*/128, group.precision, group.scale);
-      if (value.coefficient.has_value()) {
-        ArrowDecimalSetInt(&decimals[i], *value.coefficient);
-      } else {
-        ArrowStringView digits_view;
-        digits_view.data = value.digits->data();
-        digits_view.size_bytes = static_cast<int64_t>(value.digits->size());
-        ArrowDecimalSetDigits(&decimals[i], digits_view);
-      }
+      ArrowDecimalSetInt(&decimals[i], *value.coefficient);
       values.push_back(&decimals[i]);
     }
 

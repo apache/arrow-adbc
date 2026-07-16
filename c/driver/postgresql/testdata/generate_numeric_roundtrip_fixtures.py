@@ -9,11 +9,11 @@ and check the generated corpus into the repository.
 
 from __future__ import annotations
 
-import argparse
 import csv
 from pathlib import Path
 
-DEFAULT_OUTPUT = Path(__file__).with_name("numeric_roundtrip_fixtures.csv")
+OUTPUT = Path(__file__).with_name("numeric_roundtrip_fixtures.csv")
+PRECISION = 4
 
 
 def format_numeric_text(coefficient: int, scale: int) -> str:
@@ -66,30 +66,9 @@ def write_rows(output: Path, precision: int) -> int:
     return row_count
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--precision",
-        type=int,
-        default=4,
-        help="Generate exhaustive cases for one precision (default: 4).",
-    )
-    parser.add_argument(
-        "--output",
-        type=Path,
-        default=DEFAULT_OUTPUT,
-        help=f"Path to the generated CSV (default: {DEFAULT_OUTPUT}).",
-    )
-    return parser.parse_args()
-
-
 def main() -> int:
-    args = parse_args()
-    if args.precision < 1:
-        raise SystemExit("--precision must be at least 1")
-
-    row_count = write_rows(args.output, args.precision)
-    print(f"Wrote {row_count} rows to {args.output}")
+    row_count = write_rows(OUTPUT, PRECISION)
+    print(f"Wrote {row_count} rows to {OUTPUT}")
     return 0
 
 
