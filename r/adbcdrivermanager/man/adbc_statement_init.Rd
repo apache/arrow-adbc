@@ -30,8 +30,8 @@ adbc_statement_get_option_double(statement, option)
 \arguments{
 \item{connection}{An \link[=adbc_connection_init]{adbc_connection}}
 
-\item{...}{Driver-specific options. For the default method, these are
-named values that are converted to strings.}
+\item{...}{Driver-specific options. These are generally named values that
+are converted to strings.}
 
 \item{options}{A named \code{character()} or \code{list()} whose values are converted
 to strings.}

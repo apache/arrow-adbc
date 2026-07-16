@@ -31,13 +31,6 @@ adbcsqlite_shared <- function() {
   system.file("src", lib_name, package = "adbcsqlite")
 }
 
-adbc_driver_for_profile <- function() {
-  driver <- new.env(parent = emptyenv())
-  driver$load_flags <- adbcdrivermanager:::adbc_load_flags()
-  class(driver) <- "adbc_driver"
-  driver
-}
-
 write_sqlite_profile <- function(dir, name) {
   driver_path <- adbcsqlite_shared()
   stopifnot(file.exists(driver_path))
@@ -57,6 +50,8 @@ write_sqlite_profile <- function(dir, name) {
 }
 
 test_that("can open a sqlite database via a profile from path via env var", {
+  skip_if_not(packageVersion("adbcdrivermanager") >= "0.23.0.9000")
+
   dir <- tempfile()
   dir.create(dir)
   on.exit(unlink(dir, recursive = TRUE))
@@ -67,7 +62,6 @@ test_that("can open a sqlite database via a profile from path via env var", {
   withr::with_envvar(
     list(ADBC_PROFILE_PATH = dir),
     db <- adbc_database_init(
-      adbc_driver_for_profile(),
       uri = "profile://my_sqlite"
     ),
   )
