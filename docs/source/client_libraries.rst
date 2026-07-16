@@ -22,10 +22,10 @@ Client Libraries
 ADBC client libraries let you connect to databases and execute queries from your language of choice.
 Because most ADBC :doc:`drivers <driver/index>` expose the same :doc:`standard C ABI <format/specification>`, a single client library can generally use drivers written in any language through the same client API.
 
-.. note:: **"Client library" and "driver manager"**
+.. note::
 
    On this page we use the terms **client library** and **driver manager**
-   interchangeably. More precisely, the *driver manager* is the part of a client
+   interchangeably. More precisely, the driver manager is the part of a client
    library that dynamically loads ADBC driver shared libraries and forwards your
    calls to them; the client library wraps that machinery in an API that feels
    idiomatic in your language.
@@ -95,7 +95,7 @@ For example, Python exposes a `DBAPI 2.0 (PEP 249) <https://peps.python.org/pep-
 
 A client library on its own can't talk to a database—it also needs a
 :doc:`driver <driver/index>` for the database you want to connect to.
-The client library loads the driver at run-time, so you install the client
+The client library loads the driver at runtime, so you install the client
 library once and then add a driver for each database you use.
 See :doc:`Drivers <driver/index>` for the full list of available drivers and how to install them.
 

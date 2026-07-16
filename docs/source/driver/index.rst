@@ -205,7 +205,7 @@ Distributed as .NET packages on NuGet, for use from C#/.NET applications:
 
    * - Driver for |click-for-readme|
      - NuGet package
-     - Maintainer [#maintainer]_
+     - Maintainer
    * - `Apache Arrow Flight SQL <https://github.com/apache/arrow-adbc/tree/main/csharp/src/Drivers/FlightSql/README.md>`__
      - :package-badge:`NuGet|Apache.Arrow.Adbc.FlightSql|https://www.nuget.org/packages/Apache.Arrow.Adbc.FlightSql/`
      - ASF
@@ -232,7 +232,7 @@ Distributed as Maven packages, for use from Java applications:
 
    * - Driver for |click-for-docs|
      - Maven package
-     - Maintainer [#maintainer]_
+     - Maintainer
    * - `Apache Arrow Flight SQL <https://arrow.apache.org/adbc/current/java/api/org/apache/arrow/adbc/driver/flightsql/package-summary.html>`__
      - :package-badge:`Maven|org.apache.arrow.adbc:adbc-driver-flight-sql|https://central.sonatype.com/artifact/org.apache.arrow.adbc/adbc-driver-flight-sql`
      - ASF
@@ -244,7 +244,7 @@ Who maintains these drivers?
 
 The ADBC project focuses primarily on the :doc:`ADBC standard <../format/specification>`
 and :doc:`client libraries <../client_libraries>`, not on developing drivers
-and shipping driver binaries. The **Maintainer** column in the table above
+and shipping driver binaries. The **Maintainer** column in the tables above
 identifies who maintains each driver:
 
 **ASF**
