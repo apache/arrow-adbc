@@ -51,7 +51,7 @@ driver in the table below is packaged this way.
      - Slug [#slug]_
      - Maintainer [#maintainer]_
      - Repo
-   * - `Google BigQuery <https://docs.adbc-drivers.org/drivers/bigquery/>`__
+   * - `BigQuery <https://docs.adbc-drivers.org/drivers/bigquery/>`__
      - ``bigquery``
      - Foundry
      - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/bigquery|GitHub repository`
