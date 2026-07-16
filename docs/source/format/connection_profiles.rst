@@ -200,6 +200,8 @@ Profile values can reference environment variables using the ``{{ env_var() }}``
 
 When the driver manager encounters ``{{ env_var(VAR_NAME) }}``, it replaces the placeholder with the contents of environment variable ``VAR_NAME``. If the environment variable is not set, the placeholder is replaced with an empty string and processing of the rest of the value continues (e.g. ``"foo{{ env_var(MISSING) }}bar"`` becomes ``"foobar"``).
 
+.. _profile-search-locations:
+
 Profile Search Locations
 =========================
 

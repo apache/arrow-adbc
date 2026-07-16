@@ -19,17 +19,164 @@
 Connection Profiles
 ===================
 
-A connection profile combines a driver name and database options into a reusable, named configuration stored in a TOML file.
-Instead of specifying credentials and settings in application code, you reference a profile by name and the :doc:`ADBC Driver Manager <format/how_manager>` loads it automatically at connection time.
+An ADBC connection profile combines a driver name and database options into a reusable, named configuration stored in a TOML file.
+This keeps credentials and settings out of your application code.
 
-.. code-block:: c
+Here are example profiles for a few databases. Each sets ``driver`` to a driver
+name (see :doc:`Drivers <driver/index>`) and puts that driver's options under ``[Options]``.
+Secrets are injected from environment variables with ``{{ env_var(NAME) }}``
+rather than being written into the file:
 
-   AdbcDatabase database;
-   AdbcDatabaseNew(&database, &error);
-   AdbcDatabaseSetOption(&database, "uri", "profile://my_postgres_dev", &error);
-   AdbcDatabaseInit(&database, &error);
+.. tab-set::
 
-Profiles are looked up by name from a set of standard filesystem locations, or you can provide an absolute path.
-Sensitive values like passwords or tokens can be injected from environment variables using ``{{ env_var(VAR_NAME) }}`` substitution rather than hardcoding them in the file.
+   .. tab-item:: PostgreSQL
 
+      .. code-block:: toml
+
+         profile_version = 1
+         driver = "postgresql"
+
+         [Options]
+         uri = "postgresql://postgres:{{ env_var(PGPASSWORD) }}@localhost:5432/demo"
+
+   .. tab-item:: BigQuery
+
+      .. code-block:: toml
+
+         profile_version = 1
+         driver = "bigquery"
+
+         [Options]
+         "adbc.bigquery.sql.project_id" = "my-gcp-project"
+         "adbc.bigquery.sql.dataset_id" = "bigquery-public-data"
+
+   .. tab-item:: Redshift
+
+      .. code-block:: toml
+
+         profile_version = 1
+         driver = "redshift"
+
+         [Options]
+         uri = "postgresql://localhost:5439"
+         "redshift.cluster_type" = "redshift-serverless"
+         "redshift.workgroup_name" = "my-workgroup"
+         "redshift.db_name" = "sample_data_dev"
+
+   .. tab-item:: Snowflake
+
+      .. code-block:: toml
+
+         profile_version = 1
+         driver = "snowflake"
+
+         [Options]
+         username = "MYUSER"
+         "adbc.snowflake.sql.auth_type" = "auth_jwt"
+         "adbc.snowflake.sql.client_option.jwt_private_key" = "/path/to/rsa_key.p8"
+         "adbc.snowflake.sql.account" = "ACCOUNT-IDENT"
+         "adbc.snowflake.sql.db" = "SNOWFLAKE_SAMPLE_DATA"
+         "adbc.snowflake.sql.schema" = "TPCH_SF1"
+         "adbc.snowflake.sql.warehouse" = "MY_WAREHOUSE"
+         "adbc.snowflake.sql.role" = "MY_ROLE"
+
+   .. tab-item:: StarRocks
+
+      .. code-block:: toml
+
+         profile_version = 1
+         driver = "flightsql"
+
+         [Options]
+         uri = "grpc://localhost:9408"
+         username = "root"
+         password = "{{ env_var(STARROCKS_PASSWORD) }}"
+
+Save the profile as a ``.toml`` file (for example ``myprofile.toml``) in the
+user configuration directory, where the client library or driver manager
+looks for it by name:
+
+- **Linux**: ``~/.config/adbc/profiles/``
+- **macOS**: ``~/Library/Application Support/ADBC/Profiles/``
+- **Windows**: ``%LOCALAPPDATA%\ADBC\Profiles\``
+
+Other locations are also searched; see
+:ref:`Profile Search Locations <profile-search-locations>` for the full list
+and precedence.
+
+Your application then references the profile at connection time, and the client
+library or driver manager loads it automatically. Point the ``uri`` option at
+the profile name—the TOML file's name without the ``.toml`` extension—using
+the ``profile://`` scheme:
+
+.. tab-set::
+
+   .. tab-item:: C/C++
+
+      .. code-block:: cpp
+
+         AdbcDatabase database = {};
+         AdbcDatabaseNew(&database, &error);
+         AdbcDatabaseSetOption(&database, "uri", "profile://myprofile", &error);
+         AdbcDriverManagerDatabaseSetLoadFlags(&database, ADBC_LOAD_FLAG_DEFAULT, &error);
+         AdbcDatabaseInit(&database, &error);
+
+   .. tab-item:: Go
+
+      .. code-block:: go
+
+         var drv drivermgr.Driver
+
+         db, err := drv.NewDatabase(map[string]string{
+             "uri": "profile://myprofile",
+         })
+
+   .. tab-item:: Java
+
+      .. code-block:: java
+
+         Map<String, Object> params = new HashMap<>();
+         JniDriver.PARAM_URI.set(params, "profile://myprofile");
+
+         AdbcDatabase db =
+             AdbcDriverManager.getInstance().connect(DRIVER_FACTORY, allocator, params);
+
+   .. tab-item:: JavaScript
+
+      .. code-block:: javascript
+
+         import { AdbcDatabase } from '@apache-arrow/adbc-driver-manager';
+
+         const db = new AdbcDatabase({
+           driver: 'profile://myprofile',
+         });
+
+   .. tab-item:: Python
+
+      .. code-block:: python
+
+         from adbc_driver_manager import dbapi
+
+         with dbapi.connect(uri="profile://myprofile") as con:
+             ...
+
+   .. tab-item:: Ruby
+
+      .. code-block:: ruby
+
+         database = ADBC::Database.new
+         database.set_option("uri", "profile://myprofile")
+         database.set_load_flags(ADBC::LoadFlags::DEFAULT)
+         database.init
+
+   .. tab-item:: Rust
+
+      .. code-block:: rust
+
+         let uri = "profile://myprofile";
+         let db = ManagedDatabase::from_uri(
+             uri, None, AdbcVersion::default(), LOAD_FLAG_DEFAULT, None,
+         )?;
+
+You can also pass an absolute path to a profile file instead of a name.
 For full details on the profile file format, search paths, option precedence, and how to implement a custom profile provider, see :doc:`format/connection_profiles`.
