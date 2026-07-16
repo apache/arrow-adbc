@@ -95,9 +95,9 @@ Why ADBC?
       :link: driver/index
       :link-type: doc
 
-      A vendor-neutral standard for connecting to all kinds of databases, even
-      ones that aren't Arrow-native. ADBC drivers optimize conversion to/from
-      Arrow where required.
+      Connect to all kinds of databases through one vendor-neutral standard,
+      even ones that aren't Arrow-native. ADBC drivers optimize conversion
+      to/from Arrow where required.
 
       +++
       See Supported Drivers
