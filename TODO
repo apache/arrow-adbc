@@ -22,3 +22,5 @@ Fix these Sphinx warnings:
 /Users/bryce/src/apache/arrow-adbc/docs/source/driver/postgresql.rst: WARNING: document isn't included in any toctree [toc.not_included]
 /Users/bryce/src/apache/arrow-adbc/docs/source/driver/sqlite.rst: WARNING: document isn't included in any toctree [toc.not_included]
 /Users/bryce/src/apache/arrow-adbc/docs/source/driver/status.rst: WARNING: document isn't included in any toctree [toc.not_included]
+
+Remove the alt{N}.rst pages.

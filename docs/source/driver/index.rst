@@ -19,307 +19,263 @@
 Drivers
 =======
 
-The ADBC project is primarily focused on developing the :doc:`ADBC standard <../format/specification>` and :doc:`client libraries <../client_libraries>` and not on building and distributing driver binaries. While some driver binaries are available directly from the project, many more driver binaries are available from :ref:`third parties<driver-index-third-party>`.
+.. |click-for-docs| raw:: html
 
-.. _driver-index-apache:
+   <span class="th-hint">(click for docs)</span>
 
-Apache Drivers
-==============
+.. |click-for-readme| raw:: html
 
-The following drivers are developed and published by the ADBC project:
+   <span class="th-hint">(click for README)</span>
 
-.. list-table::
-   :header-rows: 1
+An ADBC driver lets you connect to a database, run queries, and exchange data in
+Arrow format.
 
-   * - Database/Vendor
-     - :ref:`Language <driver-index-language>`
-     - :ref:`Status <driver-index-status>`
-     - :ref:`Driver Manager Loadable <driver-index-manager>`
-   * - Apache Arrow Flight SQL
-     - C#
-     - Beta
-     - No
-   * - :doc:`Apache Arrow Flight SQL <flight_sql>`
-     - Java
-     - Beta
-     - No
-   * - :doc:`Apache Arrow Flight SQL <flight_sql>`
-     - Go
-     - Stable
-     - Yes
-   * - Apache DataFusion
-     - Rust
-     - Experimental
-     - Yes
-   * - Apache Hive
-     - C#
-     - Experimental
-     - No
-   * - Apache Impala
-     - C#
-     - Experimental
-     - No
-   * - Apache Spark
-     - C#
-     - Experimental
-     - No
-   * - Databricks
-     - C#
-     - Experimental
-     - No
-   * - :doc:`Google BigQuery <bigquery>`
-     - C#
-     - Beta
-     - No
-   * - :doc:`JDBC <jdbc>`
-     - Java
-     - Beta
-     - No
-   * - :doc:`PostgreSQL <postgresql>`
-     - C/C++
-     - Stable
-     - Yes
-   * - :doc:`SQLite <sqlite>`
-     - C/C++
-     - Stable
-     - Yes
+.. _driver-table:
 
-
-.. _driver-index-third-party:
-
-Third-Party Drivers
-===================
-
-.. note::
-   Any projects linked in this section are not part of the Apache Software Foundation (ASF) and any software distributed by them should not be considered official products of the ASF.
-
-The majority of ADBC drivers are available from various third parties:
-
-- `DuckDB <https://duckdb.org/docs/api/adbc>`__: ADBC support is built directly into DuckDB.
-- `ADBC Driver Foundry <https://docs.adbc-drivers.org/>`__: Community-governed project focused on growing the ADBC ecosystem.
-
-**Have a driver to add?**
-
-If you've developed an ADBC driver and would like it listed in the documentation:
-
-1. `Open an issue <https://github.com/apache/arrow-adbc/issues/new>`__ on the Apache Arrow ADBC repository with details about your driver (name, database, language, repository URL, package names)
-2. Or submit a pull request directly to add your driver to this page
-
-If you're interested in developing a new driver, we recommend reaching out to the `ADBC Driver Foundry <https://github.com/adbc-drivers/>`__.
-
-Installing Drivers
-==================
-
-Apache Driver Packages
-----------------------
-
-Apache ADBC driver packages are available on the following platforms:
-
-- **PyPI** (Python): ``adbc-driver-flightsql``, ``adbc-driver-postgresql``, ``adbc-driver-sqlite``
-- **conda-forge** (Python): ``adbc-driver-flightsql``, ``adbc-driver-postgresql``, ``adbc-driver-sqlite``
-- **conda-forge** (C/C++ libraries): ``adbc-driver-flightsql-go``, ``adbc-driver-manager-cpp``, ``adbc-driver-postgresql-cpp``, ``adbc-driver-sqlite-cpp``
-- **CRAN** (R): ``adbcpostgresql``, ``adbcsqlite``
-- **R-multiverse** (R): ``adbcflightsql``
-- **Maven Central** (Java): ``org.apache.arrow.adbc:adbc-driver-flight-sql``, ``org.apache.arrow.adbc:adbc-driver-jdbc``
-- **NuGet** (C#): ``Apache.Arrow.Adbc.Drivers.FlightSql``, ``Apache.Arrow.Adbc.Drivers.BigQuery``, ``Apache.Arrow.Adbc.Drivers.Apache`` (Hive/Impala/Spark/Databricks), ``Apache.Arrow.Adbc.Drivers.Interop.FlightSql``
-- **npm** (JavaScript): ``@apache-arrow/adbc-driver-manager`` (with platform-specific packages: ``-darwin-arm64``, ``-darwin-x64``, ``-linux-arm64-gnu``, ``-linux-x64-gnu``, ``-win32-x64-msvc``)
-- **crates.io** (Rust): ``adbc_core``, ``adbc_driver_manager``, ``adbc_ffi``
-- **RubyGems** (Ruby): ``red-adbc``
-- **APT/DNF** (C/C++): ``libadbc-driver-flightsql-dev``, ``libadbc-driver-postgresql-dev``, ``libadbc-driver-sqlite-dev``
-
-Or by driver:
-
-.. list-table::
-   :header-rows: 1
-
-   * - Driver
-     - Python (PyPI / conda-forge)
-     - R
-     - Java (Maven Central) [#pkg-groupid]_
-     - C# (NuGet) [#pkg-csharp]_
-     - C/C++ (conda-forge)
-     - C/C++ (APT/DNF)
-   * - Apache Arrow Flight SQL
-     - ``adbc-driver-flightsql``
-     - ``adbcflightsql`` [#pkg-rmultiverse]_
-     - ``adbc-driver-flight-sql``
-     - ``Apache.Arrow.Adbc.Drivers.FlightSql``
-     - ``adbc-driver-flightsql-go``
-     - ``libadbc-driver-flightsql-dev``
-   * - Apache Arrow Flight SQL (Interop)
-     - —
-     - —
-     - —
-     - ``Apache.Arrow.Adbc.Drivers.Interop.FlightSql``
-     - —
-     - —
-   * - BigQuery
-     - —
-     - —
-     - —
-     - ``Apache.Arrow.Adbc.Drivers.BigQuery``
-     - —
-     - —
-   * - Apache Hive/Impala/Spark/Databricks
-     - —
-     - —
-     - —
-     - ``Apache.Arrow.Adbc.Drivers.Apache``
-     - —
-     - —
-   * - JDBC
-     - —
-     - —
-     - ``adbc-driver-jdbc``
-     - —
-     - —
-     - —
-   * - PostgreSQL
-     - ``adbc-driver-postgresql``
-     - ``adbcpostgresql``
-     - —
-     - —
-     - ``adbc-driver-postgresql-cpp``
-     - ``libadbc-driver-postgresql-dev``
-   * - SQLite
-     - ``adbc-driver-sqlite``
-     - ``adbcsqlite``
-     - —
-     - —
-     - ``adbc-driver-sqlite-cpp``
-     - ``libadbc-driver-sqlite-dev``
-
-.. [#pkg-groupid] Group ID: ``org.apache.arrow.adbc``
-.. [#pkg-csharp] Group ID: ``Apache.Arrow.Adbc.Drivers``
-.. [#pkg-rmultiverse] Available from R-multiverse, not CRAN
-
-See the :doc:`installation` page for full details.
-
-Client Library and Driver Manager Packages
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-In addition to driver packages, the following client library and driver manager packages are available:
-
-.. list-table::
-   :header-rows: 1
-
-   * - Language
-     - Package Manager
-     - Package Name(s)
-   * - Python
-     - PyPI / conda-forge
-     - ``adbc-driver-manager``
-   * - C/C++
-     - conda-forge
-     - ``adbc-driver-manager-cpp``
-   * - C#/.NET
-     - NuGet
-     - ``Apache.Arrow.Adbc``, ``Apache.Arrow.Adbc.Client``
-   * - Go
-     - Go modules
-     - ``github.com/apache/arrow-adbc/go/adbc``
-   * - Java
-     - Maven Central
-     - ``org.apache.arrow.adbc:adbc-driver-manager``, ``org.apache.arrow.adbc:adbc-core``
-   * - JavaScript
-     - npm
-     - ``@apache-arrow/adbc-driver-manager``
-   * - R
-     - CRAN
-     - ``adbcdrivermanager``
-   * - Ruby
-     - RubyGems
-     - ``red-adbc``
-   * - Rust
-     - crates.io
-     - ``adbc_core``, ``adbc_driver_manager``, ``adbc_ffi``
-
-Third-Party Packages
---------------------
-
-.. note:: Columnar is not part of the Apache Software Foundation and `dbc` is not an official Apache Software Foundation project.
-
-Packages for many of the official and third-party drivers are available from `Columnar <https://columnar.tech>`__ and can be installed with their CLI tool, `dbc <https://docs.columnar.tech/dbc>`__.
-
-.. button-link:: https://columnar.tech/dbc
-  :color: primary
-
-  Learn about ``dbc`` :octicon:`cross-reference`
-
-.. _driver-index-language:
-
-Driver Language
-===============
-
-You may notice in the table at the top of this page that some drivers have been implemented in multiple languages.
-While ADBC was designed to make it possible to use a driver written in one language with a :doc:`client library <..//client_libraries>` written in any other language, there are some good reasons why a driver may get implemented multiple times and in different languages:
-
-1. To take advantage of language-specific runtime features. Example: Apache Arrow Flight SQL's Java and C# implementations can take advantage of features of those platforms such as memory management, JIT compilation, concurrency mechanisms, amongst others.
-2. Wrapped SDKs: Some ADBC drivers wrap official SDKs for the target database and the language the best SDK for a particular database is written in can change over time. ADBC's C ABI makes rewriting a driver in another language a stable experience for the user.
-3. Language preference: ADBC's C ABI gives developers the freedom to write drivers in their language of choice.
-
-.. _driver-index-status:
-
-Driver Status
-=============
-
-- **Experimental** drivers are not feature-complete and the implementation is still progressing.
-- **Beta** drivers are (mostly) feature-complete but have only been available for a short time.
-- **Stable** drivers are (mostly) feature-complete (as much as possible for the underlying database) and have been available/tested for a while.
-
-.. _driver-index-manager:
-
-Driver Manager Loadable
-=======================
-
-An :doc:`ADBC Driver Manager <..//format/how_manager>` dynamically loads a driver into an application at run-time and requires the driver to be built as a dynamic or shared library.
-
-Migrated Apache Drivers
-=======================
-
-A number of drivers were previously published from the ADBC project but have since been migrated to the `ADBC Driver Foundry <https://github.com/adbc-drivers>`__, where development continues. Packages on platforms such as PyPI and Conda Forge are still available but are not being updated.
-
-.. list-table::
-   :header-rows: 1
-
-   * - Driver
-     - Implementation
-     - New Repository
-     - Deprecated Packages
-   * - Databricks
-     - Go
-     - `github.com/adbc-drivers/databricks <https://github.com/adbc-drivers/databricks>`__
-     - Go: ``github.com/apache/arrow-adbc/go/adbc/driver/databricks``
-   * - Google BigQuery
-     - Go
-     - `github.com/adbc-drivers/bigquery <https://github.com/adbc-drivers/bigquery>`__
-     - | **Go**: ``github.com/apache/arrow-adbc/go/adbc/driver/bigquery``
-       | **Python**: ``adbc-driver-bigquery`` (PyPI, conda-forge)
-       | **R**: ``adbcbigquery`` (R-multiverse)
-       | **C/C++**: ``libadbc-driver-bigquery`` (conda-forge, APT/DNF)
-   * - Snowflake
-     - Go
-     - `github.com/adbc-drivers/snowflake <https://github.com/adbc-drivers/snowflake>`__
-     - | **Go**: ``github.com/apache/arrow-adbc/go/adbc/driver/snowflake``
-       | **Python**: ``adbc-driver-snowflake`` (PyPI, conda-forge)
-       | **R**: ``adbcsnowflake`` (R-multiverse)
-       | **Rust**: ``adbc_driver_snowflake`` (crates.io)
-       | **C/C++**: ``libadbc-driver-snowflake`` (conda-forge, APT/DNF)
-       | **C#**: ``Apache.Arrow.Adbc.Drivers.Interop.Snowflake`` (NuGet)
-   * - DataFusion
-     - Rust
-     - Removed [#pkg-datafusion]_
-     - **Rust**: ``adbc_driver_datafusion`` (crates.io)
-
-.. [#pkg-datafusion] The DataFusion driver was removed as of ADBC 0.24.0
-
-These deprecated packages are no longer maintained by the Apache Arrow ADBC project. Users should migrate to the ADBC Driver Foundry versions or use alternative drivers.
-
-Alternative Views
+Available drivers
 =================
 
-The driver information on this page can also be viewed in alternative formats:
+ADBC drivers are typically built, distributed, and used as **shared libraries**
+(``.so``, ``.dll``, or ``.dylib`` files). One shared library works from any
+language. An application uses an
+:doc:`ADBC client library <../client_libraries>` to dynamically load the driver
+at runtime, no matter which language the driver was written in. Every
+driver in the table below is packaged this way.
 
-- :doc:`Cards View <alt1>` - Visual grid layout with cards for each database
-- :doc:`Database Sections <alt2>` - Detailed sections with installation tables
-- :doc:`Unified Table <alt3>` - Single scannable table of all drivers
+.. list-table::
+   :header-rows: 1
+   :widths: 38 22 22 18
+   :class: driver-table driver-table-main
+
+   * - Driver for |click-for-docs|
+     - Slug [#slug]_
+     - Maintainer [#maintainer]_
+     - Repo
+   * - `BigQuery <https://docs.adbc-drivers.org/drivers/bigquery/>`__
+     - ``bigquery``
+     - Foundry
+     - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/bigquery|GitHub repository`
+   * - `ClickHouse <https://docs.adbc-drivers.org/drivers/clickhouse/>`__
+     - ``clickhouse``
+     - Vendor
+     - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/clickhouse|GitHub repository`
+   * - `Databricks <https://docs.adbc-drivers.org/drivers/databricks/>`__
+     - ``databricks``
+     - Foundry
+     - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/databricks|GitHub repository`
+   * - `Apache DataFusion <https://docs.adbc-drivers.org/drivers/datafusion/>`__
+     - ``datafusion``
+     - Foundry
+     - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/datafusion|GitHub repository`
+   * - :doc:`DuckDB <duckdb>` [#duckdb]_
+     - ``duckdb``
+     - Vendor
+     - :iconlink:`fa-brands fa-github|https://github.com/duckdb/duckdb|GitHub repository`
+   * - `Exasol <https://docs.adbc-drivers.org/drivers/exasol/>`__
+     - ``exasol``
+     - Vendor
+     - :iconlink:`fa-brands fa-github|https://github.com/exasol/adbc-driver-exasol|GitHub repository`
+   * - :doc:`Apache Arrow Flight SQL <flight_sql>` [#compat-flightsql]_
+     - ``flightsql``
+     - ASF
+     - :iconlink:`fa-brands fa-github|https://github.com/apache/arrow-adbc/tree/main/go/adbc/driver/flightsql|GitHub repository`
+   * - `Microsoft SQL Server <https://docs.adbc-drivers.org/drivers/mssql/>`__
+     - ``mssql``
+     - Foundry
+     - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/mssql|GitHub repository`
+   * - `MySQL/MariaDB <https://docs.adbc-drivers.org/drivers/mysql/>`__ [#compat-mysql]_
+     - ``mysql``
+     - Foundry
+     - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/mysql|GitHub repository`
+   * - :doc:`PostgreSQL <postgresql>` [#compat-postgresql]_
+     - ``postgresql``
+     - ASF
+     - :iconlink:`fa-brands fa-github|https://github.com/apache/arrow-adbc/tree/main/c/driver/postgresql|GitHub repository`
+   * - `DuckDB Quack <https://docs.adbc-drivers.org/drivers/quack/>`__
+     - ``quack``
+     - Foundry
+     - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/quack|GitHub repository`
+   * - `Amazon Redshift <https://docs.adbc-drivers.org/drivers/redshift/>`__
+     - ``redshift``
+     - Foundry
+     - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/redshift|GitHub repository`
+   * - `SingleStore <https://docs.adbc-drivers.org/drivers/singlestore/>`__
+     - ``singlestore``
+     - Vendor
+     - :iconlink:`fa-brands fa-github|https://github.com/singlestore-labs/singlestore-adbc-connector|GitHub repository`
+   * - `Snowflake <https://docs.adbc-drivers.org/drivers/snowflake/>`__
+     - ``snowflake``
+     - Foundry
+     - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/snowflake|GitHub repository`
+   * - `Apache Spark <https://docs.adbc-drivers.org/drivers/spark/>`__
+     - ``spark``
+     - Foundry
+     - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/spark|GitHub repository`
+   * - :doc:`SQLite <sqlite>`
+     - ``sqlite``
+     - ASF
+     - :iconlink:`fa-brands fa-github|https://github.com/apache/arrow-adbc/tree/main/c/driver/sqlite|GitHub repository`
+   * - `Trino <https://docs.adbc-drivers.org/drivers/trino/>`__
+     - ``trino``
+     - Foundry
+     - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/trino|GitHub repository`
+
+.. [#slug] The **slug** is the short name a driver is known by. It is the name
+   you hand to a :doc:`client library <../client_libraries>` to load the
+   driver—either as the driver name (``postgresql``) or as the URI scheme
+   (``postgresql://``). Given this name, the client library
+   :ref:`searches for a matching driver manifest <driver-manifest-discovery>`
+   (``postgresql.toml``) that tells it which shared library to load. The same
+   slug is what you pass when :ref:`installing a driver <driver-table-install>`.
+.. [#maintainer] See :ref:`Who maintains these drivers? <driver-table-maintainers>`
+   for what **ASF**, **Foundry**, and **Vendor** mean.
+.. [#duckdb] ADBC support is built directly into DuckDB; installing the
+   ``duckdb`` driver fetches a prebuilt binary. This driver is also compatible
+   with MotherDuck.
+.. [#compat-flightsql] This driver works with Flight SQL-compatible systems,
+   including Apache Doris, Dremio, GizmoSQL, InfluxDB, Sail, and StarRocks.
+.. [#compat-mysql] This driver also works with MySQL-compatible systems including
+   TiDB and Vitess.
+.. [#compat-postgresql] This driver also works with PostgreSQL wire
+   protocol-compatible systems, including CedarDB, Citus, CockroachDB, CrateDB,
+   Neon, ParadeDB, TimescaleDB, Yellowbrick, and YugabyteDB.
+
+.. _driver-table-install:
+
+Installing drivers
+==================
+
+Prebuilt driver binaries for the drivers above—code-signed, notarized, and
+ready to install for most mainstream operating systems and CPU
+architectures—are available from the `ADBC Driver Registry
+<https://dbc-cdn.columnar.tech>`__.
+
+Users and applications can download a driver from the registry manually, or with
+the `dbc <https://docs.columnar.tech/dbc/>`__ command-line tool. With dbc
+installed, install any driver by its slug:
+
+.. code-block:: shell
+
+   dbc install <slug>       # e.g. dbc install postgresql
+
+dbc installs both the driver's shared library and its
+:term:`driver manifest` to a location where an ADBC client library can find the
+driver by its slug. If you download a driver from the registry manually instead,
+you'll need to install the shared library to the correct location yourself and
+create a driver manifest for it, or else pass the full path to the shared
+library in your application code, plus the entrypoint if the driver does not
+use the default entrypoint name.
+See :doc:`ADBC Driver Manager and Manifests <../format/driver_manifests>` for
+details.
+
+Some drivers are also published to language-specific package registries.
+Apache-maintained drivers are on
+:doc:`PyPI, conda-forge, CRAN, and more <installation>`; some vendor
+drivers list their own packages in each driver's documentation, linked from its
+name in the table above.
+
+.. note::
+   The `ADBC Driver Registry <https://dbc-cdn.columnar.tech/>`__ is a
+   community-maintained registry of prebuilt drivers, and
+   `dbc <https://docs.columnar.tech/dbc/>`__ is an independent command-line tool
+   for installing them. Neither is a part of the Apache Arrow project.
+
+.. _driver-table-language-specific:
+
+Language-specific drivers
+=========================
+
+Some drivers are built and packaged for a specific language or runtime rather
+than as dynamically loadable shared libraries. They run directly on that runtime,
+without crossing an FFI / ABI boundary, and are distributed through its package
+registry. They can be used from any language that targets that runtime — for
+example, the .NET drivers work from C#, F#, and other .NET languages, and the
+Java driver works from Java, Kotlin, Scala, and other JVM languages.
+
+.. _driver-table-csharp:
+
+C#/.NET
+-------
+
+Distributed as .NET packages on NuGet, for use from C#/.NET applications:
+
+.. list-table::
+   :header-rows: 1
+   :class: driver-table
+
+   * - Driver for |click-for-readme|
+     - NuGet package
+     - Maintainer [#maintainer]_
+   * - `Apache Arrow Flight SQL <https://github.com/apache/arrow-adbc/tree/main/csharp/src/Drivers/FlightSql/README.md>`__
+     - :package-badge:`NuGet|Apache.Arrow.Adbc.FlightSql|https://www.nuget.org/packages/Apache.Arrow.Adbc.FlightSql/`
+     - ASF
+   * - `Google BigQuery <https://github.com/apache/arrow-adbc/blob/main/csharp/src/Drivers/BigQuery/readme.md>`__
+     - :package-badge:`NuGet|Apache.Arrow.Adbc.Drivers.BigQuery|https://www.nuget.org/packages/Apache.Arrow.Adbc.Drivers.BigQuery/`
+     - ASF
+   * - `Apache Hive / Impala / Spark <https://github.com/apache/arrow-adbc/blob/main/csharp/src/Drivers/Apache/readme.md>`__
+     - :package-badge:`NuGet|Apache.Arrow.Adbc.Drivers.Apache|https://www.nuget.org/packages/Apache.Arrow.Adbc.Drivers.Apache/`
+     - ASF
+   * - `Databricks <https://github.com/apache/arrow-adbc/blob/main/csharp/src/Drivers/Databricks/readme.md>`__
+     - :package-badge:`NuGet|Apache.Arrow.Adbc.Drivers.Databricks|https://www.nuget.org/packages/Apache.Arrow.Adbc.Drivers.Databricks/`
+     - ASF
+
+.. _driver-table-java:
+
+Java
+----
+
+Distributed as Maven packages, for use from Java applications:
+
+.. list-table::
+   :header-rows: 1
+   :class: driver-table
+
+   * - Driver for |click-for-docs|
+     - Maven package
+     - Maintainer [#maintainer]_
+   * - `Apache Arrow Flight SQL <https://arrow.apache.org/adbc/current/java/api/org/apache/arrow/adbc/driver/flightsql/package-summary.html>`__
+     - :package-badge:`Maven|org.apache.arrow.adbc:adbc-driver-flight-sql|https://central.sonatype.com/artifact/org.apache.arrow.adbc/adbc-driver-flight-sql`
+     - ASF
+
+.. _driver-table-maintainers:
+
+Who maintains these drivers?
+============================
+
+The ADBC project focuses primarily on the :doc:`ADBC standard <../format/specification>`
+and :doc:`client libraries <../client_libraries>`, not on developing drivers
+and shipping driver binaries. The **Maintainer** column in the table above
+identifies who maintains each driver:
+
+**ASF**
+   A few drivers are maintained within the Apache Arrow project under
+   Apache Software Foundation (ASF) governance, mostly for historical reasons.
+
+**Foundry**
+   Most drivers are maintained within the `ADBC Driver Foundry <https://adbc-drivers.org/>`__,
+   a community-governed project focused on growing the ADBC ecosystem.
+
+**Vendor**
+   Some drivers are maintained in independent repositories controlled
+   by database vendors.
+
+Have a driver to add?
+=====================
+
+If you've developed a high-quality ADBC driver, made it freely available for
+public use under a permissive license, and would like it listed here,
+`open an issue <https://github.com/apache/arrow-adbc/issues/new>`__ on the
+Apache Arrow ADBC repository with the details (name, database, repository URL,
+package names) and we'll help get it added.
+
+If you're interested in developing a new driver, consider reaching out to the
+`ADBC Driver Foundry <https://github.com/adbc-drivers/>`__ and see their
+`Building Drivers <https://docs.adbc-drivers.org/building-drivers/>`__ guide.
+
+More information
+================
+
+- :doc:`Client Libraries <../client_libraries>` — the libraries that load and use drivers from your language of choice
+- :doc:`Tools & Integrations <../integrations>` — tools and libraries that work with ADBC
+- :doc:`Connection Profiles <../connection_profiles>` — reusable, shareable connection configuration
+- `ADBC Quickstarts <https://github.com/columnar-tech/adbc-quickstarts>`__ — simple, runnable examples for getting started with many of these drivers
