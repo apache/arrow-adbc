@@ -84,9 +84,9 @@ Why ADBC?
    .. grid-item-card:: Arrow-native
       :link: https://arrow.apache.org/
 
-      Execute queries and get back results in Arrow columnar format,
-      eliminating extra data copies when working with Arrow-native
-      databases and engines.
+      Run queries and get back results in Arrow columnar format,
+      eliminating copies and conversions for blazing-fast transfer
+      to and from Arrow-native databases and engines.
 
       +++
       Learn about Apache Arrow
