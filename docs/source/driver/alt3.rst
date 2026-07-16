@@ -83,7 +83,7 @@ driver in the table below is packaged this way.
      - ``mssql``
      - Foundry
      - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/mssql|GitHub repository`
-   * - `MySQL <https://docs.adbc-drivers.org/drivers/mysql/>`__
+   * - `MySQL/MariaDB <https://docs.adbc-drivers.org/drivers/mysql/>`__
      - ``mysql``
      - Foundry
      - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/mysql|GitHub repository`
@@ -91,14 +91,26 @@ driver in the table below is packaged this way.
      - ``postgresql``
      - ASF
      - :iconlink:`fa-brands fa-github|https://github.com/apache/arrow-adbc/tree/main/c/driver/postgresql|GitHub repository`
+   * - `DuckDB Quack <https://docs.adbc-drivers.org/drivers/quack/>`__
+     - ``quack``
+     - Foundry
+     - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/quack|GitHub repository`
    * - `Amazon Redshift <https://docs.adbc-drivers.org/drivers/redshift/>`__
      - ``redshift``
      - Foundry
      - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/redshift|GitHub repository`
+   * - `SingleStore <https://docs.adbc-drivers.org/drivers/singlestore/>`__
+     - ``singlestore``
+     - Vendor
+     - :iconlink:`fa-brands fa-github|https://github.com/singlestore-labs/singlestore-adbc-connector|GitHub repository`
    * - `Snowflake <https://docs.adbc-drivers.org/drivers/snowflake/>`__
      - ``snowflake``
      - Foundry
      - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/snowflake|GitHub repository`
+   * - `Apache Spark <https://docs.adbc-drivers.org/drivers/spark/>`__
+     - ``spark``
+     - Foundry
+     - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/spark|GitHub repository`
    * - :doc:`SQLite <sqlite>`
      - ``sqlite``
      - ASF
