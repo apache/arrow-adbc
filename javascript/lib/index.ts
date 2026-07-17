@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { NativeAdbcDatabase, NativeAdbcConnection, NativeAdbcStatement } from '../binding.js'
+import { NativeAdbcDatabase, NativeAdbcConnection, NativeAdbcStatement, type NativeConnectOptions } from '../binding.js'
 
 import type {
   AdbcDatabase as AdbcDatabaseInterface,
@@ -87,7 +87,7 @@ export class AdbcDatabase implements AdbcDatabaseInterface {
 
   constructor(options: ConnectOptions) {
     try {
-      this._inner = new NativeAdbcDatabase(options)
+      this._inner = new NativeAdbcDatabase(options as unknown as NativeConnectOptions)
     } catch (e) {
       throw AdbcError.fromError(e)
     }
