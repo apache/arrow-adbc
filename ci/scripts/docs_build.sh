@@ -70,23 +70,6 @@ main() {
     cp -r "$source_dir/java/target/site/apidocs" "$source_dir/docs/build/html/java/api"
     rm -rf "$source_dir/docs/build/html/javascript/api"
     cp -r "$source_dir/javascript/typedoc" "$source_dir/docs/build/html/javascript/api"
-
-    # Create manifests for CI-built drivers so doctests can find them
-    local install_dir="${HOME}/local"
-    for driver_path in "${install_dir}"/lib/libadbc_driver_*.*; do
-        [[ -f "${driver_path}" ]] || continue
-        driver=$(basename "${driver_path}" | sed -e 's/^libadbc_driver_//' -e 's/\..*//')
-        cat <<EOF > "${install_dir}/lib/${driver}.toml"
-manifest_version = 1
-[Driver]
-shared = "adbc_driver_${driver}"
-EOF
-    done
-
-    export ADBC_DRIVER_PATH="${install_dir}/lib"
-    export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib"
-    export DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}:${install_dir}/lib"
-
     make doctest
     popd
 
