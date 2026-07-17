@@ -33,7 +33,11 @@ Installing Drivers
 
 See :ref:`driver-table-install` for instructions on installing ADBC drivers for
 the database you want to connect to. For the example below, you could install
-`dbc <https://docs.columnar.tech/dbc>`__ and run ``dbc install postgresql``.
+`dbc <https://docs.columnar.tech/dbc>`__ and then install the PostgreSQL driver with:
+
+.. code-block:: shell
+
+   dbc install postgresql
 
 Basic Example
 =============
