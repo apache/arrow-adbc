@@ -24,8 +24,11 @@ import { AdbcDatabase, AdbcError } from '../lib/index.js'
 
 const testLib = process.env.ADBC_DRIVER_MANAGER_TEST_LIB
 
+function tomlPath(p: string): string {
+  return p.replaceAll('\\', '/')
+}
+
 function writeProfileToml(dir: string, name: string, driver: string, options: Record<string, string> = {}): void {
-  const tomlPath = (p: string) => p.replaceAll('\\', '/')
   const optLines = Object.entries(options)
     .map(([k, v]) => `${k} = "${tomlPath(v)}"`)
     .join('\n')
@@ -217,7 +220,7 @@ test('profile: driver disagreeing with profile errors', async () => {
         assert.strictEqual(err.code, 'InvalidArguments')
         assert.strictEqual(
           err.message,
-          `profile specifies driver \`${driver}\` which does not match requested driver \`some_other_driver\``,
+          `profile specifies driver \`${tomlPath(driver)}\` which does not match requested driver \`some_other_driver\``,
         )
         return true
       },
