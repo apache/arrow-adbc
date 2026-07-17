@@ -262,7 +262,7 @@ The adapter supports standard Active Record operations including queries, associ
 ----
 
 
-Add your own here
+Add Your Own Here
 =================
 
 Using ADBC with a tool not listed here? Contributions to this page are welcome—open a pull request on `GitHub <https://github.com/apache/arrow-adbc>`_.

@@ -32,7 +32,7 @@ Arrow format.
 
 .. _driver-table:
 
-Available drivers
+Available Drivers
 =================
 
 ADBC drivers are typically built, distributed, and used as **shared libraries**
@@ -127,7 +127,7 @@ driver in the table below is packaged this way.
    :ref:`searches for a matching driver manifest <driver-manifest-discovery>`
    (``postgresql.toml``) that tells it which shared library to load. The same
    slug is what you pass when :ref:`installing a driver <driver-table-install>`.
-.. [#maintainer] See :ref:`Who maintains these drivers? <driver-table-maintainers>`
+.. [#maintainer] See :ref:`Who Maintains These Drivers? <driver-table-maintainers>`
    for what **ASF**, **Foundry**, and **Vendor** mean.
 .. [#duckdb] ADBC support is built directly into DuckDB; installing the
    ``duckdb`` driver fetches a prebuilt binary. This driver is also compatible
@@ -142,7 +142,7 @@ driver in the table below is packaged this way.
 
 .. _driver-table-install:
 
-Installing drivers
+Installing Drivers
 ==================
 
 Prebuilt driver binaries for the drivers above—code-signed, notarized, and
@@ -182,7 +182,7 @@ name in the table above.
 
 .. _driver-table-language-specific:
 
-Language-specific drivers
+Language-Specific Drivers
 =========================
 
 Some drivers are built and packaged for a specific language or runtime rather
@@ -239,7 +239,7 @@ Distributed as Maven packages, for use from Java applications:
 
 .. _driver-table-maintainers:
 
-Who maintains these drivers?
+Who Maintains These Drivers?
 ============================
 
 The ADBC project focuses primarily on the :doc:`ADBC standard <../format/specification>`
@@ -259,7 +259,7 @@ identifies who maintains each driver:
    Some drivers are maintained in independent repositories controlled
    by database vendors.
 
-Have a driver to add?
+Have a Driver to Add?
 =====================
 
 If you've developed a high-quality ADBC driver, made it freely available for
@@ -272,7 +272,7 @@ If you're interested in developing a new driver, consider reaching out to the
 `ADBC Driver Foundry <https://github.com/adbc-drivers/>`__ and see their
 `Building Drivers <https://docs.adbc-drivers.org/building-drivers/>`__ guide.
 
-More information
+More Information
 ================
 
 - :doc:`Client Libraries <../client_libraries>` — the libraries that load and use drivers from your language of choice

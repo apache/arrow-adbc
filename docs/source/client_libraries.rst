@@ -99,7 +99,7 @@ The client library loads the driver at runtime, so you install the client
 library once and then add a driver for each database you use.
 See :doc:`Drivers <driver/index>` for the full list of available drivers and how to install them.
 
-More information
+More Information
 ================
 
 - `ADBC Quickstarts <https://github.com/columnar-tech/adbc-quickstarts>`__ — simple, runnable examples for getting started in each of these languages, across a range of databases

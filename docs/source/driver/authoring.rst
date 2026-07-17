@@ -44,7 +44,7 @@ distribution—follow the guide above.
    The ADBC Driver Foundry is an independent community project, separate from
    the Apache Arrow project.
 
-What language should I use?
+What Language Should I Use?
 ===========================
 
 Most ADBC drivers are built as shared libraries (``.so`` / ``.dll`` /
@@ -68,7 +68,7 @@ package for the JVM) rather than as a loadable shared library. Such a driver can
 only be used from that runtime. This is less common, but the Driver Foundry can
 accommodate it too.
 
-Driver frameworks
+Driver Frameworks
 =================
 
 The ADBC Driver Foundry maintains frameworks for Go and Rust that provide base
@@ -90,7 +90,7 @@ generates a ready-to-build driver crate to start from.
    and is not intended for new work. New Go drivers should use `driverbase-go
    <https://github.com/adbc-drivers/driverbase-go>`__ instead.
 
-Why the Driver Foundry, not this repository?
+Why the Driver Foundry, Not This Repository?
 ============================================
 
 .. _authoring-why-foundry:
