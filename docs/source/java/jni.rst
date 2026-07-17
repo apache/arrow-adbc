@@ -49,7 +49,7 @@ written in Java or another JVM language.
 
 Drivers can be directly loaded via the
 :external+java_adbc:jmember:`PARAM_DRIVER
-<org.apache.arrow.adbc.driver.jni.JniDriver#PARAM_PROFILE>` option. This takes
+<org.apache.arrow.adbc.driver.jni.JniDriver#PARAM_DRIVER>` option. This takes
 a path to a driver, a :doc:`driver manifest <../format/driver_manifests>`, or
 a name that will be passed to ``dlopen`` (or equivalent):
 
