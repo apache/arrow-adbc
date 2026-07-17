@@ -104,7 +104,7 @@ public class HeaderTest {
     final String dummyHeaderName = "test-header";
     final String query = "UPDATE the_table SET x = 1";
     params.put(FlightSqlConnectionProperties.RPC_CALL_HEADER_PREFIX + dummyHeaderName, dummyValue);
-    producer.addUpdateQuery(query, /*updatedRows=*/ 1L);
+    producer.addUpdateQuery(query, /* updatedRows= */ 1L);
     server = builder.build();
     server.start();
     connect();
