@@ -99,6 +99,10 @@ The client library loads the driver at runtime, so you install the client
 library once and then add a driver for each database you use.
 See :doc:`Drivers <driver/index>` for the full list of available drivers and how to install them.
 
+You may not need to use a client library directly at all: many higher-level
+tools, such as pandas and Polars, integrate with ADBC and use it under the hood.
+See :doc:`Tools & Integrations <integrations>` for more.
+
 More Information
 ================
 
