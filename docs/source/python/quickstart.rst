@@ -33,7 +33,17 @@ Installing Drivers
 
 See :ref:`driver-table-install` for instructions on installing ADBC drivers for
 the database you want to connect to. For the example below, you could install
-`dbc <https://docs.columnar.tech/dbc>`__ and run ``dbc install sqlite``.
+`dbc <https://docs.columnar.tech/dbc>`__ from PyPI with:
+
+.. code-block:: shell
+
+   pipx install dbc
+
+and then install the SQLite driver with:
+
+.. code-block:: shell
+
+   dbc install sqlite
 
 DBAPI (PEP 249)-style API
 =========================

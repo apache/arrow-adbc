@@ -39,50 +39,22 @@ Installation
    browser: the driver manager loads driver shared libraries from the
    filesystem, which browsers cannot do.
 
-To use any driver with the JavaScript driver manager, you need the driver's
-shared library on your machine.
+Installing Drivers
+------------------
 
-The easiest way to get it is with `dbc <https://docs.columnar.tech/dbc/>`__,
-which installs prebuilt driver binaries from Columnar's `ADBC driver registry
-<https://dbc-cdn.columnar.tech>`__:
+See :ref:`driver-table-install` for instructions on installing ADBC drivers for
+the database you want to connect to. For the example below, you could install
+`dbc <https://docs.columnar.tech/dbc>`__ from npm with:
+
+.. code-block:: shell
+
+   npm install -g @columnar-tech/dbc
+
+and then install the SQLite driver with:
 
 .. code-block:: shell
 
    dbc install sqlite
-
-``dbc`` installs both the shared library and a :term:`driver manifest` to a
-location the driver manager searches, so you can then load the driver by its
-short name (``driver: 'sqlite'``, as shown below) without hard-coding a path.
-
-.. note::
-
-   Columnar's `ADBC driver registry <https://dbc-cdn.columnar.tech>`__ and
-   `dbc <https://docs.columnar.tech/dbc/>`__ are not part of the Apache Arrow
-   project.
-
-Alternatively, some drivers ship as packages on registries like conda-forge and
-PyPI. These give you the shared library but not a manifest, so you must pass the
-library's absolute path to the driver manager (or move it into a
-:doc:`search path </format/driver_manifests>` and create a manifest for it).
-The commands below install the SQLite driver and print the path to it:
-
-`conda-forge <https://conda-forge.org/>`_:
-
-.. code-block:: shell
-
-   conda create -n adbc-sqlite -c conda-forge adbc-driver-sqlite
-   conda run -n adbc-sqlite python -c "import adbc_driver_sqlite; print(adbc_driver_sqlite._driver_path())"
-
-`PyPI <https://pypi.org>`_:
-
-.. code-block:: shell
-
-   python -m venv .venv
-   source .venv/bin/activate
-   pip install adbc-driver-sqlite
-   python -c "import adbc_driver_sqlite; print(adbc_driver_sqlite._driver_path())"
-
-For apt and dnf packages, see :doc:`/driver/installation`.
 
 Creating a Database and Connection
 ==================================

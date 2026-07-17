@@ -35,14 +35,14 @@
 ///    mamba install cmake compilers libadbc-driver-manager
 ///
 /// Installing Drivers
-/// ==================
+/// ------------------
 ///
-/// You'll need to install an ADBC driver for the database you want to
-/// connect to. The easiest way is using the command-line tool dbc. See
-/// the `dbc documentation <dbc_>`_ for how to install dbc. After dbc
-/// is installed, use it to install the SQLite driver in the user
-/// configuration directory where the driver manager library will search
-/// for it:
+/// See :ref:`driver-table-install` for instructions on installing
+/// ADBC drivers for the database you want to connect to. For the
+/// example below, you could install `dbc <dbc_>`_ and then use dbc
+/// to install the SQLite driver and its manifest in the user
+/// configuration directory where the driver manager library will
+/// search for it:
 ///
 /// .. code-block:: shell
 ///
@@ -51,11 +51,6 @@
 /// You can also build drivers from source or use other installation
 /// methods. See the :doc:`driver documentation </driver/index>` for
 /// more details.
-///
-/// .. note:: dbc is a third-party tool and not part of the Apache
-///           Software Foundation. Some drivers, including SQLite, also
-///           have packages distributed by the ASF, but the usage
-///           differs based on the driver.
 ///
 /// .. _conda-forge: https://conda-forge.org/
 /// .. _dbc: https://docs.columnar.tech/dbc/
