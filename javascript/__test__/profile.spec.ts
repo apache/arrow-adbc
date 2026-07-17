@@ -145,7 +145,7 @@ test('profile: omit driver, load from bare profile name in databaseOptions.profi
 })
 
 test('profile: driver + databaseOptions.profile loads from profile', async () => {
-  const driver = testLib ?? 'sqlite'
+  const driver = tomlPath(testLib ?? 'sqlite')
   const tmpDir = mkdtempSync(join(tmpdir(), 'adbc-profile-test-'))
   try {
     writeProfileToml(tmpDir, 'my_profile', driver)
@@ -167,7 +167,7 @@ test('profile: driver + databaseOptions.profile loads from profile', async () =>
 })
 
 test('profile: driver + databaseOptions.uri profile:// loads from profile', async () => {
-  const driver = testLib ?? 'sqlite'
+  const driver = tomlPath(testLib ?? 'sqlite')
   const tmpDir = mkdtempSync(join(tmpdir(), 'adbc-profile-test-'))
   try {
     writeProfileToml(tmpDir, 'my_profile', driver)
@@ -203,7 +203,7 @@ test('profile: error when profile key and profile:// uri are both provided', asy
 })
 
 test('profile: driver disagreeing with profile errors', async () => {
-  const driver = testLib ?? 'sqlite'
+  const driver = tomlPath(testLib ?? 'sqlite')
   const tmpDir = mkdtempSync(join(tmpdir(), 'adbc-profile-test-'))
   try {
     writeProfileToml(tmpDir, 'my_profile', driver)
