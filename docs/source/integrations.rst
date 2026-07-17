@@ -23,95 +23,6 @@ ADBC works alongside many popular data tools and frameworks. This page describes
 
 ----
 
-.. _dbc:
-
-dbc
-===
-
-`dbc <https://docs.columnar.tech/dbc>`__ is a command-line tool from `Columnar <https://columnar.tech>`__ for installing and managing ADBC drivers on your system. It handles downloading driver binaries, placing them in standard locations, and keeping them up to date—so you don't have to build drivers from source or manage shared libraries by hand.
-
-Installation
-------------
-
-.. tab-set::
-
-   .. tab-item:: macOS / Linux (shell)
-
-      .. code-block:: bash
-
-         curl -LsSf https://dbc.columnar.tech/install.sh | sh
-
-   .. tab-item:: Homebrew
-
-      .. code-block:: bash
-
-         brew install columnar-tech/tap/dbc
-
-   .. tab-item:: uv
-
-      .. code-block:: bash
-
-         uv tool install dbc
-
-   .. tab-item:: pipx
-
-      .. code-block:: bash
-
-         pipx install dbc
-
-   .. tab-item:: npm
-
-      .. code-block:: bash
-
-         npm install -g @columnar-tech/dbc
-
-   .. tab-item:: Windows (PowerShell)
-
-      .. code-block:: powershell
-
-         powershell -ExecutionPolicy ByPass -c "irm https://dbc.columnar.tech/install.ps1 | iex"
-
-   .. tab-item:: Windows (WinGet)
-
-      .. code-block:: bash
-
-         winget install Columnar.dbc
-
-   .. tab-item:: Windows (MSI)
-
-      Download the installer: https://dbc.columnar.tech/latest/dbc-latest-x64.msi
-
-Usage
------
-
-Once installed, use ``dbc install`` to add a driver, and ``dbc search`` to see what is available:
-
-.. code-block:: bash
-
-   # Install a driver for a specific database
-   dbc install postgresql
-   dbc install snowflake
-   dbc install sqlite
-
-   # List available drivers
-   dbc search
-
-After a driver is installed, ADBC client libraries (and tools like DuckDB's ``adbc`` extension) can load it automatically by name.
-
-See the `dbc documentation <https://docs.columnar.tech/dbc>`_ for advanced usage.
-
-----
-
-DuckDB
-======
-
-`DuckDB <https://duckdb.org>`_ integrates with ADBC in two ways:
-
-1. **DuckDB itself is an ADBC driver** — DuckDB (technically libduckdb) exposes an ADBC interface so you can connect to a DuckDB database from any ADBC client library. See :doc:`driver/duckdb` for details on using DuckDB as an ADBC driver.
-2. **DuckDB extensions** — Two DuckDB community extensions, `adbc <https://duckdb.org/community_extensions/extensions/adbc.html>`_ and `adbc_scanner <https://duckdb.org/community_extensions/extensions/adbc_scanner>`_, let you query *other* databases from DuckDB using ADBC drivers.
-
-----
-
 Apache DataFusion
 =================
 
@@ -128,6 +39,27 @@ databow
 `databow <https://docs.columnar.tech/databow/>`_ is a command-line tool for querying databases via ADBC. It provides an interactive SQL shell with syntax highlighting, formatted output, and support for exporting results to JSON, CSV, or Arrow IPC files.
 
 See the `databow documentation <https://docs.columnar.tech/databow/>`_ for more details.
+
+----
+
+.. _dbc:
+
+dbc
+===
+
+`dbc <https://docs.columnar.tech/dbc>`__ is a command-line tool from `Columnar <https://columnar.tech>`__ for installing and managing ADBC drivers on your system. It handles downloading driver binaries, placing them in standard locations, and keeping them up to date—so you don't have to build drivers from source or manage shared libraries by hand.
+
+See the `dbc documentation <https://docs.columnar.tech/dbc>`_ for how to install and use dbc.
+
+----
+
+DuckDB
+======
+
+`DuckDB <https://duckdb.org>`_ integrates with ADBC in two ways:
+
+1. **DuckDB itself is an ADBC driver** — DuckDB (technically libduckdb) exposes an ADBC interface so you can connect to a DuckDB database from any ADBC client library. See :doc:`driver/duckdb` for details on using DuckDB as an ADBC driver.
+2. **DuckDB extensions** — Two DuckDB community extensions, `adbc <https://duckdb.org/community_extensions/extensions/adbc.html>`_ and `adbc_scanner <https://duckdb.org/community_extensions/extensions/adbc_scanner>`_, let you query *other* databases from DuckDB using ADBC drivers.
 
 ----
 
