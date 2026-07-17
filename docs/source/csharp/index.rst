@@ -19,15 +19,69 @@
 C#/.NET
 =======
 
-.. toctree::
-   :maxdepth: 2
+The ADBC C#/.NET libraries support three different ways of using ADBC:
 
-   quickstart
-   driver_manager
+- Native C# drivers for databases like Google BigQuery
+- Bindings packages that wrap individual drivers such as the Snowflake Go driver
+- A driver manager for loading ADBC drivers written in other languages at runtime
 
-The ADBC C# libraries support:
+Here we'll briefly tour basic features using the driver manager and the PostgreSQL driver.
 
-- A :doc:`driver manager <driver_manager>` for dynamically loading ADBC drivers at runtime
-- Native drivers (Google BigQuery, Apache Hive/Impala/Spark/Databricks)
-- Interop with native (C/C++) drivers via Flight SQL
-- A client library for working with ADBC connections
+Installation
+============
+
+.. code-block:: shell
+
+   dotnet add package Apache.Arrow.Adbc
+
+Installing Drivers
+------------------
+
+See :ref:`driver-table-install` for instructions on installing ADBC drivers for
+the database you want to connect to. For the example below, you could install
+`dbc <https://docs.columnar.tech/dbc>`__ and run ``dbc install postgresql``.
+
+Usings
+------
+
+.. code-block:: csharp
+
+   using System.Collections.Generic;
+   using Apache.Arrow;
+   using Apache.Arrow.Adbc;
+   using Apache.Arrow.Adbc.DriverManager;
+   using Apache.Arrow.Ipc;
+
+Basic Usage
+===========
+
+.. code-block:: csharp
+
+   using AdbcDriver driver = AdbcDriverManager.FindLoadDriver(
+       "postgresql",
+       loadOptions: AdbcLoadFlags.Default);
+
+   using AdbcDatabase db = driver.Open(new Dictionary<string, string>
+   {
+       ["uri"] = "postgresql://localhost:5432/postgres",
+   });
+
+   using AdbcConnection conn = db.Connect(null);
+   using AdbcStatement stmt = conn.CreateStatement();
+
+   stmt.SqlQuery = "SELECT * FROM foo";
+
+   QueryResult result = stmt.ExecuteQuery();
+   using IArrowArrayStream stream = result.Stream!;
+
+   while (true)
+   {
+       using Apache.Arrow.RecordBatch batch = await stream.ReadNextRecordBatchAsync();
+       if (batch == null) break;
+       // process batch
+   }
+
+Next Steps
+==========
+
+- Explore more C# examples in the `adbc-quickstarts repository <https://github.com/columnar-tech/adbc-quickstarts/tree/main/csharp>`_

@@ -60,7 +60,7 @@ The client library package for each language:
    * - C#
      - dotnet
      - ``Apache.Arrow.Adbc.Client``
-     - :doc:`C# Quickstart <csharp/quickstart>`
+     - :doc:`C# <csharp/index>`
    * - Go
      - go
      - ``github.com/apache/arrow-adbc/go/adbc``
