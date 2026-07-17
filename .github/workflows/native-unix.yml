@@ -736,6 +736,18 @@ jobs:
             docs/source/cpp/recipe/*.cc \
             docs/source/cpp/recipe_driver/driver_example.py \
             docs/source/python/recipe/*.py
+      - name: Set up CI-built ADBC drivers
+        run: |
+          for driver_path in $HOME/local/lib/libadbc_driver_*.*; do
+            [[ -f "${driver_path}" ]] || continue
+            driver=$(basename "${driver_path}" | sed -e 's/^libadbc_driver_//' -e 's/\..*//')
+            cat <<EOF > $HOME/local/lib/${driver}.toml
+          manifest_version = 1
+          [Driver]
+          shared = "adbc_driver_${driver}"
+          EOF
+          done
+          echo "ADBC_DRIVER_PATH=$HOME/local/lib" >> $GITHUB_ENV
       - name: Test Recipes (Python)
         run: |
           docker compose up --detach --wait dremio flightsql-sqlite-test postgres-test gizmosql-test oauth-server flightsql-test
