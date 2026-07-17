@@ -34,7 +34,7 @@ Installation
 
 .. note::
 
-   This page describes how to install the official release from the Apache Arrow project. Most drivers are distributed by third parties; see :doc:`./index`.
+   This page describes how to install the official release from the Apache Arrow project, which contains :doc:`client libraries </client_libraries>` for various languages. You will also need one or more drivers, most of which are distributed by third parties; see :doc:`/driver/index`.
 
 Source
 ======

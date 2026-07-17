@@ -286,8 +286,3 @@ More Information
 - :doc:`Tools & Integrations <../integrations>` — tools and libraries that work with ADBC
 - :doc:`Connection Profiles <../connection_profiles>` — reusable, shareable connection configuration
 - `ADBC Quickstarts <https://github.com/columnar-tech/adbc-quickstarts>`__ — simple, runnable examples for getting started with many of these drivers
-
-.. toctree::
-   :hidden:
-
-   installation

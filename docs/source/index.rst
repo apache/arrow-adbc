@@ -225,6 +225,7 @@ More Resources
    R <r/index>
    Ruby <ruby/index>
    Rust <rust/index>
+   Installation <driver/installation>
 
 .. toctree::
    :maxdepth: 1
