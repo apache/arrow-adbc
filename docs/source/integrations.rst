@@ -255,24 +255,9 @@ In R, `dplyr <https://dplyr.tidyverse.org>`_ accesses databases through the `DBI
 Ruby Active Record
 ==================
 
-The `activerecord-adbc-adapter <https://github.com/red-data-tools/activerecord-adbc-adapter>`_ gem allows you to use ADBC drivers as Active Record database adapters, enabling efficient Arrow-based data transfer for Rails applications.
+The `activerecord-adbc-adapter <https://github.com/red-data-tools/activerecord-adbc-adapter>`_ gem allows you to use ADBC drivers as Active Record database adapters, enabling efficient Arrow-based database interaction for Rails applications.
 
-.. code-block:: ruby
-
-   # In your Gemfile
-   gem 'red-adbc'
-   gem 'activerecord-adbc-adapter'
-
-   # In config/database.yml
-   development:
-     adapter: adbc
-     driver: postgresql
-     uri: postgresql://localhost:5432/mydb
-
-   # Use Active Record as normal
-   Order.where(status: 'shipped').limit(10)
-
-The adapter supports standard Active Record operations including queries, associations, migrations, and transactions. See the `activerecord-adbc-adapter documentation <https://www.rubydoc.info/gems/activerecord-adbc-adapter/>`_ for configuration options.
+See the `activerecord-adbc-adapter documentation <https://www.rubydoc.info/gems/activerecord-adbc-adapter/>`_ for configuration options.
 
 ----
 
