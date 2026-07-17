@@ -136,15 +136,9 @@ Use parameterized queries for safe SQL execution:
 Installing Drivers
 ==================
 
-You'll need to install an ADBC driver for the database you want to connect to. The easiest way is using `dbc <https://docs.columnar.tech/dbc>`_:
-
-.. code-block:: shell
-
-   # Install dbc
-   curl -fsSL https://dbc.sh | sh
-
-   # Install a driver (e.g., PostgreSQL)
-   dbc install postgresql
+See :ref:`driver-table-install` for instructions on installing ADBC drivers for
+the database you want to connect to. For the example below, you could install
+`dbc <https://docs.columnar.tech/dbc>`__ and run ``dbc install postgresql``.
 
 Native Drivers
 --------------
@@ -156,7 +150,7 @@ C# ADBC also includes native drivers for some databases:
    # BigQuery native driver
    dotnet add package Apache.Arrow.Adbc.Drivers.BigQuery
 
-You can also build drivers from source or use other installation methods. See the :doc:`driver documentation </driver/index>` for more details.
+See the :doc:`driver documentation </driver/index>` for more details.
 
 Next Steps
 ==========

@@ -29,16 +29,11 @@ Installation
    pip install adbc_driver_manager pyarrow
 
 Installing Drivers
-==================
+------------------
 
-You'll need to install an ADBC driver for the database you want to connect to. The easiest way is using `dbc <https://docs.columnar.tech/dbc>`_:
-
-.. code-block:: shell
-
-   # Install a driver (e.g., sqlite)
-   dbc install sqlite
-
-You can also build drivers from source or use other installation methods. See the :doc:`driver documentation </driver/index>` for more details.
+See :ref:`driver-table-install` for instructions on installing ADBC drivers for
+the database you want to connect to. For the example below, you could install
+`dbc <https://docs.columnar.tech/dbc>`__ and run ``dbc install sqlite``.
 
 DBAPI (PEP 249)-style API
 =========================

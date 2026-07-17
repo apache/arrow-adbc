@@ -274,21 +274,6 @@ queries:
 
    await stmt.close();
 
-Installing Drivers
-==================
-
-You'll need to install an ADBC driver for the database you want to connect to. The easiest way is using `dbc <https://docs.columnar.tech/dbc>`_:
-
-.. code-block:: shell
-
-   # Install dbc
-   curl -fsSL https://dbc.sh | sh
-
-   # Install a driver (e.g., PostgreSQL)
-   dbc install postgresql
-
-The JavaScript driver manager can also load drivers from conda-forge or PyPI as shown in the Installation section above. See the :doc:`driver documentation </driver/index>` for more details.
-
 Next Steps
 ==========
 
