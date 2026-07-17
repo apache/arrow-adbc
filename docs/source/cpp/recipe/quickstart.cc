@@ -87,6 +87,7 @@
 #include <iostream>
 
 #include <arrow-adbc/adbc.h>
+#include <arrow-adbc/adbc_driver_manager.h>
 #include <nanoarrow.h>
 
 /// Then we'll add some (very basic) error checking helpers.
@@ -135,6 +136,9 @@ int main() {
   /// The way the driver manager knows what driver we want is via the
   /// ``driver`` option.
   CHECK_ADBC(AdbcDatabaseSetOption(&database, "driver", "sqlite", &error));
+  /// We also need to enable searching for driver manifests.
+  CHECK_ADBC(
+      AdbcDriverManagerDatabaseSetLoadFlags(&database, ADBC_LOAD_FLAG_DEFAULT, &error));
   CHECK_ADBC(AdbcDatabaseInit(&database, &error));
 
   /// Creating a Connection
