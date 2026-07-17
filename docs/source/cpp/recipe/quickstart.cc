@@ -38,15 +38,15 @@
 /// ==================
 ///
 /// You'll need to install an ADBC driver for the database you want to
-/// connect to. The easiest way is using dbc_:
+/// connect to. The easiest way is using the command-line tool dbc. See
+/// the `dbc documentation <dbc_>`_ for how to install dbc. After dbc
+/// is installed, use it to install the SQLite driver in the user
+/// configuration directory where the driver manager library will search
+/// for it:
 ///
 /// .. code-block:: shell
 ///
-///    # Install dbc
-///    curl -fsSL https://dbc.sh | sh
-///
-///    # Install a driver (e.g., SQLite)
-///    dbc install sqlite
+///    dbc install --level user sqlite
 ///
 /// You can also build drivers from source or use other installation
 /// methods. See the :doc:`driver documentation </driver/index>` for
@@ -58,7 +58,7 @@
 ///           differs based on the driver.
 ///
 /// .. _conda-forge: https://conda-forge.org/
-/// .. _dbc: https://columnar.tech/dbc
+/// .. _dbc: https://docs.columnar.tech/dbc/
 
 /// Building
 /// ========
