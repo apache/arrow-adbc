@@ -145,7 +145,7 @@ See the `Polars database documentation <https://docs.pola.rs/user-guide/io/datab
 R adbi
 ======
 
-In R, the `adbi <https://adbi.r-dbi.org>`_ package provides a `DBI <https://github.com/r-dbi>`_ compliant interface to ADBC drivers.
+In R, the `adbi <https://adbi.r-dbi.org>`__ package provides a `DBI <https://github.com/r-dbi>`__ compliant interface to ADBC drivers.
 
 .. code-block:: r
 
@@ -166,7 +166,7 @@ In R, the `adbi <https://adbi.r-dbi.org>`_ package provides a `DBI <https://gith
 R dplyr
 =======
 
-In R, `dplyr <https://dplyr.tidyverse.org>`_ accesses databases through the `DBI <https://dbi.r-dbi.org>`_ interface. The ``adbcdrivermanager`` package provides a DBI-compatible backend so you can use any ADBC driver with dplyr and ``dbplyr``.
+In R, `dplyr <https://dplyr.tidyverse.org>`__ accesses databases through the `DBI <https://dbi.r-dbi.org>`__ interface. The ``adbcdrivermanager`` package provides a DBI-compatible backend so you can use any ADBC driver with dplyr and ``dbplyr``.
 
 .. code-block:: r
 
