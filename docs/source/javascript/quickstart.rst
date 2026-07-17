@@ -56,7 +56,7 @@ short name (``driver: 'sqlite'``, as shown below) without hard-coding a path.
 
 .. note::
 
-   The `ADBC Driver Registry <https://dbc-cdn.columnar.tech>`__ and
+   Columnar's `ADBC driver registry <https://dbc-cdn.columnar.tech>`__ and
    `dbc <https://docs.columnar.tech/dbc/>`__ are not part of the Apache Arrow
    project.
 

@@ -101,15 +101,15 @@ on its maintainers. The Driver Foundry instead gives each driver its own
 repository and maintainers, while its shared frameworks and validation suite
 keep drivers consistent and standards-conformant. It also handles testing,
 security vulnerability scanning and patching, packaging, and distribution—including
-prebuilt, signed, notarized binaries on the
-`ADBC Driver Registry <https://dbc-cdn.columnar.tech/>`__.
+prebuilt, signed, notarized binaries on Columnar's
+`ADBC driver registry <https://dbc-cdn.columnar.tech/>`__.
 Vendors such as dbt Labs and Microsoft build on Foundry-maintained drivers.
 
 The ADBC maintainers generally decline pull requests adding new drivers to
 ``apache/arrow-adbc`` and direct you instead to the Foundry.
 
-The ADBC Driver Registry, like the Foundry, is maintained independently of the
-Apache Arrow project.
+Columnar's ADBC driver registry, like the Foundry, is maintained independently
+of the Apache Arrow project.
 
 .. note::
 

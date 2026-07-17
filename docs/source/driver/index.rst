@@ -145,10 +145,11 @@ driver in the table below is packaged this way.
 Installing Drivers
 ==================
 
-Prebuilt driver binaries for the drivers above—code-signed, notarized, and
-ready to install for most mainstream operating systems and CPU
-architectures—are available from the `ADBC Driver Registry
-<https://dbc-cdn.columnar.tech>`__.
+Pre-built binaries for the drivers in the table above are available from the
+`ADBC driver registry <https://dbc-cdn.columnar.tech>`__ hosted by
+`Columnar <https://columnar.tech>`__, a company active in ADBC driver
+development. Binaries are available for Windows (amd64), macOS (arm64), and
+Linux (amd64 and arm64), and are code-signed and notarized by Columnar.
 
 Users and applications can download a driver from the registry manually, or with
 the `dbc <https://docs.columnar.tech/dbc/>`__ command-line tool. With dbc
@@ -175,10 +176,10 @@ drivers list their own packages in each driver's documentation, linked from its
 name in the table above.
 
 .. note::
-   The `ADBC Driver Registry <https://dbc-cdn.columnar.tech/>`__ is a
-   community-maintained registry of prebuilt drivers, and
-   `dbc <https://docs.columnar.tech/dbc/>`__ is an independent command-line tool
-   for installing them. Neither is a part of the Apache Arrow project.
+   The `ADBC driver registry <https://dbc-cdn.columnar.tech/>`__ and the
+   `dbc <https://docs.columnar.tech/dbc/>`__ command-line tool for installing
+   drivers from it are provided by Columnar, and are maintained independently of
+   the Apache Arrow project.
 
 .. _driver-table-language-specific:
 
