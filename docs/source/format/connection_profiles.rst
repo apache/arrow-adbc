@@ -19,12 +19,16 @@
 ADBC Driver Manager and Connection Profiles
 ===========================================
 
-.. note:: This document describes using the :term:`driver manager` to load
-          drivers.  The driver manager is not required to use ADBC in general
-          but it allows loading drivers written in a different language from the
-          application and improves the experience when using multiple drivers in
-          a single application. For more information on how the driver manager
-          works see :doc:`how_manager`.
+.. note:: This page is a detailed reference on the connection profile format and
+          behavior, aimed at developers of ADBC drivers and libraries and
+          advanced users. For basic usage of connection profiles, see
+          :doc:`Connection Profiles <../connection_profiles>` instead.
+
+          Profiles are loaded by the :term:`driver manager`, which is not
+          required to use ADBC in general but which allows loading drivers
+          written in a different language from the application and improves the
+          experience when using multiple drivers in a single application. For
+          more on how the driver manager works, see :doc:`how_manager`.
 
 There are two ways to pass database options through the driver manager:
 
