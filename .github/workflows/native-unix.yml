@@ -705,7 +705,7 @@ jobs:
             manifest_version = 1
             [Driver]
             shared = "adbc_driver_$d"
-            EOF
+          EOF
           done
           ls ~/.config/adbc/drivers
           cat ~/.config/adbc/drivers/*.toml
