@@ -701,7 +701,7 @@ jobs:
           # just "sqlite" (and so on)
           mkdir -p ~/.config/adbc/drivers
           for d in flightsql postgresql sqlite; do
-            cat <<EOF > "~/.config/adbc/drivers/$d.toml"
+            cat <<EOF > "$HOME/.config/adbc/drivers/$d.toml"
             manifest_version = 1
             [Driver]
             shared = "adbc_driver_$d"
