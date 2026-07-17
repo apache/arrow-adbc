@@ -721,6 +721,12 @@ jobs:
             docs/source/cpp/recipe/*.cc \
             docs/source/cpp/recipe_driver/driver_example.py \
             docs/source/python/recipe/*.py
+      - name: Install ADBC drivers via dbc
+        run: |
+          pip install dbc
+          python -m dbc install --level user sqlite
+          python -m dbc install --level user postgresql
+          python -m dbc install --level user flightsql
       - name: Test Recipes (Python)
         run: |
           docker compose up --detach --wait dremio flightsql-sqlite-test postgres-test gizmosql-test oauth-server flightsql-test
