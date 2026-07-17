@@ -695,6 +695,20 @@ jobs:
           ADBC_USE_UBSAN: "0"
         run: |
           ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+      - name: Create manifests
+        run: |
+          # Create manifests so the C++ examples/doctests can find SQLite via
+          # just "sqlite" (and so on)
+          mkdir -p ~/.config/adbc/drivers
+          for d in flightsql postgresql sqlite; do
+            cat <<EOF > "~/.config/adbc/drivers/$d.toml"
+            manifest_version = 1
+            [Driver]
+            shared = "adbc_driver_$d"
+            EOF
+          done
+          ls ~/.config/adbc/drivers
+          cat ~/.config/adbc/drivers/*.toml
       # Docs requires Python packages since it runs doctests
       - name: Build Docs
         run: |
@@ -710,20 +724,6 @@ jobs:
         run: |
           pip install python-dotenv[cli]
           python -m dotenv -f .env list --format simple | tee -a $GITHUB_ENV
-      - name: Create manifests
-        run: |
-          # Create manifests so the C++ examples/doctests can find SQLite via
-          # just "sqlite" (and so on)
-          mkdir -p ~/.config/adbc/drivers
-          for d in flightsql postgresql sqlite; do
-            cat <<EOF > "~/.config/adbc/drivers/$d.toml"
-            manifest_version = 1
-            [Driver]
-            shared = "adbc_driver_$d"
-            EOF
-          done
-          ls ~/.config/adbc/drivers
-          cat ~/.config/adbc/drivers/*.toml
       - name: Test Recipes (C++)
         run: |
           ./ci/scripts/cpp_recipe.sh $(pwd) ~/local build/recipe

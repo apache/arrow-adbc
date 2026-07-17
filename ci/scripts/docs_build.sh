@@ -70,8 +70,6 @@ main() {
     cp -r "$source_dir/java/target/site/apidocs" "$source_dir/docs/build/html/java/api"
     rm -rf "$source_dir/docs/build/html/javascript/api"
     cp -r "$source_dir/javascript/typedoc" "$source_dir/docs/build/html/javascript/api"
-    pip install dbc
-    python -m dbc install --level user sqlite
     make doctest
     popd
 
