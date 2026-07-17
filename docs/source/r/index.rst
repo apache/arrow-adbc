@@ -35,8 +35,10 @@ to quickly interact with an ADBC connection or database.
 
    library(adbcdrivermanager)
 
-   # Use the driver manager to connect to a database
-   db <- adbc_database_init(adbcsqlite::adbcsqlite(), uri = ":memory:")
+   # Use the driver manager to connect to a database. This assumes the SQLite
+   # driver has been installed via driver manifest. See the Drivers page for
+   # more info.
+   db <- adbc_database_init(adbc_driver("sqlite"), uri = ":memory:")
    con <- adbc_connection_init(db)
 
    # Write a table

@@ -28,6 +28,18 @@ Installation
 
    install.packages(c("adbcdrivermanager", "arrow", "tibble"))
 
+Installing Drivers
+==================
+
+You'll need to install an ADBC driver for the database you want to connect to. The easiest way is using `dbc <https://docs.columnar.tech/dbc>`_:
+
+.. code-block:: shell
+
+   # Install a driver (e.g., PostgreSQL)
+   dbc install postgresql
+
+You can also build drivers from source or use other installation methods. See the :doc:`driver documentation </driver/index>` for more details.
+
 Basic Example
 =============
 
@@ -92,21 +104,6 @@ You can use parameterized queries for safe SQL execution:
    adbc_statement_bind(stmt, list(42))
    result <- adbc_statement_execute_query(stmt) |>
      tibble::as_tibble()
-
-Installing Drivers
-==================
-
-You'll need to install an ADBC driver for the database you want to connect to. The easiest way is using `dbc <https://docs.columnar.tech/dbc>`_:
-
-.. code-block:: shell
-
-   # Install dbc
-   curl -fsSL https://dbc.sh | sh
-
-   # Install a driver (e.g., PostgreSQL)
-   dbc install postgresql
-
-You can also build drivers from source or use other installation methods. See the :doc:`driver documentation </driver/index>` for more details.
 
 Next Steps
 ==========
