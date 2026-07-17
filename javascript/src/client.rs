@@ -22,10 +22,14 @@ use std::sync::mpsc;
 
 use adbc_core::{
   Connection, Database, Driver, LOAD_FLAG_DEFAULT, Optionable, Statement,
+  error::{Error as AdbcError, Status},
   options::{
     AdbcVersion, InfoCode, ObjectDepth, OptionConnection, OptionDatabase, OptionStatement,
     OptionValue,
   },
+};
+use adbc_driver_manager::profile::{
+  ConnectionProfile, ConnectionProfileProvider, FilesystemProfileProvider,
 };
 use adbc_driver_manager::{ManagedConnection, ManagedDatabase, ManagedDriver, ManagedStatement};
 use arrow_array::RecordBatchReader;
@@ -108,12 +112,28 @@ impl AdbcDatabaseCore {
       None
     };
 
-    let database = if let Some(uri) = profile_uri {
-      let provider = adbc_driver_manager::profile::FilesystemProfileProvider::new_with_search_paths(
-        profile_search_paths,
-      );
+    let database = if let Some(ref uri) = profile_uri {
+      let provider = FilesystemProfileProvider::new_with_search_paths(profile_search_paths);
+
+      // If driver is also specified, validate it agrees with the profile's driver.
+      // The C driver manager errors on disagreement; we replicate that here until
+      // the Rust driver manager gains native support for this validation.
+      if let Some(ref driver) = opts.driver {
+        let profile_name = uri.trim_start_matches("profile://");
+        let profile = provider.clone().get_profile(profile_name)?;
+        let (profile_driver, _) = profile.get_driver_name()?;
+        if !driver.is_empty() && driver != profile_driver {
+          return Err(ClientError::Adbc(AdbcError::with_message_and_status(
+            format!(
+              "profile specifies driver `{profile_driver}` which does not match requested driver `{driver}`"
+            ),
+            Status::InvalidArguments,
+          )));
+        }
+      }
+
       ManagedDatabase::from_uri_with_profile_provider(
-        &uri,
+        uri,
         entrypoint.as_deref(),
         version,
         load_flags,

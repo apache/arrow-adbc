@@ -213,8 +213,8 @@ pub struct _NativeAdbcDatabase {
 #[napi]
 impl _NativeAdbcDatabase {
   #[napi(constructor)]
-  pub fn new(opts: _NativeConnectOptions) -> Result<Self> {
-    let db = CoreDatabase::new(opts.into()).map_err(to_napi_err)?;
+  pub fn new(env: Env, opts: _NativeConnectOptions) -> Result<Self> {
+    let db = CoreDatabase::new(opts.into()).map_err(|e| sync_adbc_err(e, env))?;
     Ok(Self {
       inner: Some(Arc::new(db)),
     })

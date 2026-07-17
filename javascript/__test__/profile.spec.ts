@@ -20,7 +20,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs'
 import { join, isAbsolute } from 'node:path'
 import { tmpdir } from 'node:os'
-import { AdbcDatabase } from '../lib/index.js'
+import { AdbcDatabase, AdbcError } from '../lib/index.js'
 
 const testLib = process.env.ADBC_DRIVER_MANAGER_TEST_LIB
 
@@ -197,6 +197,34 @@ test('profile: error when profile key and profile:// uri are both provided', asy
       return true
     },
   )
+})
+
+test('profile: driver disagreeing with profile errors', async () => {
+  const driver = testLib ?? 'sqlite'
+  const tmpDir = mkdtempSync(join(tmpdir(), 'adbc-profile-test-'))
+  try {
+    writeProfileToml(tmpDir, 'my_profile', driver)
+
+    assert.throws(
+      () =>
+        new AdbcDatabase({
+          driver: 'some_other_driver',
+          databaseOptions: { profile: 'my_profile' },
+          profileSearchPaths: [tmpDir],
+        }),
+      (err: unknown) => {
+        assert.ok(err instanceof AdbcError)
+        assert.strictEqual(err.code, 'InvalidArguments')
+        assert.strictEqual(
+          err.message,
+          `profile specifies driver \`${driver}\` which does not match requested driver \`some_other_driver\``,
+        )
+        return true
+      },
+    )
+  } finally {
+    rmSync(tmpDir, { recursive: true })
+  }
 })
 
 test('profile: error when driver is omitted and neither uri nor profile is present', async () => {
