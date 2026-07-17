@@ -33,14 +33,11 @@ overall approach.
 .. _libpq: https://www.postgresql.org/docs/current/libpq.html
 .. _pgeon: https://github.com/0x0L/pgeon
 
-.. note:: Older versions (<=1.11.0) of this driver had experimental support for
-          Amazon Redshift. As Redshift does not support reading or writing COPY
-          in PostgreSQL binary format, however, the optimizations that
-          accelerate queries are not enabled when connecting to Redshift. There
-          may also be other differences in functionality. For Redshift, we
+.. note:: Some older versions (<=1.11.0) of this driver had experimental
+          support for Amazon Redshift, but this was removed in 1.11.0.  We
           recommend using the `Redshift-specific driver
           <https://docs.adbc-drivers.org/drivers/redshift/>`__ from the ADBC
-          Driver Foundry.
+          Driver Foundry (a third party).
 
 Installation
 ============
