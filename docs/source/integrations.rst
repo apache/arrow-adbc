@@ -150,13 +150,13 @@ The Go ADBC client library provides an adapter so ADBC drivers can be used throu
    import (
        "database/sql"
        "github.com/apache/arrow-adbc/go/adbc/sqldriver"
-       "github.com/apache/arrow-adbc/go/adbc/driver/flightsql"
+       "github.com/apache/arrow-adbc/go/adbc/drivermgr"
    )
 
-   // Register the ADBC driver as a database/sql driver
-   sql.Register("flightsql", sqldriver.Driver{Driver: flightsql.NewDriver()})
+   // Register the ADBC driver manager as a database/sql driver.
+   sql.Register("flightsql", sqldriver.Driver{Driver: &drivermgr.Driver{}})
 
-   db, err := sql.Open("flightsql", "grpc://localhost:32010")
+   db, err := sql.Open("flightsql", "uri=grpc://localhost:12345")
 
 See the `Go documentation <https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc>`_ for full details.
 
@@ -165,14 +165,15 @@ See the `Go documentation <https://pkg.go.dev/github.com/apache/arrow-adbc/go/ad
 pandas
 ======
 
-`pandas <https://pandas.pydata.org>`_ can read query results from any ADBC driver via the ``adbc_driver_manager`` package. Because ADBC transfers data as Arrow, the conversion to a pandas ``DataFrame`` is efficient and avoids unnecessary copies.
+`pandas <https://pandas.pydata.org>`_ can read query results from any ADBC driver via the ``adbc_driver_manager`` package. Because ADBC collects results as Arrow, the conversion to a pandas ``DataFrame`` is efficient and avoids unnecessary copies.
 
 .. code-block:: python
 
-   import adbc_driver_postgresql.dbapi as pg
+   import adbc_driver_manager.dbapi as dbapi
    import pandas as pd
 
-   with pg.connect("postgresql://localhost:5432/mydb") as conn:
+   # The postgresql driver must be installed first with: dbc install postgresql
+   with dbapi.connect(driver="postgresql", uri="postgresql://localhost:5432/mydb") as conn:
        df = pd.read_sql("SELECT * FROM orders", conn)
 
 ADBC connections are compatible with ``pd.read_sql``, ``pd.read_sql_query``, and ``pd.read_sql_table``.
@@ -188,40 +189,62 @@ Polars
 
 .. code-block:: python
 
+   import adbc_driver_manager.dbapi as dbapi
    import polars as pl
 
-   # Read from a database
-   df = pl.read_database(
-       query="SELECT * FROM orders",
-       connection="postgresql://localhost:5432/mydb",
-       engine="adbc",
-   )
+   # The postgresql driver must be installed first with: dbc install postgresql
+   with dbapi.connect(driver="postgresql", uri="postgresql://localhost:5432/mydb") as conn:
+       # Read from a database
+       df = pl.read_database(
+           query="SELECT * FROM orders",
+           connection=conn,
+       )
 
-   # Write to a database
-   df.write_database(
-       table_name="orders_copy",
-       connection="postgresql://localhost:5432/mydb",
-       engine="adbc",
-   )
+       # Write to a database
+       df.write_database(
+           table_name="orders_copy",
+           connection=conn,
+       )
 
 See the `Polars database documentation <https://docs.pola.rs/user-guide/io/database/>`_ for more details.
 
 ----
 
-dplyr
-=====
+R adbi
+======
+
+In R, the `adbi <https://adbi.r-dbi.org>`_ package provides a `DBI <https://github.com/r-dbi>`_ compliant interface to ADBC drivers.
+
+.. code-block:: r
+
+    library(DBI)
+
+    # Create an SQLite connection via adbi
+    con <- dbConnect(adbi::adbi(adbcdrivermanager::adbc_driver("sqlite")))
+
+    # Write a data.frame to a table in SQLite
+    dbWriteTable(con, "swiss", datasets::swiss)
+
+    # Query it back
+    dbGetQuery(con, "SELECT * from swiss WHERE Agriculture < 40")
+
+    # Take advantage of DBI's Arrow extension API to return results as Arrow (using nanoarrow)
+    dbGetQueryArrow(con, "SELECT * from swiss WHERE Agriculture < 40")
+
+R dplyr
+=======
 
 In R, `dplyr <https://dplyr.tidyverse.org>`_ accesses databases through the `DBI <https://dbi.r-dbi.org>`_ interface. The ``adbcdrivermanager`` package provides a DBI-compatible backend so you can use any ADBC driver with dplyr and ``dbplyr``.
 
 .. code-block:: r
 
-   library(adbcdrivermanager)
+   library(adbi)
    library(dplyr)
 
-   con <- adbc_driver("postgresql") |>
-     adbc_database_init(uri = "postgresql://localhost:5432/mydb") |>
-     adbc_connection_init() |>
-     as_adbc_dbi_connection()
+   con <- DBI::dbConnect(
+     adbi(adbcdrivermanager::adbc_driver("postgresql")),
+     uri = "postgresql://localhost:5432/mydb"
+   )
 
    orders <- tbl(con, "orders") |>
      filter(status == "shipped") |>
@@ -257,4 +280,4 @@ The adapter supports standard Active Record operations including queries, associ
 Add Your Own Here
 =================
 
-Using ADBC with a tool not listed here? Contributions to this page are welcome—open a pull request on `GitHub <https://github.com/apache/arrow-adbc>`_.
+Know of an integratoin or tool not listed here? Contributions to this page are welcome via pull requests on `GitHub <https://github.com/apache/arrow-adbc>`_.
