@@ -275,9 +275,7 @@ public use under a permissive license, and would like it listed here,
 Apache Arrow ADBC repository with the details (name, database, repository URL,
 package names) and we'll help get it added.
 
-If you're interested in developing a new driver, consider reaching out to the
-`ADBC Driver Foundry <https://github.com/adbc-drivers/>`__ and see their
-`Building Drivers <https://docs.adbc-drivers.org/building-drivers/>`__ guide.
+Interested in developing a new driver? See :doc:`Writing New Drivers <authoring>`.
 
 More Information
 ================
