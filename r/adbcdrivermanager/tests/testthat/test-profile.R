@@ -39,6 +39,53 @@ write_profile <- function(dir, name) {
   path
 }
 
+write_test_driver_manifest <- function(dir, name) {
+  driver_path <- adbcdrivermanager_shared()
+  content <- sprintf(
+    "
+manifest_version = 1
+
+[ADBC]
+version = 'v1.1.0'
+
+[Driver]
+shared = '%s'
+entrypoint = 'AdbcTestVoidDriverInit'
+",
+    driver_path
+  )
+  path <- file.path(dir, paste0(name, ".toml"))
+  writeLines(content, path)
+  path
+}
+
+test_that("can initialize a database using a profile", {
+  dir <- tempfile()
+  dir.create(dir)
+  on.exit(unlink(dir, recursive = TRUE))
+
+  manifest_path <- write_test_driver_manifest(dir, "test_driver")
+  profile_path <- file.path(dir, "test_profile.toml")
+  writeLines(
+    c(
+      "profile_version = 1",
+      sprintf("driver = '%s'", manifest_path),
+      "",
+      "[Options]",
+      "profile_option = 'profile value'"
+    ),
+    profile_path
+  )
+
+  db <- adbc_database_init(profile = profile_path)
+  on.exit(adbc_database_release(db), add = TRUE)
+
+  expect_identical(
+    adbc_database_get_option(db, "profile_option"),
+    "profile value"
+  )
+})
+
 test_that("can load a profile by absolute path via 'profile' option", {
   dir <- tempfile()
   dir.create(dir)
@@ -48,7 +95,6 @@ test_that("can load a profile by absolute path via 'profile' option", {
 
   expect_error(
     adbc_database_init(
-      adbc_driver_for_profile(),
       profile = profile_path
     ),
     regexp = "nonexistent"
@@ -64,7 +110,6 @@ test_that("can load a profile by name via additional_profile_search_path_list", 
 
   expect_error(
     adbc_database_init(
-      adbc_driver_for_profile(),
       profile = "myprofile",
       additional_profile_search_path_list = dir
     ),
@@ -83,7 +128,6 @@ test_that("can load a profile by name via ADBC_PROFILE_PATH env var", {
     list(ADBC_PROFILE_PATH = dir),
     expect_error(
       adbc_database_init(
-        adbc_driver_for_profile(),
         profile = "myprofile"
       ),
       regexp = "nonexistent"
@@ -100,9 +144,21 @@ test_that("can load a profile via profile:// URI in 'uri' option", {
 
   expect_error(
     adbc_database_init(
-      adbc_driver_for_profile(),
       uri = paste0("profile://", profile_path)
     ),
+    regexp = "nonexistent"
+  )
+})
+
+test_that("can load a profile via profile:// URI in 'driver' argument", {
+  dir <- tempfile()
+  dir.create(dir)
+  on.exit(unlink(dir, recursive = TRUE))
+
+  profile_path <- write_profile(dir, "myprofile")
+
+  expect_error(
+    adbc_database_init(paste0("profile://", profile_path)),
     regexp = "nonexistent"
   )
 })
@@ -121,6 +177,12 @@ test_that("can load a profile via profile:// URI in 'driver' option", {
     ),
     regexp = "nonexistent"
   )
+})
+
+test_that("character driver must be one non-missing string", {
+  expect_snapshot(error = TRUE, adbc_database_init(character()))
+  expect_snapshot(error = TRUE, adbc_database_init(c("one", "two")))
+  expect_snapshot(error = TRUE, adbc_database_init(NA_character_))
 })
 
 test_that("missing profile returns an error", {
