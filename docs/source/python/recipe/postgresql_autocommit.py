@@ -26,12 +26,12 @@
 
 import os
 
-import adbc_driver_postgresql.dbapi
+from adbc_driver_manager import dbapi
 
 uri = os.environ["ADBC_POSTGRESQL_TEST_URI"]
 
 # Enable autocommit mode
-conn = adbc_driver_postgresql.dbapi.connect(uri, autocommit=True)
+conn = dbapi.connect("postgresql", uri, autocommit=True)
 
 with conn.cursor() as cur:
     # In autocommit mode, this statement is automatically committed

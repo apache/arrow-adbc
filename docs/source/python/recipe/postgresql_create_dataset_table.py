@@ -31,10 +31,10 @@ import pyarrow.dataset
 import pyarrow.feather
 import pyarrow.parquet
 
-import adbc_driver_postgresql.dbapi
+from adbc_driver_manager import dbapi
 
 uri = os.environ["ADBC_POSTGRESQL_TEST_URI"]
-conn = adbc_driver_postgresql.dbapi.connect(uri)
+conn = dbapi.connect("postgresql", uri)
 
 #: For the purposes of testing, we'll first make sure the tables we're about
 #: to use don't exist.

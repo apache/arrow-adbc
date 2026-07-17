@@ -131,10 +131,10 @@ nitpick_ignore = [
 
 doctest_global_setup = """
 try:
-    import adbc_driver_sqlite
-    import adbc_driver_sqlite.dbapi  # noqa: F401
+    import adbc_driver_manager
+    import adbc_driver_manager.dbapi  # noqa: F401
 except ImportError:
-    adbc_driver_sqlite = None
+    adbc_driver_manager = None
 """
 
 # -- Options for HTML output -------------------------------------------------

@@ -27,11 +27,8 @@
 import pyarrow
 
 import adbc_driver_manager
-import adbc_driver_sqlite
 
-#: The driver packages do still have conveniences to create the root
-#: :class:`AdbcDatabase <adbc_driver_manager.AdbcDatabase>` object.
-db: adbc_driver_manager.AdbcDatabase = adbc_driver_sqlite.connect()
+db: adbc_driver_manager.AdbcDatabase = adbc_driver_manager.AdbcDatabase(driver="sqlite")
 #: The database must then be wrapped in a :class:`AdbcConnection
 #: <adbc_driver_manager.AdbcConnection>`.  This is similar in scope to the
 #: DB-API :class:`Connection <adbc_driver_manager.dbapi.Connection>` class.

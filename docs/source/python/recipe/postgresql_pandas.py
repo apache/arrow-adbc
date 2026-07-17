@@ -31,10 +31,10 @@ import os
 
 import pandas as pd
 
-import adbc_driver_postgresql.dbapi
+from adbc_driver_manager import dbapi
 
 uri = os.environ["ADBC_POSTGRESQL_TEST_URI"]
-conn = adbc_driver_postgresql.dbapi.connect(uri)
+conn = dbapi.connect("postgresql", uri)
 
 #: We'll use :external:py:meth:`pd.DataFrame.to_sql <pandas.DataFrame.to_sql>`
 #: to create a sample table.
