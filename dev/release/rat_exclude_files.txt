@@ -25,6 +25,7 @@ csharp/*.props
 dev/release/rat_exclude_files.txt
 docs/source/format/*.drawio
 docs/source/format/*.svg
+docs/source/_static/*.svg
 docs/source/*/*.stdout.txt
 filtered_rat.txt
 go/adbc/drivermgr/arrow-adbc/adbc.h
