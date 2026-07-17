@@ -48,7 +48,7 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">adbc_database_init</span><span class="op">(</span><span class="va">driver</span>, <span class="va">...</span><span class="op">)</span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">adbc_database_init</span><span class="op">(</span>driver <span class="op">=</span> <span class="cn">NULL</span>, <span class="va">...</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu">adbc_database_init_default</span><span class="op">(</span><span class="va">driver</span>, options <span class="op">=</span> <span class="cn">NULL</span>, subclass <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/character.html" class="external-link">character</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -70,12 +70,22 @@
 
 
 <dl><dt id="arg-driver">driver<a class="anchor" aria-label="anchor" href="#arg-driver"></a></dt>
-<dd><p>An <code><a href="adbc_driver_void.html">adbc_driver()</a></code>.</p></dd>
+<dd><p>The driver to use. This can be one of the following:</p><ul><li><p>A non-missing <code>character(1)</code> containing a driver or manifest name, a
+relative or absolute path to a driver or manifest, or a URI. For a URI,
+the driver manager uses the URI scheme as the driver name and passes the
+URI to that driver. A <code>profile://</code> URI loads a connection profile.</p></li>
+<li><p><code>NULL</code>, which leaves driver selection to the driver manager. In this
+case, <code>...</code> must normally contain <code>uri</code> or <code>profile</code>; the driver is
+inferred from the URI or loaded from the connection profile.</p></li>
+<li><p>An object that inherits from the <code>adbc_driver</code> class, such as one created
+by <code><a href="adbc_driver_void.html">adbc_driver()</a></code>. This includes drivers provided by R packages, such as
+<code><a href="https://arrow.apache.org/adbc/current/r/adbcsqlite/reference/adbcsqlite.html" class="external-link">adbcsqlite::adbcsqlite()</a></code>.</p></li>
+</ul></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Driver-specific options. For the default method, these are
-named values that are converted to strings.</p></dd>
+<dd><p>Driver-specific options. These are generally named values that
+are converted to strings.</p></dd>
 
 
 <dt id="arg-options">options<a class="anchor" aria-label="anchor" href="#arg-options"></a></dt>
@@ -100,11 +110,42 @@ finer-grained control over behaviour at the R level.</p></dd>
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
     <p>An object of class adbc_database</p>
     </div>
+    <div class="section level2">
+    <h2 id="driver-inference-and-connection-profiles">Driver inference and connection profiles<a class="anchor" aria-label="anchor" href="#driver-inference-and-connection-profiles"></a></h2>
+
+
+<p>A driver can be selected by name, inferred from a URI, or loaded from a
+connection profile:</p>
+<p></p><div class="sourceCode r"><pre><code><span><span class="co"># Load a driver by name and pass it a URI</span></span>
+<span><span class="fu"><a href="../reference/adbc_database_init.html">adbc_database_init</a></span><span class="op">(</span><span class="st">"postgresql"</span>, uri <span class="op">=</span> <span class="st">"postgresql://localhost/database"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Infer "postgresql" from the URI scheme</span></span>
+<span><span class="fu"><a href="../reference/adbc_database_init.html">adbc_database_init</a></span><span class="op">(</span>uri <span class="op">=</span> <span class="st">"postgresql://localhost/database"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Load a named or absolute-path connection profile</span></span>
+<span><span class="fu"><a href="../reference/adbc_database_init.html">adbc_database_init</a></span><span class="op">(</span>profile <span class="op">=</span> <span class="st">"myprofile"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Equivalently, use a profile URI as the driver or URI</span></span>
+<span><span class="fu"><a href="../reference/adbc_database_init.html">adbc_database_init</a></span><span class="op">(</span><span class="st">"profile://myprofile"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/adbc_database_init.html">adbc_database_init</a></span><span class="op">(</span>uri <span class="op">=</span> <span class="st">"profile://myprofile"</span><span class="op">)</span></span></code></pre><p></p></div>
+<p>A minimal connection profile is a TOML file containing a driver and its
+database options:</p>
+<p></p><div class="sourceCode toml"><pre><code><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="dt">profile_version</span> <span class="op">=</span> <span class="dv">1</span></span>
+<span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="dt">driver</span> <span class="op">=</span> <span class="st">"postgresql"</span></span>
+<span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a></span>
+<span id="cb1-4"><a href="#cb1-4" tabindex="-1"></a><span class="kw">[Options]</span></span>
+<span id="cb1-5"><a href="#cb1-5" tabindex="-1"></a><span class="dt">uri</span> <span class="op">=</span> <span class="st">"postgresql://localhost/database"</span></span></code></pre><p></p></div>
+<p>Named profiles are located using the driver manager's standard profile
+search paths. See the
+<a href="https://arrow.apache.org/adbc/current/connection_profiles.html" class="external-link">ADBC connection profile documentation</a>
+for the file format, search locations, option precedence, and environment
+variable substitution.</p>
+    </div>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="fu">adbc_database_init</span><span class="op">(</span><span class="fu"><a href="adbc_driver_void.html">adbc_driver_void</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;adbc_database at 0x5654f90e3fd0&gt; </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;adbc_database at 0x55698f40d720&gt; </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> List of 1</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  $ driver:&lt;adbc_driver_void&gt; List of 4</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   ..$ load_flags      : int 15</span>

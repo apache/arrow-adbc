@@ -108,8 +108,8 @@ adbc_connection_quote_string(connection, value, ...)
 
 - ...:
 
-  Driver-specific options. For the default method, these are named
-  values that are converted to strings.
+  Driver-specific options. These are generally named values that are
+  converted to strings.
 
 ## Value
 
