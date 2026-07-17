@@ -195,6 +195,7 @@ More Resources
 
 .. toctree::
    :maxdepth: 1
+   :titlesonly:
    :caption: Connect
    :hidden:
 

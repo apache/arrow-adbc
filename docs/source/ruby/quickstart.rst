@@ -128,6 +128,6 @@ Next Steps
 ==========
 
 - Check out the :doc:`Ruby API documentation <index>` for more details
-- See the :doc:`driver status </driver/status>` to see which databases are supported
+- See the :doc:`drivers </driver/index>` to see which databases are supported
 - Explore more examples in the `adbc-quickstarts repository <https://github.com/columnar-tech/adbc-quickstarts/tree/main/ruby>`_
 - Explore the `Ruby source code <https://github.com/apache/arrow-adbc/tree/main/ruby>`_ for additional examples

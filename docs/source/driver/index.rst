@@ -209,7 +209,7 @@ Distributed as .NET packages on NuGet, for use from C#/.NET applications:
    * - `Apache Arrow Flight SQL <https://github.com/apache/arrow-adbc/tree/main/csharp/src/Drivers/FlightSql/README.md>`__
      - :package-badge:`NuGet|Apache.Arrow.Adbc.FlightSql|https://www.nuget.org/packages/Apache.Arrow.Adbc.FlightSql/`
      - ASF
-   * - `Google BigQuery <https://github.com/apache/arrow-adbc/blob/main/csharp/src/Drivers/BigQuery/readme.md>`__
+   * - :doc:`Google BigQuery <./bigquery>`
      - :package-badge:`NuGet|Apache.Arrow.Adbc.Drivers.BigQuery|https://www.nuget.org/packages/Apache.Arrow.Adbc.Drivers.BigQuery/`
      - ASF
    * - `Apache Hive / Impala / Spark <https://github.com/apache/arrow-adbc/blob/main/csharp/src/Drivers/Apache/readme.md>`__
@@ -235,6 +235,12 @@ Distributed as Maven packages, for use from Java applications:
      - Maintainer
    * - `Apache Arrow Flight SQL <https://arrow.apache.org/adbc/current/java/api/org/apache/arrow/adbc/driver/flightsql/package-summary.html>`__
      - :package-badge:`Maven|org.apache.arrow.adbc:adbc-driver-flight-sql|https://central.sonatype.com/artifact/org.apache.arrow.adbc/adbc-driver-flight-sql`
+     - ASF
+   * - :doc:`./jdbc`
+     - :package-badge:`Maven|org.apache.arrow.adbc:adbc-driver-jdbc|https://central.sonatype.com/artifact/org.apache.arrow.adbc/adbc-driver-jdbc`
+     - ASF
+   * - :doc:`../java/jni`
+     - :package-badge:`Maven|org.apache.arrow.adbc:adbc-driver-jni|https://central.sonatype.com/artifact/org.apache.arrow.adbc/adbc-driver-jni`
      - ASF
 
 .. _driver-table-maintainers:
@@ -279,3 +285,8 @@ More Information
 - :doc:`Tools & Integrations <../integrations>` — tools and libraries that work with ADBC
 - :doc:`Connection Profiles <../connection_profiles>` — reusable, shareable connection configuration
 - `ADBC Quickstarts <https://github.com/columnar-tech/adbc-quickstarts>`__ — simple, runnable examples for getting started with many of these drivers
+
+.. toctree::
+   :hidden:
+
+   installation

@@ -1,4 +1,5 @@
 - Make sure we don't create any 404s. For example, installation.rst needs to redirect or exist because GDAL (and probably others) link to it.
+  - https://arrow.apache.org/adbc/current/driver/status.html
 - Verify C# package names in client_libraries.rst: Apache.Arrow.Adbc vs Apache.Arrow.Adbc.Client
 
 From David

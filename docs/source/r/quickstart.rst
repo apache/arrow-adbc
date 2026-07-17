@@ -112,6 +112,6 @@ Next Steps
 ==========
 
 - Check out the :doc:`R API documentation <index>` for more details
-- See the :doc:`driver status </driver/status>` to see which databases are supported
+- See the :doc:`drivers </driver/index>` to see which databases are supported
 - Explore more examples in the `adbc-quickstarts repository <https://github.com/columnar-tech/adbc-quickstarts/tree/main/r>`_
 - Explore the `R source code <https://github.com/apache/arrow-adbc/tree/main/r>`_ for additional examples
