@@ -51,6 +51,19 @@ The Ruby ADBC library requires the native Arrow GLib and ADBC GLib libraries. In
 
    sudo dnf install arrow-glib-devel adbc-glib-devel
 
+**Windows with RubyInstaller/MSYS2 UCRT64:**
+
+.. code-block:: shell
+
+   pacman -S --needed mingw-w64-ucrt-x86_64-arrow mingw-w64-ucrt-x86_64-arrow-adbc-glib
+
+Installing Drivers
+------------------
+
+See :ref:`driver-table-install` for instructions on installing ADBC drivers for
+the database you want to connect to. For the example below, you could install
+`dbc <https://docs.columnar.tech/dbc>`__ and run ``dbc install postgresql``.
+
 Basic Example
 =============
 
@@ -108,13 +121,6 @@ ADBC returns results as Arrow tables, which you can process using the Arrow Ruby
    ensure
      database.release
    end
-
-Installing Drivers
-==================
-
-See :ref:`driver-table-install` for instructions on installing ADBC drivers for
-the database you want to connect to. For the example below, you could install
-`dbc <https://docs.columnar.tech/dbc>`__ and run ``dbc install postgresql``.
 
 Next Steps
 ==========
