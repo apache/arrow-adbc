@@ -134,15 +134,7 @@ See the `databow documentation <https://docs.columnar.tech/databow/>`_ for more 
 GDAL
 ====
 
-`GDAL <https://gdal.org>`_ (Geospatial Data Abstraction Library) supports reading and writing spatial data from databases via ADBC through its `ADBC OGR driver <https://gdal.org/en/stable/drivers/vector/adbc.html>`_. This lets you use any ADBC-compatible database as a vector data source.
-
-.. code-block:: bash
-
-   # List layers in a PostGIS database
-   ogrinfo ADBC:postgresql://localhost:5432/geodata
-
-   # Convert a layer to GeoJSON
-   ogr2ogr output.geojson ADBC:postgresql://localhost:5432/geodata my_spatial_table
+`GDAL <https://gdal.org>`_ (Geospatial Data Abstraction Library) supports reading spatial data from databases via ADBC through its `ADBC OGR driver <https://gdal.org/en/stable/drivers/vector/adbc.html>`_ (added in GDAL 3.11). The driver is read-only. This lets you use any ADBC-compatible database as a vector data source in tools like ``ogrinfo`` and ``ogr2ogr``.
 
 See the `GDAL ADBC driver documentation <https://gdal.org/en/stable/drivers/vector/adbc.html>`_ for full details.
 
