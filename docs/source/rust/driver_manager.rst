@@ -35,14 +35,18 @@ Usage
 .. code-block:: rust
 
     use adbc_core::options::AdbcVersion;
-    use adbc_core::{Database, Driver};
+    use adbc_core::{Database, Driver, LOAD_FLAG_DEFAULT};
     use adbc_driver_manager::ManagedDriver;
 
-    // You must build/locate the driver yourself
-    let mut driver = ManagedDriver::load_dynamic_from_filename(
-        "/PATH/TO/libadbc_driver_sqlite.so",
+    // load_from_name searches for a driver via driver manifest (e.g.
+    // "sqlite.toml"). See the driver manifests documentation for details on
+    // search paths.
+    let mut driver = ManagedDriver::load_from_name(
+        "sqlite",
         None,
         AdbcVersion::default(),
+        LOAD_FLAG_DEFAULT,
+        None,
     )
     .expect("Failed to load driver");
     let db = driver
