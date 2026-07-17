@@ -26,8 +26,8 @@
 
 import os
 
-from adbc_driver_manager import dbapi
 from adbc_driver_flightsql import DatabaseOptions
+from adbc_driver_manager import dbapi
 
 uri = os.environ["ADBC_SQLITE_FLIGHTSQL_URI"]
 

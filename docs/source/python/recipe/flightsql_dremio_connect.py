@@ -24,8 +24,8 @@
 
 import os
 
-from adbc_driver_manager import dbapi
 import adbc_driver_manager
+from adbc_driver_manager import dbapi
 
 uri = os.environ["ADBC_DREMIO_FLIGHTSQL_URI"]
 username = os.environ["ADBC_DREMIO_FLIGHTSQL_USER"]

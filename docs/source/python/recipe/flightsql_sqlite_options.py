@@ -21,8 +21,8 @@
 
 import os
 
-from adbc_driver_manager import dbapi
 from adbc_driver_flightsql import ConnectionOptions, DatabaseOptions
+from adbc_driver_manager import dbapi
 
 uri = os.environ["ADBC_SQLITE_FLIGHTSQL_URI"]
 #: We can enable cookie support, which some server implementations require.

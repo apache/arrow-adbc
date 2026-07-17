@@ -23,8 +23,8 @@
 
 import os
 
-from adbc_driver_manager import dbapi
 from adbc_driver_flightsql import DatabaseOptions, OAuthFlowType
+from adbc_driver_manager import dbapi
 
 uri = os.environ["ADBC_TEST_FLIGHTSQL_URI"]
 token_uri = os.environ["ADBC_OAUTH_TOKEN_URI"]
