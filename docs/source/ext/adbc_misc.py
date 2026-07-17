@@ -20,7 +20,6 @@
 import collections
 import dataclasses
 import functools
-import itertools
 import typing
 from pathlib import Path
 
@@ -258,97 +257,8 @@ class DriverStatusDirective(SphinxDirective):
 
         generated_lines = [
             f":bdg-primary:`Language: {status.implementation}`",
-            f":bdg-ref-{status.badge_type}:`Status: {status.status} <driver-status>`",
+            f":bdg-{status.badge_type}:`Status: {status.status}`",
         ]
-
-        parsed = docutils.nodes.Element()
-        nested_parse_with_titles(
-            self.state,
-            StringList(generated_lines, source=""),
-            parsed,
-        )
-        return parsed.children
-
-
-class DriverStatusTableDirective(SphinxDirective):
-    has_content = True
-    required_arguments = 0
-    optional_arguments = 0
-    option_spec: OptionSpec = {}
-
-    def run(self):
-        table = []
-        for line in self.content:
-            if "=>" in line:
-                xref, _, path = line.partition("=>")
-                xref = xref.strip()
-                path = path.strip()
-            else:
-                xref = None
-                path = line.strip()
-
-            if "[#" in path:
-                footnote = path[path.index("[#") + 2 : -1].strip()
-                path = path[: path.index("[#")].strip()
-            else:
-                footnote = None
-
-            rel_filename, filename = self.env.relfn2path(path)
-            self.env.note_dependency(rel_filename)
-
-            path = Path(filename).resolve()
-            status = driver_status(path)
-            table.append((status, xref, footnote))
-
-        table.sort(key=lambda x: (x[0].vendor, x[0].implementation))
-
-        generated_lines = [
-            ".. list-table::",
-            "   :header-rows: 1",
-            "",
-            "   * - Vendor",
-            "     - Implementation",
-            "     - :ref:`driver-status`",
-            "     - Packages [#packages]_",
-            "",
-        ]
-        for row in table:
-            if row[1]:
-                generated_lines.append(f"   * - :doc:`{row[0].vendor} <{row[1]}>`")
-            else:
-                generated_lines.append(f"   * - {row[0].vendor}")
-
-            if row[2]:
-                generated_lines[-1] += f" [#{row[2]}]_"
-
-            generated_lines.append(f"     - {row[0].implementation}")
-            generated_lines.append(f"     - {row[0].status}")
-
-            generated_lines.append("     -")
-            packages = itertools.groupby(
-                sorted(row[0].packages, key=lambda x: x[0].lower()),
-                key=lambda x: x[0],
-            )
-            for repo, group in packages:
-                group = list(group)
-                if generated_lines[-1][-1] == "-":
-                    generated_lines[-1] += " "
-                else:
-                    generated_lines[-1] += ", "
-
-                if len(group) == 1:
-                    generated_lines[-1] += f"`{repo} <{group[0][2]}>`__"
-                else:
-                    links = ", ".join(f"`{pkg[1]} <{pkg[2]}>`__" for pkg in group)
-                    generated_lines[-1] += f"{repo} ({links})"
-            generated_lines.append("")
-
-        generated_lines.extend(
-            [
-                "",
-                ".. [#packages] This lists only packages available in package repositories.  However, as noted above, many of these drivers can be used from languages not listed via the driver manager, even if a package is not yet available.",  # noqa:E501
-            ]
-        )
 
         parsed = docutils.nodes.Element()
         nested_parse_with_titles(
@@ -425,7 +335,6 @@ def iconlink_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
 def setup(app) -> None:
     app.add_directive("adbc_driver_installation", DriverInstallationDirective)
     app.add_directive("adbc_driver_status", DriverStatusDirective)
-    app.add_directive("adbc_driver_status_table", DriverStatusTableDirective)
     app.add_role("package-badge", package_badge_role)
     app.add_role("iconlink", iconlink_role)
 

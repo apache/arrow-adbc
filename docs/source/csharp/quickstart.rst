@@ -162,6 +162,6 @@ Next Steps
 ==========
 
 - Check out the :doc:`C#/.NET API documentation <index>` for more details
-- See the :doc:`driver status </driver/status>` to see which databases are supported
+- See the :doc:`drivers </driver/index>` to see which databases are supported
 - Explore more examples in the `adbc-quickstarts repository <https://github.com/columnar-tech/adbc-quickstarts/tree/main/csharp>`_
 - Explore the `C# source code <https://github.com/apache/arrow-adbc/tree/main/csharp>`_ for additional examples

@@ -34,7 +34,7 @@ Installation
 
 .. note::
 
-   See individual driver pages in the sidebar for specific installation instructions.
+   This page describes how to install the official release from the Apache Arrow project. Most drivers are distributed by third parties; see :doc:`./index`.
 
 Source
 ======

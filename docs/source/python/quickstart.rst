@@ -201,6 +201,6 @@ Next Steps
 ==========
 
 - Check out the :doc:`Python API documentation <index>` for more details
-- See the :doc:`driver status </driver/status>` to see which databases are supported
+- See the :doc:`drivers </driver/index>` to see which databases are supported
 - Explore more examples in the `adbc-quickstarts repository <https://github.com/columnar-tech/adbc-quickstarts/tree/main/python>`_
 - Explore the `Python source code <https://github.com/apache/arrow-adbc/tree/main/python>`_ for additional examples

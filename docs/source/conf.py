@@ -60,6 +60,7 @@ extensions = [
     "sphinx_copybutton",
     "sphinx_design",
     "sphinxext.opengraph",
+    "sphinx_reredirects",
 ]
 templates_path = ["_templates"]
 
@@ -198,3 +199,9 @@ if "dev" in release:
 else:
     ogp_site_url = f"https://arrow.apache.org/adbc/{release}/"
 ogp_image = "_static/banner.png"
+
+# -- Options for sphinx_reredirects ------------------------------------------
+
+redirects = {
+    "driver/status": "./index.html",
+}
