@@ -31,15 +31,7 @@ test_recipe() {
 
     export DYLD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib"
     export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:${install_dir}/lib"
-    export ADBC_DRIVER_PATH="${install_dir}/lib"
     export GOEXPERIMENT=cgocheck2
-
-    # Create a manifest so the C++ example can find SQLite via just "sqlite"
-    cat <<EOF > "${install_dir}/lib/sqlite.toml"
-manifest_version = 1
-[Driver]
-shared = "adbc_driver_sqlite"
-EOF
 
     rm -rf "${build_dir}"
     mkdir -p "${build_dir}"

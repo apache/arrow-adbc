@@ -710,6 +710,20 @@ jobs:
         run: |
           pip install python-dotenv[cli]
           python -m dotenv -f .env list --format simple | tee -a $GITHUB_ENV
+      - name: Create manifests
+        run: |
+          # Create manifests so the C++ examples/doctests can find SQLite via
+          # just "sqlite" (and so on)
+          mkdir -p ~/.config/adbc/drivers
+          for d in flightsql postgresql sqlite; do
+            cat <<EOF > "~/.config/adbc/drivers/$d.toml"
+            manifest_version = 1
+            [Driver]
+            shared = "adbc_driver_$d"
+            EOF
+          done
+          ls ~/.config/adbc/drivers
+          cat ~/.config/adbc/drivers/*.toml
       - name: Test Recipes (C++)
         run: |
           ./ci/scripts/cpp_recipe.sh $(pwd) ~/local build/recipe
@@ -721,12 +735,6 @@ jobs:
             docs/source/cpp/recipe/*.cc \
             docs/source/cpp/recipe_driver/driver_example.py \
             docs/source/python/recipe/*.py
-      - name: Install ADBC drivers via dbc
-        run: |
-          pip install dbc
-          python -m dbc install --level user sqlite
-          python -m dbc install --level user postgresql
-          python -m dbc install --level user flightsql
       - name: Test Recipes (Python)
         run: |
           docker compose up --detach --wait dremio flightsql-sqlite-test postgres-test gizmosql-test oauth-server flightsql-test
