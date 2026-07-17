@@ -189,7 +189,7 @@ Language-Specific Drivers
 Some drivers are built and packaged for a specific language or runtime rather
 than as dynamically loadable shared libraries. They run directly on that runtime,
 without crossing an FFI / ABI boundary, and are distributed through its package
-registry. They can be used from any language that targets that runtime — for
+registry. They can be used from any language that targets that runtime. For
 example, the .NET drivers work from C#, F#, and other .NET languages, and the
 Java driver works from Java, Kotlin, Scala, and other JVM languages.
 
