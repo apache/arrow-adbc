@@ -43,7 +43,7 @@ To use any driver with the JavaScript driver manager, you need the driver's
 shared library on your machine.
 
 The easiest way to get it is with `dbc <https://docs.columnar.tech/dbc/>`__,
-which installs prebuilt driver binaries from the `ADBC Driver Registry
+which installs prebuilt driver binaries from Columnar's `ADBC driver registry
 <https://dbc-cdn.columnar.tech>`__:
 
 .. code-block:: shell
