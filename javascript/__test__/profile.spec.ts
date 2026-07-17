@@ -141,11 +141,55 @@ test('profile: omit driver, load from bare profile name in databaseOptions.profi
   }
 })
 
+test('profile: driver + databaseOptions.profile loads from profile', async () => {
+  const driver = testLib ?? 'sqlite'
+  const tmpDir = mkdtempSync(join(tmpdir(), 'adbc-profile-test-'))
+  try {
+    writeProfileToml(tmpDir, 'my_profile', driver)
+
+    const db = new AdbcDatabase({
+      driver,
+      databaseOptions: { profile: 'my_profile' },
+      profileSearchPaths: [tmpDir],
+    })
+    const conn = await db.connect()
+
+    await conn.query('SELECT 1 AS n')
+
+    await conn.close()
+    await db.close()
+  } finally {
+    rmSync(tmpDir, { recursive: true })
+  }
+})
+
+test('profile: driver + databaseOptions.uri profile:// loads from profile', async () => {
+  const driver = testLib ?? 'sqlite'
+  const tmpDir = mkdtempSync(join(tmpdir(), 'adbc-profile-test-'))
+  try {
+    writeProfileToml(tmpDir, 'my_profile', driver)
+
+    const db = new AdbcDatabase({
+      driver,
+      databaseOptions: { uri: 'profile://my_profile' },
+      profileSearchPaths: [tmpDir],
+    })
+    const conn = await db.connect()
+
+    await conn.query('SELECT 1 AS n')
+
+    await conn.close()
+    await db.close()
+  } finally {
+    rmSync(tmpDir, { recursive: true })
+  }
+})
+
 test('profile: error when profile key and profile:// uri are both provided', async () => {
   assert.throws(
     () =>
       new AdbcDatabase({
-        databaseOptions: { profile: 'p1', uri: 'profile://p2' } as any,
+        databaseOptions: { profile: 'p1', uri: 'profile://p2' },
       }),
     (err: unknown) => {
       assert.ok(err instanceof Error)
@@ -157,6 +201,7 @@ test('profile: error when profile key and profile:// uri are both provided', asy
 
 test('profile: error when driver is omitted and neither uri nor profile is present', async () => {
   assert.throws(
+    // @ts-expect-error — intentionally invalid: neither uri nor profile present
     () => new AdbcDatabase({ databaseOptions: { username: 'foo' } }),
     (err: unknown) => {
       assert.ok(err instanceof Error)

@@ -87,78 +87,88 @@ impl AdbcDatabaseCore {
       .profile_search_paths
       .map(|paths| paths.into_iter().map(PathBuf::from).collect());
 
-    let database = match opts.driver {
-      Some(ref driver) if driver.contains(':') => {
-        let database_opts = opts.database_options.map(map_database_options);
-        let provider =
-          adbc_driver_manager::profile::FilesystemProfileProvider::new_with_search_paths(
-            profile_search_paths,
-          );
-        // URI-style ("sqlite:file::memory:") or profile URI ("profile://my_profile")
-        ManagedDatabase::from_uri_with_profile_provider(
-          driver,
-          entrypoint.as_deref(),
-          version,
-          load_flags,
-          manifest_search_paths,
-          provider,
-          database_opts.into_iter().flatten(),
-        )?
+    let mut raw_opts = opts.database_options.unwrap_or_default();
+    let profile_uri: Option<String> = if let Some(profile) = raw_opts.remove("profile") {
+      if raw_opts
+        .get("uri")
+        .is_some_and(|u| u.starts_with("profile://"))
+      {
+        return Err(ClientError::Other(
+          "multiple profile sources: databaseOptions.profile and a profile:// URI in databaseOptions.uri are mutually exclusive"
+            .to_string(),
+        ));
       }
-      Some(ref driver) => {
-        let database_opts = opts.database_options.map(map_database_options);
-        // Short name ("sqlite") or absolute path
-        let mut drv = ManagedDriver::load_from_name(
-          driver,
-          entrypoint.as_deref(),
-          version,
-          load_flags,
-          manifest_search_paths,
-        )?;
-        match database_opts {
-          Some(db_opts) => drv.new_database_with_opts(db_opts)?,
-          None => drv.new_database()?,
+      Some(format!("profile://{profile}"))
+    } else if raw_opts
+      .get("uri")
+      .is_some_and(|u| u.starts_with("profile://"))
+    {
+      Some(raw_opts.remove("uri").unwrap())
+    } else {
+      None
+    };
+
+    let database = if let Some(uri) = profile_uri {
+      let provider = adbc_driver_manager::profile::FilesystemProfileProvider::new_with_search_paths(
+        profile_search_paths,
+      );
+      ManagedDatabase::from_uri_with_profile_provider(
+        &uri,
+        entrypoint.as_deref(),
+        version,
+        load_flags,
+        manifest_search_paths,
+        provider,
+        map_database_options(raw_opts),
+      )?
+    } else {
+      match opts.driver {
+        Some(ref driver) if driver.contains(':') => {
+          let provider =
+            adbc_driver_manager::profile::FilesystemProfileProvider::new_with_search_paths(
+              profile_search_paths,
+            );
+          ManagedDatabase::from_uri_with_profile_provider(
+            driver,
+            entrypoint.as_deref(),
+            version,
+            load_flags,
+            manifest_search_paths,
+            provider,
+            map_database_options(raw_opts),
+          )?
         }
-      }
-      None => {
-        // No explicit driver: resolve the URI from databaseOptions.
-        // Supports the same three mechanisms as other ADBC driver managers:
-        //   { uri: "sqlite:file::memory:" }     — scheme identifies the driver
-        //   { uri: "profile://my_profile" }     — profile:// URI
-        //   { profile: "my_profile" }           — bare profile name (spec-defined key)
-        let mut raw_opts = opts.database_options.unwrap_or_default();
-        let uri = if let Some(profile) = raw_opts.remove("profile") {
-          if raw_opts
-            .get("uri")
-            .is_some_and(|u| u.starts_with("profile://"))
-          {
+        Some(ref driver) => {
+          let mut drv = ManagedDriver::load_from_name(
+            driver,
+            entrypoint.as_deref(),
+            version,
+            load_flags,
+            manifest_search_paths,
+          )?;
+          drv.new_database_with_opts(map_database_options(raw_opts))?
+        }
+        None => {
+          let Some(uri) = raw_opts.remove("uri") else {
             return Err(ClientError::Other(
-              "multiple profile sources: databaseOptions.profile and a profile:// URI in databaseOptions.uri are mutually exclusive"
+              "driver is required unless databaseOptions.uri or databaseOptions.profile is provided"
                 .to_string(),
             ));
-          }
-          format!("profile://{profile}")
-        } else if let Some(uri) = raw_opts.remove("uri") {
-          uri
-        } else {
-          return Err(ClientError::Other(
-            "driver is required unless databaseOptions.uri or databaseOptions.profile is provided"
-              .to_string(),
-          ));
-        };
-        let provider =
-          adbc_driver_manager::profile::FilesystemProfileProvider::new_with_search_paths(
-            profile_search_paths,
-          );
-        ManagedDatabase::from_uri_with_profile_provider(
-          &uri,
-          entrypoint.as_deref(),
-          version,
-          load_flags,
-          manifest_search_paths,
-          provider,
-          map_database_options(raw_opts),
-        )?
+          };
+          let provider =
+            adbc_driver_manager::profile::FilesystemProfileProvider::new_with_search_paths(
+              profile_search_paths,
+            );
+          ManagedDatabase::from_uri_with_profile_provider(
+            &uri,
+            entrypoint.as_deref(),
+            version,
+            load_flags,
+            manifest_search_paths,
+            provider,
+            map_database_options(raw_opts),
+          )?
+        }
       }
     };
 
