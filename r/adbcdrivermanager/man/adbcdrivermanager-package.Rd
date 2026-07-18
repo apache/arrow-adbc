@@ -22,6 +22,7 @@ Useful links:
 
 Authors:
 \itemize{
+  \item Dewey Dunnington \email{dewey@dunnington.ca} (\href{https://orcid.org/0000-0002-9415-4582}{ORCID})
   \item Apache Arrow \email{dev@arrow.apache.org} [copyright holder]
 }
 

@@ -20,13 +20,6 @@
 # the driver manager is producing the right error message as proof connection
 # profiles are hooked up.
 
-adbc_driver_for_profile <- function() {
-  driver <- new.env(parent = emptyenv())
-  driver$load_flags <- adbc_load_flags()
-  class(driver) <- "adbc_driver"
-  driver
-}
-
 write_profile <- function(dir, name) {
   content <- paste0(
     'profile_version = 1\n',
@@ -171,9 +164,8 @@ test_that("can load a profile via profile:// URI in 'driver' option", {
   profile_path <- write_profile(dir, "myprofile")
 
   expect_error(
-    adbc_database_init_default(
-      adbc_driver_for_profile(),
-      list(driver = paste0("profile://", profile_path)) # Wrap in list() to avoid arg names clashing
+    adbc_database_init_driver_manager(
+      list(driver = paste0("profile://", profile_path))
     ),
     regexp = "nonexistent"
   )
@@ -193,8 +185,7 @@ test_that("missing profile returns an error", {
   withr::with_envvar(
     list(ADBC_PROFILE_PATH = dir),
     expect_error(
-      adbc_database_init_default(
-        adbc_driver_for_profile(),
+      adbc_database_init_driver_manager(
         list(profile = "does_not_exist")
       ),
       # "does_not_exist" is the profile name; keep in sync with C error message format

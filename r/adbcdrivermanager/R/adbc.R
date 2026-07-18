@@ -70,7 +70,7 @@
 #'
 #' Named profiles are located using the driver manager's standard profile
 #' search paths. See the
-#' [ADBC connection profile documentation](https://arrow.apache.org/adbc/current/connection_profiles.html)
+#' [ADBC connection profile documentation](https://arrow.apache.org/adbc/current/format/connection_profiles.html)
 #' for the file format, search locations, option precedence, and environment
 #' variable substitution.
 #'
