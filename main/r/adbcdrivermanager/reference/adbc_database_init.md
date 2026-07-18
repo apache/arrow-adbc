@@ -101,7 +101,7 @@ database options:
 
 Named profiles are located using the driver manager's standard profile
 search paths. See the [ADBC connection profile
-documentation](https://arrow.apache.org/adbc/current/connection_profiles.html)
+documentation](https://arrow.apache.org/adbc/current/format/connection_profiles.html)
 for the file format, search locations, option precedence, and
 environment variable substitution.
 
@@ -109,7 +109,7 @@ environment variable substitution.
 
 ``` r
 adbc_database_init(adbc_driver_void())
-#> <adbc_database at 0x55698f40d720> 
+#> <adbc_database at 0x55671e90a730> 
 #> List of 1
 #>  $ driver:<adbc_driver_void> List of 4
 #>   ..$ load_flags      : int 15

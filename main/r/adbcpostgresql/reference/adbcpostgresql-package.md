@@ -23,6 +23,9 @@ Useful links:
 
 Authors:
 
+- Dewey Dunnington <dewey@dunnington.ca>
+  ([ORCID](https://orcid.org/0000-0002-9415-4582))
+
 - Apache Arrow <dev@arrow.apache.org> \[copyright holder\]
 
 Other contributors:

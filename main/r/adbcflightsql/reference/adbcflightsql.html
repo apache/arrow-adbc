@@ -70,7 +70,17 @@
 
 
 <dl><dt id="arg-driver">driver<a class="anchor" aria-label="anchor" href="#arg-driver"></a></dt>
-<dd><p>An <code><a href="https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_driver_void.html" class="external-link">adbc_driver()</a></code>.</p></dd>
+<dd><p>The driver to use. This can be one of the following:</p><ul><li><p>A non-missing <code>character(1)</code> containing a driver or manifest name, a
+relative or absolute path to a driver or manifest, or a URI. For a URI,
+the driver manager uses the URI scheme as the driver name and passes the
+URI to that driver. A <code>profile://</code> URI loads a connection profile.</p></li>
+<li><p><code>NULL</code>, which leaves driver selection to the driver manager. In this
+case, <code>...</code> must normally contain <code>uri</code> or <code>profile</code>; the driver is
+inferred from the URI or loaded from the connection profile.</p></li>
+<li><p>An object that inherits from the <code>adbc_driver</code> class, such as one created
+by <code><a href="https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_driver_void.html" class="external-link">adbc_driver()</a></code>. This includes drivers provided by R packages, such as
+<code><a href="https://arrow.apache.org/adbc/current/r/adbcsqlite/reference/adbcsqlite.html" class="external-link">adbcsqlite::adbcsqlite()</a></code>.</p></li>
+</ul></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
