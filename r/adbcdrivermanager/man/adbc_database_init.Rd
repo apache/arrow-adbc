@@ -92,7 +92,7 @@ uri = "postgresql://localhost/database"
 
 Named profiles are located using the driver manager's standard profile
 search paths. See the
-\href{https://arrow.apache.org/adbc/current/connection_profiles.html}{ADBC connection profile documentation}
+\href{https://arrow.apache.org/adbc/current/format/connection_profiles.html}{ADBC connection profile documentation}
 for the file format, search locations, option precedence, and environment
 variable substitution.
 }

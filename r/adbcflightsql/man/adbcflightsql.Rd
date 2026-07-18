@@ -21,7 +21,19 @@ adbcflightsql()
 )
 }
 \arguments{
-\item{driver}{An \code{\link[adbcdrivermanager:adbc_driver]{adbc_driver()}}.}
+\item{driver}{The driver to use. This can be one of the following:
+\itemize{
+\item A non-missing \code{character(1)} containing a driver or manifest name, a
+relative or absolute path to a driver or manifest, or a URI. For a URI,
+the driver manager uses the URI scheme as the driver name and passes the
+URI to that driver. A \verb{profile://} URI loads a connection profile.
+\item \code{NULL}, which leaves driver selection to the driver manager. In this
+case, \code{...} must normally contain \code{uri} or \code{profile}; the driver is
+inferred from the URI or loaded from the connection profile.
+\item An object that inherits from the \code{adbc_driver} class, such as one created
+by \code{\link[adbcdrivermanager:adbc_driver]{adbc_driver()}}. This includes drivers provided by R packages, such as
+\code{adbcsqlite::adbcsqlite()}.
+}}
 
 \item{...}{Extra key/value options passed to the driver.}
 
@@ -40,7 +52,7 @@ autocommit behaviour.}
 \item{adbc.ingest.mode}{Whether to create (the default) or append.}
 }
 \value{
-An \code{\link[adbcdrivermanager:adbc_driver_void]{adbcdrivermanager::adbc_driver()}}
+An \code{\link[adbcdrivermanager:adbc_driver]{adbcdrivermanager::adbc_driver()}}
 }
 \description{
 ADBC FlightSQL Driver

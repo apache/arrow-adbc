@@ -3,7 +3,6 @@
 \docType{package}
 \name{adbcflightsql-package}
 \alias{adbcflightsql-package}
-\alias{_PACKAGE}
 \title{adbcflightsql: 'Arrow' Database Connectivity ('ADBC') 'FlightSQL' Driver}
 \description{
 Provides a developer-facing interface to the 'Arrow' Database Connectivity ('ADBC') 'FlightSQL' driver for the purposes of building high-level database interfaces for users. 'ADBC' \url{https://arrow.apache.org/adbc/} is an API standard for database access libraries that uses 'Arrow' for result sets and query parameters.
@@ -22,6 +21,7 @@ Useful links:
 
 Authors:
 \itemize{
+  \item Dewey Dunnington \email{dewey@dunnington.ca} (\href{https://orcid.org/0000-0002-9415-4582}{ORCID})
   \item Apache Arrow \email{dev@arrow.apache.org} [copyright holder]
 }
 
