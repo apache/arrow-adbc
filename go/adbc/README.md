@@ -23,7 +23,7 @@ The `adbc` package provides Go interface definitions for using Arrow data and da
 
 ## Getting Started
 
-To give a brief tour of what you can do with the `adbc` package, we'll show a brief example of using the [SQLite driver](https://arrow.apache.org/adbc/current/driver/sqlite.html).
+To give a brief tour of what you can do with the `adbc` package, we'll show an example of working with an SQLite database.
 
 ### Installation
 
@@ -31,6 +31,12 @@ First, assuming you've already created a Go module, add the `drivermgr` package 
 
 ```sh
 go get github.com/apache/arrow-adbc/go/adbc/drivermgr
+```
+
+You'll also need a driver for the database you want to connect to. Drivers are distributed as shared libraries; see the [ADBC driver documentation](https://arrow.apache.org/adbc/current/driver/index.html) for the full list and installation instructions. For this example, you could install [dbc](https://docs.columnar.tech/dbc/), a third-party command-line tool for installing ADBC drivers (maintained independently of the Apache Arrow project), and then install the SQLite driver with:
+
+```sh
+dbc install sqlite
 ```
 
 ### Imports
@@ -62,12 +68,12 @@ func GettingStarted() error {
 
 Any program using ADBC will start with creating a `Database`, a `Connection` to that `Database`, and usually one or more `Statement` objects.
 
-First we create a `Database`, providing `adbc_driver_sqlite` as the name of the driver to load:
+First we create a `Database`, providing `sqlite` as the name of the driver to load:
 
 ```go
     var drv drivermgr.Driver
     db, err := drv.NewDatabase(map[string]string{
-        "driver": "adbc_driver_sqlite",
+        "driver": "sqlite",
     })
     if err != nil {
         return err
