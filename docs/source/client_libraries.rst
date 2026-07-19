@@ -80,7 +80,7 @@ The client library package for each language:
    * - Ruby
      - bundler
      - ``red-adbc``
-     - :doc:`Ruby Quickstart <ruby/quickstart>`
+     - :doc:`Ruby <ruby/index>`
    * - Rust
      - cargo
      - ``adbc_core``, ``adbc_driver_manager``
