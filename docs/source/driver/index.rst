@@ -173,7 +173,7 @@ details.
 
 Some drivers are also published to language-specific package registries.
 Apache-maintained drivers are on
-:doc:`PyPI, conda-forge, CRAN, and more <installation>`; some vendor
+:doc:`PyPI, conda-forge, CRAN, and more </installation>`; some vendor
 drivers list their own packages in each driver's documentation, linked from its
 name in the table above.
 
