@@ -224,8 +224,8 @@ Distributed as .NET packages on NuGet, for use from C#/.NET applications:
 
 .. _driver-table-java:
 
-Java
-----
+Java/JVM
+--------
 
 Distributed as Maven packages, for use from Java applications:
 
@@ -241,9 +241,6 @@ Distributed as Maven packages, for use from Java applications:
      - ASF
    * - :doc:`./jdbc`
      - :package-badge:`Maven|org.apache.arrow.adbc:adbc-driver-jdbc|https://central.sonatype.com/artifact/org.apache.arrow.adbc/adbc-driver-jdbc`
-     - ASF
-   * - :doc:`../java/jni`
-     - :package-badge:`Maven|org.apache.arrow.adbc:adbc-driver-jni|https://central.sonatype.com/artifact/org.apache.arrow.adbc/adbc-driver-jni`
      - ASF
 
 .. _driver-table-maintainers:
