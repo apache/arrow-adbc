@@ -204,4 +204,5 @@ ogp_image = "_static/banner.png"
 
 redirects = {
     "driver/status": "./index.html",
+    "driver/installation": "../installation.html",
 }
