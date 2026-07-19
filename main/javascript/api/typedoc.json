@@ -7,14 +7,14 @@
 	"flags": {},
 	"children": [
 		{
-			"id": 254,
+			"id": 257,
 			"name": "error",
 			"variant": "declaration",
 			"kind": 2,
 			"flags": {},
 			"children": [
 				{
-					"id": 255,
+					"id": 258,
 					"name": "AdbcError",
 					"variant": "declaration",
 					"kind": 128,
@@ -29,7 +29,7 @@
 					},
 					"children": [
 						{
-							"id": 274,
+							"id": 277,
 							"name": "code",
 							"variant": "declaration",
 							"kind": 1024,
@@ -39,7 +39,7 @@
 									"fileName": "lib/error.ts",
 									"line": 22,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/error.ts#L22"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/error.ts#L22"
 								}
 							],
 							"type": {
@@ -48,7 +48,7 @@
 							}
 						},
 						{
-							"id": 275,
+							"id": 278,
 							"name": "vendorCode",
 							"variant": "declaration",
 							"kind": 1024,
@@ -60,7 +60,7 @@
 									"fileName": "lib/error.ts",
 									"line": 23,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/error.ts#L23"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/error.ts#L23"
 								}
 							],
 							"type": {
@@ -69,7 +69,7 @@
 							}
 						},
 						{
-							"id": 276,
+							"id": 279,
 							"name": "sqlState",
 							"variant": "declaration",
 							"kind": 1024,
@@ -81,7 +81,7 @@
 									"fileName": "lib/error.ts",
 									"line": 24,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/error.ts#L24"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/error.ts#L24"
 								}
 							],
 							"type": {
@@ -90,7 +90,7 @@
 							}
 						},
 						{
-							"id": 268,
+							"id": 271,
 							"name": "constructor",
 							"variant": "declaration",
 							"kind": 512,
@@ -100,12 +100,12 @@
 									"fileName": "lib/error.ts",
 									"line": 26,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/error.ts#L26"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/error.ts#L26"
 								}
 							],
 							"signatures": [
 								{
-									"id": 269,
+									"id": 272,
 									"name": "AdbcError",
 									"variant": "signature",
 									"kind": 16384,
@@ -115,12 +115,12 @@
 											"fileName": "lib/error.ts",
 											"line": 26,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/error.ts#L26"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/error.ts#L26"
 										}
 									],
 									"parameters": [
 										{
-											"id": 270,
+											"id": 273,
 											"name": "message",
 											"variant": "param",
 											"kind": 32768,
@@ -131,7 +131,7 @@
 											}
 										},
 										{
-											"id": 271,
+											"id": 274,
 											"name": "code",
 											"variant": "param",
 											"kind": 32768,
@@ -142,7 +142,7 @@
 											}
 										},
 										{
-											"id": 272,
+											"id": 275,
 											"name": "vendorCode",
 											"variant": "param",
 											"kind": 32768,
@@ -155,7 +155,7 @@
 											}
 										},
 										{
-											"id": 273,
+											"id": 276,
 											"name": "sqlState",
 											"variant": "param",
 											"kind": 32768,
@@ -170,7 +170,7 @@
 									],
 									"type": {
 										"type": "reference",
-										"target": 255,
+										"target": 258,
 										"name": "AdbcError",
 										"package": "@apache-arrow/adbc-driver-manager"
 									},
@@ -190,7 +190,7 @@
 							}
 						},
 						{
-							"id": 256,
+							"id": 259,
 							"name": "fromError",
 							"variant": "declaration",
 							"kind": 2048,
@@ -202,12 +202,12 @@
 									"fileName": "lib/error.ts",
 									"line": 39,
 									"character": 9,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/error.ts#L39"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/error.ts#L39"
 								}
 							],
 							"signatures": [
 								{
-									"id": 257,
+									"id": 260,
 									"name": "fromError",
 									"variant": "signature",
 									"kind": 4096,
@@ -225,12 +225,12 @@
 											"fileName": "lib/error.ts",
 											"line": 39,
 											"character": 9,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/error.ts#L39"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/error.ts#L39"
 										}
 									],
 									"parameters": [
 										{
-											"id": 258,
+											"id": 261,
 											"name": "err",
 											"variant": "param",
 											"kind": 32768,
@@ -249,7 +249,7 @@
 							]
 						},
 						{
-							"id": 259,
+							"id": 262,
 							"name": "captureStackTrace",
 							"variant": "declaration",
 							"kind": 2048,
@@ -267,7 +267,7 @@
 							],
 							"signatures": [
 								{
-									"id": 260,
+									"id": 263,
 									"name": "captureStackTrace",
 									"variant": "signature",
 									"kind": 4096,
@@ -368,7 +368,7 @@
 									],
 									"parameters": [
 										{
-											"id": 261,
+											"id": 264,
 											"name": "targetObject",
 											"variant": "param",
 											"kind": 32768,
@@ -381,7 +381,7 @@
 											}
 										},
 										{
-											"id": 262,
+											"id": 265,
 											"name": "constructorOpt",
 											"variant": "param",
 											"kind": 32768,
@@ -419,7 +419,7 @@
 							}
 						},
 						{
-							"id": 263,
+							"id": 266,
 							"name": "prepareStackTrace",
 							"variant": "declaration",
 							"kind": 2048,
@@ -437,7 +437,7 @@
 							],
 							"signatures": [
 								{
-									"id": 264,
+									"id": 267,
 									"name": "prepareStackTrace",
 									"variant": "signature",
 									"kind": 4096,
@@ -468,7 +468,7 @@
 									],
 									"parameters": [
 										{
-											"id": 265,
+											"id": 268,
 											"name": "err",
 											"variant": "param",
 											"kind": 32768,
@@ -487,7 +487,7 @@
 											}
 										},
 										{
-											"id": 266,
+											"id": 269,
 											"name": "stackTraces",
 											"variant": "param",
 											"kind": 32768,
@@ -528,7 +528,7 @@
 							}
 						},
 						{
-							"id": 267,
+							"id": 270,
 							"name": "stackTraceLimit",
 							"variant": "declaration",
 							"kind": 1024,
@@ -595,7 +595,7 @@
 							}
 						},
 						{
-							"id": 280,
+							"id": 283,
 							"name": "cause",
 							"variant": "declaration",
 							"kind": 1024,
@@ -622,7 +622,7 @@
 							}
 						},
 						{
-							"id": 277,
+							"id": 280,
 							"name": "name",
 							"variant": "declaration",
 							"kind": 1024,
@@ -648,7 +648,7 @@
 							}
 						},
 						{
-							"id": 278,
+							"id": 281,
 							"name": "message",
 							"variant": "declaration",
 							"kind": 1024,
@@ -674,7 +674,7 @@
 							}
 						},
 						{
-							"id": 279,
+							"id": 282,
 							"name": "stack",
 							"variant": "declaration",
 							"kind": 1024,
@@ -705,28 +705,28 @@
 						{
 							"title": "Constructors",
 							"children": [
-								268
+								271
 							]
 						},
 						{
 							"title": "Properties",
 							"children": [
-								274,
-								275,
-								276,
-								267,
-								280,
 								277,
 								278,
-								279
+								279,
+								270,
+								283,
+								280,
+								281,
+								282
 							]
 						},
 						{
 							"title": "Methods",
 							"children": [
-								256,
 								259,
-								263
+								262,
+								266
 							]
 						}
 					],
@@ -735,7 +735,7 @@
 							"fileName": "lib/error.ts",
 							"line": 21,
 							"character": 13,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/error.ts#L21"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/error.ts#L21"
 						}
 					],
 					"extendedTypes": [
@@ -756,7 +756,7 @@
 				{
 					"title": "Classes",
 					"children": [
-						255
+						258
 					]
 				}
 			],
@@ -765,7 +765,7 @@
 					"fileName": "lib/error.ts",
 					"line": 1,
 					"character": 0,
-					"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/error.ts#L1"
+					"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/error.ts#L1"
 				}
 			]
 		},
@@ -777,7 +777,7 @@
 			"flags": {},
 			"children": [
 				{
-					"id": 281,
+					"id": 284,
 					"name": "ConnectOptions",
 					"variant": "reference",
 					"kind": 4194304,
@@ -787,13 +787,13 @@
 							"fileName": "lib/index.ts",
 							"line": 79,
 							"character": 14,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L79"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L79"
 						}
 					],
 					"target": 147
 				},
 				{
-					"id": 282,
+					"id": 285,
 					"name": "GetObjectsOptions",
 					"variant": "reference",
 					"kind": 4194304,
@@ -803,13 +803,13 @@
 							"fileName": "lib/index.ts",
 							"line": 79,
 							"character": 30,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L79"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L79"
 						}
 					],
-					"target": 166
+					"target": 169
 				},
 				{
-					"id": 283,
+					"id": 286,
 					"name": "IngestOptions",
 					"variant": "reference",
 					"kind": 4194304,
@@ -819,13 +819,13 @@
 							"fileName": "lib/index.ts",
 							"line": 79,
 							"character": 49,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L79"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L79"
 						}
 					],
-					"target": 161
+					"target": 164
 				},
 				{
-					"id": 284,
+					"id": 287,
 					"name": "AdbcError",
 					"variant": "reference",
 					"kind": 4194304,
@@ -835,13 +835,13 @@
 							"fileName": "lib/index.ts",
 							"line": 80,
 							"character": 9,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L80"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L80"
 						}
 					],
-					"target": 255
+					"target": 258
 				},
 				{
-					"id": 285,
+					"id": 288,
 					"name": "LoadFlags",
 					"variant": "reference",
 					"kind": 4194304,
@@ -851,13 +851,13 @@
 							"fileName": "lib/index.ts",
 							"line": 80,
 							"character": 20,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L80"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L80"
 						}
 					],
 					"target": 118
 				},
 				{
-					"id": 286,
+					"id": 289,
 					"name": "ObjectDepth",
 					"variant": "reference",
 					"kind": 4194304,
@@ -867,13 +867,13 @@
 							"fileName": "lib/index.ts",
 							"line": 80,
 							"character": 31,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L80"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L80"
 						}
 					],
 					"target": 126
 				},
 				{
-					"id": 287,
+					"id": 290,
 					"name": "InfoCode",
 					"variant": "reference",
 					"kind": 4194304,
@@ -883,13 +883,13 @@
 							"fileName": "lib/index.ts",
 							"line": 80,
 							"character": 44,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L80"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L80"
 						}
 					],
 					"target": 133
 				},
 				{
-					"id": 288,
+					"id": 291,
 					"name": "IngestMode",
 					"variant": "reference",
 					"kind": 4194304,
@@ -899,10 +899,10 @@
 							"fileName": "lib/index.ts",
 							"line": 80,
 							"character": 54,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L80"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L80"
 						}
 					],
-					"target": 154
+					"target": 157
 				},
 				{
 					"id": 2,
@@ -930,7 +930,7 @@
 									"fileName": "lib/index.ts",
 									"line": 88,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L88"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L88"
 								}
 							],
 							"signatures": [
@@ -945,7 +945,7 @@
 											"fileName": "lib/index.ts",
 											"line": 88,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L88"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L88"
 										}
 									],
 									"parameters": [
@@ -983,7 +983,7 @@
 									"fileName": "lib/index.ts",
 									"line": 96,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L96"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L96"
 								}
 							],
 							"signatures": [
@@ -1017,7 +1017,7 @@
 											"fileName": "lib/index.ts",
 											"line": 96,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L96"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L96"
 										}
 									],
 									"type": {
@@ -1040,14 +1040,14 @@
 									},
 									"implementationOf": {
 										"type": "reference",
-										"target": 175,
+										"target": 178,
 										"name": "AdbcDatabaseInterface.connect"
 									}
 								}
 							],
 							"implementationOf": {
 								"type": "reference",
-								"target": 174,
+								"target": 177,
 								"name": "AdbcDatabase.connect"
 							}
 						},
@@ -1062,7 +1062,7 @@
 									"fileName": "lib/index.ts",
 									"line": 105,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L105"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L105"
 								}
 							],
 							"signatures": [
@@ -1085,7 +1085,7 @@
 											"fileName": "lib/index.ts",
 											"line": 105,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L105"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L105"
 										}
 									],
 									"type": {
@@ -1106,14 +1106,14 @@
 									},
 									"implementationOf": {
 										"type": "reference",
-										"target": 177,
+										"target": 180,
 										"name": "AdbcDatabaseInterface.close"
 									}
 								}
 							],
 							"implementationOf": {
 								"type": "reference",
-								"target": 176,
+								"target": 179,
 								"name": "AdbcDatabase.close"
 							}
 						}
@@ -1138,7 +1138,7 @@
 							"fileName": "lib/index.ts",
 							"line": 85,
 							"character": 13,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L85"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L85"
 						}
 					],
 					"indexSignatures": [
@@ -1201,7 +1201,7 @@
 					"implementedTypes": [
 						{
 							"type": "reference",
-							"target": 173,
+							"target": 176,
 							"name": "AdbcDatabase",
 							"package": "@apache-arrow/adbc-driver-manager"
 						}
@@ -1233,7 +1233,7 @@
 									"fileName": "lib/index.ts",
 									"line": 129,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L129"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L129"
 								}
 							],
 							"signatures": [
@@ -1267,7 +1267,7 @@
 											"fileName": "lib/index.ts",
 											"line": 129,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L129"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L129"
 										}
 									],
 									"type": {
@@ -1290,14 +1290,14 @@
 									},
 									"implementationOf": {
 										"type": "reference",
-										"target": 180,
+										"target": 183,
 										"name": "AdbcConnectionInterface.createStatement"
 									}
 								}
 							],
 							"implementationOf": {
 								"type": "reference",
-								"target": 179,
+								"target": 182,
 								"name": "AdbcConnection.createStatement"
 							}
 						},
@@ -1312,7 +1312,7 @@
 									"fileName": "lib/index.ts",
 									"line": 138,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L138"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L138"
 								}
 							],
 							"signatures": [
@@ -1335,7 +1335,7 @@
 											"fileName": "lib/index.ts",
 											"line": 138,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L138"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L138"
 										}
 									],
 									"parameters": [
@@ -1384,14 +1384,14 @@
 									},
 									"implementationOf": {
 										"type": "reference",
-										"target": 182,
+										"target": 185,
 										"name": "AdbcConnectionInterface.setOption"
 									}
 								}
 							],
 							"implementationOf": {
 								"type": "reference",
-								"target": 181,
+								"target": 184,
 								"name": "AdbcConnection.setOption"
 							}
 						},
@@ -1406,7 +1406,7 @@
 									"fileName": "lib/index.ts",
 									"line": 146,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L146"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L146"
 								}
 							],
 							"signatures": [
@@ -1429,7 +1429,7 @@
 											"fileName": "lib/index.ts",
 											"line": 146,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L146"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L146"
 										}
 									],
 									"parameters": [
@@ -1459,14 +1459,14 @@
 									},
 									"implementationOf": {
 										"type": "reference",
-										"target": 186,
+										"target": 189,
 										"name": "AdbcConnectionInterface.setAutoCommit"
 									}
 								}
 							],
 							"implementationOf": {
 								"type": "reference",
-								"target": 185,
+								"target": 188,
 								"name": "AdbcConnection.setAutoCommit"
 							}
 						},
@@ -1481,7 +1481,7 @@
 									"fileName": "lib/index.ts",
 									"line": 150,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L150"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L150"
 								}
 							],
 							"signatures": [
@@ -1504,7 +1504,7 @@
 											"fileName": "lib/index.ts",
 											"line": 150,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L150"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L150"
 										}
 									],
 									"parameters": [
@@ -1534,14 +1534,14 @@
 									},
 									"implementationOf": {
 										"type": "reference",
-										"target": 189,
+										"target": 192,
 										"name": "AdbcConnectionInterface.setReadOnly"
 									}
 								}
 							],
 							"implementationOf": {
 								"type": "reference",
-								"target": 188,
+								"target": 191,
 								"name": "AdbcConnection.setReadOnly"
 							}
 						},
@@ -1556,7 +1556,7 @@
 									"fileName": "lib/index.ts",
 									"line": 154,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L154"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L154"
 								}
 							],
 							"signatures": [
@@ -1590,7 +1590,7 @@
 											"fileName": "lib/index.ts",
 											"line": 154,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L154"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L154"
 										}
 									],
 									"parameters": [
@@ -1612,7 +1612,7 @@
 											},
 											"type": {
 												"type": "reference",
-												"target": 166,
+												"target": 169,
 												"name": "GetObjectsOptions",
 												"package": "@apache-arrow/adbc-driver-manager"
 											}
@@ -1648,14 +1648,14 @@
 									},
 									"implementationOf": {
 										"type": "reference",
-										"target": 192,
+										"target": 195,
 										"name": "AdbcConnectionInterface.getObjects"
 									}
 								}
 							],
 							"implementationOf": {
 								"type": "reference",
-								"target": 191,
+								"target": 194,
 								"name": "AdbcConnection.getObjects"
 							}
 						},
@@ -1670,7 +1670,7 @@
 									"fileName": "lib/index.ts",
 									"line": 171,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L171"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L171"
 								}
 							],
 							"signatures": [
@@ -1704,7 +1704,7 @@
 											"fileName": "lib/index.ts",
 											"line": 171,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L171"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L171"
 										}
 									],
 									"parameters": [
@@ -1752,7 +1752,7 @@
 																	"fileName": "lib/index.ts",
 																	"line": 171,
 																	"character": 34,
-																	"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L171"
+																	"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L171"
 																}
 															],
 															"type": {
@@ -1781,7 +1781,7 @@
 																	"fileName": "lib/index.ts",
 																	"line": 171,
 																	"character": 52,
-																	"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L171"
+																	"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L171"
 																}
 															],
 															"type": {
@@ -1808,7 +1808,7 @@
 																	"fileName": "lib/index.ts",
 																	"line": 171,
 																	"character": 71,
-																	"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L171"
+																	"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L171"
 																}
 															],
 															"type": {
@@ -1861,14 +1861,14 @@
 									},
 									"implementationOf": {
 										"type": "reference",
-										"target": 195,
+										"target": 198,
 										"name": "AdbcConnectionInterface.getTableSchema"
 									}
 								}
 							],
 							"implementationOf": {
 								"type": "reference",
-								"target": 194,
+								"target": 197,
 								"name": "AdbcConnection.getTableSchema"
 							}
 						},
@@ -1883,7 +1883,7 @@
 									"fileName": "lib/index.ts",
 									"line": 184,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L184"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L184"
 								}
 							],
 							"signatures": [
@@ -1917,7 +1917,7 @@
 											"fileName": "lib/index.ts",
 											"line": 184,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L184"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L184"
 										}
 									],
 									"type": {
@@ -1950,14 +1950,14 @@
 									},
 									"implementationOf": {
 										"type": "reference",
-										"target": 202,
+										"target": 205,
 										"name": "AdbcConnectionInterface.getTableTypes"
 									}
 								}
 							],
 							"implementationOf": {
 								"type": "reference",
-								"target": 201,
+								"target": 204,
 								"name": "AdbcConnection.getTableTypes"
 							}
 						},
@@ -1972,7 +1972,7 @@
 									"fileName": "lib/index.ts",
 									"line": 193,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L193"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L193"
 								}
 							],
 							"signatures": [
@@ -2006,7 +2006,7 @@
 											"fileName": "lib/index.ts",
 											"line": 193,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L193"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L193"
 										}
 									],
 									"parameters": [
@@ -2077,14 +2077,14 @@
 									},
 									"implementationOf": {
 										"type": "reference",
-										"target": 204,
+										"target": 207,
 										"name": "AdbcConnectionInterface.getInfo"
 									}
 								}
 							],
 							"implementationOf": {
 								"type": "reference",
-								"target": 203,
+								"target": 206,
 								"name": "AdbcConnection.getInfo"
 							}
 						},
@@ -2099,7 +2099,7 @@
 									"fileName": "lib/index.ts",
 									"line": 202,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L202"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L202"
 								}
 							],
 							"signatures": [
@@ -2119,7 +2119,7 @@
 												"kind": "inline-tag",
 												"tag": "@link",
 												"text": "queryStream",
-												"target": 210
+												"target": 213
 											},
 											{
 												"kind": "text",
@@ -2143,7 +2143,7 @@
 											"fileName": "lib/index.ts",
 											"line": 202,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L202"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L202"
 										}
 									],
 									"parameters": [
@@ -2230,14 +2230,14 @@
 									},
 									"implementationOf": {
 										"type": "reference",
-										"target": 207,
+										"target": 210,
 										"name": "AdbcConnectionInterface.query"
 									}
 								}
 							],
 							"implementationOf": {
 								"type": "reference",
-								"target": 206,
+								"target": 209,
 								"name": "AdbcConnection.query"
 							}
 						},
@@ -2252,7 +2252,7 @@
 									"fileName": "lib/index.ts",
 									"line": 206,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L206"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L206"
 								}
 							],
 							"signatures": [
@@ -2272,7 +2272,7 @@
 												"kind": "inline-tag",
 												"tag": "@link",
 												"text": "query",
-												"target": 206
+												"target": 209
 											},
 											{
 												"kind": "text",
@@ -2296,7 +2296,7 @@
 											"fileName": "lib/index.ts",
 											"line": 206,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L206"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L206"
 										}
 									],
 									"parameters": [
@@ -2383,14 +2383,14 @@
 									},
 									"implementationOf": {
 										"type": "reference",
-										"target": 211,
+										"target": 214,
 										"name": "AdbcConnectionInterface.queryStream"
 									}
 								}
 							],
 							"implementationOf": {
 								"type": "reference",
-								"target": 210,
+								"target": 213,
 								"name": "AdbcConnection.queryStream"
 							}
 						},
@@ -2405,7 +2405,7 @@
 									"fileName": "lib/index.ts",
 									"line": 237,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L237"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L237"
 								}
 							],
 							"signatures": [
@@ -2439,7 +2439,7 @@
 											"fileName": "lib/index.ts",
 											"line": 237,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L237"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L237"
 										}
 									],
 									"parameters": [
@@ -2505,7 +2505,7 @@
 											},
 											"type": {
 												"type": "reference",
-												"target": 161,
+												"target": 164,
 												"name": "IngestOptions",
 												"package": "@apache-arrow/adbc-driver-manager"
 											}
@@ -2529,14 +2529,14 @@
 									},
 									"implementationOf": {
 										"type": "reference",
-										"target": 215,
+										"target": 218,
 										"name": "AdbcConnectionInterface.ingest"
 									}
 								}
 							],
 							"implementationOf": {
 								"type": "reference",
-								"target": 214,
+								"target": 217,
 								"name": "AdbcConnection.ingest"
 							}
 						},
@@ -2551,7 +2551,7 @@
 									"fileName": "lib/index.ts",
 									"line": 248,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L248"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L248"
 								}
 							],
 							"signatures": [
@@ -2571,7 +2571,7 @@
 												"kind": "inline-tag",
 												"tag": "@link",
 												"text": "ingest",
-												"target": 214
+												"target": 217
 											},
 											{
 												"kind": "text",
@@ -2595,7 +2595,7 @@
 											"fileName": "lib/index.ts",
 											"line": 248,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L248"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L248"
 										}
 									],
 									"parameters": [
@@ -2661,7 +2661,7 @@
 											},
 											"type": {
 												"type": "reference",
-												"target": 161,
+												"target": 164,
 												"name": "IngestOptions",
 												"package": "@apache-arrow/adbc-driver-manager"
 											}
@@ -2685,14 +2685,14 @@
 									},
 									"implementationOf": {
 										"type": "reference",
-										"target": 220,
+										"target": 223,
 										"name": "AdbcConnectionInterface.ingestStream"
 									}
 								}
 							],
 							"implementationOf": {
 								"type": "reference",
-								"target": 219,
+								"target": 222,
 								"name": "AdbcConnection.ingestStream"
 							}
 						},
@@ -2707,7 +2707,7 @@
 									"fileName": "lib/index.ts",
 									"line": 280,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L280"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L280"
 								}
 							],
 							"signatures": [
@@ -2741,7 +2741,7 @@
 											"fileName": "lib/index.ts",
 											"line": 280,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L280"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L280"
 										}
 									],
 									"parameters": [
@@ -2816,14 +2816,14 @@
 									},
 									"implementationOf": {
 										"type": "reference",
-										"target": 225,
+										"target": 228,
 										"name": "AdbcConnectionInterface.execute"
 									}
 								}
 							],
 							"implementationOf": {
 								"type": "reference",
-								"target": 224,
+								"target": 227,
 								"name": "AdbcConnection.execute"
 							}
 						},
@@ -2838,7 +2838,7 @@
 									"fileName": "lib/index.ts",
 									"line": 293,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L293"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L293"
 								}
 							],
 							"signatures": [
@@ -2861,7 +2861,7 @@
 											"fileName": "lib/index.ts",
 											"line": 293,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L293"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L293"
 										}
 									],
 									"type": {
@@ -2882,14 +2882,14 @@
 									},
 									"implementationOf": {
 										"type": "reference",
-										"target": 229,
+										"target": 232,
 										"name": "AdbcConnectionInterface.commit"
 									}
 								}
 							],
 							"implementationOf": {
 								"type": "reference",
-								"target": 228,
+								"target": 231,
 								"name": "AdbcConnection.commit"
 							}
 						},
@@ -2904,7 +2904,7 @@
 									"fileName": "lib/index.ts",
 									"line": 301,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L301"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L301"
 								}
 							],
 							"signatures": [
@@ -2927,7 +2927,7 @@
 											"fileName": "lib/index.ts",
 											"line": 301,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L301"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L301"
 										}
 									],
 									"type": {
@@ -2948,14 +2948,14 @@
 									},
 									"implementationOf": {
 										"type": "reference",
-										"target": 231,
+										"target": 234,
 										"name": "AdbcConnectionInterface.rollback"
 									}
 								}
 							],
 							"implementationOf": {
 								"type": "reference",
-								"target": 230,
+								"target": 233,
 								"name": "AdbcConnection.rollback"
 							}
 						},
@@ -2970,7 +2970,7 @@
 									"fileName": "lib/index.ts",
 									"line": 309,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L309"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L309"
 								}
 							],
 							"signatures": [
@@ -2993,7 +2993,7 @@
 											"fileName": "lib/index.ts",
 											"line": 309,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L309"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L309"
 										}
 									],
 									"type": {
@@ -3014,14 +3014,14 @@
 									},
 									"implementationOf": {
 										"type": "reference",
-										"target": 233,
+										"target": 236,
 										"name": "AdbcConnectionInterface.close"
 									}
 								}
 							],
 							"implementationOf": {
 								"type": "reference",
-								"target": 232,
+								"target": 235,
 								"name": "AdbcConnection.close"
 							}
 						}
@@ -3054,7 +3054,7 @@
 							"fileName": "lib/index.ts",
 							"line": 121,
 							"character": 13,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L121"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L121"
 						}
 					],
 					"indexSignatures": [
@@ -3117,7 +3117,7 @@
 					"implementedTypes": [
 						{
 							"type": "reference",
-							"target": 178,
+							"target": 181,
 							"name": "AdbcConnection",
 							"package": "@apache-arrow/adbc-driver-manager"
 						}
@@ -3149,7 +3149,7 @@
 									"fileName": "lib/index.ts",
 									"line": 333,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L333"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L333"
 								}
 							],
 							"signatures": [
@@ -3172,7 +3172,7 @@
 											"fileName": "lib/index.ts",
 											"line": 333,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L333"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L333"
 										}
 									],
 									"parameters": [
@@ -3214,14 +3214,14 @@
 									},
 									"implementationOf": {
 										"type": "reference",
-										"target": 236,
+										"target": 239,
 										"name": "AdbcStatementInterface.setSqlQuery"
 									}
 								}
 							],
 							"implementationOf": {
 								"type": "reference",
-								"target": 235,
+								"target": 238,
 								"name": "AdbcStatement.setSqlQuery"
 							}
 						},
@@ -3236,7 +3236,7 @@
 									"fileName": "lib/index.ts",
 									"line": 341,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L341"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L341"
 								}
 							],
 							"signatures": [
@@ -3259,7 +3259,7 @@
 											"fileName": "lib/index.ts",
 											"line": 341,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L341"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L341"
 										}
 									],
 									"parameters": [
@@ -3308,14 +3308,14 @@
 									},
 									"implementationOf": {
 										"type": "reference",
-										"target": 239,
+										"target": 242,
 										"name": "AdbcStatementInterface.setOption"
 									}
 								}
 							],
 							"implementationOf": {
 								"type": "reference",
-								"target": 238,
+								"target": 241,
 								"name": "AdbcStatement.setOption"
 							}
 						},
@@ -3330,7 +3330,7 @@
 									"fileName": "lib/index.ts",
 									"line": 355,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L355"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L355"
 								}
 							],
 							"signatures": [
@@ -3353,7 +3353,7 @@
 											"fileName": "lib/index.ts",
 											"line": 355,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L355"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L355"
 										}
 									],
 									"type": {
@@ -3386,14 +3386,14 @@
 									},
 									"implementationOf": {
 										"type": "reference",
-										"target": 243,
+										"target": 246,
 										"name": "AdbcStatementInterface.executeQuery"
 									}
 								}
 							],
 							"implementationOf": {
 								"type": "reference",
-								"target": 242,
+								"target": 245,
 								"name": "AdbcStatement.executeQuery"
 							}
 						},
@@ -3408,7 +3408,7 @@
 									"fileName": "lib/index.ts",
 									"line": 364,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L364"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L364"
 								}
 							],
 							"signatures": [
@@ -3442,7 +3442,7 @@
 											"fileName": "lib/index.ts",
 											"line": 364,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L364"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L364"
 										}
 									],
 									"type": {
@@ -3463,14 +3463,14 @@
 									},
 									"implementationOf": {
 										"type": "reference",
-										"target": 245,
+										"target": 248,
 										"name": "AdbcStatementInterface.executeUpdate"
 									}
 								}
 							],
 							"implementationOf": {
 								"type": "reference",
-								"target": 244,
+								"target": 247,
 								"name": "AdbcStatement.executeUpdate"
 							}
 						},
@@ -3485,7 +3485,7 @@
 									"fileName": "lib/index.ts",
 									"line": 373,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L373"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L373"
 								}
 							],
 							"signatures": [
@@ -3508,7 +3508,7 @@
 											"fileName": "lib/index.ts",
 											"line": 373,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L373"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L373"
 										}
 									],
 									"parameters": [
@@ -3556,14 +3556,14 @@
 									},
 									"implementationOf": {
 										"type": "reference",
-										"target": 247,
+										"target": 250,
 										"name": "AdbcStatementInterface.bind"
 									}
 								}
 							],
 							"implementationOf": {
 								"type": "reference",
-								"target": 246,
+								"target": 249,
 								"name": "AdbcStatement.bind"
 							}
 						},
@@ -3578,7 +3578,7 @@
 									"fileName": "lib/index.ts",
 									"line": 382,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L382"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L382"
 								}
 							],
 							"signatures": [
@@ -3601,7 +3601,7 @@
 											"fileName": "lib/index.ts",
 											"line": 382,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L382"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L382"
 										}
 									],
 									"parameters": [
@@ -3649,14 +3649,14 @@
 									},
 									"implementationOf": {
 										"type": "reference",
-										"target": 250,
+										"target": 253,
 										"name": "AdbcStatementInterface.bindStream"
 									}
 								}
 							],
 							"implementationOf": {
 								"type": "reference",
-								"target": 249,
+								"target": 252,
 								"name": "AdbcStatement.bindStream"
 							}
 						},
@@ -3671,7 +3671,7 @@
 									"fileName": "lib/index.ts",
 									"line": 408,
 									"character": 8,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L408"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L408"
 								}
 							],
 							"signatures": [
@@ -3694,7 +3694,7 @@
 											"fileName": "lib/index.ts",
 											"line": 408,
 											"character": 8,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L408"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L408"
 										}
 									],
 									"type": {
@@ -3715,14 +3715,14 @@
 									},
 									"implementationOf": {
 										"type": "reference",
-										"target": 253,
+										"target": 256,
 										"name": "AdbcStatementInterface.close"
 									}
 								}
 							],
 							"implementationOf": {
 								"type": "reference",
-								"target": 252,
+								"target": 255,
 								"name": "AdbcStatement.close"
 							}
 						}
@@ -3746,7 +3746,7 @@
 							"fileName": "lib/index.ts",
 							"line": 325,
 							"character": 13,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L325"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L325"
 						}
 					],
 					"indexSignatures": [
@@ -3809,7 +3809,7 @@
 					"implementedTypes": [
 						{
 							"type": "reference",
-							"target": 234,
+							"target": 237,
 							"name": "AdbcStatement",
 							"package": "@apache-arrow/adbc-driver-manager"
 						}
@@ -3828,14 +3828,14 @@
 				{
 					"title": "References",
 					"children": [
-						281,
-						282,
-						283,
 						284,
 						285,
 						286,
 						287,
-						288
+						288,
+						289,
+						290,
+						291
 					]
 				}
 			],
@@ -3844,7 +3844,7 @@
 					"fileName": "lib/index.ts",
 					"line": 1,
 					"character": 0,
-					"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/index.ts#L1"
+					"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/index.ts#L1"
 				}
 			]
 		},
@@ -3919,13 +3919,13 @@
 							"fileName": "lib/types.ts",
 							"line": 34,
 							"character": 13,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L34"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L34"
 						},
 						{
 							"fileName": "lib/types.ts",
 							"line": 46,
 							"character": 12,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L46"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L46"
 						}
 					],
 					"type": {
@@ -3966,7 +3966,7 @@
 											"fileName": "lib/types.ts",
 											"line": 36,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L36"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L36"
 										}
 									],
 									"type": {
@@ -3996,7 +3996,7 @@
 											"fileName": "lib/types.ts",
 											"line": 38,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L38"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L38"
 										}
 									],
 									"type": {
@@ -4026,7 +4026,7 @@
 											"fileName": "lib/types.ts",
 											"line": 40,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L40"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L40"
 										}
 									],
 									"type": {
@@ -4056,7 +4056,7 @@
 											"fileName": "lib/types.ts",
 											"line": 42,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L42"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L42"
 										}
 									],
 									"type": {
@@ -4094,7 +4094,7 @@
 											"fileName": "lib/types.ts",
 											"line": 44,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L44"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L44"
 										}
 									],
 									"type": {
@@ -4182,13 +4182,13 @@
 							"fileName": "lib/types.ts",
 							"line": 34,
 							"character": 13,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L34"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L34"
 						},
 						{
 							"fileName": "lib/types.ts",
 							"line": 46,
 							"character": 12,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L46"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L46"
 						}
 					],
 					"type": {
@@ -4265,13 +4265,13 @@
 							"fileName": "lib/types.ts",
 							"line": 57,
 							"character": 13,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L57"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L57"
 						},
 						{
 							"fileName": "lib/types.ts",
 							"line": 67,
 							"character": 12,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L67"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L67"
 						}
 					],
 					"type": {
@@ -4304,7 +4304,7 @@
 											"fileName": "lib/types.ts",
 											"line": 59,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L59"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L59"
 										}
 									],
 									"type": {
@@ -4334,7 +4334,7 @@
 											"fileName": "lib/types.ts",
 											"line": 61,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L61"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L61"
 										}
 									],
 									"type": {
@@ -4364,7 +4364,7 @@
 											"fileName": "lib/types.ts",
 											"line": 63,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L63"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L63"
 										}
 									],
 									"type": {
@@ -4394,7 +4394,7 @@
 											"fileName": "lib/types.ts",
 											"line": 65,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L65"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L65"
 										}
 									],
 									"type": {
@@ -4465,13 +4465,13 @@
 							"fileName": "lib/types.ts",
 							"line": 57,
 							"character": 13,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L57"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L57"
 						},
 						{
 							"fileName": "lib/types.ts",
 							"line": 67,
 							"character": 12,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L67"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L67"
 						}
 					],
 					"type": {
@@ -4556,13 +4556,13 @@
 							"fileName": "lib/types.ts",
 							"line": 78,
 							"character": 13,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L78"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L78"
 						},
 						{
 							"fileName": "lib/types.ts",
 							"line": 102,
 							"character": 12,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L102"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L102"
 						}
 					],
 					"type": {
@@ -4595,7 +4595,7 @@
 											"fileName": "lib/types.ts",
 											"line": 80,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L80"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L80"
 										}
 									],
 									"type": {
@@ -4625,7 +4625,7 @@
 											"fileName": "lib/types.ts",
 											"line": 82,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L82"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L82"
 										}
 									],
 									"type": {
@@ -4655,7 +4655,7 @@
 											"fileName": "lib/types.ts",
 											"line": 84,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L84"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L84"
 										}
 									],
 									"type": {
@@ -4685,7 +4685,7 @@
 											"fileName": "lib/types.ts",
 											"line": 86,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L86"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L86"
 										}
 									],
 									"type": {
@@ -4715,7 +4715,7 @@
 											"fileName": "lib/types.ts",
 											"line": 88,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L88"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L88"
 										}
 									],
 									"type": {
@@ -4745,7 +4745,7 @@
 											"fileName": "lib/types.ts",
 											"line": 90,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L90"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L90"
 										}
 									],
 									"type": {
@@ -4775,7 +4775,7 @@
 											"fileName": "lib/types.ts",
 											"line": 92,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L92"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L92"
 										}
 									],
 									"type": {
@@ -4805,7 +4805,7 @@
 											"fileName": "lib/types.ts",
 											"line": 94,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L94"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L94"
 										}
 									],
 									"type": {
@@ -4835,7 +4835,7 @@
 											"fileName": "lib/types.ts",
 											"line": 96,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L96"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L96"
 										}
 									],
 									"type": {
@@ -4865,7 +4865,7 @@
 											"fileName": "lib/types.ts",
 											"line": 98,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L98"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L98"
 										}
 									],
 									"type": {
@@ -4895,7 +4895,7 @@
 											"fileName": "lib/types.ts",
 											"line": 100,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L100"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L100"
 										}
 									],
 									"type": {
@@ -4981,13 +4981,13 @@
 							"fileName": "lib/types.ts",
 							"line": 78,
 							"character": 13,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L78"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L78"
 						},
 						{
 							"fileName": "lib/types.ts",
 							"line": 102,
 							"character": 12,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L102"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L102"
 						}
 					],
 					"type": {
@@ -5020,388 +5020,469 @@
 					"id": 147,
 					"name": "ConnectOptions",
 					"variant": "declaration",
-					"kind": 256,
+					"kind": 2097152,
 					"flags": {},
-					"comment": {
-						"summary": [
-							{
-								"kind": "text",
-								"text": "Options for connecting to a driver/database.\n\nThese options configure how the ADBC driver is loaded and how the initial connection is established."
-							}
-						]
-					},
-					"children": [
-						{
-							"id": 148,
-							"name": "driver",
-							"variant": "declaration",
-							"kind": 1024,
-							"flags": {},
-							"comment": {
-								"summary": [
-									{
-										"kind": "text",
-										"text": "Driver to load. Accepts any of the following forms:\n- Short name: "
-									},
-									{
-										"kind": "code",
-										"text": "`\"sqlite\"`"
-									},
-									{
-										"kind": "text",
-										"text": ", "
-									},
-									{
-										"kind": "code",
-										"text": "`\"postgresql\"`"
-									},
-									{
-										"kind": "text",
-										"text": " — the driver manager searches for a matching\n  manifest file (e.g. "
-									},
-									{
-										"kind": "code",
-										"text": "`sqlite.toml`"
-									},
-									{
-										"kind": "text",
-										"text": ") in the configured directories, then falls back to\n  "
-									},
-									{
-										"kind": "code",
-										"text": "`LD_LIBRARY_PATH`"
-									},
-									{
-										"kind": "text",
-										"text": " / "
-									},
-									{
-										"kind": "code",
-										"text": "`PATH`"
-									},
-									{
-										"kind": "text",
-										"text": ".\n- Absolute path to a shared library: "
-									},
-									{
-										"kind": "code",
-										"text": "`\"/usr/lib/libadbc_driver_sqlite.so\"`"
-									},
-									{
-										"kind": "text",
-										"text": "\n- Absolute path to a driver manifest "
-									},
-									{
-										"kind": "code",
-										"text": "`.toml`"
-									},
-									{
-										"kind": "text",
-										"text": " file (with or without the "
-									},
-									{
-										"kind": "code",
-										"text": "`.toml`"
-									},
-									{
-										"kind": "text",
-										"text": " extension).\n- Relative path (only valid when "
-									},
-									{
-										"kind": "inline-tag",
-										"tag": "@link",
-										"text": "LoadFlags.AllowRelativePaths",
-										"target": 123
-									},
-									{
-										"kind": "text",
-										"text": " is set).\n- URI-style string: "
-									},
-									{
-										"kind": "code",
-										"text": "`\"sqlite:file::memory:\"`"
-									},
-									{
-										"kind": "text",
-										"text": ", "
-									},
-									{
-										"kind": "code",
-										"text": "`\"postgresql://user:pass@host/db\"`"
-									},
-									{
-										"kind": "text",
-										"text": " — the\n  driver name is the URI scheme and the remainder is passed as the connection URI.\n- Connection profile URI: "
-									},
-									{
-										"kind": "code",
-										"text": "`\"profile://my_profile\"`"
-									},
-									{
-										"kind": "text",
-										"text": " — loads a named profile from a\n  "
-									},
-									{
-										"kind": "code",
-										"text": "`.toml`"
-									},
-									{
-										"kind": "text",
-										"text": " file found in "
-									},
-									{
-										"kind": "inline-tag",
-										"tag": "@link",
-										"text": "profileSearchPaths",
-										"target": 151
-									},
-									{
-										"kind": "text",
-										"text": " or the default search directories."
-									}
-								]
-							},
-							"sources": [
-								{
-									"fileName": "lib/types.ts",
-									"line": 123,
-									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L123"
-								}
-							],
-							"type": {
-								"type": "intrinsic",
-								"name": "string"
-							}
-						},
-						{
-							"id": 149,
-							"name": "entrypoint",
-							"variant": "declaration",
-							"kind": 1024,
-							"flags": {
-								"isOptional": true
-							},
-							"comment": {
-								"summary": [
-									{
-										"kind": "text",
-										"text": "Name of the entrypoint function (optional).\nIf not provided, ADBC will attempt to guess the entrypoint symbol name based on the driver name."
-									}
-								]
-							},
-							"sources": [
-								{
-									"fileName": "lib/types.ts",
-									"line": 128,
-									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L128"
-								}
-							],
-							"type": {
-								"type": "intrinsic",
-								"name": "string"
-							}
-						},
-						{
-							"id": 150,
-							"name": "manifestSearchPaths",
-							"variant": "declaration",
-							"kind": 1024,
-							"flags": {
-								"isOptional": true
-							},
-							"comment": {
-								"summary": [
-									{
-										"kind": "text",
-										"text": "Additional directories to search for drivers and driver manifest ("
-									},
-									{
-										"kind": "code",
-										"text": "`.toml`"
-									},
-									{
-										"kind": "text",
-										"text": ") files (optional).\nSearched before the default system and user configuration directories."
-									}
-								]
-							},
-							"sources": [
-								{
-									"fileName": "lib/types.ts",
-									"line": 133,
-									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L133"
-								}
-							],
-							"type": {
-								"type": "array",
-								"elementType": {
-									"type": "intrinsic",
-									"name": "string"
-								}
-							}
-						},
-						{
-							"id": 151,
-							"name": "profileSearchPaths",
-							"variant": "declaration",
-							"kind": 1024,
-							"flags": {
-								"isOptional": true
-							},
-							"comment": {
-								"summary": [
-									{
-										"kind": "text",
-										"text": "Additional directories to search for connection profile ("
-									},
-									{
-										"kind": "code",
-										"text": "`.toml`"
-									},
-									{
-										"kind": "text",
-										"text": ") files (optional).\nSearched before the default system and user configuration directories."
-									}
-								]
-							},
-							"sources": [
-								{
-									"fileName": "lib/types.ts",
-									"line": 138,
-									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L138"
-								}
-							],
-							"type": {
-								"type": "array",
-								"elementType": {
-									"type": "intrinsic",
-									"name": "string"
-								}
-							}
-						},
-						{
-							"id": 152,
-							"name": "loadFlags",
-							"variant": "declaration",
-							"kind": 1024,
-							"flags": {
-								"isOptional": true
-							},
-							"comment": {
-								"summary": [
-									{
-										"kind": "text",
-										"text": "Bitmask controlling how the driver name is resolved (optional).\nUse the "
-									},
-									{
-										"kind": "inline-tag",
-										"tag": "@link",
-										"text": "LoadFlags",
-										"target": 118
-									},
-									{
-										"kind": "text",
-										"text": " constants to compose a value.\nDefaults to "
-									},
-									{
-										"kind": "inline-tag",
-										"tag": "@link",
-										"text": "LoadFlags.Default",
-										"target": 124
-									},
-									{
-										"kind": "text",
-										"text": " (all search locations enabled) when omitted."
-									}
-								]
-							},
-							"sources": [
-								{
-									"fileName": "lib/types.ts",
-									"line": 144,
-									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L144"
-								}
-							],
-							"type": {
-								"type": "intrinsic",
-								"name": "number"
-							}
-						},
-						{
-							"id": 153,
-							"name": "databaseOptions",
-							"variant": "declaration",
-							"kind": 1024,
-							"flags": {
-								"isOptional": true
-							},
-							"comment": {
-								"summary": [
-									{
-										"kind": "text",
-										"text": "Database-specific options.\nKey-value pairs passed to the driver during database initialization (e.g., \"uri\", \"username\")."
-									}
-								]
-							},
-							"sources": [
-								{
-									"fileName": "lib/types.ts",
-									"line": 149,
-									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L149"
-								}
-							],
-							"type": {
-								"type": "reference",
-								"target": {
-									"packageName": "typescript",
-									"packagePath": "lib/lib.es5.d.ts",
-									"qualifiedName": "Record"
-								},
-								"typeArguments": [
-									{
-										"type": "intrinsic",
-										"name": "string"
-									},
-									{
-										"type": "intrinsic",
-										"name": "string"
-									}
-								],
-								"name": "Record",
-								"package": "typescript"
-							}
-						}
-					],
-					"groups": [
-						{
-							"title": "Properties",
-							"children": [
-								148,
-								149,
-								150,
-								151,
-								152,
-								153
-							]
-						}
-					],
 					"sources": [
 						{
 							"fileName": "lib/types.ts",
-							"line": 109,
-							"character": 17,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L109"
+							"line": 133,
+							"character": 12,
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L133"
 						}
-					]
+					],
+					"type": {
+						"type": "union",
+						"types": [
+							{
+								"type": "intersection",
+								"types": [
+									{
+										"type": "reference",
+										"target": {
+											"packageName": "@apache-arrow/adbc-driver-manager",
+											"packagePath": "lib/types.ts",
+											"qualifiedName": "ConnectOptionsBase"
+										},
+										"name": "ConnectOptionsBase",
+										"package": "@apache-arrow/adbc-driver-manager"
+									},
+									{
+										"type": "reflection",
+										"declaration": {
+											"id": 148,
+											"name": "__type",
+											"variant": "declaration",
+											"kind": 65536,
+											"flags": {},
+											"children": [
+												{
+													"id": 149,
+													"name": "driver",
+													"variant": "declaration",
+													"kind": 1024,
+													"flags": {},
+													"comment": {
+														"summary": [
+															{
+																"kind": "text",
+																"text": "Driver to load. Accepts any of the following forms:\n- Short name: "
+															},
+															{
+																"kind": "code",
+																"text": "`\"sqlite\"`"
+															},
+															{
+																"kind": "text",
+																"text": ", "
+															},
+															{
+																"kind": "code",
+																"text": "`\"postgresql\"`"
+															},
+															{
+																"kind": "text",
+																"text": " — the driver manager searches for a matching\n  manifest file (e.g. "
+															},
+															{
+																"kind": "code",
+																"text": "`sqlite.toml`"
+															},
+															{
+																"kind": "text",
+																"text": ") in the configured directories, then falls back to\n  "
+															},
+															{
+																"kind": "code",
+																"text": "`LD_LIBRARY_PATH`"
+															},
+															{
+																"kind": "text",
+																"text": " / "
+															},
+															{
+																"kind": "code",
+																"text": "`PATH`"
+															},
+															{
+																"kind": "text",
+																"text": ".\n- Absolute path to a shared library: "
+															},
+															{
+																"kind": "code",
+																"text": "`\"/usr/lib/libadbc_driver_sqlite.so\"`"
+															},
+															{
+																"kind": "text",
+																"text": "\n- Absolute path to a driver manifest "
+															},
+															{
+																"kind": "code",
+																"text": "`.toml`"
+															},
+															{
+																"kind": "text",
+																"text": " file (with or without the "
+															},
+															{
+																"kind": "code",
+																"text": "`.toml`"
+															},
+															{
+																"kind": "text",
+																"text": " extension).\n- Relative path (only valid when "
+															},
+															{
+																"kind": "inline-tag",
+																"tag": "@link",
+																"text": "LoadFlags.AllowRelativePaths",
+																"target": 123
+															},
+															{
+																"kind": "text",
+																"text": " is set).\n- URI-style string: "
+															},
+															{
+																"kind": "code",
+																"text": "`\"sqlite:file::memory:\"`"
+															},
+															{
+																"kind": "text",
+																"text": ", "
+															},
+															{
+																"kind": "code",
+																"text": "`\"postgresql://user:pass@host/db\"`"
+															},
+															{
+																"kind": "text",
+																"text": " — the\n  driver name is the URI scheme and the remainder is passed as the connection URI.\n- Connection profile URI: "
+															},
+															{
+																"kind": "code",
+																"text": "`\"profile://my_profile\"`"
+															},
+															{
+																"kind": "text",
+																"text": " — loads a named profile from a\n  "
+															},
+															{
+																"kind": "code",
+																"text": "`.toml`"
+															},
+															{
+																"kind": "text",
+																"text": " file found in "
+															},
+															{
+																"kind": "inline-tag",
+																"tag": "@link",
+																"text": "profileSearchPaths"
+															},
+															{
+																"kind": "text",
+																"text": " or the default search directories."
+															}
+														]
+													},
+													"sources": [
+														{
+															"fileName": "lib/types.ts",
+															"line": 148,
+															"character": 6,
+															"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L148"
+														}
+													],
+													"type": {
+														"type": "intrinsic",
+														"name": "string"
+													}
+												},
+												{
+													"id": 150,
+													"name": "databaseOptions",
+													"variant": "declaration",
+													"kind": 1024,
+													"flags": {
+														"isOptional": true
+													},
+													"comment": {
+														"summary": [
+															{
+																"kind": "text",
+																"text": "Database-specific options passed to the driver during initialization."
+															}
+														]
+													},
+													"sources": [
+														{
+															"fileName": "lib/types.ts",
+															"line": 150,
+															"character": 6,
+															"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L150"
+														}
+													],
+													"type": {
+														"type": "reference",
+														"target": {
+															"packageName": "typescript",
+															"packagePath": "lib/lib.es5.d.ts",
+															"qualifiedName": "Record"
+														},
+														"typeArguments": [
+															{
+																"type": "intrinsic",
+																"name": "string"
+															},
+															{
+																"type": "intrinsic",
+																"name": "string"
+															}
+														],
+														"name": "Record",
+														"package": "typescript"
+													}
+												}
+											],
+											"groups": [
+												{
+													"title": "Properties",
+													"children": [
+														149,
+														150
+													]
+												}
+											]
+										}
+									}
+								]
+							},
+							{
+								"type": "intersection",
+								"types": [
+									{
+										"type": "reference",
+										"target": {
+											"packageName": "@apache-arrow/adbc-driver-manager",
+											"packagePath": "lib/types.ts",
+											"qualifiedName": "ConnectOptionsBase"
+										},
+										"name": "ConnectOptionsBase",
+										"package": "@apache-arrow/adbc-driver-manager"
+									},
+									{
+										"type": "reflection",
+										"declaration": {
+											"id": 151,
+											"name": "__type",
+											"variant": "declaration",
+											"kind": 65536,
+											"flags": {},
+											"children": [
+												{
+													"id": 152,
+													"name": "databaseOptions",
+													"variant": "declaration",
+													"kind": 1024,
+													"flags": {},
+													"comment": {
+														"summary": [
+															{
+																"kind": "text",
+																"text": "Database-specific options passed to the driver during initialization.\n\nWhen "
+															},
+															{
+																"kind": "code",
+																"text": "`driver`"
+															},
+															{
+																"kind": "text",
+																"text": " is omitted, either "
+															},
+															{
+																"kind": "code",
+																"text": "`uri`"
+															},
+															{
+																"kind": "text",
+																"text": " or "
+															},
+															{
+																"kind": "code",
+																"text": "`profile`"
+															},
+															{
+																"kind": "text",
+																"text": " is required:\n- "
+															},
+															{
+																"kind": "code",
+																"text": "`uri`"
+															},
+															{
+																"kind": "text",
+																"text": " — passed directly to the driver manager (e.g. "
+															},
+															{
+																"kind": "code",
+																"text": "`\"sqlite::memory:\"`"
+															},
+															{
+																"kind": "text",
+																"text": ", "
+															},
+															{
+																"kind": "code",
+																"text": "`\"profile://name\"`"
+															},
+															{
+																"kind": "text",
+																"text": ")\n- "
+															},
+															{
+																"kind": "code",
+																"text": "`profile`"
+															},
+															{
+																"kind": "text",
+																"text": " — bare connection profile name; the profile file specifies the driver"
+															}
+														]
+													},
+													"sources": [
+														{
+															"fileName": "lib/types.ts",
+															"line": 160,
+															"character": 6,
+															"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L160"
+														}
+													],
+													"type": {
+														"type": "intersection",
+														"types": [
+															{
+																"type": "union",
+																"types": [
+																	{
+																		"type": "reflection",
+																		"declaration": {
+																			"id": 153,
+																			"name": "__type",
+																			"variant": "declaration",
+																			"kind": 65536,
+																			"flags": {},
+																			"children": [
+																				{
+																					"id": 154,
+																					"name": "uri",
+																					"variant": "declaration",
+																					"kind": 1024,
+																					"flags": {},
+																					"sources": [
+																						{
+																							"fileName": "lib/types.ts",
+																							"line": 160,
+																							"character": 26,
+																							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L160"
+																						}
+																					],
+																					"type": {
+																						"type": "intrinsic",
+																						"name": "string"
+																					}
+																				}
+																			],
+																			"groups": [
+																				{
+																					"title": "Properties",
+																					"children": [
+																						154
+																					]
+																				}
+																			]
+																		}
+																	},
+																	{
+																		"type": "reflection",
+																		"declaration": {
+																			"id": 155,
+																			"name": "__type",
+																			"variant": "declaration",
+																			"kind": 65536,
+																			"flags": {},
+																			"children": [
+																				{
+																					"id": 156,
+																					"name": "profile",
+																					"variant": "declaration",
+																					"kind": 1024,
+																					"flags": {},
+																					"sources": [
+																						{
+																							"fileName": "lib/types.ts",
+																							"line": 160,
+																							"character": 44,
+																							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L160"
+																						}
+																					],
+																					"type": {
+																						"type": "intrinsic",
+																						"name": "string"
+																					}
+																				}
+																			],
+																			"groups": [
+																				{
+																					"title": "Properties",
+																					"children": [
+																						156
+																					]
+																				}
+																			]
+																		}
+																	}
+																]
+															},
+															{
+																"type": "reference",
+																"target": {
+																	"packageName": "typescript",
+																	"packagePath": "lib/lib.es5.d.ts",
+																	"qualifiedName": "Record"
+																},
+																"typeArguments": [
+																	{
+																		"type": "intrinsic",
+																		"name": "string"
+																	},
+																	{
+																		"type": "intrinsic",
+																		"name": "string"
+																	}
+																],
+																"name": "Record",
+																"package": "typescript"
+															}
+														]
+													}
+												}
+											],
+											"groups": [
+												{
+													"title": "Properties",
+													"children": [
+														152
+													]
+												}
+											]
+										}
+									}
+								]
+							}
+						]
+					}
 				},
 				{
-					"id": 154,
+					"id": 157,
 					"name": "IngestMode",
 					"variant": "declaration",
 					"kind": 32,
@@ -5446,28 +5527,28 @@
 					"sources": [
 						{
 							"fileName": "lib/types.ts",
-							"line": 160,
+							"line": 171,
 							"character": 13,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L160"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L171"
 						},
 						{
 							"fileName": "lib/types.ts",
-							"line": 170,
+							"line": 181,
 							"character": 12,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L170"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L181"
 						}
 					],
 					"type": {
 						"type": "reflection",
 						"declaration": {
-							"id": 155,
+							"id": 158,
 							"name": "__type",
 							"variant": "declaration",
 							"kind": 65536,
 							"flags": {},
 							"children": [
 								{
-									"id": 156,
+									"id": 159,
 									"name": "Append",
 									"variant": "declaration",
 									"kind": 1024,
@@ -5485,9 +5566,9 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 162,
+											"line": 173,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L162"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L173"
 										}
 									],
 									"type": {
@@ -5497,7 +5578,7 @@
 									"defaultValue": "'adbc.ingest.mode.append'"
 								},
 								{
-									"id": 157,
+									"id": 160,
 									"name": "Create",
 									"variant": "declaration",
 									"kind": 1024,
@@ -5515,9 +5596,9 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 164,
+											"line": 175,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L164"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L175"
 										}
 									],
 									"type": {
@@ -5527,7 +5608,7 @@
 									"defaultValue": "'adbc.ingest.mode.create'"
 								},
 								{
-									"id": 158,
+									"id": 161,
 									"name": "CreateAppend",
 									"variant": "declaration",
 									"kind": 1024,
@@ -5545,9 +5626,9 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 166,
+											"line": 177,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L166"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L177"
 										}
 									],
 									"type": {
@@ -5557,7 +5638,7 @@
 									"defaultValue": "'adbc.ingest.mode.create_append'"
 								},
 								{
-									"id": 159,
+									"id": 162,
 									"name": "Replace",
 									"variant": "declaration",
 									"kind": 1024,
@@ -5575,9 +5656,9 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 168,
+											"line": 179,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L168"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L179"
 										}
 									],
 									"type": {
@@ -5591,10 +5672,10 @@
 								{
 									"title": "Properties",
 									"children": [
-										156,
-										157,
-										158,
-										159
+										159,
+										160,
+										161,
+										162
 									]
 								}
 							]
@@ -5603,7 +5684,7 @@
 					"defaultValue": "..."
 				},
 				{
-					"id": 160,
+					"id": 163,
 					"name": "IngestMode",
 					"variant": "declaration",
 					"kind": 2097152,
@@ -5646,15 +5727,15 @@
 					"sources": [
 						{
 							"fileName": "lib/types.ts",
-							"line": 160,
+							"line": 171,
 							"character": 13,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L160"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L171"
 						},
 						{
 							"fileName": "lib/types.ts",
-							"line": 170,
+							"line": 181,
 							"character": 12,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L170"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L181"
 						}
 					],
 					"type": {
@@ -5666,7 +5747,7 @@
 								"type": "query",
 								"queryType": {
 									"type": "reference",
-									"target": 154,
+									"target": 157,
 									"name": "IngestMode",
 									"package": "@apache-arrow/adbc-driver-manager"
 								}
@@ -5676,7 +5757,7 @@
 							"type": "query",
 							"queryType": {
 								"type": "reference",
-								"target": 154,
+								"target": 157,
 								"name": "IngestMode",
 								"package": "@apache-arrow/adbc-driver-manager"
 							}
@@ -5684,7 +5765,7 @@
 					}
 				},
 				{
-					"id": 161,
+					"id": 164,
 					"name": "IngestOptions",
 					"variant": "declaration",
 					"kind": 256,
@@ -5707,7 +5788,7 @@
 					},
 					"children": [
 						{
-							"id": 162,
+							"id": 165,
 							"name": "mode",
 							"variant": "declaration",
 							"kind": 1024,
@@ -5724,7 +5805,7 @@
 										"kind": "inline-tag",
 										"tag": "@link",
 										"text": "IngestMode.Create",
-										"target": 157
+										"target": 160
 									},
 									{
 										"kind": "text",
@@ -5735,20 +5816,20 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 178,
+									"line": 189,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L178"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L189"
 								}
 							],
 							"type": {
 								"type": "reference",
-								"target": 160,
+								"target": 163,
 								"name": "IngestMode",
 								"package": "@apache-arrow/adbc-driver-manager"
 							}
 						},
 						{
-							"id": 163,
+							"id": 166,
 							"name": "catalog",
 							"variant": "declaration",
 							"kind": 1024,
@@ -5766,9 +5847,9 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 180,
+									"line": 191,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L180"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L191"
 								}
 							],
 							"type": {
@@ -5777,7 +5858,7 @@
 							}
 						},
 						{
-							"id": 164,
+							"id": 167,
 							"name": "dbSchema",
 							"variant": "declaration",
 							"kind": 1024,
@@ -5795,9 +5876,9 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 182,
+									"line": 193,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L182"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L193"
 								}
 							],
 							"type": {
@@ -5806,7 +5887,7 @@
 							}
 						},
 						{
-							"id": 165,
+							"id": 168,
 							"name": "temporary",
 							"variant": "declaration",
 							"kind": 1024,
@@ -5824,9 +5905,9 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 184,
+									"line": 195,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L184"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L195"
 								}
 							],
 							"type": {
@@ -5839,24 +5920,24 @@
 						{
 							"title": "Properties",
 							"children": [
-								162,
-								163,
-								164,
-								165
+								165,
+								166,
+								167,
+								168
 							]
 						}
 					],
 					"sources": [
 						{
 							"fileName": "lib/types.ts",
-							"line": 173,
+							"line": 184,
 							"character": 17,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L173"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L184"
 						}
 					]
 				},
 				{
-					"id": 166,
+					"id": 169,
 					"name": "GetObjectsOptions",
 					"variant": "declaration",
 					"kind": 256,
@@ -5871,7 +5952,7 @@
 					},
 					"children": [
 						{
-							"id": 167,
+							"id": 170,
 							"name": "depth",
 							"variant": "declaration",
 							"kind": 1024,
@@ -5909,9 +5990,9 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 193,
+									"line": 204,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L193"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L204"
 								}
 							],
 							"type": {
@@ -5922,7 +6003,7 @@
 							}
 						},
 						{
-							"id": 168,
+							"id": 171,
 							"name": "catalog",
 							"variant": "declaration",
 							"kind": 1024,
@@ -5940,9 +6021,9 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 195,
+									"line": 206,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L195"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L206"
 								}
 							],
 							"type": {
@@ -5951,7 +6032,7 @@
 							}
 						},
 						{
-							"id": 169,
+							"id": 172,
 							"name": "dbSchema",
 							"variant": "declaration",
 							"kind": 1024,
@@ -5969,9 +6050,9 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 197,
+									"line": 208,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L197"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L208"
 								}
 							],
 							"type": {
@@ -5980,7 +6061,7 @@
 							}
 						},
 						{
-							"id": 170,
+							"id": 173,
 							"name": "tableName",
 							"variant": "declaration",
 							"kind": 1024,
@@ -5998,9 +6079,9 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 199,
+									"line": 210,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L199"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L210"
 								}
 							],
 							"type": {
@@ -6009,7 +6090,7 @@
 							}
 						},
 						{
-							"id": 171,
+							"id": 174,
 							"name": "tableType",
 							"variant": "declaration",
 							"kind": 1024,
@@ -6027,9 +6108,9 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 201,
+									"line": 212,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L201"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L212"
 								}
 							],
 							"type": {
@@ -6041,7 +6122,7 @@
 							}
 						},
 						{
-							"id": 172,
+							"id": 175,
 							"name": "columnName",
 							"variant": "declaration",
 							"kind": 1024,
@@ -6059,9 +6140,9 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 203,
+									"line": 214,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L203"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L214"
 								}
 							],
 							"type": {
@@ -6074,26 +6155,26 @@
 						{
 							"title": "Properties",
 							"children": [
-								167,
-								168,
-								169,
 								170,
 								171,
-								172
+								172,
+								173,
+								174,
+								175
 							]
 						}
 					],
 					"sources": [
 						{
 							"fileName": "lib/types.ts",
-							"line": 188,
+							"line": 199,
 							"character": 17,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L188"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L199"
 						}
 					]
 				},
 				{
-					"id": 173,
+					"id": 176,
 					"name": "AdbcDatabase",
 					"variant": "declaration",
 					"kind": 256,
@@ -6108,7 +6189,7 @@
 					},
 					"children": [
 						{
-							"id": 174,
+							"id": 177,
 							"name": "connect",
 							"variant": "declaration",
 							"kind": 2048,
@@ -6116,14 +6197,14 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 219,
+									"line": 230,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L219"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L230"
 								}
 							],
 							"signatures": [
 								{
-									"id": 175,
+									"id": 178,
 									"name": "connect",
 									"variant": "signature",
 									"kind": 4096,
@@ -6150,9 +6231,9 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 219,
+											"line": 230,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L219"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L230"
 										}
 									],
 									"type": {
@@ -6165,7 +6246,7 @@
 										"typeArguments": [
 											{
 												"type": "reference",
-												"target": 178,
+												"target": 181,
 												"name": "AdbcConnection",
 												"package": "@apache-arrow/adbc-driver-manager"
 											}
@@ -6177,7 +6258,7 @@
 							]
 						},
 						{
-							"id": 176,
+							"id": 179,
 							"name": "close",
 							"variant": "declaration",
 							"kind": 2048,
@@ -6185,14 +6266,14 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 225,
+									"line": 236,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L225"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L236"
 								}
 							],
 							"signatures": [
 								{
-									"id": 177,
+									"id": 180,
 									"name": "close",
 									"variant": "signature",
 									"kind": 4096,
@@ -6208,9 +6289,9 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 225,
+											"line": 236,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L225"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L236"
 										}
 									],
 									"type": {
@@ -6237,17 +6318,17 @@
 						{
 							"title": "Methods",
 							"children": [
-								174,
-								176
+								177,
+								179
 							]
 						}
 					],
 					"sources": [
 						{
 							"fileName": "lib/types.ts",
-							"line": 213,
+							"line": 224,
 							"character": 17,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L213"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L224"
 						}
 					],
 					"implementedBy": [
@@ -6259,7 +6340,7 @@
 					]
 				},
 				{
-					"id": 178,
+					"id": 181,
 					"name": "AdbcConnection",
 					"variant": "declaration",
 					"kind": 256,
@@ -6274,7 +6355,7 @@
 					},
 					"children": [
 						{
-							"id": 179,
+							"id": 182,
 							"name": "createStatement",
 							"variant": "declaration",
 							"kind": 2048,
@@ -6282,14 +6363,14 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 240,
+									"line": 251,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L240"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L251"
 								}
 							],
 							"signatures": [
 								{
-									"id": 180,
+									"id": 183,
 									"name": "createStatement",
 									"variant": "signature",
 									"kind": 4096,
@@ -6316,9 +6397,9 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 240,
+											"line": 251,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L240"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L251"
 										}
 									],
 									"type": {
@@ -6331,7 +6412,7 @@
 										"typeArguments": [
 											{
 												"type": "reference",
-												"target": 234,
+												"target": 237,
 												"name": "AdbcStatement",
 												"package": "@apache-arrow/adbc-driver-manager"
 											}
@@ -6343,7 +6424,7 @@
 							]
 						},
 						{
-							"id": 181,
+							"id": 184,
 							"name": "setOption",
 							"variant": "declaration",
 							"kind": 2048,
@@ -6351,14 +6432,14 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 248,
+									"line": 259,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L248"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L259"
 								}
 							],
 							"signatures": [
 								{
-									"id": 182,
+									"id": 185,
 									"name": "setOption",
 									"variant": "signature",
 									"kind": 4096,
@@ -6374,14 +6455,14 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 248,
+											"line": 259,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L248"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L259"
 										}
 									],
 									"parameters": [
 										{
-											"id": 183,
+											"id": 186,
 											"name": "key",
 											"variant": "param",
 											"kind": 32768,
@@ -6400,7 +6481,7 @@
 											}
 										},
 										{
-											"id": 184,
+											"id": 187,
 											"name": "value",
 											"variant": "param",
 											"kind": 32768,
@@ -6427,7 +6508,7 @@
 							]
 						},
 						{
-							"id": 185,
+							"id": 188,
 							"name": "setAutoCommit",
 							"variant": "declaration",
 							"kind": 2048,
@@ -6435,14 +6516,14 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 255,
+									"line": 266,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L255"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L266"
 								}
 							],
 							"signatures": [
 								{
-									"id": 186,
+									"id": 189,
 									"name": "setAutoCommit",
 									"variant": "signature",
 									"kind": 4096,
@@ -6458,14 +6539,14 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 255,
+											"line": 266,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L255"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L266"
 										}
 									],
 									"parameters": [
 										{
-											"id": 187,
+											"id": 190,
 											"name": "enabled",
 											"variant": "param",
 											"kind": 32768,
@@ -6492,7 +6573,7 @@
 							]
 						},
 						{
-							"id": 188,
+							"id": 191,
 							"name": "setReadOnly",
 							"variant": "declaration",
 							"kind": 2048,
@@ -6500,14 +6581,14 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 262,
+									"line": 273,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L262"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L273"
 								}
 							],
 							"signatures": [
 								{
-									"id": 189,
+									"id": 192,
 									"name": "setReadOnly",
 									"variant": "signature",
 									"kind": 4096,
@@ -6523,14 +6604,14 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 262,
+											"line": 273,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L262"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L273"
 										}
 									],
 									"parameters": [
 										{
-											"id": 190,
+											"id": 193,
 											"name": "enabled",
 											"variant": "param",
 											"kind": 32768,
@@ -6557,7 +6638,7 @@
 							]
 						},
 						{
-							"id": 191,
+							"id": 194,
 							"name": "getObjects",
 							"variant": "declaration",
 							"kind": 2048,
@@ -6565,14 +6646,14 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 270,
+									"line": 281,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L270"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L281"
 								}
 							],
 							"signatures": [
 								{
-									"id": 192,
+									"id": 195,
 									"name": "getObjects",
 									"variant": "signature",
 									"kind": 4096,
@@ -6599,14 +6680,14 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 270,
+											"line": 281,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L270"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L281"
 										}
 									],
 									"parameters": [
 										{
-											"id": 193,
+											"id": 196,
 											"name": "options",
 											"variant": "param",
 											"kind": 32768,
@@ -6623,7 +6704,7 @@
 											},
 											"type": {
 												"type": "reference",
-												"target": 166,
+												"target": 169,
 												"name": "GetObjectsOptions",
 												"package": "@apache-arrow/adbc-driver-manager"
 											}
@@ -6661,7 +6742,7 @@
 							]
 						},
 						{
-							"id": 194,
+							"id": 197,
 							"name": "getTableSchema",
 							"variant": "declaration",
 							"kind": 2048,
@@ -6669,14 +6750,14 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 281,
+									"line": 292,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L281"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L292"
 								}
 							],
 							"signatures": [
 								{
-									"id": 195,
+									"id": 198,
 									"name": "getTableSchema",
 									"variant": "signature",
 									"kind": 4096,
@@ -6703,14 +6784,14 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 281,
+											"line": 292,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L281"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L292"
 										}
 									],
 									"parameters": [
 										{
-											"id": 196,
+											"id": 199,
 											"name": "options",
 											"variant": "param",
 											"kind": 32768,
@@ -6726,14 +6807,14 @@
 											"type": {
 												"type": "reflection",
 												"declaration": {
-													"id": 197,
+													"id": 200,
 													"name": "__type",
 													"variant": "declaration",
 													"kind": 65536,
 													"flags": {},
 													"children": [
 														{
-															"id": 198,
+															"id": 201,
 															"name": "catalog",
 															"variant": "declaration",
 															"kind": 1024,
@@ -6751,9 +6832,9 @@
 															"sources": [
 																{
 																	"fileName": "lib/types.ts",
-																	"line": 281,
+																	"line": 292,
 																	"character": 28,
-																	"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L281"
+																	"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L292"
 																}
 															],
 															"type": {
@@ -6762,7 +6843,7 @@
 															}
 														},
 														{
-															"id": 199,
+															"id": 202,
 															"name": "dbSchema",
 															"variant": "declaration",
 															"kind": 1024,
@@ -6780,9 +6861,9 @@
 															"sources": [
 																{
 																	"fileName": "lib/types.ts",
-																	"line": 281,
+																	"line": 292,
 																	"character": 46,
-																	"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L281"
+																	"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L292"
 																}
 															],
 															"type": {
@@ -6791,7 +6872,7 @@
 															}
 														},
 														{
-															"id": 200,
+															"id": 203,
 															"name": "tableName",
 															"variant": "declaration",
 															"kind": 1024,
@@ -6807,9 +6888,9 @@
 															"sources": [
 																{
 																	"fileName": "lib/types.ts",
-																	"line": 281,
+																	"line": 292,
 																	"character": 65,
-																	"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L281"
+																	"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L292"
 																}
 															],
 															"type": {
@@ -6822,9 +6903,9 @@
 														{
 															"title": "Properties",
 															"children": [
-																198,
-																199,
-																200
+																201,
+																202,
+																203
 															]
 														}
 													]
@@ -6864,7 +6945,7 @@
 							]
 						},
 						{
-							"id": 201,
+							"id": 204,
 							"name": "getTableTypes",
 							"variant": "declaration",
 							"kind": 2048,
@@ -6872,14 +6953,14 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 288,
+									"line": 299,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L288"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L299"
 								}
 							],
 							"signatures": [
 								{
-									"id": 202,
+									"id": 205,
 									"name": "getTableTypes",
 									"variant": "signature",
 									"kind": 4096,
@@ -6906,9 +6987,9 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 288,
+											"line": 299,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L288"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L299"
 										}
 									],
 									"type": {
@@ -6943,7 +7024,7 @@
 							]
 						},
 						{
-							"id": 203,
+							"id": 206,
 							"name": "getInfo",
 							"variant": "declaration",
 							"kind": 2048,
@@ -6951,14 +7032,14 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 297,
+									"line": 308,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L297"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L308"
 								}
 							],
 							"signatures": [
 								{
-									"id": 204,
+									"id": 207,
 									"name": "getInfo",
 									"variant": "signature",
 									"kind": 4096,
@@ -6985,14 +7066,14 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 297,
+											"line": 308,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L297"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L308"
 										}
 									],
 									"parameters": [
 										{
-											"id": 205,
+											"id": 208,
 											"name": "infoCodes",
 											"variant": "param",
 											"kind": 32768,
@@ -7060,7 +7141,7 @@
 							]
 						},
 						{
-							"id": 206,
+							"id": 209,
 							"name": "query",
 							"variant": "declaration",
 							"kind": 2048,
@@ -7068,14 +7149,14 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 310,
+									"line": 321,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L310"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L321"
 								}
 							],
 							"signatures": [
 								{
-									"id": 207,
+									"id": 210,
 									"name": "query",
 									"variant": "signature",
 									"kind": 4096,
@@ -7090,7 +7171,7 @@
 												"kind": "inline-tag",
 												"tag": "@link",
 												"text": "queryStream",
-												"target": 210
+												"target": 213
 											},
 											{
 												"kind": "text",
@@ -7112,14 +7193,14 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 310,
+											"line": 321,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L310"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L321"
 										}
 									],
 									"parameters": [
 										{
-											"id": 208,
+											"id": 211,
 											"name": "sql",
 											"variant": "param",
 											"kind": 32768,
@@ -7138,7 +7219,7 @@
 											}
 										},
 										{
-											"id": 209,
+											"id": 212,
 											"name": "params",
 											"variant": "param",
 											"kind": 32768,
@@ -7203,7 +7284,7 @@
 							]
 						},
 						{
-							"id": 210,
+							"id": 213,
 							"name": "queryStream",
 							"variant": "declaration",
 							"kind": 2048,
@@ -7211,14 +7292,14 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 323,
+									"line": 334,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L323"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L334"
 								}
 							],
 							"signatures": [
 								{
-									"id": 211,
+									"id": 214,
 									"name": "queryStream",
 									"variant": "signature",
 									"kind": 4096,
@@ -7233,7 +7314,7 @@
 												"kind": "inline-tag",
 												"tag": "@link",
 												"text": "query",
-												"target": 206
+												"target": 209
 											},
 											{
 												"kind": "text",
@@ -7255,14 +7336,14 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 323,
+											"line": 334,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L323"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L334"
 										}
 									],
 									"parameters": [
 										{
-											"id": 212,
+											"id": 215,
 											"name": "sql",
 											"variant": "param",
 											"kind": 32768,
@@ -7281,7 +7362,7 @@
 											}
 										},
 										{
-											"id": 213,
+											"id": 216,
 											"name": "params",
 											"variant": "param",
 											"kind": 32768,
@@ -7346,7 +7427,7 @@
 							]
 						},
 						{
-							"id": 214,
+							"id": 217,
 							"name": "ingest",
 							"variant": "declaration",
 							"kind": 2048,
@@ -7354,14 +7435,14 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 337,
+									"line": 348,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L337"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L348"
 								}
 							],
 							"signatures": [
 								{
-									"id": 215,
+									"id": 218,
 									"name": "ingest",
 									"variant": "signature",
 									"kind": 4096,
@@ -7388,14 +7469,14 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 337,
+											"line": 348,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L337"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L348"
 										}
 									],
 									"parameters": [
 										{
-											"id": 216,
+											"id": 219,
 											"name": "tableName",
 											"variant": "param",
 											"kind": 32768,
@@ -7414,7 +7495,7 @@
 											}
 										},
 										{
-											"id": 217,
+											"id": 220,
 											"name": "data",
 											"variant": "param",
 											"kind": 32768,
@@ -7439,7 +7520,7 @@
 											}
 										},
 										{
-											"id": 218,
+											"id": 221,
 											"name": "options",
 											"variant": "param",
 											"kind": 32768,
@@ -7456,7 +7537,7 @@
 											},
 											"type": {
 												"type": "reference",
-												"target": 161,
+												"target": 164,
 												"name": "IngestOptions",
 												"package": "@apache-arrow/adbc-driver-manager"
 											}
@@ -7482,7 +7563,7 @@
 							]
 						},
 						{
-							"id": 219,
+							"id": 222,
 							"name": "ingestStream",
 							"variant": "declaration",
 							"kind": 2048,
@@ -7490,14 +7571,14 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 351,
+									"line": 362,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L351"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L362"
 								}
 							],
 							"signatures": [
 								{
-									"id": 220,
+									"id": 223,
 									"name": "ingestStream",
 									"variant": "signature",
 									"kind": 4096,
@@ -7512,7 +7593,7 @@
 												"kind": "inline-tag",
 												"tag": "@link",
 												"text": "ingest",
-												"target": 214
+												"target": 217
 											},
 											{
 												"kind": "text",
@@ -7534,14 +7615,14 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 351,
+											"line": 362,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L351"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L362"
 										}
 									],
 									"parameters": [
 										{
-											"id": 221,
+											"id": 224,
 											"name": "tableName",
 											"variant": "param",
 											"kind": 32768,
@@ -7560,7 +7641,7 @@
 											}
 										},
 										{
-											"id": 222,
+											"id": 225,
 											"name": "reader",
 											"variant": "param",
 											"kind": 32768,
@@ -7585,7 +7666,7 @@
 											}
 										},
 										{
-											"id": 223,
+											"id": 226,
 											"name": "options",
 											"variant": "param",
 											"kind": 32768,
@@ -7602,7 +7683,7 @@
 											},
 											"type": {
 												"type": "reference",
-												"target": 161,
+												"target": 164,
 												"name": "IngestOptions",
 												"package": "@apache-arrow/adbc-driver-manager"
 											}
@@ -7628,7 +7709,7 @@
 							]
 						},
 						{
-							"id": 224,
+							"id": 227,
 							"name": "execute",
 							"variant": "declaration",
 							"kind": 2048,
@@ -7636,14 +7717,14 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 363,
+									"line": 374,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L363"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L374"
 								}
 							],
 							"signatures": [
 								{
-									"id": 225,
+									"id": 228,
 									"name": "execute",
 									"variant": "signature",
 									"kind": 4096,
@@ -7670,14 +7751,14 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 363,
+											"line": 374,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L363"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L374"
 										}
 									],
 									"parameters": [
 										{
-											"id": 226,
+											"id": 229,
 											"name": "sql",
 											"variant": "param",
 											"kind": 32768,
@@ -7696,7 +7777,7 @@
 											}
 										},
 										{
-											"id": 227,
+											"id": 230,
 											"name": "params",
 											"variant": "param",
 											"kind": 32768,
@@ -7749,7 +7830,7 @@
 							]
 						},
 						{
-							"id": 228,
+							"id": 231,
 							"name": "commit",
 							"variant": "declaration",
 							"kind": 2048,
@@ -7757,14 +7838,14 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 369,
+									"line": 380,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L369"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L380"
 								}
 							],
 							"signatures": [
 								{
-									"id": 229,
+									"id": 232,
 									"name": "commit",
 									"variant": "signature",
 									"kind": 4096,
@@ -7780,9 +7861,9 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 369,
+											"line": 380,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L369"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L380"
 										}
 									],
 									"type": {
@@ -7805,7 +7886,7 @@
 							]
 						},
 						{
-							"id": 230,
+							"id": 233,
 							"name": "rollback",
 							"variant": "declaration",
 							"kind": 2048,
@@ -7813,14 +7894,14 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 375,
+									"line": 386,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L375"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L386"
 								}
 							],
 							"signatures": [
 								{
-									"id": 231,
+									"id": 234,
 									"name": "rollback",
 									"variant": "signature",
 									"kind": 4096,
@@ -7836,9 +7917,9 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 375,
+											"line": 386,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L375"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L386"
 										}
 									],
 									"type": {
@@ -7861,7 +7942,7 @@
 							]
 						},
 						{
-							"id": 232,
+							"id": 235,
 							"name": "close",
 							"variant": "declaration",
 							"kind": 2048,
@@ -7869,14 +7950,14 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 380,
+									"line": 391,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L380"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L391"
 								}
 							],
 							"signatures": [
 								{
-									"id": 233,
+									"id": 236,
 									"name": "close",
 									"variant": "signature",
 									"kind": 4096,
@@ -7892,9 +7973,9 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 380,
+											"line": 391,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L380"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L391"
 										}
 									],
 									"type": {
@@ -7921,31 +8002,31 @@
 						{
 							"title": "Methods",
 							"children": [
-								179,
-								181,
-								185,
+								182,
+								184,
 								188,
 								191,
 								194,
-								201,
-								203,
+								197,
+								204,
 								206,
-								210,
-								214,
-								219,
-								224,
-								228,
-								230,
-								232
+								209,
+								213,
+								217,
+								222,
+								227,
+								231,
+								233,
+								235
 							]
 						}
 					],
 					"sources": [
 						{
 							"fileName": "lib/types.ts",
-							"line": 234,
+							"line": 245,
 							"character": 17,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L234"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L245"
 						}
 					],
 					"implementedBy": [
@@ -7957,7 +8038,7 @@
 					]
 				},
 				{
-					"id": 234,
+					"id": 237,
 					"name": "AdbcStatement",
 					"variant": "declaration",
 					"kind": 256,
@@ -7972,7 +8053,7 @@
 					},
 					"children": [
 						{
-							"id": 235,
+							"id": 238,
 							"name": "setSqlQuery",
 							"variant": "declaration",
 							"kind": 2048,
@@ -7980,14 +8061,14 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 395,
+									"line": 406,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L395"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L406"
 								}
 							],
 							"signatures": [
 								{
-									"id": 236,
+									"id": 239,
 									"name": "setSqlQuery",
 									"variant": "signature",
 									"kind": 4096,
@@ -8003,14 +8084,14 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 395,
+											"line": 406,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L395"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L406"
 										}
 									],
 									"parameters": [
 										{
-											"id": 237,
+											"id": 240,
 											"name": "query",
 											"variant": "param",
 											"kind": 32768,
@@ -8049,7 +8130,7 @@
 							]
 						},
 						{
-							"id": 238,
+							"id": 241,
 							"name": "setOption",
 							"variant": "declaration",
 							"kind": 2048,
@@ -8057,14 +8138,14 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 403,
+									"line": 414,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L403"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L414"
 								}
 							],
 							"signatures": [
 								{
-									"id": 239,
+									"id": 242,
 									"name": "setOption",
 									"variant": "signature",
 									"kind": 4096,
@@ -8080,14 +8161,14 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 403,
+											"line": 414,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L403"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L414"
 										}
 									],
 									"parameters": [
 										{
-											"id": 240,
+											"id": 243,
 											"name": "key",
 											"variant": "param",
 											"kind": 32768,
@@ -8106,7 +8187,7 @@
 											}
 										},
 										{
-											"id": 241,
+											"id": 244,
 											"name": "value",
 											"variant": "param",
 											"kind": 32768,
@@ -8133,7 +8214,7 @@
 							]
 						},
 						{
-							"id": 242,
+							"id": 245,
 							"name": "executeQuery",
 							"variant": "declaration",
 							"kind": 2048,
@@ -8141,14 +8222,14 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 411,
+									"line": 422,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L411"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L422"
 								}
 							],
 							"signatures": [
 								{
-									"id": 243,
+									"id": 246,
 									"name": "executeQuery",
 									"variant": "signature",
 									"kind": 4096,
@@ -8175,9 +8256,9 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 411,
+											"line": 422,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L411"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L422"
 										}
 									],
 									"type": {
@@ -8212,7 +8293,7 @@
 							]
 						},
 						{
-							"id": 244,
+							"id": 247,
 							"name": "executeUpdate",
 							"variant": "declaration",
 							"kind": 2048,
@@ -8220,14 +8301,14 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 418,
+									"line": 429,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L418"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L429"
 								}
 							],
 							"signatures": [
 								{
-									"id": 245,
+									"id": 248,
 									"name": "executeUpdate",
 									"variant": "signature",
 									"kind": 4096,
@@ -8254,9 +8335,9 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 418,
+											"line": 429,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L418"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L429"
 										}
 									],
 									"type": {
@@ -8279,7 +8360,7 @@
 							]
 						},
 						{
-							"id": 246,
+							"id": 249,
 							"name": "bind",
 							"variant": "declaration",
 							"kind": 2048,
@@ -8287,14 +8368,14 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 427,
+									"line": 438,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L427"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L438"
 								}
 							],
 							"signatures": [
 								{
-									"id": 247,
+									"id": 250,
 									"name": "bind",
 									"variant": "signature",
 									"kind": 4096,
@@ -8310,14 +8391,14 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 427,
+											"line": 438,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L427"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L438"
 										}
 									],
 									"parameters": [
 										{
-											"id": 248,
+											"id": 251,
 											"name": "data",
 											"variant": "param",
 											"kind": 32768,
@@ -8362,7 +8443,7 @@
 							]
 						},
 						{
-							"id": 249,
+							"id": 252,
 							"name": "bindStream",
 							"variant": "declaration",
 							"kind": 2048,
@@ -8370,14 +8451,14 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 437,
+									"line": 448,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L437"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L448"
 								}
 							],
 							"signatures": [
 								{
-									"id": 250,
+									"id": 253,
 									"name": "bindStream",
 									"variant": "signature",
 									"kind": 4096,
@@ -8393,14 +8474,14 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 437,
+											"line": 448,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L437"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L448"
 										}
 									],
 									"parameters": [
 										{
-											"id": 251,
+											"id": 254,
 											"name": "reader",
 											"variant": "param",
 											"kind": 32768,
@@ -8445,7 +8526,7 @@
 							]
 						},
 						{
-							"id": 252,
+							"id": 255,
 							"name": "close",
 							"variant": "declaration",
 							"kind": 2048,
@@ -8453,14 +8534,14 @@
 							"sources": [
 								{
 									"fileName": "lib/types.ts",
-									"line": 442,
+									"line": 453,
 									"character": 2,
-									"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L442"
+									"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L453"
 								}
 							],
 							"signatures": [
 								{
-									"id": 253,
+									"id": 256,
 									"name": "close",
 									"variant": "signature",
 									"kind": 4096,
@@ -8476,9 +8557,9 @@
 									"sources": [
 										{
 											"fileName": "lib/types.ts",
-											"line": 442,
+											"line": 453,
 											"character": 2,
-											"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L442"
+											"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L453"
 										}
 									],
 									"type": {
@@ -8505,22 +8586,22 @@
 						{
 							"title": "Methods",
 							"children": [
-								235,
 								238,
-								242,
-								244,
-								246,
+								241,
+								245,
+								247,
 								249,
-								252
+								252,
+								255
 							]
 						}
 					],
 					"sources": [
 						{
 							"fileName": "lib/types.ts",
-							"line": 389,
+							"line": 400,
 							"character": 17,
-							"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L389"
+							"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L400"
 						}
 					],
 					"implementedBy": [
@@ -8536,12 +8617,11 @@
 				{
 					"title": "Interfaces",
 					"children": [
-						147,
-						161,
-						166,
-						173,
-						178,
-						234
+						164,
+						169,
+						176,
+						181,
+						237
 					]
 				},
 				{
@@ -8550,7 +8630,8 @@
 						125,
 						132,
 						146,
-						160
+						147,
+						163
 					]
 				},
 				{
@@ -8559,7 +8640,7 @@
 						118,
 						126,
 						133,
-						154
+						157
 					]
 				}
 			],
@@ -8568,7 +8649,7 @@
 					"fileName": "lib/types.ts",
 					"line": 1,
 					"character": 0,
-					"url": "https://github.com/apache/arrow-adbc/blob/65957bbae31a70ad9ce07c2b9919c32d7ea62649/javascript/lib/types.ts#L1"
+					"url": "https://github.com/apache/arrow-adbc/blob/3e7f03586244c5109a4169768a9f846def4fa3fd/javascript/lib/types.ts#L1"
 				}
 			]
 		}
@@ -8577,7 +8658,7 @@
 		{
 			"title": "Modules",
 			"children": [
-				254,
+				257,
 				1,
 				117
 			]
@@ -9292,212 +9373,212 @@
 		"148": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "ConnectOptions.driver"
+			"qualifiedName": "__type"
 		},
 		"149": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "ConnectOptions.entrypoint"
+			"qualifiedName": "__type.driver"
 		},
 		"150": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "ConnectOptions.manifestSearchPaths"
+			"qualifiedName": "__type.databaseOptions"
 		},
 		"151": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "ConnectOptions.profileSearchPaths"
+			"qualifiedName": "__type"
 		},
 		"152": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "ConnectOptions.loadFlags"
+			"qualifiedName": "__type.databaseOptions"
 		},
 		"153": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "ConnectOptions.databaseOptions"
+			"qualifiedName": "__type"
 		},
 		"154": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "IngestMode"
+			"qualifiedName": "__type.uri"
 		},
 		"155": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "__object"
+			"qualifiedName": "__type"
 		},
 		"156": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "__object.Append"
+			"qualifiedName": "__type.profile"
 		},
 		"157": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "__object.Create"
+			"qualifiedName": "IngestMode"
 		},
 		"158": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "__object.CreateAppend"
+			"qualifiedName": "__object"
 		},
 		"159": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "__object.Replace"
+			"qualifiedName": "__object.Append"
 		},
 		"160": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "IngestMode"
+			"qualifiedName": "__object.Create"
 		},
 		"161": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "IngestOptions"
+			"qualifiedName": "__object.CreateAppend"
 		},
 		"162": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "IngestOptions.mode"
+			"qualifiedName": "__object.Replace"
 		},
 		"163": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "IngestOptions.catalog"
+			"qualifiedName": "IngestMode"
 		},
 		"164": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "IngestOptions.dbSchema"
+			"qualifiedName": "IngestOptions"
 		},
 		"165": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "IngestOptions.temporary"
+			"qualifiedName": "IngestOptions.mode"
 		},
 		"166": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "GetObjectsOptions"
+			"qualifiedName": "IngestOptions.catalog"
 		},
 		"167": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "GetObjectsOptions.depth"
+			"qualifiedName": "IngestOptions.dbSchema"
 		},
 		"168": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "GetObjectsOptions.catalog"
+			"qualifiedName": "IngestOptions.temporary"
 		},
 		"169": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "GetObjectsOptions.dbSchema"
+			"qualifiedName": "GetObjectsOptions"
 		},
 		"170": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "GetObjectsOptions.tableName"
+			"qualifiedName": "GetObjectsOptions.depth"
 		},
 		"171": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "GetObjectsOptions.tableType"
+			"qualifiedName": "GetObjectsOptions.catalog"
 		},
 		"172": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "GetObjectsOptions.columnName"
+			"qualifiedName": "GetObjectsOptions.dbSchema"
 		},
 		"173": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcDatabase"
+			"qualifiedName": "GetObjectsOptions.tableName"
 		},
 		"174": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcDatabase.connect"
+			"qualifiedName": "GetObjectsOptions.tableType"
 		},
 		"175": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcDatabase.connect"
+			"qualifiedName": "GetObjectsOptions.columnName"
 		},
 		"176": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcDatabase.close"
+			"qualifiedName": "AdbcDatabase"
 		},
 		"177": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcDatabase.close"
+			"qualifiedName": "AdbcDatabase.connect"
 		},
 		"178": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection"
+			"qualifiedName": "AdbcDatabase.connect"
 		},
 		"179": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.createStatement"
+			"qualifiedName": "AdbcDatabase.close"
 		},
 		"180": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.createStatement"
+			"qualifiedName": "AdbcDatabase.close"
 		},
 		"181": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.setOption"
+			"qualifiedName": "AdbcConnection"
 		},
 		"182": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.setOption"
+			"qualifiedName": "AdbcConnection.createStatement"
 		},
 		"183": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "key"
+			"qualifiedName": "AdbcConnection.createStatement"
 		},
 		"184": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "value"
+			"qualifiedName": "AdbcConnection.setOption"
 		},
 		"185": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.setAutoCommit"
+			"qualifiedName": "AdbcConnection.setOption"
 		},
 		"186": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.setAutoCommit"
+			"qualifiedName": "key"
 		},
 		"187": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "enabled"
+			"qualifiedName": "value"
 		},
 		"188": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.setReadOnly"
+			"qualifiedName": "AdbcConnection.setAutoCommit"
 		},
 		"189": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.setReadOnly"
+			"qualifiedName": "AdbcConnection.setAutoCommit"
 		},
 		"190": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
@@ -9507,27 +9588,27 @@
 		"191": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.getObjects"
+			"qualifiedName": "AdbcConnection.setReadOnly"
 		},
 		"192": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.getObjects"
+			"qualifiedName": "AdbcConnection.setReadOnly"
 		},
 		"193": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "options"
+			"qualifiedName": "enabled"
 		},
 		"194": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.getTableSchema"
+			"qualifiedName": "AdbcConnection.getObjects"
 		},
 		"195": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.getTableSchema"
+			"qualifiedName": "AdbcConnection.getObjects"
 		},
 		"196": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
@@ -9537,459 +9618,474 @@
 		"197": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "__type"
+			"qualifiedName": "AdbcConnection.getTableSchema"
 		},
 		"198": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "__type.catalog"
+			"qualifiedName": "AdbcConnection.getTableSchema"
 		},
 		"199": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "__type.dbSchema"
+			"qualifiedName": "options"
 		},
 		"200": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "__type.tableName"
+			"qualifiedName": "__type"
 		},
 		"201": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.getTableTypes"
+			"qualifiedName": "__type.catalog"
 		},
 		"202": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.getTableTypes"
+			"qualifiedName": "__type.dbSchema"
 		},
 		"203": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.getInfo"
+			"qualifiedName": "__type.tableName"
 		},
 		"204": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.getInfo"
+			"qualifiedName": "AdbcConnection.getTableTypes"
 		},
 		"205": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "infoCodes"
+			"qualifiedName": "AdbcConnection.getTableTypes"
 		},
 		"206": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.query"
+			"qualifiedName": "AdbcConnection.getInfo"
 		},
 		"207": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.query"
+			"qualifiedName": "AdbcConnection.getInfo"
 		},
 		"208": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "sql"
+			"qualifiedName": "infoCodes"
 		},
 		"209": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "params"
+			"qualifiedName": "AdbcConnection.query"
 		},
 		"210": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.queryStream"
+			"qualifiedName": "AdbcConnection.query"
 		},
 		"211": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.queryStream"
+			"qualifiedName": "sql"
 		},
 		"212": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "sql"
+			"qualifiedName": "params"
 		},
 		"213": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "params"
+			"qualifiedName": "AdbcConnection.queryStream"
 		},
 		"214": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.ingest"
+			"qualifiedName": "AdbcConnection.queryStream"
 		},
 		"215": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.ingest"
+			"qualifiedName": "sql"
 		},
 		"216": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "tableName"
+			"qualifiedName": "params"
 		},
 		"217": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "data"
+			"qualifiedName": "AdbcConnection.ingest"
 		},
 		"218": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "options"
+			"qualifiedName": "AdbcConnection.ingest"
 		},
 		"219": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.ingestStream"
+			"qualifiedName": "tableName"
 		},
 		"220": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.ingestStream"
+			"qualifiedName": "data"
 		},
 		"221": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "tableName"
+			"qualifiedName": "options"
 		},
 		"222": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "reader"
+			"qualifiedName": "AdbcConnection.ingestStream"
 		},
 		"223": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "options"
+			"qualifiedName": "AdbcConnection.ingestStream"
 		},
 		"224": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.execute"
+			"qualifiedName": "tableName"
 		},
 		"225": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.execute"
+			"qualifiedName": "reader"
 		},
 		"226": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "sql"
+			"qualifiedName": "options"
 		},
 		"227": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "params"
+			"qualifiedName": "AdbcConnection.execute"
 		},
 		"228": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.commit"
+			"qualifiedName": "AdbcConnection.execute"
 		},
 		"229": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.commit"
+			"qualifiedName": "sql"
 		},
 		"230": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.rollback"
+			"qualifiedName": "params"
 		},
 		"231": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.rollback"
+			"qualifiedName": "AdbcConnection.commit"
 		},
 		"232": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.close"
+			"qualifiedName": "AdbcConnection.commit"
 		},
 		"233": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcConnection.close"
+			"qualifiedName": "AdbcConnection.rollback"
 		},
 		"234": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcStatement"
+			"qualifiedName": "AdbcConnection.rollback"
 		},
 		"235": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcStatement.setSqlQuery"
+			"qualifiedName": "AdbcConnection.close"
 		},
 		"236": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcStatement.setSqlQuery"
+			"qualifiedName": "AdbcConnection.close"
 		},
 		"237": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "query"
+			"qualifiedName": "AdbcStatement"
 		},
 		"238": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcStatement.setOption"
+			"qualifiedName": "AdbcStatement.setSqlQuery"
 		},
 		"239": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcStatement.setOption"
+			"qualifiedName": "AdbcStatement.setSqlQuery"
 		},
 		"240": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "key"
+			"qualifiedName": "query"
 		},
 		"241": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "value"
+			"qualifiedName": "AdbcStatement.setOption"
 		},
 		"242": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcStatement.executeQuery"
+			"qualifiedName": "AdbcStatement.setOption"
 		},
 		"243": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcStatement.executeQuery"
+			"qualifiedName": "key"
 		},
 		"244": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcStatement.executeUpdate"
+			"qualifiedName": "value"
 		},
 		"245": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcStatement.executeUpdate"
+			"qualifiedName": "AdbcStatement.executeQuery"
 		},
 		"246": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcStatement.bind"
+			"qualifiedName": "AdbcStatement.executeQuery"
 		},
 		"247": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcStatement.bind"
+			"qualifiedName": "AdbcStatement.executeUpdate"
 		},
 		"248": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "data"
+			"qualifiedName": "AdbcStatement.executeUpdate"
 		},
 		"249": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcStatement.bindStream"
+			"qualifiedName": "AdbcStatement.bind"
 		},
 		"250": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcStatement.bindStream"
+			"qualifiedName": "AdbcStatement.bind"
 		},
 		"251": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "reader"
+			"qualifiedName": "data"
 		},
 		"252": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcStatement.close"
+			"qualifiedName": "AdbcStatement.bindStream"
 		},
 		"253": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/types.ts",
-			"qualifiedName": "AdbcStatement.close"
+			"qualifiedName": "AdbcStatement.bindStream"
 		},
 		"254": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
-			"packagePath": "lib/error.ts",
-			"qualifiedName": ""
+			"packagePath": "lib/types.ts",
+			"qualifiedName": "reader"
 		},
 		"255": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
-			"packagePath": "lib/error.ts",
-			"qualifiedName": "AdbcError"
+			"packagePath": "lib/types.ts",
+			"qualifiedName": "AdbcStatement.close"
 		},
 		"256": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
-			"packagePath": "lib/error.ts",
-			"qualifiedName": "AdbcError.fromError"
+			"packagePath": "lib/types.ts",
+			"qualifiedName": "AdbcStatement.close"
 		},
 		"257": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/error.ts",
-			"qualifiedName": "AdbcError.fromError"
+			"qualifiedName": ""
 		},
 		"258": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/error.ts",
-			"qualifiedName": "err"
+			"qualifiedName": "AdbcError"
 		},
 		"259": {
-			"packageName": "@types/node",
-			"packagePath": "globals.d.ts",
-			"qualifiedName": "ErrorConstructor.captureStackTrace"
+			"packageName": "@apache-arrow/adbc-driver-manager",
+			"packagePath": "lib/error.ts",
+			"qualifiedName": "AdbcError.fromError"
 		},
 		"260": {
-			"packageName": "@types/node",
-			"packagePath": "globals.d.ts",
-			"qualifiedName": "ErrorConstructor.captureStackTrace"
+			"packageName": "@apache-arrow/adbc-driver-manager",
+			"packagePath": "lib/error.ts",
+			"qualifiedName": "AdbcError.fromError"
 		},
 		"261": {
-			"packageName": "@types/node",
-			"packagePath": "globals.d.ts",
-			"qualifiedName": "targetObject"
+			"packageName": "@apache-arrow/adbc-driver-manager",
+			"packagePath": "lib/error.ts",
+			"qualifiedName": "err"
 		},
 		"262": {
 			"packageName": "@types/node",
 			"packagePath": "globals.d.ts",
-			"qualifiedName": "constructorOpt"
+			"qualifiedName": "ErrorConstructor.captureStackTrace"
 		},
 		"263": {
 			"packageName": "@types/node",
 			"packagePath": "globals.d.ts",
-			"qualifiedName": "ErrorConstructor.prepareStackTrace"
+			"qualifiedName": "ErrorConstructor.captureStackTrace"
 		},
 		"264": {
 			"packageName": "@types/node",
 			"packagePath": "globals.d.ts",
-			"qualifiedName": "ErrorConstructor.prepareStackTrace"
+			"qualifiedName": "targetObject"
 		},
 		"265": {
 			"packageName": "@types/node",
 			"packagePath": "globals.d.ts",
-			"qualifiedName": "err"
+			"qualifiedName": "constructorOpt"
 		},
 		"266": {
 			"packageName": "@types/node",
 			"packagePath": "globals.d.ts",
-			"qualifiedName": "stackTraces"
+			"qualifiedName": "ErrorConstructor.prepareStackTrace"
 		},
 		"267": {
 			"packageName": "@types/node",
 			"packagePath": "globals.d.ts",
-			"qualifiedName": "ErrorConstructor.stackTraceLimit"
+			"qualifiedName": "ErrorConstructor.prepareStackTrace"
 		},
 		"268": {
-			"packageName": "@apache-arrow/adbc-driver-manager",
-			"packagePath": "lib/error.ts",
-			"qualifiedName": "AdbcError.__constructor"
+			"packageName": "@types/node",
+			"packagePath": "globals.d.ts",
+			"qualifiedName": "err"
 		},
 		"269": {
-			"packageName": "@apache-arrow/adbc-driver-manager",
-			"packagePath": "lib/error.ts",
-			"qualifiedName": "AdbcError"
+			"packageName": "@types/node",
+			"packagePath": "globals.d.ts",
+			"qualifiedName": "stackTraces"
 		},
 		"270": {
-			"packageName": "@apache-arrow/adbc-driver-manager",
-			"packagePath": "lib/error.ts",
-			"qualifiedName": "message"
+			"packageName": "@types/node",
+			"packagePath": "globals.d.ts",
+			"qualifiedName": "ErrorConstructor.stackTraceLimit"
 		},
 		"271": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/error.ts",
-			"qualifiedName": "code"
+			"qualifiedName": "AdbcError.__constructor"
 		},
 		"272": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/error.ts",
-			"qualifiedName": "vendorCode"
+			"qualifiedName": "AdbcError"
 		},
 		"273": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/error.ts",
-			"qualifiedName": "sqlState"
+			"qualifiedName": "message"
 		},
 		"274": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/error.ts",
-			"qualifiedName": "AdbcError.code"
+			"qualifiedName": "code"
 		},
 		"275": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/error.ts",
-			"qualifiedName": "AdbcError.vendorCode"
+			"qualifiedName": "vendorCode"
 		},
 		"276": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/error.ts",
-			"qualifiedName": "AdbcError.sqlState"
+			"qualifiedName": "sqlState"
 		},
 		"277": {
+			"packageName": "@apache-arrow/adbc-driver-manager",
+			"packagePath": "lib/error.ts",
+			"qualifiedName": "AdbcError.code"
+		},
+		"278": {
+			"packageName": "@apache-arrow/adbc-driver-manager",
+			"packagePath": "lib/error.ts",
+			"qualifiedName": "AdbcError.vendorCode"
+		},
+		"279": {
+			"packageName": "@apache-arrow/adbc-driver-manager",
+			"packagePath": "lib/error.ts",
+			"qualifiedName": "AdbcError.sqlState"
+		},
+		"280": {
 			"packageName": "typescript",
 			"packagePath": "lib/lib.es5.d.ts",
 			"qualifiedName": "Error.name"
 		},
-		"278": {
+		"281": {
 			"packageName": "typescript",
 			"packagePath": "lib/lib.es5.d.ts",
 			"qualifiedName": "Error.message"
 		},
-		"279": {
+		"282": {
 			"packageName": "typescript",
 			"packagePath": "lib/lib.es5.d.ts",
 			"qualifiedName": "Error.stack"
 		},
-		"280": {
+		"283": {
 			"packageName": "typescript",
 			"packagePath": "lib/lib.es2022.error.d.ts",
 			"qualifiedName": "Error.cause"
 		},
-		"281": {
+		"284": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/index.ts",
 			"qualifiedName": "ConnectOptions"
 		},
-		"282": {
+		"285": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/index.ts",
 			"qualifiedName": "GetObjectsOptions"
 		},
-		"283": {
+		"286": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/index.ts",
 			"qualifiedName": "IngestOptions"
 		},
-		"284": {
+		"287": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/index.ts",
 			"qualifiedName": "AdbcError"
 		},
-		"285": {
+		"288": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/index.ts",
 			"qualifiedName": "LoadFlags"
 		},
-		"286": {
+		"289": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/index.ts",
 			"qualifiedName": "ObjectDepth"
 		},
-		"287": {
+		"290": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/index.ts",
 			"qualifiedName": "InfoCode"
 		},
-		"288": {
+		"291": {
 			"packageName": "@apache-arrow/adbc-driver-manager",
 			"packagePath": "lib/index.ts",
 			"qualifiedName": "IngestMode"
@@ -10006,7 +10102,7 @@
 		"reflections": {
 			"1": 1,
 			"2": 117,
-			"3": 254,
+			"3": 257,
 			"4": 0,
 			"5": 0
 		}
