@@ -141,8 +141,8 @@ pub fn default_load_flags() -> u32 {
 
 // Options
 #[napi(object)]
-pub struct ConnectOptions {
-  pub driver: String,
+pub struct _NativeConnectOptions {
+  pub driver: Option<String>,
   pub entrypoint: Option<String>,
   pub manifest_search_paths: Option<Vec<String>>,
   pub profile_search_paths: Option<Vec<String>>,
@@ -150,8 +150,8 @@ pub struct ConnectOptions {
   pub database_options: Option<HashMap<String, String>>,
 }
 
-impl From<ConnectOptions> for CoreConnectOptions {
-  fn from(opts: ConnectOptions) -> Self {
+impl From<_NativeConnectOptions> for CoreConnectOptions {
+  fn from(opts: _NativeConnectOptions) -> Self {
     Self {
       driver: opts.driver,
       entrypoint: opts.entrypoint,
@@ -213,8 +213,8 @@ pub struct _NativeAdbcDatabase {
 #[napi]
 impl _NativeAdbcDatabase {
   #[napi(constructor)]
-  pub fn new(opts: ConnectOptions) -> Result<Self> {
-    let db = CoreDatabase::new(opts.into()).map_err(to_napi_err)?;
+  pub fn new(env: Env, opts: _NativeConnectOptions) -> Result<Self> {
+    let db = CoreDatabase::new(opts.into()).map_err(|e| sync_adbc_err(e, env))?;
     Ok(Self {
       inner: Some(Arc::new(db)),
     })

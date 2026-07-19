@@ -14,7 +14,7 @@ export declare class NativeAdbcConnection {
 export type _NativeAdbcConnection = NativeAdbcConnection
 
 export declare class NativeAdbcDatabase {
-  constructor(opts: ConnectOptions)
+  constructor(opts: NativeConnectOptions)
   connect(options?: Record<string, string> | undefined | null): Promise<unknown>
   close(): void
 }
@@ -40,15 +40,6 @@ export declare class NativeAdbcStatement {
 }
 export type _NativeAdbcStatement = NativeAdbcStatement
 
-export interface ConnectOptions {
-  driver: string
-  entrypoint?: string
-  manifestSearchPaths?: Array<string>
-  profileSearchPaths?: Array<string>
-  loadFlags?: number
-  databaseOptions?: Record<string, string>
-}
-
 export declare function crateVersion(): string
 
 export declare function defaultAdbcVersion(): string
@@ -68,4 +59,13 @@ export interface GetTableSchemaOptions {
   catalog?: string
   dbSchema?: string
   tableName: string
+}
+
+export interface NativeConnectOptions {
+  driver?: string
+  entrypoint?: string
+  manifestSearchPaths?: Array<string>
+  profileSearchPaths?: Array<string>
+  loadFlags?: number
+  databaseOptions?: Record<string, string>
 }
