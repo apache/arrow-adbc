@@ -204,5 +204,8 @@ ogp_image = "_static/banner.png"
 
 redirects = {
     "driver/status": "./index.html",
+    "driver/snowflake": "./index.html",
     "driver/installation": "../installation.html",
+    "python/api/adbc_driver_snowflake": "../../driver/index.html",
+    "python/api/adbc_driver_bigquery": "../../driver/index.html",
 }
