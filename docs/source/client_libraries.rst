@@ -76,7 +76,7 @@ The client library package for each language:
    * - R
      - CRAN / conda
      - ``adbcdrivermanager``
-     - :doc:`R Quickstart <r/quickstart>`
+     - :doc:`R <r/index>`
    * - Ruby
      - bundler
      - ``red-adbc``

@@ -19,26 +19,46 @@
 R
 ===
 
-.. toctree::
-   :hidden:
+ADBC is available in R through the `adbcdrivermanager
+<adbcdrivermanager/index.html>`_ package, which provides a low-level interface
+along with the ``read_adbc()``, ``write_adbc()``, and ``execute_adbc()`` helpers
+for quickly interacting with an ADBC connection or database.
 
-   quickstart
+Installation
+============
 
-ADBC in R is implemented as a suite of R packages. Most users will
-interact with ADBC via the `adbcdrivermanager <adbcdrivermanager/index.html>`_
-package and use drivers that are also distributed as R packages. In
-addition to the low-level interface provided by adbcdrivermanager,
-you can use ``read_adbc()``, ``write_adbc()`` and ``execute_adbc()``
-to quickly interact with an ADBC connection or database.
+.. code-block:: r
+
+   install.packages(c("adbcdrivermanager", "arrow", "tibble"))
+
+Installing Drivers
+------------------
+
+See :ref:`driver-table-install` for instructions on installing ADBC drivers for
+the database you want to connect to. For the example below, you could install
+`dbc <https://docs.columnar.tech/dbc>`__ and then install the SQLite driver with:
+
+.. code-block:: shell
+
+   dbc install sqlite
+
+Basic Example
+=============
+
+This example demonstrates connecting to SQLite, writing a table, querying it,
+and cleaning up.
 
 .. code-block:: r
 
    library(adbcdrivermanager)
 
-   # Use the driver manager to connect to a database. This assumes the SQLite
-   # driver has been installed via driver manifest. See the Drivers page for
-   # more info.
-   db <- adbc_database_init(adbc_driver("sqlite"), uri = ":memory:")
+   # Create a driver instance
+   drv <- adbc_driver("sqlite")
+
+   # Initialize the database
+   db <- adbc_database_init(drv, uri = ":memory:")
+
+   # Create a connection
    con <- adbc_connection_init(db)
 
    # Write a table
@@ -47,7 +67,7 @@ to quickly interact with an ADBC connection or database.
 
    # Query it
    con |>
-     read_adbc("SELECT * from mtcars") |>
+     read_adbc("SELECT * FROM mtcars") |>
      tibble::as_tibble()
 
    # Clean up
@@ -56,14 +76,62 @@ to quickly interact with an ADBC connection or database.
    adbc_connection_release(con)
    adbc_database_release(db)
 
-See individual package documentation for installation and usage
-details specific to each driver.
+Working with Arrow Data
+=======================
 
----------------------
-Package documentation
----------------------
+ADBC natively returns Arrow data, which you can work with directly:
+
+.. code-block:: r
+
+   # Get results as an Arrow table
+   arrow_table <- con |>
+     read_adbc("SELECT * FROM mtcars") |>
+     arrow::as_arrow_table()
+
+   # For large result sets, use a record batch reader
+   reader <- con |>
+     read_adbc("SELECT * FROM large_table") |>
+     arrow::as_record_batch_reader()
+
+   # Process in chunks
+   while (!is.null(batch <- reader$read_next_batch())) {
+     # Process batch
+     print(nrow(batch))
+   }
+
+Parameterized Queries
+=====================
+
+You can use parameterized queries for safe SQL execution:
+
+.. code-block:: r
+
+   stmt <- adbc_statement_init(con)
+   adbc_statement_set_sql_query(stmt, "DELETE FROM mtcars WHERE cyl = ?")
+   adbc_statement_bind(stmt, data.frame(8L))
+   adbc_statement_execute_query(stmt)
+
+Package Documentation
+=====================
+
+The `adbcdrivermanager <adbcdrivermanager/index.html>`_ package is the R client
+library, and provides the driver manager used in the examples above:
 
 - `adbcdrivermanager <adbcdrivermanager/index.html>`_
+
+A few drivers are also packaged as R packages and distributed on CRAN:
+
 - `adbcflightsql <adbcflightsql/index.html>`_
 - `adbcpostgresql <adbcpostgresql/index.html>`_
 - `adbcsqlite <adbcsqlite/index.html>`_
+
+In general, though, we recommend installing drivers as shared libraries (see
+`Installing Drivers`_), which works with far more databases than are available
+as R packages.
+
+Next Steps
+==========
+
+- See the :doc:`drivers </driver/index>` to see which databases are supported
+- Explore more examples in the `adbc-quickstarts repository <https://github.com/columnar-tech/adbc-quickstarts/tree/main/r>`_
+- Explore the `R source code <https://github.com/apache/arrow-adbc/tree/main/r>`_ for additional examples
