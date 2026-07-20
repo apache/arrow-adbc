@@ -329,7 +329,7 @@ public class FlightSqlConnection implements AdbcConnection {
   @Override
   public void close() throws AdbcException {
     try {
-      client.closeSession(new CloseSessionRequest());
+      client.closeSession(new CloseSessionRequest(), callOptions);
     } catch (FlightRuntimeException e) {
       if (e.status().code() != FlightStatusCode.UNIMPLEMENTED) {
         throw FlightSqlDriverUtil.fromFlightException(e);

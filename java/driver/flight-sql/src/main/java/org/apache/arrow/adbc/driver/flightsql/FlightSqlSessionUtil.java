@@ -34,8 +34,9 @@ final class FlightSqlSessionUtil {
   static final ObjectMapper MAPPER = new ObjectMapper();
 
   /**
-   * Extracts a native Java value from a {@link SessionOptionValue}. NaN/Infinity doubles are
-   * returned as-is and filtered in {@link #toJson}; String[] is defensively cloned; Void returns
+   * Extracts a native Java value from a {@link SessionOptionValue}. JSON has no representation for
+   * NaN/Infinity, so non-finite doubles are converted to their {@link String} form (e.g. {@code
+   * "NaN"}) here rather than special-cased later; String[] is defensively cloned; Void returns
    * {@code null} (callers must handle null before calling {@link #cast}).
    */
   static final NoOpSessionOptionValueVisitor<Object> TO_JAVA =
@@ -57,7 +58,7 @@ final class FlightSqlSessionUtil {
 
         @Override
         public Object visit(double v) {
-          return v;
+          return Double.isFinite(v) ? (Object) v : Double.toString(v);
         }
 
         @Override
@@ -70,18 +71,12 @@ final class FlightSqlSessionUtil {
   static String toJson(Map<String, SessionOptionValue> opts) throws AdbcException {
     Map<String, @Nullable Object> map = new LinkedHashMap<>();
     for (Map.Entry<String, SessionOptionValue> e : opts.entrySet()) {
-      @Nullable Object v = e.getValue().acceptVisitor(TO_JAVA);
-      // JSON does not support NaN or Infinity; represent them as null
-      if (v instanceof Double && !Double.isFinite((Double) v)) {
-        v = null;
-      }
-      map.put(e.getKey(), v);
+      map.put(e.getKey(), e.getValue().acceptVisitor(TO_JAVA));
     }
     try {
       return MAPPER.writeValueAsString(map);
     } catch (JsonProcessingException e) {
-      throw new AdbcException(
-          "[Flight SQL] Failed to serialize session options", e, AdbcStatusCode.INTERNAL, null, 0);
+      throw AdbcException.internal("[Flight SQL] Failed to serialize session options").withCause(e);
     }
   }
 
