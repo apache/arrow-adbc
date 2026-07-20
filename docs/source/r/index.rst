@@ -114,12 +114,12 @@ You can use parameterized queries for safe SQL execution:
 Package Documentation
 =====================
 
-The `adbcdrivermanager <adbcdrivermanager/index.html>`_ package is the R client
-library, and provides the driver manager used in the examples above:
+The ``adbcdrivermanager`` package is the R client library, and provides
+the driver manager used in the examples above:
 
 - `adbcdrivermanager <adbcdrivermanager/index.html>`_
 
-A few drivers are also packaged as R packages and distributed on CRAN:
+A few drivers are also built as R packages and distributed on CRAN:
 
 - `adbcflightsql <adbcflightsql/index.html>`_
 - `adbcpostgresql <adbcpostgresql/index.html>`_
