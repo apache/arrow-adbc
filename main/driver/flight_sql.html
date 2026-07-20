@@ -820,19 +820,14 @@ provider.</p>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.telemetry.traces_folder_path</span></code></dt><dd><p>Overrides the output folder used by the <code class="docutils literal notranslate"><span class="pre">adbcfile</span></code> exporter.
 This option is ignored for other exporters.</p>
-<p>If unset, the <code class="docutils literal notranslate"><span class="pre">adbcfile</span></code> exporter writes traces under the user’s
-configuration directory in:</p>
+<p>If unset, the <code class="docutils literal notranslate"><span class="pre">adbcfile</span></code> exporter writes traces under a
+platform-specific directory:</p>
 <ul class="simple">
-<li><p>Windows: <code class="docutils literal notranslate"><span class="pre">%APPDATA%\.adbc\traces</span></code></p></li>
-<li><p>macOS: <code class="docutils literal notranslate"><span class="pre">~/Library/Application</span> <span class="pre">Support/.adbc/traces</span></code></p></li>
-<li><p>Linux: <code class="docutils literal notranslate"><span class="pre">$XDG_CONFIG_HOME/.adbc/traces</span></code> or <code class="docutils literal notranslate"><span class="pre">~/.config/.adbc/traces</span></code></p></li>
+<li><p>Windows: <code class="docutils literal notranslate"><span class="pre">%LOCALAPPDATA%\ADBC\Traces</span></code></p></li>
+<li><p>macOS: <code class="docutils literal notranslate"><span class="pre">~/Library/Application</span> <span class="pre">Support/ADBC/Traces</span></code></p></li>
+<li><p>Linux: <code class="docutils literal notranslate"><span class="pre">$XDG_STATE_HOME/adbc/traces</span></code> or <code class="docutils literal notranslate"><span class="pre">~/.local/state/adbc/traces</span></code>
+if <code class="docutils literal notranslate"><span class="pre">$XDG_STATE_HOME</span></code> is not set</p></li>
 </ul>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>These default paths reflect the current implementation. See
-<a class="reference external" href="https://github.com/apache/arrow-adbc/issues/4501">issue #4501</a>
-for the planned config-path redesign.</p>
-</div>
 </dd>
 <dt><code class="docutils literal notranslate"><span class="pre">adbc.telemetry.trace_parent</span></code></dt><dd><p>Sets the W3C Trace Context <code class="docutils literal notranslate"><span class="pre">traceparent</span></code> value used as the parent
 for spans started by the driver.</p>
