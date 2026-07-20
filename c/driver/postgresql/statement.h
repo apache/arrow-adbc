@@ -35,6 +35,7 @@
 
 #define ADBC_POSTGRESQL_OPTION_USE_COPY "adbc.postgresql.use_copy"
 
+// This is not a public-facing PostgreSQL driver option.
 #define ADBC_POSTGRESQL_OPTION_DISABLE_DECIMAL_FAST_PATH \
   "adbc.postgresql.disable_decimal_fast_path"
 

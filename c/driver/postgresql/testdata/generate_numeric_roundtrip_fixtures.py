@@ -40,8 +40,8 @@ def format_numeric_text(coefficient: int, scale: int) -> str:
     sign = "-" if coefficient < 0 else ""
     digits = str(abs(coefficient))
 
-    if scale <= 0:
-        return sign + digits + ("0" * (-scale))
+    if scale < 0:
+        return repr(coefficient * 10 ** (-scale))
 
     if len(digits) <= scale:
         digits = digits.rjust(scale + 1, "0")
