@@ -31,10 +31,15 @@ main() {
     # SIL Open Font License is ASF Category B
     # (the CSS is MIT and is vendored already)
 
-    if [[ ! -f "$source_dir/docs/source/_static/fa/webfonts/fa-regular-400.woff2" ]]; then
-        wget -O "$tmpdir/fontawesome.zip" https://use.fontawesome.com/releases/v7.3.1/fontawesome-free-7.3.1-web.zip
-        unzip "$tmpdir/fontawesome.zip" -d "$tmpdir"
-        mv "$tmpdir/fontawesome-free-7.3.1-web/webfonts/" "$source_dir/docs/source/_static/fa/webfonts/"
+    if [[ ! -f "$source_dir/docs/source/_static/fontawesome/css/all.min.css" ]]; then
+        wget -O "$tmpdir/fontawesome.tgz" https://github.com/FortAwesome/Font-Awesome/archive/refs/tags/7.3.1.tar.gz
+        pushd $tmpdir
+        tar xvf "$tmpdir/fontawesome.tgz"
+        popd
+
+        mkdir -p "$source_dir/docs/source/_static/fontawesome/css/"
+        mv "$tmpdir/Font-Awesome-7.3.1/webfonts/" "$source_dir/docs/source/_static/fontawesome/webfonts/"
+        cp "$tmpdir/Font-Awesome-7.3.1/css/all.min.css" "$source_dir/docs/source/_static/fontawesome/css/"
     else
         echo "FontAwesome webfonts already exist, skipping download"
     fi

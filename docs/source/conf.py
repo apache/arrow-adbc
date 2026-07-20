@@ -142,7 +142,7 @@ except ImportError:
 
 html_css_files = [
     "css/custom.css",
-    "fa/all.min.css",
+    "fontawesome/css/all.min.css",
 ]
 html_static_path = ["_static"]
 html_theme = "furo"
