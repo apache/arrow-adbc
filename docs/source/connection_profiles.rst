@@ -148,7 +148,7 @@ the ``profile://`` scheme:
          import { AdbcDatabase } from '@apache-arrow/adbc-driver-manager';
 
          const db = new AdbcDatabase({
-           driver: 'profile://myprofile',
+           databaseOptions: { uri: 'profile://myprofile' },
          });
 
    .. tab-item:: Python
