@@ -2122,6 +2122,67 @@ AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int d
                                         struct ArrowArrayStream* out,
                                         struct AdbcError* error);
 
+/// \brief Fetch (catalog) metadata from the database.
+///
+/// The metadata to fetch is defined by the `collection` parameter. The result
+/// is an Arrow dataset with a schema defined by the collection. For example,
+/// a client may request a list of tables in the database, or a list of
+/// supported data types. Drivers may implement collections beyond those
+/// defined by ADBC, but must use a vendor-specific prefix
+/// (e.g. `postgresql.`) to avoid conflicts with future standardized
+/// collections. Drivers must not use the `adbc.` prefix.
+///
+/// The result may be filtered by `filters`, which is an array of (nullable)
+/// strings. `num_filters` must be set to the number of filter arguments
+/// passed.
+///
+/// All drivers must implement a collection called "meta" (which is aliased to
+/// NULL and blank string) that defines the available collections. See
+/// ADBC_METADATA_COLLECTION_META.
+///
+/// This AdbcConnection must outlive the returned ArrowArrayStream.
+///
+/// \param[in] connection The database connection.
+/// \param[in] collection The collection to fetch.
+/// \param[out] out The result set.
+/// \param[out] error Error details, if an error occurs.
+ADBC_EXPORT
+AdbcStatusCode AdbcConnectionGetMetadataCollection(
+    struct AdbcConnection* connection, const char* collection, size_t num_filters,
+    const char** filters, struct ArrowArrayStream* out, struct AdbcError* error);
+
+/// \brief The "meta" collection returns the available metadata collections.
+///
+/// | Field Name               | Field Type                   | Comments |
+/// |--------------------------|------------------------------|----------|
+/// | collection_name          | utf8 not null                |          |
+/// | collection_description   | utf8                         |          |
+/// | collection_schema        | extension<arrow.schema_json> |          |
+/// | collection_filters       | list<FILTER_SCHEMA>          |          |
+///
+/// FILTER_SCHEMA is a Struct with fields:
+///
+/// | Field Name               | Field Type                   | Comments |
+/// |--------------------------|------------------------------|----------|
+/// | filter_description       | utf8                         |          |
+/// | required                 | bool not null                |          |
+#define ADBC_METADATA_COLLECTION_META "meta"
+
+/// \brief The "catalogs" collection returns the catalogs defined in the
+///   database.
+///
+/// | Field Name               | Field Type                   | Comments |
+/// |--------------------------|------------------------------|----------|
+/// | catalog_name             | utf8                         | (1)      |
+///
+/// Filters:
+/// 1. The catalog name to filter by.  May be a search pattern.
+#define ADBC_METADATA_COLLECTION_CATALOGS "catalogs"
+#define ADBC_METADATA_COLLECTION_SCHEMAS "schemas"
+#define ADBC_METADATA_COLLECTION_TABLES "tables"
+// TODO: for systems with more hierarchy levels than SQL catalog-schema-table
+#define ADBC_METADATA_COLLECTION_NAMESPACES "namespaces"
+
 /// \brief Get a string option of the connection.
 ///
 /// This must always be thread-safe (other operations are not), though
