@@ -546,7 +546,7 @@ JavaScript</label><div class="sd-tab-content docutils">
 <div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">AdbcDatabase</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@apache-arrow/adbc-driver-manager&#39;</span><span class="p">;</span>
 
 <span class="kd">const</span><span class="w"> </span><span class="nx">db</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">AdbcDatabase</span><span class="p">({</span>
-<span class="w">  </span><span class="nx">driver</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;profile://myprofile&#39;</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">databaseOptions</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">uri</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;profile://myprofile&#39;</span><span class="w"> </span><span class="p">},</span>
 <span class="p">});</span>
 </pre></div>
 </div>
