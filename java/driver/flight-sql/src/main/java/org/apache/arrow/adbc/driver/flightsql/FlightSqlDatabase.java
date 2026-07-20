@@ -21,6 +21,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.arrow.adbc.core.AdbcConnection;
 import org.apache.arrow.adbc.core.AdbcDatabase;
+import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.flight.FlightRuntimeException;
@@ -80,6 +81,10 @@ public final class FlightSqlDatabase implements AdbcDatabase {
 
   @Override
   public String toString() {
-    return "FlightSqlDatabase{" + "target='" + location + '\'' + '}';
+    Object configuredUri = AdbcDriver.PARAM_URI.get(parameters);
+    if (configuredUri == null) {
+      configuredUri = parameters.get(AdbcDriver.PARAM_URL);
+    }
+    return "FlightSqlDatabase{" + "uri='" + configuredUri + "', target='" + location + '\'' + '}';
   }
 }
