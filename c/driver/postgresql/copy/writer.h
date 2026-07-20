@@ -313,8 +313,9 @@ class PostgresCopyIntervalFieldWriter : public PostgresCopyFieldWriter {
 template <enum ArrowType T>
 class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
  public:
-  PostgresCopyNumericFieldWriter(int32_t precision, int32_t scale)
-      : precision_{precision}, scale_{scale} {}
+  PostgresCopyNumericFieldWriter(int32_t precision, int32_t scale,
+                                 bool disable_fast_path = false)
+      : precision_{precision}, scale_{scale}, disable_fast_path_{disable_fast_path} {}
 
   // PostgreSQL NUMERIC Binary Format:
   // ===================================
@@ -356,9 +357,11 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
 
 #if defined(__SIZEOF_INT128__)
     if constexpr (T == NANOARROW_TYPE_DECIMAL128) {
-      const ArrowErrorCode fast_res = WriteDecimal128Fast(buffer, &decimal, error);
-      if (fast_res != ENOTSUP) {
-        return fast_res;
+      if (!disable_fast_path_) {
+        const ArrowErrorCode fast_res = WriteDecimal128Fast(buffer, &decimal, error);
+        if (fast_res != ENOTSUP) {
+          return fast_res;
+        }
       }
     }
 #endif
@@ -749,6 +752,7 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
       (T == NANOARROW_TYPE_DECIMAL128) ? 39 : 78;
   const int32_t precision_;
   const int32_t scale_;
+  const bool disable_fast_path_;
 };
 
 template <enum ArrowTimeUnit TU>
@@ -981,7 +985,8 @@ class PostgresCopyTimestampFieldWriter : public PostgresCopyFieldWriter {
 static inline ArrowErrorCode MakeCopyFieldWriter(
     struct ArrowSchema* schema, struct ArrowArrayView* array_view,
     const PostgresTypeResolver& type_resolver, const PostgresType* target_type,
-    std::unique_ptr<PostgresCopyFieldWriter>* out, ArrowError* error) {
+    std::unique_ptr<PostgresCopyFieldWriter>* out, bool disable_decimal_fast_path,
+    ArrowError* error) {
   struct ArrowSchemaView schema_view;
   NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema, error));
 
@@ -1094,14 +1099,14 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
       using T = PostgresCopyNumericFieldWriter<NANOARROW_TYPE_DECIMAL128>;
       const auto precision = schema_view.decimal_precision;
       const auto scale = schema_view.decimal_scale;
-      *out = T::Create<T>(array_view, precision, scale);
+      *out = T::Create<T>(array_view, precision, scale, disable_decimal_fast_path);
       return NANOARROW_OK;
     }
     case NANOARROW_TYPE_DECIMAL256: {
       using T = PostgresCopyNumericFieldWriter<NANOARROW_TYPE_DECIMAL256>;
       const auto precision = schema_view.decimal_precision;
       const auto scale = schema_view.decimal_scale;
-      *out = T::Create<T>(array_view, precision, scale);
+      *out = T::Create<T>(array_view, precision, scale, disable_decimal_fast_path);
       return NANOARROW_OK;
     }
     case NANOARROW_TYPE_BINARY:
@@ -1208,9 +1213,9 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
       }
 
       std::unique_ptr<PostgresCopyFieldWriter> child_writer;
-      NANOARROW_RETURN_NOT_OK(
-          MakeCopyFieldWriter(schema->children[0], array_view->children[0], type_resolver,
-                              target_child_type, &child_writer, error));
+      NANOARROW_RETURN_NOT_OK(MakeCopyFieldWriter(
+          schema->children[0], array_view->children[0], type_resolver, target_child_type,
+          &child_writer, disable_decimal_fast_path, error));
 
       if (schema_view.type == NANOARROW_TYPE_FIXED_SIZE_LIST) {
         using T = PostgresCopyListFieldWriter<true>;
@@ -1268,7 +1273,8 @@ class PostgresCopyStreamWriter {
   }
 
   ArrowErrorCode InitFieldWriters(const PostgresTypeResolver& type_resolver,
-                                  const PostgresType* target_types, ArrowError* error) {
+                                  const PostgresType* target_types,
+                                  bool disable_decimal_fast_path, ArrowError* error) {
     if (schema_->release == nullptr) {
       return EINVAL;
     }
@@ -1279,9 +1285,9 @@ class PostgresCopyStreamWriter {
       if (target_types != nullptr && i < target_types->n_children()) {
         target_type = &target_types->child(i);
       }
-      NANOARROW_RETURN_NOT_OK(MakeCopyFieldWriter(schema_->children[i],
-                                                  array_view_->children[i], type_resolver,
-                                                  target_type, &child_writer, error));
+      NANOARROW_RETURN_NOT_OK(MakeCopyFieldWriter(
+          schema_->children[i], array_view_->children[i], type_resolver, target_type,
+          &child_writer, disable_decimal_fast_path, error));
       root_writer_->AppendChild(std::move(child_writer));
     }
 

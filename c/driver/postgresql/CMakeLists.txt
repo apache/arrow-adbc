@@ -88,6 +88,9 @@ if(ADBC_BUILD_TESTS)
                 adbc_validation
                 ${TEST_LINK_LIBS})
   target_compile_features(adbc-driver-postgresql-test PRIVATE cxx_std_17)
+  target_compile_definitions(adbc-driver-postgresql-test
+                             PRIVATE ADBC_POSTGRESQL_TESTDATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/testdata"
+  )
   target_include_directories(adbc-driver-postgresql-test SYSTEM
                              PRIVATE ${REPOSITORY_ROOT}/c/ ${REPOSITORY_ROOT}/c/include/
                                      ${LIBPQ_INCLUDE_DIRS} ${REPOSITORY_ROOT}/c/driver)
