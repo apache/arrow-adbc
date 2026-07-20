@@ -18,14 +18,14 @@
         <link rel="prefetch" href="../../_static/logo-dark.png" as="image">
 
     <link rel="shortcut icon" href="../../_static/favicon.ico"><!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>DBAPI/Driver Manager Recipes - ADBC 24 (dev) documentation</title>
+        <title>DBAPI/Driver Manager Recipes - ADBC 24 (dev) Documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=56d6027c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=0200acfe" />
     
     
 
@@ -250,7 +250,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../index.html"><div class="brand">ADBC 24 (dev) documentation</div></a>
+      <a href="../../index.html"><div class="brand">ADBC 24 (dev) Documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -275,7 +275,7 @@
     <img class="sidebar-logo only-dark" src="../../_static/logo-dark.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">ADBC 24 (dev) documentation</span>
+  <span class="sidebar-brand-text">ADBC 24 (dev) Documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -283,10 +283,16 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../faq.html">Frequently Asked Questions (FAQ)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../glossary.html">Glossary</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../genindex.html">Index</a></li>
+  <p class="caption" role="heading"><span class="caption-text">Connect</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../client_libraries.html">Client Libraries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../driver/index.html">Drivers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../integrations.html">Tools &amp; Integrations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../connection_profiles.html">Connection Profiles</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Build</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../driver/authoring.html">Writing New Drivers</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Supported Environments</span></p>
 <ul class="current">
@@ -334,24 +340,14 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../r/index.html">R</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ruby/index.html">Ruby</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../rust/index.html">Rust</a><input aria-label="Toggle navigation of Rust" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../rust/quickstart.html">Quickstart</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../rust/driver_manager.html">Driver Manager</a></li>
 <li class="toctree-l2"><a class="reference external" href="https://docs.rs/adbc_core/latest/adbc_core/">Rust API Reference</a></li>
 </ul>
 </li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Drivers</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../../driver/installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../driver/status.html">Driver Implementation Status</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../driver/bigquery.html">BigQuery Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../driver/duckdb.html">DuckDB Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../driver/flight_sql.html">Flight SQL Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../driver/jdbc.html">JDBC Adapter</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../driver/postgresql.html">PostgreSQL Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../driver/sqlite.html">SQLite Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../driver/authoring.html">Writing New Drivers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Specification</span></p>
 <ul>
@@ -363,12 +359,18 @@
 <li class="toctree-l1"><a class="reference internal" href="../../format/connection_profiles.html">ADBC Driver Manager and Connection Profiles</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../format/related_work.html">Related Work</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<p class="caption" role="heading"><span class="caption-text">Contribute</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../development/contributing.html">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../development/nightly.html">Nightly Packages</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../development/versioning.html">Versioning</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../development/releasing.html">Release Management Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Resources</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../genindex.html">Index</a></li>
 </ul>
 
 </div>
@@ -424,52 +426,48 @@ They can be useful to opt out of some behaviors of the DB-API wrapper.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">27</span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span>
 <span class="linenos">28</span>
 <span class="linenos">29</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_manager</span>
-<span class="linenos">30</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_sqlite</span>
-</pre></div>
-</div>
-<p>The driver packages do still have conveniences to create the root
-<a class="reference internal" href="../api/adbc_driver_manager.html#adbc_driver_manager.AdbcDatabase" title="adbc_driver_manager.AdbcDatabase"><code class="xref py py-class docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a> object.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">34</span><span class="n">db</span><span class="p">:</span> <span class="n">adbc_driver_manager</span><span class="o">.</span><span class="n">AdbcDatabase</span> <span class="o">=</span> <span class="n">adbc_driver_sqlite</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+<span class="linenos">30</span>
+<span class="linenos">31</span><span class="n">db</span><span class="p">:</span> <span class="n">adbc_driver_manager</span><span class="o">.</span><span class="n">AdbcDatabase</span> <span class="o">=</span> <span class="n">adbc_driver_manager</span><span class="o">.</span><span class="n">AdbcDatabase</span><span class="p">(</span><span class="n">driver</span><span class="o">=</span><span class="s2">&quot;sqlite&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The database must then be wrapped in a <a class="reference internal" href="../api/adbc_driver_manager.html#adbc_driver_manager.AdbcConnection" title="adbc_driver_manager.AdbcConnection"><code class="xref py py-class docutils literal notranslate"><span class="pre">AdbcConnection</span></code></a>.  This is similar in scope to the
 DB-API <a class="reference internal" href="../api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Connection" title="adbc_driver_manager.dbapi.Connection"><code class="xref py py-class docutils literal notranslate"><span class="pre">Connection</span></code></a> class.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">38</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_manager</span><span class="o">.</span><span class="n">AdbcConnection</span><span class="p">(</span><span class="n">db</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">35</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_manager</span><span class="o">.</span><span class="n">AdbcConnection</span><span class="p">(</span><span class="n">db</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Finally, we can wrap the connection in a <a class="reference internal" href="../api/adbc_driver_manager.html#adbc_driver_manager.AdbcStatement" title="adbc_driver_manager.AdbcStatement"><code class="xref py py-class docutils literal notranslate"><span class="pre">AdbcStatement</span></code></a>, which corresponds roughly to the
 DB-API <a class="reference internal" href="../api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Cursor" title="adbc_driver_manager.dbapi.Cursor"><code class="xref py py-class docutils literal notranslate"><span class="pre">Cursor</span></code></a> class.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">42</span><span class="n">stmt</span> <span class="o">=</span> <span class="n">adbc_driver_manager</span><span class="o">.</span><span class="n">AdbcStatement</span><span class="p">(</span><span class="n">conn</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">39</span><span class="n">stmt</span> <span class="o">=</span> <span class="n">adbc_driver_manager</span><span class="o">.</span><span class="n">AdbcStatement</span><span class="p">(</span><span class="n">conn</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Now we can directly set the query.  Unlike the regular DB-API bindings, this
 will not prepare the statement.  (Depending on the driver, this may or may
 not make a difference, especially if executing the same query multiple
 times.)</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">48</span><span class="n">stmt</span><span class="o">.</span><span class="n">set_sql_query</span><span class="p">(</span><span class="s2">&quot;SELECT 1 AS THEANSWER&quot;</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">45</span><span class="n">stmt</span><span class="o">.</span><span class="n">set_sql_query</span><span class="p">(</span><span class="s2">&quot;SELECT 1 AS THEANSWER&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>When we execute the query, we get an <a class="reference external" href="https://arrow.apache.org/docs/format/CStreamInterface.html">Arrow C Stream Interface</a> handle
 (wrapped as a <a class="reference external" href="https://docs.python.org/3/c-api/capsule.html">PyCapsule</a>) that we need to import using a library like
 <a class="reference external" href="https://pypi.org/project/pyarrow/">PyArrow</a>.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">58</span><span class="n">handle</span><span class="p">,</span> <span class="n">rowcount</span> <span class="o">=</span> <span class="n">stmt</span><span class="o">.</span><span class="n">execute_query</span><span class="p">()</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">55</span><span class="n">handle</span><span class="p">,</span> <span class="n">rowcount</span> <span class="o">=</span> <span class="n">stmt</span><span class="o">.</span><span class="n">execute_query</span><span class="p">()</span>
 </pre></div>
 </div>
 <p>The SQLite driver does not know the row count of the result set up front
 (other drivers, like the PostgreSQL driver, may know).</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">61</span><span class="k">assert</span> <span class="n">rowcount</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">58</span><span class="k">assert</span> <span class="n">rowcount</span> <span class="o">==</span> <span class="o">-</span><span class="mi">1</span>
 </pre></div>
 </div>
 <p>We can use the PyArrow APIs to read the result.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">63</span><span class="n">reader</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">RecordBatchReader</span><span class="o">.</span><span class="n">from_stream</span><span class="p">(</span><span class="n">handle</span><span class="p">)</span>
-<span class="linenos">64</span><span class="k">assert</span> <span class="n">reader</span><span class="o">.</span><span class="n">schema</span> <span class="o">==</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">schema</span><span class="p">([(</span><span class="s2">&quot;THEANSWER&quot;</span><span class="p">,</span> <span class="s2">&quot;int64&quot;</span><span class="p">)])</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">60</span><span class="n">reader</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">RecordBatchReader</span><span class="o">.</span><span class="n">from_stream</span><span class="p">(</span><span class="n">handle</span><span class="p">)</span>
+<span class="linenos">61</span><span class="k">assert</span> <span class="n">reader</span><span class="o">.</span><span class="n">schema</span> <span class="o">==</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">schema</span><span class="p">([(</span><span class="s2">&quot;THEANSWER&quot;</span><span class="p">,</span> <span class="s2">&quot;int64&quot;</span><span class="p">)])</span>
 </pre></div>
 </div>
 <p>Finally, we have to clean up all the objects.  (They also support the
 context manager protocol.)</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">67</span><span class="n">stmt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-<span class="linenos">68</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-<span class="linenos">69</span><span class="n">db</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">64</span><span class="n">stmt</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<span class="linenos">65</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<span class="linenos">66</span><span class="n">db</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 </pre></div>
 </div>
 </section>
@@ -490,9 +488,9 @@ This can be done with <a class="reference internal" href="../api/adbc_driver_man
 this.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">38</span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span>
 <span class="linenos">39</span>
-<span class="linenos">40</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_sqlite.dbapi</span>
+<span class="linenos">40</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">dbapi</span>
 <span class="linenos">41</span>
-<span class="linenos">42</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_sqlite</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span>
+<span class="linenos">42</span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;sqlite&quot;</span><span class="p">)</span>
 <span class="linenos">43</span>
 <span class="linenos">44</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">45</span>    <span class="n">param_schema</span> <span class="o">=</span> <span class="n">cur</span><span class="o">.</span><span class="n">adbc_prepare</span><span class="p">(</span><span class="s2">&quot;SELECT ? + 1&quot;</span><span class="p">)</span>

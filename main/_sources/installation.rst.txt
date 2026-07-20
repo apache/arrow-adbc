@@ -32,12 +32,19 @@ Installation
    https://apache.org/legal/release-policy#publication
    > Your project's download page can only link to release artifacts that your PMC has approved.
 
-.. note::
+This page provides download and installation instructions for the official
+source release and the driver packages that are maintained in the
+``apache/arrow-adbc`` repository and voted on as part of the release.
 
-   See individual driver pages in the sidebar for specific installation instructions.
+.. note:: To get up and running quickly, see instead:
 
-Source
-======
+          - :doc:`Client Libraries </client_libraries>` — install an ADBC client library for your language.
+          - :doc:`Drivers </driver/index>` — find and install a driver for your database. Most drivers are maintained and distributed elsewhere, not in this repository.
+
+.. _source:
+
+Source Release
+==============
 
 Download the latest source release: |source_download| (|source_checksum|, |source_signature|)
 
@@ -49,8 +56,14 @@ Compilation instructions can be found in `CONTRIBUTING.md`_.
 .. _instructions: https://www.apache.org/info/verification.html
 .. _KEYS: https://downloads.apache.org/arrow/KEYS
 
+Driver Releases
+===============
+
+Installation instructions for the driver packages that are maintained
+in this repository and voted on as part of the release.
+
 C/C++
-=====
+-----
 
 Install the appropriate driver package.  Packages for ``apt`` and ``dnf`` are provided as part of official releases.
 
@@ -116,7 +129,7 @@ Then they can be used via CMake, e.g.:
    target_link_libraries(myapp PRIVATE AdbcDriverPostgreSQL::adbc_driver_postgresql_shared)
 
 Java
-====
+----
 
 Add a dependency on the driver package, for example:
 
@@ -124,7 +137,7 @@ Add a dependency on the driver package, for example:
 - ``org.apache.arrow.adbc:adbc-driver-jdbc``
 
 Python
-======
+------
 
 Install the appropriate driver package.
 
@@ -137,7 +150,7 @@ For example, from PyPI:
 - ``pip install adbc-driver-sqlite``
 
 R
-===
+-
 
 Install the appropriate driver package from CRAN:
 
@@ -154,7 +167,7 @@ Drivers not yet available on CRAN can be installed from R-multiverse:
    install.packages("adbcflightsql", repos = "https://community.r-multiverse.org")
 
 Ruby
-====
+----
 
 Install the appropriate driver package for C/C++. You can use it from
 Ruby.

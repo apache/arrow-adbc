@@ -9,23 +9,23 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://arrow.apache.org/adbc/main/driver/authoring.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="Currently, new drivers can be written in C#, C/C++, Go, and Java. A driver written in C/C++ or Go can be used from either of those languages, as well as C#, Python, R, and Ruby. (C# can experimenta..." />
+<meta property="og:description" content="Interested in building an ADBC driver? You can develop and host a driver wherever you like—it just needs to implement the ADBC standard. That said, the best place to start is the ADBC Driver Foundr..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="Currently, new drivers can be written in C#, C/C++, Go, and Java. A driver written in C/C++ or Go can be used from either of those languages, as well as C#, Python, R, and Ruby. (C# can experimenta..." />
-<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="ADBC API Standard" href="../format/specification.html"><link rel="prev" title="SQLite Driver" href="sqlite.html">
+<meta name="description" content="Interested in building an ADBC driver? You can develop and host a driver wherever you like—it just needs to implement the ADBC standard. That said, the best place to start is the ADBC Driver Foundr..." />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="C and C++" href="../cpp/index.html"><link rel="prev" title="Connection Profiles" href="../connection_profiles.html">
         <link rel="prefetch" href="../_static/logo-light.png" as="image">
         <link rel="prefetch" href="../_static/logo-dark.png" as="image">
 
     <link rel="shortcut icon" href="../_static/favicon.ico"><!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>Writing New Drivers - ADBC 24 (dev) documentation</title>
+        <title>Writing New Drivers - ADBC 24 (dev) Documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=56d6027c" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=0200acfe" />
     
     
 
@@ -250,7 +250,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">ADBC 24 (dev) documentation</div></a>
+      <a href="../index.html"><div class="brand">ADBC 24 (dev) Documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -261,7 +261,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
         <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
       </label>
     </div>
@@ -275,7 +275,7 @@
     <img class="sidebar-logo only-dark" src="../_static/logo-dark.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">ADBC 24 (dev) documentation</span>
+  <span class="sidebar-brand-text">ADBC 24 (dev) Documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -283,10 +283,16 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <ul>
-<li class="toctree-l1"><a class="reference internal" href="../faq.html">Frequently Asked Questions (FAQ)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../genindex.html">Index</a></li>
+  <p class="caption" role="heading"><span class="caption-text">Connect</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../client_libraries.html">Client Libraries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Drivers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../integrations.html">Tools &amp; Integrations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../connection_profiles.html">Connection Profiles</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Build</span></p>
+<ul class="current">
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Writing New Drivers</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Supported Environments</span></p>
 <ul>
@@ -334,24 +340,14 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../r/index.html">R</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ruby/index.html">Ruby</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../rust/index.html">Rust</a><input aria-label="Toggle navigation of Rust" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../rust/quickstart.html">Quickstart</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../rust/driver_manager.html">Driver Manager</a></li>
 <li class="toctree-l2"><a class="reference external" href="https://docs.rs/adbc_core/latest/adbc_core/">Rust API Reference</a></li>
 </ul>
 </li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Drivers</span></p>
-<ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="status.html">Driver Implementation Status</a></li>
-<li class="toctree-l1"><a class="reference internal" href="bigquery.html">BigQuery Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="duckdb.html">DuckDB Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="flight_sql.html">Flight SQL Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="jdbc.html">JDBC Adapter</a></li>
-<li class="toctree-l1"><a class="reference internal" href="postgresql.html">PostgreSQL Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="sqlite.html">SQLite Driver</a></li>
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Writing New Drivers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Specification</span></p>
 <ul>
@@ -363,12 +359,18 @@
 <li class="toctree-l1"><a class="reference internal" href="../format/connection_profiles.html">ADBC Driver Manager and Connection Profiles</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../format/related_work.html">Related Work</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<p class="caption" role="heading"><span class="caption-text">Contribute</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../development/contributing.html">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../development/nightly.html">Nightly Packages</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../development/versioning.html">Versioning</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../development/releasing.html">Release Management Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Resources</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../genindex.html">Index</a></li>
 </ul>
 
 </div>
@@ -406,31 +408,94 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
             <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
           </label>
         </div>
         <article role="main" id="furo-main-content">
           <section id="writing-new-drivers">
 <h1>Writing New Drivers<a class="headerlink" href="#writing-new-drivers" title="Link to this heading">¶</a></h1>
-<p>Currently, new drivers can be written in C#, C/C++, Go, and Java.  A driver
-written in C/C++ or Go can be used from either of those languages, as well as
-C#, Python, R, and Ruby.  (C# can experimentally export drivers to the same
-set of languages as well.)  The Rust API definitions for ADBC are still under
-development, but we plan for them to be on par with C#, C/C++, and Go in this
-respect.</p>
-<p>It is so far preferable to write new drivers in Go.  C/C++ have had issues
-with dependencies and in particular some not uncommon dependencies in that
-ecosystem tend to cause conflicts when loaded into Python processes and
-elsewhere.  (For example, the ADBC Flight SQL driver was originally written in
-C++ but would have conflicted with the grpcio and pyarrow Python packages.)
-It also tends to be easier for us to package and distribute additional Go
-libraries than it is for C/C++.</p>
-<p>In Go, some frameworks are available for driver
-authors. <a class="reference external" href="https://github.com/apache/arrow-adbc/tree/main/go/adbc/driver/internal/driverbase">go/adbc/driver/internal/driverbase</a> manages much of the boilerplate
-and basic state management for drivers.  <a class="reference external" href="https://github.com/apache/arrow-adbc/tree/main/go/adbc/pkg">go/adbc/pkg</a> can template out a C
-ABI wrapper around the Go driver.  Especially if the driver is planned to go
-upstream, we recommend driver authors consider using these frameworks.</p>
+<p>Interested in building an ADBC driver? You can develop and host a driver
+wherever you like—it just needs to implement the <a class="reference internal" href="../format/specification.html"><span class="doc">ADBC standard</span></a>. That said, the best place to start is the <strong>ADBC
+Driver Foundry</strong>, a community project that hosts most ADBC drivers and provides
+the frameworks, templates, testing tools, and distribution infrastructure for
+building and shipping them. You can develop your driver entirely within the
+Foundry, or keep it in your own repository and use the Foundry only for
+distribution and other shared infrastructure.</p>
+<p><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-primary reference external" href="https://docs.adbc-drivers.org/building-drivers/"><span>Building Drivers guide (ADBC Driver Foundry) <svg version="1.1" width="1.0em" height="1.0em" class="sd-octicon sd-octicon-link-external" viewBox="0 0 16 16" aria-hidden="true"><path d="M3.75 2h3.5a.75.75 0 0 1 0 1.5h-3.5a.25.25 0 0 0-.25.25v8.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25v-3.5a.75.75 0 0 1 1.5 0v3.5A1.75 1.75 0 0 1 12.25 14h-8.5A1.75 1.75 0 0 1 2 12.25v-8.5C2 2.784 2.784 2 3.75 2Zm6.854-1h4.146a.25.25 0 0 1 .25.25v4.146a.25.25 0 0 1-.427.177L13.03 4.03 9.28 7.78a.751.751 0 0 1-1.042-.018.751.751 0 0 1-.018-1.042l3.75-3.75-1.543-1.543A.25.25 0 0 1 10.604 1Z"></path></svg></span></a></p>
+<p>The rest of this page gives a brief orientation. For anything beyond
+that—project templates, frameworks, validation tests, packaging, and
+distribution—follow the guide above.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>The ADBC project itself focuses on the <a class="reference internal" href="../format/specification.html"><span class="doc">ADBC standard</span></a> and <a class="reference internal" href="../client_libraries.html"><span class="doc">client libraries</span></a>,
+not on building and distributing drivers. In most cases, new drivers should
+be developed in the ADBC Driver Foundry, not in the <code class="docutils literal notranslate"><span class="pre">apache/arrow-adbc</span></code>
+repository.</p>
+<p>The ADBC Driver Foundry is an independent community project, separate from
+the Apache Arrow project.</p>
+</div>
+<section id="what-language-should-i-use">
+<h2>What Language Should I Use?<a class="headerlink" href="#what-language-should-i-use" title="Link to this heading">¶</a></h2>
+<p>Most ADBC drivers are built as shared libraries (<code class="docutils literal notranslate"><span class="pre">.so</span></code> / <code class="docutils literal notranslate"><span class="pre">.dll</span></code> /
+<code class="docutils literal notranslate"><span class="pre">.dylib</span></code>) in a portable systems language (like C/C++, Go, or Rust). A
+single shared library can be loaded by any <a class="reference internal" href="../client_libraries.html"><span class="doc">ADBC client library</span></a> and used from any language, so the implementation
+language does not affect which languages can use the driver.</p>
+<ul class="simple">
+<li><p><strong>Go</strong> and <strong>Rust</strong> are the most common choices, and have the most examples,
+templates, and framework tooling available (see below). If you’re starting
+fresh, one of these is usually the easiest path.</p></li>
+<li><p><strong>C/C++</strong> also works, but the build is more involved, and C/C++ drivers have
+historically hit dependency conflicts inside host processes.</p></li>
+</ul>
+<p>In principle a shared-library driver can be written in other languages, such as
+C# or Java, but in practice this has not been done.</p>
+<p>Separately, a driver can be built as a language-specific package that runs
+directly on a managed runtime (for example, a NuGet package for .NET or a Maven
+package for the JVM) rather than as a loadable shared library. Such a driver can
+only be used from that runtime. This is less common, but the Driver Foundry can
+accommodate it too.</p>
+</section>
+<section id="driver-frameworks">
+<h2>Driver Frameworks<a class="headerlink" href="#driver-frameworks" title="Link to this heading">¶</a></h2>
+<p>The ADBC Driver Foundry maintains frameworks for Go and Rust that provide base
+implementations of the ADBC interfaces, so you implement only what’s specific to
+your database:</p>
+<ul class="simple">
+<li><p><strong>Go</strong>: <a class="reference external" href="https://github.com/adbc-drivers/driverbase-go">driverbase-go</a></p></li>
+<li><p><strong>Rust</strong>: <a class="reference external" href="https://github.com/adbc-drivers/driverbase-rs">driverbase-rs</a></p></li>
+</ul>
+<p>For Rust, <a class="reference external" href="https://github.com/adbc-drivers/template-rs">template-rs</a>
+generates a ready-to-build driver crate to start from.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>A Go <code class="docutils literal notranslate"><span class="pre">driverbase</span></code> also exists in this repository, under
+<a class="reference external" href="https://github.com/apache/arrow-adbc/tree/main/go/adbc/driver/internal/driverbase">go/adbc/driver/internal/driverbase</a>.
+It remains only for historical reasons (the Flight SQL driver depends on it)
+and is not intended for new work. New Go drivers should use <a class="reference external" href="https://github.com/adbc-drivers/driverbase-go">driverbase-go</a> instead.</p>
+</div>
+</section>
+<section id="why-the-driver-foundry-not-this-repository">
+<h2>Why the Driver Foundry, Not This Repository?<a class="headerlink" href="#why-the-driver-foundry-not-this-repository" title="Link to this heading">¶</a></h2>
+<p id="authoring-why-foundry">Building and distributing driver binaries is a non-goal of the core ADBC
+project, and routing every driver through <code class="docutils literal notranslate"><span class="pre">apache/arrow-adbc</span></code> bottlenecks
+on its maintainers. The Driver Foundry instead gives each driver its own
+repository and maintainers, while its shared frameworks and validation suite
+keep drivers consistent and standards-conformant. It also handles testing,
+security vulnerability scanning and patching, packaging, and distribution—including
+prebuilt, signed, notarized binaries on Columnar’s
+<a class="reference external" href="https://dbc-cdn.columnar.tech/">ADBC driver registry</a>.
+Vendors such as dbt Labs and Microsoft build on Foundry-maintained drivers.</p>
+<p>The ADBC maintainers generally decline pull requests adding new drivers to
+<code class="docutils literal notranslate"><span class="pre">apache/arrow-adbc</span></code> and direct you instead to the Foundry.</p>
+<p>Columnar’s ADBC driver registry, like the Foundry, is maintained independently
+of the Apache Arrow project.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>A small number of drivers (PostgreSQL, SQLite, and Flight SQL) are still
+maintained in this repository for historical reasons. See <a class="reference internal" href="index.html"><span class="doc">Drivers</span></a> for the full list of available drivers and who maintains each one.</p>
+</div>
+</section>
 </section>
 
         </article>
@@ -438,23 +503,23 @@ upstream, we recommend driver authors consider using these frameworks.</p>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="../format/specification.html">
+          <a class="next-page" href="../cpp/index.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">ADBC API Standard</div>
+                <div class="title">C and C++</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="sqlite.html">
+          <a class="prev-page" href="../connection_profiles.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">SQLite Driver</div>
+                <div class="title">Connection Profiles</div>
                 
               </div>
             </a>
@@ -479,8 +544,29 @@ United States and other countries.
         
       </footer>
     </div>
-    <aside class="toc-drawer no-toc">
+    <aside class="toc-drawer">
       
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Writing New Drivers</a><ul>
+<li><a class="reference internal" href="#what-language-should-i-use">What Language Should I Use?</a></li>
+<li><a class="reference internal" href="#driver-frameworks">Driver Frameworks</a></li>
+<li><a class="reference internal" href="#why-the-driver-foundry-not-this-repository">Why the Driver Foundry, Not This Repository?</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
       
       
     </aside>

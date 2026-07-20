@@ -9,23 +9,23 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://arrow.apache.org/adbc/main/r/index.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="ADBC in R is implemented as a suite of R packages. Most users will interact with ADBC via the adbcdrivermanager package and use drivers that are also distributed as R packages. In addition to the l..." />
+<meta property="og:description" content="ADBC is available in R through the adbcdrivermanager package, which provides a low-level interface along with the read_adbc(), write_adbc(), and execute_adbc() helpers for quickly interacting with ..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="ADBC in R is implemented as a suite of R packages. Most users will interact with ADBC via the adbcdrivermanager package and use drivers that are also distributed as R packages. In addition to the l..." />
-<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Rust" href="../rust/index.html"><link rel="prev" title="SQLite Recipes" href="../python/recipe/sqlite.html">
+<meta name="description" content="ADBC is available in R through the adbcdrivermanager package, which provides a low-level interface along with the read_adbc(), write_adbc(), and execute_adbc() helpers for quickly interacting with ..." />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Ruby" href="../ruby/index.html"><link rel="prev" title="SQLite Recipes" href="../python/recipe/sqlite.html">
         <link rel="prefetch" href="../_static/logo-light.png" as="image">
         <link rel="prefetch" href="../_static/logo-dark.png" as="image">
 
     <link rel="shortcut icon" href="../_static/favicon.ico"><!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>R - ADBC 24 (dev) documentation</title>
+        <title>R - ADBC 24 (dev) Documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=56d6027c" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=0200acfe" />
     
     
 
@@ -250,7 +250,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">ADBC 24 (dev) documentation</div></a>
+      <a href="../index.html"><div class="brand">ADBC 24 (dev) Documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -275,7 +275,7 @@
     <img class="sidebar-logo only-dark" src="../_static/logo-dark.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">ADBC 24 (dev) documentation</span>
+  <span class="sidebar-brand-text">ADBC 24 (dev) Documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -283,10 +283,16 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <ul>
-<li class="toctree-l1"><a class="reference internal" href="../faq.html">Frequently Asked Questions (FAQ)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../genindex.html">Index</a></li>
+  <p class="caption" role="heading"><span class="caption-text">Connect</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../client_libraries.html">Client Libraries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../driver/index.html">Drivers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../integrations.html">Tools &amp; Integrations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../connection_profiles.html">Connection Profiles</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Build</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../driver/authoring.html">Writing New Drivers</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Supported Environments</span></p>
 <ul class="current">
@@ -334,24 +340,14 @@
 </ul>
 </li>
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">R</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ruby/index.html">Ruby</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../rust/index.html">Rust</a><input aria-label="Toggle navigation of Rust" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../rust/quickstart.html">Quickstart</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../rust/driver_manager.html">Driver Manager</a></li>
 <li class="toctree-l2"><a class="reference external" href="https://docs.rs/adbc_core/latest/adbc_core/">Rust API Reference</a></li>
 </ul>
 </li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Drivers</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../driver/installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/status.html">Driver Implementation Status</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/bigquery.html">BigQuery Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/duckdb.html">DuckDB Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/flight_sql.html">Flight SQL Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/jdbc.html">JDBC Adapter</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/postgresql.html">PostgreSQL Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/sqlite.html">SQLite Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/authoring.html">Writing New Drivers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Specification</span></p>
 <ul>
@@ -363,12 +359,18 @@
 <li class="toctree-l1"><a class="reference internal" href="../format/connection_profiles.html">ADBC Driver Manager and Connection Profiles</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../format/related_work.html">Related Work</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<p class="caption" role="heading"><span class="caption-text">Contribute</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../development/contributing.html">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../development/nightly.html">Nightly Packages</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../development/versioning.html">Versioning</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../development/releasing.html">Release Management Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Resources</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../genindex.html">Index</a></li>
 </ul>
 
 </div>
@@ -413,16 +415,37 @@
         <article role="main" id="furo-main-content">
           <section id="r">
 <h1>R<a class="headerlink" href="#r" title="Link to this heading">¶</a></h1>
-<p>ADBC in R is implemented as a suite of R packages. Most users will
-interact with ADBC via the <a class="reference external" href="adbcdrivermanager/index.html">adbcdrivermanager</a>
-package and use drivers that are also distributed as R packages. In
-addition to the low-level interface provided by adbcdrivermanager,
-you can use <code class="docutils literal notranslate"><span class="pre">read_adbc()</span></code>, <code class="docutils literal notranslate"><span class="pre">write_adbc()</span></code> and <code class="docutils literal notranslate"><span class="pre">execute_adbc()</span></code>
-to quickly interact with an ADBC connection or database.</p>
+<p>ADBC is available in R through the <a class="reference external" href="adbcdrivermanager/index.html">adbcdrivermanager</a> package, which provides a low-level interface
+along with the <code class="docutils literal notranslate"><span class="pre">read_adbc()</span></code>, <code class="docutils literal notranslate"><span class="pre">write_adbc()</span></code>, and <code class="docutils literal notranslate"><span class="pre">execute_adbc()</span></code> helpers
+for quickly interacting with an ADBC connection or database.</p>
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h2>
+<div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">install.packages</span><span class="p">(</span><span class="nf">c</span><span class="p">(</span><span class="s">&quot;adbcdrivermanager&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;arrow&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;tibble&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+<section id="installing-drivers">
+<h3>Installing Drivers<a class="headerlink" href="#installing-drivers" title="Link to this heading">¶</a></h3>
+<p>See <a class="reference internal" href="../driver/index.html#driver-table-install"><span class="std std-ref">Installing Drivers</span></a> for instructions on installing ADBC drivers for
+the database you want to connect to. For the example below, you could install
+<a class="reference external" href="https://docs.columnar.tech/dbc">dbc</a> and then install the SQLite driver with:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>dbc<span class="w"> </span>install<span class="w"> </span>sqlite
+</pre></div>
+</div>
+</section>
+</section>
+<section id="basic-example">
+<h2>Basic Example<a class="headerlink" href="#basic-example" title="Link to this heading">¶</a></h2>
+<p>This example demonstrates connecting to SQLite, writing a table, querying it,
+and cleaning up.</p>
 <div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">library</span><span class="p">(</span><span class="n">adbcdrivermanager</span><span class="p">)</span>
 
-<span class="c1"># Use the driver manager to connect to a database</span>
-<span class="n">db</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_database_init</span><span class="p">(</span><span class="n">adbcsqlite</span><span class="o">::</span><span class="nf">adbcsqlite</span><span class="p">(),</span><span class="w"> </span><span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;:memory:&quot;</span><span class="p">)</span>
+<span class="c1"># Create a driver instance</span>
+<span class="n">drv</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_driver</span><span class="p">(</span><span class="s">&quot;sqlite&quot;</span><span class="p">)</span>
+
+<span class="c1"># Initialize the database</span>
+<span class="n">db</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_database_init</span><span class="p">(</span><span class="n">drv</span><span class="p">,</span><span class="w"> </span><span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;:memory:&quot;</span><span class="p">)</span>
+
+<span class="c1"># Create a connection</span>
 <span class="n">con</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_connection_init</span><span class="p">(</span><span class="n">db</span><span class="p">)</span>
 
 <span class="c1"># Write a table</span>
@@ -431,7 +454,7 @@ to quickly interact with an ADBC connection or database.</p>
 
 <span class="c1"># Query it</span>
 <span class="n">con</span><span class="w"> </span><span class="o">|&gt;</span>
-<span class="w">  </span><span class="nf">read_adbc</span><span class="p">(</span><span class="s">&quot;SELECT * from mtcars&quot;</span><span class="p">)</span><span class="w"> </span><span class="o">|&gt;</span>
+<span class="w">  </span><span class="nf">read_adbc</span><span class="p">(</span><span class="s">&quot;SELECT * FROM mtcars&quot;</span><span class="p">)</span><span class="w"> </span><span class="o">|&gt;</span>
 <span class="w">  </span><span class="n">tibble</span><span class="o">::</span><span class="nf">as_tibble</span><span class="p">()</span>
 
 <span class="c1"># Clean up</span>
@@ -441,15 +464,61 @@ to quickly interact with an ADBC connection or database.</p>
 <span class="nf">adbc_database_release</span><span class="p">(</span><span class="n">db</span><span class="p">)</span>
 </pre></div>
 </div>
-<p>See individual package documentation for installation and usage
-details specific to each driver.</p>
+</section>
+<section id="working-with-arrow-data">
+<h2>Working with Arrow Data<a class="headerlink" href="#working-with-arrow-data" title="Link to this heading">¶</a></h2>
+<p>ADBC natively returns Arrow data, which you can work with directly:</p>
+<div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="c1"># Get results as an Arrow table</span>
+<span class="n">arrow_table</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">con</span><span class="w"> </span><span class="o">|&gt;</span>
+<span class="w">  </span><span class="nf">read_adbc</span><span class="p">(</span><span class="s">&quot;SELECT * FROM mtcars&quot;</span><span class="p">)</span><span class="w"> </span><span class="o">|&gt;</span>
+<span class="w">  </span><span class="n">arrow</span><span class="o">::</span><span class="nf">as_arrow_table</span><span class="p">()</span>
+
+<span class="c1"># For large result sets, use a record batch reader</span>
+<span class="n">reader</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">con</span><span class="w"> </span><span class="o">|&gt;</span>
+<span class="w">  </span><span class="nf">read_adbc</span><span class="p">(</span><span class="s">&quot;SELECT * FROM large_table&quot;</span><span class="p">)</span><span class="w"> </span><span class="o">|&gt;</span>
+<span class="w">  </span><span class="n">arrow</span><span class="o">::</span><span class="nf">as_record_batch_reader</span><span class="p">()</span>
+
+<span class="c1"># Process in chunks</span>
+<span class="kr">while</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="nf">is.null</span><span class="p">(</span><span class="n">batch</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">reader</span><span class="o">$</span><span class="nf">read_next_batch</span><span class="p">()))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="c1"># Process batch</span>
+<span class="w">  </span><span class="nf">print</span><span class="p">(</span><span class="nf">nrow</span><span class="p">(</span><span class="n">batch</span><span class="p">))</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="parameterized-queries">
+<h2>Parameterized Queries<a class="headerlink" href="#parameterized-queries" title="Link to this heading">¶</a></h2>
+<p>You can use parameterized queries for safe SQL execution:</p>
+<div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="n">stmt</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_statement_init</span><span class="p">(</span><span class="n">con</span><span class="p">)</span>
+<span class="nf">adbc_statement_set_sql_query</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;DELETE FROM mtcars WHERE cyl = ?&quot;</span><span class="p">)</span>
+<span class="nf">adbc_statement_bind</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span><span class="w"> </span><span class="nf">data.frame</span><span class="p">(</span><span class="m">8L</span><span class="p">))</span>
+<span class="nf">adbc_statement_execute_query</span><span class="p">(</span><span class="n">stmt</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
 <section id="package-documentation">
-<h2>Package documentation<a class="headerlink" href="#package-documentation" title="Link to this heading">¶</a></h2>
+<h2>Package Documentation<a class="headerlink" href="#package-documentation" title="Link to this heading">¶</a></h2>
+<p>The <code class="docutils literal notranslate"><span class="pre">adbcdrivermanager</span></code> package is the R client library, and provides
+the driver manager used in the examples above:</p>
 <ul class="simple">
 <li><p><a class="reference external" href="adbcdrivermanager/index.html">adbcdrivermanager</a></p></li>
+</ul>
+<p>A few drivers are also built as R packages and distributed on CRAN:</p>
+<ul class="simple">
 <li><p><a class="reference external" href="adbcflightsql/index.html">adbcflightsql</a></p></li>
 <li><p><a class="reference external" href="adbcpostgresql/index.html">adbcpostgresql</a></p></li>
 <li><p><a class="reference external" href="adbcsqlite/index.html">adbcsqlite</a></p></li>
+</ul>
+<p>In general, though, we recommend installing drivers as shared libraries (see
+<a class="reference internal" href="#installing-drivers">Installing Drivers</a>), which works with far more databases than are available
+as R packages.</p>
+</section>
+<section id="next-steps">
+<h2>Next Steps<a class="headerlink" href="#next-steps" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>See the <a class="reference internal" href="../driver/index.html"><span class="doc">drivers</span></a> to see which databases are supported</p></li>
+<li><p>Explore more examples in the <a class="reference external" href="https://github.com/columnar-tech/adbc-quickstarts/tree/main/r">adbc-quickstarts repository</a></p></li>
+<li><p>Explore the <a class="reference external" href="https://github.com/apache/arrow-adbc/tree/main/r">R source code</a> for additional examples</p></li>
 </ul>
 </section>
 </section>
@@ -459,12 +528,12 @@ details specific to each driver.</p>
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="../rust/index.html">
+          <a class="next-page" href="../ruby/index.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Rust</div>
+                <div class="title">Ruby</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
@@ -513,7 +582,15 @@ United States and other countries.
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">R</a><ul>
-<li><a class="reference internal" href="#package-documentation">Package documentation</a></li>
+<li><a class="reference internal" href="#installation">Installation</a><ul>
+<li><a class="reference internal" href="#installing-drivers">Installing Drivers</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#basic-example">Basic Example</a></li>
+<li><a class="reference internal" href="#working-with-arrow-data">Working with Arrow Data</a></li>
+<li><a class="reference internal" href="#parameterized-queries">Parameterized Queries</a></li>
+<li><a class="reference internal" href="#package-documentation">Package Documentation</a></li>
+<li><a class="reference internal" href="#next-steps">Next Steps</a></li>
 </ul>
 </li>
 </ul>

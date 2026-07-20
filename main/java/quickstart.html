@@ -9,23 +9,23 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://arrow.apache.org/adbc/main/java/quickstart.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="Here we’ll briefly tour basic features of ADBC with the PostgreSQL driver for Java. Installation: To include ADBC in your Maven project, add the following dependency: For the examples in this secti..." />
+<meta property="og:description" content="Here we’ll briefly tour basic features of ADBC with Java JNI driver manager and the PostgreSQL driver. Installation: To include ADBC in your Maven project, add the following dependency: Installing ..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="Here we’ll briefly tour basic features of ADBC with the PostgreSQL driver for Java. Installation: To include ADBC in your Maven project, add the following dependency: For the examples in this secti..." />
+<meta name="description" content="Here we’ll briefly tour basic features of ADBC with Java JNI driver manager and the PostgreSQL driver. Installation: To include ADBC in your Maven project, add the following dependency: Installing ..." />
 <link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Driver Manager" href="driver_manager.html"><link rel="prev" title="Java" href="index.html">
         <link rel="prefetch" href="../_static/logo-light.png" as="image">
         <link rel="prefetch" href="../_static/logo-dark.png" as="image">
 
     <link rel="shortcut icon" href="../_static/favicon.ico"><!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>Quickstart - ADBC 24 (dev) documentation</title>
+        <title>Quickstart - ADBC 24 (dev) Documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=56d6027c" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=0200acfe" />
     
     
 
@@ -250,7 +250,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">ADBC 24 (dev) documentation</div></a>
+      <a href="../index.html"><div class="brand">ADBC 24 (dev) Documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -275,7 +275,7 @@
     <img class="sidebar-logo only-dark" src="../_static/logo-dark.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">ADBC 24 (dev) documentation</span>
+  <span class="sidebar-brand-text">ADBC 24 (dev) Documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -283,10 +283,16 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <ul>
-<li class="toctree-l1"><a class="reference internal" href="../faq.html">Frequently Asked Questions (FAQ)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../genindex.html">Index</a></li>
+  <p class="caption" role="heading"><span class="caption-text">Connect</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../client_libraries.html">Client Libraries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../driver/index.html">Drivers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../integrations.html">Tools &amp; Integrations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../connection_profiles.html">Connection Profiles</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Build</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../driver/authoring.html">Writing New Drivers</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Supported Environments</span></p>
 <ul class="current">
@@ -334,24 +340,14 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../r/index.html">R</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ruby/index.html">Ruby</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../rust/index.html">Rust</a><input aria-label="Toggle navigation of Rust" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../rust/quickstart.html">Quickstart</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../rust/driver_manager.html">Driver Manager</a></li>
 <li class="toctree-l2"><a class="reference external" href="https://docs.rs/adbc_core/latest/adbc_core/">Rust API Reference</a></li>
 </ul>
 </li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Drivers</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../driver/installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/status.html">Driver Implementation Status</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/bigquery.html">BigQuery Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/duckdb.html">DuckDB Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/flight_sql.html">Flight SQL Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/jdbc.html">JDBC Adapter</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/postgresql.html">PostgreSQL Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/sqlite.html">SQLite Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/authoring.html">Writing New Drivers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Specification</span></p>
 <ul>
@@ -363,12 +359,18 @@
 <li class="toctree-l1"><a class="reference internal" href="../format/connection_profiles.html">ADBC Driver Manager and Connection Profiles</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../format/related_work.html">Related Work</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<p class="caption" role="heading"><span class="caption-text">Contribute</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../development/contributing.html">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../development/nightly.html">Nightly Packages</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../development/versioning.html">Versioning</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../development/releasing.html">Release Management Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Resources</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../genindex.html">Index</a></li>
 </ul>
 
 </div>
@@ -413,58 +415,81 @@
         <article role="main" id="furo-main-content">
           <section id="quickstart">
 <h1>Quickstart<a class="headerlink" href="#quickstart" title="Link to this heading">¶</a></h1>
-<p>Here we’ll briefly tour basic features of ADBC with the PostgreSQL driver for Java.</p>
+<p>Here we’ll briefly tour basic features of ADBC with Java <a class="reference internal" href="jni.html"><span class="doc">JNI driver manager</span></a> and the PostgreSQL driver.</p>
 <section id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h2>
 <p>To include ADBC in your Maven project, add the following dependency:</p>
 <div class="highlight-xml notranslate"><div class="highlight"><pre><span></span><span class="nt">&lt;dependency&gt;</span>
 <span class="w">    </span><span class="nt">&lt;groupId&gt;</span>org.apache.arrow.adbc<span class="nt">&lt;/groupId&gt;</span>
-<span class="w">    </span><span class="nt">&lt;artifactId&gt;</span>adbc-driver-jdbc<span class="nt">&lt;/artifactId&gt;</span>
+<span class="w">    </span><span class="nt">&lt;artifactId&gt;</span>adbc-driver-jni<span class="nt">&lt;/artifactId&gt;</span>
 <span class="w">    </span><span class="nt">&lt;version&gt;</span>${adbc.version}<span class="nt">&lt;/version&gt;</span>
 <span class="nt">&lt;/dependency&gt;</span>
 </pre></div>
 </div>
+<section id="installing-drivers">
+<h3>Installing Drivers<a class="headerlink" href="#installing-drivers" title="Link to this heading">¶</a></h3>
+<p>See <a class="reference internal" href="../driver/index.html#driver-table-install"><span class="std std-ref">Installing Drivers</span></a> for instructions on installing ADBC drivers for
+the database you want to connect to. For the example below, you could install
+<a class="reference external" href="https://docs.columnar.tech/dbc">dbc</a> and then install the PostgreSQL driver with:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>dbc<span class="w"> </span>install<span class="w"> </span>postgresql
+</pre></div>
+</div>
+</section>
+<section id="imports">
+<h3>Imports<a class="headerlink" href="#imports" title="Link to this heading">¶</a></h3>
 <p>For the examples in this section, the following imports are required:</p>
-<div class="highlight-java notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">org.apache.arrow.adbc.core.AdbcConnection</span><span class="p">;</span>
+<div class="highlight-java notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">java.util.HashMap</span><span class="p">;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">java.util.Map</span><span class="p">;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">org.apache.arrow.adbc.core.AdbcConnection</span><span class="p">;</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">org.apache.arrow.adbc.core.AdbcDatabase</span><span class="p">;</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">org.apache.arrow.adbc.core.AdbcDriver</span><span class="p">;</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">org.apache.arrow.adbc.core.AdbcException</span><span class="p">;</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">org.apache.arrow.adbc.core.AdbcStatement</span><span class="p">;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">org.apache.arrow.adbc.driver.jni.JniDriver</span><span class="p">;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">org.apache.arrow.memory.BufferAllocator</span><span class="p">;</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">org.apache.arrow.memory.RootAllocator</span><span class="p">;</span>
 </pre></div>
 </div>
 </section>
-<section id="jdbc-style-api">
-<h2>JDBC-style API<a class="headerlink" href="#jdbc-style-api" title="Link to this heading">¶</a></h2>
-<p>ADBC provides a high-level API in the style of the JDBC standard.</p>
-<section id="usage">
-<h3>Usage<a class="headerlink" href="#usage" title="Link to this heading">¶</a></h3>
-<div class="highlight-java notranslate"><div class="highlight"><pre><span></span><span class="kd">final</span><span class="w"> </span><span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="p">,</span><span class="w"> </span><span class="n">Object</span><span class="o">&gt;</span><span class="w"> </span><span class="n">parameters</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HashMap</span><span class="o">&lt;&gt;</span><span class="p">();</span>
-<span class="n">AdbcDriver</span><span class="p">.</span><span class="na">PARAM_URI</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;jdbc:postgresql://localhost:5432/postgres&quot;</span><span class="p">);</span>
+</section>
+<section id="basic-usage">
+<h2>Basic Usage<a class="headerlink" href="#basic-usage" title="Link to this heading">¶</a></h2>
+<div class="highlight-java notranslate"><div class="highlight"><pre><span></span><span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="p">,</span><span class="w"> </span><span class="n">Object</span><span class="o">&gt;</span><span class="w"> </span><span class="n">parameters</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HashMap</span><span class="o">&lt;&gt;</span><span class="p">();</span>
+<span class="n">JniDriver</span><span class="p">.</span><span class="na">PARAM_DRIVER</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;postgresql&quot;</span><span class="p">);</span>
+<span class="n">AdbcDriver</span><span class="p">.</span><span class="na">PARAM_URI</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;postgresql://localhost:5432/postgres&quot;</span><span class="p">);</span>
 <span class="k">try</span><span class="w"> </span><span class="p">(</span>
 <span class="w">    </span><span class="n">BufferAllocator</span><span class="w"> </span><span class="n">allocator</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">RootAllocator</span><span class="p">();</span>
-<span class="w">    </span><span class="n">AdbcDatabase</span><span class="w"> </span><span class="n">db</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JdbcDriver</span><span class="p">(</span><span class="n">allocator</span><span class="p">).</span><span class="na">open</span><span class="p">(</span><span class="n">parameters</span><span class="p">);</span>
+<span class="w">    </span><span class="n">AdbcDatabase</span><span class="w"> </span><span class="n">db</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JniDriver</span><span class="p">(</span><span class="n">allocator</span><span class="p">).</span><span class="na">open</span><span class="p">(</span><span class="n">parameters</span><span class="p">);</span>
 <span class="w">    </span><span class="n">AdbcConnection</span><span class="w"> </span><span class="n">adbcConnection</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">db</span><span class="p">.</span><span class="na">connect</span><span class="p">();</span>
-<span class="w">    </span><span class="n">AdbcStatement</span><span class="w"> </span><span class="n">stmt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">adbcConnection</span><span class="p">.</span><span class="na">createStatement</span><span class="p">()</span>
-
+<span class="w">    </span><span class="n">AdbcStatement</span><span class="w"> </span><span class="n">stmt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">adbcConnection</span><span class="p">.</span><span class="na">createStatement</span><span class="p">();</span>
 <span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="n">stmt</span><span class="p">.</span><span class="na">setSqlQuery</span><span class="p">(</span><span class="s">&quot;select * from foo&quot;</span><span class="p">);</span>
-<span class="w">    </span><span class="n">AdbcStatement</span><span class="p">.</span><span class="na">QueryResult</span><span class="w"> </span><span class="n">queryResult</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">stmt</span><span class="p">.</span><span class="na">executeQuery</span><span class="p">();</span>
-<span class="w">    </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="n">queryResult</span><span class="p">.</span><span class="na">getReader</span><span class="p">().</span><span class="na">loadNextBatch</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="c1">// process batch</span>
+<span class="w">    </span><span class="k">try</span><span class="w"> </span><span class="p">(</span><span class="n">AdbcStatement</span><span class="p">.</span><span class="na">QueryResult</span><span class="w"> </span><span class="n">queryResult</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">stmt</span><span class="p">.</span><span class="na">executeQuery</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="k">while</span><span class="w"> </span><span class="p">(</span><span class="n">queryResult</span><span class="p">.</span><span class="na">getReader</span><span class="p">().</span><span class="na">loadNextBatch</span><span class="p">())</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="c1">// process batch</span>
+<span class="w">        </span><span class="p">}</span>
 <span class="w">    </span><span class="p">}</span>
-<span class="p">}</span><span class="w">  </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="n">AdbcException</span><span class="w"> </span><span class="n">e</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="p">}</span><span class="w"> </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="n">AdbcException</span><span class="w"> </span><span class="n">e</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="c1">// throw</span>
 <span class="p">}</span>
 </pre></div>
 </div>
 <p>In application code, the connection must be closed after usage or memory may leak.
 It is recommended to wrap the connection in a try-with-resources block for automatic
-resource management.  In this example, we are connecting to a PostgreSQL database,
+resource management. In this example, we are connecting to a PostgreSQL database,
 specifically the default database “postgres”.</p>
 <p>Note that creating a statement is also wrapped in the try-with-resources block.
 Assuming we have a table “foo” in the database, an example for setting and executing the
 query is also provided.</p>
 </section>
+<section id="next-steps">
+<h2>Next Steps<a class="headerlink" href="#next-steps" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Check out the <a class="reference internal" href="index.html"><span class="doc">Java API documentation</span></a> for more details</p></li>
+<li><p>See the <a class="reference internal" href="../driver/index.html"><span class="doc">drivers</span></a> to see which databases are supported</p></li>
+<li><p>Explore more examples in the <a class="reference external" href="https://github.com/columnar-tech/adbc-quickstarts/tree/main/java">adbc-quickstarts repository</a></p></li>
+<li><p>Explore the <a class="reference external" href="https://github.com/apache/arrow-adbc/tree/main/java">Java source code</a> for additional examples</p></li>
+</ul>
 </section>
 </section>
 
@@ -527,11 +552,13 @@ United States and other countries.
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Quickstart</a><ul>
-<li><a class="reference internal" href="#installation">Installation</a></li>
-<li><a class="reference internal" href="#jdbc-style-api">JDBC-style API</a><ul>
-<li><a class="reference internal" href="#usage">Usage</a></li>
+<li><a class="reference internal" href="#installation">Installation</a><ul>
+<li><a class="reference internal" href="#installing-drivers">Installing Drivers</a></li>
+<li><a class="reference internal" href="#imports">Imports</a></li>
 </ul>
 </li>
+<li><a class="reference internal" href="#basic-usage">Basic Usage</a></li>
+<li><a class="reference internal" href="#next-steps">Next Steps</a></li>
 </ul>
 </li>
 </ul>

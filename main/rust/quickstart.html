@@ -9,23 +9,23 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://arrow.apache.org/adbc/main/rust/quickstart.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="Here we’ll briefly tour using ADBC with the DataFusion driver. Installation: Add a dependency on adbc_core and adbc_datafusion: Loading DataFusion: Create a driver instance, then a database handle,..." />
+<meta property="og:description" content="Here we’ll briefly tour basic features of ADBC with Rust using the SQLite driver. Installation: Add a dependency on adbc_core and adbc_driver_manager: Installing Drivers: See Installing Drivers for..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="Here we’ll briefly tour using ADBC with the DataFusion driver. Installation: Add a dependency on adbc_core and adbc_datafusion: Loading DataFusion: Create a driver instance, then a database handle,..." />
+<meta name="description" content="Here we’ll briefly tour basic features of ADBC with Rust using the SQLite driver. Installation: Add a dependency on adbc_core and adbc_driver_manager: Installing Drivers: See Installing Drivers for..." />
 <link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Driver Manager" href="driver_manager.html"><link rel="prev" title="Rust" href="index.html">
         <link rel="prefetch" href="../_static/logo-light.png" as="image">
         <link rel="prefetch" href="../_static/logo-dark.png" as="image">
 
     <link rel="shortcut icon" href="../_static/favicon.ico"><!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>Quickstart - ADBC 24 (dev) documentation</title>
+        <title>Quickstart - ADBC 24 (dev) Documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" />
-    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=56d6027c" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=0200acfe" />
     
     
 
@@ -250,7 +250,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../index.html"><div class="brand">ADBC 24 (dev) documentation</div></a>
+      <a href="../index.html"><div class="brand">ADBC 24 (dev) Documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -275,7 +275,7 @@
     <img class="sidebar-logo only-dark" src="../_static/logo-dark.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">ADBC 24 (dev) documentation</span>
+  <span class="sidebar-brand-text">ADBC 24 (dev) Documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -283,10 +283,16 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <ul>
-<li class="toctree-l1"><a class="reference internal" href="../faq.html">Frequently Asked Questions (FAQ)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../genindex.html">Index</a></li>
+  <p class="caption" role="heading"><span class="caption-text">Connect</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../client_libraries.html">Client Libraries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../driver/index.html">Drivers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../integrations.html">Tools &amp; Integrations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../connection_profiles.html">Connection Profiles</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Build</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../driver/authoring.html">Writing New Drivers</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Supported Environments</span></p>
 <ul class="current">
@@ -334,24 +340,14 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../r/index.html">R</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ruby/index.html">Ruby</a></li>
 <li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Rust</a><input aria-label="Toggle navigation of Rust" checked="" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
 <li class="toctree-l2 current current-page"><a class="current reference internal" href="#">Quickstart</a></li>
 <li class="toctree-l2"><a class="reference internal" href="driver_manager.html">Driver Manager</a></li>
 <li class="toctree-l2"><a class="reference external" href="https://docs.rs/adbc_core/latest/adbc_core/">Rust API Reference</a></li>
 </ul>
 </li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Drivers</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../driver/installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/status.html">Driver Implementation Status</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/bigquery.html">BigQuery Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/duckdb.html">DuckDB Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/flight_sql.html">Flight SQL Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/jdbc.html">JDBC Adapter</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/postgresql.html">PostgreSQL Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/sqlite.html">SQLite Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../driver/authoring.html">Writing New Drivers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Specification</span></p>
 <ul>
@@ -363,12 +359,18 @@
 <li class="toctree-l1"><a class="reference internal" href="../format/connection_profiles.html">ADBC Driver Manager and Connection Profiles</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../format/related_work.html">Related Work</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<p class="caption" role="heading"><span class="caption-text">Contribute</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../development/contributing.html">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../development/nightly.html">Nightly Packages</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../development/versioning.html">Versioning</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../development/releasing.html">Release Management Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Resources</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../genindex.html">Index</a></li>
 </ul>
 
 </div>
@@ -413,16 +415,11 @@
         <article role="main" id="furo-main-content">
           <section id="quickstart">
 <h1>Quickstart<a class="headerlink" href="#quickstart" title="Link to this heading">¶</a></h1>
-<p>Here we’ll briefly tour using ADBC with the <a class="reference external" href="https://datafusion.apache.org/">DataFusion</a> driver.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>The DataFusion driver is maintained by a third party, the ADBC Driver Foundry (<a class="reference external" href="https://adbc-drivers.org">https://adbc-drivers.org</a>). We’re using it here since we don’t maintain any Rust-based drivers directly.</p>
-</div>
+<p>Here we’ll briefly tour basic features of ADBC with Rust using the SQLite driver.</p>
 <section id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h2>
-<p>Add a dependency on <code class="docutils literal notranslate"><span class="pre">adbc_core</span></code> and <code class="docutils literal notranslate"><span class="pre">adbc_datafusion</span></code>:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>cargo<span class="w"> </span>add<span class="w"> </span>adbc_core
-cargo<span class="w"> </span>add<span class="w"> </span>--git<span class="w"> </span>https://github.com/adbc-drivers/datafusion<span class="w"> </span>adbc-driver-datafusion
+<p>Add a dependency on <code class="docutils literal notranslate"><span class="pre">adbc_core</span></code> and <code class="docutils literal notranslate"><span class="pre">adbc_driver_manager</span></code>:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>cargo<span class="w"> </span>add<span class="w"> </span>adbc_core<span class="w"> </span>adbc_driver_manager
 </pre></div>
 </div>
 <div class="admonition note">
@@ -439,17 +436,33 @@ Use <code class="docutils literal notranslate"><span class="pre">cargo</span> <s
 the <a class="reference external" href="https://doc.rust-lang.org/cargo/reference/resolver.html#version-incompatibility-hazards">Version Incompatibility Hazards</a>
 in the Cargo documentation for more information.</p>
 </div>
+<section id="installing-drivers">
+<h3>Installing Drivers<a class="headerlink" href="#installing-drivers" title="Link to this heading">¶</a></h3>
+<p>See <a class="reference internal" href="../driver/index.html#driver-table-install"><span class="std std-ref">Installing Drivers</span></a> for instructions on installing ADBC drivers for
+the database you want to connect to. For the example below, you could install
+<a class="reference external" href="https://docs.columnar.tech/dbc">dbc</a> and then install the SQLite driver with:</p>
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>dbc<span class="w"> </span>install<span class="w"> </span>sqlite
+</pre></div>
+</div>
 </section>
-<section id="loading-datafusion">
-<h2>Loading DataFusion<a class="headerlink" href="#loading-datafusion" title="Link to this heading">¶</a></h2>
-<p>Create a driver instance, then a database handle, and then finally a
-connection.  (This is a bit redundant for something like DataFusion, but the
-intent is that the database handle can hold shared state that multiple
-connections can share.)</p>
-<div class="highlight-rust notranslate"><div class="highlight"><pre><span></span><span class="c1">// These traits must be in scope</span>
-<span class="k">use</span><span class="w"> </span><span class="n">adbc_core</span><span class="p">::{</span><span class="n">Connection</span><span class="p">,</span><span class="w"> </span><span class="n">Database</span><span class="p">,</span><span class="w"> </span><span class="n">Driver</span><span class="p">,</span><span class="w"> </span><span class="n">Statement</span><span class="p">};</span>
+</section>
+<section id="loading-a-driver">
+<h2>Loading a Driver<a class="headerlink" href="#loading-a-driver" title="Link to this heading">¶</a></h2>
+<p>Use <code class="docutils literal notranslate"><span class="pre">ManagedDriver::load_from_name</span></code> to locate and load a driver by name. The driver manager
+searches for a driver manifest (e.g. <code class="docutils literal notranslate"><span class="pre">sqlite.toml</span></code>) in the directories controlled by
+<code class="docutils literal notranslate"><span class="pre">load_flags</span></code>. See <a class="reference internal" href="../format/driver_manifests.html"><span class="doc">ADBC Driver Manager and Manifests</span></a> for details on manifest search paths.</p>
+<div class="highlight-rust notranslate"><div class="highlight"><pre><span></span><span class="k">use</span><span class="w"> </span><span class="n">adbc_core</span><span class="p">::</span><span class="n">options</span><span class="p">::</span><span class="n">AdbcVersion</span><span class="p">;</span>
+<span class="k">use</span><span class="w"> </span><span class="n">adbc_core</span><span class="p">::{</span><span class="n">Connection</span><span class="p">,</span><span class="w"> </span><span class="n">Database</span><span class="p">,</span><span class="w"> </span><span class="n">Driver</span><span class="p">,</span><span class="w"> </span><span class="n">Statement</span><span class="p">,</span><span class="w"> </span><span class="n">LOAD_FLAG_DEFAULT</span><span class="p">};</span>
+<span class="k">use</span><span class="w"> </span><span class="n">adbc_driver_manager</span><span class="p">::</span><span class="n">ManagedDriver</span><span class="p">;</span>
 
-<span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">adbc_driver_datafusion</span><span class="p">::</span><span class="n">DataFusionDriver</span><span class="w"> </span><span class="p">{};</span>
+<span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ManagedDriver</span><span class="p">::</span><span class="n">load_from_name</span><span class="p">(</span>
+<span class="w">    </span><span class="s">&quot;sqlite&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="nb">None</span><span class="p">,</span>
+<span class="w">    </span><span class="n">AdbcVersion</span><span class="p">::</span><span class="n">default</span><span class="p">(),</span>
+<span class="w">    </span><span class="n">LOAD_FLAG_DEFAULT</span><span class="p">,</span>
+<span class="w">    </span><span class="nb">None</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="p">.</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to load driver&quot;</span><span class="p">);</span>
 <span class="kd">let</span><span class="w"> </span><span class="n">db</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">driver</span><span class="p">.</span><span class="n">new_database</span><span class="p">().</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to create database handle&quot;</span><span class="p">);</span>
 <span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">conn</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">db</span><span class="p">.</span><span class="n">new_connection</span><span class="p">().</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to create connection&quot;</span><span class="p">);</span>
 </pre></div>
@@ -457,12 +470,12 @@ connections can share.)</p>
 </section>
 <section id="running-queries">
 <h2>Running Queries<a class="headerlink" href="#running-queries" title="Link to this heading">¶</a></h2>
-<p>To run queries, we can create a statement and set a query:</p>
+<p>To run queries, create a statement and set a query:</p>
 <div class="highlight-rust notranslate"><div class="highlight"><pre><span></span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">stmt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">conn</span><span class="p">.</span><span class="n">new_statement</span><span class="p">().</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to create statement&quot;</span><span class="p">);</span>
 <span class="n">stmt</span><span class="p">.</span><span class="n">set_sql_query</span><span class="p">(</span><span class="s">&quot;SELECT 1&quot;</span><span class="p">).</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to set SQL query&quot;</span><span class="p">);</span>
 </pre></div>
 </div>
-<p>We can then execute the query to get an Arrow <code class="docutils literal notranslate"><span class="pre">RecordBatchReader</span></code>:</p>
+<p>Execute the query to get an Arrow <code class="docutils literal notranslate"><span class="pre">RecordBatchReader</span></code>:</p>
 <div class="highlight-rust notranslate"><div class="highlight"><pre><span></span><span class="kd">let</span><span class="w"> </span><span class="n">reader</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">stmt</span><span class="p">.</span><span class="n">execute</span><span class="p">().</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to execute statement&quot;</span><span class="p">);</span>
 <span class="k">for</span><span class="w"> </span><span class="n">batch</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">reader</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">batch</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">batch</span><span class="p">.</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to read batch&quot;</span><span class="p">);</span>
@@ -470,6 +483,15 @@ connections can share.)</p>
 <span class="p">}</span>
 </pre></div>
 </div>
+</section>
+<section id="next-steps">
+<h2>Next Steps<a class="headerlink" href="#next-steps" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p>Check out the <a class="reference internal" href="index.html"><span class="doc">Rust API documentation</span></a> for more details</p></li>
+<li><p>See the <a class="reference internal" href="../driver/index.html"><span class="doc">drivers</span></a> to see which databases are supported</p></li>
+<li><p>Explore more examples in the <a class="reference external" href="https://github.com/columnar-tech/adbc-quickstarts/tree/main/rust">adbc-quickstarts repository</a></p></li>
+<li><p>Explore the <a class="reference external" href="https://github.com/apache/arrow-adbc/tree/main/rust">Rust source code</a> for additional examples</p></li>
+</ul>
 </section>
 </section>
 
@@ -532,9 +554,13 @@ United States and other countries.
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Quickstart</a><ul>
-<li><a class="reference internal" href="#installation">Installation</a></li>
-<li><a class="reference internal" href="#loading-datafusion">Loading DataFusion</a></li>
+<li><a class="reference internal" href="#installation">Installation</a><ul>
+<li><a class="reference internal" href="#installing-drivers">Installing Drivers</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#loading-a-driver">Loading a Driver</a></li>
 <li><a class="reference internal" href="#running-queries">Running Queries</a></li>
+<li><a class="reference internal" href="#next-steps">Next Steps</a></li>
 </ul>
 </li>
 </ul>

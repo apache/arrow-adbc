@@ -18,14 +18,14 @@
         <link rel="prefetch" href="../../_static/logo-dark.png" as="image">
 
     <link rel="shortcut icon" href="../../_static/favicon.ico"><!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>PostgreSQL Recipes - ADBC 24 (dev) documentation</title>
+        <title>PostgreSQL Recipes - ADBC 24 (dev) Documentation</title>
       <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" />
-    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=56d6027c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/css/custom.css?v=0200acfe" />
     
     
 
@@ -250,7 +250,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="../../index.html"><div class="brand">ADBC 24 (dev) documentation</div></a>
+      <a href="../../index.html"><div class="brand">ADBC 24 (dev) Documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -275,7 +275,7 @@
     <img class="sidebar-logo only-dark" src="../../_static/logo-dark.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">ADBC 24 (dev) documentation</span>
+  <span class="sidebar-brand-text">ADBC 24 (dev) Documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="../../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -283,10 +283,16 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../faq.html">Frequently Asked Questions (FAQ)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../glossary.html">Glossary</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../genindex.html">Index</a></li>
+  <p class="caption" role="heading"><span class="caption-text">Connect</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../client_libraries.html">Client Libraries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../driver/index.html">Drivers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../integrations.html">Tools &amp; Integrations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../connection_profiles.html">Connection Profiles</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Build</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../driver/authoring.html">Writing New Drivers</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Supported Environments</span></p>
 <ul class="current">
@@ -334,24 +340,14 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="../../r/index.html">R</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../ruby/index.html">Ruby</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="../../rust/index.html">Rust</a><input aria-label="Toggle navigation of Rust" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="../../rust/quickstart.html">Quickstart</a></li>
 <li class="toctree-l2"><a class="reference internal" href="../../rust/driver_manager.html">Driver Manager</a></li>
 <li class="toctree-l2"><a class="reference external" href="https://docs.rs/adbc_core/latest/adbc_core/">Rust API Reference</a></li>
 </ul>
 </li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Drivers</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../../driver/installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../driver/status.html">Driver Implementation Status</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../driver/bigquery.html">BigQuery Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../driver/duckdb.html">DuckDB Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../driver/flight_sql.html">Flight SQL Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../driver/jdbc.html">JDBC Adapter</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../driver/postgresql.html">PostgreSQL Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../driver/sqlite.html">SQLite Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../driver/authoring.html">Writing New Drivers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../installation.html">Installation</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Specification</span></p>
 <ul>
@@ -363,12 +359,18 @@
 <li class="toctree-l1"><a class="reference internal" href="../../format/connection_profiles.html">ADBC Driver Manager and Connection Profiles</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../format/related_work.html">Related Work</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<p class="caption" role="heading"><span class="caption-text">Contribute</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../development/contributing.html">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../development/nightly.html">Nightly Packages</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../development/versioning.html">Versioning</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../development/releasing.html">Release Management Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Resources</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../genindex.html">Index</a></li>
 </ul>
 
 </div>
@@ -425,10 +427,10 @@ be provided in the URI.  For example,</p>
 for full details.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">32</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="linenos">33</span>
-<span class="linenos">34</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">34</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">dbapi</span>
 <span class="linenos">35</span>
 <span class="linenos">36</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
-<span class="linenos">37</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
+<span class="linenos">37</span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;postgresql&quot;</span><span class="p">,</span> <span class="n">uri</span><span class="p">)</span>
 <span class="linenos">38</span>
 <span class="linenos">39</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">40</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT 1&quot;</span><span class="p">)</span>
@@ -455,12 +457,12 @@ This is useful for operations that cannot be run inside a transaction,
 or when you want each statement to be committed immediately.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">27</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="linenos">28</span>
-<span class="linenos">29</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">29</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">dbapi</span>
 <span class="linenos">30</span>
 <span class="linenos">31</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
 <span class="linenos">32</span>
 <span class="linenos">33</span><span class="c1"># Enable autocommit mode</span>
-<span class="linenos">34</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">,</span> <span class="n">autocommit</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="linenos">34</span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;postgresql&quot;</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">autocommit</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="linenos">35</span>
 <span class="linenos">36</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">37</span>    <span class="c1"># In autocommit mode, this statement is automatically committed</span>
@@ -490,10 +492,10 @@ or when you want each statement to be committed immediately.</p>
 <span class="linenos">31</span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow.feather</span>
 <span class="linenos">32</span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow.parquet</span>
 <span class="linenos">33</span>
-<span class="linenos">34</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">34</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">dbapi</span>
 <span class="linenos">35</span>
 <span class="linenos">36</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
-<span class="linenos">37</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
+<span class="linenos">37</span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;postgresql&quot;</span><span class="p">,</span> <span class="n">uri</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>For the purposes of testing, we’ll first make sure the tables we’re about
@@ -663,10 +665,10 @@ tables.</p>
 <span class="linenos">25</span>
 <span class="linenos">26</span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span>
 <span class="linenos">27</span>
-<span class="linenos">28</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">28</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">dbapi</span>
 <span class="linenos">29</span>
 <span class="linenos">30</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
-<span class="linenos">31</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
+<span class="linenos">31</span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;postgresql&quot;</span><span class="p">,</span> <span class="n">uri</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>For the purposes of testing, we’ll first make sure the tables we’re about
@@ -757,10 +759,10 @@ append.</p>
 <span class="linenos">24</span>
 <span class="linenos">25</span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span>
 <span class="linenos">26</span>
-<span class="linenos">27</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">27</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">dbapi</span>
 <span class="linenos">28</span>
 <span class="linenos">29</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
-<span class="linenos">30</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
+<span class="linenos">30</span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;postgresql&quot;</span><span class="p">,</span> <span class="n">uri</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>For the purposes of testing, we’ll first make sure the tables we’re about
@@ -820,7 +822,7 @@ reference the normal temporary table here.</p>
 </div>
 <p>After closing the connection, the temporary table is implicitly dropped.
 If we reconnect, the table won’t exist; we’ll see only the ‘normal’ table.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">85</span><span class="k">with</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">85</span><span class="k">with</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;postgresql&quot;</span><span class="p">,</span> <span class="n">uri</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
 <span class="linenos">86</span>    <span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">87</span>        <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(*) FROM example&quot;</span><span class="p">)</span>
 <span class="linenos">88</span>        <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">2</span><span class="p">,)</span>
@@ -839,10 +841,10 @@ for queries that don’t generate result sets.</p>
 <span class="linenos">27</span>
 <span class="linenos">28</span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span>
 <span class="linenos">29</span>
-<span class="linenos">30</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">30</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">dbapi</span>
 <span class="linenos">31</span>
 <span class="linenos">32</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
-<span class="linenos">33</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
+<span class="linenos">33</span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;postgresql&quot;</span><span class="p">,</span> <span class="n">uri</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>We’ll create an example table to test.</p>
@@ -894,16 +896,16 @@ kinds of queries, however.  For example, <code class="docutils literal notransla
 In this case, you can explicitly disable the <code class="docutils literal notranslate"><span class="pre">COPY</span></code> optimization.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">27</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="linenos">28</span>
-<span class="linenos">29</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">29</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">dbapi</span>
 <span class="linenos">30</span>
 <span class="linenos">31</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
-<span class="linenos">32</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
+<span class="linenos">32</span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;postgresql&quot;</span><span class="p">,</span> <span class="n">uri</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>The option can be set when creating the cursor:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">36</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">(</span>
 <span class="linenos">37</span>    <span class="n">adbc_stmt_kwargs</span><span class="o">=</span><span class="p">{</span>
-<span class="linenos">38</span>        <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">StatementOptions</span><span class="o">.</span><span class="n">USE_COPY</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+<span class="linenos">38</span>        <span class="s2">&quot;adbc.postgresql.use_copy&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
 <span class="linenos">39</span>    <span class="p">}</span>
 <span class="linenos">40</span><span class="p">)</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">41</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SHOW ALL&quot;</span><span class="p">)</span>
@@ -914,7 +916,7 @@ In this case, you can explicitly disable the <code class="docutils literal notra
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">50</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">51</span>    <span class="n">cur</span><span class="o">.</span><span class="n">adbc_statement</span><span class="o">.</span><span class="n">set_options</span><span class="p">(</span>
 <span class="linenos">52</span>        <span class="o">**</span><span class="p">{</span>
-<span class="linenos">53</span>            <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">StatementOptions</span><span class="o">.</span><span class="n">USE_COPY</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+<span class="linenos">53</span>            <span class="s2">&quot;adbc.postgresql.use_copy&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
 <span class="linenos">54</span>        <span class="p">}</span>
 <span class="linenos">55</span>    <span class="p">)</span>
 <span class="linenos">56</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SHOW ALL&quot;</span><span class="p">)</span>
@@ -954,10 +956,10 @@ description: string
 <span class="linenos">25</span>
 <span class="linenos">26</span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span>
 <span class="linenos">27</span>
-<span class="linenos">28</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">28</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">dbapi</span>
 <span class="linenos">29</span>
 <span class="linenos">30</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
-<span class="linenos">31</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
+<span class="linenos">31</span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;postgresql&quot;</span><span class="p">,</span> <span class="n">uri</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>We’ll create some example tables to test.</p>
@@ -1013,10 +1015,10 @@ decimals do not map onto Arrow decimals.</p>
 <span class="linenos">25</span>
 <span class="linenos">26</span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span>
 <span class="linenos">27</span>
-<span class="linenos">28</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">28</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">dbapi</span>
 <span class="linenos">29</span>
 <span class="linenos">30</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
-<span class="linenos">31</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
+<span class="linenos">31</span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;postgresql&quot;</span><span class="p">,</span> <span class="n">uri</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>We’ll create an example table to test.</p>
@@ -1054,10 +1056,10 @@ decimals do not map onto Arrow decimals.</p>
 <p>ADBC allows listing tables, catalogs, and schemas in the database.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">24</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="linenos">25</span>
-<span class="linenos">26</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">26</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">dbapi</span>
 <span class="linenos">27</span>
 <span class="linenos">28</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
-<span class="linenos">29</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
+<span class="linenos">29</span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;postgresql&quot;</span><span class="p">,</span> <span class="n">uri</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>We’ll create an example table to look for.</p>
@@ -1102,11 +1104,11 @@ like the one built into <a class="reference external" href="https://docs.sqlalch
 <span class="linenos">29</span>
 <span class="linenos">30</span><span class="kn">import</span><span class="w"> </span><span class="nn">sqlalchemy.pool</span>
 <span class="linenos">31</span>
-<span class="linenos">32</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">32</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">dbapi</span>
 <span class="linenos">33</span>
 <span class="linenos">34</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
 <span class="linenos">35</span>
-<span class="linenos">36</span><span class="n">source</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
+<span class="linenos">36</span><span class="n">source</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;postgresql&quot;</span><span class="p">,</span> <span class="n">uri</span><span class="p">)</span>
 </pre></div>
 </div>
 <p><a class="reference internal" href="../api/adbc_driver_manager.html#adbc_driver_manager.dbapi.Connection.adbc_clone" title="adbc_driver_manager.dbapi.Connection.adbc_clone"><code class="xref py py-meth docutils literal notranslate"><span class="pre">adbc_driver_manager.dbapi.Connection.adbc_clone()</span></code></a> opens a new
@@ -1142,7 +1144,7 @@ protocol, unlike the underlying ADBC connection.</p>
 </div>
 </section>
 <section id="using-pandas-and-adbc">
-<h2>Using Pandas and ADBC<a class="headerlink" href="#using-pandas-and-adbc" title="Link to this heading">¶</a></h2>
+<span id="recipe-postgresql-pandas"></span><h2>Using Pandas and ADBC<a class="headerlink" href="#using-pandas-and-adbc" title="Link to this heading">¶</a></h2>
 <p id="index-11">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_pandas.py">postgresql_pandas.py</a></p>
 <p>ADBC is integrated into <a class="reference external" href="https://pandas.pydata.org/">pandas</a>, a popular dataframe library.  Pandas can
 use ADBC to exchange data with PostgreSQL and other databases.  Compared to
@@ -1153,10 +1155,10 @@ objects.</p>
 <span class="linenos">31</span>
 <span class="linenos">32</span><span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 <span class="linenos">33</span>
-<span class="linenos">34</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_postgresql.dbapi</span>
+<span class="linenos">34</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">dbapi</span>
 <span class="linenos">35</span>
 <span class="linenos">36</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_POSTGRESQL_TEST_URI&quot;</span><span class="p">]</span>
-<span class="linenos">37</span><span class="n">conn</span> <span class="o">=</span> <span class="n">adbc_driver_postgresql</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="p">)</span>
+<span class="linenos">37</span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;postgresql&quot;</span><span class="p">,</span> <span class="n">uri</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>We’ll use <a class="reference external" href="https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_sql.html#pandas.DataFrame.to_sql" title="(in pandas v3.0.4)"><code class="xref py py-meth docutils literal notranslate"><span class="pre">pd.DataFrame.to_sql</span></code></a>

@@ -9,23 +9,23 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://arrow.apache.org/adbc/main/index.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="ADBC: Arrow Database Connectivity Cross-language, Arrow-native database access. ADBC is a set of APIs and libraries for Arrow-native access to databases. Execute SQL and Substrait queries, query da..." />
+<meta property="og:description" content="ADBC: Arrow Database Connectivity Cross-language, Arrow-native database access. ADBC is a standardized set of APIs and libraries for fast, Arrow-native database access. Execute SQL queries, fetch r..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="ADBC: Arrow Database Connectivity Cross-language, Arrow-native database access. ADBC is a set of APIs and libraries for Arrow-native access to databases. Execute SQL and Substrait queries, query da..." />
-<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Frequently Asked Questions (FAQ)" href="faq.html">
+<meta name="description" content="ADBC: Arrow Database Connectivity Cross-language, Arrow-native database access. ADBC is a standardized set of APIs and libraries for fast, Arrow-native database access. Execute SQL queries, fetch r..." />
+<link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Client Libraries" href="client_libraries.html">
         <link rel="prefetch" href="_static/logo-light.png" as="image">
         <link rel="prefetch" href="_static/logo-dark.png" as="image">
 
     <link rel="shortcut icon" href="_static/favicon.ico"><!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
-        <title>ADBC 24 (dev) documentation</title>
+        <title>ADBC 24 (dev) Documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
     <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" />
-    <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=56d6027c" />
+    <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=0200acfe" />
     
     
 
@@ -250,7 +250,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="#"><div class="brand">ADBC 24 (dev) documentation</div></a>
+      <a href="#"><div class="brand">ADBC 24 (dev) Documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -275,7 +275,7 @@
     <img class="sidebar-logo only-dark" src="_static/logo-dark.png" alt="Dark Logo"/>
   </div>
   
-  <span class="sidebar-brand-text">ADBC 24 (dev) documentation</span>
+  <span class="sidebar-brand-text">ADBC 24 (dev) Documentation</span>
   
 </a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
@@ -283,10 +283,16 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <ul>
-<li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions (FAQ)</a></li>
-<li class="toctree-l1"><a class="reference internal" href="glossary.html">Glossary</a></li>
-<li class="toctree-l1"><a class="reference internal" href="genindex.html">Index</a></li>
+  <p class="caption" role="heading"><span class="caption-text">Connect</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="client_libraries.html">Client Libraries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="driver/index.html">Drivers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="integrations.html">Tools &amp; Integrations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="connection_profiles.html">Connection Profiles</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Build</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="driver/authoring.html">Writing New Drivers</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Supported Environments</span></p>
 <ul>
@@ -334,24 +340,14 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="r/index.html">R</a></li>
+<li class="toctree-l1"><a class="reference internal" href="ruby/index.html">Ruby</a></li>
 <li class="toctree-l1 has-children"><a class="reference internal" href="rust/index.html">Rust</a><input aria-label="Toggle navigation of Rust" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
 <li class="toctree-l2"><a class="reference internal" href="rust/quickstart.html">Quickstart</a></li>
 <li class="toctree-l2"><a class="reference internal" href="rust/driver_manager.html">Driver Manager</a></li>
 <li class="toctree-l2"><a class="reference external" href="https://docs.rs/adbc_core/latest/adbc_core/">Rust API Reference</a></li>
 </ul>
 </li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Drivers</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="driver/installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="driver/status.html">Driver Implementation Status</a></li>
-<li class="toctree-l1"><a class="reference internal" href="driver/bigquery.html">BigQuery Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="driver/duckdb.html">DuckDB Support</a></li>
-<li class="toctree-l1"><a class="reference internal" href="driver/flight_sql.html">Flight SQL Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="driver/jdbc.html">JDBC Adapter</a></li>
-<li class="toctree-l1"><a class="reference internal" href="driver/postgresql.html">PostgreSQL Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="driver/sqlite.html">SQLite Driver</a></li>
-<li class="toctree-l1"><a class="reference internal" href="driver/authoring.html">Writing New Drivers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Specification</span></p>
 <ul>
@@ -363,12 +359,18 @@
 <li class="toctree-l1"><a class="reference internal" href="format/connection_profiles.html">ADBC Driver Manager and Connection Profiles</a></li>
 <li class="toctree-l1"><a class="reference internal" href="format/related_work.html">Related Work</a></li>
 </ul>
-<p class="caption" role="heading"><span class="caption-text">Development</span></p>
+<p class="caption" role="heading"><span class="caption-text">Contribute</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="development/contributing.html">Contributing</a></li>
 <li class="toctree-l1"><a class="reference internal" href="development/nightly.html">Nightly Packages</a></li>
 <li class="toctree-l1"><a class="reference internal" href="development/versioning.html">Versioning</a></li>
 <li class="toctree-l1"><a class="reference internal" href="development/releasing.html">Release Management Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Resources</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="genindex.html">Index</a></li>
 </ul>
 
 </div>
@@ -425,66 +427,45 @@
 </div>
 </div>
 </div>
-<p>ADBC is a set of APIs and libraries for Arrow-native access to databases.
-Execute SQL and <a class="reference external" href="https://substrait.io/">Substrait</a> queries, query database catalogs, and more, all
-using Arrow data to eliminate unnecessary data copies, speed up access, and
-make it more convenient to build analytical applications.</p>
-<div class="docutils">
+<p>ADBC is a standardized set of APIs and libraries for fast, Arrow-native
+database access. Execute SQL queries, fetch results, ingest bulk data,
+explore catalogs, and more. ADBC uses Arrow columnar format to eliminate
+copies and conversions, speeding up data retrieval for analytics and AI
+applications.</p>
+<section id="getting-started">
+<h2>Getting Started<a class="headerlink" href="#getting-started" title="Link to this heading">¶</a></h2>
 <div class="sd-container-fluid sd-sphinx-override sd-mt-4 sd-mb-4 sd-ml-0 sd-mr-0 docutils">
-<div class="sd-row sd-g-1 sd-g-xs-1 sd-g-sm-1 sd-g-md-1 sd-g-lg-1 docutils">
-<div class="sd-col sd-d-flex-row sd-col-12 sd-col-xs-12 sd-col-sm-12 sd-col-md-4 sd-col-lg-4 docutils">
-<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm docutils">
-<div class="sd-card-header docutils">
-<p class="sd-card-text">Quickstart</p>
-</div>
+<div class="sd-row sd-row-cols-1 sd-row-cols-xs-1 sd-row-cols-sm-1 sd-row-cols-md-2 sd-row-cols-lg-3 sd-g-3 sd-g-xs-3 sd-g-sm-3 sd-g-md-3 sd-g-lg-3 docutils">
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
 <div class="sd-card-body docutils">
-<p class="sd-card-text">Get started with simple examples in your language of choice.</p>
+<div class="sd-card-title sd-font-weight-bold docutils">
+<svg version="1.1" width="1.0em" height="1.0em" class="sd-octicon sd-octicon-plug" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 8H2.5a1 1 0 0 0-1 1v5.25a.75.75 0 0 1-1.5 0V9a2.5 2.5 0 0 1 2.5-2.5H4V5.133a1.75 1.75 0 0 1 1.533-1.737l2.831-.353.76-.913c.332-.4.825-.63 1.344-.63h.782c.966 0 1.75.784 1.75 1.75V4h2.25a.75.75 0 0 1 0 1.5H13v4h2.25a.75.75 0 0 1 0 1.5H13v.75a1.75 1.75 0 0 1-1.75 1.75h-.782c-.519 0-1.012-.23-1.344-.63l-.761-.912-2.83-.354A1.75 1.75 0 0 1 4 9.867Zm6.276-4.91-.95 1.14a.753.753 0 0 1-.483.265l-3.124.39a.25.25 0 0 0-.219.248v4.734c0 .126.094.233.219.249l3.124.39a.752.752 0 0 1 .483.264l.95 1.14a.25.25 0 0 0 .192.09h.782a.25.25 0 0 0 .25-.25v-8.5a.25.25 0 0 0-.25-.25h-.782a.25.25 0 0 0-.192.09Z"></path></svg> Available Drivers</div>
+<p class="sd-card-text">Connect to a growing list of databases using ADBC drivers.</p>
 </div>
-<div class="sd-card-footer docutils">
-<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference internal" href="cpp/quickstart.html"><span class="doc">C/C++</span></a></span></p>
-<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference external" href="https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc"><span>Go</span></a></span></p>
-<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference internal" href="java/quickstart.html"><span class="doc">Java</span></a></span></p>
-<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference internal" href="javascript/index.html"><span class="doc">JavaScript</span></a></span></p>
-<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference internal" href="python/quickstart.html"><span class="doc">Python</span></a></span></p>
-<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference internal" href="r/index.html"><span class="doc">R</span></a></span></p>
-<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference internal" href="rust/quickstart.html"><span class="doc">Rust</span></a></span></p>
+<a class="sd-stretched-link sd-hide-link-text reference internal" href="driver/index.html"><span class="doc">Drivers</span></a></div>
 </div>
-</div>
-</div>
-<div class="sd-col sd-d-flex-row sd-col-12 sd-col-xs-12 sd-col-sm-4 sd-col-md-4 sd-col-lg-4 docutils">
-<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm docutils">
-<div class="sd-card-header docutils">
-<p class="sd-card-text">Specification</p>
-</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
 <div class="sd-card-body docutils">
-<p class="sd-card-text">Learn about the underlying API specification.</p>
+<div class="sd-card-title sd-font-weight-bold docutils">
+<svg version="1.1" width="1.0em" height="1.0em" class="sd-octicon sd-octicon-code" viewBox="0 0 16 16" aria-hidden="true"><path d="m11.28 3.22 4.25 4.25a.75.75 0 0 1 0 1.06l-4.25 4.25a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734L13.94 8l-3.72-3.72a.749.749 0 0 1 .326-1.275.749.749 0 0 1 .734.215Zm-6.56 0a.751.751 0 0 1 1.042.018.751.751 0 0 1 .018 1.042L2.06 8l3.72 3.72a.749.749 0 0 1-.326 1.275.749.749 0 0 1-.734-.215L.47 8.53a.75.75 0 0 1 0-1.06Z"></path></svg> Client Libraries</div>
+<p class="sd-card-text">Use ADBC from C/C++, C#, Go, Java, JavaScript, Python, R, Ruby, and Rust.</p>
 </div>
-<div class="sd-card-footer docutils">
-<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference external" href="https://arrow.apache.org/blog/2023/01/05/introducing-arrow-adbc/"><span>Introducing ADBC <svg version="1.1" width="1.0em" height="1.0em" class="sd-octicon sd-octicon-cross-reference" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.75 3.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h4.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 13H9.06l-2.573 2.573A1.458 1.458 0 0 1 4 14.543V13H2.75A1.75 1.75 0 0 1 1 11.25v-7.5C1 2.784 1.784 2 2.75 2h5.5a.75.75 0 0 1 0 1.5ZM16 1.25v4.146a.25.25 0 0 1-.427.177L14.03 4.03l-3.75 3.75a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734l3.75-3.75-1.543-1.543A.25.25 0 0 1 11.604 1h4.146a.25.25 0 0 1 .25.25Z"></path></svg></span></a></span></p>
-<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference internal" href="format/specification.html"><span class="doc">Specification</span></a></span></p>
-<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference internal" href="faq.html"><span class="doc">FAQ</span></a></span></p>
-<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference internal" href="glossary.html"><span class="doc">Glossary</span></a></span></p>
+<a class="sd-stretched-link sd-hide-link-text reference internal" href="client_libraries.html"><span class="doc">Client Libraries</span></a></div>
 </div>
-</div>
-</div>
-<div class="sd-col sd-d-flex-row sd-col-12 sd-col-xs-12 sd-col-sm-4 sd-col-md-4 sd-col-lg-4 docutils">
-<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm docutils">
-<div class="sd-card-header docutils">
-<p class="sd-card-text">Development</p>
-</div>
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
 <div class="sd-card-body docutils">
-<p class="sd-card-text">Report bugs, ask questions, and contribute to Apache Arrow.</p>
+<div class="sd-card-title sd-font-weight-bold docutils">
+<svg version="1.1" width="1.0em" height="1.0em" class="sd-octicon sd-octicon-tools" viewBox="0 0 16 16" aria-hidden="true"><path d="M5.433 2.304A4.492 4.492 0 0 0 3.5 6c0 1.598.832 3.002 2.09 3.802.518.328.929.923.902 1.64v.008l-.164 3.337a.75.75 0 1 1-1.498-.073l.163-3.33c.002-.085-.05-.216-.207-.316A5.996 5.996 0 0 1 2 6a5.993 5.993 0 0 1 2.567-4.92 1.482 1.482 0 0 1 1.673-.04c.462.296.76.827.76 1.423v2.82c0 .082.041.16.11.206l.75.51a.25.25 0 0 0 .28 0l.75-.51A.249.249 0 0 0 9 5.282V2.463c0-.596.298-1.127.76-1.423a1.482 1.482 0 0 1 1.673.04A5.993 5.993 0 0 1 14 6a5.996 5.996 0 0 1-2.786 5.068c-.157.1-.209.23-.207.315l.163 3.33a.752.752 0 0 1-1.094.714.75.75 0 0 1-.404-.64l-.164-3.345c-.027-.717.384-1.312.902-1.64A4.495 4.495 0 0 0 12.5 6a4.492 4.492 0 0 0-1.933-3.696c-.024.017-.067.067-.067.16v2.818a1.75 1.75 0 0 1-.767 1.448l-.75.51a1.75 1.75 0 0 1-1.966 0l-.75-.51A1.75 1.75 0 0 1 5.5 5.282V2.463c0-.092-.043-.142-.067-.159Z"></path></svg> Writing Drivers</div>
+<p class="sd-card-text">Create your own ADBC driver using the driver SDKs available in multiple languages.</p>
 </div>
-<div class="sd-card-footer docutils">
-<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference external" href="https://github.com/apache/arrow-adbc/issues"><span><span class="fab fa-github"></span> Issues/Questions</span></a></span></p>
-<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference external" href="https://arrow.apache.org/community/"><span>Mailing List <svg version="1.1" width="1.0em" height="1.0em" class="sd-octicon sd-octicon-cross-reference" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.75 3.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h4.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 13H9.06l-2.573 2.573A1.458 1.458 0 0 1 4 14.543V13H2.75A1.75 1.75 0 0 1 1 11.25v-7.5C1 2.784 1.784 2 2.75 2h5.5a.75.75 0 0 1 0 1.5ZM16 1.25v4.146a.25.25 0 0 1-.427.177L14.03 4.03l-3.75 3.75a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734l3.75-3.75-1.543-1.543A.25.25 0 0 1 11.604 1h4.146a.25.25 0 0 1 .25.25Z"></path></svg></span></a></span></p>
-<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference external" href="https://github.com/apache/arrow-adbc/blob/main/CONTRIBUTING.md"><span>Contributing <svg version="1.1" width="1.0em" height="1.0em" class="sd-octicon sd-octicon-cross-reference" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.75 3.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h4.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 13H9.06l-2.573 2.573A1.458 1.458 0 0 1 4 14.543V13H2.75A1.75 1.75 0 0 1 1 11.25v-7.5C1 2.784 1.784 2 2.75 2h5.5a.75.75 0 0 1 0 1.5ZM16 1.25v4.146a.25.25 0 0 1-.427.177L14.03 4.03l-3.75 3.75a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734l3.75-3.75-1.543-1.543A.25.25 0 0 1 11.604 1h4.146a.25.25 0 0 1 .25.25Z"></path></svg></span></a></span></p>
-</div>
+<a class="sd-stretched-link sd-hide-link-text reference internal" href="driver/authoring.html"><span class="doc">Writing New Drivers</span></a></div>
 </div>
 </div>
 </div>
-</div>
-</div>
+</section>
 <section id="why-adbc">
 <h2>Why ADBC?<a class="headerlink" href="#why-adbc" title="Link to this heading">¶</a></h2>
 <div class="sd-container-fluid sd-sphinx-override sd-mt-4 sd-mb-4 sd-ml-0 sd-mr-0 docutils">
@@ -494,8 +475,9 @@ make it more convenient to build analytical applications.</p>
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
 Arrow-native</div>
-<p class="sd-card-text">Execute queries and get back results in Arrow format, eliminating extra
-data copies for Arrow-native backends.</p>
+<p class="sd-card-text">Run queries and get back results in Arrow columnar format,
+eliminating copies and conversions for blazing-fast transfer
+to and from Arrow-native databases and engines.</p>
 </div>
 <div class="sd-card-footer docutils">
 <p class="sd-card-text">Learn about Apache Arrow</p>
@@ -506,27 +488,32 @@ data copies for Arrow-native backends.</p>
 <div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
-Backend-agnostic</div>
-<p class="sd-card-text">Connect to all kinds of databases, even ones that aren’t Arrow-native.
-ADBC drivers optimize conversion to/from Arrow where required, saving
-work for developers.</p>
+Multi-database</div>
+<p class="sd-card-text">Connect to all kinds of databases through one vendor-neutral standard,
+even ones that aren’t Arrow-native. ADBC drivers optimize conversion
+to/from Arrow where required.</p>
 </div>
 <div class="sd-card-footer docutils">
 <p class="sd-card-text">See Supported Drivers</p>
 </div>
-<a class="sd-stretched-link sd-hide-link-text reference internal" href="driver/status.html"><span class="doc">Driver Implementation Status</span></a></div>
+<a class="sd-stretched-link sd-hide-link-text reference internal" href="driver/index.html"><span class="doc">Drivers</span></a></div>
 </div>
 <div class="sd-col sd-d-flex-row docutils">
-<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
 Cross-language</div>
-<p class="sd-card-text">Work in C/C++, C#, Go, Java, Python, R, Ruby, Rust, and more.</p>
+<p class="sd-card-text">Work in C/C++, C#, Go, Java, JavaScript / TypeScript, Python, R, Ruby,
+Rust, and more. Use idiomatic APIs like DBAPI in Python,
+<code class="docutils literal notranslate"><span class="pre">database/sql</span></code> in Go, and DBI in R.</p>
 </div>
+<div class="sd-card-footer docutils">
+<p class="sd-card-text">See Client Libraries</p>
 </div>
+<a class="sd-stretched-link sd-hide-link-text reference internal" href="client_libraries.html"><span class="doc">Client Libraries</span></a></div>
 </div>
 <div class="sd-col sd-d-flex-row docutils">
-<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm sd-card-hover docutils">
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
 Full-featured</div>
@@ -534,19 +521,46 @@ Full-featured</div>
 schemas, and more.  ADBC handles common tasks without having to pull in
 another database client.</p>
 </div>
+<div class="sd-card-footer docutils">
+<p class="sd-card-text">Compare to Other APIs</p>
+</div>
+<a class="sd-stretched-link sd-hide-link-text reference internal" href="format/comparison.html"><span class="doc">Comparison with Other APIs</span></a></div>
+</div>
+</div>
+</div>
+</section>
+<section id="more-resources">
+<h2>More Resources<a class="headerlink" href="#more-resources" title="Link to this heading">¶</a></h2>
+<div class="sd-container-fluid sd-sphinx-override sd-mt-4 sd-mb-4 sd-ml-0 sd-mr-0 docutils">
+<div class="sd-row sd-row-cols-1 sd-row-cols-xs-1 sd-row-cols-sm-2 sd-row-cols-md-2 sd-row-cols-lg-2 sd-g-2 sd-g-xs-2 sd-g-sm-2 sd-g-md-2 sd-g-lg-2 docutils">
+<div class="sd-col sd-d-flex-row docutils">
+<div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm docutils">
+<div class="sd-card-body docutils">
+<div class="sd-card-title sd-font-weight-bold docutils">
+Explore</div>
+<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference internal" href="integrations.html"><span class="doc">Tools &amp; Integrations</span></a></span></p>
+<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference internal" href="connection_profiles.html"><span class="doc">Connection Profiles</span></a></span></p>
+<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference external" href="https://arrow.apache.org/blog/2023/01/05/introducing-arrow-adbc/"><span>Introducing ADBC <svg version="1.1" width="1.0em" height="1.0em" class="sd-octicon sd-octicon-cross-reference" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.75 3.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h4.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 13H9.06l-2.573 2.573A1.458 1.458 0 0 1 4 14.543V13H2.75A1.75 1.75 0 0 1 1 11.25v-7.5C1 2.784 1.784 2 2.75 2h5.5a.75.75 0 0 1 0 1.5ZM16 1.25v4.146a.25.25 0 0 1-.427.177L14.03 4.03l-3.75 3.75a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734l3.75-3.75-1.543-1.543A.25.25 0 0 1 11.604 1h4.146a.25.25 0 0 1 .25.25Z"></path></svg></span></a></span></p>
+<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference internal" href="faq.html"><span class="doc">FAQ</span></a></span></p>
+<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference internal" href="glossary.html"><span class="doc">Glossary</span></a></span></p>
+</div>
 </div>
 </div>
 <div class="sd-col sd-d-flex-row docutils">
 <div class="sd-card sd-sphinx-override sd-w-100 sd-shadow-sm docutils">
 <div class="sd-card-body docutils">
 <div class="sd-card-title sd-font-weight-bold docutils">
-Language-native</div>
-<p class="sd-card-text">Use language-native APIs that you’re already familiar with, like DBAPI
-in Python, <code class="docutils literal notranslate"><span class="pre">database/sql</span></code> in Go, or DBI in R.</p>
+Community</div>
+<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference external" href="https://github.com/apache/arrow-adbc/issues"><span><span class="fab fa-github"></span> Issues / Questions</span></a></span></p>
+<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference external" href="https://arrow.apache.org/community/"><span>Mailing List <svg version="1.1" width="1.0em" height="1.0em" class="sd-octicon sd-octicon-cross-reference" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.75 3.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h4.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 13H9.06l-2.573 2.573A1.458 1.458 0 0 1 4 14.543V13H2.75A1.75 1.75 0 0 1 1 11.25v-7.5C1 2.784 1.784 2 2.75 2h5.5a.75.75 0 0 1 0 1.5ZM16 1.25v4.146a.25.25 0 0 1-.427.177L14.03 4.03l-3.75 3.75a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734l3.75-3.75-1.543-1.543A.25.25 0 0 1 11.604 1h4.146a.25.25 0 0 1 .25.25Z"></path></svg></span></a></span></p>
+<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference external" href="https://github.com/apache/arrow-adbc/blob/main/CONTRIBUTING.md"><span>Contributing <svg version="1.1" width="1.0em" height="1.0em" class="sd-octicon sd-octicon-cross-reference" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.75 3.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h4.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 13H9.06l-2.573 2.573A1.458 1.458 0 0 1 4 14.543V13H2.75A1.75 1.75 0 0 1 1 11.25v-7.5C1 2.784 1.784 2 2.75 2h5.5a.75.75 0 0 1 0 1.5ZM16 1.25v4.146a.25.25 0 0 1-.427.177L14.03 4.03l-3.75 3.75a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734l3.75-3.75-1.543-1.543A.25.25 0 0 1 11.604 1h4.146a.25.25 0 0 1 .25.25Z"></path></svg></span></a></span></p>
+<p class="sd-card-text"><span class="sd-d-grid"><a class="sd-sphinx-override sd-btn sd-text-wrap sd-btn-secondary reference external" href="https://docs.adbc-drivers.org"><span>Driver Foundry Docs <svg version="1.1" width="1.0em" height="1.0em" class="sd-octicon sd-octicon-cross-reference" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.75 3.5a.25.25 0 0 0-.25.25v7.5c0 .138.112.25.25.25h2a.75.75 0 0 1 .75.75v2.19l2.72-2.72a.749.749 0 0 1 .53-.22h4.5a.25.25 0 0 0 .25-.25v-2.5a.75.75 0 0 1 1.5 0v2.5A1.75 1.75 0 0 1 13.25 13H9.06l-2.573 2.573A1.458 1.458 0 0 1 4 14.543V13H2.75A1.75 1.75 0 0 1 1 11.25v-7.5C1 2.784 1.784 2 2.75 2h5.5a.75.75 0 0 1 0 1.5ZM16 1.25v4.146a.25.25 0 0 1-.427.177L14.03 4.03l-3.75 3.75a.749.749 0 0 1-1.275-.326.749.749 0 0 1 .215-.734l3.75-3.75-1.543-1.543A.25.25 0 0 1 11.604 1h4.146a.25.25 0 0 1 .25.25Z"></path></svg></span></a></span></p>
 </div>
 </div>
 </div>
 </div>
+</div>
+<div class="toctree-wrapper compound">
 </div>
 <div class="toctree-wrapper compound">
 </div>
@@ -566,12 +580,12 @@ in Python, <code class="docutils literal notranslate"><span class="pre">database
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="faq.html">
+          <a class="next-page" href="client_libraries.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Frequently Asked Questions (FAQ)</div>
+                <div class="title">Client Libraries</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
@@ -610,7 +624,9 @@ United States and other countries.
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Apache Arrow ADBC</a><ul>
-<li><a class="reference internal" href="#why-adbc">Why ADBC?</a><ul>
+<li><a class="reference internal" href="#getting-started">Getting Started</a></li>
+<li><a class="reference internal" href="#why-adbc">Why ADBC?</a></li>
+<li><a class="reference internal" href="#more-resources">More Resources</a><ul>
 </ul>
 </li>
 </ul>
