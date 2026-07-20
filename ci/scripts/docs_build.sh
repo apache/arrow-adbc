@@ -21,6 +21,8 @@ set -ex
 main() {
     local -r source_dir="${1}"
 
+    "${source_dir}/ci/scripts/docs_download_resources.sh" "$source_dir"
+
     pushd "$source_dir/c/apidoc"
     doxygen
     popd

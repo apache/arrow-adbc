@@ -141,8 +141,8 @@ except ImportError:
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_css_files = [
-    "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css",
     "css/custom.css",
+    "fontawesome/css/all.min.css",
 ]
 html_static_path = ["_static"]
 html_theme = "furo"
