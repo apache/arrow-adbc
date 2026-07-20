@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import datetime
 import os
 import sys
 from pathlib import Path
@@ -27,9 +28,9 @@ sys.path.append(str(Path("./ext").resolve()))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "ADBC"
-copyright = """2022–2025 The Apache Software Foundation.  Apache Arrow, Arrow,
-Apache, the Apache logo, and the Apache Arrow project logo are either
-registered trademarks or trademarks of The Apache Software Foundation in the
+copyright = f"""2022–{datetime.date.today().year} The Apache Software Foundation. 
+Apache Arrow, Arrow, Apache, the Apache logo, and the Apache Arrow project logo are 
+either registered trademarks or trademarks of The Apache Software Foundation in the
 United States and other countries."""
 author = "the Apache Arrow Developers"
 release = "24 (dev)"
