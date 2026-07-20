@@ -164,7 +164,7 @@ struct BindStream {
       UNWRAP_NANOARROW(
           na_error, Internal,
           MakeCopyFieldWriter(bind_schema->children[i], array_view->children[i],
-                              type_resolver, &writer, &na_error));
+                              type_resolver, nullptr, &writer, &na_error));
 
       param_types[i] = type.oid();
       param_formats[i] = kPgBinaryFormat;
@@ -317,13 +317,13 @@ struct BindStream {
   }
 
   Status ExecuteCopy(PGconn* pg_conn, const PostgresTypeResolver& type_resolver,
-                     int64_t* rows_affected) {
+                     const PostgresType* target_types, int64_t* rows_affected) {
     if (rows_affected) *rows_affected = 0;
 
     PostgresCopyStreamWriter writer;
     UNWRAP_ERRNO(Internal, writer.Init(&bind_schema.value));
     UNWRAP_NANOARROW(na_error, Internal,
-                     writer.InitFieldWriters(type_resolver, &na_error));
+                     writer.InitFieldWriters(type_resolver, target_types, &na_error));
 
     UNWRAP_NANOARROW(na_error, Internal, writer.WriteHeader(&na_error));
 

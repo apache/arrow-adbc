@@ -23,6 +23,7 @@ on:
       - main
     paths:
       - "c/**"
+      - "ci/rust-nightly/**"
       - "rust/**"
       - ".github/workflows/rust.yml"
   push:
@@ -30,6 +31,7 @@ on:
       - 'dependabot/**'
     paths:
       - "c/**"
+      - "ci/rust-nightly/**"
       - "rust/**"
       - ".github/workflows/rust.yml"
 
@@ -73,10 +75,11 @@ jobs:
           persist-credentials: false
       - name: Cargo update for minimal versions
         if: ${{ matrix.minimal-versions }}
-        working-directory: rust
+        working-directory: ci/rust-nightly
         run: |
-          rustup toolchain install nightly
-          CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback cargo +nightly generate-lockfile -Z direct-minimal-versions
+          CARGO_RESOLVER_INCOMPATIBLE_RUST_VERSIONS=fallback cargo generate-lockfile \
+            --manifest-path "${GITHUB_WORKSPACE}/rust/Cargo.toml" \
+            -Z direct-minimal-versions
       - name: Use stable Rust
         id: rust
         run: |
@@ -167,14 +170,14 @@ jobs:
           cargo clippy --workspace --all-targets --all-features --locked -- -Dwarnings
       - name: Clippy (nightly)
         if: runner.os == 'Linux' && ! matrix.minimal-versions
-        working-directory: rust
+        working-directory: ci/rust-nightly
         run: |
-          rustup toolchain install nightly --component clippy
           # -Zcrate-attr enables the unstable non_exhaustive_omitted_patterns lint
           # (https://github.com/apache/arrow-adbc/pull/3245).
           # It applies to all workspace packages, so we also allow unused_features for crates that
           # don't use the lint.
-          cargo +nightly clippy --workspace --all-targets --all-features --locked -- -Dwarnings \
+          cargo clippy --manifest-path "${GITHUB_WORKSPACE}/rust/Cargo.toml" \
+            --workspace --all-targets --all-features --locked -- -Dwarnings \
             -Zcrate-attr='feature(non_exhaustive_omitted_patterns_lint)' \
             -Zcrate-attr='allow(unused_features)'
       - name: Test (Default Features)

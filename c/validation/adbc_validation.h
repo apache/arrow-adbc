@@ -156,6 +156,23 @@ class DriverQuirks {
   /// \brief Return the SQL to reference the bind parameter of the given index
   virtual std::string BindParameter(int index) const { return "?"; }
 
+  /// \brief Rewrite a SQL query used by a validation test, identified by a
+  ///   stable query id.
+  ///
+  /// The default implementation returns \p default_sql unchanged. Drivers
+  /// whose SQL dialect differs can override this and switch on \p query_id
+  /// to substitute an equivalent query.
+  virtual std::string RewriteSql(std::string_view query_id,
+                                 std::string default_sql) const {
+    return default_sql;
+  }
+
+  /// \brief Quote a SQL identifier (table or column name) for the driver's
+  ///   dialect. Defaults to ANSI SQL double-quoting.
+  virtual std::string QuoteIdentifier(std::string_view name) const {
+    return '"' + std::string(name) + '"';
+  }
+
   /// \brief For a given Arrow type of ingested data, what Arrow type
   ///   will the database return when that column is selected?
   virtual ArrowType IngestSelectRoundTripType(ArrowType ingest_type) const {

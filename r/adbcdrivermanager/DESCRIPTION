@@ -15,7 +15,6 @@ Description: Provides a developer-facing interface to 'Arrow' Database
 License: Apache License (>= 2)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
 Suggests:
     testthat (>= 3.0.0),
     withr
@@ -25,3 +24,4 @@ URL: https://arrow.apache.org/adbc/current/r/adbcdrivermanager/, https://github.
 BugReports: https://github.com/apache/arrow-adbc/issues
 Imports:
     nanoarrow (>= 0.3.0)
+Config/roxygen2/version: 8.0.0
