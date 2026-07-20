@@ -56,6 +56,8 @@ Compilation instructions can be found in `CONTRIBUTING.md`_.
 .. _instructions: https://www.apache.org/info/verification.html
 .. _KEYS: https://downloads.apache.org/arrow/KEYS
 
+.. _driver-releases:
+
 Driver Releases
 ===============
 
