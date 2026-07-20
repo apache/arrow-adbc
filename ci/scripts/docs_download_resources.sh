@@ -27,10 +27,9 @@ main() {
     local -r tmpdir="$(mktemp -d)"
     trap "rm -rf $tmpdir" EXIT
 
-    # FontAwesome WOFF files
-    # SIL Open Font License is ASF Category B
-    # (the CSS is MIT and is vendored already)
-
+    # FontAwesome
+    # WOFF files are under SIL Open Font License (ASF Category B)
+    # CSS file is under MIT
     if [[ ! -f "$source_dir/docs/source/_static/fontawesome/css/all.min.css" ]]; then
         wget -O "$tmpdir/fontawesome.tgz" https://github.com/FortAwesome/Font-Awesome/archive/refs/tags/7.3.1.tar.gz
         pushd $tmpdir
