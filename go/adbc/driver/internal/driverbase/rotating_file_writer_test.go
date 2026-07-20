@@ -33,17 +33,17 @@ func TestDefaultTracingFolderPath(t *testing.T) {
 	var expected string
 	switch runtime.GOOS {
 	case "windows":
-		appDataDir := filepath.Join(tempDir, "AppData", "Roaming")
-		t.Setenv("APPDATA", appDataDir)
-		expected = filepath.Join(appDataDir, "ADBC", "Traces")
+		localAppDataDir := filepath.Join(tempDir, "AppData", "Local")
+		t.Setenv("LocalAppData", localAppDataDir)
+		expected = filepath.Join(localAppDataDir, "ADBC", "Traces")
 	case "darwin":
 		t.Setenv("HOME", tempDir)
 		expected = filepath.Join(tempDir, "Library", "Application Support", "ADBC", "Traces")
 	default:
-		configDir := filepath.Join(tempDir, ".config")
-		t.Setenv("XDG_CONFIG_HOME", configDir)
+		stateDir := filepath.Join(tempDir, ".local", "state")
+		t.Setenv("XDG_STATE_HOME", stateDir)
 		t.Setenv("HOME", tempDir)
-		expected = filepath.Join(configDir, "adbc", "traces")
+		expected = filepath.Join(stateDir, "adbc", "traces")
 	}
 
 	fw, err := driverbase.NewRotatingFileWriter()

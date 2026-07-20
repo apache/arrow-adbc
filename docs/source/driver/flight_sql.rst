@@ -224,12 +224,13 @@ Database options
     Overrides the output folder used by the ``adbcfile`` exporter.
     This option is ignored for other exporters.
 
-    If unset, the ``adbcfile`` exporter writes traces under the user's
-    configuration directory in:
+    If unset, the ``adbcfile`` exporter writes traces under a
+    platform-specific directory:
 
-    - Windows: ``%APPDATA%\ADBC\Traces``
+    - Windows: ``%LOCALAPPDATA%\ADBC\Traces``
     - macOS: ``~/Library/Application Support/ADBC/Traces``
-    - Linux: ``$XDG_CONFIG_HOME/adbc/traces`` or ``~/.config/adbc/traces``
+    - Linux: ``$XDG_STATE_HOME/adbc/traces`` or ``~/.local/state/adbc/traces``
+      if ``$XDG_STATE_HOME`` is not set
 
 ``adbc.telemetry.trace_parent``
     Sets the W3C Trace Context ``traceparent`` value used as the parent

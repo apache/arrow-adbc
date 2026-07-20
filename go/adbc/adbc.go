@@ -281,8 +281,9 @@ const (
 	// is set, rotated trace files are written to the supplied folder
 	// (which is created if it does not exist) instead of the default
 	// platform-specific ADBC traces path (for example,
-	// "<user-config-dir>/ADBC/Traces" on macOS/Windows, or
-	// "<user-config-dir>/adbc/traces" on Linux). The option is ignored for
+	// "<user-config-dir>/ADBC/Traces" on macOS,
+	// "<local-app-data-dir>/ADBC/Traces" on Windows, or
+	// "<xdg-state-dir>/adbc/traces" on Linux). The option is ignored for
 	// other exporters; it exists so an operator can route trace files
 	// to a location their support workflow already collects (e.g. a
 	// shared diagnostics folder) via the ADBC driver-manager / TOML
