@@ -23,8 +23,8 @@
 
 import os
 
-import adbc_driver_flightsql.dbapi
 from adbc_driver_flightsql import DatabaseOptions, OAuthFlowType, OAuthTokenType
+from adbc_driver_manager import dbapi
 
 uri = os.environ["ADBC_TEST_FLIGHTSQL_URI"]
 token_uri = os.environ["ADBC_OAUTH_TOKEN_URI"]
@@ -57,7 +57,7 @@ db_kwargs.update(
     }
 )
 
-conn = adbc_driver_flightsql.dbapi.connect(uri, db_kwargs=db_kwargs)
+conn = dbapi.connect("flightsql", uri, db_kwargs=db_kwargs)
 
 #: We can then execute queries as usual.
 

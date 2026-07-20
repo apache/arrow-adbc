@@ -20,11 +20,11 @@
 import collections
 import dataclasses
 import functools
-import itertools
 import typing
 from pathlib import Path
 
 import docutils
+import docutils.nodes
 import sphinx
 from docutils.statemachine import StringList
 from sphinx.util.docutils import SphinxDirective
@@ -257,7 +257,7 @@ class DriverStatusDirective(SphinxDirective):
 
         generated_lines = [
             f":bdg-primary:`Language: {status.implementation}`",
-            f":bdg-ref-{status.badge_type}:`Status: {status.status} <driver-status>`",
+            f":bdg-{status.badge_type}:`Status: {status.status}`",
         ]
 
         parsed = docutils.nodes.Element()
@@ -269,99 +269,74 @@ class DriverStatusDirective(SphinxDirective):
         return parsed.children
 
 
-class DriverStatusTableDirective(SphinxDirective):
-    has_content = True
-    required_arguments = 0
-    optional_arguments = 0
-    option_spec: OptionSpec = {}
+def package_badge_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
+    """Create a two-part badge for package managers.
 
-    def run(self):
-        table = []
-        for line in self.content:
-            if "=>" in line:
-                xref, _, path = line.partition("=>")
-                xref = xref.strip()
-                path = path.strip()
-            else:
-                xref = None
-                path = line.strip()
-
-            if "[#" in path:
-                footnote = path[path.index("[#") + 2 : -1].strip()
-                path = path[: path.index("[#")].strip()
-            else:
-                footnote = None
-
-            rel_filename, filename = self.env.relfn2path(path)
-            self.env.note_dependency(rel_filename)
-
-            path = Path(filename).resolve()
-            status = driver_status(path)
-            table.append((status, xref, footnote))
-
-        table.sort(key=lambda x: (x[0].vendor, x[0].implementation))
-
-        generated_lines = [
-            ".. list-table::",
-            "   :header-rows: 1",
-            "",
-            "   * - Vendor",
-            "     - Implementation",
-            "     - :ref:`driver-status`",
-            "     - Packages [#packages]_",
-            "",
-        ]
-        for row in table:
-            if row[1]:
-                generated_lines.append(f"   * - :doc:`{row[0].vendor} <{row[1]}>`")
-            else:
-                generated_lines.append(f"   * - {row[0].vendor}")
-
-            if row[2]:
-                generated_lines[-1] += f" [#{row[2]}]_"
-
-            generated_lines.append(f"     - {row[0].implementation}")
-            generated_lines.append(f"     - {row[0].status}")
-
-            generated_lines.append("     -")
-            packages = itertools.groupby(
-                sorted(row[0].packages, key=lambda x: x[0].lower()),
-                key=lambda x: x[0],
-            )
-            for repo, group in packages:
-                group = list(group)
-                if generated_lines[-1][-1] == "-":
-                    generated_lines[-1] += " "
-                else:
-                    generated_lines[-1] += ", "
-
-                if len(group) == 1:
-                    generated_lines[-1] += f"`{repo} <{group[0][2]}>`__"
-                else:
-                    links = ", ".join(f"`{pkg[1]} <{pkg[2]}>`__" for pkg in group)
-                    generated_lines[-1] += f"{repo} ({links})"
-            generated_lines.append("")
-
-        generated_lines.extend(
-            [
-                "",
-                ".. [#packages] This lists only packages available in package repositories.  However, as noted above, many of these drivers can be used from languages not listed via the driver manager, even if a package is not yet available.",  # noqa:E501
-            ]
+    Usage: :package-badge:`PackageManager|package-name|URL`
+    Example: :package-badge:`PyPI|adbc-driver-postgresql|https://pypi.org/project/adbc-driver-postgresql/`
+    """
+    parts = text.split("|")
+    if len(parts) != 3:
+        msg = inliner.reporter.error(
+            f"package-badge must have exactly 3 parts separated by |, got: {text}",
+            line=lineno,
         )
+        return [inliner.problematic(rawtext, rawtext, msg)], [msg]
 
-        parsed = docutils.nodes.Element()
-        nested_parse_with_titles(
-            self.state,
-            StringList(generated_lines, source=""),
-            parsed,
+    left_text, right_text, url = [p.strip() for p in parts]
+
+    # Create the two-part badge structure
+    # Left part (label): darker background
+    left_node = docutils.nodes.inline("", left_text, classes=["package-badge-left"])
+
+    # Right part (value): lighter background
+    right_node = docutils.nodes.inline("", right_text, classes=["package-badge-right"])
+
+    # Container to hold both parts together
+    container = docutils.nodes.inline(
+        "", "", left_node, right_node, classes=["package-badge-container"]
+    )
+
+    # Wrap in a reference/link
+    ref_node = docutils.nodes.reference(
+        "", "", container, refuri=url, classes=["package-badge-link"]
+    )
+
+    return [ref_node], []
+
+
+def iconlink_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
+    """Create an icon-only link (e.g. a GitHub logo linking to a repo).
+
+    Usage: :iconlink:`fa-classes|URL|tooltip`
+    Example: :iconlink:`fa-brands fa-github|https://github.com/apache/arrow-adbc|Source`
+
+    The ``tooltip`` is used as the link's accessible label (``title`` and
+    ``aria-label``) so the icon-only link remains usable without visible text.
+    """
+    parts = text.split("|")
+    if len(parts) != 3:
+        msg = inliner.reporter.error(
+            f"iconlink must have exactly 3 parts separated by |, got: {text}",
+            line=lineno,
         )
-        return parsed.children
+        return [inliner.problematic(rawtext, rawtext, msg)], [msg]
+
+    fa_classes, url, tooltip = [p.strip() for p in parts]
+
+    icon_html = (
+        f'<a class="icon-link" href="{url}" title="{tooltip}" '
+        f'aria-label="{tooltip}"><i class="{fa_classes}" aria-hidden="true">'
+        f"</i></a>"
+    )
+    return [docutils.nodes.raw("", icon_html, format="html")], []
 
 
 def setup(app) -> None:
     app.add_directive("adbc_driver_installation", DriverInstallationDirective)
     app.add_directive("adbc_driver_status", DriverStatusDirective)
-    app.add_directive("adbc_driver_status_table", DriverStatusTableDirective)
+    app.add_role("package-badge", package_badge_role)
+    app.add_role("iconlink", iconlink_role)
 
     return {
         "version": "0.1",

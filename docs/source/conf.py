@@ -35,6 +35,8 @@ author = "the Apache Arrow Developers"
 release = "24 (dev)"
 # Needed to generate version switcher
 version = release
+# Override Sphinx's default title to capitalize "Documentation"
+html_title = f"{project} {release} Documentation"
 # For linking to latest downloads
 latest_release = "23"
 
@@ -58,6 +60,7 @@ extensions = [
     "sphinx_copybutton",
     "sphinx_design",
     "sphinxext.opengraph",
+    "sphinx_reredirects",
 ]
 templates_path = ["_templates"]
 
@@ -128,10 +131,10 @@ nitpick_ignore = [
 
 doctest_global_setup = """
 try:
-    import adbc_driver_sqlite
-    import adbc_driver_sqlite.dbapi  # noqa: F401
+    import adbc_driver_manager
+    import adbc_driver_manager.dbapi  # noqa: F401
 except ImportError:
-    adbc_driver_sqlite = None
+    adbc_driver_manager = None
 """
 
 # -- Options for HTML output -------------------------------------------------
@@ -196,3 +199,13 @@ if "dev" in release:
 else:
     ogp_site_url = f"https://arrow.apache.org/adbc/{release}/"
 ogp_image = "_static/banner.png"
+
+# -- Options for sphinx_reredirects ------------------------------------------
+
+redirects = {
+    "driver/status": "./index.html",
+    "driver/snowflake": "./index.html",
+    "driver/installation": "../installation.html",
+    "python/api/adbc_driver_snowflake": "../../driver/index.html",
+    "python/api/adbc_driver_bigquery": "../../driver/index.html",
+}

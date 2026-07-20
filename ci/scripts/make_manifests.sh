@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Licensed to the Apache Software Foundation (ASF) under one
 # or more contributor license agreements.  See the NOTICE file
 # distributed with this work for additional information
@@ -15,30 +16,24 @@
 # specific language governing permissions and limitations
 # under the License.
 
-# RECIPE CATEGORY: PostgreSQL
-# RECIPE KEYWORDS: authentication
-# RECIPE STARTS HERE
-#: To connect to a PostgreSQL database, the username and password must
-#: be provided in the URI.  For example,
-#:
-#: .. code-block:: text
-#:
-#:    postgresql://username:password@hostname:port/dbname
-#:
-#: See the `PostgreSQL documentation
-#: <https://www.postgresql.org/docs/current/libpq-connect.html#LIBPQ-CONNSTRING>`_
-#: for full details.
+# Only used in CI to make manifests before building docs
 
-import os
+set -euxo pipefail
 
-from adbc_driver_manager import dbapi
+main() {
+    local -r install_dir="${1}"
 
-uri = os.environ["ADBC_POSTGRESQL_TEST_URI"]
-conn = dbapi.connect("postgresql", uri)
+    mkdir -p "$HOME/.config/adbc/drivers"
+    for d in flightsql postgresql sqlite; do
+        driver_path=$(readlink -f "$install_dir/lib/libadbc_driver_$d.so")
+        cat <<EOF > "$HOME/.config/adbc/drivers/$d.toml"
+            manifest_version = 1
+            [Driver]
+            shared = "$driver_path"
+EOF
+    done
+    ls ~/.config/adbc/drivers
+    cat ~/.config/adbc/drivers/*.toml
+}
 
-with conn.cursor() as cur:
-    cur.execute("SELECT 1")
-    print(cur.fetchone())
-    # Output: (1,)
-
-conn.close()
+main "$@"

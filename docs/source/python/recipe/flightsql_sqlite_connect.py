@@ -21,10 +21,10 @@
 
 import os
 
-import adbc_driver_flightsql.dbapi
+from adbc_driver_manager import dbapi
 
 uri = os.environ["ADBC_SQLITE_FLIGHTSQL_URI"]
-conn = adbc_driver_flightsql.dbapi.connect(uri)
+conn = dbapi.connect("flightsql", uri)
 
 #: We can then execute a simple query.
 

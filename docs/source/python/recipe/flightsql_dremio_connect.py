@@ -24,13 +24,14 @@
 
 import os
 
-import adbc_driver_flightsql.dbapi
 import adbc_driver_manager
+from adbc_driver_manager import dbapi
 
 uri = os.environ["ADBC_DREMIO_FLIGHTSQL_URI"]
 username = os.environ["ADBC_DREMIO_FLIGHTSQL_USER"]
 password = os.environ["ADBC_DREMIO_FLIGHTSQL_PASS"]
-conn = adbc_driver_flightsql.dbapi.connect(
+conn = dbapi.connect(
+    "flightsql",
     uri,
     db_kwargs={
         adbc_driver_manager.DatabaseOptions.USERNAME.value: username,

@@ -41,7 +41,7 @@ separately: some packages are on version ${VERSION_NATIVE} and others
 are on version ${VERSION_JAVA}.
 
 Release artifacts can be downloaded from:
-https://arrow.apache.org/adbc/current/driver/installation.html
+https://arrow.apache.org/adbc/current/installation.html
 
 This release contains ${RESOLVED_ISSUES} bug fixes and improvements.
 Release notes are available at:

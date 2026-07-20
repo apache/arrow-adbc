@@ -23,8 +23,8 @@
 
 import os
 
-import adbc_driver_flightsql.dbapi
 from adbc_driver_flightsql import DatabaseOptions, OAuthFlowType
+from adbc_driver_manager import dbapi
 
 uri = os.environ["ADBC_TEST_FLIGHTSQL_URI"]
 token_uri = os.environ["ADBC_OAUTH_TOKEN_URI"]
@@ -48,7 +48,7 @@ db_kwargs = {
 if os.environ.get("ADBC_OAUTH_SKIP_VERIFY", "true").lower() in ("1", "true"):
     db_kwargs[DatabaseOptions.TLS_SKIP_VERIFY.value] = "true"
 
-conn = adbc_driver_flightsql.dbapi.connect(uri, db_kwargs=db_kwargs)
+conn = dbapi.connect("flightsql", uri, db_kwargs=db_kwargs)
 
 #: We can then execute queries as usual.
 

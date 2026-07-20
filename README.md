@@ -48,7 +48,7 @@ For more details, see the [documentation](https://arrow.apache.org/adbc/main/dri
 
 ## Installation
 
-Please see the [documentation](https://arrow.apache.org/adbc/main/driver/installation.html).
+Please see the [documentation](https://arrow.apache.org/adbc/main/installation.html).
 
 ## Documentation
 

@@ -32,9 +32,28 @@
 ///
 /// .. code-block:: shell
 ///
-///    mamba install cmake compilers libadbc-driver-manager libadbc-driver-sqlite
+///    mamba install cmake compilers libadbc-driver-manager
+///
+/// Installing Drivers
+/// ------------------
+///
+/// See :ref:`driver-table-install` for instructions on installing
+/// ADBC drivers for the database you want to connect to. For the
+/// example below, you could install `dbc <dbc_>`_ and then use dbc
+/// to install the SQLite driver and its manifest in the user
+/// configuration directory where the driver manager library will
+/// search for it:
+///
+/// .. code-block:: shell
+///
+///    dbc install --level user sqlite
+///
+/// You can also build drivers from source or use other installation
+/// methods. See the :doc:`driver documentation </driver/index>` for
+/// more details.
 ///
 /// .. _conda-forge: https://conda-forge.org/
+/// .. _dbc: https://docs.columnar.tech/dbc/
 
 /// Building
 /// ========
@@ -51,8 +70,8 @@
 ///
 /// .. _CMake: https://cmake.org/
 
-/// Using ADBC
-/// ==========
+/// Basic Example
+/// =============
 ///
 /// Let's start with some includes:
 
@@ -63,6 +82,7 @@
 #include <iostream>
 
 #include <arrow-adbc/adbc.h>
+#include <arrow-adbc/adbc_driver_manager.h>
 #include <nanoarrow.h>
 
 /// Then we'll add some (very basic) error checking helpers.
@@ -110,7 +130,10 @@ int main() {
   CHECK_ADBC(AdbcDatabaseNew(&database, &error));
   /// The way the driver manager knows what driver we want is via the
   /// ``driver`` option.
-  CHECK_ADBC(AdbcDatabaseSetOption(&database, "driver", "adbc_driver_sqlite", &error));
+  CHECK_ADBC(AdbcDatabaseSetOption(&database, "driver", "sqlite", &error));
+  /// We also need to enable searching for driver manifests.
+  CHECK_ADBC(
+      AdbcDriverManagerDatabaseSetLoadFlags(&database, ADBC_LOAD_FLAG_DEFAULT, &error));
   CHECK_ADBC(AdbcDatabaseInit(&database, &error));
 
   /// Creating a Connection
