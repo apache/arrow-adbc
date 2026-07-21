@@ -504,6 +504,30 @@ func rowsToArrowRecordBatch(schema bigquery.Schema, rows [][]bigquery.Value, all
 				} else {
 					builder.AppendNull()
 				}
+			case *array.Int8Builder:
+				if v, ok := val.(int8); ok {
+					builder.Append(v)
+				} else {
+					builder.AppendNull()
+				}
+			case *array.Int16Builder:
+				if v, ok := val.(int16); ok {
+					builder.Append(v)
+				} else {
+					builder.AppendNull()
+				}
+			case *array.Int32Builder:
+				if v, ok := val.(int32); ok {
+					builder.Append(v)
+				} else {
+					builder.AppendNull()
+				}
+			case *array.Int64Builder:
+				if v, ok := val.(int64); ok {
+					builder.Append(v)
+				} else {
+					builder.AppendNull()
+				}
 			// TODO: Add support for other types as needed
 			default:
 				return nil, fmt.Errorf("USE_STORAGE_API_DISABLED_CLIENT is enabled, unsupported type conversion for column type %s of value %v", builder.Type().String(), val)
