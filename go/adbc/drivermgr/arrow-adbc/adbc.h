@@ -2303,7 +2303,11 @@ AdbcStatusCode AdbcStatementExecuteSchema(struct AdbcStatement* statement,
 /// consistent schema when executing queries against a database
 /// with row-based types (e.g., SQLite) or a database whose types
 /// are implemented with row-based parameters where Arrow prefers
-/// type-level parameters (e.g., NUMERIC for PostgreSQL).
+/// type-level parameters (e.g., NUMERIC for PostgreSQL). The
+/// schema request is intended to modify only the types or
+/// widen the nullability of types in the original schema;
+/// column reordering or changing the number of returned columns
+/// is not a goal of this feature.
 ///
 /// The provided schema is a request and not a guarantee (i.e.,
 /// callers must use the schema provided by the output stream to
