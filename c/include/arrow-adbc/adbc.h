@@ -889,6 +889,18 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// \since ADBC API revision 1.1.0
 #define ADBC_CONNECTION_OPTION_CURRENT_DB_SCHEMA "adbc.connection.db_schema"
 
+/// \brief Whether to run-length-encode common fields within standard metadata
+///   collections.
+///
+/// The type is boolean. The default is to run-length-encode.
+///
+/// \see AdbcConnectionGetMetadataCollection
+/// \see AdbcConnectionSetOption
+/// \see AdbcConnectionSetOption
+/// \since ADBC API revision 1.2.0
+#define ADBC_CONNECTION_OPTION_METADATA_COLLECTION_RLE \
+  "adbc.connection.metadata_collection.run_length_encoded"
+
 /// \brief The name of the canonical option for making query execution
 ///   nonblocking.
 ///
@@ -2192,8 +2204,11 @@ AdbcStatusCode AdbcConnectionGetMetadataCollection(
 ///
 /// | Field Name               | Field Type                   | Comments |
 /// |--------------------------|------------------------------|----------|
-/// | catalog_name             | utf8                         |          |
+/// | catalog_name             | utf8                         | (R)      |
 /// | db_schema_name           | utf8                         |          |
+///
+/// (R) This field is run-length encoded by default; it can be disabled via
+/// ADBC_CONNECTION_OPTION_METADATA_COLLECTION_RLE.
 ///
 /// Filters:
 /// 1. The catalog name to filter by.  May be a search pattern.
@@ -2205,10 +2220,13 @@ AdbcStatusCode AdbcConnectionGetMetadataCollection(
 ///
 /// | Field Name               | Field Type                   | Comments |
 /// |--------------------------|------------------------------|----------|
-/// | catalog_name             | utf8                         |          |
-/// | db_schema_name           | utf8                         |          |
+/// | catalog_name             | utf8                         | (R)      |
+/// | db_schema_name           | utf8                         | (R)      |
 /// | table_name               | utf8 not null                |          |
 /// | table_type               | utf8 not null                |          |
+///
+/// (R) This field is run-length encoded by default; it can be disabled via
+/// ADBC_CONNECTION_OPTION_METADATA_COLLECTION_RLE.
 ///
 /// Filters:
 /// 1. The catalog name to filter by.  May be a search pattern.
@@ -2222,9 +2240,9 @@ AdbcStatusCode AdbcConnectionGetMetadataCollection(
 ///
 /// | Field Name               | Field Type                   | Comments |
 /// |--------------------------|------------------------------|----------|
-/// | catalog_name             | utf8                         |          |
-/// | db_schema_name           | utf8                         |          |
-/// | table_name               | utf8 not null                |          |
+/// | catalog_name             | utf8                         | (R)      |
+/// | db_schema_name           | utf8                         | (R)      |
+/// | table_name               | utf8 not null                | (R)      |
 /// | column_name              | utf8 not null                |          |
 /// | ordinal_position         | int32                        | (1)      |
 /// | remarks                  | utf8                         | (2)      |
@@ -2244,6 +2262,9 @@ AdbcStatusCode AdbcConnectionGetMetadataCollection(
 /// | xdbc_scope_table         | utf8                         | (3)      |
 /// | xdbc_is_autoincrement    | bool                         | (3)      |
 /// | xdbc_is_generatedcolumn  | bool                         | (3)      |
+///
+/// (R) This field is run-length encoded by default; it can be disabled via
+/// ADBC_CONNECTION_OPTION_METADATA_COLLECTION_RLE.
 ///
 /// 1. The column's ordinal position in the table (starting from 1).
 /// 2. Database-specific description of the column.
@@ -2386,9 +2407,9 @@ AdbcStatusCode AdbcConnectionGetMetadataCollection(
 ///
 /// | Field Name               | Field Type              | Comments |
 /// |--------------------------|-------------------------|----------|
-/// | catalog_name             | utf8                    |          |
-/// | schema_name              | utf8                    |          |
-/// | table_name               | utf8 not null           |          |
+/// | catalog_name             | utf8                    | (R)      |
+/// | schema_name              | utf8                    | (R)      |
+/// | table_name               | utf8 not null           | (R)      |
 /// | constraint_name          | utf8                    |          |
 /// | constraint_type          | utf8 not null           | (1)      |
 /// | constraint_column_names  | list<utf8> not null     | (2)      |
@@ -2398,6 +2419,9 @@ AdbcStatusCode AdbcConnectionGetMetadataCollection(
 /// | constraint_enforced      | bool                    | (5)      |
 /// | constraint_deferrability | int16                   | (6)      |
 /// | constraint_match_type    | int16                   | (7)      |
+///
+/// (R) This field is run-length encoded by default; it can be disabled via
+/// ADBC_CONNECTION_OPTION_METADATA_COLLECTION_RLE.
 ///
 /// 1. One of 'CHECK', 'FOREIGN KEY', 'PRIMARY KEY', or 'UNIQUE', or a
 ///    vendor-specific type.
@@ -2428,10 +2452,14 @@ AdbcStatusCode AdbcConnectionGetMetadataCollection(
 ///
 /// Filters:
 /// 1. The namespace name to filter by.  May be a search pattern.
+/// 2. Variadic: the parent namespace(s) to filter by.  If omitted, return all
+///    top-level namespaces.
 ///
-/// TODO(lidavidm): do we define this now? We'll probably have to duplicate every
-/// collection to account for it, and this is less efficient for the "traditional" 3-part
-/// hierarchy (since you have to recurse into each namespace individually here)
+/// To filter by parent namespaces but not by namespace name (i.e. to request
+/// all namespaces within a certain namespace), pass NULL for the namespace
+/// name and then the parent namespaces.  For example, to request all
+/// namespaces within "foo.bar", pass NULL, "foo", "bar".  To request all
+/// top-level namespaces, pass no filters (or equivalently, only NULL).
 #define ADBC_METADATA_COLLECTION_NAMESPACES "namespaces"
 
 /// \brief Get a string option of the connection.
