@@ -532,8 +532,7 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 	}
 
 	ctx, span := internal.StartSpan(ctx, "FlightSQLStatement.ExecuteQuery", s.cnxn)
-	// TODO(apache/arrow-adbc#4494): replace with a shared telemetry helper.
-	defer func() { internal.EndSpan(span, err) }()
+	defer internal.EndSpanWithError(span, &err)
 
 	// Handle bulk ingest
 	if s.targetTable != "" {
@@ -608,8 +607,7 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 	}
 
 	ctx, span := internal.StartSpan(ctx, "FlightSQLStatement.ExecuteUpdate", s.cnxn)
-	// TODO(apache/arrow-adbc#4494): replace with a shared telemetry helper.
-	defer func() { internal.EndSpan(span, err) }()
+	defer internal.EndSpanWithError(span, &err)
 
 	// Handle bulk ingest
 	if s.targetTable != "" {
@@ -658,8 +656,7 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 // multiple times. This invalidates any prior result sets.
 func (s *statement) Prepare(ctx context.Context) (err error) {
 	ctx, span := internal.StartSpan(ctx, "FlightSQLStatement.Prepare", s.cnxn)
-	// TODO(apache/arrow-adbc#4494): replace with a shared telemetry helper.
-	defer func() { internal.EndSpan(span, err) }()
+	defer internal.EndSpanWithError(span, &err)
 
 	startTime := time.Now()
 	s.log.InfoContext(ctx, "FlightSQL Prepare start", s.queryAttrs()...)
