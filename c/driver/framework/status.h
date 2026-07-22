@@ -63,6 +63,22 @@ class Status {
   /// \brief Check if this is an error or not.
   bool ok() const { return impl_ == nullptr; }
 
+  const char* message() const {
+    if (!impl_) {
+      return "";
+    } else {
+      return impl_->message.c_str();
+    }
+  }
+
+  AdbcStatusCode code() const {
+    if (ok()) {
+      return ADBC_STATUS_OK;
+    } else {
+      return impl_->code;
+    }
+  }
+
   /// \brief Add another error detail.
   void AddDetail(std::string key, std::string value) {
     assert(impl_ != nullptr);
@@ -111,7 +127,6 @@ class Status {
   }
 
   static Status FromAdbc(AdbcStatusCode code, AdbcError& error) {
-    // not really meant to be used, just something we have for now while porting
     if (code == ADBC_STATUS_OK) {
       if (error.release) {
         error.release(&error);
