@@ -36,7 +36,7 @@ overall approach.
 .. note:: Some older versions (<=1.11.0) of this driver had experimental
           support for Amazon Redshift, but this was removed in 1.11.0.  We
           recommend using the `Redshift-specific driver
-          <https://docs.adbc-drivers.org/drivers/redshift/>`__ from the ADBC
+          <https://adbc-drivers.org/drivers/redshift/>`__ from the ADBC
           Driver Foundry (a third party).
 
 Installation

@@ -28,7 +28,7 @@ Apache DataFusion
 
 `Apache DataFusion <https://datafusion.apache.org>`_ integrates with ADBC in two ways:
 
-1. **DataFusion is available as an ADBC driver** — the `DataFusion ADBC driver <https://docs.adbc-drivers.org/drivers/datafusion/>`_ lets you run DataFusion queries from any ADBC client library.
+1. **DataFusion is available as an ADBC driver** — the `DataFusion ADBC driver <https://adbc-drivers.org/drivers/datafusion/>`_ lets you run DataFusion queries from any ADBC client library.
 2. **ADBC table provider** — the `ADBC table provider for DataFusion <https://github.com/datafusion-contrib/datafusion-table-providers#adbc>`_ lets you query *other* databases from DataFusion. A table provider exposes an external data source as a table in DataFusion, so you can register a database table via an ADBC driver and query it with DataFusion SQL alongside your other data sources.
 
 ----
