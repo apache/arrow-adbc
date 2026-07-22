@@ -1764,6 +1764,12 @@ AdbcStatusCode StatementSetSubstraitPlan(struct AdbcStatement*, const uint8_t*, 
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
+AdbcStatusCode StatementRequestSchema(struct AdbcStatement*, struct ArrowSchema*,
+                                      struct AdbcError* error) {
+  SetError(error, "AdbcStatementRequestSchema not implemented");
+  return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
 /// Temporary state while the database is being configured.
 struct TempDatabase {
   std::unordered_map<std::string, std::string> options;
@@ -3159,6 +3165,17 @@ AdbcStatusCode AdbcStatementSetSubstraitPlan(struct AdbcStatement* statement,
                                                               error);
 }
 
+AdbcStatusCode AdbcStatementRequestSchema(struct AdbcStatement* statement,
+                                          struct ArrowSchema* schema,
+                                          struct AdbcError* error) {
+  if (!statement->private_driver) {
+    SetError(error, "AdbcStatementRequestSchema: must call AdbcStatementNew first");
+    return ADBC_STATUS_INVALID_STATE;
+  }
+  INIT_ERROR(error, statement);
+  return statement->private_driver->StatementRequestSchema(statement, schema, error);
+}
+
 const char* AdbcStatusCodeMessage(AdbcStatusCode code) {
 #define CASE(CONSTANT)         \
   case ADBC_STATUS_##CONSTANT: \
@@ -3381,6 +3398,10 @@ AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, int vers
     FILL_DEFAULT(driver, StatementSetOptionBytes);
     FILL_DEFAULT(driver, StatementSetOptionDouble);
     FILL_DEFAULT(driver, StatementSetOptionInt);
+  }
+  if (version >= ADBC_VERSION_1_2_0) {
+    auto* driver = reinterpret_cast<struct AdbcDriver*>(raw_driver);
+    FILL_DEFAULT(driver, StatementRequestSchema);
   }
 
   return ADBC_STATUS_OK;
