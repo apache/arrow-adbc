@@ -19,9 +19,11 @@
 Ruby
 ====
 
-**Red ADBC** is the Ruby binding for ADBC, built on top of ADBC GLib.
+**red-adbc** is the Ruby binding for ADBC, built on top of ADBC GLib.
 It is distributed as the `red-adbc gem on RubyGems
 <https://rubygems.org/gems/red-adbc>`__.
+
+Here we'll briefly tour basic features of ADBC with Ruby using the SQLite driver.
 
 Installation
 ============
@@ -49,106 +51,165 @@ Or, with Bundler, add the plugin and the gem to your ``Gemfile``:
 
    gem "red-adbc"
 
-.. dropdown:: Installing the GLib libraries manually
-
-   The ``rubygems-requirements-system`` plugin installs the native Arrow GLib
-   and ADBC GLib libraries automatically. If it can't (for example, on an
-   unsupported package manager), install them yourself before installing
-   ``red-adbc``:
-
-   **macOS with Homebrew:**
-
-   .. code-block:: shell
-
-      brew install apache-arrow-glib apache-arrow-adbc-glib
-
-   **Debian/Ubuntu:**
-
-   .. code-block:: shell
-
-      sudo apt install libarrow-glib-dev libadbc-glib-dev
-
-   **RHEL-compatible distributions:**
-
-   .. code-block:: shell
-
-      sudo dnf install arrow-glib-devel adbc-glib-devel
-
-   **Windows with RubyInstaller/MSYS2 UCRT64:**
-
-   .. code-block:: shell
-
-      pacman -S --needed mingw-w64-ucrt-x86_64-arrow mingw-w64-ucrt-x86_64-arrow-adbc-glib
-
 Installing Drivers
 ------------------
 
 You also need a driver for the database you want to connect to. See
 :ref:`driver-table-install` for instructions. For the example below, you could
-install `dbc <https://docs.columnar.tech/dbc>`__ and then install the PostgreSQL
+install `dbc <https://docs.columnar.tech/dbc>`__ and then install the SQLite
 driver with:
 
 .. code-block:: shell
 
-   dbc install postgresql
+   dbc install sqlite
 
-Basic Example
-=============
-
-This example demonstrates connecting to PostgreSQL, executing a query, and reading results.
+Creating a Connection
+=====================
 
 .. code-block:: ruby
 
    require "adbc"
 
-   database = ADBC::Database.new
-
-   begin
-     database.set_option("driver", "postgresql")
-     database.set_option("uri", "postgresql://user:password@localhost:5432/database")
-     database.set_load_flags(ADBC::LoadFlags::DEFAULT)
-     database.init
-
+   ADBC::Database.open(driver: "sqlite",
+                       uri: ":memory") do |database|
      database.connect do |connection|
-       table, = connection.query("SELECT * FROM my_table;")
-       puts table
+       # Use connection
      end
-   ensure
-     database.release
    end
 
-Working with Results
-====================
+In application code, the database and connection must be closed after usage or
+memory may leak. Both ``Database.open`` and ``database.connect`` accept blocks
+to accomplish this automatically.
 
-ADBC returns results as Arrow tables, which you can process using the Arrow Ruby library:
+Executing a Query
+=================
+
+We can execute a query and get the results as an Arrow table:
 
 .. code-block:: ruby
 
    require "adbc"
 
-   database = ADBC::Database.new
-
-   begin
-     database.set_option("driver", "postgresql")
-     database.set_option("uri", "postgresql://user:password@localhost:5432/database")
-     database.set_load_flags(ADBC::LoadFlags::DEFAULT)
-     database.init
-
+   ADBC::Database.open(driver: "sqlite",
+                       uri: ":memory:") do |database|
      database.connect do |connection|
-       table, = connection.query("SELECT * FROM my_table;")
-
-       # Access columns
-       puts "Columns: #{table.schema.fields.map(&:name)}"
-
-       # Iterate over rows
-       table.each_record_batch do |batch|
-         batch.each do |row|
-           puts row
-         end
-       end
+       table, = connection.query("SELECT 1, 2.0, 'Hello, world!'")
+       puts table
      end
-   ensure
-     database.release
+   end
+
+Output:
+
+.. code-block:: text
+
+      1  2.0  'Hello, world!'
+      (int64)  (double)  (utf8)
+   0  1  2.0  Hello, world!
+
+Ingesting Bulk Data
+===================
+
+We can insert a table of Arrow data into a new database table:
+
+.. code-block:: ruby
+
+   require "adbc"
+
+   ADBC::Database.open(driver: "sqlite",
+                       uri: ":memory:") do |database|
+     database.connect do |connection|
+       # Create an Arrow table
+       table = Arrow::Table.new(
+         ints: Arrow::Int64Array.new([1, 2]),
+         strs: Arrow::StringArray.new(["a", nil])
+       )
+
+       # Ingest into database
+       connection.ingest("sample", table, mode: :create)
+
+       # Query the data
+       result, = connection.query("SELECT COUNT(DISTINCT ints) FROM sample")
+       puts result
+     end
+   end
+
+We can also append to an existing table:
+
+.. code-block:: ruby
+
+   require "adbc"
+
+   ADBC::Database.open(driver: "sqlite",
+                       uri: ":memory:") do |database|
+     database.connect do |connection|
+       # Create initial table
+       table = Arrow::Table.new(
+         ints: Arrow::Int64Array.new([1, 2]),
+         strs: Arrow::StringArray.new(["a", nil])
+       )
+       connection.ingest("sample", table, mode: :create)
+
+       # Append more data
+       table2 = Arrow::Table.new(
+         ints: Arrow::Int64Array.new([2, 3]),
+         strs: Arrow::StringArray.new([nil, "c"])
+       )
+       connection.ingest("sample", table2, mode: :append)
+
+       # Query the combined data
+       result, = connection.query("SELECT COUNT(DISTINCT ints) FROM sample")
+       puts result
+     end
+   end
+
+The ``mode`` parameter can be:
+
+- ``:create`` - Create a new table (default)
+- ``:append`` - Append to an existing table
+- ``:replace`` - Replace an existing table
+
+Getting Database/Driver Metadata
+=================================
+
+We can get information about the driver and the database:
+
+.. code-block:: ruby
+
+   require "adbc"
+
+   ADBC::Database.open(driver: "sqlite",
+                       uri: ":memory:") do |database|
+     database.connect do |connection|
+       info = connection.info
+       puts "Vendor: #{info[:vendor_name]}"
+       puts "Driver: #{info[:driver_name]}"
+     end
+   end
+
+We can also query for tables and columns in the database. This gives
+a nested structure describing all the catalogs, schemas, tables, and
+columns:
+
+.. code-block:: ruby
+
+   require "adbc"
+
+   ADBC::Database.open(driver: "sqlite",
+                       uri: ":memory:") do |database|
+     database.connect do |connection|
+       # Create a sample table first
+       connection.query("CREATE TEMPORARY TABLE sample (ints INTEGER, strs TEXT)")
+
+       # Get database objects
+       objects = connection.get_objects(depth: :all)
+       catalog = objects.raw_records[1]
+       schema = catalog[1][0]
+       tables = schema["db_schema_tables"]
+
+       puts "Table: #{tables[0]["table_name"]}"
+       columns = tables[0]["table_columns"]
+       puts "Columns: #{columns.map { |c| c["column_name"] }.join(", ")}"
+     end
    end
 
 Next Steps

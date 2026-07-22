@@ -9,10 +9,10 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://arrow.apache.org/adbc/main/ruby/index.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="Red ADBC is the Ruby binding for ADBC, built on top of ADBC GLib. It is distributed as the red-adbc gem on RubyGems. Installation: red-adbc depends on the native Arrow GLib and ADBC GLib libraries...." />
+<meta property="og:description" content="red-adbc is the Ruby binding for ADBC, built on top of ADBC GLib. It is distributed as the red-adbc gem on RubyGems. Here we’ll briefly tour basic features of ADBC with Ruby using the SQLite driver..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="Red ADBC is the Ruby binding for ADBC, built on top of ADBC GLib. It is distributed as the red-adbc gem on RubyGems. Installation: red-adbc depends on the native Arrow GLib and ADBC GLib libraries...." />
+<meta name="description" content="red-adbc is the Ruby binding for ADBC, built on top of ADBC GLib. It is distributed as the red-adbc gem on RubyGems. Here we’ll briefly tour basic features of ADBC with Ruby using the SQLite driver..." />
 <link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Rust" href="../rust/index.html"><link rel="prev" title="R" href="../r/index.html">
         <link rel="prefetch" href="../_static/logo-light.png" as="image">
         <link rel="prefetch" href="../_static/logo-dark.png" as="image">
@@ -415,8 +415,9 @@
         <article role="main" id="furo-main-content">
           <section id="ruby">
 <h1>Ruby<a class="headerlink" href="#ruby" title="Link to this heading">¶</a></h1>
-<p><strong>Red ADBC</strong> is the Ruby binding for ADBC, built on top of ADBC GLib.
+<p><strong>red-adbc</strong> is the Ruby binding for ADBC, built on top of ADBC GLib.
 It is distributed as the <a class="reference external" href="https://rubygems.org/gems/red-adbc">red-adbc gem on RubyGems</a>.</p>
+<p>Here we’ll briefly tour basic features of ADBC with Ruby using the SQLite driver.</p>
 <section id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h2>
 <p><code class="docutils literal notranslate"><span class="pre">red-adbc</span></code> depends on the native Arrow GLib and ADBC GLib libraries. The
@@ -436,92 +437,148 @@ gem<span class="w"> </span>install<span class="w"> </span>red-adbc
 <span class="n">gem</span><span class="w"> </span><span class="s2">&quot;red-adbc&quot;</span>
 </pre></div>
 </div>
-<details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
-<summary class="sd-summary-title sd-card-header">
-<span class="sd-summary-text">Installing the GLib libraries manually</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
-<p class="sd-card-text">The <code class="docutils literal notranslate"><span class="pre">rubygems-requirements-system</span></code> plugin installs the native Arrow GLib
-and ADBC GLib libraries automatically. If it can’t (for example, on an
-unsupported package manager), install them yourself before installing
-<code class="docutils literal notranslate"><span class="pre">red-adbc</span></code>:</p>
-<p class="sd-card-text"><strong>macOS with Homebrew:</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>brew<span class="w"> </span>install<span class="w"> </span>apache-arrow-glib<span class="w"> </span>apache-arrow-adbc-glib
-</pre></div>
-</div>
-<p class="sd-card-text"><strong>Debian/Ubuntu:</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>libarrow-glib-dev<span class="w"> </span>libadbc-glib-dev
-</pre></div>
-</div>
-<p class="sd-card-text"><strong>RHEL-compatible distributions:</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>sudo<span class="w"> </span>dnf<span class="w"> </span>install<span class="w"> </span>arrow-glib-devel<span class="w"> </span>adbc-glib-devel
-</pre></div>
-</div>
-<p class="sd-card-text"><strong>Windows with RubyInstaller/MSYS2 UCRT64:</strong></p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>pacman<span class="w"> </span>-S<span class="w"> </span>--needed<span class="w"> </span>mingw-w64-ucrt-x86_64-arrow<span class="w"> </span>mingw-w64-ucrt-x86_64-arrow-adbc-glib
-</pre></div>
-</div>
-</div>
-</details><section id="installing-drivers">
+<section id="installing-drivers">
 <h3>Installing Drivers<a class="headerlink" href="#installing-drivers" title="Link to this heading">¶</a></h3>
 <p>You also need a driver for the database you want to connect to. See
 <a class="reference internal" href="../driver/index.html#driver-table-install"><span class="std std-ref">Installing Drivers</span></a> for instructions. For the example below, you could
-install <a class="reference external" href="https://docs.columnar.tech/dbc">dbc</a> and then install the PostgreSQL
+install <a class="reference external" href="https://docs.columnar.tech/dbc">dbc</a> and then install the SQLite
 driver with:</p>
-<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>dbc<span class="w"> </span>install<span class="w"> </span>postgresql
+<div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>dbc<span class="w"> </span>install<span class="w"> </span>sqlite
 </pre></div>
 </div>
 </section>
 </section>
-<section id="basic-example">
-<h2>Basic Example<a class="headerlink" href="#basic-example" title="Link to this heading">¶</a></h2>
-<p>This example demonstrates connecting to PostgreSQL, executing a query, and reading results.</p>
+<section id="creating-a-connection">
+<h2>Creating a Connection<a class="headerlink" href="#creating-a-connection" title="Link to this heading">¶</a></h2>
 <div class="highlight-ruby notranslate"><div class="highlight"><pre><span></span><span class="nb">require</span><span class="w"> </span><span class="s2">&quot;adbc&quot;</span>
 
-<span class="n">database</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="no">ADBC</span><span class="o">::</span><span class="no">Database</span><span class="o">.</span><span class="n">new</span>
-
-<span class="k">begin</span>
-<span class="w">  </span><span class="n">database</span><span class="o">.</span><span class="n">set_option</span><span class="p">(</span><span class="s2">&quot;driver&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;postgresql&quot;</span><span class="p">)</span>
-<span class="w">  </span><span class="n">database</span><span class="o">.</span><span class="n">set_option</span><span class="p">(</span><span class="s2">&quot;uri&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;postgresql://user:password@localhost:5432/database&quot;</span><span class="p">)</span>
-<span class="w">  </span><span class="n">database</span><span class="o">.</span><span class="n">set_load_flags</span><span class="p">(</span><span class="no">ADBC</span><span class="o">::</span><span class="no">LoadFlags</span><span class="o">::</span><span class="no">DEFAULT</span><span class="p">)</span>
-<span class="w">  </span><span class="n">database</span><span class="o">.</span><span class="n">init</span>
-
+<span class="no">ADBC</span><span class="o">::</span><span class="no">Database</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="ss">driver</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sqlite&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="ss">uri</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;:memory&quot;</span><span class="p">)</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">database</span><span class="o">|</span>
 <span class="w">  </span><span class="n">database</span><span class="o">.</span><span class="n">connect</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">connection</span><span class="o">|</span>
-<span class="w">    </span><span class="n">table</span><span class="p">,</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;SELECT * FROM my_table;&quot;</span><span class="p">)</span>
-<span class="w">    </span><span class="nb">puts</span><span class="w"> </span><span class="n">table</span>
+<span class="w">    </span><span class="c1"># Use connection</span>
 <span class="w">  </span><span class="k">end</span>
-<span class="k">ensure</span>
-<span class="w">  </span><span class="n">database</span><span class="o">.</span><span class="n">release</span>
 <span class="k">end</span>
 </pre></div>
 </div>
+<p>In application code, the database and connection must be closed after usage or
+memory may leak. Both <code class="docutils literal notranslate"><span class="pre">Database.open</span></code> and <code class="docutils literal notranslate"><span class="pre">database.connect</span></code> accept blocks
+to accomplish this automatically.</p>
 </section>
-<section id="working-with-results">
-<h2>Working with Results<a class="headerlink" href="#working-with-results" title="Link to this heading">¶</a></h2>
-<p>ADBC returns results as Arrow tables, which you can process using the Arrow Ruby library:</p>
+<section id="executing-a-query">
+<h2>Executing a Query<a class="headerlink" href="#executing-a-query" title="Link to this heading">¶</a></h2>
+<p>We can execute a query and get the results as an Arrow table:</p>
 <div class="highlight-ruby notranslate"><div class="highlight"><pre><span></span><span class="nb">require</span><span class="w"> </span><span class="s2">&quot;adbc&quot;</span>
 
-<span class="n">database</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="no">ADBC</span><span class="o">::</span><span class="no">Database</span><span class="o">.</span><span class="n">new</span>
-
-<span class="k">begin</span>
-<span class="w">  </span><span class="n">database</span><span class="o">.</span><span class="n">set_option</span><span class="p">(</span><span class="s2">&quot;driver&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;postgresql&quot;</span><span class="p">)</span>
-<span class="w">  </span><span class="n">database</span><span class="o">.</span><span class="n">set_option</span><span class="p">(</span><span class="s2">&quot;uri&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;postgresql://user:password@localhost:5432/database&quot;</span><span class="p">)</span>
-<span class="w">  </span><span class="n">database</span><span class="o">.</span><span class="n">set_load_flags</span><span class="p">(</span><span class="no">ADBC</span><span class="o">::</span><span class="no">LoadFlags</span><span class="o">::</span><span class="no">DEFAULT</span><span class="p">)</span>
-<span class="w">  </span><span class="n">database</span><span class="o">.</span><span class="n">init</span>
-
+<span class="no">ADBC</span><span class="o">::</span><span class="no">Database</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="ss">driver</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sqlite&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="ss">uri</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;:memory:&quot;</span><span class="p">)</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">database</span><span class="o">|</span>
 <span class="w">  </span><span class="n">database</span><span class="o">.</span><span class="n">connect</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">connection</span><span class="o">|</span>
-<span class="w">    </span><span class="n">table</span><span class="p">,</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;SELECT * FROM my_table;&quot;</span><span class="p">)</span>
-
-<span class="w">    </span><span class="c1"># Access columns</span>
-<span class="w">    </span><span class="nb">puts</span><span class="w"> </span><span class="s2">&quot;Columns: </span><span class="si">#{</span><span class="n">table</span><span class="o">.</span><span class="n">schema</span><span class="o">.</span><span class="n">fields</span><span class="o">.</span><span class="n">map</span><span class="p">(</span><span class="o">&amp;</span><span class="ss">:name</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
-
-<span class="w">    </span><span class="c1"># Iterate over rows</span>
-<span class="w">    </span><span class="n">table</span><span class="o">.</span><span class="n">each_record_batch</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">batch</span><span class="o">|</span>
-<span class="w">      </span><span class="n">batch</span><span class="o">.</span><span class="n">each</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">row</span><span class="o">|</span>
-<span class="w">        </span><span class="nb">puts</span><span class="w"> </span><span class="n">row</span>
-<span class="w">      </span><span class="k">end</span>
-<span class="w">    </span><span class="k">end</span>
+<span class="w">    </span><span class="n">table</span><span class="p">,</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;SELECT 1, 2.0, &#39;Hello, world!&#39;&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="nb">puts</span><span class="w"> </span><span class="n">table</span>
 <span class="w">  </span><span class="k">end</span>
-<span class="k">ensure</span>
-<span class="w">  </span><span class="n">database</span><span class="o">.</span><span class="n">release</span>
+<span class="k">end</span>
+</pre></div>
+</div>
+<p>Output:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>   1  2.0  &#39;Hello, world!&#39;
+   (int64)  (double)  (utf8)
+0  1  2.0  Hello, world!
+</pre></div>
+</div>
+</section>
+<section id="ingesting-bulk-data">
+<h2>Ingesting Bulk Data<a class="headerlink" href="#ingesting-bulk-data" title="Link to this heading">¶</a></h2>
+<p>We can insert a table of Arrow data into a new database table:</p>
+<div class="highlight-ruby notranslate"><div class="highlight"><pre><span></span><span class="nb">require</span><span class="w"> </span><span class="s2">&quot;adbc&quot;</span>
+
+<span class="no">ADBC</span><span class="o">::</span><span class="no">Database</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="ss">driver</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sqlite&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="ss">uri</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;:memory:&quot;</span><span class="p">)</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">database</span><span class="o">|</span>
+<span class="w">  </span><span class="n">database</span><span class="o">.</span><span class="n">connect</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">connection</span><span class="o">|</span>
+<span class="w">    </span><span class="c1"># Create an Arrow table</span>
+<span class="w">    </span><span class="n">table</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="no">Arrow</span><span class="o">::</span><span class="no">Table</span><span class="o">.</span><span class="n">new</span><span class="p">(</span>
+<span class="w">      </span><span class="ss">ints</span><span class="p">:</span><span class="w"> </span><span class="no">Arrow</span><span class="o">::</span><span class="no">Int64Array</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="o">[</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="o">]</span><span class="p">),</span>
+<span class="w">      </span><span class="ss">strs</span><span class="p">:</span><span class="w"> </span><span class="no">Arrow</span><span class="o">::</span><span class="no">StringArray</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="o">[</span><span class="s2">&quot;a&quot;</span><span class="p">,</span><span class="w"> </span><span class="kp">nil</span><span class="o">]</span><span class="p">)</span>
+<span class="w">    </span><span class="p">)</span>
+
+<span class="w">    </span><span class="c1"># Ingest into database</span>
+<span class="w">    </span><span class="n">connection</span><span class="o">.</span><span class="n">ingest</span><span class="p">(</span><span class="s2">&quot;sample&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">table</span><span class="p">,</span><span class="w"> </span><span class="ss">mode</span><span class="p">:</span><span class="w"> </span><span class="ss">:create</span><span class="p">)</span>
+
+<span class="w">    </span><span class="c1"># Query the data</span>
+<span class="w">    </span><span class="n">result</span><span class="p">,</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(DISTINCT ints) FROM sample&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="nb">puts</span><span class="w"> </span><span class="n">result</span>
+<span class="w">  </span><span class="k">end</span>
+<span class="k">end</span>
+</pre></div>
+</div>
+<p>We can also append to an existing table:</p>
+<div class="highlight-ruby notranslate"><div class="highlight"><pre><span></span><span class="nb">require</span><span class="w"> </span><span class="s2">&quot;adbc&quot;</span>
+
+<span class="no">ADBC</span><span class="o">::</span><span class="no">Database</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="ss">driver</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sqlite&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="ss">uri</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;:memory:&quot;</span><span class="p">)</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">database</span><span class="o">|</span>
+<span class="w">  </span><span class="n">database</span><span class="o">.</span><span class="n">connect</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">connection</span><span class="o">|</span>
+<span class="w">    </span><span class="c1"># Create initial table</span>
+<span class="w">    </span><span class="n">table</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="no">Arrow</span><span class="o">::</span><span class="no">Table</span><span class="o">.</span><span class="n">new</span><span class="p">(</span>
+<span class="w">      </span><span class="ss">ints</span><span class="p">:</span><span class="w"> </span><span class="no">Arrow</span><span class="o">::</span><span class="no">Int64Array</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="o">[</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="o">]</span><span class="p">),</span>
+<span class="w">      </span><span class="ss">strs</span><span class="p">:</span><span class="w"> </span><span class="no">Arrow</span><span class="o">::</span><span class="no">StringArray</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="o">[</span><span class="s2">&quot;a&quot;</span><span class="p">,</span><span class="w"> </span><span class="kp">nil</span><span class="o">]</span><span class="p">)</span>
+<span class="w">    </span><span class="p">)</span>
+<span class="w">    </span><span class="n">connection</span><span class="o">.</span><span class="n">ingest</span><span class="p">(</span><span class="s2">&quot;sample&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">table</span><span class="p">,</span><span class="w"> </span><span class="ss">mode</span><span class="p">:</span><span class="w"> </span><span class="ss">:create</span><span class="p">)</span>
+
+<span class="w">    </span><span class="c1"># Append more data</span>
+<span class="w">    </span><span class="n">table2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="no">Arrow</span><span class="o">::</span><span class="no">Table</span><span class="o">.</span><span class="n">new</span><span class="p">(</span>
+<span class="w">      </span><span class="ss">ints</span><span class="p">:</span><span class="w"> </span><span class="no">Arrow</span><span class="o">::</span><span class="no">Int64Array</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="o">[</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="o">]</span><span class="p">),</span>
+<span class="w">      </span><span class="ss">strs</span><span class="p">:</span><span class="w"> </span><span class="no">Arrow</span><span class="o">::</span><span class="no">StringArray</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="o">[</span><span class="kp">nil</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;c&quot;</span><span class="o">]</span><span class="p">)</span>
+<span class="w">    </span><span class="p">)</span>
+<span class="w">    </span><span class="n">connection</span><span class="o">.</span><span class="n">ingest</span><span class="p">(</span><span class="s2">&quot;sample&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">table2</span><span class="p">,</span><span class="w"> </span><span class="ss">mode</span><span class="p">:</span><span class="w"> </span><span class="ss">:append</span><span class="p">)</span>
+
+<span class="w">    </span><span class="c1"># Query the combined data</span>
+<span class="w">    </span><span class="n">result</span><span class="p">,</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(DISTINCT ints) FROM sample&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="nb">puts</span><span class="w"> </span><span class="n">result</span>
+<span class="w">  </span><span class="k">end</span>
+<span class="k">end</span>
+</pre></div>
+</div>
+<p>The <code class="docutils literal notranslate"><span class="pre">mode</span></code> parameter can be:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">:create</span></code> - Create a new table (default)</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">:append</span></code> - Append to an existing table</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">:replace</span></code> - Replace an existing table</p></li>
+</ul>
+</section>
+<section id="getting-database-driver-metadata">
+<h2>Getting Database/Driver Metadata<a class="headerlink" href="#getting-database-driver-metadata" title="Link to this heading">¶</a></h2>
+<p>We can get information about the driver and the database:</p>
+<div class="highlight-ruby notranslate"><div class="highlight"><pre><span></span><span class="nb">require</span><span class="w"> </span><span class="s2">&quot;adbc&quot;</span>
+
+<span class="no">ADBC</span><span class="o">::</span><span class="no">Database</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="ss">driver</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sqlite&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="ss">uri</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;:memory:&quot;</span><span class="p">)</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">database</span><span class="o">|</span>
+<span class="w">  </span><span class="n">database</span><span class="o">.</span><span class="n">connect</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">connection</span><span class="o">|</span>
+<span class="w">    </span><span class="n">info</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">connection</span><span class="o">.</span><span class="n">info</span>
+<span class="w">    </span><span class="nb">puts</span><span class="w"> </span><span class="s2">&quot;Vendor: </span><span class="si">#{</span><span class="n">info</span><span class="o">[</span><span class="ss">:vendor_name</span><span class="o">]</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">puts</span><span class="w"> </span><span class="s2">&quot;Driver: </span><span class="si">#{</span><span class="n">info</span><span class="o">[</span><span class="ss">:driver_name</span><span class="o">]</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">  </span><span class="k">end</span>
+<span class="k">end</span>
+</pre></div>
+</div>
+<p>We can also query for tables and columns in the database. This gives
+a nested structure describing all the catalogs, schemas, tables, and
+columns:</p>
+<div class="highlight-ruby notranslate"><div class="highlight"><pre><span></span><span class="nb">require</span><span class="w"> </span><span class="s2">&quot;adbc&quot;</span>
+
+<span class="no">ADBC</span><span class="o">::</span><span class="no">Database</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="ss">driver</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sqlite&quot;</span><span class="p">,</span>
+<span class="w">                    </span><span class="ss">uri</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;:memory:&quot;</span><span class="p">)</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">database</span><span class="o">|</span>
+<span class="w">  </span><span class="n">database</span><span class="o">.</span><span class="n">connect</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">connection</span><span class="o">|</span>
+<span class="w">    </span><span class="c1"># Create a sample table first</span>
+<span class="w">    </span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;CREATE TEMPORARY TABLE sample (ints INTEGER, strs TEXT)&quot;</span><span class="p">)</span>
+
+<span class="w">    </span><span class="c1"># Get database objects</span>
+<span class="w">    </span><span class="n">objects</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">connection</span><span class="o">.</span><span class="n">get_objects</span><span class="p">(</span><span class="ss">depth</span><span class="p">:</span><span class="w"> </span><span class="ss">:all</span><span class="p">)</span>
+<span class="w">    </span><span class="n">catalog</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">objects</span><span class="o">.</span><span class="n">raw_records</span><span class="o">[</span><span class="mi">1</span><span class="o">]</span>
+<span class="w">    </span><span class="n">schema</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">catalog</span><span class="o">[</span><span class="mi">1</span><span class="o">][</span><span class="mi">0</span><span class="o">]</span>
+<span class="w">    </span><span class="n">tables</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">schema</span><span class="o">[</span><span class="s2">&quot;db_schema_tables&quot;</span><span class="o">]</span>
+
+<span class="w">    </span><span class="nb">puts</span><span class="w"> </span><span class="s2">&quot;Table: </span><span class="si">#{</span><span class="n">tables</span><span class="o">[</span><span class="mi">0</span><span class="o">][</span><span class="s2">&quot;table_name&quot;</span><span class="o">]</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="n">columns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">tables</span><span class="o">[</span><span class="mi">0</span><span class="o">][</span><span class="s2">&quot;table_columns&quot;</span><span class="o">]</span>
+<span class="w">    </span><span class="nb">puts</span><span class="w"> </span><span class="s2">&quot;Columns: </span><span class="si">#{</span><span class="n">columns</span><span class="o">.</span><span class="n">map</span><span class="w"> </span><span class="si">{</span><span class="w"> </span><span class="o">|</span><span class="n">c</span><span class="o">|</span><span class="w"> </span><span class="n">c</span><span class="o">[</span><span class="s2">&quot;column_name&quot;</span><span class="o">]</span><span class="w"> </span><span class="si">}</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">&quot;, &quot;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">  </span><span class="k">end</span>
 <span class="k">end</span>
 </pre></div>
 </div>
@@ -599,8 +656,10 @@ United States and other countries.
 <li><a class="reference internal" href="#installing-drivers">Installing Drivers</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#basic-example">Basic Example</a></li>
-<li><a class="reference internal" href="#working-with-results">Working with Results</a></li>
+<li><a class="reference internal" href="#creating-a-connection">Creating a Connection</a></li>
+<li><a class="reference internal" href="#executing-a-query">Executing a Query</a></li>
+<li><a class="reference internal" href="#ingesting-bulk-data">Ingesting Bulk Data</a></li>
+<li><a class="reference internal" href="#getting-database-driver-metadata">Getting Database/Driver Metadata</a></li>
 <li><a class="reference internal" href="#next-steps">Next Steps</a></li>
 </ul>
 </li>
