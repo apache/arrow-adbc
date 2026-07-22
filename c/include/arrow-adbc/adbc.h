@@ -1546,6 +1546,75 @@ struct ADBC_EXPORT AdbcDriver {
 /// \since ADBC API revision 1.2.0
 #define ADBC_DRIVER_1_2_0_SIZE (sizeof(struct AdbcDriver))
 
+/// \brief An option that can be set on a database.
+/// \see AdbcDriverGetOptionsList
+/// \since ADBC API revision 1.2.0
+#define ADBC_OPTION_LEVEL_DATABASE 1
+/// \brief An option that can be set on a connection.
+/// \see AdbcDriverGetOptionsList
+/// \since ADBC API revision 1.2.0
+#define ADBC_OPTION_LEVEL_CONNECTION 2
+/// \brief An option that can be set on a statement.
+/// \see AdbcDriverGetOptionsList
+/// \since ADBC API revision 1.2.0
+#define ADBC_OPTION_LEVEL_STATEMENT 4
+/// \brief An option that can be set on a database, connection, or statement.
+/// \see AdbcDriverGetOptionsList
+/// \since ADBC API revision 1.2.0
+#define ADBC_OPTION_LEVEL_ALL \
+  (ADBC_OPTION_LEVEL_DATABASE | ADBC_OPTION_CONNECTION | ADBC_OPTION_STATEMENT)
+
+/// \brief A string-valued option.
+/// \see AdbcDriverGetOptionsList
+/// \since ADBC API revision 1.2.0
+#define ADBC_OPTION_TYPE_STRING 1
+/// \brief A bytestring-valued option.
+/// \see AdbcDriverGetOptionsList
+/// \since ADBC API revision 1.2.0
+#define ADBC_OPTION_TYPE_BYTES 2
+/// \brief A float-valued option.
+/// \see AdbcDriverGetOptionsList
+/// \since ADBC API revision 1.2.0
+#define ADBC_OPTION_TYPE_DOUBLE 4
+/// \brief An integer-valued option.
+/// \see AdbcDriverGetOptionsList
+/// \since ADBC API revision 1.2.0
+#define ADBC_OPTION_TYPE_INT 8
+
+/// \brief Get a list of the options supported by the driver.
+///
+/// The result is an Arrow dataset with the following schema:
+///
+/// | Field Name               | Field Type              | Comments |
+/// |--------------------------|-------------------------| -------- |
+/// | option_name              | utf8 not null           |          |
+/// | option_level             | int8 not null           | (1)      |
+/// | option_type              | int8 not null           | (2)      |
+/// | option_values            | list<OPTION_VALUE>      |          |
+/// | default_value            | utf8                    |          |
+/// | required                 | bool not null           |          |
+/// | can_set_before           | bool not null           |          |
+/// | can_set_after            | bool not null           |          |
+/// | option_documentation     | utf8                    |          |
+///
+/// (1) A bitfield of ADBC_OPTION_LEVEL values.
+/// (2) A bitfield of ADBC_OPTION_TYPE values.
+///
+/// OPTION_VALUE is a Struct with fields:
+///
+/// | Field Name               | Field Type              |
+/// |--------------------------|-------------------------|
+/// | value                    | utf8 not null           |
+/// | documentation            | utf8                    |
+///
+/// \param[in] level Which ADBC type the option applies to.
+/// \param[out] out The result set.
+/// \param[out] error Error details, if an error occurs.
+/// \since ADBC API revision 1.2.0
+ADBC_EXPORT
+AdbcStatusCode AdbcDriverGetOptionsList(uint32_t level, struct ArrowArrayStream* out,
+                                        struct AdbcError* error);
+
 /// @}
 
 /// \addtogroup adbc-database
