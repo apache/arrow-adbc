@@ -51,19 +51,19 @@ driver in the table below is packaged this way.
      - Slug [#slug]_
      - Maintainer [#maintainer]_
      - Repo
-   * - `BigQuery <https://docs.adbc-drivers.org/drivers/bigquery/>`__
+   * - `BigQuery <https://adbc-drivers.org/drivers/bigquery/>`__
      - ``bigquery``
      - Foundry
      - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/bigquery|GitHub repository`
-   * - `ClickHouse <https://docs.adbc-drivers.org/drivers/clickhouse/>`__
+   * - `ClickHouse <https://adbc-drivers.org/drivers/clickhouse/>`__
      - ``clickhouse``
      - Vendor
      - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/clickhouse|GitHub repository`
-   * - `Databricks <https://docs.adbc-drivers.org/drivers/databricks/>`__
+   * - `Databricks <https://adbc-drivers.org/drivers/databricks/>`__
      - ``databricks``
      - Foundry
      - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/databricks|GitHub repository`
-   * - `Apache DataFusion <https://docs.adbc-drivers.org/drivers/datafusion/>`__
+   * - `Apache DataFusion <https://adbc-drivers.org/drivers/datafusion/>`__
      - ``datafusion``
      - Foundry
      - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/datafusion|GitHub repository`
@@ -71,7 +71,7 @@ driver in the table below is packaged this way.
      - ``duckdb``
      - Vendor
      - :iconlink:`fa-brands fa-github|https://github.com/duckdb/duckdb|GitHub repository`
-   * - `Exasol <https://docs.adbc-drivers.org/drivers/exasol/>`__
+   * - `Exasol <https://adbc-drivers.org/drivers/exasol/>`__
      - ``exasol``
      - Vendor
      - :iconlink:`fa-brands fa-github|https://github.com/exasol/adbc-driver-exasol|GitHub repository`
@@ -79,11 +79,11 @@ driver in the table below is packaged this way.
      - ``flightsql``
      - ASF
      - :iconlink:`fa-brands fa-github|https://github.com/apache/arrow-adbc/tree/main/go/adbc/driver/flightsql|GitHub repository`
-   * - `Microsoft SQL Server <https://docs.adbc-drivers.org/drivers/mssql/>`__
+   * - `Microsoft SQL Server <https://adbc-drivers.org/drivers/mssql/>`__
      - ``mssql``
      - Foundry
      - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/mssql|GitHub repository`
-   * - `MySQL/MariaDB <https://docs.adbc-drivers.org/drivers/mysql/>`__ [#compat-mysql]_
+   * - `MySQL/MariaDB <https://adbc-drivers.org/drivers/mysql/>`__ [#compat-mysql]_
      - ``mysql``
      - Foundry
      - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/mysql|GitHub repository`
@@ -91,23 +91,23 @@ driver in the table below is packaged this way.
      - ``postgresql``
      - ASF
      - :iconlink:`fa-brands fa-github|https://github.com/apache/arrow-adbc/tree/main/c/driver/postgresql|GitHub repository`
-   * - `DuckDB Quack <https://docs.adbc-drivers.org/drivers/quack/>`__
+   * - `DuckDB Quack <https://adbc-drivers.org/drivers/quack/>`__
      - ``quack``
      - Foundry
      - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/quack|GitHub repository`
-   * - `Amazon Redshift <https://docs.adbc-drivers.org/drivers/redshift/>`__
+   * - `Amazon Redshift <https://adbc-drivers.org/drivers/redshift/>`__
      - ``redshift``
      - Foundry
      - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/redshift|GitHub repository`
-   * - `SingleStore <https://docs.adbc-drivers.org/drivers/singlestore/>`__
+   * - `SingleStore <https://adbc-drivers.org/drivers/singlestore/>`__
      - ``singlestore``
      - Vendor
      - :iconlink:`fa-brands fa-github|https://github.com/singlestore-labs/singlestore-adbc-connector|GitHub repository`
-   * - `Snowflake <https://docs.adbc-drivers.org/drivers/snowflake/>`__
+   * - `Snowflake <https://adbc-drivers.org/drivers/snowflake/>`__
      - ``snowflake``
      - Foundry
      - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/snowflake|GitHub repository`
-   * - `Apache Spark <https://docs.adbc-drivers.org/drivers/spark/>`__
+   * - `Apache Spark <https://adbc-drivers.org/drivers/spark/>`__
      - ``spark``
      - Foundry
      - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/spark|GitHub repository`
@@ -115,7 +115,7 @@ driver in the table below is packaged this way.
      - ``sqlite``
      - ASF
      - :iconlink:`fa-brands fa-github|https://github.com/apache/arrow-adbc/tree/main/c/driver/sqlite|GitHub repository`
-   * - `Trino <https://docs.adbc-drivers.org/drivers/trino/>`__
+   * - `Trino <https://adbc-drivers.org/drivers/trino/>`__
      - ``trino``
      - Foundry
      - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/trino|GitHub repository`
