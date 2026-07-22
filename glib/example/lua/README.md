@@ -17,18 +17,30 @@
   under the License.
 -->
 
-# ADBC GLib example
+# ADBC GLib Lua example
 
-There are example codes in this directory.
+There are Lua example codes in this directory.
 
-C example codes exist in this directory. Language bindings example
-codes exists in sub directories:
+The Lua examples use [LGI](https://github.com/lgi-devs/lgi) (Lua
+GObject Introspection) to access the ADBC GLib bindings via
+GObject Introspection.
 
-  * `lua/`: Lua examples
-  * `vala/`: Vala examples
+## How to run
 
-## C example codes
+You need to install LGI and the ADBC GLib bindings. The GObject
+Introspection typelibs for ADBC GLib (`ADBC-1.0.typelib` and
+`ADBCArrow-1.0.typelib`) and Arrow GLib (`Arrow-*.typelib`) must be
+findable. If they aren't installed to a standard location, set
+`GI_TYPELIB_PATH`.
+
+Here is a command line to run an example in this directory:
+
+```console
+$ lua XXX.lua
+```
+
+## Lua example codes
 
 Here are example codes in this directory:
 
-  * `sqlite.c`: It shows how to connect to a SQLite database.
+  * `sqlite.lua`: It shows how to connect to a SQLite database.
