@@ -813,3 +813,113 @@ fn test_statement_get_parameter_schema() {
     let native_schema = native_statement.get_parameter_schema().unwrap();
     assert_eq!(exported_schema, native_schema);
 }
+
+// ErrorFromArrayStream (ADBC 1.1.0): when a result stream fails mid-iteration, a
+// consumer must be able to recover the full `AdbcError` (status, vendor code and
+// structured details), not just an errno plus a message string.
+//
+// We drive the exported C driver directly here because the Rust driver manager
+// imports streams via arrow's `ArrowArrayStreamReader`, which has no notion of
+// this ADBC-specific entry point and so cannot exercise it.
+#[test]
+fn test_error_from_array_stream() {
+    use std::ffi::{CStr, CString};
+    use std::ptr::null_mut;
+
+    use adbc_core::constants;
+    use adbc_core::error::{AdbcStatusCode, Status};
+    use adbc_ffi::{
+        FFIDriver, FFI_AdbcConnection, FFI_AdbcDatabase, FFI_AdbcError, FFI_AdbcStatement,
+    };
+    use arrow_array::ffi::FFI_ArrowArray;
+    use arrow_array::ffi_stream::FFI_ArrowArrayStream;
+
+    use adbc_dummy::{stream_error, STREAM_ERROR_QUERY};
+
+    let driver = DummyDriver::ffi_driver();
+
+    unsafe {
+        let mut error = FFI_AdbcError::default();
+
+        let mut database = FFI_AdbcDatabase::default();
+        assert_eq!(
+            (driver.DatabaseNew.unwrap())(&mut database, &mut error),
+            constants::ADBC_STATUS_OK
+        );
+        assert_eq!(
+            (driver.DatabaseInit.unwrap())(&mut database, &mut error),
+            constants::ADBC_STATUS_OK
+        );
+
+        let mut connection = FFI_AdbcConnection::default();
+        assert_eq!(
+            (driver.ConnectionNew.unwrap())(&mut connection, &mut error),
+            constants::ADBC_STATUS_OK
+        );
+        assert_eq!(
+            (driver.ConnectionInit.unwrap())(&mut connection, &mut database, &mut error),
+            constants::ADBC_STATUS_OK
+        );
+
+        let mut statement = FFI_AdbcStatement::default();
+        assert_eq!(
+            (driver.StatementNew.unwrap())(&mut connection, &mut statement, &mut error),
+            constants::ADBC_STATUS_OK
+        );
+
+        let query = CString::new(STREAM_ERROR_QUERY).unwrap();
+        assert_eq!(
+            (driver.StatementSetSqlQuery.unwrap())(&mut statement, query.as_ptr(), &mut error),
+            constants::ADBC_STATUS_OK
+        );
+
+        // Execute to obtain the result stream.
+        let mut stream = FFI_ArrowArrayStream::empty();
+        assert_eq!(
+            (driver.StatementExecuteQuery.unwrap())(
+                &mut statement,
+                &mut stream,
+                null_mut(),
+                &mut error,
+            ),
+            constants::ADBC_STATUS_OK
+        );
+
+        // Iterating the stream fails on the first batch.
+        let mut array = FFI_ArrowArray::empty();
+        let rc = (stream.get_next.unwrap())(&mut stream, &mut array);
+        assert_ne!(rc, 0, "the stream was expected to fail");
+
+        // Recover the full error via ErrorFromArrayStream.
+        let mut status: AdbcStatusCode = constants::ADBC_STATUS_OK;
+        let error_ptr = (driver.ErrorFromArrayStream.unwrap())(&mut stream, &mut status);
+        assert!(!error_ptr.is_null(), "expected a recovered error");
+
+        let expected = stream_error();
+        assert_eq!(status, AdbcStatusCode::from(Status::IO));
+        assert_eq!(
+            CStr::from_ptr((*error_ptr).message).to_str().unwrap(),
+            expected.message
+        );
+        assert_eq!((*error_ptr).vendor_code, expected.vendor_code);
+        assert_eq!((*error_ptr).sqlstate, expected.sqlstate);
+
+        // Structured details survive too, retrievable via ErrorGetDetail*.
+        assert_eq!((driver.ErrorGetDetailCount.unwrap())(error_ptr), 1);
+        let detail = (driver.ErrorGetDetail.unwrap())(error_ptr, 0);
+        assert_eq!(CStr::from_ptr(detail.key).to_str().unwrap(), "detail-key");
+        assert_eq!(
+            std::slice::from_raw_parts(detail.value, detail.value_length),
+            b"detail-value"
+        );
+
+        // Cleanup. Releasing the stream frees the recovered error; the other
+        // handles are released via the driver.
+        if let Some(release) = stream.release {
+            release(&mut stream);
+        }
+        (driver.StatementRelease.unwrap())(&mut statement, &mut error);
+        (driver.ConnectionRelease.unwrap())(&mut connection, &mut error);
+        (driver.DatabaseRelease.unwrap())(&mut database, &mut error);
+    }
+}

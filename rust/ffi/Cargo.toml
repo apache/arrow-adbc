@@ -37,6 +37,7 @@ default = []
 adbc_core.workspace = true
 arrow-array.workspace = true
 arrow-schema.workspace = true
+libc.workspace = true
 
 [package.metadata.docs.rs]
 all-features = true

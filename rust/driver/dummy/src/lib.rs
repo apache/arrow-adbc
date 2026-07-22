@@ -69,6 +69,63 @@ impl RecordBatchReader for SingleBatchReader {
     }
 }
 
+/// SQL query that makes [`DummyStatement::execute`] return a stream which fails on
+/// the first call to `next`, carrying the rich [`Error`] from [`stream_error`].
+///
+/// Used to exercise the driver exporter's `ErrorFromArrayStream` implementation.
+pub const STREAM_ERROR_QUERY: &str = "TRIGGER_STREAM_ERROR";
+
+/// The [`Error`] emitted by the stream produced for [`STREAM_ERROR_QUERY`].
+pub fn stream_error() -> Error {
+    Error {
+        message: "the stream failed midway".into(),
+        status: Status::IO,
+        vendor_code: 42,
+        sqlstate: [
+            b'0' as std::os::raw::c_char,
+            b'8' as std::os::raw::c_char,
+            b'0' as std::os::raw::c_char,
+            b'0' as std::os::raw::c_char,
+            b'6' as std::os::raw::c_char,
+        ],
+        details: Some(vec![("detail-key".into(), b"detail-value".to_vec())]),
+    }
+}
+
+/// A [`RecordBatchReader`] whose first `next` yields the [`Error`] from
+/// [`stream_error`], wrapped as [`ArrowError::ExternalError`] exactly as a real
+/// driver would surface a mid-stream failure.
+#[derive(Debug)]
+pub struct FailingReader {
+    schema: SchemaRef,
+    error: Option<Error>,
+}
+
+impl FailingReader {
+    fn new() -> Self {
+        Self {
+            schema: Arc::new(get_table_schema()),
+            error: Some(stream_error()),
+        }
+    }
+}
+
+impl Iterator for FailingReader {
+    type Item = std::result::Result<RecordBatch, ArrowError>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.error
+            .take()
+            .map(|error| Err(ArrowError::ExternalError(Box::new(error))))
+    }
+}
+
+impl RecordBatchReader for FailingReader {
+    fn schema(&self) -> SchemaRef {
+        self.schema.clone()
+    }
+}
+
 fn get_table_schema() -> Schema {
     Schema::new(vec![
         Field::new("a", DataType::UInt32, true),
@@ -833,6 +890,7 @@ impl Connection for DummyConnection {
 #[derive(Default)]
 pub struct DummyStatement {
     options: HashMap<OptionStatement, OptionValue>,
+    query: Option<String>,
 }
 
 impl Optionable for DummyStatement {
@@ -874,6 +932,9 @@ impl Statement for DummyStatement {
 
     fn execute(&mut self) -> Result<Box<dyn RecordBatchReader + Send + 'static>> {
         maybe_panic("StatementExecuteQuery");
+        if self.query.as_deref() == Some(STREAM_ERROR_QUERY) {
+            return Ok(Box::new(FailingReader::new()));
+        }
         let batch = get_table_data();
         let reader = SingleBatchReader::new(batch);
         Ok(Box::new(reader))
@@ -903,7 +964,8 @@ impl Statement for DummyStatement {
         Ok(())
     }
 
-    fn set_sql_query(&mut self, _query: impl AsRef<str>) -> Result<()> {
+    fn set_sql_query(&mut self, query: impl AsRef<str>) -> Result<()> {
+        self.query = Some(query.as_ref().to_string());
         Ok(())
     }
 
