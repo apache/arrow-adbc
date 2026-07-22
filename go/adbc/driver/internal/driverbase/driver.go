@@ -22,6 +22,7 @@ package driverbase
 
 import (
 	"context"
+	"fmt"
 	"runtime/debug"
 	"strings"
 
@@ -36,12 +37,10 @@ var (
 
 func init() {
 	if info, ok := debug.ReadBuildInfo(); ok {
+		infoDriverVersion = buildDriverVersion(info)
 		for _, s := range info.Settings {
-			switch s.Key {
-			case "vcs.modified":
-				if s.Value == "true" {
-					infoDriverVersion += "-dev"
-				}
+			if s.Key == "vcs.modified" && s.Value == "true" && infoDriverVersion == "" {
+				infoDriverVersion = UnknownVersion
 			}
 		}
 		for _, dep := range info.Deps {
@@ -52,6 +51,51 @@ func init() {
 			}
 		}
 	}
+}
+
+func buildDriverVersion(info *debug.BuildInfo) string {
+	if info == nil {
+		return ""
+	}
+
+	version := strings.TrimSpace(info.Main.Version)
+	if version == "" || version == "(devel)" {
+		version = ""
+	}
+
+	var revision string
+	var modified bool
+	for _, s := range info.Settings {
+		switch s.Key {
+		case "vcs.revision":
+			revision = shortRevision(s.Value)
+		case "vcs.modified":
+			modified = s.Value == "true"
+		}
+	}
+
+	switch {
+	case version != "" && revision != "":
+		version = fmt.Sprintf("%s+%s", version, revision)
+	case version == "" && revision != "":
+		version = revision
+	case version == "":
+		return ""
+	}
+
+	if modified {
+		version += "-dev"
+	}
+
+	return version
+}
+
+func shortRevision(revision string) string {
+	revision = strings.TrimSpace(revision)
+	if len(revision) > 12 {
+		return revision[:12]
+	}
+	return revision
 }
 
 // DriverImpl is an interface that drivers implement to provide
