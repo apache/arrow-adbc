@@ -1268,6 +1268,10 @@ AdbcStatusCode AdbcMultiResultSetRelease(struct AdbcMultiResultSet* result_set,
 /// has been reached; it should simply continue to return ADBC_STATUS_OK with a
 /// NULL release callback.
 ///
+/// Drivers may annotate the result schema columns with the underlying
+/// system's name for the data type by adding field metadata. See
+/// AdbcConnectionGetTableSchema.
+///
 /// \param[in] result_set The result set struct to fetch the next result from.
 /// \param[out] out The result stream to populate
 /// \param[out] rows_affected The number of rows affected if known, else -
@@ -1296,6 +1300,10 @@ AdbcStatusCode AdbcMultiResultSetNext(struct AdbcMultiResultSet* result_set,
 /// It is not an error to repeatedly call `MultiResultSetNextPartitions` after the last
 /// result set has been reached; it should simply continue to return ADBC_STATUS_OK with
 /// a NULL release callback.
+///
+/// Drivers may annotate the result schema columns with the underlying
+/// system's name for the data type by adding field metadata. See
+/// AdbcConnectionGetTableSchema.
 ///
 /// \param[in] result_set The result set struct to fetch the next result from.
 /// \param[out] schema The schema of the result set to populate
@@ -2333,6 +2341,10 @@ AdbcStatusCode AdbcConnectionGetStatisticNames(struct AdbcConnection* connection
 
 /// \brief Get the Arrow schema of a table.
 ///
+/// Drivers may annotate the result schema columns with the underlying
+/// system's name for the data type by adding field metadata. The name of the
+/// metadata key should be `<VENDOR>:type` (e.g. `POSTGRESQL:type`).
+///
 /// \param[in] connection The database connection.
 /// \param[in] catalog The catalog (or nullptr if not applicable).
 /// \param[in] db_schema The database schema (or nullptr if not applicable).
@@ -2461,6 +2473,10 @@ AdbcStatusCode AdbcStatementRelease(struct AdbcStatement* statement,
 /// Since ADBC 1.1.0: releasing the returned ArrowArrayStream without
 /// consuming it fully is equivalent to calling AdbcStatementCancel.
 ///
+/// Drivers may annotate the result schema columns with the underlying
+/// system's name for the data type by adding field metadata. See
+/// AdbcConnectionGetTableSchema.
+///
 /// \param[in] statement The statement to execute.
 /// \param[out] out The results. Pass NULL if the client does not
 ///   expect a result set.
@@ -2492,6 +2508,10 @@ AdbcStatusCode AdbcStatementExecuteQuery(struct AdbcStatement* statement,
 /// `get_next` should return EOS immediately).  This allows clients to inspect the schemas
 /// of all result sets before consuming any data, which can be useful for certain
 /// applications such as query planning or UI display of results.
+///
+/// Drivers may annotate the result schema columns with the underlying
+/// system's name for the data type by adding field metadata. See
+/// AdbcConnectionGetTableSchema.
 ///
 /// \param[in] statement The statement to execute.
 /// \param[out] results The result set struct to populate with the schemas of the result
@@ -2546,6 +2566,10 @@ AdbcStatusCode AdbcStatementExecuteMulti(struct AdbcStatement* statement,
 ///
 /// Depending on the driver, this may require first executing
 /// AdbcStatementPrepare.
+///
+/// Drivers may annotate the result schema columns with the underlying
+/// system's name for the data type by adding field metadata. See
+/// AdbcConnectionGetTableSchema.
 ///
 /// \since ADBC API revision 1.1.0
 ///
@@ -2906,6 +2930,10 @@ AdbcStatusCode AdbcStatementSetOptionDouble(struct AdbcStatement* statement,
 
 /// \brief Execute a statement and get the results as a partitioned
 ///   result set.
+///
+/// Drivers may annotate the result schema columns with the underlying
+/// system's name for the data type by adding field metadata. See
+/// AdbcConnectionGetTableSchema.
 ///
 /// \param[in] statement The statement to execute.
 /// \param[out] schema The schema of the result set.
