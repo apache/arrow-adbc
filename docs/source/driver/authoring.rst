@@ -28,7 +28,7 @@ building and shipping them. You can develop your driver entirely within the
 Foundry, or keep it in your own repository and use the Foundry only for
 distribution and other shared infrastructure.
 
-.. button-link:: https://docs.adbc-drivers.org/building-drivers/
+.. button-link:: https://adbc-drivers.org/building-drivers/
    :color: primary
 
    Building Drivers guide (ADBC Driver Foundry) :octicon:`link-external`

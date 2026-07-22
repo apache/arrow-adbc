@@ -187,11 +187,11 @@ More Resources
 
          Contributing :octicon:`cross-reference`
 
-      .. button-link:: https://docs.adbc-drivers.org
+      .. button-link:: https://adbc-drivers.org
          :color: secondary
          :expand:
 
-         Driver Foundry Docs :octicon:`cross-reference`
+         Driver Foundry :octicon:`cross-reference`
 
 .. toctree::
    :maxdepth: 1
