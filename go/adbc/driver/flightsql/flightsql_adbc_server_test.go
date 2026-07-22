@@ -1928,7 +1928,7 @@ var (
 	SchemaListInt3     = arrow.NewSchema([]arrow.Field{{Name: "a", Type: arrow.FixedSizeListOf(3, arrow.PrimitiveTypes.Int32), Nullable: true}}, nil)
 	SchemaListInt      = arrow.NewSchema([]arrow.Field{{Name: "a", Type: arrow.ListOf(arrow.PrimitiveTypes.Int32), Nullable: true}}, nil)
 	SchemaLargeListInt = arrow.NewSchema([]arrow.Field{{Name: "a", Type: arrow.LargeListOf(arrow.PrimitiveTypes.Int32), Nullable: true}}, nil)
-	SchemaMapIntInt    = arrow.NewSchema([]arrow.Field{{Name: "a", Type: arrow.MapOf(arrow.PrimitiveTypes.Int32, arrow.PrimitiveTypes.Int32), Nullable: true}}, nil)
+	SchemaMapIntInt    = arrow.NewSchema([]arrow.Field{{Name: "a", Type: arrow.MapOfFields(arrow.Field{Name: "key", Type: arrow.PrimitiveTypes.Int32}, arrow.Field{Name: "value", Type: arrow.PrimitiveTypes.Int32, Nullable: true}), Nullable: true}}, nil)
 )
 
 func (server *DataTypeTestServer) DoGetStatement(ctx context.Context, tkt flightsql.StatementQueryTicket) (*arrow.Schema, <-chan flight.StreamChunk, error) {
@@ -1984,8 +1984,10 @@ func (suite *DataTypeTests) DoTestCase(name string, schema *arrow.Schema) {
 	suite.NoError(stmt.SetSqlQuery(name))
 	reader, _, err := stmt.ExecuteQuery(context.Background())
 	suite.NoError(err)
-	suite.Equal(reader.Schema(), schema)
 	defer reader.Release()
+	suite.Equal(reader.Schema(), schema)
+	for reader.Next() {
+	}
 }
 
 func (suite *DataTypeTests) TestListInt3() {
