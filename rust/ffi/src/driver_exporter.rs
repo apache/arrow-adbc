@@ -1163,9 +1163,8 @@ extern "C" fn connection_get_info<DriverType: Driver + 'static>(
             None
         } else {
             let info_codes = unsafe { std::slice::from_raw_parts(info_codes, info_codes_length) };
-            let info_codes: Result<HashSet<InfoCode>> =
-                info_codes.iter().map(|c| InfoCode::try_from(*c)).collect();
-            let info_codes = check_err!(info_codes, error);
+            let info_codes: HashSet<InfoCode> =
+                info_codes.iter().map(|c| InfoCode::from(*c)).collect();
             Some(info_codes)
         };
 

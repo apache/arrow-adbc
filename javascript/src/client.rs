@@ -304,7 +304,7 @@ impl AdbcConnectionCore {
       .map_err(|e| ClientError::Other(e.to_string()))?;
     let codes: Option<HashSet<InfoCode>> = info_codes.map(|v| {
       v.into_iter()
-        .filter_map(|code| InfoCode::try_from(code).ok())
+        .map(InfoCode::from)
         .collect::<HashSet<InfoCode>>()
     });
     let reader = conn.get_info(codes)?;
