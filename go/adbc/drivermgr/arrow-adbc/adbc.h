@@ -2152,6 +2152,17 @@ AdbcStatusCode AdbcConnectionGetObjects(struct AdbcConnection* connection, int d
 /// NULL and blank string) that defines the available collections. See
 /// ADBC_METADATA_COLLECTION_META.
 ///
+/// Drivers may add more fields at the end of standard schemas to reflect
+/// vendor-specific metadata. Applications must access these using an offset
+/// from the end of the schema and cannot assume that the index of the field
+/// will remain stable.  Drivers must add the fields at the end should prefix
+/// field names with the vendor/driver name to differentiate them
+/// (e.g. 'POSTGRESQL:owner').
+///
+/// Similarly, future standard revisions may add more fields to existing
+/// standard schemas. Applications must not assume the number of fields is
+/// fixed.
+///
 /// This AdbcConnection must outlive the returned ArrowArrayStream.
 ///
 /// \param[in] connection The database connection.
@@ -2190,6 +2201,9 @@ AdbcStatusCode AdbcConnectionGetMetadataCollection(
 /// | Field Name               | Field Type                   | Comments |
 /// |--------------------------|------------------------------|----------|
 /// | catalog_name             | utf8                         |          |
+/// | catalog_remarks          | utf8                         | (1)      |
+///
+/// (1) A description of the catalog.
 ///
 /// Filters:
 /// 1. The catalog name to filter by.  May be a search pattern.
@@ -2206,9 +2220,12 @@ AdbcStatusCode AdbcConnectionGetMetadataCollection(
 /// |--------------------------|------------------------------|----------|
 /// | catalog_name             | utf8                         | (R)      |
 /// | db_schema_name           | utf8                         |          |
+/// | db_schema_remarks        | utf8                         | (1)      |
 ///
 /// (R) This field is run-length encoded by default; it can be disabled via
-/// ADBC_CONNECTION_OPTION_METADATA_COLLECTION_RLE.
+///     ADBC_CONNECTION_OPTION_METADATA_COLLECTION_RLE.
+///
+/// (1) A description of the schema.
 ///
 /// Filters:
 /// 1. The catalog name to filter by.  May be a search pattern.
@@ -2224,9 +2241,17 @@ AdbcStatusCode AdbcConnectionGetMetadataCollection(
 /// | db_schema_name           | utf8                         | (R)      |
 /// | table_name               | utf8 not null                |          |
 /// | table_type               | utf8 not null                |          |
+/// | table_definition         | utf8                         | (1)      |
+/// | table_remarks            | utf8                         | (2)      |
+/// | table_schema             | extension<arrow.schema_json> | (3)      |
 ///
 /// (R) This field is run-length encoded by default; it can be disabled via
-/// ADBC_CONNECTION_OPTION_METADATA_COLLECTION_RLE.
+///     ADBC_CONNECTION_OPTION_METADATA_COLLECTION_RLE.
+///
+/// (1) The table or view definition (e.g. the SQL DDL statement).
+/// (2) A description of the table.
+/// (3) The Arrow schema of the table, equivalent to
+///     AdbcConnectionGetTableSchema.
 ///
 /// Filters:
 /// 1. The catalog name to filter by.  May be a search pattern.
@@ -2262,9 +2287,10 @@ AdbcStatusCode AdbcConnectionGetMetadataCollection(
 /// | xdbc_scope_table         | utf8                         | (3)      |
 /// | xdbc_is_autoincrement    | bool                         | (3)      |
 /// | xdbc_is_generatedcolumn  | bool                         | (3)      |
+/// | xdbc_source_data_type    | bool                         | (3)      |
 ///
 /// (R) This field is run-length encoded by default; it can be disabled via
-/// ADBC_CONNECTION_OPTION_METADATA_COLLECTION_RLE.
+///     ADBC_CONNECTION_OPTION_METADATA_COLLECTION_RLE.
 ///
 /// 1. The column's ordinal position in the table (starting from 1).
 /// 2. Database-specific description of the column.
@@ -2421,7 +2447,7 @@ AdbcStatusCode AdbcConnectionGetMetadataCollection(
 /// | constraint_match_type    | int16                   | (7)      |
 ///
 /// (R) This field is run-length encoded by default; it can be disabled via
-/// ADBC_CONNECTION_OPTION_METADATA_COLLECTION_RLE.
+///     ADBC_CONNECTION_OPTION_METADATA_COLLECTION_RLE.
 ///
 /// 1. One of 'CHECK', 'FOREIGN KEY', 'PRIMARY KEY', or 'UNIQUE', or a
 ///    vendor-specific type.
