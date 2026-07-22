@@ -23,7 +23,7 @@
     "children": [
         {
             "name": "value",
-            "format": "tts",
+            "format": "ttu",
             "flags": ["nullable"]
         }
     ]
@@ -33,7 +33,7 @@
 
 {"value": null}
 {"value": 0}
-{"value": 0}
-{"value": 3723}
-{"value": 86399}
-{"value": 86400}
+{"value": 1}
+{"value": 3723123456}
+{"value": 86399999999}
+{"value": 86400000000}
