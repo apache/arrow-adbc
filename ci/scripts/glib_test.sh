@@ -40,7 +40,7 @@ test_subproject() {
     echo "Testing GLib"
 
     if [[ "$(uname)" = "Darwin" ]]; then
-        bundle config build.red-arrow -- \
+        bundle config get build.red-arrow -- \
                --with-cflags=-D_LIBCPP_DISABLE_AVAILABILITY \
                --with-cppflags=-D_LIBCPP_DISABLE_AVAILABILITY
     fi
