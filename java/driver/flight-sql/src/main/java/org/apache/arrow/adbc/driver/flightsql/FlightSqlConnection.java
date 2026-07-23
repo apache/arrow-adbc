@@ -329,21 +329,15 @@ public class FlightSqlConnection implements AdbcConnection {
   @Override
   public void close() throws AdbcException {
     try {
+      // Best-effort: the Go driver also ignores all errors closing the session.
       client.closeSession(new CloseSessionRequest(), callOptions);
     } catch (FlightRuntimeException e) {
-      if (e.status().code() != FlightStatusCode.UNIMPLEMENTED) {
-        throw FlightSqlDriverUtil.fromFlightException(e);
-      }
-    } finally {
-      try {
-        clientCache.invalidateAll();
-      } finally {
-        try {
-          AutoCloseables.close(client, allocator);
-        } catch (Exception e) {
-          throw AdbcException.internal("[Flight SQL] Failed to close connection").withCause(e);
-        }
-      }
+      // ignore
+    }
+    try {
+      AutoCloseables.close(clientCache::invalidateAll, client, allocator);
+    } catch (Exception e) {
+      throw AdbcException.internal("[Flight SQL] Failed to close connection").withCause(e);
     }
   }
 
@@ -356,7 +350,9 @@ public class FlightSqlConnection implements AdbcConnection {
     try {
       return client.getSessionOptions(new GetSessionOptionsRequest()).getSessionOptions();
     } catch (FlightRuntimeException e) {
-      if (e.status().code() == FlightStatusCode.UNIMPLEMENTED) {
+      // Go also treats INVALID_ARGUMENT as "server doesn't support sessions" here.
+      if (e.status().code() == FlightStatusCode.UNIMPLEMENTED
+          || e.status().code() == FlightStatusCode.INVALID_ARGUMENT) {
         return Collections.emptyMap();
       }
       throw FlightSqlDriverUtil.fromFlightException(e);
