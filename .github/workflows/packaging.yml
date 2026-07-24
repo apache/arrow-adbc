@@ -284,6 +284,7 @@ jobs:
         working-directory: adbc
         env:
           ADBC_BUILD_STATIC: ON
+          ADBC_BUILD_SHARED: OFF
           ADBC_BUILD_TESTS: OFF
           ADBC_USE_ASAN: OFF
           ADBC_USE_UBSAN: OFF
