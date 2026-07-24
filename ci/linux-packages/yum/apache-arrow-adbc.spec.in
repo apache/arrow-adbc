@@ -321,6 +321,9 @@ Documentation for Apache Arrow GLib integration.
 %{_docdir}/adbc-arrow-glib/
 
 %changelog
+* Fri Jul 24 2026 David Li <li.davidm96@gmail.com> - 24-1
+- New upstream release.
+
 * Tue Apr 28 2026 Bryce Mecum <brycemecum@gmail.com> - 0.12.0-1
 - Remove Snowflake driver. Source and packages migrated to https://github.com/adbc-drivers/snowflake.
 * Thu Apr 27 2023 Matt Topol <matt@voltrondata.com> - 0.4.0-1
