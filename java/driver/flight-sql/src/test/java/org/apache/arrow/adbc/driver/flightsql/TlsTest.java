@@ -170,10 +170,37 @@ public class TlsTest {
     }
   }
 
+  @Test
+  public void testClientFlightSqlSchemeDefaultTls() throws Exception {
+    params.put(AdbcDriver.PARAM_URI.getKey(), getFlightSqlUri(null));
+    params.put(FlightSqlConnectionProperties.TLS_SKIP_VERIFY.getKey(), true);
+    try (AdbcDatabase db =
+            AdbcDriverManager.getInstance()
+                .connect(FlightSqlDriverFactory.class.getCanonicalName(), allocator, params);
+        AdbcConnection conn = db.connect()) {}
+  }
+
+  @Test
+  public void testClientFlightSqlSchemeExplicitTlsTransport() throws Exception {
+    params.put(AdbcDriver.PARAM_URI.getKey(), getFlightSqlUri("tls"));
+    params.put(FlightSqlConnectionProperties.TLS_SKIP_VERIFY.getKey(), true);
+    try (AdbcDatabase db =
+            AdbcDriverManager.getInstance()
+                .connect(FlightSqlDriverFactory.class.getCanonicalName(), allocator, params);
+        AdbcConnection conn = db.connect()) {}
+  }
+
   private String getUri(boolean withTls) {
     String protocol = String.format("grpc%s", withTls ? "+tls" : "+tcp");
     return String.format(
         "%s://%s:%d",
         protocol, FLIGHT_SERVER_TEST_EXTENSION.getHost(), FLIGHT_SERVER_TEST_EXTENSION.getPort());
+  }
+
+  private String getFlightSqlUri(String transport) {
+    String query = transport == null ? "" : "?transport=" + transport;
+    return String.format(
+        "flightsql://%s:%d%s",
+        FLIGHT_SERVER_TEST_EXTENSION.getHost(), FLIGHT_SERVER_TEST_EXTENSION.getPort(), query);
   }
 }
