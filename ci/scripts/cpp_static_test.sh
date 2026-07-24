@@ -29,21 +29,6 @@ main() {
 
     mkdir -p "${build_dir}"
 
-    echo "Install fmt"
-    if [ ! -d "${build_dir}/fmt" ]; then
-        git clone https://github.com/fmtlib/fmt.git --branch 11.1.4 --depth 1 "${build_dir}/fmt"
-    fi
-    mkdir -p "${build_dir}/fmt/build"
-    pushd "${build_dir}/fmt/build"
-    cmake "${build_dir}/fmt" \
-          -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_INSTALL_PREFIX="${install_dir}" \
-          -DCMAKE_POSITION_INDEPENDENT_CODE=TRUE \
-          -DFMT_DOC=OFF \
-          -DFMT_TEST=OFF
-    cmake --build "${build_dir}/fmt/build" --target install -j
-    popd
-
     echo "Install nanoarrow"
     if [ ! -d "${build_dir}/nanoarrow" ]; then
         git clone https://github.com/apache/arrow-nanoarrow.git --depth 1 "${build_dir}/nanoarrow"
@@ -66,7 +51,7 @@ main() {
         ADBC_BUILD_TESTS=OFF \
         ADBC_USE_ASAN=OFF \
         ADBC_USE_UBSAN=OFF \
-        ADBC_CMAKE_ARGS="-DADBC_WITH_VENDORED_FMT=OFF -DADBC_WITH_VENDORED_NANOARROW=OFF -DADBC_DEFINE_COMMON_ENTRYPOINTS=OFF" \
+        ADBC_CMAKE_ARGS="-DADBC_WITH_VENDORED_NANOARROW=OFF -DADBC_DEFINE_COMMON_ENTRYPOINTS=OFF" \
         "${source_dir}/ci/scripts/cpp_build.sh" \
         "${source_dir}" \
         "${build_dir}/install" \

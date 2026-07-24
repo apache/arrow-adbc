@@ -6,12 +6,10 @@
 .codespell-ignore
 c/driver/postgresql/testdata/numeric_roundtrip_fixtures.csv
 c/driver/postgresql/validation/queries/**/*.sql
-c/subprojects/fmt.wrap
 c/subprojects/gtest.wrap
 c/subprojects/nanoarrow.wrap
 c/subprojects/sqlite3.wrap
 c/vendor/backward/*
-c/vendor/fmt/*
 c/vendor/sqlite3/sqlite3.c
 c/vendor/sqlite3/sqlite3.h
 c/vendor/portable-snippets/include/portable-snippets/safe-math.h

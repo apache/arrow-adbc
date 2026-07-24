@@ -34,7 +34,6 @@ find_package(AdbcDriverSQLite REQUIRED)
 if(NOT TARGET SQLite3::SQLite3)
   add_library(SQLite3::SQLite3 ALIAS SQLite::SQLite3)
 endif()
-find_package(fmt REQUIRED)
 find_package(nanoarrow REQUIRED)
 
 add_executable(static_test main.c)
@@ -47,7 +46,6 @@ target_link_libraries(static_test
                               AdbcDriverSQLite::adbc_driver_sqlite_static
                               PostgreSQL::PostgreSQL
                               SQLite3::SQLite3
-                              fmt::fmt
                               nanoarrow::nanoarrow
                               AdbcDriverCommon::adbc_driver_common
                               AdbcDriverFramework::adbc_driver_framework)

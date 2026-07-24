@@ -18,7 +18,11 @@
 ARG FROM=almalinux:9
 FROM ${FROM}
 
-ENV IMAGE_VERSION=2026-01-27
+ENV IMAGE_VERSION=2026-07-13
+
+# The system GCC is too old for C++20 <format>: it needs GCC 13 or later.
+# yum/build.sh wraps the build in "scl enable ${SCL}" when SCL is set.
+ENV SCL=gcc-toolset-14
 
 ARG DEBUG
 
@@ -31,6 +35,8 @@ RUN \
     ccache \
     cmake \
     gcc-c++ \
+    gcc-toolset-14-annobin-plugin-gcc \
+    gcc-toolset-14-gcc-c++ \
     gobject-introspection-devel \
     libpq-devel \
     make \
@@ -42,6 +48,7 @@ RUN \
     sqlite-devel \
     tar \
     wget \
+    which \
     vala && \
   dnf clean ${quiet} all
 

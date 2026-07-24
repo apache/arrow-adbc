@@ -42,7 +42,14 @@ Source0:	https://www.apache.org/dyn/closer.lua?action=download&path=/arrow/arrow
 
 BuildRequires:	arrow-glib-devel
 BuildRequires:	cmake
+%if %{rhel} >= 10
 BuildRequires:	gcc-c++
+%else
+# The system GCC is too old for C++20 <format>: it needs GCC 13 or later.
+# The build is wrapped in "scl enable gcc-toolset-14" (SCL in the Dockerfile).
+BuildRequires:	gcc-toolset-14-annobin-plugin-gcc
+BuildRequires:	gcc-toolset-14-gcc-c++
+%endif
 BuildRequires:	gobject-introspection-devel
 BuildRequires:	libpq-devel
 BuildRequires:	ninja-build

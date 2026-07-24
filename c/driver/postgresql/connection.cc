@@ -37,8 +37,8 @@
 #include <vector>
 
 #include <arrow-adbc/adbc.h>
-#include <fmt/format.h>
 #include <libpq-fe.h>
+#include <format>
 
 #include "database.h"
 #include "driver/common/utils.h"
@@ -1231,7 +1231,7 @@ AdbcStatusCode PostgresConnection::SetOption(const char* key, const char* value,
                            PQerrorMessage(conn_));
       return ADBC_STATUS_INTERNAL;
     }
-    std::string query = fmt::format("SET search_path TO {}", value_esc);
+    std::string query = std::format("SET search_path TO {}", value_esc);
     PQfreemem(value_esc);
 
     PqResultHelper result_helper{conn_, query};
@@ -1259,7 +1259,7 @@ AdbcStatusCode PostgresConnection::SetOption(const char* key, const char* value,
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
 
-    std::string query = fmt::format(
+    std::string query = std::format(
         "SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL {}", pg_level);
     PqResultHelper result_helper{conn_, query};
     RAISE_STATUS(error, result_helper.Execute());

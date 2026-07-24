@@ -22,13 +22,13 @@ adbc_configure_target(adbc_driver_framework)
 set_target_properties(adbc_driver_framework PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(adbc_driver_framework PRIVATE "${REPOSITORY_ROOT}/c/"
                                                          "${REPOSITORY_ROOT}/c/include")
-target_link_libraries(adbc_driver_framework PUBLIC adbc_driver_common fmt::fmt)
+target_link_libraries(adbc_driver_framework PUBLIC adbc_driver_common)
 
 # For static builds, we need to install the static library here so downstream
 # applications can link to it
 if(ADBC_BUILD_STATIC)
-  if(ADBC_WITH_VENDORED_FMT OR ADBC_WITH_VENDORED_NANOARROW)
-    message(WARNING "adbc_driver_framework is not installed when ADBC_WITH_VENDORED_FMT or ADBC_WITH_VENDORED_NANOARROW are ON. To use the static libraries, for now you must provide these dependencies instead of using the vendored copies"
+  if(ADBC_WITH_VENDORED_NANOARROW)
+    message(WARNING "adbc_driver_framework is not installed when ADBC_WITH_VENDORED_NANOARROW is ON. To use the static libraries, for now you must provide this dependency instead of using the vendored copy"
     )
   else()
     install(TARGETS adbc_driver_framework ${INSTALL_IS_OPTIONAL}
