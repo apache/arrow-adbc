@@ -774,3 +774,19 @@ func EndSpan(span trace.Span, err error, options ...trace.SpanEndOption) {
 	}
 	span.End(options...)
 }
+
+// Ends the given span. If err is not nil, then the
+// error is recorded and the status is set appropriately.
+// Otherwise, the status is set to Ok.
+func EndSpanWithError(span trace.Span, err *error, options ...trace.SpanEndOption) {
+	if err != nil && *err != nil {
+		span.RecordError(*err)
+		if adbcError, ok := (*err).(adbc.Error); ok {
+			span.SetAttributes(semconv.ErrorTypeKey.String(adbcError.Code.String()))
+		}
+		span.SetStatus(codes.Error, (*err).Error())
+	} else {
+		span.SetStatus(codes.Ok, "")
+	}
+	span.End(options...)
+}
