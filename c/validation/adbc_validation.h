@@ -376,6 +376,7 @@ class StatementTest {
 
   void SetUpTest();
   void TearDownTest();
+  void ResetTest();
 
   // Test methods
   void TestNewInit();
