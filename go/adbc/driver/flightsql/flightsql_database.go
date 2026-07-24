@@ -36,6 +36,7 @@ import (
 	"github.com/apache/arrow-go/v18/arrow/flight"
 	"github.com/apache/arrow-go/v18/arrow/flight/flightsql"
 	"github.com/bluele/gcache"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
@@ -506,7 +507,12 @@ type support struct {
 }
 
 func (d *databaseImpl) Open(ctx context.Context) (_ adbc.Connection, err error) {
-	ctx, span := internal.StartSpan(ctx, "FlightSQLDatabase.Open", d)
+	ctx, span := internal.StartSpan(
+		ctx,
+		"FlightSQLDatabase.Open",
+		d,
+		trace.WithAttributes(traceHeaderAttrsWithPrefix(d.hdrs, "rpc.call_header.")...),
+	)
 	// TODO(apache/arrow-adbc#4494): replace with a shared telemetry helper.
 	defer func() { internal.EndSpan(span, err) }()
 
