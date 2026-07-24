@@ -20,6 +20,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using System.Text.RegularExpressions;
+using Thrift.Transport;
 
 namespace Apache.Arrow.Adbc.Drivers.Apache
 {
@@ -163,12 +165,45 @@ namespace Apache.Arrow.Adbc.Drivers.Apache
             if (exception is AggregateException aEx)
             {
                 AggregateException flattenedEx = aEx.Flatten();
-                IEnumerable<string> messages = flattenedEx.InnerExceptions.Select((ex, index) => $"({index + 1}) {ex.Message}");
-                string fullMessage = $"{flattenedEx.Message}: {string.Join(", ", messages)}";
+                IEnumerable<string> messages = flattenedEx.InnerExceptions
+                    .Select((ex, index) => $"({index + 1}) {FormatTransportExceptionMessage(ex)}");
+                string fullMessage = $"{FormatTransportExceptionMessage(flattenedEx)}: {string.Join(", ", messages)}";
                 return fullMessage;
             }
 
-            return exception.Message;
+            return FormatTransportExceptionMessage(exception);
+        }
+
+        /// <summary>
+        /// Formats a transport exception message with custom handling for HTTP status codes (401, 403, 404).
+        /// </summary>
+        internal static string FormatTransportExceptionMessage(Exception exception)
+        {
+            var customMsg = "";
+            // Use ContainsException to robustly find TTransportException or HttpRequestException
+            if (exception is TTransportException transportEx)
+            {
+                 // Try to extract status code from the message
+                var match = System.Text.RegularExpressions.Regex.Match(transportEx.Message, @"\b(\d{3})\b");
+                if (match.Success && int.TryParse(match.Value, out int code))
+                {
+                    switch (code)
+                    {
+                        case 401:
+                            customMsg = "Unauthorized (401): Please check your credentials.";
+                            break;
+                        case 403:
+                            customMsg = "Forbidden (403): You do not have permission to access this resource.";
+                            break;
+                        case 404:
+                            customMsg = "Not Found (404): The requested resource was not found on the server.";
+                            break;
+                        default:
+                            break;
+                    }
+                }
+            }
+            return $"{customMsg}{Environment.NewLine}{exception.Message}";
         }
 
         internal static string GetAssemblyName(Type type) => type.Assembly.GetName().Name!;
