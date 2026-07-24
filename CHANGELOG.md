@@ -1369,3 +1369,128 @@
 - fix intersphinx mapping for arrow-java reference (#3908)
 - fix minor issues in profiles and manifests docs (#4007)
 - set up Matomo for website analytics (#4176)
+
+## ADBC Libraries 24 (2026-07-24)
+
+### Versions
+
+- C/C++/GLib/Go/Python/Ruby: 1.12.0
+- C#: 0.24.0
+- Java: 0.24.0
+- R: 0.24.0
+- Rust: 0.24.0
+
+### Breaking Changes
+
+- ⚠️ remove Go Snowflake driver and Rust, Python, R, deb/yum packages (#4282)
+- ⚠️ remove go bigquery driver and Python, R packages (#4273)
+- ⚠️ **c/driver/postgresql**: defer transaction start (#4424)
+- ⚠️ **c/driver/postgresql**: remove Redshift support (#4365)
+- ⚠️ **go**: remove go databricks driver (#4274)
+- ⚠️ **java/core**: declare close to throw AdbcException (#4451)
+- ⚠️ **ruby**: set LoadFlags::DEFAULT on Database.new and allow override in open (#4402)
+- ⚠️ **rust**: remove DataFusion driver (#4455)
+
+### New Features
+
+- ⚠️ remove Go Snowflake driver and Rust, Python, R, deb/yum packages (#4282)
+- ⚠️ remove go bigquery driver and Python, R packages (#4273)
+- **c/driver**: bump vcpkg (and libpq/sqlite) version (#4566)
+- **c/driver/postgresql**: add fixture-backed NUMERIC round-trip tests (#4536)
+- ⚠️ **c/driver/postgresql**: defer transaction start (#4424)
+- **c/driver/postgresql**: include xdbc_type_name in GetObjects (#4457)
+- ⚠️ **c/driver/postgresql**: remove Redshift support (#4365)
+- **c/driver/postgresql**: return JSON as arrow.json extension (#4415)
+- **c/driver/sqlite**: add support for sqlite:// URI scheme (#4463)
+- **csharp**: Add driver manager (#4075)
+- **csharp**: make core ADBC and trace listeners AOT-compatible to support standalone C# drivers (#4243)
+- **csharp/src/Apache.Arrow.Adbc/C**: bring driver exporter to parity with importer (#4318)
+- **go**: clarify bind behavior (#4267)
+- ⚠️ **go**: remove go databricks driver (#4274)
+- **go/adbc**: align default trace path with ADBC config layout (#4527)
+- **go/adbc/driver/flightsql**: add logging for Flight SQL (#4322)
+- **go/adbc/driver/flightsql**: add support for flightsql:// uri format (#4488)
+- **go/adbc/driver/flightsql**: implement tracing for core Flight SQL operations (#4486)
+- **go/adbc/sqldriver**: support reflecting more types (#4416)
+- **java/core**: add fluent ingest API (#4466)
+- ⚠️ **java/core**: declare close to throw AdbcException (#4451)
+- **java/driver/jni**: add fluent connection interface (#4452)
+- **java/driver/jni**: allow loading shared library from external path (#4211)
+- **java/driver/jni**: close child resources automatically (#4441)
+- **java/driver/jni**: enable driver manifests/profiles (#4202)
+- **java/driver/jni**: implement binding of streams (#4359)
+- **java/driver/jni**: implement commit/rollback (#4212)
+- **java/driver/jni**: implement executePartitioned (#4263)
+- **java/driver/jni**: implement get/set catalog/schema (#4229)
+- **java/driver/jni**: implement get/set option (#4203)
+- **java/driver/jni**: implement getStatistics (#4361)
+- **java/driver/jni**: implement incremental execution, Substrait (#4362)
+- **java/driver/jni**: wire up cancel, getParameterSchema (#4249)
+- **java/driver/jni**: wire up ingest into temporary/namespace (#4250)
+- **javascript**: make driver optional when uri or profile is provided (#4537)
+- **r/adbcdrivermanager**: allow driver specification using string names only (#4535)
+- ⚠️ **ruby**: set LoadFlags::DEFAULT on Database.new and allow override in open (#4402)
+- **rust**: make boolean conventions clearer (#4427)
+- **rust/core**: add InfoCode::Other to handle arbitrary codes (#4510)
+- **rust/core**: implement fallible conversions for `IngestMode` (#4350)
+
+### Bugfixes
+
+- **c/driver/postgresql**: encode Arrow JSON for JSONB COPY (#4505)
+- **c/driver/postgresql**: encode integer values for numeric COPY targets (#4499)
+- **c/driver/postgresql**: preserve zero integer groups when writing NUMERIC (#4523)
+- **c/driver/postgresql**: use array_view->offset when writing list rows (#4320)
+- **c/driver_manager**: preserve quoted-key text in profile redefinition errors (#4442)
+- **c/validation**: make SqlPrepareUpdate readback order-independent (#4534)
+- **ci/scripts**: correct csharp pack powershell script to set arguments correctly (#4304)
+- **ci/scripts**: fix Set-Location syntax (#4307)
+- **csharp**: Bump OpenTelemetry.Exporter.OpenTelemetryProtocol to 1.15.3 (#4291)
+- **csharp**: address flaky driver manager tests (#4324)
+- **csharp**: fix other flaky tests (#4326)
+- **csharp**: improved TOML parsing (#4340)
+- **csharp**: remove Foundry drivers from solution (#4323)
+- **csharp**: support spec-correct driver manifests (#4341)
+- **csharp**: use correct user and system driver directories (#4330)
+- **csharp/src/Drivers**: Make AdbcCommandTimeoutProperty to optional (#4197)
+- **dev/release**: add `CONDA_BUILD=1` when verifying with USE_CONDA=1 (#4180)
+- **go/adbc/drivermgr**: adjust ingest helper to set target before BindStream (#4308)
+- **go/adbc/pkg**: cgo handle pattern (#4287)
+- **java/driver/flight-sql**: cache closes primary connection on cache invalidate (#4509)
+- **java/driver/flight-sql**: include connectionOptions for preparedStatement.close() (#4513)
+- **java/driver/jni**: check for pending exceptions more thoroughly (#4398)
+- **java/driver/jni**: delete JNI local references (#4397)
+- **java/driver/jni**: handle "modified UTF-8" encoding (#4423)
+- **java/driver/jni**: harden JNI exception helpers (#4395)
+- **java/driver/jni**: release ADBC resources on Java constructor failure (#4396)
+- **java/driver/jni**: release AdbcError in RaiseAdbcException (#4391)
+- **python/adbc_driver_manager**: prevent segfault in `_AdbcErrorHelper.check_error` (#4367)
+- **ruby**: correct open_statement typo in Connection#ingest (#4418)
+- **ruby**: declare Apache Arrow repository in red-adbc.gemspec (#4393)
+- **rust/core**: Handle the ASCII characters from sqlstate instead of their decimal values (#4141)
+- **rust/ffi**: fix release_ffi_error to properly null values (#4181)
+- **rust/ffi**: preserve caller's AdbcError private_data on the 1.0.0 path (#4473)
+- **rust/ffi**: set rows_affected to -1 on the query path of ExecuteQuery (#4469)
+
+### Documentation Improvements
+
+- Clearly indicate the support status in DuckDB (#4349)
+- add favicon (#4342)
+- demonstrate how to use (unofficial) JNI nightly builds (#4399)
+- describe how to use sphinx-autobuild (#4383)
+- document Flight SQL telemetry and logging (#4500)
+- download and embed FontAwesome at build time (#4543)
+- fix version switcher (#4378)
+- improve docs for homebrew post-release task (#4186)
+- link to drivers anchor on installation page (#4547)
+- reorganize docs to highlight tools and drivers (#4525)
+- update compatible versions for postgres driver (#4199)
+- update copyright year dynamically in conf.py (#4546)
+- update foundry urls (#4565)
+- update js profile example (#4541)
+- **javascript**: create basic scaffold for typedoc js docs (#4238)
+- **javascript**: create docs for javascript implementation (#4232)
+- **ruby**: update Ruby docs to show latest code and fix minor issues (#4552)
+
+### Performance Improvements
+
+- **c/driver/postgresql**: speed up decimal128 COPY encoding (#4498)
