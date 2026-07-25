@@ -97,8 +97,9 @@ int TupleReader::GetCopyData() {
     result_ = PQgetResult(conn_);
     const ExecStatusType pq_status = PQresultStatus(result_);
     if (pq_status != PGRES_COMMAND_OK) {
-      status_ = SetError(&error_, result_, "[libpq] Execution error [%s]: %s",
-                         PQresStatus(pq_status), PQresultErrorMessage(result_));
+      status_ = MakeStatus(result_, "[libpq] Execution error [{}]: {}",
+                           PQresStatus(pq_status), PQresultErrorMessage(result_))
+                    .ToAdbc(&error_);
       return InternalAdbcStatusCodeToErrno(status_);
     } else {
       return ENODATA;
@@ -441,8 +442,9 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(const std::string& current_sch
                                       /*resultFormat=*/1 /*(binary)*/);
       if (PQresultStatus(result) != PGRES_COMMAND_OK) {
         AdbcStatusCode code =
-            SetError(error, result, "[libpq] Failed to drop table: %s\nQuery was: %s",
-                     PQerrorMessage(conn), drop.c_str());
+            MakeStatus(result, "[libpq] Failed to drop table: {}\nQuery was: {}",
+                       PQerrorMessage(conn), drop)
+                .ToAdbc(error);
         PQclear(result);
         return code;
       }
@@ -503,8 +505,9 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(const std::string& current_sch
                                   /*resultFormat=*/1 /*(binary)*/);
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
     AdbcStatusCode code =
-        SetError(error, result, "[libpq] Failed to create table: %s\nQuery was: %s",
-                 PQerrorMessage(conn), create.c_str());
+        MakeStatus(result, "[libpq] Failed to create table: {}\nQuery was: {}",
+                   PQerrorMessage(conn), create)
+            .ToAdbc(error);
     PQclear(result);
     return code;
   }
@@ -755,8 +758,9 @@ AdbcStatusCode PostgresStatement::ExecuteIngest(struct ArrowArrayStream* stream,
   PGresult* result = PQexec(connection_->conn(), query.c_str());
   if (PQresultStatus(result) != PGRES_COPY_IN) {
     AdbcStatusCode code =
-        SetError(error, result, "[libpq] COPY query failed: %s\nQuery was:%s",
-                 PQerrorMessage(connection_->conn()), query.c_str());
+        MakeStatus(result, "[libpq] COPY query failed: {}\nQuery was:{}",
+                   PQerrorMessage(connection_->conn()), query)
+            .ToAdbc(error);
     PQclear(result);
     return code;
   }
