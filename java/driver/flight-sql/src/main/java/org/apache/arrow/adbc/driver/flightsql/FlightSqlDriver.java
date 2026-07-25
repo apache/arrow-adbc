@@ -93,7 +93,7 @@ public class FlightSqlDriver implements AdbcDriver {
           .withCause(e);
     }
 
-    if (!FLIGHTSQL_SCHEME.equals(parsed.getScheme())) {
+    if (!FLIGHTSQL_SCHEME.equalsIgnoreCase(parsed.getScheme())) {
       return new Location(parsed);
     }
 
