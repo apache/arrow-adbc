@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -71,6 +72,8 @@ AdbcStatusCode SetError(struct AdbcError* error, PGresult* result, const char* f
 
 #undef ADBC_CHECK_PRINTF_ATTRIBUTE
 
+AdbcStatusCode ClassifySqlState(const char* sqlstate);
+
 template <typename... Args>
 Status MakeStatus(PGresult* result, const char* format_string, Args&&... args) {
   auto message = ::fmt::vformat(format_string, ::fmt::make_format_args(args...));
@@ -85,17 +88,7 @@ Status MakeStatus(PGresult* result, const char* format_string, Args&&... args) {
 
   const char* sqlstate = PQresultErrorField(result, PG_DIAG_SQLSTATE);
   if (sqlstate) {
-    // https://www.postgresql.org/docs/current/errcodes-appendix.html
-    // This can be extended in the future
-    if (std::strcmp(sqlstate, "57014") == 0) {
-      code = ADBC_STATUS_CANCELLED;
-    } else if (std::strcmp(sqlstate, "42P01") == 0 ||
-               std::strcmp(sqlstate, "42602") == 0) {
-      code = ADBC_STATUS_NOT_FOUND;
-    } else if (std::strncmp(sqlstate, "42", 0) == 0) {
-      // Class 42 — Syntax Error or Access Rule Violation
-      code = ADBC_STATUS_INVALID_ARGUMENT;
-    }
+    code = ClassifySqlState(sqlstate);
   }
 
   Status status(code, message);
