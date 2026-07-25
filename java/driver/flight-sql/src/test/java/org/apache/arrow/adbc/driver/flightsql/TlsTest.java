@@ -174,20 +174,20 @@ public class TlsTest {
   public void testClientFlightSqlSchemeDefaultTls() throws Exception {
     params.put(AdbcDriver.PARAM_URI.getKey(), getFlightSqlUri(null));
     params.put(FlightSqlConnectionProperties.TLS_SKIP_VERIFY.getKey(), true);
-    AdbcDatabase db =
-        AdbcDriverManager.getInstance()
-            .connect(FlightSqlDriverFactory.class.getCanonicalName(), allocator, params);
-    try (AdbcConnection conn = db.connect()) {}
+    try (AdbcDatabase db =
+            AdbcDriverManager.getInstance()
+                .connect(FlightSqlDriverFactory.class.getCanonicalName(), allocator, params);
+        AdbcConnection conn = db.connect()) {}
   }
 
   @Test
   public void testClientFlightSqlSchemeExplicitTlsTransport() throws Exception {
     params.put(AdbcDriver.PARAM_URI.getKey(), getFlightSqlUri("tls"));
     params.put(FlightSqlConnectionProperties.TLS_SKIP_VERIFY.getKey(), true);
-    AdbcDatabase db =
-        AdbcDriverManager.getInstance()
-            .connect(FlightSqlDriverFactory.class.getCanonicalName(), allocator, params);
-    try (AdbcConnection conn = db.connect()) {}
+    try (AdbcDatabase db =
+            AdbcDriverManager.getInstance()
+                .connect(FlightSqlDriverFactory.class.getCanonicalName(), allocator, params);
+        AdbcConnection conn = db.connect()) {}
   }
 
   private String getUri(boolean withTls) {
