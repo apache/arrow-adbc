@@ -552,7 +552,7 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 	var header, trailer metadata.MD
 	opts := append([]grpc.CallOption{}, grpc.Header(&header), grpc.Trailer(&trailer), s.timeouts)
 	if s.prepared != nil {
-		if isUpdate := s.prepared.IsUpdate(); isUpdate != nil && *isUpdate {
+		if isUpdate, ok := s.prepared.IsUpdate(); ok && isUpdate {
 			nrec, err = s.prepared.ExecuteUpdate(ctx, opts...)
 			if err != nil {
 				return nil, -1, adbcFromFlightStatusWithDetails(err, header, trailer, "ExecuteUpdate")
