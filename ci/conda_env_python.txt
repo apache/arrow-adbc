@@ -16,7 +16,6 @@
 # under the License.
 
 cython
-importlib-resources
 # libxml2 broke ABI compatibility
 # https://github.com/conda-forge/arrow-cpp-feedstock/issues/1740
 libxml2 <2.14.0
