@@ -242,7 +242,7 @@ How to Verify Release Candidates
 
      $ cd arrow-adbc
      # Pass the release and the RC number
-     $ ./dev/release/verify-release-candidate.sh 0.1.0 6
+     $ ./dev/release/verify-release-candidate.sh 24 2
 
    These environment variables may be helpful:
 
