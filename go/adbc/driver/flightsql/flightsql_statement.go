@@ -36,6 +36,7 @@ import (
 	"github.com/apache/arrow-go/v18/arrow/flight/flightsql"
 	"github.com/apache/arrow-go/v18/arrow/memory"
 	"github.com/bluele/gcache"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
@@ -531,7 +532,12 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 		}
 	}
 
-	ctx, span := internal.StartSpan(ctx, "FlightSQLStatement.ExecuteQuery", s.cnxn)
+	ctx, span := internal.StartSpan(
+		ctx,
+		"FlightSQLStatement.ExecuteQuery",
+		s.cnxn,
+		trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...),
+	)
 	defer internal.EndSpanWithError(span, &err)
 
 	// Handle bulk ingest
@@ -606,7 +612,12 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 		}
 	}
 
-	ctx, span := internal.StartSpan(ctx, "FlightSQLStatement.ExecuteUpdate", s.cnxn)
+	ctx, span := internal.StartSpan(
+		ctx,
+		"FlightSQLStatement.ExecuteUpdate",
+		s.cnxn,
+		trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...),
+	)
 	defer internal.EndSpanWithError(span, &err)
 
 	// Handle bulk ingest
@@ -655,7 +666,12 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 // Prepare turns this statement into a prepared statement to be executed
 // multiple times. This invalidates any prior result sets.
 func (s *statement) Prepare(ctx context.Context) (err error) {
-	ctx, span := internal.StartSpan(ctx, "FlightSQLStatement.Prepare", s.cnxn)
+	ctx, span := internal.StartSpan(
+		ctx,
+		"FlightSQLStatement.Prepare",
+		s.cnxn,
+		trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...),
+	)
 	defer internal.EndSpanWithError(span, &err)
 
 	startTime := time.Now()
