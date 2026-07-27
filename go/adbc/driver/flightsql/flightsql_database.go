@@ -513,8 +513,7 @@ func (d *databaseImpl) Open(ctx context.Context) (_ adbc.Connection, err error) 
 		d,
 		trace.WithAttributes(traceHeaderAttrsWithPrefix(d.hdrs, "rpc.call_header.")...),
 	)
-	// TODO(apache/arrow-adbc#4494): replace with a shared telemetry helper.
-	defer func() { internal.EndSpan(span, err) }()
+	defer internal.EndSpanWithError(span, &err)
 
 	authMiddle := &bearerAuthMiddleware{hdrs: d.hdrs.Copy(), logger: safeLogger(d.Logger)}
 	var cookies flight.CookieMiddleware

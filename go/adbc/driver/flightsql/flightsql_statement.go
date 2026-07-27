@@ -538,8 +538,7 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 		s.cnxn,
 		trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, "rpc.call_header.")...),
 	)
-	// TODO(apache/arrow-adbc#4494): replace with a shared telemetry helper.
-	defer func() { internal.EndSpan(span, err) }()
+	defer internal.EndSpanWithError(span, &err)
 
 	// Handle bulk ingest
 	if s.targetTable != "" {
@@ -619,8 +618,7 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 		s.cnxn,
 		trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, "rpc.call_header.")...),
 	)
-	// TODO(apache/arrow-adbc#4494): replace with a shared telemetry helper.
-	defer func() { internal.EndSpan(span, err) }()
+	defer internal.EndSpanWithError(span, &err)
 
 	// Handle bulk ingest
 	if s.targetTable != "" {
@@ -674,8 +672,7 @@ func (s *statement) Prepare(ctx context.Context) (err error) {
 		s.cnxn,
 		trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, "rpc.call_header.")...),
 	)
-	// TODO(apache/arrow-adbc#4494): replace with a shared telemetry helper.
-	defer func() { internal.EndSpan(span, err) }()
+	defer internal.EndSpanWithError(span, &err)
 
 	startTime := time.Now()
 	s.log.InfoContext(ctx, "FlightSQL Prepare start", s.queryAttrs()...)

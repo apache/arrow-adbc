@@ -81,6 +81,8 @@ if(ADBC_BUILD_TESTS)
                 EXTRA_LABELS
                 driver-postgresql
                 SOURCES
+                error.cc
+                error_test.cc
                 postgres_type_test.cc
                 postgresql_test.cc
                 EXTRA_LINK_LIBS

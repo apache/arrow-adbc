@@ -34,6 +34,10 @@
 #include <ShlObj.h>
 #include <libloaderapi.h>
 #include <string.h>  // _wcsnicmp
+// Without STRSAFE_NO_DEPRECATE, strsafe.h redefines strcpy/sprintf/etc. as
+// poison macros, which breaks libc++'s <cstring>/<cstdio>/<cwchar> headers
+// (using ::strcpy;) on the Rtools clang-aarch64 toolchain.
+#define STRSAFE_NO_DEPRECATE
 #include <strsafe.h>
 #include <locale>
 #else
