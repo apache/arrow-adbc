@@ -39,33 +39,33 @@ func TestTraceHeaderAttrsWithPrefix_AllowAndDeny(t *testing.T) {
 		"x-random-header":     "noise",
 	})
 
-	got := otelAttrsToMap(traceHeaderAttrsWithPrefix(md, "rpc.call_header."))
+	got := otelAttrsToMap(traceHeaderAttrsWithPrefix(md, traceRequestMetadataPrefix))
 
-	if v := got["rpc.call_header.x-request-id"]; len(v) != 1 || v[0] != "req-1" {
-		t.Fatalf("rpc.call_header.x-request-id = %v, want [req-1]", v)
+	if v := got["rpc.request.metadata.x-request-id"]; len(v) != 1 || v[0] != "req-1" {
+		t.Fatalf("rpc.request.metadata.x-request-id = %v, want [req-1]", v)
 	}
-	if v := got["rpc.call_header.activityid"]; len(v) != 1 || v[0] != "act-1" {
-		t.Fatalf("rpc.call_header.activityid = %v, want [act-1]", v)
+	if v := got["rpc.request.metadata.activityid"]; len(v) != 1 || v[0] != "act-1" {
+		t.Fatalf("rpc.request.metadata.activityid = %v, want [act-1]", v)
 	}
-	if v := got["rpc.call_header.x-pbi-activity-id"]; len(v) != 1 || v[0] != "pbi-act-1" {
-		t.Fatalf("rpc.call_header.x-pbi-activity-id = %v, want [pbi-act-1]", v)
+	if v := got["rpc.request.metadata.x-pbi-activity-id"]; len(v) != 1 || v[0] != "pbi-act-1" {
+		t.Fatalf("rpc.request.metadata.x-pbi-activity-id = %v, want [pbi-act-1]", v)
 	}
-	if _, ok := got["rpc.call_header.authorization"]; ok {
+	if _, ok := got["rpc.request.metadata.authorization"]; ok {
 		t.Fatalf("authorization header must not be promoted into tracing attrs: %v", got)
 	}
-	if _, ok := got["rpc.call_header.x-random-header"]; ok {
+	if _, ok := got["rpc.request.metadata.x-random-header"]; ok {
 		t.Fatalf("x-random-header must not be promoted into tracing attrs: %v", got)
 	}
-	if _, ok := got["rpc.call_header.x-vendor-request-id"]; ok {
+	if _, ok := got["rpc.request.metadata.x-vendor-request-id"]; ok {
 		t.Fatalf("x-vendor-request-id must not be promoted into tracing attrs: %v", got)
 	}
 }
 
 func TestTraceHeaderAttrsWithPrefix_EmptyMetadata(t *testing.T) {
-	if got := traceHeaderAttrsWithPrefix(nil, "rpc.call_header."); got != nil {
+	if got := traceHeaderAttrsWithPrefix(nil, traceRequestMetadataPrefix); got != nil {
 		t.Fatalf("traceHeaderAttrsWithPrefix(nil, _) = %v, want nil", got)
 	}
-	if got := traceHeaderAttrsWithPrefix(metadata.MD{}, "rpc.call_header."); got != nil {
+	if got := traceHeaderAttrsWithPrefix(metadata.MD{}, traceRequestMetadataPrefix); got != nil {
 		t.Fatalf("traceHeaderAttrsWithPrefix(empty, _) = %v, want nil", got)
 	}
 }
@@ -94,7 +94,7 @@ func TestTraceHeaderAttrsWithPrefix_AppliedToSpan(t *testing.T) {
 			"x-request-id":    "req-123",
 			"authorization":   "Bearer SECRET",
 			"x-random-header": "noise",
-		}), "rpc.call_header.")...),
+		}), traceRequestMetadataPrefix)...),
 	)
 	_ = ctx
 	span.End()
@@ -105,13 +105,13 @@ func TestTraceHeaderAttrsWithPrefix_AppliedToSpan(t *testing.T) {
 	}
 
 	got := otelAttrsToMap(spans[0].Attributes())
-	if v := got["rpc.call_header.x-request-id"]; len(v) != 1 || v[0] != "req-123" {
-		t.Fatalf("rpc.call_header.x-request-id = %v, want [req-123]", v)
+	if v := got["rpc.request.metadata.x-request-id"]; len(v) != 1 || v[0] != "req-123" {
+		t.Fatalf("rpc.request.metadata.x-request-id = %v, want [req-123]", v)
 	}
-	if _, ok := got["rpc.call_header.authorization"]; ok {
+	if _, ok := got["rpc.request.metadata.authorization"]; ok {
 		t.Fatalf("authorization header leaked into span attrs: %v", got)
 	}
-	if _, ok := got["rpc.call_header.x-random-header"]; ok {
+	if _, ok := got["rpc.request.metadata.x-random-header"]; ok {
 		t.Fatalf("x-random-header leaked into span attrs: %v", got)
 	}
 	if v := got["db.operation.name"]; len(v) != 1 || v[0] != "FlightSQLStatement.ExecuteQuery" {

@@ -22,6 +22,8 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
+const traceRequestMetadataPrefix = "rpc.request.metadata."
+
 // traceHeaderAttrsWithPrefix returns OpenTelemetry attributes for
 // allow-listed metadata keys. It emits only curated correlation
 // headers so callers can promote external request IDs into traces

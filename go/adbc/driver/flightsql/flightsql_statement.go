@@ -536,7 +536,7 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 		ctx,
 		"FlightSQLStatement.ExecuteQuery",
 		s.cnxn,
-		trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, "rpc.call_header.")...),
+		trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...),
 	)
 	defer internal.EndSpanWithError(span, &err)
 
@@ -616,7 +616,7 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 		ctx,
 		"FlightSQLStatement.ExecuteUpdate",
 		s.cnxn,
-		trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, "rpc.call_header.")...),
+		trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...),
 	)
 	defer internal.EndSpanWithError(span, &err)
 
@@ -670,7 +670,7 @@ func (s *statement) Prepare(ctx context.Context) (err error) {
 		ctx,
 		"FlightSQLStatement.Prepare",
 		s.cnxn,
-		trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, "rpc.call_header.")...),
+		trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...),
 	)
 	defer internal.EndSpanWithError(span, &err)
 

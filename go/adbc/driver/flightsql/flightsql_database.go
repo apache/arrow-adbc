@@ -511,7 +511,7 @@ func (d *databaseImpl) Open(ctx context.Context) (_ adbc.Connection, err error) 
 		ctx,
 		"FlightSQLDatabase.Open",
 		d,
-		trace.WithAttributes(traceHeaderAttrsWithPrefix(d.hdrs, "rpc.call_header.")...),
+		trace.WithAttributes(traceHeaderAttrsWithPrefix(d.hdrs, traceRequestMetadataPrefix)...),
 	)
 	defer internal.EndSpanWithError(span, &err)
 
