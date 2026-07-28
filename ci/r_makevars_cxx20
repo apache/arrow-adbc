@@ -15,15 +15,9 @@
 # specific language governing permissions and limitations
 # under the License.
 
-CXX_STD = CXX20
-PKG_CPPFLAGS=-I../src/c -I../src/c/include -I../src/c/vendor/ -I../src/c/vendor/fmt/include @cppflags@ -DADBC_EXPORT="" -DFMT_HEADER_ONLY=1
-PKG_LIBS=@libs@
-
-OBJECTS = init.o \
-    c/driver/common/utils.o \
-    c/driver/framework/objects.o \
-    c/driver/framework/utility.o \
-    c/driver/sqlite/sqlite.o \
-    c/driver/sqlite/statement_reader.o \
-    c/vendor/nanoarrow/nanoarrow.o \
-    @objects@
+# conda-forge's R package doesn't define C++20 compiler settings, even though
+# its compiler supports C++20; define the flags to get the docs build to work
+CXX20 = $(CXX17)
+CXX20FLAGS = $(CXX17FLAGS)
+CXX20PICFLAGS = $(CXX17PICFLAGS)
+CXX20STD = -std=gnu++20
