@@ -30,9 +30,13 @@
 #endif
 #include <windows.h>  // Must come first
 
-#include <KnownFolders.h>
-#include <ShlObj.h>
+// Spell these lowercase: the Windows SDK ships them CamelCased, but mingw-w64
+// ships them all-lowercase. Windows filesystems are case-insensitive so the
+// lowercase spelling resolves for both, while the CamelCase spelling breaks
+// cross-compiling from a case-sensitive filesystem.
+#include <knownfolders.h>
 #include <libloaderapi.h>
+#include <shlobj.h>
 #include <string.h>  // _wcsnicmp
 #include <strsafe.h>
 #include <locale>
