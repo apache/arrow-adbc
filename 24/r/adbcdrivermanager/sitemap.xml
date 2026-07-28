@@ -1,0 +1,24 @@
+<urlset xmlns = 'http://www.sitemaps.org/schemas/sitemap/0.9'>
+<url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/404.html</loc></url>
+<url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/LICENSE.html</loc></url>
+<url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/authors.html</loc></url>
+<url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/index.html</loc></url>
+<url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_connection_get_info.html</loc></url>
+<url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_connection_init.html</loc></url>
+<url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_connection_join.html</loc></url>
+<url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_database_init.html</loc></url>
+<url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_driver_load.html</loc></url>
+<url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_driver_log.html</loc></url>
+<url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_driver_monkey.html</loc></url>
+<url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_driver_void.html</loc></url>
+<url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_error_from_array_stream.html</loc></url>
+<url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_load_flags.html</loc></url>
+<url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_statement_init.html</loc></url>
+<url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_statement_set_sql_query.html</loc></url>
+<url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbc_xptr_move.html</loc></url>
+<url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/adbcdrivermanager-package.html</loc></url>
+<url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/index.html</loc></url>
+<url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/read_adbc.html</loc></url>
+<url><loc>https://arrow.apache.org/adbc/current/r/adbcdrivermanager/reference/with_adbc.html</loc></url>
+</urlset>
+
