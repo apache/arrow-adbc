@@ -65,7 +65,7 @@ jobs:
     # For cron: only run on the main repo, not forks
     if: github.event_name != 'schedule' || github.repository == 'apache/arrow-adbc'
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -123,7 +123,7 @@ jobs:
         run: |
           (. adbc/.env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - name: Setup Go
-        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -388,7 +388,7 @@ jobs:
         with:
           name: source
 
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: apache/arrow
           path: arrow
@@ -425,7 +425,7 @@ jobs:
           mv apache-arrow-adbc-$VERSION.tar.gz adbc/ci/linux-packages/
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@8e41b362d2589a22a44c1cfa214b3c83052c195b  # v1.318.0
+        uses: ruby/setup-ruby@a30dfa457ad68707b8b910ac3a244714b61c0626  # v1.320.0
         with:
           ruby-version: ruby
 
@@ -828,7 +828,7 @@ jobs:
         run: |
           (. adbc/.env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
 
-      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -1006,7 +1006,7 @@ jobs:
           .\bootstrap-vcpkg.bat -disableMetrics
           popd
 
-      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -1014,7 +1014,7 @@ jobs:
           cache-dependency-path: adbc/go/adbc/go.sum
 
       - name: Install Python ${{ matrix.python_version }}
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           check-latest: true
           python-version: ${{ matrix.python_version }}
@@ -1318,7 +1318,7 @@ jobs:
       run:
         shell: bash -l -eo pipefail {0}
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: true
@@ -1357,11 +1357,11 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref_name == 'main' && (github.event.schedule || inputs.upload_artifacts)
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Install Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.13'
       - name: Clean
@@ -1384,7 +1384,7 @@ jobs:
       - python-windows
       - python-sdist
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: true
