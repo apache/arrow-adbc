@@ -45,20 +45,26 @@ defaults:
 
 jobs:
   csharp:
-    name: "C# ${{ matrix.os }} ${{ matrix.dotnet }}"
+    name: "C# ${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
     if: ${{ !contains(github.event.pull_request.title, 'WIP') }}
     timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
-        dotnet: ['8.0.x', '10.0.x']
         os: [ubuntu-latest, windows-2022, macos-15-intel, macos-latest]
     steps:
+      # The test project multi-targets net8.0 and net10.0, so both SDKs must be
+      # installed: the .NET 8 SDK cannot build net10.0, and the net8.0 tests
+      # cannot run without the .NET 8 runtime. Requesting a single version here
+      # and relying on the runner image to supply the other leaves one target
+      # framework silently dependent on the image contents.
       - name: Install C#
         uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5.4.0
         with:
-          dotnet-version: ${{ matrix.dotnet }}
+          dotnet-version: |
+            8.0.x
+            10.0.x
       - name: Checkout ADBC
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:

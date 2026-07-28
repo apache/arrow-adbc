@@ -2,6 +2,10 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
+    <!-- A local benchmark harness, not a shipped library. Without this it is
+         packable by default and produces a Benchmarks.nupkg that is built into
+         the release artifacts but never published. -->
+    <IsPackable>false</IsPackable>
     <TargetFrameworks Condition="'$(IsWindows)'=='true'">net8.0;net472</TargetFrameworks>
     <TargetFrameworks Condition="'$(TargetFrameworks)'==''">net8.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
