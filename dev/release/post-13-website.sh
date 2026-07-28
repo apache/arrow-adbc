@@ -68,7 +68,7 @@ limitations under the License.
 
 The Apache Arrow team is pleased to announce the version ${RELEASE} release of
 the Apache Arrow ADBC libraries. This release includes [**${RESOLVED_ISSUES}
-resolved issues**][1] and [**${MERGED_PRS}** merged pull requests][2] from
+resolved issues**][1] and [**${MERGED_PRS} merged pull requests**][2] from
 [**${contributors} distinct contributors**](#contributors).
 
 This is a release of the **libraries**, which are at version ${RELEASE}.  The
