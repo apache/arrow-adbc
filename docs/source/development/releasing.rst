@@ -88,6 +88,14 @@ Before creating a Release Candidate
 
       ./dev/release/assign-milestone.sh
 
+4. Create a fresh clone of the latest apache/arrow repo, which is used by several steps below.
+
+   .. warning:: Make sure an up-to-date clone is used, so that the Linux packaging scripts in particular are in sync, else there is the possibility of corrupting the shared Linux package repositories.
+
+   .. code-block::
+
+      git clone git@github.com:apache/arrow
+
 Check Nightly Verification Job
 ------------------------------
 
@@ -155,6 +163,7 @@ Create the Release Candidate tag from the updated maintenance branch
    # <rc-number> starts at 0 and increments every time the Release Candidate is burned
    # so for the first RC this would be: dev/release/01-prepare.sh 1.0.0 0
 
+   # make sure <arrow-dir> is up-to-date with apache/arrow:main
    dev/release/01-prepare.sh <arrow-dir> <rc-number>
 
    git push -u apache apache-arrow-adbc-<release>-rc<rc-number> maint-<release>
@@ -187,6 +196,8 @@ Build source and binaries and submit them
     #
     # This reuses release scripts in apache/arrow. So you need to
     # specify cloned apache/arrow directory.
+
+    # make sure <arrow-dir> is up-to-date with apache/arrow:main
     dev/release/05-linux-upload.sh <arrow-dir> <rc-number>
 
     # Start verifications for binaries and wheels
@@ -347,6 +358,8 @@ Be sure to go through on the following checklist:
       # specify cloned apache/arrow directory.
       #
       # dev/release/post-05-linux.sh ../arrow 0
+
+      # make sure <arrow-dir> is up-to-date with apache/arrow:main
       dev/release/post-05-linux.sh <arrow-dir> <rc-number>
 
 .. dropdown:: Update R packages
@@ -481,6 +494,8 @@ Be sure to go through on the following checklist:
    .. code-block:: Bash
 
       # dev/release/post-12-bump-versions.sh ../arrow
+
+      # make sure <arrow-dir> is up-to-date with apache/arrow:main
       dev/release/post-12-bump-versions.sh <arrow-dir>
 
 .. dropdown:: Publish release blog post
