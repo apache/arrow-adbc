@@ -2657,6 +2657,70 @@ TEST_F(PostgresStatementTest, SqlQueryJsonb) {
   ASSERT_EQ(R"({"a": 1, "b": [1, 2, 3]})", v);
 }
 
+TEST_F(PostgresStatementTest, SqlBindUuid) {
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+  ASSERT_THAT(
+      AdbcStatementSetSqlQuery(
+          &statement, "DROP TABLE IF EXISTS uuidtest; CREATE TABLE uuidtest (id UUID);",
+          &error),
+      IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(
+      AdbcStatementSetSqlQuery(
+          &statement,
+          "INSERT INTO uuidtest VALUES ('12345678-1234-5678-1234-567812345678')", &error),
+      IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
+
+  // A canonical arrow.uuid parameter (FixedSizeBinary(16) storage) should bind
+  // as PostgreSQL uuid rather than bytea.
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> batch;
+  ArrowSchemaInit(&schema.value);
+  ASSERT_THAT(ArrowSchemaSetTypeStruct(&schema.value, 1), adbc_validation::IsOkErrno());
+  ASSERT_THAT(ArrowSchemaSetTypeFixedSize(schema->children[0],
+                                          NANOARROW_TYPE_FIXED_SIZE_BINARY, 16),
+              adbc_validation::IsOkErrno());
+  ASSERT_THAT(ArrowSchemaSetName(schema->children[0], "$1"),
+              adbc_validation::IsOkErrno());
+
+  nanoarrow::UniqueBuffer buffer;
+  ASSERT_THAT(ArrowMetadataBuilderInit(buffer.get(), nullptr),
+              adbc_validation::IsOkErrno());
+  ASSERT_THAT(
+      ArrowMetadataBuilderAppend(buffer.get(), ArrowCharView("ARROW:extension:name"),
+                                 ArrowCharView("arrow.uuid")),
+      adbc_validation::IsOkErrno());
+  ASSERT_THAT(
+      ArrowSchemaSetMetadata(schema->children[0], reinterpret_cast<char*>(buffer->data)),
+      adbc_validation::IsOkErrno());
+
+  const std::string uuid_bytes(
+      "\x12\x34\x56\x78\x12\x34\x56\x78\x12\x34\x56\x78\x12\x34\x56\x78", 16);
+  ASSERT_THAT((adbc_validation::MakeBatch<std::string>(
+                  &schema.value, &batch.value, static_cast<struct ArrowError*>(nullptr),
+                  {uuid_bytes})),
+              adbc_validation::IsOkErrno());
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement, "SELECT count(*) FROM uuidtest WHERE id = $1", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &batch.value, &schema.value, &error),
+              IsOkStatus(&error));
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                        &reader.rows_affected, &error),
+              IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_EQ(1, ArrowArrayViewGetIntUnsafe(reader.array_view->children[0], 0));
+}
+
 struct TypeTestCase {
   std::string name;
   std::string sql_type;

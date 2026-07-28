@@ -359,6 +359,7 @@ class PostgresType {
   static constexpr const char* kExtensionName = "ARROW:extension:name";
   static constexpr const char* kOpaqueExtensionName = "arrow.opaque";
   static constexpr const char* kJsonExtensionName = "arrow.json";
+  static constexpr const char* kUuidExtensionName = "arrow.uuid";
   static constexpr const char* kExtensionMetadata = "ARROW:extension:metadata";
 
   ArrowErrorCode AddPostgresTypeMetadata(ArrowSchema* schema,
@@ -605,6 +606,21 @@ inline ArrowErrorCode PostgresType::FromSchema(const PostgresTypeResolver& resol
     ArrowErrorSet(
         error, "Field '%s' is of type arrow.json but storage type is not a string type",
         schema_view.schema->name);
+    return EINVAL;
+  }
+
+  if (schema_view.extension_name.data != nullptr &&
+      std::string_view(schema_view.extension_name.data,
+                       schema_view.extension_name.size_bytes)
+              .compare(kUuidExtensionName) == 0) {
+    if (schema_view.type == NANOARROW_TYPE_FIXED_SIZE_BINARY &&
+        schema_view.fixed_size == 16) {
+      return resolver.Find(resolver.GetOID(PostgresTypeId::kUuid), out, error);
+    }
+    ArrowErrorSet(error,
+                  "Field '%s' is of type arrow.uuid but storage type is not "
+                  "FixedSizeBinary(16)",
+                  schema_view.schema->name);
     return EINVAL;
   }
 
