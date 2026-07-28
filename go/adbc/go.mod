@@ -70,7 +70,7 @@ require (
 	go.yaml.in/yaml/v4 v4.0.0-rc.3 // indirect
 )
 
-replace github.com/snowflakedb/gosnowflake => github.com/dbt-labs/gosnowflake v1.17.10
+replace github.com/snowflakedb/gosnowflake => github.com/dbt-labs/gosnowflake v1.17.11
 
 replace github.com/databricks/databricks-sql-go => github.com/dbt-labs/databricks-sql-go v1.19.1
 

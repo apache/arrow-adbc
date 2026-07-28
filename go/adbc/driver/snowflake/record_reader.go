@@ -38,6 +38,8 @@ import (
 	"github.com/apache/arrow-go/v18/arrow/ipc"
 	"github.com/apache/arrow-go/v18/arrow/memory"
 	"github.com/snowflakedb/gosnowflake"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -558,7 +560,198 @@ type reader struct {
 	cancelFn context.CancelFunc
 }
 
-func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake.ArrowStreamLoader, bufferSize, prefetchConcurrency int, useHighPrecision bool, maxTimestampPrecision MaxTimestampPrecision) (array.RecordReader, error) {
+const defaultStreamMaxRetries = 3
+
+// batchStreamer is the subset of gosnowflake.ArrowStreamBatch needed for reading.
+type batchStreamer interface {
+	GetStream(ctx context.Context) (io.ReadCloser, error)
+}
+
+// countingReadCloser wraps an io.ReadCloser and counts bytes read.
+// Used for diagnosing truncated Arrow IPC streams.
+type countingReadCloser struct {
+	inner     io.ReadCloser
+	bytesRead int64
+}
+
+func (c *countingReadCloser) Read(p []byte) (int, error) {
+	n, err := c.inner.Read(p)
+	c.bytesRead += int64(n)
+	return n, err
+}
+
+func (c *countingReadCloser) Close() error {
+	return c.inner.Close()
+}
+
+// readBatchRecords reads all Arrow records from a Snowflake batch with retries.
+// It does not buffer the raw byte stream; instead it reads Arrow IPC messages
+// directly from the network and accumulates transformed record batches in memory.
+// If a stream fails mid-read, all partial records are released and the entire
+// batch is re-downloaded. Records are only returned on full success, preventing
+// partial results from entering channels.
+func readBatchRecords(ctx context.Context, batch batchStreamer, alloc memory.Allocator, transform recordTransformer, maxRetries int) ([]arrow.RecordBatch, error) {
+	var lastErr error
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+
+		recs, err := tryReadBatch(ctx, batch, alloc, transform)
+		if err == nil {
+			trace.SpanFromContext(ctx).AddEvent("readBatchRecords.success", trace.WithAttributes(
+				attribute.Int("attempt", attempt),
+				attribute.Int("records", len(recs)),
+			))
+			return recs, nil
+		}
+		trace.SpanFromContext(ctx).AddEvent("readBatchRecords.failed", trace.WithAttributes(
+			attribute.Int("attempt", attempt),
+			attribute.String("error", err.Error()),
+		))
+		// Release any partial records from the failed attempt
+		for _, r := range recs {
+			r.Release()
+		}
+		lastErr = err
+	}
+	return nil, fmt.Errorf("failed to read Arrow batch after %d attempts: %w", maxRetries+1, lastErr)
+}
+
+func tryReadBatch(ctx context.Context, batch batchStreamer, alloc memory.Allocator, transform recordTransformer) (recs []arrow.RecordBatch, err error) {
+	raw, err := batch.GetStream(ctx)
+	if err != nil {
+		return nil, err
+	}
+	stream := &countingReadCloser{inner: raw}
+	defer func() {
+		err = errors.Join(err, stream.Close())
+	}()
+
+	rr, err := ipc.NewReader(stream, ipc.WithAllocator(alloc))
+	if err != nil {
+		return nil, fmt.Errorf("ipc.NewReader failed after reading %d bytes: %w", stream.bytesRead, err)
+	}
+	defer rr.Release()
+
+	for rr.Next() && ctx.Err() == nil {
+		rec := rr.RecordBatch()
+		rec, err = transform(ctx, rec)
+		if err != nil {
+			return recs, err
+		}
+		recs = append(recs, rec)
+	}
+	if err = rr.Err(); err != nil {
+		return recs, err
+	}
+	if ctx.Err() != nil {
+		return recs, ctx.Err()
+	}
+	return recs, nil
+}
+
+// readJSONBatches handles the case where GetBatches() returned downloadable
+// chunks that contain JSON data instead of Arrow IPC. This happens with some
+// Snowflake stored procedures that return JSON-format results even when Arrow
+// was requested, and where the inline JSONData() is empty because all data
+// arrives via downloadable chunks.
+//
+// batch0Data contains the already-read bytes for batches[0] (since its stream
+// was consumed during format detection). Remaining batches are read via GetStream.
+func readJSONBatches(ctx context.Context, alloc memory.Allocator, ld gosnowflake.ArrowStreamLoader, batches []gosnowflake.ArrowStreamBatch, batch0Data []byte, maxTimestampPrecision MaxTimestampPrecision, useHighPrecision bool) (array.RecordReader, error) {
+	trace.SpanFromContext(ctx).AddEvent("readJSONBatches", trace.WithAttributes(
+		attribute.Int("batches", len(batches)),
+	))
+
+	schema, err := rowTypesToArrowSchema(ctx, ld, useHighPrecision, maxTimestampPrecision)
+	if err != nil {
+		return nil, adbc.Error{
+			Msg:  err.Error(),
+			Code: adbc.StatusInternal,
+		}
+	}
+
+	if ld.TotalRows() == 0 {
+		return array.NewRecordReader(schema, []arrow.RecordBatch{})
+	}
+
+	bldr := array.NewRecordBuilder(alloc, schema)
+	defer bldr.Release()
+
+	var results []arrow.RecordBatch
+	var rawData [][]*string
+	for batchIdx, b := range batches {
+		var data []byte
+		if batchIdx == 0 {
+			// Use the already-read data for batch[0]
+			data = batch0Data
+		} else {
+			rdr, err := b.GetStream(ctx)
+			if err != nil {
+				return nil, adbc.Error{
+					Msg:  fmt.Sprintf("batch[%d]: GetStream failed: %s", batchIdx, err.Error()),
+					Code: adbc.StatusInternal,
+				}
+			}
+
+			data, err = io.ReadAll(rdr)
+			rdrErr := rdr.Close()
+			if err != nil {
+				return nil, adbc.Error{
+					Msg:  fmt.Sprintf("batch[%d]: ReadAll failed: %s", batchIdx, err.Error()),
+					Code: adbc.StatusInternal,
+				}
+			} else if rdrErr != nil {
+				return nil, rdrErr
+			}
+		}
+
+		trace.SpanFromContext(ctx).AddEvent("readJSONBatches.batch", trace.WithAttributes(
+			attribute.Int("batchIndex", batchIdx),
+			attribute.Int("bytes", len(data)),
+			attribute.Int64("numRows", b.NumRows()),
+		))
+
+		if cap(rawData) >= int(b.NumRows()) {
+			rawData = rawData[:b.NumRows()]
+		} else {
+			rawData = make([][]*string, b.NumRows())
+		}
+		bldr.Reserve(int(b.NumRows()))
+
+		offset, buf := int64(0), bytes.NewReader(data)
+		for i := 0; i < int(b.NumRows()); i++ {
+			dec := json.NewDecoder(buf)
+			if err = dec.Decode(&rawData[i]); err != nil {
+				return nil, adbc.Error{
+					Msg:  fmt.Sprintf("batch[%d] row[%d]: JSON decode failed: %s", batchIdx, i, err.Error()),
+					Code: adbc.StatusInternal,
+				}
+			}
+
+			offset += dec.InputOffset() + 1
+			if _, err = buf.Seek(offset, 0); err != nil {
+				return nil, adbc.Error{
+					Msg:  fmt.Sprintf("batch[%d] row[%d]: seek failed: %s", batchIdx, i, err.Error()),
+					Code: adbc.StatusInternal,
+				}
+			}
+		}
+
+		rec, err := jsonDataToArrow(ctx, bldr, rawData, maxTimestampPrecision)
+		if err != nil {
+			return nil, err
+		}
+		defer rec.Release()
+
+		results = append(results, rec)
+	}
+
+	return array.NewRecordReader(schema, results)
+}
+
+func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake.ArrowStreamLoader, bufferSize, prefetchConcurrency int, useHighPrecision, streamRetryEnabled bool, maxTimestampPrecision MaxTimestampPrecision) (array.RecordReader, error) {
 	batches, err := ld.GetBatches()
 	if err != nil {
 		return nil, errToAdbcErr(adbc.StatusInternal, err)
@@ -692,18 +885,51 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 		return rdr, nil
 	}
 
-	r, err := batches[0].GetStream(ctx)
+	trace.SpanFromContext(ctx).AddEvent("newRecordReader", trace.WithAttributes(
+		attribute.Int("batches", len(batches)),
+		attribute.Int64("totalRows", ld.TotalRows()),
+		attribute.Int("jsonDataLen", len(ld.JSONData())),
+	))
+
+	raw0, err := batches[0].GetStream(ctx)
 	if err != nil {
 		return nil, errToAdbcErr(adbc.StatusIO, err)
 	}
 
+	// Use the QueryResultFormatProvider interface to detect when the server
+	// returned JSON-formatted chunks instead of Arrow IPC. Some statements
+	// such as `CALL stored_procedure() RETURNS TABLE(...)` always come back
+	// as JSON regardless of the Arrow request.
+	if fp, ok := ld.(gosnowflake.QueryResultFormatProvider); ok && fp.QueryResultFormat() == "json" {
+		raw0Data, err := io.ReadAll(raw0)
+		_ = raw0.Close()
+		if err != nil {
+			return nil, errToAdbcErr(adbc.StatusIO, fmt.Errorf("batch[0]: ReadAll failed: %w", err))
+		}
+		trace.SpanFromContext(ctx).AddEvent("newRecordReader.jsonFormat", trace.WithAttributes(
+			attribute.Int("batch0Bytes", len(raw0Data)),
+		))
+		return readJSONBatches(ctx, alloc, ld, batches, raw0Data, maxTimestampPrecision, useHighPrecision)
+	}
+
+	r := &countingReadCloser{inner: raw0}
+
 	rr, err := ipc.NewReader(r, ipc.WithAllocator(alloc))
 	if err != nil {
+		trace.SpanFromContext(ctx).AddEvent("newRecordReader.ipcReaderFailed", trace.WithAttributes(
+			attribute.Int64("bytesRead", r.bytesRead),
+			attribute.String("error", err.Error()),
+		))
+		_ = r.Close()
 		return nil, adbc.Error{
-			Msg:  err.Error(),
+			Msg:  fmt.Sprintf("batch[0]: ipc.NewReader failed after reading %d bytes: %s", r.bytesRead, err.Error()),
 			Code: adbc.StatusInvalidState,
 		}
 	}
+	trace.SpanFromContext(ctx).AddEvent("newRecordReader.schemaOK", trace.WithAttributes(
+		attribute.Int64("bytesRead", r.bytesRead),
+		attribute.String("schema", rr.Schema().String()),
+	))
 
 	var recTransform recordTransformer
 	rdr.schema, recTransform = getTransformer(rr.Schema(), ld, useHighPrecision, maxTimestampPrecision)
@@ -732,40 +958,88 @@ func newRecordReader(ctx context.Context, alloc memory.Allocator, ld gosnowflake
 
 	lastChannelIndex := len(chs) - 1
 	go func() {
-		for i, b := range batches[1:] {
-			batch, batchIdx := b, i+1
+		for i := range batches[1:] {
+			batch, batchIdx := &batches[i+1], i+1
 			chs[batchIdx] = make(chan arrow.RecordBatch, bufferSize)
-			group.Go(func() (err error) {
-				// close channels (except the last) so that Next can move on to the next channel properly
-				if batchIdx != lastChannelIndex {
-					defer close(chs[batchIdx])
-				}
+			group.Go(func(batch batchStreamer, batchIdx int) func() error {
+				return func() (err error) {
+					// close channels (except the last) so that Next can move on to the next channel properly
+					if batchIdx != lastChannelIndex {
+						defer close(chs[batchIdx])
+					}
 
-				rdr, err := batch.GetStream(ctx)
-				if err != nil {
-					return err
-				}
-				defer func() {
-					err = errors.Join(err, rdr.Close())
-				}()
+					if streamRetryEnabled {
+						recs, err := readBatchRecords(ctx, batch, alloc, recTransform, defaultStreamMaxRetries)
+						if err != nil {
+							trace.SpanFromContext(ctx).AddEvent("batch.readBatchRecords.failed", trace.WithAttributes(
+								attribute.Int("batchIndex", batchIdx),
+								attribute.String("error", err.Error()),
+							))
+							return err
+						}
+						trace.SpanFromContext(ctx).AddEvent("batch.readBatchRecords.success", trace.WithAttributes(
+							attribute.Int("batchIndex", batchIdx),
+							attribute.Int("records", len(recs)),
+						))
+						for i, rec := range recs {
+							select {
+							case chs[batchIdx] <- rec:
+								recs[i] = nil // ownership transferred to channel
+							case <-ctx.Done():
+								rec.Release()
+								// Release only unsent records
+								for _, r := range recs[i+1:] {
+									if r != nil {
+										r.Release()
+									}
+								}
+								return ctx.Err()
+							}
+						}
+						return nil
+					}
 
-				rr, err := ipc.NewReader(rdr, ipc.WithAllocator(alloc))
-				if err != nil {
-					return err
-				}
-				defer rr.Release()
-
-				for rr.Next() && ctx.Err() == nil {
-					rec := rr.RecordBatch()
-					rec, err = recTransform(ctx, rec)
+					// Original streaming path: read directly from stream without buffering
+					rawStream, err := batch.GetStream(ctx)
 					if err != nil {
+						trace.SpanFromContext(ctx).AddEvent("batch.GetStream.failed", trace.WithAttributes(
+							attribute.Int("batchIndex", batchIdx),
+							attribute.String("error", err.Error()),
+						))
 						return err
 					}
-					chs[batchIdx] <- rec
-				}
+					countingStream := &countingReadCloser{inner: rawStream}
+					defer func() {
+						err = errors.Join(err, countingStream.Close())
+					}()
 
-				return rr.Err()
-			})
+					rr, err := ipc.NewReader(countingStream, ipc.WithAllocator(alloc))
+					if err != nil {
+						trace.SpanFromContext(ctx).AddEvent("batch.ipcReader.failed", trace.WithAttributes(
+							attribute.Int("batchIndex", batchIdx),
+							attribute.Int64("bytesRead", countingStream.bytesRead),
+							attribute.String("error", err.Error()),
+						))
+						return fmt.Errorf("batch[%d]: ipc.NewReader failed after reading %d bytes: %w", batchIdx, countingStream.bytesRead, err)
+					}
+					defer rr.Release()
+
+					for rr.Next() && ctx.Err() == nil {
+						rec := rr.RecordBatch()
+						rec, err = recTransform(ctx, rec)
+						if err != nil {
+							return err
+						}
+						select {
+						case chs[batchIdx] <- rec:
+						case <-ctx.Done():
+							rec.Release()
+							return ctx.Err()
+						}
+					}
+					return rr.Err()
+				}
+			}(batch, batchIdx))
 		}
 
 		// place this here so that we always clean up, but they can't be in a

@@ -91,6 +91,16 @@ const (
 	// `microseconds`: Limits the max Timestamp precision to microseconds, which is safe for all values.
 	OptionMaxTimestampPrecision = "adbc.snowflake.sql.client_option.max_timestamp_precision"
 
+	// OptionStreamRetryEnabled controls whether batch reads from Snowflake
+	// use a retry-based approach that buffers entire batches and retries on
+	// failure, or the original streaming approach that reads directly from
+	// the network. When enabled, transient network errors during reads of
+	// batches[1:] will be retried up to a fixed number of attempts; batch[0]
+	// is always read via the original streaming path because its IPC reader
+	// is shared to discover the schema. When disabled, all batches use the
+	// original inline streaming path. Default is disabled.
+	OptionStreamRetryEnabled = "adbc.snowflake.sql.client_option.stream_retry_enabled"
+
 	OptionApplicationName  = "adbc.snowflake.sql.client_option.app_name"
 	OptionSSLSkipVerify    = "adbc.snowflake.sql.client_option.tls_skip_verify"
 	OptionOCSPFailOpenMode = "adbc.snowflake.sql.client_option.ocsp_fail_open_mode"
@@ -306,6 +316,7 @@ func (d *driverImpl) NewDatabaseWithOptionsContext(
 	db := &databaseImpl{
 		DatabaseImplBase:      dbBase,
 		useHighPrecision:      true,
+		streamRetryEnabled:    false,
 		defaultAppName:        defaultAppName,
 		maxTimestampPrecision: Nanoseconds,
 	}
