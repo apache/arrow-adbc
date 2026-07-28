@@ -23,7 +23,7 @@ const versions = `
 22;22
 23;23
 24;24
-main;24 (dev)
+main;25 (dev)
 current;24 (current)
 `;
 // Licensed to the Apache Software Foundation (ASF) under one
