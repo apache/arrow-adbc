@@ -470,6 +470,15 @@ performing a release.</p>
 </pre></div>
 </div>
 </li>
+<li><p>Create a fresh clone of the latest apache/arrow repo, which is used by several steps below.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p>Make sure an up-to-date clone is used, so that the Linux packaging scripts in particular are in sync, else there is the possibility of corrupting the shared Linux package repositories.</p>
+</div>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">clone</span> <span class="n">git</span><span class="nd">@github</span><span class="o">.</span><span class="n">com</span><span class="p">:</span><span class="n">apache</span><span class="o">/</span><span class="n">arrow</span>
+</pre></div>
+</div>
+</li>
 </ol>
 <section id="check-nightly-verification-job">
 <h3>Check Nightly Verification Job<a class="headerlink" href="#check-nightly-verification-job" title="Link to this heading">¶</a></h3>
@@ -532,6 +541,7 @@ Follow up Release Candidates</label><div class="sd-tab-content docutils">
 <span class="c1"># &lt;rc-number&gt; starts at 0 and increments every time the Release Candidate is burned</span>
 <span class="c1"># so for the first RC this would be: dev/release/01-prepare.sh 1.0.0 0</span>
 
+<span class="c1"># make sure &lt;arrow-dir&gt; is up-to-date with apache/arrow:main</span>
 <span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">01</span><span class="o">-</span><span class="n">prepare</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">arrow</span><span class="o">-</span><span class="nb">dir</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
 
 <span class="n">git</span> <span class="n">push</span> <span class="o">-</span><span class="n">u</span> <span class="n">apache</span> <span class="n">apache</span><span class="o">-</span><span class="n">arrow</span><span class="o">-</span><span class="n">adbc</span><span class="o">-&lt;</span><span class="n">release</span><span class="o">&gt;-</span><span class="n">rc</span><span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span> <span class="n">maint</span><span class="o">-&lt;</span><span class="n">release</span><span class="o">&gt;</span>
@@ -563,6 +573,8 @@ Follow up Release Candidates</label><div class="sd-tab-content docutils">
 <span class="c1">#</span>
 <span class="c1"># This reuses release scripts in apache/arrow. So you need to</span>
 <span class="c1"># specify cloned apache/arrow directory.</span>
+
+<span class="c1"># make sure &lt;arrow-dir&gt; is up-to-date with apache/arrow:main</span>
 <span class="n">dev</span><span class="o">/</span><span class="n">release</span><span class="o">/</span><span class="mi">05</span><span class="o">-</span><span class="n">linux</span><span class="o">-</span><span class="n">upload</span><span class="o">.</span><span class="n">sh</span> <span class="o">&lt;</span><span class="n">arrow</span><span class="o">-</span><span class="nb">dir</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">rc</span><span class="o">-</span><span class="n">number</span><span class="o">&gt;</span>
 
 <span class="c1"># Start verifications for binaries and wheels</span>
@@ -729,6 +741,8 @@ dev/release/post-04-go.sh
 <span class="c1"># specify cloned apache/arrow directory.</span>
 <span class="c1">#</span>
 <span class="c1"># dev/release/post-05-linux.sh ../arrow 0</span>
+
+<span class="c1"># make sure &lt;arrow-dir&gt; is up-to-date with apache/arrow:main</span>
 dev/release/post-05-linux.sh<span class="w"> </span>&lt;arrow-dir&gt;<span class="w"> </span>&lt;rc-number&gt;
 </pre></div>
 </div>
@@ -834,6 +848,8 @@ brew<span class="w"> </span>bump-formula-pr<span class="w"> </span>--version<spa
 <span class="sd-summary-text">Bump versions</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">First, update the version numbers in <code class="docutils literal notranslate"><span class="pre">dev/release/versions.env</span></code>.  Then, run this script to apply those version numbers to the versions embedded in files and filenames.  The script will also update the changelog to the newly released changelog.</p>
 <div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-12-bump-versions.sh ../arrow</span>
+
+<span class="c1"># make sure &lt;arrow-dir&gt; is up-to-date with apache/arrow:main</span>
 dev/release/post-12-bump-versions.sh<span class="w"> </span>&lt;arrow-dir&gt;
 </pre></div>
 </div>
