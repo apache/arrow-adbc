@@ -79,6 +79,7 @@ The subcomponents are versioned independently:
 - C/C++/GLib/Go/Python/Ruby: ${VERSION_NATIVE}
 - C#: ${VERSION_CSHARP}
 - Java: ${VERSION_JAVA}
+- JavaScript: ${VERSION_JS}
 - R: ${VERSION_R}
 - Rust: ${VERSION_RUST}
 
@@ -90,6 +91,7 @@ been made: we refer you to the [complete changelog][3].
 
 <!-- TODO: fill this portion in. -->
 
+<a id="contributors"></a>
 ## Contributors
 
 \`\`\`
