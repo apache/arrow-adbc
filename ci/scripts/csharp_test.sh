@@ -22,7 +22,27 @@ set -ex
 source_dir=${1}/csharp/test/Apache.Arrow.Adbc.Tests
 
 pushd ${source_dir}
-dotnet test
+
+# The test project targets net472 on every platform so that build is always
+# compiled, but net472 tests can only be *run* on Windows -- there is no .NET
+# Framework test host on Linux or macOS. On those platforms run the remaining
+# target frameworks one at a time. The list is read back from the project so
+# that adding a target framework does not silently drop it from CI.
+case "$(uname -s)" in
+  MINGW*|MSYS*|CYGWIN*)
+    dotnet test
+    ;;
+  *)
+    target_frameworks=$(dotnet msbuild Apache.Arrow.Adbc.Testing.csproj \
+                          -getProperty:TargetFrameworks -nologo | tr -d '\r')
+    for target_framework in ${target_frameworks//;/ }; do
+      if [ "${target_framework}" != "net472" ]; then
+        dotnet test -f "${target_framework}"
+      fi
+    done
+    ;;
+esac
+
 popd
 
 # Databricks driver has been moved out of this repo; its tests are kept
