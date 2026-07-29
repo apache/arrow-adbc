@@ -27,6 +27,7 @@
 #include <libpq-fe.h>
 
 #include <fmt/core.h>
+#include <fmt/format.h>
 
 #include "driver/framework/status.h"
 
