@@ -72,7 +72,6 @@ Getting Started
 
 
 .. _dbc: https://docs.columnar.tech/dbc
-.. _Substrait: https://substrait.io/
 
 Why ADBC?
 ---------
@@ -117,7 +116,7 @@ Why ADBC?
       :link: format/comparison
       :link-type: doc
 
-      Execute SQL and Substrait, query database catalogs, inspect table
+      Execute SQL, query database catalogs, inspect table
       schemas, and more.  ADBC handles common tasks without having to pull in
       another database client.
 
