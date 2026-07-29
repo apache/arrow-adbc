@@ -18,6 +18,7 @@
 package sqldriver
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"database/sql/driver"
@@ -720,13 +721,16 @@ func (r *rows) Next(dest []driver.Value) error {
 		case *array.Float16:
 			dest[i] = col.Value(int(r.curRow))
 		case *array.String:
-			dest[i] = col.Value(int(r.curRow))
+			// col.Value returns a string aliasing the Arrow buffer (zero-copy).
+			// database/sql retains driver.Values past this call, after the record
+			// is released, so hand back an owned copy to avoid a dangling read.
+			dest[i] = strings.Clone(col.Value(int(r.curRow)))
 		case *array.LargeString:
-			dest[i] = col.Value(int(r.curRow))
+			dest[i] = strings.Clone(col.Value(int(r.curRow)))
 		case *array.Binary:
-			dest[i] = col.Value(int(r.curRow))
+			dest[i] = bytes.Clone(col.Value(int(r.curRow)))
 		case *array.LargeBinary:
-			dest[i] = col.Value(int(r.curRow))
+			dest[i] = bytes.Clone(col.Value(int(r.curRow)))
 		case *array.Date32:
 			dest[i] = col.Value(int(r.curRow)).ToTime()
 		case *array.Date64:

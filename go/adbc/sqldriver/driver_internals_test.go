@@ -485,3 +485,44 @@ func TestArrFromVal(t *testing.T) {
 		})
 	}
 }
+
+// TestRowsStringValuesAreOwnedCopies is a regression test for a use-after-free:
+// array.String.Value returns a string that aliases the Arrow data buffer, so
+// handing it straight to database/sql leaves a dangling reference once the
+// record batch (and its buffer, which for ADBC/C-Data results is C-owned) is
+// released — the value then reads back as garbage. rows.Next must return an
+// owned copy. This was surfaced by the arrow-go v18.7 bump.
+func TestRowsStringValuesAreOwnedCopies(t *testing.T) {
+	mem := memory.DefaultAllocator
+
+	sb := array.NewStringBuilder(mem)
+	sb.Append("UNKNOWN")
+	strArr := sb.NewStringArray()
+	defer strArr.Release()
+	sb.Release()
+
+	schema := arrow.NewSchema([]arrow.Field{{Name: "age", Type: arrow.BinaryTypes.String, Nullable: true}}, nil)
+	rec := array.NewRecord(schema, []arrow.Array{strArr}, 1)
+	defer rec.Release()
+
+	rdr, err := array.NewRecordReader(schema, []arrow.RecordBatch{rec})
+	require.NoError(t, err)
+	defer rdr.Release()
+
+	r := &rows{rdr: rdr}
+	dest := make([]driver.Value, 1)
+	require.NoError(t, r.Next(dest))
+
+	got, ok := dest[0].(string)
+	require.True(t, ok, "expected string, got %T", dest[0])
+	require.Equal(t, "UNKNOWN", got)
+
+	// Clobber the underlying Arrow data buffer. An owned copy is unaffected; a
+	// zero-copy alias would now read back as the overwritten bytes.
+	raw := strArr.ValueBytes()
+	for i := range raw {
+		raw[i] = 'X'
+	}
+	require.Equal(t, "UNKNOWN", got,
+		"rows.Next returned a zero-copy alias of the Arrow buffer instead of an owned copy")
+}
