@@ -133,6 +133,7 @@ func (c *connectionImpl) GetDBSchemasForCatalog(ctx context.Context, catalog str
 
 	it := c.client.Datasets(ctx)
 	it.ProjectID = catalog
+	it.ListHidden = true
 
 	res := make([]string, 0)
 	for {
