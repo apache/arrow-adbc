@@ -2070,8 +2070,8 @@ TEST_F(ConnectionProfiles, ProfileParseErrorIncludesLocation) {
 
   adbc_validation::Handle<struct AdbcDatabase> database;
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
-  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile",
-                                    filepath.string().c_str(), &error),
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", filepath.string().c_str(),
+                                    &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
               IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
