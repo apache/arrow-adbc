@@ -39,6 +39,7 @@ class PostgreSQLQuirks(model.DriverQuirks):
         statement_bulk_ingest_catalog=False,
         statement_bulk_ingest_schema=False,
         statement_bulk_ingest_temporary=False,
+        statement_bind=True,
         statement_execute_schema=True,
         statement_get_parameter_schema=True,
         statement_prepare=True,
