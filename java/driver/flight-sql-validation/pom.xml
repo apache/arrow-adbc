@@ -31,6 +31,10 @@
   <name>Arrow ADBC Driver Flight SQL Validation</name>
   <description>Tests validating the Flight SQL driver.</description>
 
+  <properties>
+    <maven.deploy.skip>true</maven.deploy.skip>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>org.apache.arrow.adbc</groupId>
