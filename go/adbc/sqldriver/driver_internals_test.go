@@ -502,7 +502,7 @@ func TestRowsStringValuesAreOwnedCopies(t *testing.T) {
 	sb.Release()
 
 	schema := arrow.NewSchema([]arrow.Field{{Name: "age", Type: arrow.BinaryTypes.String, Nullable: true}}, nil)
-	rec := array.NewRecord(schema, []arrow.Array{strArr}, 1)
+	rec := array.NewRecordBatch(schema, []arrow.Array{strArr}, 1)
 	defer rec.Release()
 
 	rdr, err := array.NewRecordReader(schema, []arrow.RecordBatch{rec})
