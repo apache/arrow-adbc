@@ -199,6 +199,21 @@ TEST(PostgresTypeTest, PostgresTypeSetSchema) {
   schema.reset();
 
   ArrowSchemaInit(schema.get());
+  EXPECT_EQ(PostgresType(PostgresTypeId::kUuid).SetSchema(schema.get()), NANOARROW_OK);
+  EXPECT_STREQ(schema->format, "w:16");
+  typnameMetadataValue = ArrowCharView("<not found>");
+  ArrowMetadataGetValue(schema->metadata, ArrowCharView("ARROW:extension:name"),
+                        &typnameMetadataValue);
+  EXPECT_EQ(std::string(typnameMetadataValue.data, typnameMetadataValue.size_bytes),
+            "arrow.uuid");
+  typnameMetadataValue = ArrowCharView("<not found>");
+  ArrowMetadataGetValue(schema->metadata, ArrowCharView("ARROW:extension:metadata"),
+                        &typnameMetadataValue);
+  EXPECT_EQ(std::string(typnameMetadataValue.data, typnameMetadataValue.size_bytes),
+            "<not found>");
+  schema.reset();
+
+  ArrowSchemaInit(schema.get());
   EXPECT_EQ(PostgresType(PostgresTypeId::kNumeric).SetSchema(schema.get()), NANOARROW_OK);
   EXPECT_STREQ(schema->format, "u");
   typnameMetadataValue = ArrowCharView("<not found>");
@@ -374,6 +389,26 @@ TEST(PostgresTypeTest, PostgresTypeFromSchema) {
             NANOARROW_OK);
   EXPECT_EQ(PostgresType::FromSchema(resolver, schema.get(), &type, &error), ENOTSUP);
   EXPECT_STREQ(error.message, "Can't map Arrow type 'interval_months' to Postgres type");
+  schema.reset();
+
+  // A canonical arrow.uuid field (FixedSizeBinary(16) storage) resolves to uuid
+  ArrowSchemaInit(schema.get());
+  ASSERT_EQ(
+      ArrowSchemaSetTypeFixedSize(schema.get(), NANOARROW_TYPE_FIXED_SIZE_BINARY, 16),
+      NANOARROW_OK);
+  {
+    nanoarrow::UniqueBuffer buffer;
+    ASSERT_EQ(ArrowMetadataBuilderInit(buffer.get(), nullptr), NANOARROW_OK);
+    ASSERT_EQ(
+        ArrowMetadataBuilderAppend(buffer.get(), ArrowCharView("ARROW:extension:name"),
+                                   ArrowCharView("arrow.uuid")),
+        NANOARROW_OK);
+    ASSERT_EQ(ArrowSchemaSetMetadata(schema.get(), reinterpret_cast<char*>(buffer->data)),
+              NANOARROW_OK);
+  }
+  EXPECT_EQ(PostgresType::FromSchema(resolver, schema.get(), &type, nullptr),
+            NANOARROW_OK);
+  EXPECT_EQ(type.type_id(), PostgresTypeId::kUuid);
   schema.reset();
 }
 

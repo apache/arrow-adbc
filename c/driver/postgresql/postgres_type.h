@@ -275,6 +275,20 @@ class PostgresType {
       case PostgresTypeId::kBytea:
         NANOARROW_RETURN_NOT_OK(ArrowSchemaSetType(schema, NANOARROW_TYPE_BINARY));
         break;
+      case PostgresTypeId::kUuid: {
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetTypeFixedSize(schema, NANOARROW_TYPE_FIXED_SIZE_BINARY, 16));
+        nanoarrow::UniqueBuffer buffer;
+
+        NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderInit(buffer.get(), nullptr));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowMetadataBuilderAppend(buffer.get(), ArrowCharView(kExtensionName),
+                                       ArrowCharView(kUuidExtensionName)));
+        NANOARROW_RETURN_NOT_OK(
+            ArrowSchemaSetMetadata(schema, reinterpret_cast<char*>(buffer->data)));
+
+        break;
+      }
 
       // ---- Temporal --------------------
       case PostgresTypeId::kDate:
@@ -359,6 +373,7 @@ class PostgresType {
   static constexpr const char* kExtensionName = "ARROW:extension:name";
   static constexpr const char* kOpaqueExtensionName = "arrow.opaque";
   static constexpr const char* kJsonExtensionName = "arrow.json";
+  static constexpr const char* kUuidExtensionName = "arrow.uuid";
   static constexpr const char* kExtensionMetadata = "ARROW:extension:metadata";
 
   ArrowErrorCode AddPostgresTypeMetadata(ArrowSchema* schema,
@@ -590,10 +605,13 @@ inline ArrowErrorCode PostgresType::FromSchema(const PostgresTypeResolver& resol
   ArrowSchemaView schema_view;
   NANOARROW_RETURN_NOT_OK(ArrowSchemaViewInit(&schema_view, schema, error));
 
-  if (schema_view.extension_name.data != nullptr &&
-      std::string_view(schema_view.extension_name.data,
-                       schema_view.extension_name.size_bytes)
-              .compare("arrow.json") == 0) {
+  std::string_view extension_name;
+  if (schema_view.extension_name.data != nullptr) {
+    extension_name = std::string_view(schema_view.extension_name.data,
+                                      schema_view.extension_name.size_bytes);
+  }
+
+  if (extension_name == kJsonExtensionName) {
     switch (schema_view.type) {
       case NANOARROW_TYPE_STRING:
       case NANOARROW_TYPE_LARGE_STRING:
@@ -605,6 +623,18 @@ inline ArrowErrorCode PostgresType::FromSchema(const PostgresTypeResolver& resol
     ArrowErrorSet(
         error, "Field '%s' is of type arrow.json but storage type is not a string type",
         schema_view.schema->name);
+    return EINVAL;
+  }
+
+  if (extension_name == kUuidExtensionName) {
+    if (schema_view.type == NANOARROW_TYPE_FIXED_SIZE_BINARY &&
+        schema_view.fixed_size == 16) {
+      return resolver.Find(resolver.GetOID(PostgresTypeId::kUuid), out, error);
+    }
+    ArrowErrorSet(error,
+                  "Field '%s' is of type arrow.uuid but storage type is not "
+                  "FixedSizeBinary(16)",
+                  schema_view.schema->name);
     return EINVAL;
   }
 

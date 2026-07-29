@@ -459,6 +459,39 @@ class PostgresCopyBinaryFieldReader : public PostgresCopyFieldReader {
   }
 };
 
+// Reader for Pg->Arrow conversions into a fixed-width Arrow binary type (e.g.
+// FixedSizeBinary(16) for a canonical arrow.uuid field).
+class PostgresCopyFixedSizeBinaryFieldReader : public PostgresCopyFieldReader {
+ public:
+  ArrowErrorCode Read(ArrowBufferView* data, int32_t field_size_bytes, ArrowArray* array,
+                      ArrowError* error) override {
+    // -1 for NULL (0 would be empty string)
+    if (field_size_bytes < 0) {
+      return ArrowArrayAppendNull(array, 1);
+    }
+
+    if (field_size_bytes != schema_view_.fixed_size) {
+      ArrowErrorSet(error, "Expected field with %d bytes but found field with %d bytes",
+                    static_cast<int>(schema_view_.fixed_size),
+                    static_cast<int>(field_size_bytes));  // NOLINT(runtime/int)
+      return EINVAL;
+    }
+
+    if (field_size_bytes > data->size_bytes) {
+      ArrowErrorSet(error, "Expected %d bytes of field data but got %d bytes of input",
+                    static_cast<int>(field_size_bytes),
+                    static_cast<int>(data->size_bytes));  // NOLINT(runtime/int)
+      return EINVAL;
+    }
+
+    NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_, data->data.data, field_size_bytes));
+    data->data.as_uint8 += field_size_bytes;
+    data->size_bytes -= field_size_bytes;
+
+    return AppendValid(array);
+  }
+};
+
 /// Postgres JSONB emits as the JSON string prefixed with a version number
 /// (https://github.com/postgres/postgres/blob/3f44959f47460fb350d25d760cf2384f9aa14e9a/src/backend/utils/adt/jsonb.c#L80-L87
 /// ) Currently there is only one version, so functionally this is a just string prefixed
@@ -858,6 +891,10 @@ static inline ArrowErrorCode MakeCopyFieldReader(
       // No need to check pg_type here: we can return the bytes of any
       // Postgres type as binary.
       *out = std::make_unique<PostgresCopyBinaryFieldReader>();
+      return NANOARROW_OK;
+
+    case NANOARROW_TYPE_FIXED_SIZE_BINARY:
+      *out = std::make_unique<PostgresCopyFixedSizeBinaryFieldReader>();
       return NANOARROW_OK;
 
     case NANOARROW_TYPE_LIST:
