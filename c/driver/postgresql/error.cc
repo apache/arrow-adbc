@@ -17,12 +17,7 @@
 
 #include "error.h"
 
-#include <stdarg.h>
-#include <cstdio>
-#include <cstring>
-#include <string>
 #include <string_view>
-#include <vector>
 
 #include <libpq-fe.h>
 
@@ -84,29 +79,6 @@ AdbcStatusCode ClassifySqlState(const char* sqlstate) {
   }
 
   return ADBC_STATUS_IO;
-}
-
-AdbcStatusCode SetError(struct AdbcError* error, PGresult* result, const char* format,
-                        ...) {
-  if (error && error->release) {
-    // TODO: combine the errors if possible
-    error->release(error);
-  }
-
-  va_list args;
-  va_start(args, format);
-  std::string message;
-  message.resize(1024);
-  int chars_needed = vsnprintf(message.data(), message.size(), format, args);
-  va_end(args);
-
-  if (chars_needed > 0) {
-    message.resize(chars_needed);
-  } else {
-    message.resize(0);
-  }
-
-  return MakeStatus(result, "{}", message).ToAdbc(error);
 }
 
 }  // namespace adbcpq

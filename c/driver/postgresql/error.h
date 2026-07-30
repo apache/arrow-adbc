@@ -57,22 +57,6 @@ static const std::vector<DetailField> kDetailFields = {
     {PG_DIAG_TABLE_NAME, "PG_DIAG_TABLE_NAME"},
 };
 
-// The printf checking attribute doesn't work properly on gcc 4.8
-// and results in spurious compiler warnings
-#if defined(__clang__) || (defined(__GNUC__) && __GNUC__ >= 5)
-#define ADBC_CHECK_PRINTF_ATTRIBUTE(x, y) __attribute__((format(printf, x, y)))
-#else
-#define ADBC_CHECK_PRINTF_ATTRIBUTE(x, y)
-#endif
-
-/// \brief Set an error based on a PGresult, inferring the proper ADBC status
-///   code from the PGresult. Deprecated and is currently a thin wrapper around
-///   MakeStatus() below.
-AdbcStatusCode SetError(struct AdbcError* error, PGresult* result, const char* format,
-                        ...) ADBC_CHECK_PRINTF_ATTRIBUTE(3, 4);
-
-#undef ADBC_CHECK_PRINTF_ATTRIBUTE
-
 AdbcStatusCode ClassifySqlState(const char* sqlstate);
 
 template <typename... Args>
