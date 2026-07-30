@@ -174,7 +174,7 @@ jobs:
           path: javascript
       - name: Setup conda (Windows)
         # Miniforge does not publish a Windows ARM64 installer, so the ARM64
-        # leg gets SQLite from vcpkg below instead.
+        # leg uses micromamba (which ships native arm64 binaries) below.
         if: runner.os == 'Windows' && runner.arch != 'ARM64'
         uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5  # v4.0.1
         with:
@@ -183,20 +183,25 @@ jobs:
         if: runner.os == 'Windows' && runner.arch != 'ARM64'
         run: conda install -c conda-forge --file ci/conda_env_cpp.txt
       - name: Install C++ dependencies (Windows ARM64)
+        # mamba-org/setup-micromamba is not on the ASF actions allowlist, so
+        # fetch the official micromamba binary directly (pinned + checksummed).
+        # conda-forge's win-arm64 platform does not have cmake, compilers,
+        # libpq, or pkg-config yet, so install just what the SQLite driver
+        # build needs and use the runner's preinstalled MSVC and CMake.
+        # CONDA_PREFIX is exported so the shared "Set driver path (Windows)"
+        # step puts the env's Library\bin (sqlite3.dll) on PATH.
         if: runner.os == 'Windows' && runner.arch == 'ARM64'
         shell: pwsh
         run: |
-          if (-not $env:VCPKG_INSTALLATION_ROOT) {
-            git clone --depth 1 https://github.com/microsoft/vcpkg.git "$env:RUNNER_TEMP\vcpkg"
-            & "$env:RUNNER_TEMP\vcpkg\bootstrap-vcpkg.bat"
-            echo "VCPKG_INSTALLATION_ROOT=$env:RUNNER_TEMP\vcpkg" >> $env:GITHUB_ENV
-            $vcpkgRoot = "$env:RUNNER_TEMP\vcpkg"
-          } else {
-            $vcpkgRoot = $env:VCPKG_INSTALLATION_ROOT
-          }
-          & "$vcpkgRoot\vcpkg.exe" install sqlite3:arm64-windows-static-md
-          $toolchain = "$vcpkgRoot\scripts\buildsystems\vcpkg.cmake" -replace '\\', '/'
-          echo "ADBC_CMAKE_ARGS=-DCMAKE_TOOLCHAIN_FILE=$toolchain -DVCPKG_TARGET_TRIPLET=arm64-windows-static-md" >> $env:GITHUB_ENV
+          $version = "2.8.1-0"
+          $sha256 = "c90eda5e4c88ebd4fb4c857d7c98d7484156fae5419b72c9c652f331ad7aad9f"
+          $exe = "$env:RUNNER_TEMP\micromamba.exe"
+          Invoke-WebRequest -Uri "https://github.com/mamba-org/micromamba-releases/releases/download/$version/micromamba-win-arm64.exe" -OutFile $exe
+          if ((Get-FileHash $exe -Algorithm SHA256).Hash -ne $sha256) { throw "micromamba checksum mismatch" }
+          $prefix = "$env:RUNNER_TEMP\conda-env"
+          & $exe create --yes --prefix $prefix --channel conda-forge libsqlite
+          echo "CONDA_PREFIX=$prefix" >> $env:GITHUB_ENV
+          echo "ADBC_CMAKE_ARGS=-DCMAKE_PREFIX_PATH=$($prefix -replace '\\','/')/Library" >> $env:GITHUB_ENV
       - name: Install C++ dependencies (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get install libsqlite3-dev
