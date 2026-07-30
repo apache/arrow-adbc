@@ -1,17 +1,24 @@
 <img src="https://user-images.githubusercontent.com/576385/156254208-f5b743a9-88cf-439d-b0c0-923d53e8d551.png" alt="{fmt}" width="25%"/>
 
-[![image](https://github.com/fmtlib/fmt/workflows/linux/badge.svg)](https://github.com/fmtlib/fmt/actions?query=workflow%3Alinux)
-[![image](https://github.com/fmtlib/fmt/workflows/macos/badge.svg)](https://github.com/fmtlib/fmt/actions?query=workflow%3Amacos)
-[![image](https://github.com/fmtlib/fmt/workflows/windows/badge.svg)](https://github.com/fmtlib/fmt/actions?query=workflow%3Awindows)
-[![fmt is continuously fuzzed at oss-fuzz](https://oss-fuzz-build-logs.storage.googleapis.com/badges/fmt.svg)](https://bugs.chromium.org/p/oss-fuzz/issues/list?\%0Acolspec=ID%20Type%20Component%20Status%20Proj%20Reported%20Owner%20\%0ASummary&q=proj%3Dfmt&can=1)
-[![Ask questions at StackOverflow with the tag fmt](https://img.shields.io/badge/stackoverflow-fmt-blue.svg)](https://stackoverflow.com/questions/tagged/fmt)
-[![image](https://api.securityscorecards.dev/projects/github.com/fmtlib/fmt/badge)](https://securityscorecards.dev/viewer/?uri=github.com/fmtlib/fmt)
+[![image](https://github.com/fmtlib/fmt/actions/workflows/linux.yml/badge.svg?branch=master)](
+https://github.com/fmtlib/fmt/actions?query=workflow%3Alinux)
+[![image](https://github.com/fmtlib/fmt/actions/workflows/macos.yml/badge.svg?branch=master)](
+https://github.com/fmtlib/fmt/actions?query=workflow%3Amacos)
+[![image](https://github.com/fmtlib/fmt/actions/workflows/windows.yml/badge.svg?branch=master)](
+https://github.com/fmtlib/fmt/actions?query=workflow%3Awindows)
+[![fmt is continuously fuzzed at oss-fuzz](https://oss-fuzz-build-logs.storage.googleapis.com/badges/fmt.svg)](
+https://issues.oss-fuzz.com/issues?q=title:fmt%20cc:victor.zverovich@gmail.com)
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/8880/badge)](
+https://www.bestpractices.dev/projects/8880)
+[![image](https://api.securityscorecards.dev/projects/github.com/fmtlib/fmt/badge)](
+https://securityscorecards.dev/viewer/?uri=github.com/fmtlib/fmt)
+[![Ask questions at StackOverflow with the tag fmt](
+https://img.shields.io/badge/stackoverflow-fmt-blue.svg)](https://stackoverflow.com/questions/tagged/fmt)
+[![Support Ukraine](
+https://img.shields.io/badge/Support-Ukraine-005BBB?labelColor=FFD500)](https://novaukraine.org/)
 
 **{fmt}** is an open-source formatting library providing a fast and safe
 alternative to C stdio and C++ iostreams.
-
-If you like this project, please consider donating to one of the funds
-that help victims of the war in Ukraine: <https://www.stopputin.net/>.
 
 [Documentation](https://fmt.dev)
 
@@ -24,12 +31,12 @@ Try {fmt} in [Compiler Explorer](https://godbolt.org/z/8Mx1EW73v).
 
 # Features
 
-- Simple [format API](https://fmt.dev/latest/api.html) with positional
+- Simple [format API](https://fmt.dev/latest/api/) with positional
   arguments for localization
 - Implementation of [C++20
   std::format](https://en.cppreference.com/w/cpp/utility/format) and
   [C++23 std::print](https://en.cppreference.com/w/cpp/io/print)
-- [Format string syntax](https://fmt.dev/latest/syntax.html) similar
+- [Format string syntax](https://fmt.dev/latest/syntax/) similar
   to Python\'s
   [format](https://docs.python.org/3/library/stdtypes.html#str.format)
 - Fast IEEE 754 floating-point formatter with correct rounding,
@@ -37,17 +44,17 @@ Try {fmt} in [Compiler Explorer](https://godbolt.org/z/8Mx1EW73v).
   [Dragonbox](https://github.com/jk-jeon/dragonbox) algorithm
 - Portable Unicode support
 - Safe [printf
-  implementation](https://fmt.dev/latest/api.html#printf-formatting)
+  implementation](https://fmt.dev/latest/api/#printf-api)
   including the POSIX extension for positional arguments
 - Extensibility: [support for user-defined
-  types](https://fmt.dev/latest/api.html#formatting-user-defined-types)
+  types](https://fmt.dev/latest/api/#formatting-user-defined-types)
 - High performance: faster than common standard library
   implementations of `(s)printf`, iostreams, `to_string` and
   `to_chars`, see [Speed tests](#speed-tests) and [Converting a
   hundred million integers to strings per
   second](http://www.zverovich.net/2020/06/13/fast-int-to-string-revisited.html)
 - Small code size both in terms of source code with the minimum
-  configuration consisting of just three files, `core.h`, `format.h`
+  configuration consisting of just three files, `base.h`, `format.h`
   and `format-inl.h`, and compiled code; see [Compile time and code
   bloat](#compile-time-and-code-bloat)
 - Reliability: the library has an extensive set of
@@ -58,8 +65,8 @@ Try {fmt} in [Compiler Explorer](https://godbolt.org/z/8Mx1EW73v).
   buffer overflow errors
 - Ease of use: small self-contained code base, no external
   dependencies, permissive MIT
-  [license](https://github.com/fmtlib/fmt/blob/master/LICENSE.rst)
-- [Portability](https://fmt.dev/latest/index.html#portability) with
+  [license](https://github.com/fmtlib/fmt/blob/master/LICENSE)
+- [Portability](https://fmt.dev/latest/#portability) with
   consistent output across platforms and support for older compilers
 - Clean warning-free codebase even on high warning levels such as
   `-Wall -Wextra -pedantic`
@@ -74,7 +81,7 @@ See the [documentation](https://fmt.dev) for more details.
 **Print to stdout** ([run](https://godbolt.org/z/Tevcjh))
 
 ``` c++
-#include <fmt/core.h>
+#include <fmt/base.h>
 
 int main() {
   fmt::print("Hello, world!\n");
@@ -149,8 +156,8 @@ int main() {
 }
 ```
 
-This can be [5 to 9 times faster than
-fprintf](http://www.zverovich.net/2020/08/04/optimal-file-buffer-size.html).
+This can be [up to 9 times faster than `fprintf`](
+http://www.zverovich.net/2020/08/04/optimal-file-buffer-size.html).
 
 **Print with colors and text styles**
 
@@ -169,7 +176,7 @@ int main() {
 
 Output on a modern terminal with Unicode support:
 
-![image](https://github.com/fmtlib/fmt/assets/%0A576385/2a93c904-d6fa-4aa6-b453-2618e1c327d7)
+![image](https://github.com/fmtlib/fmt/assets/576385/2a93c904-d6fa-4aa6-b453-2618e1c327d7)
 
 # Benchmarks
 
@@ -177,17 +184,17 @@ Output on a modern terminal with Unicode support:
 
 | Library           | Method        | Run Time, s |
 |-------------------|---------------|-------------|
-| libc              | printf        |   0.91      |
-| libc++            | std::ostream  |   2.49      |
-| {fmt} 9.1         | fmt::print    |   0.74      |
-| Boost Format 1.80 | boost::format |   6.26      |
-| Folly Format      | folly::format |   1.87      |
+| libc              | printf        |   0.66      |
+| libc++            | std::ostream  |   1.63      |
+| {fmt} 12.1        | fmt::print    |   0.44      |
+| Boost Format 1.88 | boost::format |   3.89      |
+| Folly Format      | folly::format |   1.28      |
 
-{fmt} is the fastest of the benchmarked methods, \~20% faster than
+{fmt} is the fastest of the benchmarked methods, \~50% faster than
 `printf`.
 
 The above results were generated by building `tinyformat_test.cpp` on
-macOS 12.6.1 with `clang++ -O3 -DNDEBUG -DSPEED_TEST -DHAVE_FORMAT`, and
+macOS 15.6.1 with `clang++ -O3 -DNDEBUG -DSPEED_TEST -DHAVE_FORMAT`, and
 taking the best of three runs. In the test, the format string
 `"%0.10f:%04d:%+g:%s:%p:%c:%%\n"` or equivalent is filled 2,000,000
 times with output sent to `/dev/null`; for further details refer to the
@@ -215,26 +222,26 @@ in the following tables.
 
 **Optimized build (-O3)**
 
-| Method        | Compile Time, s | Executable size, KiB | Stripped size, KiB |
-|---------------|-----------------|----------------------|--------------------|
-| printf        |             1.6 |                   54 |                 50 |
-| IOStreams     |            25.9 |                   98 |                 84 |
-| fmt 83652df   |             4.8 |                   54 |                 50 |
-| tinyformat    |            29.1 |                  161 |                136 |
-| Boost Format  |            55.0 |                  530 |                317 |
+| Method          | Compile Time, s | Executable size, KiB | Stripped size, KiB |
+|-----------------|-----------------|----------------------|--------------------|
+| printf          |             1.6 |                   54 |                 50 |
+| IOStreams       |            28.4 |                   98 |                 84 |
+| {fmt} `1122268` |             5.0 |                   54 |                 50 |
+| tinyformat      |            32.6 |                  164 |                136 |
+| Boost Format    |            55.0 |                  530 |                317 |
 
 {fmt} is fast to compile and is comparable to `printf` in terms of per-call
 binary size (within a rounding error on this system).
 
 **Non-optimized build**
 
-| Method        | Compile Time, s | Executable size, KiB | Stripped size, KiB |
-|---------------|-----------------|----------------------|--------------------|
-| printf        |             1.4 |                   54 |                 50 |
-| IOStreams     |            23.4 |                   92 |                 68 |
-| {fmt} 83652df |             4.4 |                   89 |                 85 |
-| tinyformat    |            24.5 |                  204 |                161 |
-| Boost Format  |            36.4 |                  831 |                462 |
+| Method          | Compile Time, s | Executable size, KiB | Stripped size, KiB |
+|-----------------|-----------------|----------------------|--------------------|
+| printf          |             1.4 |                   54 |                 50 |
+| IOStreams       |            27.0 |                   88 |                 68 |
+| {fmt} `1122268` |             4.7 |                   87 |                 84 |
+| tinyformat      |            28.1 |                  185 |                145 |
+| Boost Format    |            38.9 |                  678 |                381 |
 
 `libc`, `lib(std)c++`, and `libfmt` are all linked as shared libraries
 to compare formatting function overhead only. Boost Format is a
@@ -243,7 +250,7 @@ header-only library so it doesn\'t provide any linkage options.
 ## Running the tests
 
 Please refer to [Building the
-library](https://fmt.dev/latest/usage.html#building-the-library) for
+library](https://fmt.dev/latest/get-started/#building-from-source) for
 instructions on how to build the library and run the unit tests.
 
 Benchmarks reside in a separate repository,
@@ -265,8 +272,7 @@ or the bloat test:
 
 # Migrating code
 
-[clang-tidy](https://clang.llvm.org/extra/clang-tidy/) v17 (not yet
-released) provides the
+[clang-tidy](https://clang.llvm.org/extra/clang-tidy/) v18 provides the
 [modernize-use-std-print](https://clang.llvm.org/extra/clang-tidy/checks/modernize/use-std-print.html)
 check that is capable of converting occurrences of `printf` and
 `fprintf` to `fmt::print` if configured to do so. (By default it
@@ -292,13 +298,14 @@ converts to `std::print`.)
 - [ccache](https://ccache.dev/): a compiler cache
 - [ClickHouse](https://github.com/ClickHouse/ClickHouse): an
   analytical database management system
+- [ContextVision](https://www.contextvision.com/): medical imaging software
 - [Contour](https://github.com/contour-terminal/contour/): a modern
   terminal emulator
 - [CUAUV](https://cuauv.org/): Cornell University\'s autonomous
   underwater vehicle
 - [Drake](https://drake.mit.edu/): a planning, control, and analysis
   toolbox for nonlinear dynamical systems (MIT)
-- [Envoy](https://lyft.github.io/envoy/): C++ L7 proxy and
+- [Envoy](https://github.com/envoyproxy/envoy): C++ L7 proxy and
   communication bus (Lyft)
 - [FiveM](https://fivem.net/): a modification framework for GTA V
 - [fmtlog](https://github.com/MengRao/fmtlog): a performant
@@ -373,98 +380,6 @@ If you are aware of other projects using this library, please let me
 know by [email](mailto:victor.zverovich@gmail.com) or by submitting an
 [issue](https://github.com/fmtlib/fmt/issues).
 
-# Motivation
-
-So why yet another formatting library?
-
-There are plenty of methods for doing this task, from standard ones like
-the printf family of function and iostreams to Boost Format and
-FastFormat libraries. The reason for creating a new library is that
-every existing solution that I found either had serious issues or
-didn\'t provide all the features I needed.
-
-## printf
-
-The good thing about `printf` is that it is pretty fast and readily
-available being a part of the C standard library. The main drawback is
-that it doesn\'t support user-defined types. `printf` also has safety
-issues although they are somewhat mitigated with [\_\_attribute\_\_
-((format (printf,
-\...))](https://gcc.gnu.org/onlinedocs/gcc/Function-Attributes.html) in
-GCC. There is a POSIX extension that adds positional arguments required
-for
-[i18n](https://en.wikipedia.org/wiki/Internationalization_and_localization)
-to `printf` but it is not a part of C99 and may not be available on some
-platforms.
-
-## iostreams
-
-The main issue with iostreams is best illustrated with an example:
-
-``` c++
-std::cout << std::setprecision(2) << std::fixed << 1.23456 << "\n";
-```
-
-which is a lot of typing compared to printf:
-
-``` c++
-printf("%.2f\n", 1.23456);
-```
-
-Matthew Wilson, the author of FastFormat, called this \"chevron hell\".
-iostreams don\'t support positional arguments by design.
-
-The good part is that iostreams support user-defined types and are safe
-although error handling is awkward.
-
-## Boost Format
-
-This is a very powerful library that supports both `printf`-like format
-strings and positional arguments. Its main drawback is performance.
-According to various benchmarks, it is much slower than other methods
-considered here. Boost Format also has excessive build times and severe
-code bloat issues (see [Benchmarks](#benchmarks)).
-
-## FastFormat
-
-This is an interesting library that is fast, safe and has positional
-arguments. However, it has significant limitations, citing its author:
-
-> Three features that have no hope of being accommodated within the
-> current design are:
->
-> - Leading zeros (or any other non-space padding)
-> - Octal/hexadecimal encoding
-> - Runtime width/alignment specification
-
-It is also quite big and has a heavy dependency, on STLSoft, which might be
-too restrictive for use in some projects.
-
-## Boost Spirit.Karma
-
-This is not a formatting library but I decided to include it here for
-completeness. As iostreams, it suffers from the problem of mixing
-verbatim text with arguments. The library is pretty fast, but slower on
-integer formatting than `fmt::format_to` with format string compilation
-on Karma\'s own benchmark, see [Converting a hundred million integers to
-strings per
-second](http://www.zverovich.net/2020/06/13/fast-int-to-string-revisited.html).
-
-# License
-
-{fmt} is distributed under the MIT
-[license](https://github.com/fmtlib/fmt/blob/master/LICENSE).
-
-# Documentation License
-
-The [Format String Syntax](https://fmt.dev/latest/syntax.html) section
-in the documentation is based on the one from Python [string module
-documentation](https://docs.python.org/3/library/string.html#module-string).
-For this reason, the documentation is distributed under the Python
-Software Foundation license available in
-[doc/python-license.txt](https://raw.github.com/fmtlib/fmt/master/doc/python-license.txt).
-It only applies if you distribute the documentation of {fmt}.
-
 # Maintainers
 
 The {fmt} library is maintained by Victor Zverovich
@@ -474,12 +389,3 @@ people. See
 [Releases](https://github.com/fmtlib/fmt/releases) for some of the
 names. Let us know if your contribution is not listed or mentioned
 incorrectly and we\'ll make it right.
-
-# Security Policy
-
-To report a security issue, please disclose it at [security
-advisory](https://github.com/fmtlib/fmt/security/advisories/new).
-
-This project is maintained by a team of volunteers on a
-reasonable-effort basis. As such, please give us at least *90* days to
-work on a fix before public exposure.
