@@ -18,7 +18,7 @@
 // RECIPE STARTS HERE
 
 /// Here we'll briefly tour basic features of ADBC with the SQLite
-/// driver in C++17.
+/// driver in C++20.
 
 /// Installation
 /// ============
@@ -27,7 +27,7 @@
 /// the repository, build the sample, and follow along.
 ///
 /// We'll assume you're using conda-forge_ for dependencies.  CMake, a
-/// C++17 compiler, and the ADBC libraries are required.  They can be
+/// C++20 compiler, and the ADBC libraries are required.  They can be
 /// installed as follows:
 ///
 /// .. code-block:: shell
