@@ -288,6 +288,14 @@ AdbcStatusCode LoadProfileFile(const std::filesystem::path& profile_path,
   } catch (const toml::parse_error& err) {
     std::string message = "Could not open profile. ";
     message += err.what();
+    const auto& src = err.source();
+    if (src.begin) {
+      message += " (line ";
+      message += std::to_string(src.begin.line);
+      message += ", column ";
+      message += std::to_string(src.begin.column);
+      message += ")";
+    }
     message += ". Profile: ";
     message += profile_path.string();
     SetError(error, std::move(message));
