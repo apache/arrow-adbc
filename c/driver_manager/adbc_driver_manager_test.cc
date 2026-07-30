@@ -2092,7 +2092,7 @@ TEST_F(DriverManifest, ManifestParseErrorIncludesLocation) {
 
   ASSERT_THAT(AdbcFindLoadDriver("baddriver", nullptr, ADBC_VERSION_1_1_0,
                                  ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
-              Not(IsOkStatus(&error)));
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
   ASSERT_THAT(error.message, ::testing::HasSubstr("line 3"));
   ASSERT_THAT(error.message, ::testing::HasSubstr("column"));
 
