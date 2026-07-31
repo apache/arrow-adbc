@@ -69,6 +69,8 @@ if typing.TYPE_CHECKING:
     import pyarrow
     from typing_extensions import CapsuleType, Self
 
+    from ._reader import AdbcRecordBatchReader
+
 # ----------------------------------------------------------
 # Globals
 
@@ -1445,7 +1447,7 @@ class _RowIterator(_Closeable):
         self._stmt = stmt
         self._handle: Optional[_lib.ArrowArrayStreamHandle] = handle
         self._backend = dbapi_backend
-        self._reader: Optional["_reader.AdbcRecordBatchReader"] = None
+        self._reader: Optional["AdbcRecordBatchReader"] = None
         self._current_batch = None
         self._next_row = 0
         self._finished = False
@@ -1461,7 +1463,7 @@ class _RowIterator(_Closeable):
             handle.release()
 
     @property
-    def reader(self) -> "_reader.AdbcRecordBatchReader":
+    def reader(self) -> "AdbcRecordBatchReader":
         if self._reader is None:
             _requires_pyarrow()
             if self._handle is None:
