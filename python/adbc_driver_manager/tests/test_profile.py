@@ -368,6 +368,21 @@ profile_version = 9001
             pass
 
 
+def test_parse_error_includes_location(tmp_path, monkeypatch) -> None:
+    # Test that TOML parse errors include line/column information
+    monkeypatch.setenv("ADBC_PROFILE_PATH", str(tmp_path))
+
+    with (tmp_path / "badtoml.toml").open("w") as sink:
+        sink.write("""profile_version = 1
+driver = unquoted_value
+[Options]
+""")
+
+    with pytest.raises(dbapi.ProgrammingError, match=r"line 2.*column"):
+        with dbapi.connect("profile://badtoml"):
+            pass
+
+
 def test_reject_malformed(tmp_path, monkeypatch) -> None:
     # Test that invalid profiles are rejected
     monkeypatch.setenv("ADBC_PROFILE_PATH", str(tmp_path))
@@ -446,6 +461,23 @@ driver = "sqlitemanifest"
         with conn.cursor() as cursor:
             cursor.execute("SELECT sqlite_version()")
             assert cursor.fetchone() is not None
+
+
+def test_manifest_parse_error_includes_location(tmp_path, monkeypatch) -> None:
+    # Test that TOML parse errors in manifests include line/column information
+    manifest_path = tmp_path / "manifest"
+    manifest_path.mkdir()
+    monkeypatch.setenv("ADBC_DRIVER_PATH", str(manifest_path))
+
+    with (manifest_path / "badmanifest.toml").open("w") as sink:
+        sink.write("""manifest_version = 1
+[Driver]
+shared = unquoted_value
+""")
+
+    with pytest.raises(dbapi.ProgrammingError, match=r"line 3.*column"):
+        with dbapi.connect("badmanifest"):
+            pass
 
 
 def test_subdir(monkeypatch, tmp_path) -> None:

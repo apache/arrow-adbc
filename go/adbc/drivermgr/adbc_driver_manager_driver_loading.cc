@@ -163,6 +163,14 @@ AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
     // differentiate between bad syntax and other I/O error.
     std::string message = "Could not open manifest. ";
     message += err.what();
+    const auto& src = err.source();
+    if (src.begin) {
+      message += " (line ";
+      message += std::to_string(src.begin.line);
+      message += ", column ";
+      message += std::to_string(src.begin.column);
+      message += ")";
+    }
     message += ". Manifest: ";
     message += driver_manifest.string();
     SetError(error, std::move(message));

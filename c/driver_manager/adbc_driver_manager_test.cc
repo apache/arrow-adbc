@@ -2059,6 +2059,46 @@ TEST_F(ConnectionProfiles, CustomProfileProvider) {
   ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
 }
 
+TEST_F(ConnectionProfiles, ProfileParseErrorIncludesLocation) {
+  auto filepath = temp_dir / "badprofile.toml";
+  std::ofstream file(filepath);
+  ASSERT_TRUE(file.is_open());
+  file << "profile_version = 1\n"
+       << "driver = unquoted_value\n"
+       << "[Options]\n";
+  file.close();
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", filepath.string().c_str(),
+                                    &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("line 2"));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("column"));
+  ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
+}
+
+TEST_F(DriverManifest, ManifestParseErrorIncludesLocation) {
+  std::ofstream file(temp_dir / "baddriver.toml");
+  ASSERT_TRUE(file.is_open());
+  file << "manifest_version = 1\n"
+       << "[Driver]\n"
+       << "shared = unquoted_value\n";
+  file.close();
+
+  SetDriverPath(temp_dir.string().c_str());
+
+  ASSERT_THAT(AdbcFindLoadDriver("baddriver", nullptr, ADBC_VERSION_1_1_0,
+                                 ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("line 3"));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("column"));
+
+  UnsetDriverPath();
+}
+
 struct DriverUriProfile {
   std::string name;
   std::string driver;
