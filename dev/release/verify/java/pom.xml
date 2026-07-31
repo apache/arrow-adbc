@@ -46,7 +46,20 @@
     </dependencies>
   </dependencyManagement>
 
+
   <dependencies>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <version>3.27.7</version>
+      <scope>test</scope>
+    </dependency>
+
     <!-- List all subcomponents explicitly. -->
     <dependency>
       <groupId>org.apache.arrow.adbc</groupId>
@@ -77,11 +90,6 @@
       <groupId>org.apache.arrow.adbc</groupId>
       <artifactId>adbc-sql</artifactId>
       <version>${adbc.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>org.junit.jupiter</groupId>
-      <artifactId>junit-jupiter</artifactId>
-      <scope>test</scope>
     </dependency>
   </dependencies>
 
