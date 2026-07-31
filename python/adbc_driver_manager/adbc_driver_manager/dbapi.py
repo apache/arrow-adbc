@@ -1584,8 +1584,17 @@ def _is_arrow_data(data) -> bool:
 
 
 def _requires_pyarrow() -> None:
+    global _has_pyarrow, _reader
     if not _has_pyarrow:
-        raise ProgrammingError(
-            "This API requires PyArrow to be installed",
-            status_code=_lib.AdbcStatusCode.INVALID_STATE,
-        )
+        try:
+            import pyarrow  # noqa: F401
+            import pyarrow.dataset  # noqa: F401
+        except ImportError:
+            raise ProgrammingError(
+                "This API requires PyArrow to be installed",
+                status_code=_lib.AdbcStatusCode.INVALID_STATE,
+            )
+        from . import _reader as _reader_mod
+
+        _reader = _reader_mod
+        _has_pyarrow = True
