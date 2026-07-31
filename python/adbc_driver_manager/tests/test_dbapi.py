@@ -723,7 +723,8 @@ def test_close_connection_suppresses_cursor_close_error() -> None:
 
 
 def test_requires_pyarrow_late_install(monkeypatch) -> None:
-    """Test that _requires_pyarrow recovers if PyArrow becomes available after import."""
+    """Test that _requires_pyarrow recovers if PyArrow becomes available
+    after import."""
     # Simulate the state where PyArrow wasn't available at module load time
     monkeypatch.setattr(dbapi, "_has_pyarrow", False)
     monkeypatch.delattr(dbapi, "_reader", raising=False)
