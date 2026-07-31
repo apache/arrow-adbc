@@ -716,7 +716,7 @@ class DriverManifest : public ::testing::Test {
          toml::table{
              {"shared",
               toml::table{
-                  {adbc::CurrentArch(), driver_path.string()},
+                  {InternalAdbcCurrentArch(), driver_path.string()},
               }},
          }},
     };
@@ -829,7 +829,7 @@ TEST_F(DriverManifest, ConfigEntrypoint) {
                     {"entrypoint", "BadEntrypointSymbolName"},
                     {"shared",
                      toml::table{
-                         {adbc::CurrentArch(), driver_path.string()},
+                         {InternalAdbcCurrentArch(), driver_path.string()},
                      }},
                 });
 
@@ -2166,7 +2166,7 @@ class DriverUriProfileTest : public ConnectionProfiles,
          toml::table{
              {"shared",
               toml::table{
-                  {adbc::CurrentArch(), driver_path.string()},
+                  {InternalAdbcCurrentArch(), driver_path.string()},
               }},
          }},
     };

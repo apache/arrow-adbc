@@ -75,7 +75,7 @@ if(ADBC_BUILD_TESTS)
     endif()
   endif()
 
-  target_compile_features(adbc-driver-flightsql-test PRIVATE cxx_std_17)
+  target_compile_features(adbc-driver-flightsql-test PRIVATE cxx_std_20)
   target_include_directories(adbc-driver-flightsql-test SYSTEM
                              PRIVATE ${REPOSITORY_ROOT}/c/ ${REPOSITORY_ROOT}/c/include/
                                      ${REPOSITORY_ROOT}/c/driver)

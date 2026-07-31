@@ -89,7 +89,7 @@ if(ADBC_BUILD_TESTS)
                 adbc_driver_common
                 adbc_validation
                 ${TEST_LINK_LIBS})
-  target_compile_features(adbc-driver-postgresql-test PRIVATE cxx_std_17)
+  target_compile_features(adbc-driver-postgresql-test PRIVATE cxx_std_20)
   target_compile_definitions(adbc-driver-postgresql-test
                              PRIVATE ADBC_POSTGRESQL_TESTDATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/testdata"
   )
@@ -110,7 +110,7 @@ if(ADBC_BUILD_TESTS)
                 adbc_driver_common
                 adbc_validation
                 ${TEST_LINK_LIBS})
-  target_compile_features(adbc-driver-postgresql-copy-test PRIVATE cxx_std_17)
+  target_compile_features(adbc-driver-postgresql-copy-test PRIVATE cxx_std_20)
   target_include_directories(adbc-driver-postgresql-copy-test SYSTEM
                              PRIVATE ${REPOSITORY_ROOT}/c/
                                      ${REPOSITORY_ROOT}/c/include/
