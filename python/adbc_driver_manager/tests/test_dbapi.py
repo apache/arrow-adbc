@@ -727,6 +727,7 @@ def test_requires_pyarrow_late_install(monkeypatch) -> None:
     # Simulate the state where PyArrow wasn't available at module load time
     monkeypatch.setattr(dbapi, "_has_pyarrow", False)
     monkeypatch.delattr(dbapi, "_reader", raising=False)
+    monkeypatch.delattr(dbapi, "pyarrow", raising=False)
 
     # Should not raise because PyArrow is actually importable now
     dbapi._requires_pyarrow()
@@ -736,6 +737,8 @@ def test_requires_pyarrow_late_install(monkeypatch) -> None:
     # The _reader Cython extension should now be available at module level
     assert hasattr(dbapi, "_reader")
     assert hasattr(dbapi._reader, "AdbcRecordBatchReader")
+    # pyarrow must be in module globals for callers that use it directly
+    assert hasattr(dbapi, "pyarrow")
 
 
 def test_requires_pyarrow_truly_missing(monkeypatch) -> None:

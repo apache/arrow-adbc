@@ -1584,11 +1584,11 @@ def _is_arrow_data(data) -> bool:
 
 
 def _requires_pyarrow() -> None:
-    global _has_pyarrow, _reader
+    global _has_pyarrow, _reader, pyarrow
     if not _has_pyarrow:
         try:
-            import pyarrow  # noqa: F401
-            import pyarrow.dataset  # noqa: F401
+            import pyarrow
+            import pyarrow.dataset
         except ImportError:
             raise ProgrammingError(
                 "This API requires PyArrow to be installed",
