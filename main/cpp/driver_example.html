@@ -431,7 +431,7 @@ with a simple query in the form <code class="docutils literal notranslate"><span
 <p>This quickstart is actually a literate C++ file.  You can clone
 the repository, build the sample, and follow along.</p>
 <p>We’ll assume you’re using <a class="reference external" href="https://conda-forge.org/">conda-forge</a> for dependencies.  CMake, a
-C++17 compiler, and the ADBC libraries are required.  They can be
+C++20 compiler, and the ADBC libraries are required.  They can be
 installed as follows:</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>mamba<span class="w"> </span>install<span class="w"> </span>cmake<span class="w"> </span>compilers<span class="w"> </span>libadbc-driver-manager
 </pre></div>
@@ -575,7 +575,7 @@ provide a way for child statements to access the database’s uri.</p>
 <p>Another role of the connection is to provide metadata about tables, columns,
 statistics, and other catalog-like information a caller might want to know before
 issuing a query. The driver framework base classes provide helpers to implement these
-functions such that you can mostly implement them in terms of the C++17 standard
+functions such that you can mostly implement them in terms of the C++20 standard
 library (as opposed to building the C-level arrays yourself).</p>
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="linenos">199</span><span class="k">class</span><span class="w"> </span><span class="nc">DriverExampleConnection</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="k">public</span><span class="w"> </span><span class="n">adbc</span><span class="o">::</span><span class="n">driver</span><span class="o">::</span><span class="n">Connection</span><span class="o">&lt;</span><span class="n">DriverExampleConnection</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
 <span class="linenos">200</span><span class="w"> </span><span class="k">public</span><span class="o">:</span>

@@ -9,10 +9,10 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://arrow.apache.org/adbc/main/cpp/quickstart.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="Recipe source: quickstart.cc Here we’ll briefly tour basic features of ADBC with the SQLite driver in C++17. Installation: This quickstart is actually a literate C++ file. You can clone the reposit..." />
+<meta property="og:description" content="Recipe source: quickstart.cc Here we’ll briefly tour basic features of ADBC with the SQLite driver in C++20. Installation: This quickstart is actually a literate C++ file. You can clone the reposit..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="Recipe source: quickstart.cc Here we’ll briefly tour basic features of ADBC with the SQLite driver in C++17. Installation: This quickstart is actually a literate C++ file. You can clone the reposit..." />
+<meta name="description" content="Recipe source: quickstart.cc Here we’ll briefly tour basic features of ADBC with the SQLite driver in C++20. Installation: This quickstart is actually a literate C++ file. You can clone the reposit..." />
 <link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Driver Manager" href="driver_manager.html"><link rel="prev" title="C and C++" href="index.html">
         <link rel="prefetch" href="../_static/logo-light.png" as="image">
         <link rel="prefetch" href="../_static/logo-dark.png" as="image">
@@ -417,13 +417,13 @@
 <h1>Quickstart<a class="headerlink" href="#quickstart" title="Link to this heading">¶</a></h1>
 <p>Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/cpp/recipe/quickstart.cc">quickstart.cc</a></p>
 <p>Here we’ll briefly tour basic features of ADBC with the SQLite
-driver in C++17.</p>
+driver in C++20.</p>
 <section id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h2>
 <p>This quickstart is actually a literate C++ file.  You can clone
 the repository, build the sample, and follow along.</p>
 <p>We’ll assume you’re using <a class="reference external" href="https://conda-forge.org/">conda-forge</a> for dependencies.  CMake, a
-C++17 compiler, and the ADBC libraries are required.  They can be
+C++20 compiler, and the ADBC libraries are required.  They can be
 installed as follows:</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>mamba<span class="w"> </span>install<span class="w"> </span>cmake<span class="w"> </span>compilers<span class="w"> </span>libadbc-driver-manager
 </pre></div>
