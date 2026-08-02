@@ -716,12 +716,6 @@ ensure_source_directory() {
     fi
   fi
 
-  echo "Fetching Arrow repository ${ARROW_REPOSITORY}"
-  export ARROW_SOURCE_DIR="${ARROW_TMPDIR}/arrow"
-  if [ ! -d "${ARROW_SOURCE_DIR}" ]; then
-    git clone --depth=1 https://github.com/$ARROW_REPOSITORY $ARROW_SOURCE_DIR
-  fi
-
   source "${ADBC_SOURCE_DIR}/dev/release/versions.env"
   echo "Versions:"
   echo "Release: ${RELEASE} (requested: ${VERSION})"
@@ -730,6 +724,14 @@ ensure_source_directory() {
   echo "C/C++/GLib/Go/Python/Ruby: ${VERSION_NATIVE}"
   echo "R: ${VERSION_R}"
   echo "Rust: ${VERSION_RUST}"
+}
+
+ensure_arrow_source_directory() {
+  export ARROW_SOURCE_DIR="${ARROW_TMPDIR}/arrow"
+  if [ ! -d "${ARROW_SOURCE_DIR}" ]; then
+    echo "Fetching Arrow repository ${ARROW_REPOSITORY}"
+    git clone --depth=1 https://github.com/$ARROW_REPOSITORY $ARROW_SOURCE_DIR
+  fi
 }
 
 test_source_distribution() {
@@ -779,6 +781,7 @@ test_source_distribution() {
 test_binary_distribution() {
   if [ $((${TEST_BINARY} + ${TEST_JARS} + ${TEST_WHEELS})) -gt 0 ]; then
     show_header "Downloading binary artifacts"
+    ensure_arrow_source_directory
     export BINARY_DIR="${ARROW_TMPDIR}/binaries"
     mkdir -p "${BINARY_DIR}"
 
@@ -823,9 +826,9 @@ test_linux_wheels() {
     CONDA_ENV=wheel-${pyver}-${arch} PYTHON_VERSION=${pyver} maybe_setup_conda || exit 1
     VENV_ENV=wheel-${pyver}-${arch} PYTHON_VERSION=${pyver} maybe_setup_virtualenv || continue
     pip install --force-reinstall \
-        adbc_*-${VERSION_NATIVE}-cp${pyver/.}-cp${python/.}-manylinux*${arch}*.whl \
-        adbc_*-${VERSION_NATIVE}-py3-none-manylinux*${arch}*.whl
-    ${ADBC_DIR}/ci/scripts/python_wheel_unix_test.sh ${ADBC_SOURCE_DIR}
+        adbc_*-cp${pyver/.}-cp${python/.}-manylinux*${arch}*.whl \
+        adbc_*-py3-none-manylinux*${arch}*.whl
+    ${ADBC_DIR}/ci/scripts/python_wheel_unix_test.sh ${ADBC_DIR}
   done
 }
 
@@ -849,9 +852,9 @@ test_macos_wheels() {
       VENV_ENV=wheel-${pyver}-${platform} PYTHON_VERSION=${pyver} maybe_setup_virtualenv || continue
 
       pip install --force-reinstall \
-          adbc_*-${VERSION_NATIVE}-cp${pyver/.}-cp${python/.}-macosx_*_${platform}.whl \
-          adbc_*-${VERSION_NATIVE}-py3-none-macosx_*_${platform}.whl
-      ${ADBC_DIR}/ci/scripts/python_wheel_unix_test.sh ${ADBC_SOURCE_DIR}
+          adbc_*-cp${pyver/.}-cp${python/.}-macosx_*_${platform}.whl \
+          adbc_*-py3-none-macosx_*_${platform}.whl
+      ${ADBC_DIR}/ci/scripts/python_wheel_unix_test.sh ${ADBC_DIR}
     done
   done
 }
@@ -883,20 +886,73 @@ test_jars() {
   show_header "Testing Java jars"
   maybe_setup_conda maven python || exit 1
 
-  # TODO: actually verify the JARs
-  local -r packages=(adbc-core adbc-driver-flight-sql adbc-driver-jdbc adbc-driver-manager)
-  local -r components=(".jar" "-javadoc.jar" "-sources.jar")
-  for package in "${packages[@]}"; do
-      for component in "${components[@]}"; do
-          local filename="${BINARY_DIR}/${package}-${VERSION_JAVA}${component}"
-          if [[ ! -f "${filename}" ]];  then
-             echo "ERROR: missing artifact ${filename}"
-             return 1
-          else
-             echo "Found artifact ${filename}"
-          fi
-      done
+  local root_poms=()
+  shopt -s nullglob
+  root_poms=("${BINARY_DIR}"/arrow-adbc-java-root-*.pom)
+  shopt -u nullglob
+  if [[ ${#root_poms[@]} -ne 1 ]]; then
+    echo "ERROR: expected exactly one Arrow ADBC Java root POM, found ${#root_poms[@]}"
+    return 1
+  fi
+
+  local -r root_pom="${root_poms[0]}"
+  local java_version
+  java_version=$(${PYTHON:-python3} -c '
+import sys
+import xml.etree.ElementTree as ET
+
+root = ET.parse(sys.argv[1]).getroot()
+version = root.find("{*}version")
+if version is None or version.text is None:
+    raise ValueError("root POM has no project version")
+print(version.text)
+' "${root_pom}")
+  show_info "ADBC Java version: ${java_version}"
+
+  local -r maven_repository="${ARROW_TMPDIR}/maven-repository"
+  local -r maven_repository_argument="-Dmaven.repo.local=${maven_repository}"
+  mkdir -p "${maven_repository}"
+
+  mvn -B install:install-file \
+      "${maven_repository_argument}" \
+      "-Dfile=${root_pom}" \
+      "-DpomFile=${root_pom}" \
+      -Dpackaging=pom
+
+  local -r artifacts=(
+    adbc-core
+    adbc-driver-flight-sql
+    adbc-driver-jdbc
+    adbc-driver-jni
+    adbc-driver-manager
+    adbc-sql
+  )
+  for artifact in "${artifacts[@]}"; do
+    local artifact_base="${BINARY_DIR}/${artifact}-${java_version}"
+    local jar_path="${artifact_base}.jar"
+    local pom_path="${artifact_base}.pom"
+    local sources_path="${artifact_base}-sources.jar"
+    local javadoc_path="${artifact_base}-javadoc.jar"
+    local path
+    for path in "${jar_path}" "${pom_path}" "${sources_path}" "${javadoc_path}"; do
+      if [[ ! -f "${path}" ]]; then
+        echo "ERROR: missing Java artifact ${path}"
+        return 1
+      fi
+    done
+
+    mvn -B install:install-file \
+        "${maven_repository_argument}" \
+        "-Dfile=${jar_path}" \
+        "-DpomFile=${pom_path}" \
+        "-Dsources=${sources_path}" \
+        "-Djavadoc=${javadoc_path}"
   done
+
+  mvn -B test \
+      "${maven_repository_argument}" \
+      "-Dadbc.version=${java_version}" \
+      -f "${SOURCE_DIR}/verify/java/pom.xml"
 }
 
 # By default test all functionalities.
@@ -935,8 +991,10 @@ TEST_CPP=$((${TEST_CPP} + ${TEST_GO} + ${TEST_GLIB} + ${TEST_PYTHON} + ${TEST_RU
 TEST_SUCCESS=no
 
 setup_tempdir
-ensure_source_directory
-test_source_distribution
+if [ ${TEST_SOURCE} -gt 0 ]; then
+  ensure_source_directory
+  test_source_distribution
+fi
 test_binary_distribution
 
 TEST_SUCCESS=yes
