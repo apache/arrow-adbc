@@ -753,28 +753,28 @@ class DriverManifest : public ::testing::Test {
 };
 
 TEST_F(DriverManifest, LoadDriverEnv) {
-  ASSERT_THAT(AdbcFindLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0,
+  ASSERT_THAT(AdbcFindLoadDriver("test_sqlite", nullptr, ADBC_VERSION_1_1_0,
                                  ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
               Not(IsOkStatus(&error)));
 
-  std::ofstream test_manifest_file(temp_dir / "sqlite.toml");
+  std::ofstream test_manifest_file(temp_dir / "test_sqlite.toml");
   ASSERT_TRUE(test_manifest_file.is_open());
   test_manifest_file << simple_manifest;
   test_manifest_file.close();
 
   SetDriverPath(temp_dir.string().c_str());
 
-  ASSERT_THAT(AdbcFindLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0,
+  ASSERT_THAT(AdbcFindLoadDriver("test_sqlite", nullptr, ADBC_VERSION_1_1_0,
                                  ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
               IsOkStatus(&error));
 
-  ASSERT_TRUE(std::filesystem::remove(temp_dir / "sqlite.toml"));
+  ASSERT_TRUE(std::filesystem::remove(temp_dir / "test_sqlite.toml"));
 
   UnsetDriverPath();
 }
 
 TEST_F(DriverManifest, LoadNonAsciiPath) {
-  ASSERT_THAT(AdbcFindLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0,
+  ASSERT_THAT(AdbcFindLoadDriver("test_sqlite", nullptr, ADBC_VERSION_1_1_0,
                                  ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
               Not(IsOkStatus(&error)));
 
@@ -786,24 +786,24 @@ TEST_F(DriverManifest, LoadNonAsciiPath) {
 
   ASSERT_TRUE(std::filesystem::create_directories(non_ascii_dir));
 
-  std::ofstream test_manifest_file(non_ascii_dir / "sqlite.toml");
+  std::ofstream test_manifest_file(non_ascii_dir / "test_sqlite.toml");
   ASSERT_TRUE(test_manifest_file.is_open());
   test_manifest_file << simple_manifest;
   test_manifest_file.close();
 
   SetDriverPath(non_ascii_dir.string().c_str());
 
-  ASSERT_THAT(AdbcFindLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0,
+  ASSERT_THAT(AdbcFindLoadDriver("test_sqlite", nullptr, ADBC_VERSION_1_1_0,
                                  ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
               IsOkStatus(&error));
 
-  ASSERT_TRUE(std::filesystem::remove(non_ascii_dir / "sqlite.toml"));
+  ASSERT_TRUE(std::filesystem::remove(non_ascii_dir / "test_sqlite.toml"));
 
   UnsetDriverPath();
 }
 
 TEST_F(DriverManifest, DisallowEnvConfig) {
-  std::ofstream test_manifest_file(temp_dir / "sqlite.toml");
+  std::ofstream test_manifest_file(temp_dir / "test_sqlite.toml");
   ASSERT_TRUE(test_manifest_file.is_open());
   test_manifest_file << simple_manifest;
   test_manifest_file.close();
@@ -811,11 +811,11 @@ TEST_F(DriverManifest, DisallowEnvConfig) {
   SetDriverPath(temp_dir.string().c_str());
 
   auto load_options = ADBC_LOAD_FLAG_DEFAULT & ~ADBC_LOAD_FLAG_SEARCH_ENV;
-  ASSERT_THAT(AdbcFindLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0, load_options,
+  ASSERT_THAT(AdbcFindLoadDriver("test_sqlite", nullptr, ADBC_VERSION_1_1_0, load_options,
                                  nullptr, &driver, &error),
               Not(IsOkStatus(&error)));
 
-  ASSERT_TRUE(std::filesystem::remove(temp_dir / "sqlite.toml"));
+  ASSERT_TRUE(std::filesystem::remove(temp_dir / "test_sqlite.toml"));
 
   UnsetDriverPath();
 }
@@ -1337,7 +1337,7 @@ TEST_F(DriverManifest, CondaPrefix) {
   std::cerr << "ADBC_CONDA_BUILD: " << (is_conda_build ? "defined" : "not defined")
             << std::endl;
 
-  auto filepath = temp_dir / "etc" / "adbc" / "drivers" / "sqlite.toml";
+  auto filepath = temp_dir / "etc" / "adbc" / "drivers" / "test_sqlite.toml";
   std::filesystem::create_directories(filepath.parent_path());
   std::ofstream test_manifest_file(filepath);
   ASSERT_TRUE(test_manifest_file.is_open());
@@ -1351,8 +1351,8 @@ TEST_F(DriverManifest, CondaPrefix) {
 #endif  // _WIN32
 
   AdbcStatusCode result =
-      AdbcFindLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0, ADBC_LOAD_FLAG_DEFAULT,
-                         nullptr, &driver, &error);
+      AdbcFindLoadDriver("test_sqlite", nullptr, ADBC_VERSION_1_1_0,
+                         ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error);
 
   if constexpr (is_conda_build) {
     ASSERT_THAT(result, IsOkStatus(&error));

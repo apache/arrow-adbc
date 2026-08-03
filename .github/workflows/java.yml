@@ -354,10 +354,10 @@ jobs:
           tar xvf mssql_linux_amd64_v1.4.0.tar.gz
           mkdir -p ~/.config/adbc/drivers/
           mv libadbc_driver_mssql.so ~/.config/adbc/drivers/
-          echo "manifest_version = 1" > ~/.config/adbc/drivers/mssql.toml
-          echo "[Driver]" >> ~/.config/adbc/drivers/mssql.toml
-          echo "shared = '$HOME/.config/adbc/drivers/libadbc_driver_mssql.so'" >> ~/.config/adbc/drivers/mssql.toml
-          cat ~/.config/adbc/drivers/mssql.toml
+          echo "manifest_version = 1" > ~/.config/adbc/drivers/test_mssql.toml
+          echo "[Driver]" >> ~/.config/adbc/drivers/test_mssql.toml
+          echo "shared = '$HOME/.config/adbc/drivers/libadbc_driver_mssql.so'" >> ~/.config/adbc/drivers/test_mssql.toml
+          cat ~/.config/adbc/drivers/test_mssql.toml
 
       - name: Test
         run: |
