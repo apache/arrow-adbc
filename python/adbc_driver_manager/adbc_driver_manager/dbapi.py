@@ -1540,7 +1540,9 @@ class _RowIterator(_Closeable):
         import polars
 
         return _blocking_call(
-            lambda: polars.DataFrame(self.fetch_arrow()),
+            lambda: polars.DataFrame(
+                self.fetch_arrow()  # pyright: ignore[reportArgumentType]
+            ),
             (),
             {},
             self._stmt.cancel,
