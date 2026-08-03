@@ -212,7 +212,7 @@ try:
         def import_array_stream(
             self, handle: _lib.ArrowArrayStreamHandle
         ) -> typing.Any:
-            return polars.from_arrow(handle)
+            return polars.DataFrame(handle)
 
         def import_schema(self, handle: _lib.ArrowSchemaHandle) -> typing.Any:
             raise _lib.NotSupportedError("Polars does not support __arrow_c_schema__")
