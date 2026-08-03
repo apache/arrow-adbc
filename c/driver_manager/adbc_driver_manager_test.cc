@@ -1036,7 +1036,7 @@ TEST_F(DriverManifest, ManifestDriverMissingArchAdbcDatabase) {
   // Similar test as above but with AdbcDatabaseInit path and using the
   // additional search path.
   // Create a manifest without the "Driver" section
-  auto filepath = temp_dir / "sqlite.toml";
+  auto filepath = temp_dir / "test_sqlite.toml";
   toml::table manifest_without_driver = simple_manifest;
   manifest_without_driver.erase("Driver");
   manifest_without_driver.insert("Driver",
@@ -1055,7 +1055,7 @@ TEST_F(DriverManifest, ManifestDriverMissingArchAdbcDatabase) {
 
   adbc_validation::Handle<struct AdbcDatabase> database;
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
-  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "driver", "sqlite", &error),
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "driver", "test_sqlite", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcDriverManagerDatabaseSetLoadFlags(&database.value,
                                                     ADBC_LOAD_FLAG_DEFAULT, &error),
@@ -1066,7 +1066,7 @@ TEST_F(DriverManifest, ManifestDriverMissingArchAdbcDatabase) {
               IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
               IsStatus(ADBC_STATUS_NOT_FOUND, &error));
-  ASSERT_THAT(error.message, ::testing::HasSubstr("sqlite.toml but:"));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("test_sqlite.toml but:"));
   ASSERT_THAT(error.message,
               ::testing::HasSubstr("Architectures found: non-existent windows-alpha64"));
 
@@ -1077,7 +1077,7 @@ TEST_F(DriverManifest, ManifestDriverPointsNowhere) {
   // Similar test as above but with AdbcDatabaseInit path and using the
   // additional search path.
   // Create a manifest without the "Driver" section
-  auto filepath = temp_dir / "sqlite.toml";
+  auto filepath = temp_dir / "test_sqlite.toml";
   toml::table manifest_without_driver = simple_manifest;
   manifest_without_driver.erase("Driver");
   // The idea is that we can find the manifest, but not the driver it points to.
@@ -1100,7 +1100,7 @@ TEST_F(DriverManifest, ManifestDriverPointsNowhere) {
 
   adbc_validation::Handle<struct AdbcDatabase> database;
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
-  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "driver", "sqlite", &error),
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "driver", "test_sqlite", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcDriverManagerDatabaseSetLoadFlags(&database.value,
                                                     ADBC_LOAD_FLAG_DEFAULT, &error),
@@ -1111,7 +1111,7 @@ TEST_F(DriverManifest, ManifestDriverPointsNowhere) {
               IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
               IsStatus(ADBC_STATUS_NOT_FOUND, &error));
-  ASSERT_THAT(error.message, ::testing::HasSubstr("sqlite.toml but:"));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("test_sqlite.toml but:"));
   // Message is platform-specific but something like "dlopen() failed:
   // adbc-goosedb: cannot open shared object file..."
   ASSERT_THAT(error.message, ::testing::HasSubstr("adbc-goosedb"));
