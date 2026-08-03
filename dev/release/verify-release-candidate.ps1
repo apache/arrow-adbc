@@ -207,7 +207,7 @@ if ($TestSource) {
     conda remove -y --force gtest
 
     # Activating doesn't appear to set GOROOT
-    $env:GOROOT = $(Join-Path $ArrowTempDir conda-env go)
+    $env:GOROOT = $(Join-Path $ArrowTempDir $(Join-Path conda-env go))
 
     Show-Header "Verify C/C++ Sources"
 
