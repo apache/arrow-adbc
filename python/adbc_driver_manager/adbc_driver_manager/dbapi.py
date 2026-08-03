@@ -1540,10 +1540,7 @@ class _RowIterator(_Closeable):
         import polars
 
         return _blocking_call(
-            lambda: typing.cast(
-                polars.DataFrame,
-                polars.from_arrow(self.fetch_arrow()),
-            ),
+            lambda: polars.DataFrame(self.fetch_arrow()),
             (),
             {},
             self._stmt.cancel,
