@@ -44,6 +44,7 @@ pub mod driver_exporter;
 pub mod options;
 #[doc(hidden)]
 pub use driver_exporter::FFIDriver;
+pub(crate) mod exported_stream;
 pub mod methods;
 pub(crate) mod types;
 pub use types::{
