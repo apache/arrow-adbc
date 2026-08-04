@@ -19,7 +19,6 @@ package flightsql
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"sync"
@@ -29,7 +28,6 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
-	"google.golang.org/grpc/status"
 )
 
 type responseMetadataKey struct{}
@@ -133,80 +131,6 @@ func (p *streamProgress) logKeyValues() []attribute.KeyValue {
 	}
 	if !p.lastBatchAt.IsZero() {
 		attrs = append(attrs, attribute.String("timeSinceLastBatch", time.Since(p.lastBatchAt).String()))
-	}
-	return attrs
-}
-
-// headerKeyValuesWithPrefix is the shared implementation behind
-// correlationHeaderAttrs (incoming) and outgoingCallHeaderAttrs
-// (outbound). Only headers in wellKnownCorrelationHeaders are emitted;
-// returns nil when none are present.
-func headerKeyValuesWithPrefix(md metadata.MD, prefix string) []attribute.KeyValue {
-	if len(md) == 0 {
-		return nil
-	}
-	out := make([]attribute.KeyValue, 0, 4)
-	for _, k := range wellKnownCorrelationHeaders {
-		if vals := md.Get(k); len(vals) > 0 {
-			out = append(out, attribute.StringSlice(prefix+k, vals))
-		}
-	}
-	return out
-}
-
-// correlationHeaderKeyValues returns OpenTelemetry attributes for well-known
-// correlation headers present in md (typically incoming headers/trailers). Uses the
-// "hdr_" prefix; only allow-listed headers are emitted.
-func correlationHeaderKeyValues(md metadata.MD) []attribute.KeyValue {
-	return headerKeyValuesWithPrefix(md, "hdr_")
-}
-
-// grpcStatusKeyValues returns OpenTelemetry attributes for the gRPC status
-// embedded in err, or nil if err has no status.
-func grpcStatusKeyValues(err error) []attribute.KeyValue {
-	if err == nil {
-		return nil
-	}
-	st, ok := status.FromError(err)
-	if !ok {
-		return nil
-	}
-	return []attribute.KeyValue{
-		attribute.String("grpc_code", st.Code().String()),
-		attribute.String("grpc_message", st.Message()),
-	}
-}
-
-// queryFingerprintKeyValues builds OpenTelemetry attributes identifying a SQL query
-// without exposing it: length and a SHA-256 prefix. The query text itself
-// is never recorded because it can embed end-user PII as literals.
-func queryFingerprintKeyValues(query string) []attribute.KeyValue {
-	if query == "" {
-		return []attribute.KeyValue{attribute.String("query_type", "empty")}
-	}
-	h := sha256.Sum256([]byte(query))
-	return []attribute.KeyValue{
-		attribute.String("query_type", "sql"),
-		attribute.Int("query_length", len(query)),
-		attribute.String("query_sha256_prefix", hex.EncodeToString(h[:8])),
-	}
-}
-
-// substraitFingerprintKeyValues builds OpenTelemetry attributes identifying a Substrait
-// plan: length, SHA-256 prefix, and protocol version. Plan bytes are never
-// recorded.
-func substraitFingerprintKeyValues(plan []byte, version string) []attribute.KeyValue {
-	if len(plan) == 0 {
-		return []attribute.KeyValue{attribute.String("query_type", "substrait_empty")}
-	}
-	h := sha256.Sum256(plan)
-	attrs := []attribute.KeyValue{
-		attribute.String("query_type", "substrait"),
-		attribute.Int("substrait_plan_bytes", len(plan)),
-		attribute.String("substrait_plan_sha256_prefix", hex.EncodeToString(h[:8])),
-	}
-	if version != "" {
-		attrs = append(attrs, attribute.String("substrait_version", version))
 	}
 	return attrs
 }
