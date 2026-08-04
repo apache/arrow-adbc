@@ -237,10 +237,6 @@ if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
   define_option(ADBC_DRIVER_SQLITE "Build the SQLite driver" OFF)
 
   define_option(ADBC_INTEGRATION_DUCKDB "Build the test suite for DuckDB" OFF)
-
-  define_option(ADBC_BUILD_VCPKG
-                "Build on Windows using vcpkg for dependencies and Visual Studio generator."
-                OFF)
 endif()
 
 macro(validate_config)
