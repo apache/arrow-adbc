@@ -369,7 +369,40 @@ func TestFlightSQLTracingProducesTraceFiles(t *testing.T) {
 
 	output := traceOutput.String()
 	require.Contains(t, output, "FlightSQL.Database.Open")
-	require.Contains(t, output, "FlightSQLStatement.ExecuteQuery")
+	require.Contains(t, output, "FlightSQL.Database.Close")
+	require.Contains(t, output, "FlightSQL.Statement.ExecuteQuery")
+}
+
+func TestFlightSQLTracingCleansUpAfterConstructionFailure(t *testing.T) {
+	alloc := memory.NewCheckedAllocator(memory.DefaultAllocator)
+	defer alloc.AssertSize(t, 0)
+	drv := driver.NewDriver(alloc)
+
+	for _, test := range []struct {
+		name    string
+		uri     string
+		extraOp map[string]string
+	}{
+		{name: "invalid URI", uri: "grpc://%"},
+		{name: "invalid option", uri: "grpc://localhost", extraOp: map[string]string{"unknown option": "value"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			traceDir := t.TempDir()
+			opts := map[string]string{
+				adbc.OptionKeyURI:                       test.uri,
+				adbc.OptionKeyTelemetryTracesExporter:   string(adbc.TelemetryExporterAdbcFile),
+				adbc.OptionKeyTelemetryTracesFolderPath: traceDir,
+			}
+			for key, value := range test.extraOp {
+				opts[key] = value
+			}
+
+			_, err := drv.NewDatabase(opts)
+			require.Error(t, err)
+			require.IsType(t, adbc.Error{}, err)
+			require.NoError(t, os.RemoveAll(traceDir))
+		})
+	}
 }
 
 // Run the test suite, but validating that a header set on the database is ALWAYS passed

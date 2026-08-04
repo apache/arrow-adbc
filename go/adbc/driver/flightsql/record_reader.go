@@ -21,7 +21,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"sync/atomic"
 	"time"
 
@@ -63,7 +62,6 @@ type recordReaderConfig struct {
 	clientCache gcache.Cache
 	bufferSize  int
 	tracing     adbc.OTelTracing
-	logger      *slog.Logger
 }
 
 // newRecordReader kicks off a goroutine for each endpoint and returns a
