@@ -454,6 +454,77 @@ TEST(SqliteUriWrapper, SqliteUriFilename) {
               adbc_validation::IsOkStatus(&error));
 }
 
+TEST(SqliteOptions, BatchRowsGetOption) {
+  struct AdbcError error = ADBC_ERROR_INIT;
+  adbc_validation::Handle<struct AdbcDatabase> database;
+  adbc_validation::Handle<struct AdbcConnection> connection;
+  adbc_validation::Handle<struct AdbcStatement> statement;
+  constexpr const char* kBatchRows = "adbc.sqlite.query.batch_rows";
+
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  int64_t int_value = 0;
+  ASSERT_THAT(AdbcDatabaseGetOptionInt(&database.value, kBatchRows, &int_value, &error),
+              adbc_validation::IsOkStatus(&error));
+  EXPECT_EQ(1024, int_value);
+
+  char too_small[2] = {'x', 'x'};
+  size_t length = sizeof(too_small);
+  ASSERT_THAT(
+      AdbcDatabaseGetOption(&database.value, kBatchRows, too_small, &length, &error),
+      adbc_validation::IsOkStatus(&error));
+  EXPECT_EQ(5, length);
+  EXPECT_THAT(too_small, ::testing::ElementsAre('x', 'x'));
+
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, kBatchRows, "41", &error),
+              adbc_validation::IsOkStatus(&error));
+  char string_value[3] = {};
+  length = sizeof(string_value);
+  ASSERT_THAT(
+      AdbcDatabaseGetOption(&database.value, kBatchRows, string_value, &length, &error),
+      adbc_validation::IsOkStatus(&error));
+  EXPECT_EQ(3, length);
+  EXPECT_STREQ("41", string_value);
+
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionNew(&connection.value, &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection.value, &database.value, &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(
+      AdbcConnectionGetOptionInt(&connection.value, kBatchRows, &int_value, &error),
+      adbc_validation::IsOkStatus(&error));
+  EXPECT_EQ(41, int_value);
+
+  ASSERT_THAT(AdbcStatementNew(&connection.value, &statement.value, &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementGetOptionInt(&statement.value, kBatchRows, &int_value, &error),
+              adbc_validation::IsOkStatus(&error));
+  EXPECT_EQ(41, int_value);
+
+  ASSERT_THAT(AdbcStatementSetOptionInt(&statement.value, kBatchRows, 42, &error),
+              adbc_validation::IsOkStatus(&error));
+  char statement_value[3] = {};
+  length = sizeof(statement_value);
+  ASSERT_THAT(AdbcStatementGetOption(&statement.value, kBatchRows, statement_value,
+                                     &length, &error),
+              adbc_validation::IsOkStatus(&error));
+  EXPECT_EQ(3, length);
+  EXPECT_STREQ("42", statement_value);
+
+  ASSERT_THAT(AdbcStatementSetOption(&statement.value, "adbc.statement.bind_by_name",
+                                     ADBC_OPTION_VALUE_ENABLED, &error),
+              adbc_validation::IsOkStatus(&error));
+  char bind_by_name[sizeof(ADBC_OPTION_VALUE_ENABLED)] = {};
+  length = sizeof(bind_by_name);
+  ASSERT_THAT(AdbcStatementGetOption(&statement.value, "adbc.statement.bind_by_name",
+                                     bind_by_name, &length, &error),
+              adbc_validation::IsOkStatus(&error));
+  EXPECT_STREQ(ADBC_OPTION_VALUE_ENABLED, bind_by_name);
+}
+
 class SqliteStatementTest : public ::testing::Test,
                             public adbc_validation::StatementTest {
  public:
