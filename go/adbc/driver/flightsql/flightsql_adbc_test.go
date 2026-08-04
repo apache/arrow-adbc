@@ -368,7 +368,7 @@ func TestFlightSQLTracingProducesTraceFiles(t *testing.T) {
 	}
 
 	output := traceOutput.String()
-	require.Contains(t, output, "FlightSQLDatabase.Open")
+	require.Contains(t, output, "FlightSQL.Database.Open")
 	require.Contains(t, output, "FlightSQLStatement.ExecuteQuery")
 }
 
