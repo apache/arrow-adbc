@@ -169,11 +169,19 @@ class Option {
       return std::visit(
           [&](auto&& value) -> AdbcStatusCode {
             using T = std::decay_t<decltype(value)>;
-            if constexpr (std::is_same_v<T, std::string>) {
-              size_t value_size_with_terminator = value.size() + 1;
+            if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, int64_t>) {
+              std::string formatted;
+              std::string_view string_value;
+              if constexpr (std::is_same_v<T, std::string>) {
+                string_value = value;
+              } else {
+                formatted = std::to_string(value);
+                string_value = formatted;
+              }
+              size_t value_size_with_terminator = string_value.size() + 1;
               if (*length >= value_size_with_terminator) {
-                std::memcpy(out, value.data(), value.size());
-                out[value.size()] = 0;
+                std::memcpy(out, string_value.data(), string_value.size());
+                out[string_value.size()] = 0;
               }
               *length = value_size_with_terminator;
               return ADBC_STATUS_OK;
