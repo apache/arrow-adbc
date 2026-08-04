@@ -243,7 +243,12 @@ if ($TestBinaries) {
     if ($TestJars) {
         Show-Header "Verify Java JARs"
         if ($env:JAVA_HOME -eq $null) {
+            # Work around PowerShell < 7. Temporarily set ErrorActionPreference
+            # to continue to avoid the redirect below from stopping the script.
+            $PreviousErrorActionPreference = $ErrorActionPreference
+            $ErrorActionPreference = "Continue"
             $env:JAVA_HOME = & java -XshowSettings:properties -version 2>&1 | Select-String "java.home" | ForEach-Object { $_.ToString().Split("=")[1].Trim() }
+            $ErrorActionPreference = $PreviousErrorActionPreference
         }
         echo "JAVA_HOME: $($env:JAVA_HOME)"
 
