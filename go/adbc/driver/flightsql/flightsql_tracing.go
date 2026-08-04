@@ -19,7 +19,6 @@ package flightsql
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"sync"
@@ -175,40 +174,6 @@ func grpcStatusKeyValues(err error) []attribute.KeyValue {
 		attribute.String("grpc_code", st.Code().String()),
 		attribute.String("grpc_message", st.Message()),
 	}
-}
-
-// queryFingerprintKeyValues builds OpenTelemetry attributes identifying a SQL query
-// without exposing it: length and a SHA-256 prefix. The query text itself
-// is never recorded because it can embed end-user PII as literals.
-func queryFingerprintKeyValues(query string) []attribute.KeyValue {
-	if query == "" {
-		return []attribute.KeyValue{attribute.String("query_type", "empty")}
-	}
-	h := sha256.Sum256([]byte(query))
-	return []attribute.KeyValue{
-		attribute.String("query_type", "sql"),
-		attribute.Int("query_length", len(query)),
-		attribute.String("query_sha256_prefix", hex.EncodeToString(h[:8])),
-	}
-}
-
-// substraitFingerprintKeyValues builds OpenTelemetry attributes identifying a Substrait
-// plan: length, SHA-256 prefix, and protocol version. Plan bytes are never
-// recorded.
-func substraitFingerprintKeyValues(plan []byte, version string) []attribute.KeyValue {
-	if len(plan) == 0 {
-		return []attribute.KeyValue{attribute.String("query_type", "substrait_empty")}
-	}
-	h := sha256.Sum256(plan)
-	attrs := []attribute.KeyValue{
-		attribute.String("query_type", "substrait"),
-		attribute.Int("substrait_plan_bytes", len(plan)),
-		attribute.String("substrait_plan_sha256_prefix", hex.EncodeToString(h[:8])),
-	}
-	if version != "" {
-		attrs = append(attrs, attribute.String("substrait_version", version))
-	}
-	return attrs
 }
 
 // flightInfoTracingKeyValues returns OpenTelemetry attributes describing a FlightInfo:

@@ -51,35 +51,6 @@ func safeLogger(logger *slog.Logger) *slog.Logger {
 // tickets are not logged at all because they may carry sensitive data.
 const maxLoggedBlobBytes = 32
 
-// endpointLogAttrs builds slog attributes describing a Flight endpoint
-// (index, ticket length, locations) for per-endpoint log records. Ticket
-// contents are intentionally never logged.
-func endpointLogAttrs(endpointIndex, numEndpoints int, endpoint *flight.FlightEndpoint) []any {
-	attrs := []any{
-		slog.Int("endpointIndex", endpointIndex),
-		slog.Int("numEndpoints", numEndpoints),
-	}
-	if endpoint == nil {
-		return attrs
-	}
-	if endpoint.Ticket != nil {
-		attrs = append(attrs, slog.Int("ticketBytes", len(endpoint.Ticket.Ticket)))
-	}
-	if len(endpoint.Location) == 0 {
-		attrs = append(attrs, slog.String("locations", "<empty: using default client connection>"))
-	} else {
-		uris := make([]string, 0, len(endpoint.Location))
-		for _, loc := range endpoint.Location {
-			uris = append(uris, loc.Uri)
-		}
-		attrs = append(attrs, slog.Any("locations", uris))
-	}
-	if endpoint.ExpirationTime != nil {
-		attrs = append(attrs, slog.Time("expirationTime", endpoint.ExpirationTime.AsTime()))
-	}
-	return attrs
-}
-
 // streamProgress tracks per-endpoint streaming statistics for log records
 // and error messages emitted when a stream ends. Not safe for concurrent
 // use; intended to be owned by the goroutine driving one endpoint.
@@ -108,25 +79,6 @@ func (p *streamProgress) recordBatch(rows int64, bytes int64) {
 	p.bytesEstimate += bytes
 }
 
-// logAttrs returns slog attributes summarizing this stream's progress.
-func (p *streamProgress) logAttrs() []any {
-	attrs := []any{
-		slog.Int64("batchesRead", p.batchesRead),
-		slog.Int64("recordsRead", p.recordsRead),
-		slog.Int64("approxBytesRead", p.bytesEstimate),
-		slog.Duration("elapsed", time.Since(p.start)),
-	}
-	if !p.firstBatchAt.IsZero() {
-		attrs = append(attrs, slog.Duration("timeToFirstBatch", p.firstBatchAt.Sub(p.start)))
-	} else {
-		attrs = append(attrs, slog.String("timeToFirstBatch", "never"))
-	}
-	if !p.lastBatchAt.IsZero() {
-		attrs = append(attrs, slog.Duration("timeSinceLastBatch", time.Since(p.lastBatchAt)))
-	}
-	return attrs
-}
-
 // summary returns a compact human-readable summary of the stream's progress
 // suitable for embedding into wrapped error messages.
 func (p *streamProgress) summary() string {
@@ -141,50 +93,6 @@ func (p *streamProgress) summary() string {
 // formatInt formats an int64 without pulling in fmt.
 func formatInt(n int64) string {
 	return strconv.FormatInt(n, 10)
-}
-
-func makeUnaryLoggingInterceptor(logger *slog.Logger) grpc.UnaryClientInterceptor {
-	interceptor := func(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-		start := time.Now()
-		// Ignore errors
-		outgoing, _ := metadata.FromOutgoingContext(ctx)
-		err := invoker(ctx, method, req, reply, cc, opts...)
-		if logger.Enabled(ctx, slog.LevelDebug) {
-			args := []any{"target", cc.Target(), "duration", time.Since(start), "err", err, "metadata", outgoing}
-			args = append(args, outgoingCallHeaderAttrs(ctx)...)
-			args = append(args, grpcStatusAttrs(err)...)
-			logger.DebugContext(ctx, method, args...)
-		} else {
-			keys := maps.Keys(outgoing)
-			slices.Sort(keys)
-			args := []any{"target", cc.Target(), "duration", time.Since(start), "err", err, "metadata", keys}
-			// Surface curated outbound correlation IDs regardless of level.
-			args = append(args, outgoingCallHeaderAttrs(ctx)...)
-			args = append(args, grpcStatusAttrs(err)...)
-			logger.InfoContext(ctx, method, args...)
-		}
-		return err
-	}
-	return interceptor
-}
-
-func makeStreamLoggingInterceptor(logger *slog.Logger) grpc.StreamClientInterceptor {
-	interceptor := func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
-		start := time.Now()
-		// Ignore errors
-		outgoing, _ := metadata.FromOutgoingContext(ctx)
-		stream, err := streamer(ctx, desc, cc, method, opts...)
-		if err != nil {
-			args := []any{"target", cc.Target(), "duration", time.Since(start), "err", err}
-			args = append(args, outgoingCallHeaderAttrs(ctx)...)
-			args = append(args, grpcStatusAttrs(err)...)
-			logger.InfoContext(ctx, method, args...)
-			return stream, err
-		}
-
-		return &loggedStream{ClientStream: stream, logger: logger, ctx: ctx, method: method, start: start, target: cc.Target(), outgoing: outgoing}, err
-	}
-	return interceptor
 }
 
 type loggedStream struct {
