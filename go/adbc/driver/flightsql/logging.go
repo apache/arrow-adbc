@@ -27,9 +27,6 @@ import (
 	"time"
 
 	"go.opentelemetry.io/otel/trace"
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
@@ -91,74 +88,6 @@ func (p *streamProgress) summary() string {
 // formatInt formats an int64 without pulling in fmt.
 func formatInt(n int64) string {
 	return strconv.FormatInt(n, 10)
-}
-
-type loggedStream struct {
-	grpc.ClientStream
-
-	logger   *slog.Logger
-	ctx      context.Context
-	method   string
-	start    time.Time
-	target   string
-	outgoing metadata.MD
-
-	// recvCount tracks how many messages were received before the stream
-	// ended; logged on termination so EOFs on empty streams are distinguishable
-	// from mid-stream failures.
-	recvCount int64
-}
-
-func (stream *loggedStream) RecvMsg(m any) error {
-	err := stream.ClientStream.RecvMsg(m)
-	if err == nil {
-		stream.recvCount++
-		return nil
-	}
-
-	loggedErr := err
-	if loggedErr == io.EOF {
-		loggedErr = nil
-	}
-
-	// Capture trailers from the terminated stream; they often carry
-	// server-side diagnostic information for failure triage.
-	trailer := stream.Trailer()
-
-	if stream.logger.Enabled(stream.ctx, slog.LevelDebug) {
-		stream.logger.DebugContext(stream.ctx, stream.method,
-			"target", stream.target,
-			"duration", time.Since(stream.start),
-			"err", loggedErr,
-			"recvMessages", stream.recvCount,
-			"metadata", stream.outgoing,
-			"trailer", trailer,
-		)
-	} else {
-		keys := maps.Keys(stream.outgoing)
-		slices.Sort(keys)
-		trailerKeys := maps.Keys(trailer)
-		slices.Sort(trailerKeys)
-		args := []any{
-			"target", stream.target,
-			"duration", time.Since(stream.start),
-			"err", loggedErr,
-			"recvMessages", stream.recvCount,
-			"metadata", keys,
-			"trailer", trailerKeys,
-		}
-		// Promote curated correlation headers from the trailer.
-		args = append(args, correlationHeaderAttrs(trailer)...)
-		// Promote the outbound correlation IDs the caller supplied.
-		args = append(args, outgoingCallHeaderAttrs(stream.ctx)...)
-		// EOF is a clean close in Flight, so loggedErr was nil-ed above;
-		// only attach status attrs for real errors.
-		if loggedErr != nil {
-			args = append(args, grpcStatusAttrs(loggedErr)...)
-		}
-		stream.logger.InfoContext(stream.ctx, stream.method, args...)
-	}
-	return err
 }
 
 // wellKnownCorrelationHeaders is the curated allow-list of inbound gRPC
