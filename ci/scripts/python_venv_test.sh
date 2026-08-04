@@ -32,16 +32,16 @@ main() {
     "${scratch}"/.venv/bin/python -m pip install pyarrow
 
     mkdir -p "${scratch}/.venv/etc/adbc/drivers/"
-    cat >"${scratch}/.venv/etc/adbc/drivers/sqlite.toml" <<EOF
+    cat >"${scratch}/.venv/etc/adbc/drivers/test_sqlite.toml" <<EOF
 name = "SQLite"
 [Driver]
 shared = "${sqlite_driver}"
 EOF
 
-    mkdir -p "${scratch}/.venv/etc/adbc/profiles/sqlite/"
-    cat >"${scratch}/.venv/etc/adbc/profiles/sqlite/dev.toml" <<EOF
+    mkdir -p "${scratch}/.venv/etc/adbc/profiles/test_sqlite/"
+    cat >"${scratch}/.venv/etc/adbc/profiles/test_sqlite/dev.toml" <<EOF
 profile_version = 1
-driver = "sqlite"
+driver = "test_sqlite"
 [Options]
 uri = "file:///tmp/test.db"
 EOF
@@ -49,7 +49,7 @@ EOF
     cat >"${scratch}/test.py" <<EOF
 import adbc_driver_manager.dbapi
 
-with adbc_driver_manager.dbapi.connect(driver="sqlite") as con:
+with adbc_driver_manager.dbapi.connect(driver="test_sqlite") as con:
     with con.cursor() as cur:
         cur.execute("SELECT 1")
         assert cur.fetchall() == [(1,)]
@@ -77,7 +77,7 @@ EOF
     cat >"${scratch}/test3.py" <<EOF
 import adbc_driver_manager.dbapi
 
-with adbc_driver_manager.dbapi.connect(profile="sqlite/dev") as con:
+with adbc_driver_manager.dbapi.connect(profile="test_sqlite/dev") as con:
     with con.cursor() as cur:
         cur.execute("SELECT 1")
         assert cur.fetchall() == [(1,)]
@@ -95,7 +95,7 @@ import adbc_driver_manager.dbapi
 db_kwargs = {
     "additional_profile_search_path_list": "/",
 }
-with adbc_driver_manager.dbapi.connect(profile="sqlite/dev", db_kwargs=db_kwargs) as con:
+with adbc_driver_manager.dbapi.connect(profile="test_sqlite/dev", db_kwargs=db_kwargs) as con:
     with con.cursor() as cur:
         cur.execute("SELECT 1")
         assert cur.fetchall() == [(1,)]
@@ -113,7 +113,7 @@ import adbc_driver_manager.dbapi
 db_kwargs = {
     "additional_manifest_search_path_list": "/",
 }
-with adbc_driver_manager.dbapi.connect(driver="sqlite", db_kwargs=db_kwargs) as con:
+with adbc_driver_manager.dbapi.connect(driver="test_sqlite", db_kwargs=db_kwargs) as con:
     with con.cursor() as cur:
         cur.execute("SELECT 1")
         assert cur.fetchall() == [(1,)]
