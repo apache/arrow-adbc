@@ -19,11 +19,14 @@ package flightsql
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sync/atomic"
+	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-adbc/go/adbc/utils"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
@@ -32,9 +35,10 @@ import (
 	"github.com/apache/arrow-go/v18/arrow/memory"
 	"github.com/apache/arrow-go/v18/arrow/util"
 	"github.com/bluele/gcache"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 )
 
 type reader struct {
@@ -45,8 +49,10 @@ type reader struct {
 	rec        arrow.RecordBatch
 	err        error
 
-	cancelFn context.CancelFunc
+	cancelFn context.CancelCauseFunc
 }
+
+var errReaderReleased = errors.New("record reader released")
 
 // recordReaderConfig bundles the dependencies that newRecordReader
 // needs to spin up its per-endpoint goroutines.
@@ -56,18 +62,30 @@ type recordReaderConfig struct {
 	info        *flight.FlightInfo
 	clientCache gcache.Cache
 	bufferSize  int
+	tracing     adbc.OTelTracing
 	logger      *slog.Logger
 }
 
 // newRecordReader kicks off a goroutine for each endpoint and returns a
-// reader which gathers all of the records as they come in. cfg.logger
-// may be nil.
+// reader which gathers all of the records as they come in.
 func newRecordReader(ctx context.Context, cfg recordReaderConfig, opts ...grpc.CallOption) (rdr array.RecordReader, err error) {
-	log := safeLogger(cfg.logger)
+	const spanName = "FlightSQL.RecordReader.newRecordReader"
+	startTime := time.Now()
+	ctx, span := internal.StartSpan(ctx, spanName, cfg.tracing)
+	spanOwnedByReader := false
+	errorRecorded := false
+	defer func() {
+		if !spanOwnedByReader {
+			if errorRecorded {
+				internal.EndSpanWithStartTimeAndRecordedError(span, &err, &startTime)
+				return
+			}
+			internal.EndSpanWithStartTime(span, &err, &startTime)
+		}
+	}()
+
 	info := cfg.info
 	endpoints := info.Endpoint
-	var header, trailer metadata.MD
-	opts = append(append([]grpc.CallOption{}, opts...), grpc.Header(&header), grpc.Trailer(&trailer))
 	var schema *arrow.Schema
 	if len(endpoints) == 0 {
 		if info.Schema == nil {
@@ -87,21 +105,31 @@ func newRecordReader(ctx context.Context, cfg recordReaderConfig, opts ...grpc.C
 	}
 
 	ch := make(chan arrow.RecordBatch, cfg.bufferSize)
+	callerCtx := ctx
 	group, ctx := errgroup.WithContext(ctx)
-	ctx, cancelFn := context.WithCancel(ctx)
+	ctx, cancelFn := context.WithCancelCause(ctx)
+	goEndpoint := func(endpointFn func() error) {
+		group.Go(func() error {
+			err := endpointFn()
+			if err != nil {
+				cancelFn(err)
+			}
+			return err
+		})
+	}
 	// We may mutate endpoints below
 	numEndpoints := len(endpoints)
 
-	log.DebugContext(ctx, "FlightSQL newRecordReader start",
-		append([]any{
-			slog.Int("bufferSize", cfg.bufferSize),
-		}, flightInfoLogAttrs(info)...)...,
-	)
+	span.AddEvent("endpoint_stream.starting", trace.WithAttributes(
+		append([]attribute.KeyValue{
+			attribute.Int("bufferSize", cfg.bufferSize),
+		}, flightInfoTracingKeyValues(info)...)...,
+	))
 
 	defer func() {
 		if err != nil {
 			close(ch)
-			cancelFn()
+			cancelFn(err)
 		}
 	}()
 
@@ -114,22 +142,26 @@ func newRecordReader(ctx context.Context, cfg recordReaderConfig, opts ...grpc.C
 		}
 	} else {
 		firstEndpoint := endpoints[0]
-		epAttrs := endpointLogAttrs(0, numEndpoints, firstEndpoint)
-		log.DebugContext(ctx, "FlightSQL endpoint stream opening (schema discovery)", epAttrs...)
+		epAttrs := endpointTraceKeyValues(0, numEndpoints, firstEndpoint)
+		span.AddEvent("endpoint_stream.opening_schema_discovery", trace.WithAttributes(epAttrs...))
 		startSchemaFetch := newStreamProgress()
-		rdr, err := doGetWithLogger(ctx, cfg.cl, firstEndpoint, cfg.clientCache, log, opts...)
+		endpointCtx, responseMetadata := withResponseMetadata(ctx)
+		var rdr array.RecordReader
+		rdr, err = doGetWithTracer(endpointCtx, cfg.cl, firstEndpoint, cfg.clientCache, cfg.tracing, opts...)
 		if err != nil {
-			log.ErrorContext(ctx, "FlightSQL endpoint DoGet failed (schema discovery)",
-				append(append([]any{}, epAttrs...),
-					"err", err,
-					"elapsed", startSchemaFetch.summary(),
+			span.RecordError(err, trace.WithAttributes(
+				append(append([]attribute.KeyValue{}, epAttrs...),
+					attribute.String("elapsed", startSchemaFetch.summary()),
+					attribute.String("flight.stage", "schema_discovery"),
 				)...,
-			)
-			return nil, adbcFromFlightStatusWithDetails(err, header, trailer,
+			))
+			errorRecorded = true
+			return nil, adbcFromFlightStatusWithDetails(err, responseMetadata.snapshot(), nil,
 				"DoGet: endpoint 0: remote: %s", firstEndpoint.Location)
 		}
 		schema = rdr.Schema()
-		group.Go(func() error {
+		goEndpoint(func() error {
+			span := trace.SpanFromContext(ctx)
 			defer rdr.Release()
 			if numEndpoints > 1 {
 				defer close(ch)
@@ -142,20 +174,24 @@ func newRecordReader(ctx context.Context, cfg recordReaderConfig, opts ...grpc.C
 				rec.Retain()
 				ch <- rec
 			}
-			if err := checkContext(rdr.Err(), ctx); err != nil {
-				log.ErrorContext(ctx, "FlightSQL endpoint stream ended with error",
-					append(append([]any{}, endpointLogAttrs(0, numEndpoints, firstEndpoint)...),
-						append([]any{"err", err}, progress.logAttrs()...)...,
-					)...,
+			if err := checkRecordReaderContext(rdr.Err(), ctx, callerCtx); err != nil {
+				attrs := endpointTraceKeyValues(0, numEndpoints, firstEndpoint)
+				attrs = append(attrs, progress.logKeyValues()...)
+				span.RecordError(err,
+					/*"FlightSQL endpoint stream ended with error",*/
+					trace.WithAttributes(attrs...),
 				)
-				return adbcFromFlightStatusWithDetails(err, header, trailer,
+				return adbcFromFlightStatusWithDetails(err, responseMetadata.snapshot(), nil,
 					"DoGet: endpoint 0: remote: %s", firstEndpoint.Location)
 			}
-			log.DebugContext(ctx, "FlightSQL endpoint stream completed",
-				append(append([]any{}, endpointLogAttrs(0, numEndpoints, firstEndpoint)...),
-					progress.logAttrs()...,
+			span.AddEvent("endpoint_stream.completed", trace.WithAttributes(
+				append(
+					append(
+						[]attribute.KeyValue{},
+						endpointTraceKeyValues(0, numEndpoints, firstEndpoint)...),
+					progress.logKeyValues()...,
 				)...,
-			)
+			))
 			return nil
 		})
 
@@ -185,37 +221,43 @@ func newRecordReader(ctx context.Context, cfg recordReaderConfig, opts ...grpc.C
 			logEndpointIndex = endpointIndex + 1
 		}
 		chs[endpointIndex] = make(chan arrow.RecordBatch, cfg.bufferSize)
-		group.Go(func() error {
+		goEndpoint(func() error {
 			// Close channels (except the last) so that Next can move on to the next channel properly
 			if endpointIndex != lastChannelIndex {
 				defer close(chs[endpointIndex])
 			}
 
-			epAttrs := endpointLogAttrs(logEndpointIndex, numEndpoints, endpoint)
-			log.DebugContext(ctx, "FlightSQL endpoint stream opening", epAttrs...)
+			epAttrs := endpointTraceKeyValues(logEndpointIndex, numEndpoints, endpoint)
+			span.AddEvent("endpoint_stream.opening", trace.WithAttributes(epAttrs...))
 			doGetStart := newStreamProgress()
-			rdr, err := doGetWithLogger(ctx, cfg.cl, endpoint, cfg.clientCache, log, opts...)
+			endpointCtx, responseMetadata := withResponseMetadata(ctx)
+			rdr, err := doGetWithTracer(endpointCtx, cfg.cl, endpoint, cfg.clientCache, cfg.tracing, opts...)
 			if err != nil {
-				log.ErrorContext(ctx, "FlightSQL endpoint DoGet failed",
-					append(append([]any{}, epAttrs...),
-						"err", err,
-						"elapsed", doGetStart.summary(),
+				span.RecordError(err, trace.WithAttributes(
+					append(
+						append([]attribute.KeyValue{}, epAttrs...),
+						attribute.String("err", err.Error()),
+						attribute.String("elapsed", doGetStart.summary()),
+						attribute.String("flight.stage", "do_get"),
 					)...,
-				)
-				return adbcFromFlightStatusWithDetails(err, header, trailer,
+				))
+				return adbcFromFlightStatusWithDetails(err, responseMetadata.snapshot(), nil,
 					"DoGet: endpoint %d: %s", logEndpointIndex, endpoint.Location)
 			}
 			defer rdr.Release()
 
 			streamSchema := utils.RemoveSchemaMetadata(rdr.Schema())
 			if !streamSchema.Equal(referenceSchema) {
-				log.ErrorContext(ctx, "FlightSQL endpoint returned inconsistent schema",
-					append(append([]any{}, epAttrs...),
-						"expectedSchema", referenceSchema.String(),
-						"actualSchema", streamSchema.String(),
+				err = fmt.Errorf("endpoint %d returned inconsistent schema: expected %s but got %s", logEndpointIndex, referenceSchema.String(), streamSchema.String())
+				span.RecordError(err, trace.WithAttributes(
+					append(
+						append([]attribute.KeyValue{}, epAttrs...),
+						attribute.String("expectedSchema", referenceSchema.String()),
+						attribute.String("actualSchema", streamSchema.String()),
+						attribute.String("stage", "FlightSQL endpoint returned inconsistent schema"),
 					)...,
-				)
-				return fmt.Errorf("endpoint %d returned inconsistent schema: expected %s but got %s", logEndpointIndex, referenceSchema.String(), streamSchema.String())
+				))
+				return err
 			}
 
 			progress := newStreamProgress()
@@ -226,43 +268,57 @@ func newRecordReader(ctx context.Context, cfg recordReaderConfig, opts ...grpc.C
 				chs[endpointIndex] <- rec
 			}
 
-			if err := checkContext(rdr.Err(), ctx); err != nil {
-				log.ErrorContext(ctx, "FlightSQL endpoint stream ended with error",
-					append(append([]any{}, epAttrs...),
-						append([]any{"err", err}, progress.logAttrs()...)...,
+			if err := checkRecordReaderContext(rdr.Err(), ctx, callerCtx); err != nil {
+				span.RecordError(err, trace.WithAttributes(
+					append(append([]attribute.KeyValue{}, epAttrs...),
+						append([]attribute.KeyValue{
+							attribute.String("err", err.Error()),
+							attribute.String("stage", "FlightSQL endpoint stream ended with error"),
+						}, progress.logKeyValues()...)...,
 					)...,
-				)
-				return adbcFromFlightStatusWithDetails(err, header, trailer,
+				))
+				return adbcFromFlightStatusWithDetails(err, responseMetadata.snapshot(), nil,
 					"DoGet: endpoint %d: %s", logEndpointIndex, endpoint.Location)
 			}
-			log.DebugContext(ctx, "FlightSQL endpoint stream completed",
-				append(append([]any{}, epAttrs...),
-					progress.logAttrs()...,
+			span.AddEvent("endpoint_stream.completed", trace.WithAttributes(
+				append(append([]attribute.KeyValue{}, epAttrs...),
+					progress.logKeyValues()...,
 				)...,
-			)
+			))
 			return nil
 		})
 	}
 
+	spanOwnedByReader = true
 	go func() {
 		err := group.Wait()
 		reader.err = err
 		if reader.err != nil {
-			log.WarnContext(ctx, "FlightSQL record reader finished with error",
-				"err", reader.err,
-				"numEndpoints", numEndpoints,
-			)
+			span.AddEvent("record_reader.failed", trace.WithAttributes(
+				attribute.Int("numEndpoints", numEndpoints),
+			))
 		} else {
-			log.DebugContext(ctx, "FlightSQL record reader finished successfully",
-				"numEndpoints", numEndpoints,
-			)
+			span.AddEvent("record_reader.completed", trace.WithAttributes(
+				attribute.Int("numEndpoints", numEndpoints),
+			))
 		}
+		internal.EndSpanWithStartTimeAndRecordedError(span, &reader.err, &startTime)
 		// Don't close the last channel until after the group is finished, so that
-		// Next() can only return after reader.err may have been set
+		// Next() can only return after reader.err and tracing have been finalized.
 		close(chs[lastChannelIndex])
 	}()
 
 	return reader, nil
+}
+
+func checkRecordReaderContext(maybeErr error, ctx, callerCtx context.Context) error {
+	if errors.Is(context.Cause(ctx), errReaderReleased) {
+		return nil
+	}
+	if ctx.Err() == context.Canceled && callerCtx.Err() == nil {
+		return nil
+	}
+	return checkContext(maybeErr, ctx)
 }
 
 func (r *reader) Retain() {
@@ -274,7 +330,7 @@ func (r *reader) Release() {
 		if r.rec != nil {
 			r.rec.Release()
 		}
-		r.cancelFn()
+		r.cancelFn(errReaderReleased)
 		for _, ch := range r.chs {
 			for rec := range ch {
 				rec.Release()
