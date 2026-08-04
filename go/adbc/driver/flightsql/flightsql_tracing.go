@@ -84,8 +84,8 @@ type responseMetadataClientStream struct {
 func (s *responseMetadataClientStream) RecvMsg(message interface{}) error {
 	err := s.ClientStream.RecvMsg(message)
 	if err != nil {
-		header, _ := s.ClientStream.Header()
-		captureResponseMetadata(s.ctx, metadata.Join(header, s.ClientStream.Trailer()))
+		header, _ := s.Header()
+		captureResponseMetadata(s.ctx, metadata.Join(header, s.Trailer()))
 	}
 	return err
 }
