@@ -67,15 +67,14 @@ def connect(
 
 @functools.lru_cache
 def _driver_path() -> str:
+    import importlib.resources
     import pathlib
     import sys
-
-    import importlib_resources
 
     driver = "adbc_driver_postgresql"
 
     # Wheels bundle the shared library
-    root = importlib_resources.files(driver)
+    root = importlib.resources.files(driver)
     # The filename is always the same regardless of platform
     entrypoint = root.joinpath(f"lib{driver}.so")
     if entrypoint.is_file():

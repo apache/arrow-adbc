@@ -36,7 +36,7 @@
 /// the repository, build the sample, and follow along.
 ///
 /// We'll assume you're using conda-forge_ for dependencies.  CMake, a
-/// C++17 compiler, and the ADBC libraries are required.  They can be
+/// C++20 compiler, and the ADBC libraries are required.  They can be
 /// installed as follows:
 ///
 /// .. code-block:: shell
@@ -193,7 +193,7 @@ class DriverExampleDatabase : public adbc::driver::Database<DriverExampleDatabas
 /// Another role of the connection is to provide metadata about tables, columns,
 /// statistics, and other catalog-like information a caller might want to know before
 /// issuing a query. The driver framework base classes provide helpers to implement these
-/// functions such that you can mostly implement them in terms of the C++17 standard
+/// functions such that you can mostly implement them in terms of the C++20 standard
 /// library (as opposed to building the C-level arrays yourself).
 
 class DriverExampleConnection : public adbc::driver::Connection<DriverExampleConnection> {

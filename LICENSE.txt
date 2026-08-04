@@ -271,7 +271,7 @@ All rights reserved.
 
 --------------------------------------------------------------------------------
 
-The files under c/vendor/fmt contain code from {fmt}.
+The files under c/vendor/fmt contain code from {fmt}, version 12.2.0.
 {fmt} is under the MIT license:
 
 Copyright (c) 2012 - present, Victor Zverovich and {fmt} contributors

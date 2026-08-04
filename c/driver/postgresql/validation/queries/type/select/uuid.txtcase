@@ -1,0 +1,65 @@
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
+// part: metadata
+
+[setup]
+drop = "test_uuid"
+
+[tags]
+sql-type-name = "UUID"
+
+// part: setup_query
+
+CREATE TABLE test_uuid (
+    idx INT,
+    res UUID
+);
+
+INSERT INTO test_uuid (idx, res) VALUES (1, NULL);
+INSERT INTO test_uuid (idx, res) VALUES (2, '00000000-0000-0000-0000-000000000000');
+INSERT INTO test_uuid (idx, res) VALUES (3, 'ffffffff-ffff-ffff-ffff-ffffffffffff');
+INSERT INTO test_uuid (idx, res) VALUES (4, '123e4567-e89b-12d3-a456-426614174000');
+INSERT INTO test_uuid (idx, res) VALUES (5, '550e8400-e29b-41d4-a716-446655440000');
+
+// part: query
+
+SELECT res FROM test_uuid ORDER BY idx ASC
+
+// part: expected_schema
+
+{
+    "format": "+s",
+    "children": [
+        {
+            "name": "res",
+            "format": "w:16",
+            "flags": ["nullable"],
+            "metadata": {
+                "ARROW:extension:name": "arrow.uuid"
+            }
+        }
+    ]
+}
+
+// part: expected
+
+{"res": null}
+{"res": "AAAAAAAAAAAAAAAAAAAAAA=="}
+{"res": "/////////////////////w=="}
+{"res": "Ej5FZ+ibEtOkVkJmFBdAAA=="}
+{"res": "VQ6EAOKbQdSnFkRmVUQAAA=="}

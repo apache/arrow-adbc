@@ -141,6 +141,7 @@ def generate_availability_macros(library: str) -> str:
 
 
 ALL_VERSIONS = [
+    (1, 13),
     (1, 12),
     (1, 11),
     (1, 10),

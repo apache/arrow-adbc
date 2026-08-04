@@ -28,6 +28,7 @@
 
 #if defined(ADBC_FRAMEWORK_USE_FMT)
 #include <fmt/core.h>
+#include <fmt/format.h>
 #endif
 
 #include <arrow-adbc/adbc.h>

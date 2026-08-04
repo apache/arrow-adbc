@@ -65,7 +65,7 @@ if(ADBC_BUILD_TESTS)
                 adbc_validation
                 duckdb)
   add_dependencies(adbc-integration-duckdb-test duckdb)
-  target_compile_features(adbc-integration-duckdb-test PRIVATE cxx_std_17)
+  target_compile_features(adbc-integration-duckdb-test PRIVATE cxx_std_20)
   target_include_directories(adbc-integration-duckdb-test SYSTEM
                              PRIVATE ${REPOSITORY_ROOT}/c/ ${REPOSITORY_ROOT}/c/include/
                                      ${REPOSITORY_ROOT}/c/driver)

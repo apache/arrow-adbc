@@ -1750,7 +1750,7 @@ TEST_F(PostgresStatementTest, SqlIngestJsonInvalid) {
   ASSERT_THAT(AdbcStatementBind(&statement, &batch.value, &schema.value, &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
-              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+              IsStatus(ADBC_STATUS_INVALID_DATA, &error));
   ASSERT_THAT(error.message, ::testing::HasSubstr("invalid input syntax for type json"));
 }
 
@@ -2327,13 +2327,13 @@ TEST_F(PostgresStatementTest, SqlExecuteCopyZeroRowOutputError) {
                                           &reader.rows_affected, &error),
                 IsOkStatus());
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
-    ASSERT_EQ(reader.MaybeNext(), EINVAL);
+    ASSERT_EQ(reader.MaybeNext(), EIO);
 
     AdbcStatusCode status = ADBC_STATUS_OK;
     const struct AdbcError* detail =
         AdbcErrorFromArrayStream(&reader.stream.value, &status);
     ASSERT_NE(nullptr, detail);
-    ASSERT_EQ(ADBC_STATUS_INVALID_ARGUMENT, status);
+    ASSERT_EQ(ADBC_STATUS_INVALID_DATA, status);
     ASSERT_EQ("22023", std::string_view(detail->sqlstate, 5));
   }
 }

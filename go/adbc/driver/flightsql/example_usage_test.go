@@ -126,7 +126,7 @@ func Example() {
 
 	server := flight.NewServerWithMiddleware(nil)
 	server.RegisterFlightService(flightsql.NewFlightServer(srv))
-	err = server.Init("localhost:8080")
+	err = server.Init("localhost:0")
 	if err != nil {
 		log.Fatal(err)
 	}

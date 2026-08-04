@@ -15,7 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
-CXX_STD = CXX17
+CXX_STD = CXX20
 CONDA_BUILD ?= "0"
 PKG_CPPFLAGS=-I../src/c/include -I../src/c -I../src/c/vendor -DADBC_EXPORT="" -DADBC_CONDA_BUILD=$(CONDA_BUILD)
 

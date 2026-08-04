@@ -526,7 +526,7 @@ func (s *statement) queryAttrs() []attribute.KeyValue {
 func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, nrec int64, err error) {
 	const spanName = "FlightSQL.Statement.ExecuteQuery"
 	startTime := time.Now()
-	ctx, span := internal.StartSpan(ctx, spanName, s.cnxn)
+	ctx, span := internal.StartSpan(ctx, spanName, s.cnxn, trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...))
 	defer internal.EndSpanWithStartTime(span, &err, &startTime)
 
 	if err = s.clearIncrementalQuery(); err != nil {
@@ -599,7 +599,7 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 	const spanName = "FlightSQL.Statement.ExecuteUpdate"
 	startTime := time.Now()
-	ctx, span := internal.StartSpan(ctx, spanName, s.cnxn)
+	ctx, span := internal.StartSpan(ctx, spanName, s.cnxn, trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...))
 	defer internal.EndSpanWithStartTime(span, &err, &startTime)
 
 	if err = s.clearIncrementalQuery(); err != nil {
@@ -657,7 +657,7 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 func (s *statement) Prepare(ctx context.Context) (err error) {
 	const spanName = "FlightSQL.Statement.Prepare"
 	startTime := time.Now()
-	ctx, span := internal.StartSpan(ctx, spanName, s.cnxn)
+	ctx, span := internal.StartSpan(ctx, spanName, s.cnxn, trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...))
 	defer internal.EndSpanWithStartTime(span, &err, &startTime)
 
 	span.AddEvent("starting", trace.WithAttributes(s.queryAttrs()...))
