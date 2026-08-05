@@ -110,14 +110,20 @@ jobs:
             apache-arrow-adbc-${{ env.VERSION }}.tar.gz.sha512
 
   source-conda:
-    name: "Verify Source (Conda)/${{ matrix.os }}"
+    name: "Verify Source (Conda)/${{ matrix.os }} ${{ matrix.shell }}"
     runs-on: ${{ matrix.os }}
     needs:
       - source
     strategy:
       fail-fast: false
       matrix:
-        os: ["macos-15-intel", "macos-latest", "ubuntu-latest", "windows-latest"]
+        include:
+          - { os: "macos-15-intel" }
+          - { os: "macos-latest" }
+          - { os: "ubuntu-latest" }
+          # Ensure the script works on both PowerShell 5.1 (bundled with Windows) and 7.x
+          - { os: "windows-latest", shell: "powershell" }
+          - { os: "windows-latest", shell: "pwsh" }
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -203,7 +209,7 @@ jobs:
           VERBOSE: "1"
           VERIFICATION_MOCK_DIST_DIR: ${{ github.workspace }}\apache-arrow-adbc-${{ env.VERSION }}-rc0
         run: |
-          .\arrow-adbc\dev\release\verify-release-candidate.ps1 $env:VERSION 0
+          ${{ matrix.shell }} .\arrow-adbc\dev\release\verify-release-candidate.ps1 $env:VERSION 0
 
   source-docker:
     name: "Run Docker Tests"
