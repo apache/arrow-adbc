@@ -217,6 +217,9 @@ Approval requires a net of 3 +1 votes from PMC members. A release cannot be veto
 How to Verify Release Candidates
 --------------------------------
 
+Linux/macOS
+~~~~~~~~~~~
+
 #. Install dependencies.  At minimum, you will need:
 
    - cURL
@@ -267,6 +270,44 @@ How to Verify Release Candidates
 
 #. Once finished and once the script passes, reply to the mailing list
    vote thread with a +1 or a -1.
+
+Windows
+~~~~~~~
+
+#. Install dependencies. At minimum, you will need:
+
+   - PowerShell (built into Windows)
+   - `Mamba/miniforge <https://github.com/conda-forge/miniforge>`_ (the script currently assumes it can use conda/mamba to construct environments)
+   - Python 3
+   - Java 11+ (with JDK)
+   - Maven
+
+#. Allow PowerShell to run unsigned scripts
+
+   .. code-block:: powershell
+
+      $ Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+#. Clone the project:
+
+   .. code-block:: powershell
+
+      $ git clone https://github.com/apache/arrow-adbc.git
+
+#. Run the verification script:
+
+   .. code-block:: powershell
+
+      $ cd arrow-adbc
+      # Pass the release and the RC number
+      $ .\dev\release\verify-release-candidate.ps1 24 2
+
+   These environment variables may be helpful:
+
+   - ``$env:ARROW_TMPDIR = C:\path\to\directory`` to specify the temporary
+     directory used.  Using a fixed directory can help avoid repeating
+     the same setup and build steps if the script has to be run
+     multiple times.
 
 Post-release tasks
 ==================
