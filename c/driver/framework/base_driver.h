@@ -54,8 +54,7 @@ enum class LifecycleState {
   kInitialized,
 };
 
-/// \brief A typed option value wrapper. Numeric values can be retrieved as strings,
-/// but other conversions are not attempted.
+/// \brief A typed option value wrapper. Attempts some conversions between types.
 class Option {
  public:
   /// \brief The option is unset.
