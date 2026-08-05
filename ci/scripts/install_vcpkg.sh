@@ -27,7 +27,7 @@ if [ "$#" -lt 1 ]; then
 fi
 
 arrow_dir=$(cd -- "$(dirname -- "$0")/../.." && pwd -P)
-default_vcpkg_version=$(cat "${arrow_dir}/.env" | grep "VCPKG" | cut -d "=" -f2 | tr -d '"')
+default_vcpkg_version=$(cat "${arrow_dir}/.env" | grep "VCPKG=" | cut -d "=" -f2 | awk '{print $1}' | tr -d '"')
 default_vcpkg_ports_patch="${arrow_dir}/ci/vcpkg/ports.patch"
 
 vcpkg_destination=$1
@@ -35,7 +35,7 @@ vcpkg_version=${2:-$default_vcpkg_version}
 vcpkg_ports_patch=${3:-$default_vcpkg_ports_patch}
 
 # reduce the fetched data using a shallow clone
-git clone --shallow-since=2025-09-01 https://github.com/microsoft/vcpkg ${vcpkg_destination}
+git clone --shallow-since=2026-05-01 https://github.com/microsoft/vcpkg ${vcpkg_destination}
 
 pushd ${vcpkg_destination}
 
