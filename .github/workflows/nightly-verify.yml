@@ -199,7 +199,7 @@ jobs:
 
       - name: Verify
         if: matrix.os == 'windows-latest'
-        shell: ${{ matrix.shell }}
+        shell: pwsh
         env:
           CI: "false"
           REPOSITORY: ${{ github.repository }}
@@ -209,7 +209,7 @@ jobs:
           VERBOSE: "1"
           VERIFICATION_MOCK_DIST_DIR: ${{ github.workspace }}\apache-arrow-adbc-${{ env.VERSION }}-rc0
         run: |
-          .\arrow-adbc\dev\release\verify-release-candidate.ps1 $env:VERSION 0
+          ${{ matrix.shell }} .\arrow-adbc\dev\release\verify-release-candidate.ps1 $env:VERSION 0
 
   source-docker:
     name: "Run Docker Tests"
