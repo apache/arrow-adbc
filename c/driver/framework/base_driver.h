@@ -54,8 +54,8 @@ enum class LifecycleState {
   kInitialized,
 };
 
-/// \brief A typed option value wrapper. It currently does not attempt
-/// conversion (i.e., getting a double option as a string).
+/// \brief A typed option value wrapper. Numeric values can be retrieved as strings,
+/// but other conversions are not attempted.
 class Option {
  public:
   /// \brief The option is unset.
@@ -169,14 +169,21 @@ class Option {
       return std::visit(
           [&](auto&& value) -> AdbcStatusCode {
             using T = std::decay_t<decltype(value)>;
-            if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, int64_t>) {
-              std::string formatted;
+            if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, int64_t> ||
+                          std::is_same_v<T, double>) {
+              char formatted[24];  // Enough room for double/int64_t
               std::string_view string_value;
               if constexpr (std::is_same_v<T, std::string>) {
                 string_value = value;
               } else {
-                formatted = std::to_string(value);
-                string_value = formatted;
+                auto result =
+                    std::to_chars(formatted, formatted + sizeof(formatted), value);
+                if (result.ec != std::errc()) {
+                  return status::Internal("Could not format numeric option value")
+                      .ToAdbc(error);
+                }
+                string_value = std::string_view(
+                    formatted, static_cast<size_t>(result.ptr - formatted));
               }
               size_t value_size_with_terminator = string_value.size() + 1;
               if (*length >= value_size_with_terminator) {

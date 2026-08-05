@@ -276,14 +276,9 @@ test_that("void driver can get integer option of compatible type", {
   )
 })
 
-test_that("void driver errors getting double option of incorrect type", {
+test_that("void driver errors getting double option as incompatible type", {
   db <- adbc_database_init(adbc_driver_void())
   adbc_database_set_options(db, list("some_key" = 123.4))
-
-  expect_error(
-    adbc_database_get_option(db, "some_key"),
-    class = "adbc_status_not_found"
-  )
 
   expect_error(
     adbc_database_get_option_bytes(db, "some_key"),
@@ -293,6 +288,16 @@ test_that("void driver errors getting double option of incorrect type", {
   expect_error(
     adbc_database_get_option_int(db, "some_key"),
     class = "adbc_status_not_found"
+  )
+})
+
+test_that("void driver can get double option of compatible type", {
+  db <- adbc_database_init(adbc_driver_void())
+  adbc_database_set_options(db, list("some_key" = 123.4))
+
+  expect_identical(
+    adbc_database_get_option(db, "some_key"),
+    "123.4"
   )
 })
 
