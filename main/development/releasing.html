@@ -593,6 +593,8 @@ Follow up Release Candidates</label><div class="sd-tab-content docutils">
 Approval requires a net of 3 +1 votes from PMC members. A release cannot be vetoed.</p>
 <section id="how-to-verify-release-candidates">
 <h3>How to Verify Release Candidates<a class="headerlink" href="#how-to-verify-release-candidates" title="Link to this heading">¶</a></h3>
+<section id="linux-macos">
+<h4>Linux/macOS<a class="headerlink" href="#linux-macos" title="Link to this heading">¶</a></h4>
 <ol class="arabic">
 <li><p>Install dependencies.  At minimum, you will need:</p>
 <ul class="simple">
@@ -662,6 +664,45 @@ In this case, fewer dependencies are required from the system.
 <li><p>Once finished and once the script passes, reply to the mailing list
 vote thread with a +1 or a -1.</p></li>
 </ol>
+</section>
+<section id="windows">
+<h4>Windows<a class="headerlink" href="#windows" title="Link to this heading">¶</a></h4>
+<ol class="arabic">
+<li><p>Install dependencies. At minimum, you will need:</p>
+<ul class="simple">
+<li><p>PowerShell (built into Windows)</p></li>
+<li><p><a class="reference external" href="https://github.com/conda-forge/miniforge">Mamba/miniforge</a> (the script currently assumes it can use conda/mamba to construct environments)</p></li>
+<li><p>Python 3</p></li>
+<li><p>Java 11+ (with JDK)</p></li>
+<li><p>Maven</p></li>
+</ul>
+</li>
+<li><p>Allow PowerShell to run unsigned scripts</p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="p">$</span> <span class="nb">Set-ExecutionPolicy</span> <span class="n">RemoteSigned</span> <span class="n">-Scope</span> <span class="n">CurrentUser</span>
+</pre></div>
+</div>
+</li>
+<li><p>Clone the project:</p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="p">$</span> <span class="n">git</span> <span class="n">clone</span> <span class="n">https</span><span class="p">://</span><span class="n">github</span><span class="p">.</span><span class="n">com</span><span class="p">/</span><span class="n">apache</span><span class="p">/</span><span class="n">arrow-adbc</span><span class="p">.</span><span class="n">git</span>
+</pre></div>
+</div>
+</li>
+<li><p>Run the verification script:</p>
+<div class="highlight-powershell notranslate"><div class="highlight"><pre><span></span><span class="p">$</span> <span class="nb">cd </span><span class="n">arrow-adbc</span>
+<span class="c"># Pass the release and the RC number</span>
+<span class="p">$</span> <span class="p">.\</span><span class="n">dev</span><span class="p">\</span><span class="n">release</span><span class="p">\</span><span class="n">verify-release-candidate</span><span class="p">.</span><span class="n">ps1</span> <span class="n">24</span> <span class="n">2</span>
+</pre></div>
+</div>
+<p>These environment variables may be helpful:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">$env:ARROW_TMPDIR</span> <span class="pre">=</span> <span class="pre">C:\path\to\directory</span></code> to specify the temporary
+directory used.  Using a fixed directory can help avoid repeating
+the same setup and build steps if the script has to be run
+multiple times.</p></li>
+</ul>
+</li>
+</ol>
+</section>
 </section>
 </section>
 <section id="post-release-tasks">
@@ -955,7 +996,11 @@ United States and other countries.
 </ul>
 </li>
 <li><a class="reference internal" href="#voting-and-approval">Voting and approval</a><ul>
-<li><a class="reference internal" href="#how-to-verify-release-candidates">How to Verify Release Candidates</a></li>
+<li><a class="reference internal" href="#how-to-verify-release-candidates">How to Verify Release Candidates</a><ul>
+<li><a class="reference internal" href="#linux-macos">Linux/macOS</a></li>
+<li><a class="reference internal" href="#windows">Windows</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a class="reference internal" href="#post-release-tasks">Post-release tasks</a></li>
