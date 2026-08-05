@@ -813,7 +813,7 @@ jobs:
       - name: Install vcpkg
         run: |
           pushd adbc
-          ci/scripts/install_vcpkg.sh $VCPKG_ROOT
+          ci/scripts/install_vcpkg.sh "$VCPKG_ROOT"
           popd
 
       - name: Get required Go version
@@ -985,7 +985,7 @@ jobs:
         shell: bash
         run: |
           cd adbc
-          ./ci/scripts/install_vcpkg.sh $VCPKG_ROOT
+          ./ci/scripts/install_vcpkg.sh "$VCPKG_ROOT"
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
