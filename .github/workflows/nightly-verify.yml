@@ -185,6 +185,10 @@ jobs:
           # Required for macOS
           export CXXFLAGS="${CXXFLAGS} -D_LIBCPP_DISABLE_AVAILABILITY"
           echo "CXXFLAGS=${CXXFLAGS}"
+          if [[ $(uname) == "Linux" ]]; then
+            # conda-forge's R makevars doesn't seem to define CXX20 on Linux
+            export R_MAKEVARS_USER="$(pwd)/arrow-adbc/ci/r_makevars_cxx20"
+          fi
           ./arrow-adbc/dev/release/verify-release-candidate.sh $VERSION 0
 
       - name: Verify
