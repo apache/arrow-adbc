@@ -121,6 +121,12 @@ pub trait Connection: Optionable<Option = OptionConnection> {
     /// Allocate and initialize a new statement.
     fn new_statement(&mut self) -> Result<Self::StatementType>;
 
+    /// Cancel the in-progress operation on a connection.
+    #[deprecated(since = "0.25.0", note = "Use get_cancel_handle() instead")]
+    fn cancel(&mut self) -> Result<()> {
+        self.get_cancel_handle().try_cancel()
+    }
+
     /// Get a handle to cancel operations on this connection.
     fn get_cancel_handle(&self) -> Box<dyn CancelHandle> {
         Box::new(NoOpCancellationHandle {})
@@ -483,6 +489,12 @@ pub trait Statement: Optionable<Option = OptionStatement> {
     /// The query can then be executed with [Statement::execute]. For queries
     /// expected to be executed repeatedly, call [Statement::prepare] first.
     fn set_substrait_plan(&mut self, plan: impl AsRef<[u8]>) -> Result<()>;
+
+    /// Cancel execution of an in-progress query.
+    #[deprecated(since = "0.25.0", note = "Use get_cancel_handle() instead")]
+    fn cancel(&mut self) -> Result<()> {
+        self.get_cancel_handle().try_cancel()
+    }
 
     /// Get a handle to cancel operations on this statement.
     ///
