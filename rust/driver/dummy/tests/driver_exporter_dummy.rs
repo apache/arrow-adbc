@@ -677,8 +677,21 @@ fn test_statement_cancel() {
     let exported_handle = exported_statement.get_cancel_handle();
     let native_handle = native_statement.get_cancel_handle();
 
-    exported_handle.try_cancel().unwrap();
-    native_handle.try_cancel().unwrap();
+    let res = exported_handle.try_cancel();
+    assert!(res.is_err());
+    assert!(
+        res.unwrap_err()
+            .to_string()
+            .contains("cancellation not implemented")
+    );
+
+    let res = native_handle.try_cancel();
+    assert!(res.is_err());
+    assert!(
+        res.unwrap_err()
+            .to_string()
+            .contains("cancellation not implemented")
+    );
 }
 
 #[test]
