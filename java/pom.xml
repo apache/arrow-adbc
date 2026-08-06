@@ -97,6 +97,7 @@
 
   <properties>
     <dep.arrow.version>19.0.0</dep.arrow.version>
+    <dep.jackson.version>2.21.0</dep.jackson.version>
     <dep.org.checkerframework.version>4.2.1</dep.org.checkerframework.version>
     <!-- org.apache:apache overrides -->
     <minimalJavaBuildVersion>11</minimalJavaBuildVersion>
