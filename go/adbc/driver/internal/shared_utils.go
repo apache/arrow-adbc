@@ -22,11 +22,13 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
 	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
 	"go.opentelemetry.io/otel/trace"
@@ -781,12 +783,52 @@ func EndSpan(span trace.Span, err error, options ...trace.SpanEndOption) {
 func EndSpanWithError(span trace.Span, err *error, options ...trace.SpanEndOption) {
 	if err != nil && *err != nil {
 		span.RecordError(*err)
-		if adbcError, ok := (*err).(adbc.Error); ok {
+		setSpanStatus(span, *err)
+	} else {
+		setSpanStatus(span, nil)
+	}
+	span.End(options...)
+}
+
+// EndSpanWithRecordedError ends a span whose error event has already been
+// recorded by the caller, setting only the final status and error type.
+func EndSpanWithRecordedError(span trace.Span, err *error, options ...trace.SpanEndOption) {
+	if err != nil {
+		setSpanStatus(span, *err)
+	} else {
+		setSpanStatus(span, nil)
+	}
+	span.End(options...)
+}
+
+func setSpanStatus(span trace.Span, err error) {
+	if err != nil {
+		if adbcError, ok := err.(adbc.Error); ok {
 			span.SetAttributes(semconv.ErrorTypeKey.String(adbcError.Code.String()))
 		}
-		span.SetStatus(codes.Error, (*err).Error())
+		span.SetStatus(codes.Error, err.Error())
 	} else {
 		span.SetStatus(codes.Ok, "")
 	}
-	span.End(options...)
+}
+
+// Ends the given span.
+// If startTime is not nil, then the duration of the span is recorded as an attribute.
+// If err is not nil, then the
+// error is recorded and the status is set appropriately.
+// Otherwise, the status is set to Ok.
+func EndSpanWithStartTime(span trace.Span, err *error, startTime *time.Time, options ...trace.SpanEndOption) {
+	if startTime != nil {
+		span.SetAttributes(attribute.Float64("span.duration_s", time.Since(*startTime).Seconds()))
+	}
+	EndSpanWithError(span, err, options...)
+}
+
+// EndSpanWithStartTimeAndRecordedError records duration and ends a span whose
+// error event has already been recorded by the caller.
+func EndSpanWithStartTimeAndRecordedError(span trace.Span, err *error, startTime *time.Time, options ...trace.SpanEndOption) {
+	if startTime != nil {
+		span.SetAttributes(attribute.Float64("span.duration_s", time.Since(*startTime).Seconds()))
+	}
+	EndSpanWithRecordedError(span, err, options...)
 }
