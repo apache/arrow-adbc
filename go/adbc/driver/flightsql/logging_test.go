@@ -32,6 +32,66 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+type tracingLifecycleStub struct {
+	calls       []string
+	flushErr    error
+	shutdownErr error
+}
+
+func (lifecycle *tracingLifecycleStub) ForceFlushTracing(context.Context) error {
+	lifecycle.calls = append(lifecycle.calls, "flush")
+	return lifecycle.flushErr
+}
+
+func (lifecycle *tracingLifecycleStub) Close() error {
+	lifecycle.calls = append(lifecycle.calls, "shutdown")
+	return lifecycle.shutdownErr
+}
+
+func TestCloseTracingAttemptsShutdownAndJoinsErrors(t *testing.T) {
+	flushErr := errors.New("flush failed")
+	shutdownErr := errors.New("shutdown failed")
+
+	for _, test := range []struct {
+		name        string
+		flushErr    error
+		shutdownErr error
+	}{
+		{name: "success"},
+		{name: "flush failure", flushErr: flushErr},
+		{name: "shutdown failure", shutdownErr: shutdownErr},
+		{name: "both failures", flushErr: flushErr, shutdownErr: shutdownErr},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			lifecycle := &tracingLifecycleStub{
+				flushErr:    test.flushErr,
+				shutdownErr: test.shutdownErr,
+			}
+			var spanErr error
+
+			err := closeTracing(context.Background(), lifecycle, func(err error) {
+				lifecycle.calls = append(lifecycle.calls, "span")
+				spanErr = err
+			})
+			if fmt.Sprint(lifecycle.calls) != "[flush span shutdown]" {
+				t.Fatalf("unexpected lifecycle calls: %v", lifecycle.calls)
+			}
+			if !errors.Is(spanErr, test.flushErr) {
+				t.Errorf("span error does not match flush error: %v", spanErr)
+			}
+			if test.flushErr != nil && !errors.Is(err, test.flushErr) {
+				t.Errorf("close error does not contain flush error: %v", err)
+			}
+			if test.shutdownErr != nil && !errors.Is(err, test.shutdownErr) {
+				t.Errorf("close error does not contain shutdown error: %v", err)
+			}
+			if test.flushErr == nil && test.shutdownErr == nil && err != nil {
+				t.Errorf("successful close returned an error: %v", err)
+			}
+		})
+	}
+}
+
 // TestHeaderAttrsWithPrefix_AllowAndDeny exercises the curated allow-list.
 // The function is the engine behind both correlationHeaderAttrs ("hdr_"
 // prefix, used on received headers / trailers) and outgoingCallHeaderAttrs
