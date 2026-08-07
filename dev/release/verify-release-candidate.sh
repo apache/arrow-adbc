@@ -400,6 +400,12 @@ maybe_setup_conda() {
   # Optionally setup conda environment with the passed dependencies
   local env="conda-${CONDA_ENV:-source}"
   local pyver=${PYTHON_VERSION:-3}
+  local pymarker=""
+
+  if [[ "$pyver" == *t ]]; then
+      pyver="${pyver%t}"
+      pymarker="python-freethreading"
+  fi
 
   if [ "${USE_CONDA}" -gt 0 ]; then
     show_info "Configuring Conda environment..."
@@ -412,7 +418,7 @@ maybe_setup_conda() {
     install_conda
     # Create environment
     if ! conda env list | cut -d" " -f 1 | grep $env; then
-      mamba create -y -n $env python=${pyver}
+      mamba create -y -n $env python=${pyver} ${pymarker}
     fi
     # Install dependencies
     if [ $# -gt 0 ]; then
@@ -818,13 +824,13 @@ test_linux_wheels() {
     local arch="x86_64"
   fi
 
-  local python_versions="${TEST_PYTHON_VERSIONS:-3.10 3.11 3.12 3.13 3.14}"
+  local python_versions="${TEST_PYTHON_VERSIONS:-3.10 3.11 3.12 3.13 3.14 3.14t}"
 
   for python in ${python_versions}; do
-    local pyver=${python/m}
-    show_header "Testing Python ${pyver} wheel for platform manylinux"
-    CONDA_ENV=wheel-${pyver}-${arch} PYTHON_VERSION=${pyver} maybe_setup_conda || exit 1
-    VENV_ENV=wheel-${pyver}-${arch} PYTHON_VERSION=${pyver} maybe_setup_virtualenv || continue
+    local pyver=${python/t}
+    show_header "Testing Python ${python} wheel for platform manylinux"
+    CONDA_ENV=wheel-${python}-${arch} PYTHON_VERSION=${python} maybe_setup_conda || exit 1
+    VENV_ENV=wheel-${python}-${arch} PYTHON_VERSION=${python} maybe_setup_virtualenv || continue
     pip install --force-reinstall \
         adbc_*-cp${pyver/.}-cp${python/.}-manylinux*${arch}*.whl \
         adbc_*-py3-none-manylinux*${arch}*.whl
