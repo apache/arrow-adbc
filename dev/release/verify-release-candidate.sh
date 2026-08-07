@@ -829,7 +829,7 @@ test_unix_wheels() {
     CONDA_ENV=wheel-${python}-${arch} PYTHON_VERSION=${python} maybe_setup_conda || exit 1
     VENV_ENV=wheel-${python}-${arch} PYTHON_VERSION=${python} maybe_setup_virtualenv || continue
 
-    if [[ "$pyver" == *t ]]; then
+    if [[ "$python" == *t ]]; then
         export PYTHON_GIL=0
     else
         unset PYTHON_GIL
