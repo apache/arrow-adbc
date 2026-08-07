@@ -29,9 +29,6 @@ import (
 
 	"github.com/apache/arrow-go/v18/arrow/flight"
 	"go.opentelemetry.io/otel/trace"
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
@@ -50,35 +47,6 @@ func safeLogger(logger *slog.Logger) *slog.Logger {
 // (descriptor commands, AppMetadata) are emitted in log records. Flight
 // tickets are not logged at all because they may carry sensitive data.
 const maxLoggedBlobBytes = 32
-
-// endpointLogAttrs builds slog attributes describing a Flight endpoint
-// (index, ticket length, locations) for per-endpoint log records. Ticket
-// contents are intentionally never logged.
-func endpointLogAttrs(endpointIndex, numEndpoints int, endpoint *flight.FlightEndpoint) []any {
-	attrs := []any{
-		slog.Int("endpointIndex", endpointIndex),
-		slog.Int("numEndpoints", numEndpoints),
-	}
-	if endpoint == nil {
-		return attrs
-	}
-	if endpoint.Ticket != nil {
-		attrs = append(attrs, slog.Int("ticketBytes", len(endpoint.Ticket.Ticket)))
-	}
-	if len(endpoint.Location) == 0 {
-		attrs = append(attrs, slog.String("locations", "<empty: using default client connection>"))
-	} else {
-		uris := make([]string, 0, len(endpoint.Location))
-		for _, loc := range endpoint.Location {
-			uris = append(uris, loc.Uri)
-		}
-		attrs = append(attrs, slog.Any("locations", uris))
-	}
-	if endpoint.ExpirationTime != nil {
-		attrs = append(attrs, slog.Time("expirationTime", endpoint.ExpirationTime.AsTime()))
-	}
-	return attrs
-}
 
 // streamProgress tracks per-endpoint streaming statistics for log records
 // and error messages emitted when a stream ends. Not safe for concurrent
@@ -108,25 +76,6 @@ func (p *streamProgress) recordBatch(rows int64, bytes int64) {
 	p.bytesEstimate += bytes
 }
 
-// logAttrs returns slog attributes summarizing this stream's progress.
-func (p *streamProgress) logAttrs() []any {
-	attrs := []any{
-		slog.Int64("batchesRead", p.batchesRead),
-		slog.Int64("recordsRead", p.recordsRead),
-		slog.Int64("approxBytesRead", p.bytesEstimate),
-		slog.Duration("elapsed", time.Since(p.start)),
-	}
-	if !p.firstBatchAt.IsZero() {
-		attrs = append(attrs, slog.Duration("timeToFirstBatch", p.firstBatchAt.Sub(p.start)))
-	} else {
-		attrs = append(attrs, slog.String("timeToFirstBatch", "never"))
-	}
-	if !p.lastBatchAt.IsZero() {
-		attrs = append(attrs, slog.Duration("timeSinceLastBatch", time.Since(p.lastBatchAt)))
-	}
-	return attrs
-}
-
 // summary returns a compact human-readable summary of the stream's progress
 // suitable for embedding into wrapped error messages.
 func (p *streamProgress) summary() string {
@@ -141,118 +90,6 @@ func (p *streamProgress) summary() string {
 // formatInt formats an int64 without pulling in fmt.
 func formatInt(n int64) string {
 	return strconv.FormatInt(n, 10)
-}
-
-func makeUnaryLoggingInterceptor(logger *slog.Logger) grpc.UnaryClientInterceptor {
-	interceptor := func(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-		start := time.Now()
-		// Ignore errors
-		outgoing, _ := metadata.FromOutgoingContext(ctx)
-		err := invoker(ctx, method, req, reply, cc, opts...)
-		if logger.Enabled(ctx, slog.LevelDebug) {
-			args := []any{"target", cc.Target(), "duration", time.Since(start), "err", err, "metadata", outgoing}
-			args = append(args, outgoingCallHeaderAttrs(ctx)...)
-			args = append(args, grpcStatusAttrs(err)...)
-			logger.DebugContext(ctx, method, args...)
-		} else {
-			keys := maps.Keys(outgoing)
-			slices.Sort(keys)
-			args := []any{"target", cc.Target(), "duration", time.Since(start), "err", err, "metadata", keys}
-			// Surface curated outbound correlation IDs regardless of level.
-			args = append(args, outgoingCallHeaderAttrs(ctx)...)
-			args = append(args, grpcStatusAttrs(err)...)
-			logger.InfoContext(ctx, method, args...)
-		}
-		return err
-	}
-	return interceptor
-}
-
-func makeStreamLoggingInterceptor(logger *slog.Logger) grpc.StreamClientInterceptor {
-	interceptor := func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
-		start := time.Now()
-		// Ignore errors
-		outgoing, _ := metadata.FromOutgoingContext(ctx)
-		stream, err := streamer(ctx, desc, cc, method, opts...)
-		if err != nil {
-			args := []any{"target", cc.Target(), "duration", time.Since(start), "err", err}
-			args = append(args, outgoingCallHeaderAttrs(ctx)...)
-			args = append(args, grpcStatusAttrs(err)...)
-			logger.InfoContext(ctx, method, args...)
-			return stream, err
-		}
-
-		return &loggedStream{ClientStream: stream, logger: logger, ctx: ctx, method: method, start: start, target: cc.Target(), outgoing: outgoing}, err
-	}
-	return interceptor
-}
-
-type loggedStream struct {
-	grpc.ClientStream
-
-	logger   *slog.Logger
-	ctx      context.Context
-	method   string
-	start    time.Time
-	target   string
-	outgoing metadata.MD
-
-	// recvCount tracks how many messages were received before the stream
-	// ended; logged on termination so EOFs on empty streams are distinguishable
-	// from mid-stream failures.
-	recvCount int64
-}
-
-func (stream *loggedStream) RecvMsg(m any) error {
-	err := stream.ClientStream.RecvMsg(m)
-	if err == nil {
-		stream.recvCount++
-		return nil
-	}
-
-	loggedErr := err
-	if loggedErr == io.EOF {
-		loggedErr = nil
-	}
-
-	// Capture trailers from the terminated stream; they often carry
-	// server-side diagnostic information for failure triage.
-	trailer := stream.Trailer()
-
-	if stream.logger.Enabled(stream.ctx, slog.LevelDebug) {
-		stream.logger.DebugContext(stream.ctx, stream.method,
-			"target", stream.target,
-			"duration", time.Since(stream.start),
-			"err", loggedErr,
-			"recvMessages", stream.recvCount,
-			"metadata", stream.outgoing,
-			"trailer", trailer,
-		)
-	} else {
-		keys := maps.Keys(stream.outgoing)
-		slices.Sort(keys)
-		trailerKeys := maps.Keys(trailer)
-		slices.Sort(trailerKeys)
-		args := []any{
-			"target", stream.target,
-			"duration", time.Since(stream.start),
-			"err", loggedErr,
-			"recvMessages", stream.recvCount,
-			"metadata", keys,
-			"trailer", trailerKeys,
-		}
-		// Promote curated correlation headers from the trailer.
-		args = append(args, correlationHeaderAttrs(trailer)...)
-		// Promote the outbound correlation IDs the caller supplied.
-		args = append(args, outgoingCallHeaderAttrs(stream.ctx)...)
-		// EOF is a clean close in Flight, so loggedErr was nil-ed above;
-		// only attach status attrs for real errors.
-		if loggedErr != nil {
-			args = append(args, grpcStatusAttrs(loggedErr)...)
-		}
-		stream.logger.InfoContext(stream.ctx, stream.method, args...)
-	}
-	return err
 }
 
 // wellKnownCorrelationHeaders is the curated allow-list of inbound gRPC

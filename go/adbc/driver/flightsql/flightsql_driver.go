@@ -40,6 +40,7 @@ package flightsql
 
 import (
 	"context"
+	"errors"
 	"net/url"
 	"time"
 
@@ -127,7 +128,7 @@ func (d *driverImpl) NewDatabaseWithOptions(opts map[string]string, userDialOpts
 	return d.NewDatabaseWithOptionsContext(context.Background(), opts, userDialOpts...)
 }
 
-func (d *driverImpl) NewDatabaseWithOptionsContext(ctx context.Context, opts map[string]string, userDialOpts ...grpc.DialOption) (adbc.Database, error) {
+func (d *driverImpl) NewDatabaseWithOptionsContext(ctx context.Context, opts map[string]string, userDialOpts ...grpc.DialOption) (_ adbc.Database, err error) {
 	opts = maps.Clone(opts)
 	uri, ok := opts[adbc.OptionKeyURI]
 	if !ok {
@@ -151,6 +152,14 @@ func (d *driverImpl) NewDatabaseWithOptionsContext(ctx context.Context, opts map
 	if err != nil {
 		return nil, err
 	}
+	constructionComplete := false
+	defer func() {
+		if !constructionComplete {
+			if closeErr := dbBase.Close(); closeErr != nil {
+				err = errors.Join(err, closeErr)
+			}
+		}
+	}()
 	db := &databaseImpl{
 		DatabaseImplBase: dbBase,
 		timeout: timeoutOption{
@@ -174,6 +183,7 @@ func (d *driverImpl) NewDatabaseWithOptionsContext(ctx context.Context, opts map
 		return nil, err
 	}
 
+	constructionComplete = true
 	return driverbase.NewDatabase(db), nil
 }
 
