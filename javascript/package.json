@@ -26,6 +26,7 @@
     "binaryName": "adbc-driver-manager",
     "targets": [
       "x86_64-pc-windows-msvc",
+      "aarch64-pc-windows-msvc",
       "x86_64-apple-darwin",
       "x86_64-unknown-linux-gnu",
       "aarch64-unknown-linux-gnu",
@@ -86,6 +87,7 @@
   },
   "optionalDependencies": {
     "@apache-arrow/adbc-driver-manager-win32-x64-msvc": "0.25.0",
+    "@apache-arrow/adbc-driver-manager-win32-arm64-msvc": "0.25.0",
     "@apache-arrow/adbc-driver-manager-darwin-x64": "0.25.0",
     "@apache-arrow/adbc-driver-manager-linux-x64-gnu": "0.25.0",
     "@apache-arrow/adbc-driver-manager-linux-arm64-gnu": "0.25.0",
