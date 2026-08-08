@@ -201,7 +201,7 @@ This package provides an ADBC driver for Flight SQL.
 %files driver-flightsql%{major_version_native}-libs
 %defattr(-,root,root,-)
 %doc README.md
-%license LICENSE.txt NOTICE.txt
+%license LICENSE.txt NOTICE.txt ci/licenses/flightsql.txt
 %{_libdir}/libadbc_driver_flightsql.so.*
 
 %package driver-flightsql-devel
@@ -215,7 +215,7 @@ Libraries and header files for ADBC Flight SQL driver.
 %files driver-flightsql-devel
 %defattr(-,root,root,-)
 %doc README.md
-%license LICENSE.txt NOTICE.txt
+%license LICENSE.txt NOTICE.txt ci/licenses/flightsql.txt
 %{_libdir}/cmake/AdbcDriverFlightSQL/
 %{_libdir}/libadbc_driver_flightsql.a
 %{_libdir}/libadbc_driver_flightsql.so
