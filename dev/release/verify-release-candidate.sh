@@ -400,6 +400,12 @@ maybe_setup_conda() {
   # Optionally setup conda environment with the passed dependencies
   local env="conda-${CONDA_ENV:-source}"
   local pyver=${PYTHON_VERSION:-3}
+  local pymarker=""
+
+  if [[ "$pyver" == *t ]]; then
+      pyver="${pyver%t}"
+      pymarker="python-freethreading"
+  fi
 
   if [ "${USE_CONDA}" -gt 0 ]; then
     show_info "Configuring Conda environment..."
@@ -412,7 +418,7 @@ maybe_setup_conda() {
     install_conda
     # Create environment
     if ! conda env list | cut -d" " -f 1 | grep $env; then
-      mamba create -y -n $env python=${pyver}
+      mamba create -y -n $env python=${pyver} ${pymarker}
     fi
     # Install dependencies
     if [ $# -gt 0 ]; then
@@ -811,6 +817,30 @@ test_binary_distribution() {
   fi
 }
 
+test_unix_wheels() {
+  local arch="${1}"
+  local platform="${2}"
+
+  local python_versions="${TEST_PYTHON_VERSIONS:-3.10 3.11 3.12 3.13 3.14 3.14t}"
+
+  for python in ${python_versions}; do
+    local pyver=${python/t}
+    show_header "Testing Python ${python} wheels for ${platform}/${arch}"
+    CONDA_ENV=wheel-${python}-${arch} PYTHON_VERSION=${python} maybe_setup_conda || exit 1
+    VENV_ENV=wheel-${python}-${arch} PYTHON_VERSION=${python} maybe_setup_virtualenv || continue
+
+    if [[ "$python" == *t ]]; then
+        export PYTHON_GIL=0
+    else
+        unset PYTHON_GIL
+    fi
+    pip install --force-reinstall \
+        adbc_*-cp${pyver/.}-cp${python/.}-${platform}*${arch}*.whl \
+        adbc_*-py3-none-${platform}*${arch}*.whl
+    ${ADBC_DIR}/ci/scripts/python_wheel_unix_test.sh ${ADBC_DIR}
+  done
+}
+
 test_linux_wheels() {
   if [ "$(uname -m)" = "aarch64" ]; then
     local arch="aarch64"
@@ -818,45 +848,18 @@ test_linux_wheels() {
     local arch="x86_64"
   fi
 
-  local python_versions="${TEST_PYTHON_VERSIONS:-3.10 3.11 3.12 3.13 3.14}"
-
-  for python in ${python_versions}; do
-    local pyver=${python/m}
-    show_header "Testing Python ${pyver} wheel for platform manylinux"
-    CONDA_ENV=wheel-${pyver}-${arch} PYTHON_VERSION=${pyver} maybe_setup_conda || exit 1
-    VENV_ENV=wheel-${pyver}-${arch} PYTHON_VERSION=${pyver} maybe_setup_virtualenv || continue
-    pip install --force-reinstall \
-        adbc_*-cp${pyver/.}-cp${python/.}-manylinux*${arch}*.whl \
-        adbc_*-py3-none-manylinux*${arch}*.whl
-    ${ADBC_DIR}/ci/scripts/python_wheel_unix_test.sh ${ADBC_DIR}
-  done
+  test_unix_wheels "${arch}" "manylinux"
 }
 
 test_macos_wheels() {
   # apple silicon processor
   if [ "$(uname -m)" = "arm64" ]; then
-    local platform_tags="arm64"
+    local arch="arm64"
   else
-    local platform_tags="x86_64"
+    local arch="x86_64"
   fi
 
-  local python_versions="${TEST_PYTHON_VERSIONS:-3.10 3.11 3.12 3.13 3.14}"
-
-  # verify arch-native wheels inside an arch-native conda environment
-  for python in ${python_versions}; do
-    local pyver=${python/m}
-    for platform in ${platform_tags}; do
-      show_header "Testing Python ${pyver} wheel for platform ${platform}"
-
-      CONDA_ENV=wheel-${pyver}-${platform} PYTHON_VERSION=${pyver} maybe_setup_conda || exit 1
-      VENV_ENV=wheel-${pyver}-${platform} PYTHON_VERSION=${pyver} maybe_setup_virtualenv || continue
-
-      pip install --force-reinstall \
-          adbc_*-cp${pyver/.}-cp${python/.}-macosx_*_${platform}.whl \
-          adbc_*-py3-none-macosx_*_${platform}.whl
-      ${ADBC_DIR}/ci/scripts/python_wheel_unix_test.sh ${ADBC_DIR}
-    done
-  done
+  test_unix_wheels "${arch}" "macosx"
 }
 
 test_wheels() {
