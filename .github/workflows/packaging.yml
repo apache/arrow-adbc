@@ -359,6 +359,24 @@ jobs:
           popd
           cp -a adbc/dist/ ./
 
+      # Basic sanity check; also don't ship binaries in sources JAR to avoid bloat
+      - name: Verify JNI JAR contents
+        run: |
+          sources_jar=$(find dist -maxdepth 1 -name 'adbc-driver-jni-*-sources.jar' -print -quit)
+          runtime_jar=${sources_jar%-sources.jar}.jar
+
+          jar tf "${sources_jar}" > temp_jni_sources_contents.txt
+          if grep -q '^adbc_driver_jni/' temp_jni_sources_contents.txt; then
+            echo "JNI source JAR contains native binaries: ${sources_jar}"
+            exit 1
+          fi
+
+          jar tf "${runtime_jar}" > temp_jni_runtime_contents.txt
+          if ! grep -q '^adbc_driver_jni/' temp_jni_runtime_contents.txt; then
+            echo "JNI runtime JAR does not contain native binaries: ${runtime_jar}"
+            exit 1
+          fi
+
       - name: Archive JARs
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
