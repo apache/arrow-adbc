@@ -208,11 +208,15 @@ if ($TestSource) {
 
     Show-Header "Create Conda Environment"
 
+    $PlatformSpecificPackages = @()
+    if ($env:OS -eq "Windows_NT") {
+        $PlatformSpecificPackages += "m2w64-gcc"
+    }
     mamba create -c conda-forge --yes --prefix $(Join-Path $ArrowTempDir conda-env) `
       --file $(Join-Path $ArrowSourceDir ci\conda_env_cpp.txt) `
       --file $(Join-Path $ArrowSourceDir ci\conda_env_python.txt) `
       go `
-      m2w64-gcc
+      $PlatformSpecificPackages
 
     Enable-Conda
     conda activate $(Join-Path $ArrowTempDir conda-env)
