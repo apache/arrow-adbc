@@ -790,15 +790,59 @@ func EndSpanWithError(span trace.Span, err *error, options ...trace.SpanEndOptio
 	span.End(options...)
 }
 
-// EndSpanWithRecordedError ends a span whose error event has already been
-// recorded by the caller, setting only the final status and error type.
-func EndSpanWithRecordedError(span trace.Span, err *error, options ...trace.SpanEndOption) {
-	if err != nil {
-		setSpanStatus(span, *err)
-	} else {
-		setSpanStatus(span, nil)
+type EndSpanHelper struct {
+	span          trace.Span
+	err           *error
+	errorRecorded bool
+	startTime     *time.Time
+	options       []trace.SpanEndOption
+}
+
+func NewEndSpanHelper(span trace.Span) *EndSpanHelper {
+	return &EndSpanHelper{
+		span:          span,
+		errorRecorded: false,
+		startTime:     nil,
+		err:           nil,
 	}
-	span.End(options...)
+}
+
+func (h *EndSpanHelper) WithError(err error) *EndSpanHelper {
+	h.err = &err
+	return h
+}
+
+func (h *EndSpanHelper) WithRecordedError(errorRecorded bool) *EndSpanHelper {
+	h.errorRecorded = errorRecorded
+	return h
+}
+
+func (h *EndSpanHelper) WithOptions(options ...trace.SpanEndOption) *EndSpanHelper {
+	h.options = options
+	return h
+}
+
+func (h *EndSpanHelper) WithStartTime(startTime time.Time) *EndSpanHelper {
+	h.startTime = &startTime
+	return h
+}
+
+func (h *EndSpanHelper) EndSpan() {
+	if h.span == nil {
+		return
+	}
+	if h.startTime != nil {
+		h.span.SetAttributes(attribute.Float64("span.duration_s", time.Since(*h.startTime).Seconds()))
+	}
+	if !h.errorRecorded && h.err != nil && *h.err != nil {
+		h.span.RecordError(*h.err)
+	}
+	if h.err != nil && *h.err != nil {
+		setSpanStatus(h.span, *h.err)
+	} else {
+		setSpanStatus(h.span, nil)
+	}
+	h.span.End(h.options...)
 }
 
 func setSpanStatus(span trace.Span, err error) {
@@ -810,25 +854,4 @@ func setSpanStatus(span trace.Span, err error) {
 	} else {
 		span.SetStatus(codes.Ok, "")
 	}
-}
-
-// Ends the given span.
-// If startTime is not nil, then the duration of the span is recorded as an attribute.
-// If err is not nil, then the
-// error is recorded and the status is set appropriately.
-// Otherwise, the status is set to Ok.
-func EndSpanWithStartTime(span trace.Span, err *error, startTime *time.Time, options ...trace.SpanEndOption) {
-	if startTime != nil {
-		span.SetAttributes(attribute.Float64("span.duration_s", time.Since(*startTime).Seconds()))
-	}
-	EndSpanWithError(span, err, options...)
-}
-
-// EndSpanWithStartTimeAndRecordedError records duration and ends a span whose
-// error event has already been recorded by the caller.
-func EndSpanWithStartTimeAndRecordedError(span trace.Span, err *error, startTime *time.Time, options ...trace.SpanEndOption) {
-	if startTime != nil {
-		span.SetAttributes(attribute.Float64("span.duration_s", time.Since(*startTime).Seconds()))
-	}
-	EndSpanWithRecordedError(span, err, options...)
 }

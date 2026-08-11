@@ -250,11 +250,11 @@ func doGetWithTracer(ctx context.Context, cl *flightsql.Client, endpoint *flight
 	ctx, span := internal.StartSpan(ctx, spanName, tracing)
 	errorRecorded := false
 	defer func() {
-		if errorRecorded {
-			internal.EndSpanWithStartTimeAndRecordedError(span, &err, &startTime)
-			return
-		}
-		internal.EndSpanWithStartTime(span, &err, &startTime)
+		internal.NewEndSpanHelper(span).
+			WithStartTime(startTime).
+			WithError(err).
+			WithRecordedError(errorRecorded).
+			EndSpan()
 	}()
 
 	streamOpts := make([]grpc.CallOption, 0, len(opts))
