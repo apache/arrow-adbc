@@ -95,7 +95,7 @@ jobs:
       - name: Install vcpkg dependencies
         working-directory: c
         run: |
-          $VCPKG_ROOT\vcpkg.exe install libpq sqlite3 --triplet ${{ matrix.arch }}-windows
+          & "$($env:VCPKG_ROOT)"\vcpkg.exe install libpq sqlite3 --triplet ${{ matrix.arch }}-windows
       - name: Build and Install (No ASan)
         env:
           CMAKE_BUILD_TYPE: ${{ matrix.config }}
