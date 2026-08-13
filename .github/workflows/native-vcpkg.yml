@@ -109,14 +109,34 @@ jobs:
         run: |
           & "$($env:VCPKG_ROOT)\vcpkg.exe" install libpq sqlite3 `
             --overlay-triplets "$pwd\..\ci\vcpkg\triplets"
+      - name: Diagnose vcpkg dependency installation
+        run: |
+          $tripletDirectory = Join-Path `
+            $env:VCPKG_ROOT "installed\$env:VCPKG_DEFAULT_TRIPLET"
+          Write-Host "vcpkg triplet directory: $tripletDirectory"
+          Write-Host "libpq header exists: $(Test-Path `
+            (Join-Path $tripletDirectory 'include\libpq-fe.h'))"
+          Write-Host "PostgreSQL wrapper exists: $(Test-Path `
+            (Join-Path $tripletDirectory `
+              'share\postgresql\vcpkg-cmake-wrapper.cmake'))"
+          Write-Host "libpq libraries:"
+          Get-ChildItem -Path (Join-Path $tripletDirectory 'lib') `
+            -Filter '*pq*.lib' -File | ForEach-Object FullName
+          Write-Host "vcpkg triplet directory contents:"
+          Get-ChildItem -Path $tripletDirectory -Recurse |
+            ForEach-Object FullName
       - name: Build and Install (No ASan)
         env:
           CMAKE_BUILD_TYPE: ${{ matrix.config }}
+          VCPKG_TRACE_FIND_PACKAGE: "ON"
+          VCPKG_VERBOSE: "ON"
         run: |
-          cmake .\c\ --preset windows-${{ matrix.config }} `
+          cmake --debug-find-pkg=PostgreSQL `
+            .\c\ --preset windows-${{ matrix.config }} `
             -DCMAKE_VERBOSE_MAKEFILE=ON `
             -DVCPKG_OVERLAY_TRIPLETS="$pwd\ci\vcpkg\triplets" `
             -DVCPKG_TARGET_TRIPLET=$env:VCPKG_DEFAULT_TRIPLET
+          if (-not $?) { throw "failed to configure CMake" }
 
           cmake --build .\build\${{ matrix.config }} --target install --config ${{ matrix.config }} --parallel
       - name: Test
