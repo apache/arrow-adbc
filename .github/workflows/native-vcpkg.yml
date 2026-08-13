@@ -28,7 +28,7 @@ on:
       - "go/**"
       - "python/**"
       - "ruby/**"
-      - ".github/workflows/native-windows.yml"
+      - ".github/workflows/native-vcpkg.yml"
   push:
     branches-ignore:
       - 'dependabot/**'
@@ -39,7 +39,7 @@ on:
       - "go/**"
       - "python/**"
       - "ruby/**"
-      - ".github/workflows/native-windows.yml"
+      - ".github/workflows/native-vcpkg.yml"
   workflow_call:
 
 concurrency:
@@ -60,9 +60,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - { os: windows-latest, arch: x64, config: debug, msystem: UCRT64, env: x86_64, triplet: x64-windows }
-          - { os: windows-latest, arch: x64, config: release, msystem: UCRT64, env: x86_64, triplet: x64-windows }
-          - { os: windows-11-arm, arch: arm64, config: release, msystem: CLANGARM64, env: clang-aarch64, triplet: arm64-windows-release }
+          - { os: windows-latest, arch: x64, config: debug, msystem: UCRT64, msysbin: mingw64, env: x86_64, triplet: x64-windows }
+          - { os: windows-latest, arch: x64, config: release, msystem: UCRT64, msysbin: mingw64, env: x86_64, triplet: x64-windows }
+          - { os: windows-11-arm, arch: arm64, config: release, msystem: CLANGARM64, msysbin: clangarm64, env: clang-aarch64, triplet: arm64-windows-release }
     env:
       VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg-cache
       VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }}
@@ -80,11 +80,11 @@ jobs:
           # Needed for gendef tool in GoUtils.cmake
           install: |
             mingw-w64-${{ matrix.env }}-tools
-      - name: Add CLANGARM64 toolchain to PATH
+      - name: Add msys2 toolchain to PATH
         env:
           MSYS_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
         run: |
-          "$($env:MSYS_LOCATION)\clangarm64\bin" |
+          "$($env:MSYS_LOCATION)\${{ matrix.msysbin }}\bin" |
             Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
       - name: Setup MSYS2 tools
         if: matrix.arch == 'arm64'
