@@ -18,20 +18,19 @@
 name: Packaging
 
 on:
-  # TODO: revert before merge
-  # pull_request:
-  #   branches:
-  #     - main
-  #   paths:
-  #     - ".env"
-  #     - "c/**"
-  #     - "ci/**"
-  #     - "dev/release/verify-apt.sh"
-  #     - "dev/release/verify-yum.sh"
-  #     - "glib/**"
-  #     - "python/**"
-  #     - "ruby/**"
-  #     - ".github/workflows/packaging.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".env"
+      - "c/**"
+      - "ci/**"
+      - "dev/release/verify-apt.sh"
+      - "dev/release/verify-yum.sh"
+      - "glib/**"
+      - "python/**"
+      - "ruby/**"
+      - ".github/workflows/packaging.yml"
 
   push:
     # Automatically build on RC tags
