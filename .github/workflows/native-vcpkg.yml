@@ -92,6 +92,10 @@ jobs:
         run: |
           # Needed for CGO
           pacman --noconfirm -S mingw-w64-${{ matrix.env }}-gcc-compat
+      - name: Ensure vcpkg binary cache directory
+        run: |
+          New-Item -ItemType Directory -Force `
+            $env:VCPKG_DEFAULT_BINARY_CACHE | Out-Null
       - name: Cache vcpkg packages
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
