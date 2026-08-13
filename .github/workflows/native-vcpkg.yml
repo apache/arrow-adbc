@@ -60,10 +60,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - { os: windows-latest, arch: x64, config: debug, msystem: UCRT64, env: x86_64 }
-          - { os: windows-latest, arch: x64, config: release, msystem: UCRT64, env: x86_64 }
-          - { os: windows-11-arm, arch: arm64, config: release, msystem: CLANGARM64, env: clang-aarch64 }
+          - { os: windows-latest, arch: x64, config: debug, msystem: UCRT64, env: x86_64, triplet: x64-windows }
+          - { os: windows-latest, arch: x64, config: release, msystem: UCRT64, env: x86_64, triplet: x64-windows }
+          - { os: windows-11-arm, arch: arm64, config: release, msystem: CLANGARM64, env: clang-aarch64, triplet: arm64-windows-release }
     env:
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg-cache
+      VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }}
       VCPKG_ROOT: ${{ github.workspace }}/vcpkg
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -74,6 +76,7 @@ jobs:
         id: msys2
         with:
           msystem: ${{ matrix.msystem }}
+          update: true
           # Needed for gendef tool in GoUtils.cmake
           install: |
             mingw-w64-${{ matrix.env }}-tools
@@ -89,18 +92,27 @@ jobs:
         run: |
           # Needed for CGO
           pacman --noconfirm -S mingw-w64-${{ matrix.env }}-gcc-compat
+      - name: Cache vcpkg packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+          key: vcpkg-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('.env', 'ci/vcpkg/**', 'c/**/vcpkg.json', '.github/workflows/native-vcpkg.yml') }}
       - name: Install vcpkg
         shell: bash
         run: ci/scripts/install_vcpkg.sh "$VCPKG_ROOT"
       - name: Install vcpkg dependencies
         working-directory: c
         run: |
-          & "$($env:VCPKG_ROOT)\vcpkg.exe" install libpq sqlite3 --triplet ${{ matrix.arch }}-windows
+          & "$($env:VCPKG_ROOT)\vcpkg.exe" install libpq sqlite3 `
+            --overlay-triplets "$pwd\..\ci\vcpkg\triplets"
       - name: Build and Install (No ASan)
         env:
           CMAKE_BUILD_TYPE: ${{ matrix.config }}
         run: |
-          cmake .\c\ --preset windows-${{ matrix.config }} -DCMAKE_VERBOSE_MAKEFILE=ON
+          cmake .\c\ --preset windows-${{ matrix.config }} `
+            -DCMAKE_VERBOSE_MAKEFILE=ON `
+            -DVCPKG_OVERLAY_TRIPLETS="$pwd\ci\vcpkg\triplets" `
+            -DVCPKG_TARGET_TRIPLET=$env:VCPKG_DEFAULT_TRIPLET
 
           cmake --build .\build\${{ matrix.config }} --target install --config ${{ matrix.config }} --parallel
       - name: Test
