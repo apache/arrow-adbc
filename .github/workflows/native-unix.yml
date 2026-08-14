@@ -368,8 +368,14 @@ jobs:
           cd
           tar xvf ~/local.tgz
 
+      - name: Install lgi (Lua GObject Introspection)
+        run: |
+          env PKG_CONFIG_PATH="${CONDA_PREFIX}/lib/pkgconfig${PKG_CONFIG_PATH:+:${PKG_CONFIG_PATH}}" \
+            luarocks install lgi
+
       - name: Build GLib Driver Manager
         run: |
+          eval "$(luarocks path)"
           env BUILD_ALL=0 BUILD_DRIVER_MANAGER=1 ./ci/scripts/glib_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
       - name: Test GLib/Ruby Driver Manager
         run: |
