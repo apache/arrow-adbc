@@ -546,10 +546,13 @@ jobs:
           use-mamba: true
       - name: Install Dependencies
         run: |
+          # N.B. explicitly install a compiler package which will cause the
+          # Conda environment to set CC/CXX
           ./ci/scripts/remamba.sh install -c conda-forge \
             python=${{ matrix.python }} \
             --file ci/conda_env_cpp.txt \
-            --file ci/conda_env_python.txt
+            --file ci/conda_env_python.txt \
+            ${{ (runner.os == 'Linux' && 'gcc gxx') || 'clang clangxx' }}
       - name: Work around ASAN issue (GH-1617)
         if: matrix.os == 'ubuntu-latest'
         run: |
