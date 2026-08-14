@@ -153,14 +153,17 @@ jobs:
         if: runner.os == 'Windows' && runner.arch != 'X64'
         env:
           VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+          VCPKG_TRIPLET: arm64-windows-release
         run: |
           ./ci/scripts/install_vcpkg.sh "$VCPKG_ROOT"
-          "$VCPKG_ROOT/vcpkg" install sqlite3
+          "$VCPKG_ROOT/vcpkg" install sqlite3 --overlay-triplets $(pwd)/ci/vcpkg/triplets
           mkdir -p build
           mkdir -p local
           pushd build
           cmake \
             -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake \
+            -DVCPKG_OVERLAY_TRIPLETS=$(pwd)/ci/vcpkg/triplets \
+            -DVCPKG_TARGET_TRIPLET=$VCPKG_TRIPLET \
             -DADBC_BUILD_TESTS=OFF \
             -DADBC_DRIVER_FLIGHTSQL=ON \
             -DADBC_DRIVER_MANAGER=ON \
