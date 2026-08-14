@@ -39,6 +39,7 @@ class PostgreSQLQuirks(model.DriverQuirks):
         get_objects_constraints_foreign=False,
         get_objects_constraints_primary=False,
         get_objects_constraints_unique=False,
+        metadata_type_name=True,
         statement_bulk_ingest=True,
         statement_bulk_ingest_catalog=False,
         statement_bulk_ingest_schema=False,

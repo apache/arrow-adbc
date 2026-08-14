@@ -18,25 +18,14 @@
 // part: metadata
 
 [tags]
-sql-type-name = "timestamp"
+sql-type-name = "bytea"
 
-// part: expected_schema
+// part: setup_query
 
-{
-    "format": "+s",
-    "children": [
-        {
-            "name": "res",
-            "format": "tsu:",
-            "flags": ["nullable"]
-        }
-    ]
-}
+CREATE TABLE test_binary (
+    res BYTEA
+);
 
-// part: expected
+// part: bind_query
 
-{"res": null}
-{"res": -62135596800000000}
-{"res": 946684800123000}
-{"res": 1684158330123000}
-{"res": 253402300799999000}
+INSERT INTO test_binary (res) VALUES ($1)

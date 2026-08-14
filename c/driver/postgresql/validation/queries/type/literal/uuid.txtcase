@@ -18,7 +18,7 @@
 // part: metadata
 
 [tags]
-sql-type-name = "UUID"
+sql-type-name = "uuid"
 
 // part: query
 

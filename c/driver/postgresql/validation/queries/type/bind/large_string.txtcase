@@ -18,25 +18,10 @@
 // part: metadata
 
 [tags]
-sql-type-name = "timestamp"
+sql-type-name = "text"
 
-// part: expected_schema
+// part: setup_query
 
-{
-    "format": "+s",
-    "children": [
-        {
-            "name": "res",
-            "format": "tsu:",
-            "flags": ["nullable"]
-        }
-    ]
-}
-
-// part: expected
-
-{"res": null}
-{"res": -62135596800000000}
-{"res": 946684800123000}
-{"res": 1684158330123000}
-{"res": 253402300799999000}
+CREATE TABLE test_large_string (
+    res TEXT
+);

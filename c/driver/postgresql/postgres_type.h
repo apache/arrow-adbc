@@ -354,6 +354,11 @@ class PostgresType {
         break;
     }
 
+    // Don't add POSTGRESQL:type to top-level field (which is the schema)
+    if (type_id_ != PostgresTypeId::kRecord || !field_name_.empty()) {
+      NANOARROW_RETURN_NOT_OK(AddTypeMetadata(schema));
+    }
+
     NANOARROW_RETURN_NOT_OK(ArrowSchemaSetName(schema, field_name_.c_str()));
     return NANOARROW_OK;
   }
@@ -370,11 +375,24 @@ class PostgresType {
   std::vector<PostgresType> children_;
 
   static constexpr const char* kPostgresTypeKey = "ADBC:postgresql:typname";
+  static constexpr const char* kTypeKey = "POSTGRESQL:type";
   static constexpr const char* kExtensionName = "ARROW:extension:name";
   static constexpr const char* kOpaqueExtensionName = "arrow.opaque";
   static constexpr const char* kJsonExtensionName = "arrow.json";
   static constexpr const char* kUuidExtensionName = "arrow.uuid";
   static constexpr const char* kExtensionMetadata = "ARROW:extension:metadata";
+
+  ArrowErrorCode AddTypeMetadata(ArrowSchema* schema) const {
+    const char* typname =
+        !typname_.empty() ? typname_.c_str() : PostgresTypname(type_id_);
+    nanoarrow::UniqueBuffer buffer;
+    NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderInit(buffer.get(), schema->metadata));
+    NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderAppend(
+        buffer.get(), ArrowCharView(kTypeKey), ArrowCharView(typname)));
+    NANOARROW_RETURN_NOT_OK(
+        ArrowSchemaSetMetadata(schema, reinterpret_cast<char*>(buffer->data)));
+    return NANOARROW_OK;
+  }
 
   ArrowErrorCode AddPostgresTypeMetadata(ArrowSchema* schema,
                                          const std::string& vendor_name) const {

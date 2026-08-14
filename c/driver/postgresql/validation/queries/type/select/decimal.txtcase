@@ -17,28 +17,8 @@
 
 // part: metadata
 
-[setup]
-drop = "test_uuid"
-
 [tags]
-sql-type-name = "uuid"
-
-// part: setup_query
-
-CREATE TABLE test_uuid (
-    idx INT,
-    res UUID
-);
-
-INSERT INTO test_uuid (idx, res) VALUES (1, NULL);
-INSERT INTO test_uuid (idx, res) VALUES (2, '00000000-0000-0000-0000-000000000000');
-INSERT INTO test_uuid (idx, res) VALUES (3, 'ffffffff-ffff-ffff-ffff-ffffffffffff');
-INSERT INTO test_uuid (idx, res) VALUES (4, '123e4567-e89b-12d3-a456-426614174000');
-INSERT INTO test_uuid (idx, res) VALUES (5, '550e8400-e29b-41d4-a716-446655440000');
-
-// part: query
-
-SELECT res FROM test_uuid ORDER BY idx ASC
+sql-type-name = "numeric"
 
 // part: expected_schema
 
@@ -47,19 +27,12 @@ SELECT res FROM test_uuid ORDER BY idx ASC
     "children": [
         {
             "name": "res",
-            "format": "w:16",
+            "format": "u",
             "flags": ["nullable"],
             "metadata": {
-                "ARROW:extension:name": "arrow.uuid"
+                "ARROW:extension:name": "arrow.opaque",
+                "ARROW:extension:metadata": "{\"type_name\": \"numeric\", \"vendor_name\": \"PostgreSQL\"}"
             }
         }
     ]
 }
-
-// part: expected
-
-{"res": null}
-{"res": "AAAAAAAAAAAAAAAAAAAAAA=="}
-{"res": "/////////////////////w=="}
-{"res": "Ej5FZ+ibEtOkVkJmFBdAAA=="}
-{"res": "VQ6EAOKbQdSnFkRmVUQAAA=="}
