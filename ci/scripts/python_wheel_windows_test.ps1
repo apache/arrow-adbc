@@ -32,13 +32,16 @@ $Components = @(
     "adbc_driver_sqlite"
 )
 $PythonTag = python -c "import sysconfig; print('cp' + sysconfig.get_python_version().replace('.', ''))"
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+if (-not $?) { throw "Failed to determine the Python tag" }
 # https://github.com/python/cpython/issues/127405: unlike Unix, Windows does not
 # expose free-threading through abiflags, so use Py_GIL_DISABLED instead.
 $PythonFlags = python -c "import sysconfig; print('t' if sysconfig.get_config_var('Py_GIL_DISABLED') else '')"
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+if (-not $?) { throw "Failed to determine whether Python is free-threaded" }
 $PythonTag = $PythonTag.Trim()
 $PythonFlags = $PythonFlags.Trim()
+if ($PythonFlags.Contains("t")) {
+    $env:PYTHON_GIL = "0"
+}
 
 Write-Host "=== ($PythonTag$PythonFlags) Installing wheels ==="
 
@@ -56,42 +59,41 @@ foreach ($Component in $Components) {
     }
 
     python -m pip install --no-deps --force-reinstall $Wheels[0].FullName
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    if (-not $?) { throw "Failed to install the $Component wheel" }
 }
 
 python -m pip install pytest typing-extensions
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+if (-not $?) { throw "Failed to install Python test dependencies" }
 
 foreach ($Component in $Components) {
     python -c "import $Component; import $Component.dbapi"
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    if (-not $?) { throw "Failed to import $Component" }
 }
 
-if ($Architecture -eq "amd64") {
+if ($PythonFlags.Contains("t")) {
+    Write-Host "=== Testing free-threaded driver manager without PyArrow or Polars ==="
+    python -m pytest -vvx --import-mode append `
+        -k "unknown_driver or missing_platform or bad" `
+        (Join-Path $SourceDir "python/adbc_driver_manager/tests/test_manifest.py")
+    if (-not $?) { throw "Failed to test the free-threaded driver manager" }
+} elseif ($Architecture -eq "amd64") {
     python -m pip install pyarrow pandas protobuf
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    if (-not $?) { throw "Failed to install amd64 Python test dependencies" }
 
     foreach ($Component in $Components) {
         Write-Host "=== Testing $Component ==="
         python -m pytest -vvx --import-mode append `
             -k "not duckdb and not sqlite and not polars" `
             (Join-Path $SourceDir "python/$Component/tests")
-        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        if (-not $?) { throw "Failed to test $Component" }
     }
-} elseif (-not $PythonFlags.Contains("t")) {
+} else {
     python -m pip install polars
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    if (-not $?) { throw "Failed to install Polars" }
 
     Write-Host "=== Testing driver manager with Polars and without PyArrow ==="
     $env:ADBC_NO_SKIP_TESTS = "1"
     python -m pytest -vvx --import-mode append `
         (Join-Path $SourceDir "python/adbc_driver_manager/tests/test_dbapi_polars_nopyarrow.py")
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-} else {
-    Write-Host "=== Testing free-threaded driver manager without PyArrow or Polars ==="
-    $env:PYTHON_GIL = "0"
-    python -m pytest -vvx --import-mode append `
-        -k "unknown_driver or missing_platform or bad" `
-        (Join-Path $SourceDir "python/adbc_driver_manager/tests/test_manifest.py")
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    if (-not $?) { throw "Failed to test the driver manager with Polars" }
 }

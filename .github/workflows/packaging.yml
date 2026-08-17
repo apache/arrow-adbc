@@ -1095,16 +1095,13 @@ jobs:
           SETUPTOOLS_SCM_PRETEND_VERSION: ${{ env.VERSION }}
         run: |
           $PythonDir = Split-Path $env:PYTHON_PATH
-          $env:PATH = "$PythonDir;$(Join-Path $PythonDir 'Scripts');$env:PATH"
-          Push-Location adbc
-          try {
-            .\ci\scripts\python_wheel_windows_build_drivers.ps1 `
-              -SourceDir $PWD.Path `
-              -BuildDir (Join-Path $PWD.Path "build") `
-              -Architecture "${{ matrix.arch }}"
-          } finally {
-            Pop-Location
-          }
+          $env:PATH = "$PythonDir;$env:PATH"
+          Set-Location adbc
+          .\ci\scripts\python_wheel_windows_build_drivers.ps1 `
+            -SourceDir $PWD.Path `
+            -BuildDir (Join-Path $PWD.Path "build") `
+            -Architecture "${{ matrix.arch }}"
+          if (-not $?) { throw "Failed to build driver wheels" }
 
       - name: Build driver manager wheels
         shell: pwsh
@@ -1126,21 +1123,18 @@ jobs:
             @{ Version = "3.14"; Path = $env:PYTHON_314 },
             @{ Version = "3.14t"; Path = $env:PYTHON_314T }
           )
-          Push-Location adbc
-          try {
-            foreach ($Python in $Pythons) {
-              if ([string]::IsNullOrEmpty($Python.Path)) {
-                continue
-              }
-              Write-Host "=== Building driver manager for Python $($Python.Version) ==="
-              $env:PYTHON_VERSION = $Python.Version
-              $PythonDir = Split-Path $Python.Path
-              $env:PATH = "$PythonDir;$(Join-Path $PythonDir 'Scripts');$OriginalPath"
-              .\ci\scripts\python_wheel_windows_build_manager.ps1 -SourceDir $PWD.Path
+          Set-Location adbc
+          foreach ($Python in $Pythons) {
+            if ([string]::IsNullOrEmpty($Python.Path)) {
+              continue
             }
-          } finally {
-            $env:PATH = $OriginalPath
-            Pop-Location
+            Write-Host "::group::Building driver manager for Python $($Python.Version)"
+            $env:PYTHON_VERSION = $Python.Version
+            $PythonDir = Split-Path $Python.Path
+            $env:PATH = "$PythonDir;$OriginalPath"
+            .\ci\scripts\python_wheel_windows_build_manager.ps1 -SourceDir $PWD.Path
+            if (-not $?) { throw "Failed to build the Python $($Python.Version) driver manager wheel" }
+            Write-Host "::endgroup::"
           }
 
       - name: Archive wheels
@@ -1174,32 +1168,25 @@ jobs:
             @{ Version = "3.14"; Path = $env:PYTHON_314 },
             @{ Version = "3.14t"; Path = $env:PYTHON_314T }
           )
-          Push-Location adbc
-          try {
-            foreach ($Python in $Pythons) {
-              if ([string]::IsNullOrEmpty($Python.Path)) {
-                continue
-              }
-              Write-Host "=== Testing wheels with Python $($Python.Version) ==="
-              $env:PYTHON_VERSION = $Python.Version
-              $PythonDir = Split-Path $Python.Path
-              $env:PATH = "$PythonDir;$(Join-Path $PythonDir 'Scripts');$OriginalPath"
-              $VenvDir = Join-Path $env:RUNNER_TEMP "adbc-wheel-test-$($Python.Version)"
-              try {
-                python -m venv $VenvDir
-                if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-                $env:PATH = "$(Join-Path $VenvDir 'Scripts');$env:PATH"
-                .\ci\scripts\python_wheel_windows_test.ps1 `
-                  -SourceDir $PWD.Path `
-                  -Architecture "${{ matrix.arch }}"
-              } finally {
-                $env:PATH = $OriginalPath
-                Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $VenvDir
-              }
+          Set-Location adbc
+          foreach ($Python in $Pythons) {
+            if ([string]::IsNullOrEmpty($Python.Path)) {
+              continue
             }
-          } finally {
-            $env:PATH = $OriginalPath
-            Pop-Location
+            Write-Host "::group::Testing wheels with Python $($Python.Version)"
+            $env:PYTHON_VERSION = $Python.Version
+            $PythonDir = Split-Path $Python.Path
+            $env:PATH = "$PythonDir;$OriginalPath"
+            $VenvDir = Join-Path $env:RUNNER_TEMP "adbc-wheel-test-$($Python.Version)"
+            python -m venv $VenvDir
+            if (-not $?) { throw "Failed to create the Python $($Python.Version) test environment" }
+            $env:PATH = "$(Join-Path $VenvDir 'Scripts');$env:PATH"
+            .\ci\scripts\python_wheel_windows_test.ps1 `
+              -SourceDir $PWD.Path `
+              -Architecture "${{ matrix.arch }}"
+            if (-not $?) { throw "Failed to test the Python $($Python.Version) wheels" }
+            Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $VenvDir
+            Write-Host "::endgroup::"
           }
 
   python-sdist:

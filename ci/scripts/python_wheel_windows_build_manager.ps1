@@ -27,7 +27,7 @@ $ComponentDir = Join-Path $SourceDir "python/$Component"
 $TemporaryWheelDir = Join-Path $ComponentDir "temp_wheels"
 
 python -m pip install --upgrade pip delvewheel wheel
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+if (-not $?) { throw "Failed to install Python build dependencies" }
 
 $env:ADBC_BUILD_TYPE = "debug"
 
@@ -37,18 +37,18 @@ try {
 
     Write-Host "=== Checking $Component version ==="
     python "$Component/_version.py"
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    if (-not $?) { throw "Failed to check the $Component version" }
 
     Write-Host "=== Building $Component wheel ==="
     python -m pip wheel --no-deps -w $TemporaryWheelDir -vvv .
-    if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    if (-not $?) { throw "Failed to build the $Component wheel" }
 
     New-Item -ItemType Directory -Force -Path repaired_wheels | Out-Null
     $Wheels = @(Get-ChildItem -Path "$TemporaryWheelDir/*.whl")
     foreach ($Wheel in $Wheels) {
         Copy-Item $Wheel.FullName repaired_wheels
         python -m delvewheel repair -w repaired_wheels $Wheel.FullName
-        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+        if (-not $?) { throw "Failed to repair the $Component wheel" }
     }
 } finally {
     Pop-Location
