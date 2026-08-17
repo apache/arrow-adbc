@@ -83,7 +83,7 @@
 
 #include <arrow-adbc/adbc.h>
 #include <arrow-adbc/adbc_driver_manager.h>
-#include <nanoarrow.h>
+#include <nanoarrow/nanoarrow.h>
 
 /// Then we'll add some (very basic) error checking helpers.
 
