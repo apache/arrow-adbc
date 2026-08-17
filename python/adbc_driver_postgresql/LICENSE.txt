@@ -271,7 +271,7 @@ All rights reserved.
 
 --------------------------------------------------------------------------------
 
-The files under c/vendor/fmt contain code from {fmt}.
+The files under c/vendor/fmt contain code from {fmt}, version 12.2.0.
 {fmt} is under the MIT license:
 
 Copyright (c) 2012 - present, Victor Zverovich and {fmt} contributors
@@ -297,7 +297,8 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 --------------------------------------------------------------------------------
 
-The files under c/vendor/backward contain code from backward-cpp.
+The files under c/vendor/backward contain code from backward-cpp, commit
+0bfd0a07a61551413ccd2ab9a9099af3bad40681.
 backward-cpp has the following license:
 
 Copyright 2013 Google Inc. All Rights Reserved.

@@ -159,10 +159,12 @@ jobs:
           ./ci/scripts/python_wheel_unix_build.sh ${{ matrix.arch }} $(pwd) $(pwd)/build
       - name: Build artifacts (Windows)
         if: matrix.os == 'Windows'
-        # TODO(https://github.com/apache/arrow-adbc/issues/4269): remove cmd.exe usage
-        shell: cmd # zizmor: ignore[misfeature]
+        shell: pwsh
         run: |
-          .\ci\scripts\python_wheel_windows_build.bat %cd% %cd%\build\${{ matrix.vcpkg_arch }}
+          .\ci\scripts\python_wheel_windows_build_drivers.ps1 `
+            -SourceDir $PWD.Path `
+            -BuildDir (Join-Path $PWD.Path "build/${{ matrix.vcpkg_arch }}") `
+            -Architecture "amd64"
 
       - name: Build driver manager (Windows)
         if: matrix.os == 'Windows'
