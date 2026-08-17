@@ -70,8 +70,11 @@ foreach ($Component in $Components) {
     if (-not $?) { throw "Failed to import $Component" }
 }
 
-if ($PythonFlags.Contains("t")) {
+# TODO(lidavidm): make tests consistent with Unix, also consistently mark
+# tests with what they require so we can easily filter them here
+if ($PythonFlags.Contains("t") -and $Architecture -ne "amd64") {
     Write-Host "=== Testing free-threaded driver manager without PyArrow or Polars ==="
+    # We don't have pyarrow or polars, so most tests won't work
     python -m pytest -vvx --import-mode append `
         -k "unknown_driver or missing_platform or bad" `
         (Join-Path $SourceDir "python/adbc_driver_manager/tests/test_manifest.py")

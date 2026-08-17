@@ -1159,7 +1159,8 @@ jobs:
           PYTHON_314: ${{ steps.python314.outputs.python-path }}
           PYTHON_314T: ${{ steps.python314t.outputs.python-path }}
         run: |
-          $OriginalPath = $env:PATH
+          $DriverDir = Join-Path $PWD "adbc/build/bin"
+          $OriginalPath = "$DriverDir;$env:PATH"
           $Pythons = @(
             @{ Version = "3.10"; Path = $env:PYTHON_310 },
             @{ Version = "3.11"; Path = $env:PYTHON_311 },
