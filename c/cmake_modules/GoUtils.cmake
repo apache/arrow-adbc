@@ -193,7 +193,7 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
       set(EXTLDFLAGS ",--version-script=${REPOSITORY_ROOT}/c/symbols.map")
     endif()
 
-    if(NOT APPLE)
+    if(NOT APPLE AND NOT WIN32)
       set(EXTLDFLAGS "${EXTLDFLAGS},-soname,${LIB_NAME_SHARED}.${ADBC_SO_VERSION}")
     endif()
 
