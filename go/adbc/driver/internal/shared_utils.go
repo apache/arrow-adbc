@@ -790,6 +790,9 @@ func EndSpanWithError(span trace.Span, err *error, options ...trace.SpanEndOptio
 	span.End(options...)
 }
 
+// EndSpanHelper centralizes span completion for operations that may fail.
+// It records errors when present, records the elapsed duration if a start time
+// was provided, and ensures the span status and end options are applied uniformly.
 type EndSpanHelper struct {
 	span          trace.Span
 	err           *error
@@ -798,6 +801,7 @@ type EndSpanHelper struct {
 	options       []trace.SpanEndOption
 }
 
+// NewEndSpanHelper creates a helper for finalizing a span after an operation.
 func NewEndSpanHelper(span trace.Span) *EndSpanHelper {
 	return &EndSpanHelper{
 		span:          span,
@@ -807,26 +811,35 @@ func NewEndSpanHelper(span trace.Span) *EndSpanHelper {
 	}
 }
 
+// WithError configures the error to be recorded and reported on the span.
+// It returns the helper itself to allow fluent chaining.
 func (h *EndSpanHelper) WithError(err error) *EndSpanHelper {
 	h.err = &err
 	return h
 }
 
+// WithRecordedError marks whether an error has already been recorded elsewhere.
+// It returns the helper itself to allow fluent chaining.
 func (h *EndSpanHelper) WithRecordedError(errorRecorded bool) *EndSpanHelper {
 	h.errorRecorded = errorRecorded
 	return h
 }
 
+// WithOptions sets the span end options to apply when the span is closed.
+// It returns the helper itself to allow fluent chaining.
 func (h *EndSpanHelper) WithOptions(options ...trace.SpanEndOption) *EndSpanHelper {
 	h.options = options
 	return h
 }
 
+// WithStartTime sets the operation start time so the elapsed duration can be recorded.
+// It returns the helper itself to allow fluent chaining.
 func (h *EndSpanHelper) WithStartTime(startTime time.Time) *EndSpanHelper {
 	h.startTime = &startTime
 	return h
 }
 
+// EndSpan completes the span, records any error, sets status, and emits duration metadata if available.
 func (h *EndSpanHelper) EndSpan() {
 	if h.span == nil {
 		return
