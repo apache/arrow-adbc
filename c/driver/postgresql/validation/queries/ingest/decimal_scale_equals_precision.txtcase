@@ -16,6 +16,7 @@
 // under the License.
 
 // part: expected_schema
+
 {
     "format": "+s",
     "children": [
@@ -40,9 +41,7 @@
 
 {"idx": 0, "value": null}
 {"idx": 1, "value": "0"}
-{"idx": 2, "value": "123.45"}
-{"idx": 3, "value": "-123.45"}
-{"idx": 4, "value": "9999999.99"}
-{"idx": 5, "value": "-9999999.99"}
-{"idx": 6, "value": "99999999.99"}
-{"idx": 7, "value": "-99999999.99"}
+{"idx": 2, "value": "0.99"}
+{"idx": 3, "value": "-0.99"}
+{"idx": 4, "value": "0.1"}
+{"idx": 5, "value": "-0.1"}
