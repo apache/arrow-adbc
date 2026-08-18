@@ -552,18 +552,6 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 		return nil, -1, err
 	}
 
-	ctx, span = internal.StartSpan(
-		ctx,
-		"FlightSQLStatement.ExecuteQuery",
-		s.cnxn,
-		trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...),
-	)
-	defer func() {
-		internal.NewEndSpanHelper(span).
-			WithError(err).
-			EndSpan()
-	}()
-
 	// Handle bulk ingest
 	if s.targetTable != "" {
 		nrec, err = s.executeIngest(ctx)

@@ -558,7 +558,7 @@ func closeCachedFlightClient(d *databaseImpl, location, client interface{}, reas
 func (d *databaseImpl) Open(ctx context.Context) (_ adbc.Connection, err error) {
 	ctx, span := internal.StartSpan(
 		ctx,
-		"FlightSQLDatabase.Open",
+		"FlightSQL.Database.Open",
 		d,
 		trace.WithAttributes(traceHeaderAttrsWithPrefix(d.hdrs, traceRequestMetadataPrefix)...),
 	)
