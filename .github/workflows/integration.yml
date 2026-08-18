@@ -284,14 +284,14 @@ jobs:
           ADBC_USE_UBSAN: "ON"
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
-          PYTEST_ADDOPTS: "--error-for-skips"
         run: |
           for postgres_version in 14 15 16 17 18; do
             echo "::group::PostgreSQL $postgres_version"
             export POSTGRES_VERSION="$postgres_version"
             docker compose up --wait --detach postgres-test
             ./ci/scripts/cpp_test.sh "$(pwd)/build"
-            ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
+            env PYTEST_ADDOPTS=--error-for-skips \
+              ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
             if [ "$postgres_version" = "18" ]; then
               uv --project=./c/driver/postgresql/validation/ run \
                 ci/scripts/validate.sh "$(pwd)" --vendor postgresql
@@ -329,6 +329,11 @@ jobs:
             vendor: cockroachdb
             uri: postgresql://root@localhost:5435/postgres?sslmode=disable
             experimental: false
+          - name: CrateDB
+            service: cratedb-test
+            vendor: cratedb
+            uri: postgresql://crate@localhost:5436/doc?sslmode=disable
+            experimental: true
           - name: ParadeDB
             service: paradedb-test
             vendor: paradedb
@@ -350,11 +355,6 @@ jobs:
           #   service: cedardb-test
           #   vendor: cedardb
           #   uri: postgresql://localhost:5433/postgres?user=postgres&password=CedarDB2026%21
-          #   experimental: true
-          # - name: CrateDB
-          #   service: cratedb-test
-          #   vendor: cratedb
-          #   uri: postgresql://crate@localhost:5436/doc?sslmode=disable
           #   experimental: true
     steps:
       - name: Free up disk space

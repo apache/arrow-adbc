@@ -15,10 +15,14 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import contextlib
 import re
+import typing
 from pathlib import Path
 
 from adbc_drivers_validation import model, quirks
+
+import adbc_driver_manager.dbapi
 
 
 class PostgreSQLQuirks(model.DriverQuirks):
@@ -139,6 +143,7 @@ class CrateDBQuirks(PostgreSQLQuirks):
         connection_get_table_schema=False,
         current_catalog="crate",
         current_schema="doc",
+        statement_bulk_ingest=False,
     )
     setup = model.DriverSetup(
         database={
@@ -147,6 +152,28 @@ class CrateDBQuirks(PostgreSQLQuirks):
         connection={},
         statement={"adbc.postgresql.use_copy": "false"},
     )
+
+    @property
+    def queries_paths(self) -> tuple[Path]:
+        return (
+            *super().queries_paths,
+            Path(__file__).parent.parent / "queries-cratedb",
+        )
+
+    @contextlib.contextmanager
+    def setup_statement(
+        self,
+        query: model.Query | str,
+        cursor: adbc_driver_manager.dbapi.Cursor,
+    ) -> typing.Generator[None, None, None]:
+        with super().setup_statement(query, cursor):
+            if isinstance(query, model.Query):
+                if table_name := query.metadata().setup.drop:
+                    cursor.adbc_statement.set_sql_query(
+                        f"REFRESH TABLE {self.quote_identifier(table_name)}"
+                    )
+                    cursor.adbc_statement.execute_update()
+            yield
 
 
 class ParadeDBQuirks(PostgreSQLQuirks):
