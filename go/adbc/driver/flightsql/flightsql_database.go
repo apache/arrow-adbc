@@ -548,9 +548,17 @@ func closeCachedFlightClient(d *databaseImpl, location, client interface{}, reas
 }
 
 func (d *databaseImpl) Open(ctx context.Context) (_ adbc.Connection, err error) {
-	startTime := time.Now()
-	ctx, span := internal.StartSpan(ctx, "FlightSQL.Database.Open", d, trace.WithAttributes(traceHeaderAttrsWithPrefix(d.hdrs, traceRequestMetadataPrefix)...))
-	defer internal.EndSpanWithStartTime(span, &err, &startTime)
+	ctx, span := internal.StartSpan(
+		ctx,
+		"FlightSQLDatabase.Open",
+		d,
+		trace.WithAttributes(traceHeaderAttrsWithPrefix(d.hdrs, traceRequestMetadataPrefix)...),
+	)
+	defer func() {
+		internal.NewEndSpanHelper(span).
+			WithError(err).
+			EndSpan()
+	}()
 
 	authMiddle := &bearerAuthMiddleware{
 		hdrs: d.hdrs.Copy(),

@@ -76,11 +76,11 @@ func newRecordReader(ctx context.Context, cfg recordReaderConfig, opts ...grpc.C
 	errorRecorded := false
 	defer func() {
 		if !spanOwnedByReader {
-			if errorRecorded {
-				internal.EndSpanWithStartTimeAndRecordedError(span, &err, &startTime)
-				return
-			}
-			internal.EndSpanWithStartTime(span, &err, &startTime)
+			internal.NewEndSpanHelper(span).
+				WithStartTime(startTime).
+				WithError(err).
+				WithRecordedError(errorRecorded).
+				EndSpan()
 		}
 	}()
 
@@ -302,7 +302,12 @@ func newRecordReader(ctx context.Context, cfg recordReaderConfig, opts ...grpc.C
 				attribute.Int("numEndpoints", numEndpoints),
 			))
 		}
-		internal.EndSpanWithStartTimeAndRecordedError(span, &reader.err, &startTime)
+		errorRecorded := reader.err != nil
+		internal.NewEndSpanHelper(span).
+			WithStartTime(startTime).
+			WithError(reader.err).
+			WithRecordedError(errorRecorded).
+			EndSpan()
 		// Don't close the last channel until after the group is finished, so that
 		// Next() can only return after reader.err and tracing have been finalized.
 		close(chs[lastChannelIndex])
