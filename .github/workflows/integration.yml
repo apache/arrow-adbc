@@ -233,6 +233,78 @@ jobs:
           path: postgresql-build.tgz
 
   postgresql-test:
+    name: "PostgreSQL (14-18)"
+    needs: postgresql-build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Free up disk space
+        run: |
+          # Preinstalled tools use a lot of disk space, free up some space
+          # https://github.com/actions/runner-images/issues/2840
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Get Date
+        id: get-date
+        run: |
+          echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
+      - name: Cache Conda
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/conda_pkgs_dir
+          key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
+      - uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5  # v4.0.1
+        with:
+          miniforge-version: latest
+          use-only-tar-bz2: false
+          use-mamba: true
+      - name: Install Dependencies
+        run: |
+          ./ci/scripts/remamba.sh install -c conda-forge \
+            --file ci/conda_env_cpp.txt \
+            --file ci/conda_env_python.txt
+          pip install pytest-error-for-skips
+      - name: Work around ASAN issue (GH-1617)
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
+      - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9  # v9.0.0
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: postgresql-build
+      - name: Extract PostgreSQL build
+        run: |
+          tar --extract --gzip --file postgresql-build.tgz
+          echo "PYTHONPATH=$(pwd)/python/adbc_driver_manager:$(pwd)/python/adbc_driver_postgresql" >> "$GITHUB_ENV"
+      - name: Run PostgreSQL 14-18 tests
+        env:
+          ADBC_POSTGRESQL_TEST_URI: postgresql://localhost:5432/postgres?user=postgres&password=password
+          ADBC_USE_ASAN: "ON"
+          ADBC_USE_UBSAN: "ON"
+          BUILD_ALL: "0"
+          BUILD_DRIVER_POSTGRESQL: "1"
+          PYTEST_ADDOPTS: "--error-for-skips"
+        run: |
+          for postgres_version in 14 15 16 17 18; do
+            echo "::group::PostgreSQL $postgres_version"
+            export POSTGRES_VERSION="$postgres_version"
+            docker compose up --wait --detach postgres-test
+            ./ci/scripts/cpp_test.sh "$(pwd)/build"
+            ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
+            if [ "$postgres_version" = "18" ]; then
+              uv --project=./c/driver/postgresql/validation/ run \
+                ci/scripts/validate.sh "$(pwd)" --vendor postgresql
+            fi
+            docker compose stop postgres-test
+            docker compose rm --force --stop --volumes postgres-test
+            echo "::endgroup::"
+          done
+      - name: Capture PostgreSQL logs
+        if: failure()
+        run: |
+          docker compose logs postgres-test
+  postgresql-vendor-test:
     name: "PostgreSQL (${{ matrix.name }})"
     needs: postgresql-build
     runs-on: ubuntu-latest
@@ -242,102 +314,48 @@ jobs:
       max-parallel: 2
       matrix:
         include:
-          - name: PostgreSQL 14
-            service: postgres-test
-            postgres-version: "14"
-            vendor: postgresql
-            uri: postgresql://localhost:5432/postgres?user=postgres&password=password
-            integration: true
-            validation: false
+          - name: AlloyDB Omni
+            service: alloydb-omni-test
+            vendor: alloydb-omni
+            uri: postgresql://localhost:5440/postgres?user=postgres&password=password
             experimental: false
-          - name: PostgreSQL 15
-            service: postgres-test
-            postgres-version: "15"
-            vendor: postgresql
-            uri: postgresql://localhost:5432/postgres?user=postgres&password=password
-            integration: true
-            validation: false
-            experimental: false
-          - name: PostgreSQL 16
-            service: postgres-test
-            postgres-version: "16"
-            vendor: postgresql
-            uri: postgresql://localhost:5432/postgres?user=postgres&password=password
-            integration: true
-            validation: false
-            experimental: false
-          - name: PostgreSQL 17
-            service: postgres-test
-            postgres-version: "17"
-            vendor: postgresql
-            uri: postgresql://localhost:5432/postgres?user=postgres&password=password
-            integration: true
-            validation: false
-            experimental: false
-          - name: PostgreSQL 18
-            service: postgres-test
-            postgres-version: "18"
-            vendor: postgresql
-            uri: postgresql://localhost:5432/postgres?user=postgres&password=password
-            integration: true
-            validation: true
-            experimental: false
-          - name: CedarDB
-            service: cedardb-test
-            vendor: cedardb
-            uri: postgresql://localhost:5433/postgres?user=postgres&password=CedarDB2026%21
-            integration: false
-            validation: true
-            experimental: true
           - name: Citus
             service: citus-test
             vendor: citus
             uri: postgresql://localhost:5434/postgres?user=postgres&password=password
-            integration: false
-            validation: true
             experimental: false
           - name: CockroachDB
             service: cockroachdb-test
             vendor: cockroachdb
             uri: postgresql://root@localhost:5435/postgres?sslmode=disable
-            integration: false
-            validation: true
             experimental: false
-          - name: CrateDB
-            service: cratedb-test
-            vendor: cratedb
-            uri: postgresql://crate@localhost:5436/doc?sslmode=disable
-            integration: false
-            validation: true
-            experimental: true
           - name: ParadeDB
             service: paradedb-test
             vendor: paradedb
             uri: postgresql://localhost:5437/postgres?user=postgres&password=password
-            integration: false
-            validation: true
             experimental: false
           - name: TimescaleDB
             service: timescaledb-test
             vendor: timescaledb
             uri: postgresql://localhost:5438/postgres?user=postgres&password=password
-            integration: false
-            validation: true
             experimental: false
           - name: YugabyteDB
             service: yugabytedb-test
             vendor: yugabytedb
             uri: postgresql://localhost:5439/yugabyte?user=yugabyte&password=yugabyte
-            integration: false
-            validation: true
             experimental: false
-          - name: AlloyDB Omni
-            service: alloydb-omni-test
-            vendor: alloydb-omni
-            uri: postgresql://localhost:5440/postgres?user=postgres&password=password
-            integration: false
-            validation: true
-            experimental: false
+          # These two currently fail, but could be supported in the future.
+          # https://github.com/apache/arrow-adbc/issues/1755
+          # - name: CedarDB
+          #   service: cedardb-test
+          #   vendor: cedardb
+          #   uri: postgresql://localhost:5433/postgres?user=postgres&password=CedarDB2026%21
+          #   experimental: true
+          # - name: CrateDB
+          #   service: cratedb-test
+          #   vendor: cratedb
+          #   uri: postgresql://crate@localhost:5436/doc?sslmode=disable
+          #   experimental: true
     steps:
       - name: Free up disk space
         run: |
@@ -380,24 +398,9 @@ jobs:
           tar --extract --gzip --file postgresql-build.tgz
           echo "PYTHONPATH=$(pwd)/python/adbc_driver_manager:$(pwd)/python/adbc_driver_postgresql" >> "$GITHUB_ENV"
       - name: Start ${{ matrix.name }}
-        env:
-          POSTGRES_VERSION: ${{ matrix.postgres-version }}
         run: |
           docker compose up --wait --detach "${{ matrix.service }}"
-      - name: Run PostgreSQL integration tests
-        if: matrix.integration
-        env:
-          ADBC_POSTGRESQL_TEST_URI: ${{ matrix.uri }}
-          ADBC_USE_ASAN: "ON"
-          ADBC_USE_UBSAN: "ON"
-          BUILD_ALL: "0"
-          BUILD_DRIVER_POSTGRESQL: "1"
-          PYTEST_ADDOPTS: "--error-for-skips"
-        run: |
-          ./ci/scripts/cpp_test.sh "$(pwd)/build"
-          ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
       - name: Run validation suite
-        if: matrix.validation
         env:
           ADBC_POSTGRESQL_TEST_URI: ${{ matrix.uri }}
           ADBC_USE_ASAN: "ON"
