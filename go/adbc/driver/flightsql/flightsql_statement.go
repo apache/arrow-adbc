@@ -538,7 +538,11 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 		s.cnxn,
 		trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...),
 	)
-	defer internal.EndSpanWithError(span, &err)
+	defer func() {
+		internal.NewEndSpanHelper(span).
+			WithError(err).
+			EndSpan()
+	}()
 
 	// Handle bulk ingest
 	if s.targetTable != "" {
@@ -618,7 +622,11 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 		s.cnxn,
 		trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...),
 	)
-	defer internal.EndSpanWithError(span, &err)
+	defer func() {
+		internal.NewEndSpanHelper(span).
+			WithError(err).
+			EndSpan()
+	}()
 
 	// Handle bulk ingest
 	if s.targetTable != "" {
@@ -672,7 +680,11 @@ func (s *statement) Prepare(ctx context.Context) (err error) {
 		s.cnxn,
 		trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...),
 	)
-	defer internal.EndSpanWithError(span, &err)
+	defer func() {
+		internal.NewEndSpanHelper(span).
+			WithError(err).
+			EndSpan()
+	}()
 
 	startTime := time.Now()
 	s.log.InfoContext(ctx, "FlightSQL Prepare start", s.queryAttrs()...)

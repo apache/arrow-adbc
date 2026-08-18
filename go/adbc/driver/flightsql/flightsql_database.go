@@ -513,7 +513,11 @@ func (d *databaseImpl) Open(ctx context.Context) (_ adbc.Connection, err error) 
 		d,
 		trace.WithAttributes(traceHeaderAttrsWithPrefix(d.hdrs, traceRequestMetadataPrefix)...),
 	)
-	defer internal.EndSpanWithError(span, &err)
+	defer func() {
+		internal.NewEndSpanHelper(span).
+			WithError(err).
+			EndSpan()
+	}()
 
 	authMiddle := &bearerAuthMiddleware{hdrs: d.hdrs.Copy(), logger: safeLogger(d.Logger)}
 	var cookies flight.CookieMiddleware
