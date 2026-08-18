@@ -281,7 +281,9 @@ func doGetWithTracer(ctx context.Context, cl *flightsql.Client, endpoint *flight
 		}
 		if err != nil {
 			attrs = append(attrs, attribute.String("flight.stage", "do_get"))
-			span.RecordError(err, trace.WithAttributes(attrs...), trace.WithStackTrace(true))
+			if !isRecordReaderSiblingCancellation(ctx) {
+				span.RecordError(err, trace.WithAttributes(attrs...), trace.WithStackTrace(true))
+			}
 			errorRecorded = true
 		} else {
 			span.AddEvent("flight.location.selected", trace.WithAttributes(attrs...))
@@ -354,10 +356,12 @@ func doGetWithTracer(ctx context.Context, cl *flightsql.Client, endpoint *flight
 				attribute.String("error.message", err.Error()),
 			))
 			err = fmt.Errorf("all DoGet attempts failed: %s; final: %w", strings.Join(attemptErrors, "; "), err)
-			span.RecordError(err, trace.WithAttributes(
-				attribute.String("flight.stage", "all_locations_failed"),
-				attribute.Int("flight.location.attempt_count", len(attemptErrors)),
-			), trace.WithStackTrace(true))
+			if !isRecordReaderSiblingCancellation(ctx) {
+				span.RecordError(err, trace.WithAttributes(
+					attribute.String("flight.stage", "all_locations_failed"),
+					attribute.Int("flight.location.attempt_count", len(attemptErrors)),
+				), trace.WithStackTrace(true))
+			}
 			errorRecorded = true
 			return nil, err
 		}
@@ -373,10 +377,12 @@ func doGetWithTracer(ctx context.Context, cl *flightsql.Client, endpoint *flight
 			len(attemptErrors), strings.Join(attemptErrors, "; "), err)
 	}
 	if err != nil {
-		span.RecordError(err, trace.WithAttributes(
-			attribute.String("flight.stage", "all_locations_failed"),
-			attribute.Int("flight.location.attempt_count", len(attemptErrors)),
-		), trace.WithStackTrace(true))
+		if !isRecordReaderSiblingCancellation(ctx) {
+			span.RecordError(err, trace.WithAttributes(
+				attribute.String("flight.stage", "all_locations_failed"),
+				attribute.Int("flight.location.attempt_count", len(attemptErrors)),
+			), trace.WithStackTrace(true))
+		}
 		errorRecorded = true
 	}
 
