@@ -420,7 +420,7 @@ along with the <code class="docutils literal notranslate"><span class="pre">read
 for quickly interacting with an ADBC connection or database.</p>
 <section id="installation">
 <h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h2>
-<div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">install.packages</span><span class="p">(</span><span class="nf">c</span><span class="p">(</span><span class="s">&quot;adbcdrivermanager&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;arrow&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;tibble&quot;</span><span class="p">))</span>
+<div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">install.packages</span><span class="p">(</span><span class="nf">c</span><span class="p">(</span><span class="s">"adbcdrivermanager"</span><span class="p">,</span><span class="w"> </span><span class="s">"arrow"</span><span class="p">,</span><span class="w"> </span><span class="s">"tibble"</span><span class="p">))</span>
 </pre></div>
 </div>
 <section id="installing-drivers">
@@ -440,26 +440,26 @@ and cleaning up.</p>
 <div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">library</span><span class="p">(</span><span class="n">adbcdrivermanager</span><span class="p">)</span>
 
 <span class="c1"># Create a driver instance</span>
-<span class="n">drv</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_driver</span><span class="p">(</span><span class="s">&quot;sqlite&quot;</span><span class="p">)</span>
+<span class="n">drv</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_driver</span><span class="p">(</span><span class="s">"sqlite"</span><span class="p">)</span>
 
 <span class="c1"># Initialize the database</span>
-<span class="n">db</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_database_init</span><span class="p">(</span><span class="n">drv</span><span class="p">,</span><span class="w"> </span><span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;:memory:&quot;</span><span class="p">)</span>
+<span class="n">db</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_database_init</span><span class="p">(</span><span class="n">drv</span><span class="p">,</span><span class="w"> </span><span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">":memory:"</span><span class="p">)</span>
 
 <span class="c1"># Create a connection</span>
 <span class="n">con</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_connection_init</span><span class="p">(</span><span class="n">db</span><span class="p">)</span>
 
 <span class="c1"># Write a table</span>
 <span class="n">mtcars</span><span class="w"> </span><span class="o">|&gt;</span>
-<span class="w">  </span><span class="nf">write_adbc</span><span class="p">(</span><span class="n">con</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;mtcars&quot;</span><span class="p">)</span>
+<span class="w">  </span><span class="nf">write_adbc</span><span class="p">(</span><span class="n">con</span><span class="p">,</span><span class="w"> </span><span class="s">"mtcars"</span><span class="p">)</span>
 
 <span class="c1"># Query it</span>
 <span class="n">con</span><span class="w"> </span><span class="o">|&gt;</span>
-<span class="w">  </span><span class="nf">read_adbc</span><span class="p">(</span><span class="s">&quot;SELECT * FROM mtcars&quot;</span><span class="p">)</span><span class="w"> </span><span class="o">|&gt;</span>
+<span class="w">  </span><span class="nf">read_adbc</span><span class="p">(</span><span class="s">"SELECT * FROM mtcars"</span><span class="p">)</span><span class="w"> </span><span class="o">|&gt;</span>
 <span class="w">  </span><span class="n">tibble</span><span class="o">::</span><span class="nf">as_tibble</span><span class="p">()</span>
 
 <span class="c1"># Clean up</span>
 <span class="n">con</span><span class="w"> </span><span class="o">|&gt;</span>
-<span class="w">  </span><span class="nf">execute_adbc</span><span class="p">(</span><span class="s">&quot;DROP TABLE mtcars&quot;</span><span class="p">)</span>
+<span class="w">  </span><span class="nf">execute_adbc</span><span class="p">(</span><span class="s">"DROP TABLE mtcars"</span><span class="p">)</span>
 <span class="nf">adbc_connection_release</span><span class="p">(</span><span class="n">con</span><span class="p">)</span>
 <span class="nf">adbc_database_release</span><span class="p">(</span><span class="n">db</span><span class="p">)</span>
 </pre></div>
@@ -470,12 +470,12 @@ and cleaning up.</p>
 <p>ADBC natively returns Arrow data, which you can work with directly:</p>
 <div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="c1"># Get results as an Arrow table</span>
 <span class="n">arrow_table</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">con</span><span class="w"> </span><span class="o">|&gt;</span>
-<span class="w">  </span><span class="nf">read_adbc</span><span class="p">(</span><span class="s">&quot;SELECT * FROM mtcars&quot;</span><span class="p">)</span><span class="w"> </span><span class="o">|&gt;</span>
+<span class="w">  </span><span class="nf">read_adbc</span><span class="p">(</span><span class="s">"SELECT * FROM mtcars"</span><span class="p">)</span><span class="w"> </span><span class="o">|&gt;</span>
 <span class="w">  </span><span class="n">arrow</span><span class="o">::</span><span class="nf">as_arrow_table</span><span class="p">()</span>
 
 <span class="c1"># For large result sets, use a record batch reader</span>
 <span class="n">reader</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">con</span><span class="w"> </span><span class="o">|&gt;</span>
-<span class="w">  </span><span class="nf">read_adbc</span><span class="p">(</span><span class="s">&quot;SELECT * FROM large_table&quot;</span><span class="p">)</span><span class="w"> </span><span class="o">|&gt;</span>
+<span class="w">  </span><span class="nf">read_adbc</span><span class="p">(</span><span class="s">"SELECT * FROM large_table"</span><span class="p">)</span><span class="w"> </span><span class="o">|&gt;</span>
 <span class="w">  </span><span class="n">arrow</span><span class="o">::</span><span class="nf">as_record_batch_reader</span><span class="p">()</span>
 
 <span class="c1"># Process in chunks</span>
@@ -490,7 +490,7 @@ and cleaning up.</p>
 <h2>Parameterized Queries<a class="headerlink" href="#parameterized-queries" title="Link to this heading">¶</a></h2>
 <p>You can use parameterized queries for safe SQL execution:</p>
 <div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="n">stmt</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_statement_init</span><span class="p">(</span><span class="n">con</span><span class="p">)</span>
-<span class="nf">adbc_statement_set_sql_query</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;DELETE FROM mtcars WHERE cyl = ?&quot;</span><span class="p">)</span>
+<span class="nf">adbc_statement_set_sql_query</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span><span class="w"> </span><span class="s">"DELETE FROM mtcars WHERE cyl = ?"</span><span class="p">)</span>
 <span class="nf">adbc_statement_bind</span><span class="p">(</span><span class="n">stmt</span><span class="p">,</span><span class="w"> </span><span class="nf">data.frame</span><span class="p">(</span><span class="m">8L</span><span class="p">))</span>
 <span class="nf">adbc_statement_execute_query</span><span class="p">(</span><span class="n">stmt</span><span class="p">)</span>
 </pre></div>

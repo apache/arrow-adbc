@@ -426,10 +426,10 @@ rather than being written into the file:</p>
 <label class="sd-tab-label" for="sd-tab-item-0">
 PostgreSQL</label><div class="sd-tab-content docutils">
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">profile_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
-<span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;postgresql&quot;</span>
+<span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"postgresql"</span>
 
 <span class="k">[Options]</span>
-<span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;postgresql://postgres:{{ env_var(PGPASSWORD) }}@localhost:5432/demo&quot;</span>
+<span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"postgresql://postgres:{{ env_var(PGPASSWORD) }}@localhost:5432/demo"</span>
 </pre></div>
 </div>
 </div>
@@ -437,11 +437,11 @@ PostgreSQL</label><div class="sd-tab-content docutils">
 <label class="sd-tab-label" for="sd-tab-item-1">
 BigQuery</label><div class="sd-tab-content docutils">
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">profile_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
-<span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;bigquery&quot;</span>
+<span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"bigquery"</span>
 
 <span class="k">[Options]</span>
-<span class="s2">&quot;adbc.bigquery.sql.project_id&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;my-gcp-project&quot;</span>
-<span class="s2">&quot;adbc.bigquery.sql.dataset_id&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;bigquery-public-data&quot;</span>
+<span class="s2">"adbc.bigquery.sql.project_id"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"my-gcp-project"</span>
+<span class="s2">"adbc.bigquery.sql.dataset_id"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"bigquery-public-data"</span>
 </pre></div>
 </div>
 </div>
@@ -449,13 +449,13 @@ BigQuery</label><div class="sd-tab-content docutils">
 <label class="sd-tab-label" for="sd-tab-item-2">
 Redshift</label><div class="sd-tab-content docutils">
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">profile_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
-<span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;redshift&quot;</span>
+<span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"redshift"</span>
 
 <span class="k">[Options]</span>
-<span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;postgresql://localhost:5439&quot;</span>
-<span class="s2">&quot;redshift.cluster_type&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;redshift-serverless&quot;</span>
-<span class="s2">&quot;redshift.workgroup_name&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;my-workgroup&quot;</span>
-<span class="s2">&quot;redshift.db_name&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;sample_data_dev&quot;</span>
+<span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"postgresql://localhost:5439"</span>
+<span class="s2">"redshift.cluster_type"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"redshift-serverless"</span>
+<span class="s2">"redshift.workgroup_name"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"my-workgroup"</span>
+<span class="s2">"redshift.db_name"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"sample_data_dev"</span>
 </pre></div>
 </div>
 </div>
@@ -463,17 +463,17 @@ Redshift</label><div class="sd-tab-content docutils">
 <label class="sd-tab-label" for="sd-tab-item-3">
 Snowflake</label><div class="sd-tab-content docutils">
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">profile_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
-<span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;snowflake&quot;</span>
+<span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"snowflake"</span>
 
 <span class="k">[Options]</span>
-<span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;MYUSER&quot;</span>
-<span class="s2">&quot;adbc.snowflake.sql.auth_type&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;auth_jwt&quot;</span>
-<span class="s2">&quot;adbc.snowflake.sql.client_option.jwt_private_key&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;/path/to/rsa_key.p8&quot;</span>
-<span class="s2">&quot;adbc.snowflake.sql.account&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;ACCOUNT-IDENT&quot;</span>
-<span class="s2">&quot;adbc.snowflake.sql.db&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;SNOWFLAKE_SAMPLE_DATA&quot;</span>
-<span class="s2">&quot;adbc.snowflake.sql.schema&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;TPCH_SF1&quot;</span>
-<span class="s2">&quot;adbc.snowflake.sql.warehouse&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;MY_WAREHOUSE&quot;</span>
-<span class="s2">&quot;adbc.snowflake.sql.role&quot;</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;MY_ROLE&quot;</span>
+<span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"MYUSER"</span>
+<span class="s2">"adbc.snowflake.sql.auth_type"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"auth_jwt"</span>
+<span class="s2">"adbc.snowflake.sql.client_option.jwt_private_key"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"/path/to/rsa_key.p8"</span>
+<span class="s2">"adbc.snowflake.sql.account"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"ACCOUNT-IDENT"</span>
+<span class="s2">"adbc.snowflake.sql.db"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"SNOWFLAKE_SAMPLE_DATA"</span>
+<span class="s2">"adbc.snowflake.sql.schema"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"TPCH_SF1"</span>
+<span class="s2">"adbc.snowflake.sql.warehouse"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"MY_WAREHOUSE"</span>
+<span class="s2">"adbc.snowflake.sql.role"</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"MY_ROLE"</span>
 </pre></div>
 </div>
 </div>
@@ -481,12 +481,12 @@ Snowflake</label><div class="sd-tab-content docutils">
 <label class="sd-tab-label" for="sd-tab-item-4">
 StarRocks</label><div class="sd-tab-content docutils">
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">profile_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
-<span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;flightsql&quot;</span>
+<span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"flightsql"</span>
 
 <span class="k">[Options]</span>
-<span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;grpc://localhost:9408&quot;</span>
-<span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;root&quot;</span>
-<span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;{{ env_var(STARROCKS_PASSWORD) }}&quot;</span>
+<span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"grpc://localhost:9408"</span>
+<span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"root"</span>
+<span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"{{ env_var(STARROCKS_PASSWORD) }}"</span>
 </pre></div>
 </div>
 </div>
@@ -512,7 +512,7 @@ the <code class="docutils literal notranslate"><span class="pre">profile://</spa
 C/C++</label><div class="sd-tab-content docutils">
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">AdbcDatabase</span><span class="w"> </span><span class="n">database</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{};</span>
 <span class="n">AdbcDatabaseNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
-<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;uri&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;profile://myprofile&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
+<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">"uri"</span><span class="p">,</span><span class="w"> </span><span class="s">"profile://myprofile"</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 <span class="n">AdbcDriverManagerDatabaseSetLoadFlags</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="n">ADBC_LOAD_FLAG_DEFAULT</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 <span class="n">AdbcDatabaseInit</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 </pre></div>
@@ -523,8 +523,8 @@ C/C++</label><div class="sd-tab-content docutils">
 Go</label><div class="sd-tab-content docutils">
 <div class="highlight-go notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">drv</span><span class="w"> </span><span class="nx">drivermgr</span><span class="p">.</span><span class="nx">Driver</span>
 
-<span class="nx">db</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">drv</span><span class="p">.</span><span class="nx">NewDatabase</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">{</span>
-<span class="w">    </span><span class="s">&quot;uri&quot;</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;profile://myprofile&quot;</span><span class="p">,</span>
+<span class="nx">db</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">drv</span><span class="p">.</span><span class="nx">NewDatabase</span><span class="p">(</span><span class="kt">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">{</span>
+<span class="w">    </span><span class="s">"uri"</span><span class="p">:</span><span class="w"> </span><span class="s">"profile://myprofile"</span><span class="p">,</span>
 <span class="p">})</span>
 </pre></div>
 </div>
@@ -533,7 +533,7 @@ Go</label><div class="sd-tab-content docutils">
 <label class="sd-tab-label" for="sd-tab-item-7">
 Java</label><div class="sd-tab-content docutils">
 <div class="highlight-java notranslate"><div class="highlight"><pre><span></span><span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="p">,</span><span class="w"> </span><span class="n">Object</span><span class="o">&gt;</span><span class="w"> </span><span class="n">params</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HashMap</span><span class="o">&lt;&gt;</span><span class="p">();</span>
-<span class="n">JniDriver</span><span class="p">.</span><span class="na">PARAM_URI</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="n">params</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;profile://myprofile&quot;</span><span class="p">);</span>
+<span class="n">JniDriver</span><span class="p">.</span><span class="na">PARAM_URI</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="n">params</span><span class="p">,</span><span class="w"> </span><span class="s">"profile://myprofile"</span><span class="p">);</span>
 
 <span class="n">AdbcDatabase</span><span class="w"> </span><span class="n">db</span><span class="w"> </span><span class="o">=</span>
 <span class="w">    </span><span class="n">AdbcDriverManager</span><span class="p">.</span><span class="na">getInstance</span><span class="p">().</span><span class="na">connect</span><span class="p">(</span><span class="n">DRIVER_FACTORY</span><span class="p">,</span><span class="w"> </span><span class="n">allocator</span><span class="p">,</span><span class="w"> </span><span class="n">params</span><span class="p">);</span>
@@ -543,10 +543,10 @@ Java</label><div class="sd-tab-content docutils">
 <input id="sd-tab-item-8" name="sd-tab-set-1" type="radio">
 <label class="sd-tab-label" for="sd-tab-item-8">
 JavaScript</label><div class="sd-tab-content docutils">
-<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">AdbcDatabase</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">&#39;@apache-arrow/adbc-driver-manager&#39;</span><span class="p">;</span>
+<div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">AdbcDatabase</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">'@apache-arrow/adbc-driver-manager'</span><span class="p">;</span>
 
 <span class="kd">const</span><span class="w"> </span><span class="nx">db</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">AdbcDatabase</span><span class="p">({</span>
-<span class="w">  </span><span class="nx">databaseOptions</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">uri</span><span class="o">:</span><span class="w"> </span><span class="s1">&#39;profile://myprofile&#39;</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="nx">databaseOptions</span><span class="o">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">uri</span><span class="o">:</span><span class="w"> </span><span class="s1">'profile://myprofile'</span><span class="w"> </span><span class="p">},</span>
 <span class="p">});</span>
 </pre></div>
 </div>
@@ -556,7 +556,7 @@ JavaScript</label><div class="sd-tab-content docutils">
 Python</label><div class="sd-tab-content docutils">
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">dbapi</span>
 
-<span class="k">with</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="o">=</span><span class="s2">&quot;profile://myprofile&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">con</span><span class="p">:</span>
+<span class="k">with</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="o">=</span><span class="s2">"profile://myprofile"</span><span class="p">)</span> <span class="k">as</span> <span class="n">con</span><span class="p">:</span>
     <span class="o">...</span>
 </pre></div>
 </div>
@@ -566,7 +566,7 @@ Python</label><div class="sd-tab-content docutils">
 R</label><div class="sd-tab-content docutils">
 <div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">library</span><span class="p">(</span><span class="n">adbcdrivermanager</span><span class="p">)</span>
 
-<span class="n">db</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_database_init</span><span class="p">(</span><span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;profile://myprofile&quot;</span><span class="p">)</span>
+<span class="n">db</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_database_init</span><span class="p">(</span><span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"profile://myprofile"</span><span class="p">)</span>
 <span class="n">con</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_connection_init</span><span class="p">(</span><span class="n">db</span><span class="p">)</span>
 </pre></div>
 </div>
@@ -575,7 +575,7 @@ R</label><div class="sd-tab-content docutils">
 <label class="sd-tab-label" for="sd-tab-item-11">
 Ruby</label><div class="sd-tab-content docutils">
 <div class="highlight-ruby notranslate"><div class="highlight"><pre><span></span><span class="n">database</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="no">ADBC</span><span class="o">::</span><span class="no">Database</span><span class="o">.</span><span class="n">new</span>
-<span class="n">database</span><span class="o">.</span><span class="n">set_option</span><span class="p">(</span><span class="s2">&quot;uri&quot;</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;profile://myprofile&quot;</span><span class="p">)</span>
+<span class="n">database</span><span class="o">.</span><span class="n">set_option</span><span class="p">(</span><span class="s2">"uri"</span><span class="p">,</span><span class="w"> </span><span class="s2">"profile://myprofile"</span><span class="p">)</span>
 <span class="n">database</span><span class="o">.</span><span class="n">set_load_flags</span><span class="p">(</span><span class="no">ADBC</span><span class="o">::</span><span class="no">LoadFlags</span><span class="o">::</span><span class="no">DEFAULT</span><span class="p">)</span>
 <span class="n">database</span><span class="o">.</span><span class="n">init</span>
 </pre></div>
@@ -584,7 +584,7 @@ Ruby</label><div class="sd-tab-content docutils">
 <input id="sd-tab-item-12" name="sd-tab-set-1" type="radio">
 <label class="sd-tab-label" for="sd-tab-item-12">
 Rust</label><div class="sd-tab-content docutils">
-<div class="highlight-rust notranslate"><div class="highlight"><pre><span></span><span class="kd">let</span><span class="w"> </span><span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;profile://myprofile&quot;</span><span class="p">;</span>
+<div class="highlight-rust notranslate"><div class="highlight"><pre><span></span><span class="kd">let</span><span class="w"> </span><span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"profile://myprofile"</span><span class="p">;</span>
 <span class="kd">let</span><span class="w"> </span><span class="n">db</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ManagedDatabase</span><span class="p">::</span><span class="n">from_uri</span><span class="p">(</span>
 <span class="w">    </span><span class="n">uri</span><span class="p">,</span><span class="w"> </span><span class="nb">None</span><span class="p">,</span><span class="w"> </span><span class="n">AdbcVersion</span><span class="p">::</span><span class="n">default</span><span class="p">(),</span><span class="w"> </span><span class="n">LOAD_FLAG_DEFAULT</span><span class="p">,</span><span class="w"> </span><span class="nb">None</span><span class="p">,</span>
 <span class="p">)</span><span class="o">?</span><span class="p">;</span>

@@ -430,11 +430,11 @@ gem<span class="w"> </span>install<span class="w"> </span>red-adbc
 </pre></div>
 </div>
 <p>Or, with Bundler, add the plugin and the gem to your <code class="docutils literal notranslate"><span class="pre">Gemfile</span></code>:</p>
-<div class="highlight-ruby notranslate"><div class="highlight"><pre><span></span><span class="n">source</span><span class="w"> </span><span class="s2">&quot;https://rubygems.org&quot;</span>
+<div class="highlight-ruby notranslate"><div class="highlight"><pre><span></span><span class="n">source</span><span class="w"> </span><span class="s2">"https://rubygems.org"</span>
 
-<span class="n">plugin</span><span class="w"> </span><span class="s2">&quot;rubygems-requirements-system&quot;</span>
+<span class="n">plugin</span><span class="w"> </span><span class="s2">"rubygems-requirements-system"</span>
 
-<span class="n">gem</span><span class="w"> </span><span class="s2">&quot;red-adbc&quot;</span>
+<span class="n">gem</span><span class="w"> </span><span class="s2">"red-adbc"</span>
 </pre></div>
 </div>
 <section id="installing-drivers">
@@ -450,10 +450,10 @@ driver with:</p>
 </section>
 <section id="creating-a-connection">
 <h2>Creating a Connection<a class="headerlink" href="#creating-a-connection" title="Link to this heading">¶</a></h2>
-<div class="highlight-ruby notranslate"><div class="highlight"><pre><span></span><span class="nb">require</span><span class="w"> </span><span class="s2">&quot;adbc&quot;</span>
+<div class="highlight-ruby notranslate"><div class="highlight"><pre><span></span><span class="nb">require</span><span class="w"> </span><span class="s2">"adbc"</span>
 
-<span class="no">ADBC</span><span class="o">::</span><span class="no">Database</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="ss">driver</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sqlite&quot;</span><span class="p">,</span>
-<span class="w">                    </span><span class="ss">uri</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;:memory&quot;</span><span class="p">)</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">database</span><span class="o">|</span>
+<span class="no">ADBC</span><span class="o">::</span><span class="no">Database</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="ss">driver</span><span class="p">:</span><span class="w"> </span><span class="s2">"sqlite"</span><span class="p">,</span>
+<span class="w">                    </span><span class="ss">uri</span><span class="p">:</span><span class="w"> </span><span class="s2">":memory"</span><span class="p">)</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">database</span><span class="o">|</span>
 <span class="w">  </span><span class="n">database</span><span class="o">.</span><span class="n">connect</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">connection</span><span class="o">|</span>
 <span class="w">    </span><span class="c1"># Use connection</span>
 <span class="w">  </span><span class="k">end</span>
@@ -467,19 +467,19 @@ to accomplish this automatically.</p>
 <section id="executing-a-query">
 <h2>Executing a Query<a class="headerlink" href="#executing-a-query" title="Link to this heading">¶</a></h2>
 <p>We can execute a query and get the results as an Arrow table:</p>
-<div class="highlight-ruby notranslate"><div class="highlight"><pre><span></span><span class="nb">require</span><span class="w"> </span><span class="s2">&quot;adbc&quot;</span>
+<div class="highlight-ruby notranslate"><div class="highlight"><pre><span></span><span class="nb">require</span><span class="w"> </span><span class="s2">"adbc"</span>
 
-<span class="no">ADBC</span><span class="o">::</span><span class="no">Database</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="ss">driver</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sqlite&quot;</span><span class="p">,</span>
-<span class="w">                    </span><span class="ss">uri</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;:memory:&quot;</span><span class="p">)</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">database</span><span class="o">|</span>
+<span class="no">ADBC</span><span class="o">::</span><span class="no">Database</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="ss">driver</span><span class="p">:</span><span class="w"> </span><span class="s2">"sqlite"</span><span class="p">,</span>
+<span class="w">                    </span><span class="ss">uri</span><span class="p">:</span><span class="w"> </span><span class="s2">":memory:"</span><span class="p">)</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">database</span><span class="o">|</span>
 <span class="w">  </span><span class="n">database</span><span class="o">.</span><span class="n">connect</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">connection</span><span class="o">|</span>
-<span class="w">    </span><span class="n">table</span><span class="p">,</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;SELECT 1, 2.0, &#39;Hello, world!&#39;&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="n">table</span><span class="p">,</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">"SELECT 1, 2.0, 'Hello, world!'"</span><span class="p">)</span>
 <span class="w">    </span><span class="nb">puts</span><span class="w"> </span><span class="n">table</span>
 <span class="w">  </span><span class="k">end</span>
 <span class="k">end</span>
 </pre></div>
 </div>
 <p>Output:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>   1  2.0  &#39;Hello, world!&#39;
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>   1  2.0  'Hello, world!'
    (int64)  (double)  (utf8)
 0  1  2.0  Hello, world!
 </pre></div>
@@ -488,49 +488,49 @@ to accomplish this automatically.</p>
 <section id="ingesting-bulk-data">
 <h2>Ingesting Bulk Data<a class="headerlink" href="#ingesting-bulk-data" title="Link to this heading">¶</a></h2>
 <p>We can insert a table of Arrow data into a new database table:</p>
-<div class="highlight-ruby notranslate"><div class="highlight"><pre><span></span><span class="nb">require</span><span class="w"> </span><span class="s2">&quot;adbc&quot;</span>
+<div class="highlight-ruby notranslate"><div class="highlight"><pre><span></span><span class="nb">require</span><span class="w"> </span><span class="s2">"adbc"</span>
 
-<span class="no">ADBC</span><span class="o">::</span><span class="no">Database</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="ss">driver</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sqlite&quot;</span><span class="p">,</span>
-<span class="w">                    </span><span class="ss">uri</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;:memory:&quot;</span><span class="p">)</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">database</span><span class="o">|</span>
+<span class="no">ADBC</span><span class="o">::</span><span class="no">Database</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="ss">driver</span><span class="p">:</span><span class="w"> </span><span class="s2">"sqlite"</span><span class="p">,</span>
+<span class="w">                    </span><span class="ss">uri</span><span class="p">:</span><span class="w"> </span><span class="s2">":memory:"</span><span class="p">)</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">database</span><span class="o">|</span>
 <span class="w">  </span><span class="n">database</span><span class="o">.</span><span class="n">connect</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">connection</span><span class="o">|</span>
 <span class="w">    </span><span class="c1"># Create an Arrow table</span>
 <span class="w">    </span><span class="n">table</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="no">Arrow</span><span class="o">::</span><span class="no">Table</span><span class="o">.</span><span class="n">new</span><span class="p">(</span>
 <span class="w">      </span><span class="ss">ints</span><span class="p">:</span><span class="w"> </span><span class="no">Arrow</span><span class="o">::</span><span class="no">Int64Array</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="o">[</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="o">]</span><span class="p">),</span>
-<span class="w">      </span><span class="ss">strs</span><span class="p">:</span><span class="w"> </span><span class="no">Arrow</span><span class="o">::</span><span class="no">StringArray</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="o">[</span><span class="s2">&quot;a&quot;</span><span class="p">,</span><span class="w"> </span><span class="kp">nil</span><span class="o">]</span><span class="p">)</span>
+<span class="w">      </span><span class="ss">strs</span><span class="p">:</span><span class="w"> </span><span class="no">Arrow</span><span class="o">::</span><span class="no">StringArray</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="o">[</span><span class="s2">"a"</span><span class="p">,</span><span class="w"> </span><span class="kp">nil</span><span class="o">]</span><span class="p">)</span>
 <span class="w">    </span><span class="p">)</span>
 
 <span class="w">    </span><span class="c1"># Ingest into database</span>
-<span class="w">    </span><span class="n">connection</span><span class="o">.</span><span class="n">ingest</span><span class="p">(</span><span class="s2">&quot;sample&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">table</span><span class="p">,</span><span class="w"> </span><span class="ss">mode</span><span class="p">:</span><span class="w"> </span><span class="ss">:create</span><span class="p">)</span>
+<span class="w">    </span><span class="n">connection</span><span class="o">.</span><span class="n">ingest</span><span class="p">(</span><span class="s2">"sample"</span><span class="p">,</span><span class="w"> </span><span class="n">table</span><span class="p">,</span><span class="w"> </span><span class="ss">mode</span><span class="p">:</span><span class="w"> </span><span class="ss">:create</span><span class="p">)</span>
 
 <span class="w">    </span><span class="c1"># Query the data</span>
-<span class="w">    </span><span class="n">result</span><span class="p">,</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(DISTINCT ints) FROM sample&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="n">result</span><span class="p">,</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">"SELECT COUNT(DISTINCT ints) FROM sample"</span><span class="p">)</span>
 <span class="w">    </span><span class="nb">puts</span><span class="w"> </span><span class="n">result</span>
 <span class="w">  </span><span class="k">end</span>
 <span class="k">end</span>
 </pre></div>
 </div>
 <p>We can also append to an existing table:</p>
-<div class="highlight-ruby notranslate"><div class="highlight"><pre><span></span><span class="nb">require</span><span class="w"> </span><span class="s2">&quot;adbc&quot;</span>
+<div class="highlight-ruby notranslate"><div class="highlight"><pre><span></span><span class="nb">require</span><span class="w"> </span><span class="s2">"adbc"</span>
 
-<span class="no">ADBC</span><span class="o">::</span><span class="no">Database</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="ss">driver</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sqlite&quot;</span><span class="p">,</span>
-<span class="w">                    </span><span class="ss">uri</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;:memory:&quot;</span><span class="p">)</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">database</span><span class="o">|</span>
+<span class="no">ADBC</span><span class="o">::</span><span class="no">Database</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="ss">driver</span><span class="p">:</span><span class="w"> </span><span class="s2">"sqlite"</span><span class="p">,</span>
+<span class="w">                    </span><span class="ss">uri</span><span class="p">:</span><span class="w"> </span><span class="s2">":memory:"</span><span class="p">)</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">database</span><span class="o">|</span>
 <span class="w">  </span><span class="n">database</span><span class="o">.</span><span class="n">connect</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">connection</span><span class="o">|</span>
 <span class="w">    </span><span class="c1"># Create initial table</span>
 <span class="w">    </span><span class="n">table</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="no">Arrow</span><span class="o">::</span><span class="no">Table</span><span class="o">.</span><span class="n">new</span><span class="p">(</span>
 <span class="w">      </span><span class="ss">ints</span><span class="p">:</span><span class="w"> </span><span class="no">Arrow</span><span class="o">::</span><span class="no">Int64Array</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="o">[</span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">2</span><span class="o">]</span><span class="p">),</span>
-<span class="w">      </span><span class="ss">strs</span><span class="p">:</span><span class="w"> </span><span class="no">Arrow</span><span class="o">::</span><span class="no">StringArray</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="o">[</span><span class="s2">&quot;a&quot;</span><span class="p">,</span><span class="w"> </span><span class="kp">nil</span><span class="o">]</span><span class="p">)</span>
+<span class="w">      </span><span class="ss">strs</span><span class="p">:</span><span class="w"> </span><span class="no">Arrow</span><span class="o">::</span><span class="no">StringArray</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="o">[</span><span class="s2">"a"</span><span class="p">,</span><span class="w"> </span><span class="kp">nil</span><span class="o">]</span><span class="p">)</span>
 <span class="w">    </span><span class="p">)</span>
-<span class="w">    </span><span class="n">connection</span><span class="o">.</span><span class="n">ingest</span><span class="p">(</span><span class="s2">&quot;sample&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">table</span><span class="p">,</span><span class="w"> </span><span class="ss">mode</span><span class="p">:</span><span class="w"> </span><span class="ss">:create</span><span class="p">)</span>
+<span class="w">    </span><span class="n">connection</span><span class="o">.</span><span class="n">ingest</span><span class="p">(</span><span class="s2">"sample"</span><span class="p">,</span><span class="w"> </span><span class="n">table</span><span class="p">,</span><span class="w"> </span><span class="ss">mode</span><span class="p">:</span><span class="w"> </span><span class="ss">:create</span><span class="p">)</span>
 
 <span class="w">    </span><span class="c1"># Append more data</span>
 <span class="w">    </span><span class="n">table2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="no">Arrow</span><span class="o">::</span><span class="no">Table</span><span class="o">.</span><span class="n">new</span><span class="p">(</span>
 <span class="w">      </span><span class="ss">ints</span><span class="p">:</span><span class="w"> </span><span class="no">Arrow</span><span class="o">::</span><span class="no">Int64Array</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="o">[</span><span class="mi">2</span><span class="p">,</span><span class="w"> </span><span class="mi">3</span><span class="o">]</span><span class="p">),</span>
-<span class="w">      </span><span class="ss">strs</span><span class="p">:</span><span class="w"> </span><span class="no">Arrow</span><span class="o">::</span><span class="no">StringArray</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="o">[</span><span class="kp">nil</span><span class="p">,</span><span class="w"> </span><span class="s2">&quot;c&quot;</span><span class="o">]</span><span class="p">)</span>
+<span class="w">      </span><span class="ss">strs</span><span class="p">:</span><span class="w"> </span><span class="no">Arrow</span><span class="o">::</span><span class="no">StringArray</span><span class="o">.</span><span class="n">new</span><span class="p">(</span><span class="o">[</span><span class="kp">nil</span><span class="p">,</span><span class="w"> </span><span class="s2">"c"</span><span class="o">]</span><span class="p">)</span>
 <span class="w">    </span><span class="p">)</span>
-<span class="w">    </span><span class="n">connection</span><span class="o">.</span><span class="n">ingest</span><span class="p">(</span><span class="s2">&quot;sample&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">table2</span><span class="p">,</span><span class="w"> </span><span class="ss">mode</span><span class="p">:</span><span class="w"> </span><span class="ss">:append</span><span class="p">)</span>
+<span class="w">    </span><span class="n">connection</span><span class="o">.</span><span class="n">ingest</span><span class="p">(</span><span class="s2">"sample"</span><span class="p">,</span><span class="w"> </span><span class="n">table2</span><span class="p">,</span><span class="w"> </span><span class="ss">mode</span><span class="p">:</span><span class="w"> </span><span class="ss">:append</span><span class="p">)</span>
 
 <span class="w">    </span><span class="c1"># Query the combined data</span>
-<span class="w">    </span><span class="n">result</span><span class="p">,</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(DISTINCT ints) FROM sample&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="n">result</span><span class="p">,</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">"SELECT COUNT(DISTINCT ints) FROM sample"</span><span class="p">)</span>
 <span class="w">    </span><span class="nb">puts</span><span class="w"> </span><span class="n">result</span>
 <span class="w">  </span><span class="k">end</span>
 <span class="k">end</span>
@@ -546,14 +546,14 @@ to accomplish this automatically.</p>
 <section id="getting-database-driver-metadata">
 <h2>Getting Database/Driver Metadata<a class="headerlink" href="#getting-database-driver-metadata" title="Link to this heading">¶</a></h2>
 <p>We can get information about the driver and the database:</p>
-<div class="highlight-ruby notranslate"><div class="highlight"><pre><span></span><span class="nb">require</span><span class="w"> </span><span class="s2">&quot;adbc&quot;</span>
+<div class="highlight-ruby notranslate"><div class="highlight"><pre><span></span><span class="nb">require</span><span class="w"> </span><span class="s2">"adbc"</span>
 
-<span class="no">ADBC</span><span class="o">::</span><span class="no">Database</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="ss">driver</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sqlite&quot;</span><span class="p">,</span>
-<span class="w">                    </span><span class="ss">uri</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;:memory:&quot;</span><span class="p">)</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">database</span><span class="o">|</span>
+<span class="no">ADBC</span><span class="o">::</span><span class="no">Database</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="ss">driver</span><span class="p">:</span><span class="w"> </span><span class="s2">"sqlite"</span><span class="p">,</span>
+<span class="w">                    </span><span class="ss">uri</span><span class="p">:</span><span class="w"> </span><span class="s2">":memory:"</span><span class="p">)</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">database</span><span class="o">|</span>
 <span class="w">  </span><span class="n">database</span><span class="o">.</span><span class="n">connect</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">connection</span><span class="o">|</span>
 <span class="w">    </span><span class="n">info</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">connection</span><span class="o">.</span><span class="n">info</span>
-<span class="w">    </span><span class="nb">puts</span><span class="w"> </span><span class="s2">&quot;Vendor: </span><span class="si">#{</span><span class="n">info</span><span class="o">[</span><span class="ss">:vendor_name</span><span class="o">]</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="nb">puts</span><span class="w"> </span><span class="s2">&quot;Driver: </span><span class="si">#{</span><span class="n">info</span><span class="o">[</span><span class="ss">:driver_name</span><span class="o">]</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">puts</span><span class="w"> </span><span class="s2">"Vendor: </span><span class="si">#{</span><span class="n">info</span><span class="o">[</span><span class="ss">:vendor_name</span><span class="o">]</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="nb">puts</span><span class="w"> </span><span class="s2">"Driver: </span><span class="si">#{</span><span class="n">info</span><span class="o">[</span><span class="ss">:driver_name</span><span class="o">]</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">  </span><span class="k">end</span>
 <span class="k">end</span>
 </pre></div>
@@ -561,23 +561,23 @@ to accomplish this automatically.</p>
 <p>We can also query for tables and columns in the database. This gives
 a nested structure describing all the catalogs, schemas, tables, and
 columns:</p>
-<div class="highlight-ruby notranslate"><div class="highlight"><pre><span></span><span class="nb">require</span><span class="w"> </span><span class="s2">&quot;adbc&quot;</span>
+<div class="highlight-ruby notranslate"><div class="highlight"><pre><span></span><span class="nb">require</span><span class="w"> </span><span class="s2">"adbc"</span>
 
-<span class="no">ADBC</span><span class="o">::</span><span class="no">Database</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="ss">driver</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;sqlite&quot;</span><span class="p">,</span>
-<span class="w">                    </span><span class="ss">uri</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;:memory:&quot;</span><span class="p">)</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">database</span><span class="o">|</span>
+<span class="no">ADBC</span><span class="o">::</span><span class="no">Database</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="ss">driver</span><span class="p">:</span><span class="w"> </span><span class="s2">"sqlite"</span><span class="p">,</span>
+<span class="w">                    </span><span class="ss">uri</span><span class="p">:</span><span class="w"> </span><span class="s2">":memory:"</span><span class="p">)</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">database</span><span class="o">|</span>
 <span class="w">  </span><span class="n">database</span><span class="o">.</span><span class="n">connect</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">connection</span><span class="o">|</span>
 <span class="w">    </span><span class="c1"># Create a sample table first</span>
-<span class="w">    </span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">&quot;CREATE TEMPORARY TABLE sample (ints INTEGER, strs TEXT)&quot;</span><span class="p">)</span>
+<span class="w">    </span><span class="n">connection</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s2">"CREATE TEMPORARY TABLE sample (ints INTEGER, strs TEXT)"</span><span class="p">)</span>
 
 <span class="w">    </span><span class="c1"># Get database objects</span>
 <span class="w">    </span><span class="n">objects</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">connection</span><span class="o">.</span><span class="n">get_objects</span><span class="p">(</span><span class="ss">depth</span><span class="p">:</span><span class="w"> </span><span class="ss">:all</span><span class="p">)</span>
 <span class="w">    </span><span class="n">catalog</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">objects</span><span class="o">.</span><span class="n">raw_records</span><span class="o">[</span><span class="mi">1</span><span class="o">]</span>
 <span class="w">    </span><span class="n">schema</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">catalog</span><span class="o">[</span><span class="mi">1</span><span class="o">][</span><span class="mi">0</span><span class="o">]</span>
-<span class="w">    </span><span class="n">tables</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">schema</span><span class="o">[</span><span class="s2">&quot;db_schema_tables&quot;</span><span class="o">]</span>
+<span class="w">    </span><span class="n">tables</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">schema</span><span class="o">[</span><span class="s2">"db_schema_tables"</span><span class="o">]</span>
 
-<span class="w">    </span><span class="nb">puts</span><span class="w"> </span><span class="s2">&quot;Table: </span><span class="si">#{</span><span class="n">tables</span><span class="o">[</span><span class="mi">0</span><span class="o">][</span><span class="s2">&quot;table_name&quot;</span><span class="o">]</span><span class="si">}</span><span class="s2">&quot;</span>
-<span class="w">    </span><span class="n">columns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">tables</span><span class="o">[</span><span class="mi">0</span><span class="o">][</span><span class="s2">&quot;table_columns&quot;</span><span class="o">]</span>
-<span class="w">    </span><span class="nb">puts</span><span class="w"> </span><span class="s2">&quot;Columns: </span><span class="si">#{</span><span class="n">columns</span><span class="o">.</span><span class="n">map</span><span class="w"> </span><span class="si">{</span><span class="w"> </span><span class="o">|</span><span class="n">c</span><span class="o">|</span><span class="w"> </span><span class="n">c</span><span class="o">[</span><span class="s2">&quot;column_name&quot;</span><span class="o">]</span><span class="w"> </span><span class="si">}</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">&quot;, &quot;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="w">    </span><span class="nb">puts</span><span class="w"> </span><span class="s2">"Table: </span><span class="si">#{</span><span class="n">tables</span><span class="o">[</span><span class="mi">0</span><span class="o">][</span><span class="s2">"table_name"</span><span class="o">]</span><span class="si">}</span><span class="s2">"</span>
+<span class="w">    </span><span class="n">columns</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">tables</span><span class="o">[</span><span class="mi">0</span><span class="o">][</span><span class="s2">"table_columns"</span><span class="o">]</span>
+<span class="w">    </span><span class="nb">puts</span><span class="w"> </span><span class="s2">"Columns: </span><span class="si">#{</span><span class="n">columns</span><span class="o">.</span><span class="n">map</span><span class="w"> </span><span class="si">{</span><span class="w"> </span><span class="o">|</span><span class="n">c</span><span class="o">|</span><span class="w"> </span><span class="n">c</span><span class="o">[</span><span class="s2">"column_name"</span><span class="o">]</span><span class="w"> </span><span class="si">}</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="s2">", "</span><span class="p">)</span><span class="si">}</span><span class="s2">"</span>
 <span class="w">  </span><span class="k">end</span>
 <span class="k">end</span>
 </pre></div>

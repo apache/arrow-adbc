@@ -454,7 +454,7 @@ options already set via <code class="docutils literal notranslate"><span class="
 <p>The simplest way to use a profile is through a URI:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">AdbcDatabase</span><span class="w"> </span><span class="n">database</span><span class="p">;</span>
 <span class="n">AdbcDatabaseNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
-<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;uri&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;profile://my_snowflake_prod&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
+<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">"uri"</span><span class="p">,</span><span class="w"> </span><span class="s">"profile://my_snowflake_prod"</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 <span class="n">AdbcDatabaseInit</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 </pre></div>
 </div>
@@ -464,7 +464,7 @@ options already set via <code class="docutils literal notranslate"><span class="
 <p>Alternatively, specify the profile name directly:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">AdbcDatabase</span><span class="w"> </span><span class="n">database</span><span class="p">;</span>
 <span class="n">AdbcDatabaseNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
-<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;profile&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;my_snowflake_prod&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
+<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">"profile"</span><span class="p">,</span><span class="w"> </span><span class="s">"my_snowflake_prod"</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 <span class="n">AdbcDatabaseInit</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 </pre></div>
 </div>
@@ -476,15 +476,15 @@ options already set via <code class="docutils literal notranslate"><span class="
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="c1"># The version is required.</span>
 <span class="n">profile_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
 <span class="c1"># The driver is optional, but if not provided it must be set by the application.</span>
-<span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;snowflake&quot;</span>
+<span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"snowflake"</span>
 
 <span class="c1"># The Options table is required, even if empty</span>
 <span class="k">[Options]</span>
 <span class="c1"># String options</span>
-<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">account</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;mycompany&quot;</span>
-<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">warehouse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;COMPUTE_WH&quot;</span>
-<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">database</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;PRODUCTION&quot;</span>
-<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">schema</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;PUBLIC&quot;</span>
+<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">account</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"mycompany"</span>
+<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">warehouse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"COMPUTE_WH"</span>
+<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">database</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"PRODUCTION"</span>
+<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">schema</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"PUBLIC"</span>
 
 <span class="c1"># Integer options</span>
 <span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">client_session_keep_alive_heartbeat_frequency</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3600</span>
@@ -492,7 +492,7 @@ options already set via <code class="docutils literal notranslate"><span class="
 <span class="c1"># Double options</span>
 <span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">client_timeout</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">30.5</span>
 
-<span class="c1"># Boolean options (converted to &quot;true&quot; or &quot;false&quot; strings)</span>
+<span class="c1"># Boolean options (converted to "true" or "false" strings)</span>
 <span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">client_session_keep_alive</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
 </pre></div>
 </div>
@@ -528,8 +528,8 @@ For more detils, see <a class="reference internal" href="driver_manifests.html">
 <p>The <code class="docutils literal notranslate"><span class="pre">[Options]</span></code> section contains driver-specific configuration options to apply to the <code class="docutils literal notranslate"><span class="pre">AdbcDatabase</span></code> upon creation. This section must be present, even if empty. Options can be of the following types:</p>
 <dl>
 <dt><strong>String values</strong></dt><dd><p>Applied using <code class="docutils literal notranslate"><span class="pre">AdbcDatabaseSetOption()</span></code></p>
-<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">account</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;mycompany&quot;</span>
-<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">warehouse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;COMPUTE_WH&quot;</span>
+<div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">account</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"mycompany"</span>
+<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">warehouse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"COMPUTE_WH"</span>
 </pre></div>
 </div>
 </dd>
@@ -573,12 +573,12 @@ but this may be extended in the future to support other types of dynamic content
 <h4>Environment Variable Substitution<a class="headerlink" href="#environment-variable-substitution" title="Link to this heading">¶</a></h4>
 <p>Profile values can reference environment variables using the <code class="docutils literal notranslate"><span class="pre">{{</span> <span class="pre">env_var()</span> <span class="pre">}}</span></code> syntax:</p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">profile_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
-<span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;adbc_driver_snowflake&quot;</span>
+<span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"adbc_driver_snowflake"</span>
 
 <span class="k">[Options]</span>
-<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">account</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;{{ env_var(SNOWFLAKE_ACCOUNT) }}&quot;</span>
-<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">auth_token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;{{ env_var(SNOWFLAKE_TOKEN) }}&quot;</span>
-<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">warehouse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;COMPUTE_WH&quot;</span>
+<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">account</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"{{ env_var(SNOWFLAKE_ACCOUNT) }}"</span>
+<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">auth_token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"{{ env_var(SNOWFLAKE_TOKEN) }}"</span>
+<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">warehouse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"COMPUTE_WH"</span>
 </pre></div>
 </div>
 <p>When the driver manager encounters <code class="docutils literal notranslate"><span class="pre">{{</span> <span class="pre">env_var(VAR_NAME)</span> <span class="pre">}}</span></code>, it replaces the placeholder with the contents of environment variable <code class="docutils literal notranslate"><span class="pre">VAR_NAME</span></code>. If the environment variable is not set, the placeholder is replaced with an empty string and processing of the rest of the value continues (e.g. <code class="docutils literal notranslate"><span class="pre">&quot;foo{{</span> <span class="pre">env_var(MISSING)</span> <span class="pre">}}bar&quot;</span></code> becomes <code class="docutils literal notranslate"><span class="pre">&quot;foobar&quot;</span></code>).</p>
@@ -609,10 +609,10 @@ but this may be extended in the future to support other types of dynamic content
 <h3>Using Absolute Paths<a class="headerlink" href="#using-absolute-paths" title="Link to this heading">¶</a></h3>
 <p>To specify an absolute path to a profile file:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="c1">// Via profile option</span>
-<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;profile&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;/etc/adbc/profiles/production.toml&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
+<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">"profile"</span><span class="p">,</span><span class="w"> </span><span class="s">"/etc/adbc/profiles/production.toml"</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 
 <span class="c1">// Via URI (must have .toml extension)</span>
-<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;uri&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;profile:///etc/adbc/profiles/production.toml&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
+<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">"uri"</span><span class="p">,</span><span class="w"> </span><span class="s">"profile:///etc/adbc/profiles/production.toml"</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 </pre></div>
 </div>
 </section>
@@ -623,27 +623,27 @@ but this may be extended in the future to support other types of dynamic content
 <h3>Example 1: Snowflake Production Profile<a class="headerlink" href="#example-1-snowflake-production-profile" title="Link to this heading">¶</a></h3>
 <p>File: <code class="docutils literal notranslate"><span class="pre">~/.config/adbc/profiles/snowflake_prod.toml</span></code></p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">profile_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
-<span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;snowflake&quot;</span>
+<span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"snowflake"</span>
 
 <span class="k">[Options]</span>
-<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">account</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;{{ env_var(SNOWFLAKE_ACCOUNT) }}&quot;</span>
-<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">auth_token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;{{ env_var(SNOWFLAKE_TOKEN) }}&quot;</span>
-<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">warehouse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;PRODUCTION_WH&quot;</span>
-<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">database</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;PROD_DB&quot;</span>
-<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">schema</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;PUBLIC&quot;</span>
+<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">account</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"{{ env_var(SNOWFLAKE_ACCOUNT) }}"</span>
+<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">auth_token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"{{ env_var(SNOWFLAKE_TOKEN) }}"</span>
+<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">warehouse</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"PRODUCTION_WH"</span>
+<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">database</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"PROD_DB"</span>
+<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">schema</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"PUBLIC"</span>
 <span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">client_session_keep_alive</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
 <span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">client_session_keep_alive_heartbeat_frequency</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">3600</span>
 </pre></div>
 </div>
 <p>Usage:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="c1">// Set environment variables</span>
-<span class="n">setenv</span><span class="p">(</span><span class="s">&quot;SNOWFLAKE_ACCOUNT&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;mycompany&quot;</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
-<span class="n">setenv</span><span class="p">(</span><span class="s">&quot;SNOWFLAKE_TOKEN&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;secret_token&quot;</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+<span class="n">setenv</span><span class="p">(</span><span class="s">"SNOWFLAKE_ACCOUNT"</span><span class="p">,</span><span class="w"> </span><span class="s">"mycompany"</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+<span class="n">setenv</span><span class="p">(</span><span class="s">"SNOWFLAKE_TOKEN"</span><span class="p">,</span><span class="w"> </span><span class="s">"secret_token"</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
 
 <span class="c1">// Use profile</span>
 <span class="n">AdbcDatabase</span><span class="w"> </span><span class="n">database</span><span class="p">;</span>
 <span class="n">AdbcDatabaseNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
-<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;uri&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;profile://snowflake_prod&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
+<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">"uri"</span><span class="p">,</span><span class="w"> </span><span class="s">"profile://snowflake_prod"</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 <span class="n">AdbcDatabaseInit</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 </pre></div>
 </div>
@@ -652,12 +652,12 @@ but this may be extended in the future to support other types of dynamic content
 <h3>Example 2: PostgreSQL Development Profile<a class="headerlink" href="#example-2-postgresql-development-profile" title="Link to this heading">¶</a></h3>
 <p>File: <code class="docutils literal notranslate"><span class="pre">~/.config/adbc/profiles/postgres_dev.toml</span></code></p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">profile_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
-<span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;postgresql&quot;</span>
+<span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"postgresql"</span>
 
 <span class="k">[Options]</span>
-<span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;postgresql://localhost:5432/dev_db?sslmode=disable&quot;</span>
-<span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;dev_user&quot;</span>
-<span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;{{ env_var(POSTGRES_DEV_PASSWORD) }}&quot;</span>
+<span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"postgresql://localhost:5432/dev_db?sslmode=disable"</span>
+<span class="n">username</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"dev_user"</span>
+<span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"{{ env_var(POSTGRES_DEV_PASSWORD) }}"</span>
 </pre></div>
 </div>
 </section>
@@ -676,8 +676,8 @@ but this may be extended in the future to support other types of dynamic content
 <p>Usage (driver specified separately):</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">AdbcDatabase</span><span class="w"> </span><span class="n">database</span><span class="p">;</span>
 <span class="n">AdbcDatabaseNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
-<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;driver&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;adbc_driver_snowflake&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
-<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;profile&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;default_timeouts&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
+<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">"driver"</span><span class="p">,</span><span class="w"> </span><span class="s">"adbc_driver_snowflake"</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
+<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">"profile"</span><span class="p">,</span><span class="w"> </span><span class="s">"default_timeouts"</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 <span class="n">AdbcDatabaseInit</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 </pre></div>
 </div>
@@ -697,14 +697,14 @@ but this may be extended in the future to support other types of dynamic content
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">AdbcDatabase</span><span class="w"> </span><span class="n">database</span><span class="p">;</span>
 <span class="n">AdbcDatabaseNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 
-<span class="c1">// Profile sets warehouse = &quot;COMPUTE_WH&quot;</span>
-<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;profile&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;snowflake_prod&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
+<span class="c1">// Profile sets warehouse = "COMPUTE_WH"</span>
+<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">"profile"</span><span class="p">,</span><span class="w"> </span><span class="s">"snowflake_prod"</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 
 <span class="c1">// This overrides the profile setting</span>
-<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;adbc.snowflake.sql.warehouse&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;ANALYTICS_WH&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
+<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">"adbc.snowflake.sql.warehouse"</span><span class="p">,</span><span class="w"> </span><span class="s">"ANALYTICS_WH"</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 
 <span class="n">AdbcDatabaseInit</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
-<span class="c1">// Result: warehouse = &quot;ANALYTICS_WH&quot;</span>
+<span class="c1">// Result: warehouse = "ANALYTICS_WH"</span>
 </pre></div>
 </div>
 <div class="admonition note">
@@ -766,7 +766,7 @@ application value would take precedence as expected.</p>
 <span class="w">    </span><span class="c1">// Fetch profile from custom source</span>
 <span class="w">    </span><span class="n">MyProfileData</span><span class="o">*</span><span class="w"> </span><span class="n">data</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">LoadProfileFromKeyVault</span><span class="p">(</span><span class="n">profile_name</span><span class="p">);</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">data</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">        </span><span class="n">SetError</span><span class="p">(</span><span class="n">error</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;Profile not found in key vault&quot;</span><span class="p">);</span>
+<span class="w">        </span><span class="n">SetError</span><span class="p">(</span><span class="n">error</span><span class="p">,</span><span class="w"> </span><span class="s">"Profile not found in key vault"</span><span class="p">);</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">ADBC_STATUS_NOT_FOUND</span><span class="p">;</span>
 <span class="w">    </span><span class="p">}</span>
 
@@ -786,7 +786,7 @@ application value would take precedence as expected.</p>
 <span class="n">AdbcDatabase</span><span class="w"> </span><span class="n">database</span><span class="p">;</span>
 <span class="n">AdbcDatabaseNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 <span class="n">AdbcDriverManagerDatabaseSetProfileProvider</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="n">MyCustomProfileProvider</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
-<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;profile&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;prod_config&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
+<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">"profile"</span><span class="p">,</span><span class="w"> </span><span class="s">"prod_config"</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 <span class="n">AdbcDatabaseInit</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 </pre></div>
 </div>
@@ -805,10 +805,10 @@ application value would take precedence as expected.</p>
 </pre></div>
 </div>
 <p>Application code:</p>
-<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">profile</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">getenv</span><span class="p">(</span><span class="s">&quot;ADBC_PROFILE&quot;</span><span class="p">);</span>
-<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">profile</span><span class="p">)</span><span class="w"> </span><span class="n">profile</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;default&quot;</span><span class="p">;</span>
+<div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">profile</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">getenv</span><span class="p">(</span><span class="s">"ADBC_PROFILE"</span><span class="p">);</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">profile</span><span class="p">)</span><span class="w"> </span><span class="n">profile</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"default"</span><span class="p">;</span>
 
-<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;profile&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">profile</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
+<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">"profile"</span><span class="p">,</span><span class="w"> </span><span class="n">profile</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 </pre></div>
 </div>
 </section>
@@ -816,8 +816,8 @@ application value would take precedence as expected.</p>
 <h3>Credential Management<a class="headerlink" href="#credential-management" title="Link to this heading">¶</a></h3>
 <p>Store credentials separately from code:</p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="k">[Options]</span>
-<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">account</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;mycompany&quot;</span>
-<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">auth_token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;{{ env_var(SNOWFLAKE_TOKEN) }}&quot;</span>
+<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">account</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"mycompany"</span>
+<span class="n">adbc</span><span class="p">.</span><span class="n">snowflake</span><span class="p">.</span><span class="n">sql</span><span class="p">.</span><span class="n">auth_token</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"{{ env_var(SNOWFLAKE_TOKEN) }}"</span>
 </pre></div>
 </div>
 <p>Then set <code class="docutils literal notranslate"><span class="pre">SNOWFLAKE_TOKEN</span></code> via environment variable, secrets manager, or configuration service.</p>
@@ -826,9 +826,9 @@ application value would take precedence as expected.</p>
 <h3>Multi-Tenant Applications<a class="headerlink" href="#multi-tenant-applications" title="Link to this heading">¶</a></h3>
 <p>Use profiles to support different customer configurations:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="kt">char</span><span class="w"> </span><span class="n">profile_name</span><span class="p">[</span><span class="mi">256</span><span class="p">];</span>
-<span class="n">snprintf</span><span class="p">(</span><span class="n">profile_name</span><span class="p">,</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="n">profile_name</span><span class="p">),</span><span class="w"> </span><span class="s">&quot;customer_%s&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">customer_id</span><span class="p">);</span>
+<span class="n">snprintf</span><span class="p">(</span><span class="n">profile_name</span><span class="p">,</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="n">profile_name</span><span class="p">),</span><span class="w"> </span><span class="s">"customer_%s"</span><span class="p">,</span><span class="w"> </span><span class="n">customer_id</span><span class="p">);</span>
 
-<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;profile&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">profile_name</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
+<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">"profile"</span><span class="p">,</span><span class="w"> </span><span class="n">profile_name</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 </pre></div>
 </div>
 </section>
@@ -836,12 +836,12 @@ application value would take precedence as expected.</p>
 <h3>Testing<a class="headerlink" href="#testing" title="Link to this heading">¶</a></h3>
 <p>Use profiles to switch between mock and real databases:</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="cp">#ifdef TESTING</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">profile</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;mock_database&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">profile</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"mock_database"</span><span class="p">;</span>
 <span class="cp">#else</span>
-<span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">profile</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;production&quot;</span><span class="p">;</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">char</span><span class="o">*</span><span class="w"> </span><span class="n">profile</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"production"</span><span class="p">;</span>
 <span class="cp">#endif</span>
 
-<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;profile&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">profile</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
+<span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">"profile"</span><span class="p">,</span><span class="w"> </span><span class="n">profile</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 </pre></div>
 </div>
 </section>
@@ -862,7 +862,7 @@ Also searched these paths for profiles:
 <section id="invalid-profile-format">
 <h3>Invalid Profile Format<a class="headerlink" href="#invalid-profile-format" title="Link to this heading">¶</a></h3>
 <p>If a profile file exists but is malformed, <code class="docutils literal notranslate"><span class="pre">AdbcDatabaseInit()</span></code> returns <code class="docutils literal notranslate"><span class="pre">ADBC_STATUS_INVALID_ARGUMENT</span></code>:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[Driver Manager] Could not open profile. Error at line 5: expected &#39;=&#39; after key.
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[Driver Manager] Could not open profile. Error at line 5: expected '=' after key.
 Profile: /home/user/.config/adbc/profiles/my_profile.toml
 </pre></div>
 </div>
@@ -870,8 +870,8 @@ Profile: /home/user/.config/adbc/profiles/my_profile.toml
 <section id="missing-driver">
 <h3>Missing Driver<a class="headerlink" href="#missing-driver" title="Link to this heading">¶</a></h3>
 <p>If a profile doesn’t specify a driver and none is provided via other means:</p>
-<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[Driver Manager] Must provide &#39;driver&#39; parameter
-(or encode driver in &#39;uri&#39; parameter)
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>[Driver Manager] Must provide 'driver' parameter
+(or encode driver in 'uri' parameter)
 </pre></div>
 </div>
 </section>
@@ -881,10 +881,10 @@ Profile: /home/user/.config/adbc/profiles/my_profile.toml
 <ol class="arabic">
 <li><p><strong>Use environment variables for secrets</strong>: Never store credentials directly in profile files.</p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="c1"># Good</span>
-<span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;{{ env_var(DB_PASSWORD) }}&quot;</span>
+<span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"{{ env_var(DB_PASSWORD) }}"</span>
 
 <span class="c1"># Bad</span>
-<span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;my_secret_password&quot;</span>
+<span class="n">password</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"my_secret_password"</span>
 </pre></div>
 </div>
 </li>
@@ -925,15 +925,15 @@ clear.</p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="c1">// Unix/Linux/macOS</span>
 <span class="n">AdbcDatabaseSetOption</span><span class="p">(</span>
 <span class="w">    </span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span>
-<span class="w">    </span><span class="s">&quot;additional_profile_search_path_list&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="s">&quot;/opt/app/profiles:/etc/app/profiles&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s">"additional_profile_search_path_list"</span><span class="p">,</span>
+<span class="w">    </span><span class="s">"/opt/app/profiles:/etc/app/profiles"</span><span class="p">,</span>
 <span class="w">    </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 
 <span class="c1">// Windows</span>
 <span class="n">AdbcDatabaseSetOption</span><span class="p">(</span>
 <span class="w">    </span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span>
-<span class="w">    </span><span class="s">&quot;additional_profile_search_path_list&quot;</span><span class="p">,</span>
-<span class="w">    </span><span class="s">&quot;C:</span><span class="se">\\</span><span class="s">App</span><span class="se">\\</span><span class="s">Profiles;C:</span><span class="se">\\</span><span class="s">ProgramData</span><span class="se">\\</span><span class="s">App</span><span class="se">\\</span><span class="s">Profiles&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s">"additional_profile_search_path_list"</span><span class="p">,</span>
+<span class="w">    </span><span class="s">"C:</span><span class="se">\\</span><span class="s">App</span><span class="se">\\</span><span class="s">Profiles;C:</span><span class="se">\\</span><span class="s">ProgramData</span><span class="se">\\</span><span class="s">App</span><span class="se">\\</span><span class="s">Profiles"</span><span class="p">,</span>
 <span class="w">    </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 </pre></div>
 </div>

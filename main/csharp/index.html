@@ -450,18 +450,18 @@ the database you want to connect to. For the example below, you could install
 <section id="basic-usage">
 <h2>Basic Usage<a class="headerlink" href="#basic-usage" title="Link to this heading">¶</a></h2>
 <div class="highlight-csharp notranslate"><div class="highlight"><pre><span></span><span class="k">using</span><span class="w"> </span><span class="nn">AdbcDriver</span><span class="w"> </span><span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AdbcDriverManager</span><span class="p">.</span><span class="n">FindLoadDriver</span><span class="p">(</span>
-<span class="w">    </span><span class="s">&quot;postgresql&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s">"postgresql"</span><span class="p">,</span>
 <span class="w">    </span><span class="n">loadOptions</span><span class="p">:</span><span class="w"> </span><span class="n">AdbcLoadFlags</span><span class="p">.</span><span class="n">Default</span><span class="p">);</span>
 
 <span class="k">using</span><span class="w"> </span><span class="nn">AdbcDatabase</span><span class="w"> </span><span class="n">db</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">driver</span><span class="p">.</span><span class="n">Open</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">Dictionary</span><span class="o">&lt;</span><span class="kt">string</span><span class="p">,</span><span class="w"> </span><span class="kt">string</span><span class="o">&gt;</span>
 <span class="p">{</span>
-<span class="w">    </span><span class="na">[&quot;uri&quot;]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;postgresql://localhost:5432/postgres&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="na">["uri"]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"postgresql://localhost:5432/postgres"</span><span class="p">,</span>
 <span class="p">});</span>
 
 <span class="k">using</span><span class="w"> </span><span class="nn">AdbcConnection</span><span class="w"> </span><span class="n">conn</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">db</span><span class="p">.</span><span class="n">Connect</span><span class="p">(</span><span class="k">null</span><span class="p">);</span>
 <span class="k">using</span><span class="w"> </span><span class="nn">AdbcStatement</span><span class="w"> </span><span class="n">stmt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">conn</span><span class="p">.</span><span class="n">CreateStatement</span><span class="p">();</span>
 
-<span class="n">stmt</span><span class="p">.</span><span class="n">SqlQuery</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;SELECT * FROM foo&quot;</span><span class="p">;</span>
+<span class="n">stmt</span><span class="p">.</span><span class="n">SqlQuery</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"SELECT * FROM foo"</span><span class="p">;</span>
 
 <span class="n">QueryResult</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">stmt</span><span class="p">.</span><span class="n">ExecuteQuery</span><span class="p">();</span>
 <span class="k">using</span><span class="w"> </span><span class="nn">IArrowArrayStream</span><span class="w"> </span><span class="n">stream</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">result</span><span class="p">.</span><span class="n">Stream</span><span class="o">!</span><span class="p">;</span>

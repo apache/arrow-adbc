@@ -425,15 +425,15 @@ result set has many NULL rows up front, you may consider increasing the
 batch size so that the driver can infer the correct types.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">28</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">dbapi</span>
 <span class="linenos">29</span>
-<span class="linenos">30</span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;sqlite&quot;</span><span class="p">)</span>
+<span class="linenos">30</span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">"sqlite"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>First we’ll set up a demo table with 1024 NULL values.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">34</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
-<span class="linenos">35</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;CREATE TABLE demo (val TEXT)&quot;</span><span class="p">)</span>
+<span class="linenos">35</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"CREATE TABLE demo (val TEXT)"</span><span class="p">)</span>
 <span class="linenos">36</span>
 <span class="linenos">37</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
-<span class="linenos">38</span><span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="linenos">38</span><span class="w">        </span><span class="sd">"""</span>
 <span class="linenos">39</span><span class="sd">    WITH RECURSIVE series(n) AS (</span>
 <span class="linenos">40</span><span class="sd">        SELECT 1</span>
 <span class="linenos">41</span><span class="sd">        UNION ALL</span>
@@ -444,10 +444,10 @@ batch size so that the driver can infer the correct types.</p>
 <span class="linenos">46</span><span class="sd">    INSERT INTO demo (val)</span>
 <span class="linenos">47</span><span class="sd">    SELECT NULL</span>
 <span class="linenos">48</span><span class="sd">    FROM series</span>
-<span class="linenos">49</span><span class="sd">    &quot;&quot;&quot;</span>
+<span class="linenos">49</span><span class="sd">    """</span>
 <span class="linenos">50</span>    <span class="p">)</span>
 <span class="linenos">51</span>
-<span class="linenos">52</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;INSERT INTO demo VALUES (&#39;foo&#39;), (&#39;bar&#39;), (&#39;baz&#39;)&quot;</span><span class="p">)</span>
+<span class="linenos">52</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"INSERT INTO demo VALUES ('foo'), ('bar'), ('baz')"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>If we query the table naively, we’ll get an error, because the driver first
@@ -456,14 +456,14 @@ every value is NULL, it falls back to the default type of int64, which poses
 a problem when it then encounters a string in the next batch.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">59</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">60</span>    <span class="k">try</span><span class="p">:</span>
-<span class="linenos">61</span>        <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT * FROM demo&quot;</span><span class="p">)</span>
+<span class="linenos">61</span>        <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"SELECT * FROM demo"</span><span class="p">)</span>
 <span class="linenos">62</span>        <span class="nb">print</span><span class="p">(</span><span class="n">cur</span><span class="o">.</span><span class="n">fetchallarrow</span><span class="p">()</span><span class="o">.</span><span class="n">schema</span><span class="p">)</span>
 <span class="linenos">63</span>    <span class="k">except</span> <span class="ne">OSError</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
 <span class="linenos">64</span>        <span class="nb">print</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
 <span class="linenos">65</span>        <span class="c1"># Output:</span>
 <span class="linenos">66</span>        <span class="c1"># [SQLite] Type mismatch in column 0: expected INT64 but got STRING/BINARY</span>
 <span class="linenos">67</span>    <span class="k">else</span><span class="p">:</span>
-<span class="linenos">68</span>        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">&quot;Expected an error&quot;</span><span class="p">)</span>
+<span class="linenos">68</span>        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">"Expected an error"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>We can tell the driver to increase the batch size (and hence look at more
@@ -471,10 +471,10 @@ rows).</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">73</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">74</span>    <span class="n">cur</span><span class="o">.</span><span class="n">adbc_statement</span><span class="o">.</span><span class="n">set_options</span><span class="p">(</span>
 <span class="linenos">75</span>        <span class="o">**</span><span class="p">{</span>
-<span class="linenos">76</span>            <span class="s2">&quot;adbc.sqlite.query.batch_rows&quot;</span><span class="p">:</span> <span class="mi">2048</span><span class="p">,</span>
+<span class="linenos">76</span>            <span class="s2">"adbc.sqlite.query.batch_rows"</span><span class="p">:</span> <span class="mi">2048</span><span class="p">,</span>
 <span class="linenos">77</span>        <span class="p">}</span>
 <span class="linenos">78</span>    <span class="p">)</span>
-<span class="linenos">79</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT * FROM demo&quot;</span><span class="p">)</span>
+<span class="linenos">79</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"SELECT * FROM demo"</span><span class="p">)</span>
 <span class="linenos">80</span>    <span class="nb">print</span><span class="p">(</span><span class="n">cur</span><span class="o">.</span><span class="n">fetchallarrow</span><span class="p">()</span><span class="o">.</span><span class="n">schema</span><span class="p">)</span>
 </pre></div>
 </div>

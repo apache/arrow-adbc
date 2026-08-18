@@ -463,8 +463,8 @@ the driver.</p>
 <span class="k">auto</span><span class="w"> </span><span class="n">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AdbcDatabaseNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 <span class="c1">// if status != ADBC_STATUS_OK then handle the error</span>
 
-<span class="c1">// Load the driver by setting the &quot;driver&quot; option</span>
-<span class="n">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;driver&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;/path/to/libadbc_driver.so&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
+<span class="c1">// Load the driver by setting the "driver" option</span>
+<span class="n">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">"driver"</span><span class="p">,</span><span class="w"> </span><span class="s">"/path/to/libadbc_driver.so"</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 <span class="c1">// if status != ADBC_STATUS_OK then handle the error</span>
 
 <span class="c1">// Alternatively, load directly with AdbcLoadDriver</span>
@@ -474,7 +474,7 @@ the driver.</p>
 <span class="n">std</span><span class="o">::</span><span class="n">memset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">driver</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="n">driver</span><span class="p">));</span>
 <span class="n">std</span><span class="o">::</span><span class="n">memset</span><span class="p">(</span><span class="o">&amp;</span><span class="n">error</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="k">sizeof</span><span class="p">(</span><span class="n">error</span><span class="p">));</span>
 
-<span class="k">auto</span><span class="w"> </span><span class="n">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AdbcLoadDriver</span><span class="p">(</span><span class="s">&quot;/path/to/libadbc_driver.so&quot;</span><span class="p">,</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">,</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AdbcLoadDriver</span><span class="p">(</span><span class="s">"/path/to/libadbc_driver.so"</span><span class="p">,</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">,</span>
 <span class="w">  </span><span class="n">ADBC_VERSION_1_1_0</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">driver</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 <span class="c1">// if status != ADBC_STATUS_OK then handle the error</span>
 </pre></div>
@@ -489,7 +489,7 @@ GLib</label><div class="sd-tab-content docutils">
 <span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">database</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="cm">/* handle error */</span>
 <span class="p">}</span>
-<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">gadbc_database_set_option</span><span class="p">(</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;driver&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;/path/to/libadbc_driver.so&quot;</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="o">!</span><span class="n">gadbc_database_set_option</span><span class="p">(</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">"driver"</span><span class="p">,</span><span class="w"> </span><span class="s">"/path/to/libadbc_driver.so"</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="cm">/* handle error */</span>
 <span class="p">}</span>
 </pre></div>
@@ -500,16 +500,16 @@ GLib</label><div class="sd-tab-content docutils">
 Go</label><div class="sd-tab-content docutils">
 <p>Loading a driver in Go is similar:</p>
 <div class="highlight-go notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="p">(</span>
-<span class="w">  </span><span class="s">&quot;context&quot;</span>
+<span class="w">  </span><span class="s">"context"</span>
 
-<span class="w">  </span><span class="s">&quot;github.com/apache/arrow-adbc/go/adbc&quot;</span>
-<span class="w">  </span><span class="s">&quot;github.com/apache/arrow-adbc/go/adbc/drivermgr&quot;</span>
+<span class="w">  </span><span class="s">"github.com/apache/arrow-adbc/go/adbc"</span>
+<span class="w">  </span><span class="s">"github.com/apache/arrow-adbc/go/adbc/drivermgr"</span>
 <span class="p">)</span>
 
 <span class="kd">func</span><span class="w"> </span><span class="nx">main</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
 <span class="w">  </span><span class="kd">var</span><span class="w"> </span><span class="nx">drv</span><span class="w"> </span><span class="nx">drivermgr</span><span class="p">.</span><span class="nx">Driver</span>
-<span class="w">  </span><span class="nx">db</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">drv</span><span class="p">.</span><span class="nx">NewDatabase</span><span class="p">(</span><span class="kd">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">{</span>
-<span class="w">    </span><span class="s">&quot;driver&quot;</span><span class="p">:</span><span class="w"> </span><span class="s">&quot;/path/to/libadbc_driver.so&quot;</span><span class="p">,</span>
+<span class="w">  </span><span class="nx">db</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">drv</span><span class="p">.</span><span class="nx">NewDatabase</span><span class="p">(</span><span class="kt">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">{</span>
+<span class="w">    </span><span class="s">"driver"</span><span class="p">:</span><span class="w"> </span><span class="s">"/path/to/libadbc_driver.so"</span><span class="p">,</span>
 <span class="w">  </span><span class="p">})</span>
 <span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">!=</span><span class="w"> </span><span class="kc">nil</span><span class="w"> </span><span class="p">{</span>
 <span class="w">    </span><span class="c1">// handle error</span>
@@ -527,7 +527,7 @@ Python</label><div class="sd-tab-content docutils">
 <p>You can use the <code class="docutils literal notranslate"><span class="pre">DBAPI</span></code> interface as follows:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_manager</span>
 
-<span class="k">with</span> <span class="n">adbc_driver_manager</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">driver</span><span class="o">=</span><span class="s2">&quot;/path/to/libadbc_driver.so&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+<span class="k">with</span> <span class="n">adbc_driver_manager</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">driver</span><span class="o">=</span><span class="s2">"/path/to/libadbc_driver.so"</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
     <span class="c1"># use the connection</span>
     <span class="k">pass</span>
 </pre></div>
@@ -538,8 +538,8 @@ Python</label><div class="sd-tab-content docutils">
 R</label><div class="sd-tab-content docutils">
 <p>You can use the <code class="docutils literal notranslate"><span class="pre">DBAPI</span></code> interface as follows:</p>
 <div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">library</span><span class="p">(</span><span class="n">adbcdrivermanager</span><span class="p">)</span>
-<span class="n">con</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_driver</span><span class="p">(</span><span class="s">&quot;/path/to/libadbc_driver.so&quot;</span><span class="p">)</span><span class="w"> </span><span class="o">|&gt;</span>
-<span class="w">  </span><span class="nf">adbc_database_init</span><span class="p">(</span><span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;...&quot;</span><span class="p">)</span><span class="w"> </span><span class="o">|&gt;</span>
+<span class="n">con</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_driver</span><span class="p">(</span><span class="s">"/path/to/libadbc_driver.so"</span><span class="p">)</span><span class="w"> </span><span class="o">|&gt;</span>
+<span class="w">  </span><span class="nf">adbc_database_init</span><span class="p">(</span><span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"..."</span><span class="p">)</span><span class="w"> </span><span class="o">|&gt;</span>
 <span class="w">  </span><span class="nf">adbc_connection_init</span><span class="p">()</span>
 </pre></div>
 </div>
@@ -548,9 +548,9 @@ R</label><div class="sd-tab-content docutils">
 <label class="sd-tab-label" data-sync-group="tab" data-sync-id="ruby" for="sd-tab-item-5">
 Ruby</label><div class="sd-tab-content docutils">
 <p>You can use the <code class="docutils literal notranslate"><span class="pre">ADBC::Database</span></code> as follows:</p>
-<div class="highlight-ruby notranslate"><div class="highlight"><pre><span></span><span class="nb">require</span><span class="w"> </span><span class="s2">&quot;adbc&quot;</span>
+<div class="highlight-ruby notranslate"><div class="highlight"><pre><span></span><span class="nb">require</span><span class="w"> </span><span class="s2">"adbc"</span>
 
-<span class="no">ADBC</span><span class="o">::</span><span class="no">Database</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="ss">driver</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;/path/to/libadbc_driver.so&quot;</span><span class="p">)</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">database</span><span class="o">|</span>
+<span class="no">ADBC</span><span class="o">::</span><span class="no">Database</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="ss">driver</span><span class="p">:</span><span class="w"> </span><span class="s2">"/path/to/libadbc_driver.so"</span><span class="p">)</span><span class="w"> </span><span class="k">do</span><span class="w"> </span><span class="o">|</span><span class="n">database</span><span class="o">|</span>
 <span class="w">  </span><span class="c1"># use the database</span>
 <span class="k">end</span>
 </pre></div>
@@ -564,7 +564,7 @@ Rust</label><div class="sd-tab-content docutils">
 <span class="k">use</span><span class="w"> </span><span class="n">adbc_core</span><span class="p">::</span><span class="n">driver_manager</span><span class="p">::</span><span class="n">ManagedDriver</span><span class="p">;</span>
 
 <span class="k">fn</span><span class="w"> </span><span class="nf">get_driver</span><span class="p">()</span><span class="w"> </span><span class="p">-&gt;</span><span class="w"> </span><span class="nc">ManagedDriver</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="n">ManagedDriver</span><span class="p">::</span><span class="n">load_from_name</span><span class="p">(</span><span class="s">&quot;/path/to/libadbc_driver.so&quot;</span><span class="p">,</span><span class="w"> </span><span class="nb">None</span><span class="p">,</span><span class="w"> </span><span class="n">AdbcVersion</span><span class="p">::</span><span class="n">V100</span><span class="p">).</span><span class="n">unwrap</span><span class="p">()</span>
+<span class="w">    </span><span class="n">ManagedDriver</span><span class="p">::</span><span class="n">load_from_name</span><span class="p">(</span><span class="s">"/path/to/libadbc_driver.so"</span><span class="p">,</span><span class="w"> </span><span class="nb">None</span><span class="p">,</span><span class="w"> </span><span class="n">AdbcVersion</span><span class="p">::</span><span class="n">V100</span><span class="p">).</span><span class="n">unwrap</span><span class="p">()</span>
 <span class="p">}</span>
 </pre></div>
 </div>
@@ -593,32 +593,32 @@ by tools that may be written to manage driver installations.</p>
 <p>Below is an example of a driver manifest:</p>
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">manifest_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
 
-<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;Driver Display Name&#39;</span>
-<span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;1.0.0&#39;</span><span class="w"> </span><span class="c1"># driver version</span>
-<span class="n">publisher</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;string to identify the publisher&#39;</span>
-<span class="n">license</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;Apache-2.0&#39;</span><span class="w"> </span><span class="c1"># or otherwise</span>
-<span class="n">url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;https://example.com&#39;</span><span class="w"> </span><span class="c1"># URL with more info about the driver</span>
+<span class="n">name</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'Driver Display Name'</span>
+<span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'1.0.0'</span><span class="w"> </span><span class="c1"># driver version</span>
+<span class="n">publisher</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'string to identify the publisher'</span>
+<span class="n">license</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'Apache-2.0'</span><span class="w"> </span><span class="c1"># or otherwise</span>
+<span class="n">url</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'https://example.com'</span><span class="w"> </span><span class="c1"># URL with more info about the driver</span>
 <span class="w">                            </span><span class="c1"># such as a github link or documentation.</span>
 
 <span class="k">[ADBC]</span>
-<span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;1.1.0&#39;</span><span class="w"> </span><span class="c1"># Maximum supported ADBC spec version</span>
+<span class="n">version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'1.1.0'</span><span class="w"> </span><span class="c1"># Maximum supported ADBC spec version</span>
 
 <span class="k">[ADBC.features]</span>
-<span class="n">supported</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="c1"># list of strings such as &#39;bulk insert&#39;</span>
-<span class="n">unsupported</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="c1"># list of strings such as &#39;async&#39;</span>
+<span class="n">supported</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="c1"># list of strings such as 'bulk insert'</span>
+<span class="n">unsupported</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">[]</span><span class="w"> </span><span class="c1"># list of strings such as 'async'</span>
 
 <span class="k">[Driver]</span>
-<span class="n">entrypoint</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;AdbcDriverInit&#39;</span><span class="w"> </span><span class="c1"># entrypoint to use if not using default</span>
+<span class="n">entrypoint</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'AdbcDriverInit'</span><span class="w"> </span><span class="c1"># entrypoint to use if not using default</span>
 <span class="c1"># You can provide just a single path</span>
-<span class="c1"># shared = &#39;/path/to/libadbc_driver.so&#39;</span>
+<span class="c1"># shared = '/path/to/libadbc_driver.so'</span>
 
 <span class="c1"># or you can provide platform-specific paths for scenarios where the driver</span>
 <span class="c1"># is distributed with multiple platforms supported by a single package.</span>
 <span class="k">[Driver.shared]</span>
 <span class="c1"># paths to shared libraries to load based on platform tuple</span>
-<span class="n">linux_amd64</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;/path/to/libadbc_driver.so&#39;</span>
-<span class="n">osx_amd64</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;/path/to/libadbc_driver.dylib&#39;</span>
-<span class="n">windows_amd64</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">&#39;C:\\path\\to\\adbc_driver.dll&#39;</span>
+<span class="n">linux_amd64</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'/path/to/libadbc_driver.so'</span>
+<span class="n">osx_amd64</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'/path/to/libadbc_driver.dylib'</span>
+<span class="n">windows_amd64</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s1">'C:\\path\\to\\adbc_driver.dll'</span>
 <span class="c1"># ... other platforms as needed</span>
 </pre></div>
 </div>
@@ -948,7 +948,7 @@ matches the driver’s name. For example, the PostgreSQL driver uses
 was given), the driver manager will use the <strong>scheme</strong> of the <code class="docutils literal notranslate"><span class="pre">uri</span></code> option as
 the driver name and resolve it using the discovery process described above.  For
 example, given only:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">uri</span> <span class="o">=</span> <span class="s2">&quot;postgresql://localhost:5432/postgres&quot;</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">uri</span> <span class="o">=</span> <span class="s2">"postgresql://localhost:5432/postgres"</span>
 </pre></div>
 </div>
 <p>the driver manager takes <code class="docutils literal notranslate"><span class="pre">postgresql</span></code> as the driver name, searches for a

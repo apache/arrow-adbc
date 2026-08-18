@@ -457,15 +457,15 @@
 <h2>Go <code class="docutils literal notranslate"><span class="pre">database/sql</span></code><a class="headerlink" href="#go-database-sql" title="Link to this heading">¶</a></h2>
 <p>The Go ADBC client library provides an adapter so ADBC drivers can be used through Go’s standard <a class="reference external" href="https://pkg.go.dev/database/sql">database/sql</a> interface. This means you can use ADBC drivers with any library or framework that accepts a <code class="docutils literal notranslate"><span class="pre">*sql.DB</span></code>.</p>
 <div class="highlight-go notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="p">(</span>
-<span class="w">    </span><span class="s">&quot;database/sql&quot;</span>
-<span class="w">    </span><span class="s">&quot;github.com/apache/arrow-adbc/go/adbc/sqldriver&quot;</span>
-<span class="w">    </span><span class="s">&quot;github.com/apache/arrow-adbc/go/adbc/drivermgr&quot;</span>
+<span class="w">    </span><span class="s">"database/sql"</span>
+<span class="w">    </span><span class="s">"github.com/apache/arrow-adbc/go/adbc/sqldriver"</span>
+<span class="w">    </span><span class="s">"github.com/apache/arrow-adbc/go/adbc/drivermgr"</span>
 <span class="p">)</span>
 
 <span class="c1">// Register the ADBC driver manager as a database/sql driver.</span>
-<span class="nx">sql</span><span class="p">.</span><span class="nx">Register</span><span class="p">(</span><span class="s">&quot;flightsql&quot;</span><span class="p">,</span><span class="w"> </span><span class="nx">sqldriver</span><span class="p">.</span><span class="nx">Driver</span><span class="p">{</span><span class="nx">Driver</span><span class="p">:</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">drivermgr</span><span class="p">.</span><span class="nx">Driver</span><span class="p">{}})</span>
+<span class="nx">sql</span><span class="p">.</span><span class="nx">Register</span><span class="p">(</span><span class="s">"flightsql"</span><span class="p">,</span><span class="w"> </span><span class="nx">sqldriver</span><span class="p">.</span><span class="nx">Driver</span><span class="p">{</span><span class="nx">Driver</span><span class="p">:</span><span class="w"> </span><span class="o">&amp;</span><span class="nx">drivermgr</span><span class="p">.</span><span class="nx">Driver</span><span class="p">{}})</span>
 
-<span class="nx">db</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">sql</span><span class="p">.</span><span class="nx">Open</span><span class="p">(</span><span class="s">&quot;flightsql&quot;</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;uri=grpc://localhost:12345&quot;</span><span class="p">)</span>
+<span class="nx">db</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">sql</span><span class="p">.</span><span class="nx">Open</span><span class="p">(</span><span class="s">"flightsql"</span><span class="p">,</span><span class="w"> </span><span class="s">"uri=grpc://localhost:12345"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>See the <a class="reference external" href="https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc">Go documentation</a> for full details.</p>
@@ -478,8 +478,8 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
 
 <span class="c1"># The postgresql driver must be installed first with: dbc install postgresql</span>
-<span class="k">with</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">driver</span><span class="o">=</span><span class="s2">&quot;postgresql&quot;</span><span class="p">,</span> <span class="n">uri</span><span class="o">=</span><span class="s2">&quot;postgresql://localhost:5432/mydb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
-    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_sql</span><span class="p">(</span><span class="s2">&quot;SELECT * FROM orders&quot;</span><span class="p">,</span> <span class="n">conn</span><span class="p">)</span>
+<span class="k">with</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">driver</span><span class="o">=</span><span class="s2">"postgresql"</span><span class="p">,</span> <span class="n">uri</span><span class="o">=</span><span class="s2">"postgresql://localhost:5432/mydb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+    <span class="n">df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_sql</span><span class="p">(</span><span class="s2">"SELECT * FROM orders"</span><span class="p">,</span> <span class="n">conn</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>ADBC connections are compatible with <code class="docutils literal notranslate"><span class="pre">pd.read_sql</span></code>, <code class="docutils literal notranslate"><span class="pre">pd.read_sql_query</span></code>, and <code class="docutils literal notranslate"><span class="pre">pd.read_sql_table</span></code>.</p>
@@ -493,16 +493,16 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">polars</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pl</span>
 
 <span class="c1"># The postgresql driver must be installed first with: dbc install postgresql</span>
-<span class="k">with</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">driver</span><span class="o">=</span><span class="s2">&quot;postgresql&quot;</span><span class="p">,</span> <span class="n">uri</span><span class="o">=</span><span class="s2">&quot;postgresql://localhost:5432/mydb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+<span class="k">with</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">driver</span><span class="o">=</span><span class="s2">"postgresql"</span><span class="p">,</span> <span class="n">uri</span><span class="o">=</span><span class="s2">"postgresql://localhost:5432/mydb"</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
     <span class="c1"># Read from a database</span>
     <span class="n">df</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">read_database</span><span class="p">(</span>
-        <span class="n">query</span><span class="o">=</span><span class="s2">&quot;SELECT * FROM orders&quot;</span><span class="p">,</span>
+        <span class="n">query</span><span class="o">=</span><span class="s2">"SELECT * FROM orders"</span><span class="p">,</span>
         <span class="n">connection</span><span class="o">=</span><span class="n">conn</span><span class="p">,</span>
     <span class="p">)</span>
 
     <span class="c1"># Write to a database</span>
     <span class="n">df</span><span class="o">.</span><span class="n">write_database</span><span class="p">(</span>
-        <span class="n">table_name</span><span class="o">=</span><span class="s2">&quot;orders_copy&quot;</span><span class="p">,</span>
+        <span class="n">table_name</span><span class="o">=</span><span class="s2">"orders_copy"</span><span class="p">,</span>
         <span class="n">connection</span><span class="o">=</span><span class="n">conn</span><span class="p">,</span>
     <span class="p">)</span>
 </pre></div>
@@ -516,16 +516,16 @@
 <div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">library</span><span class="p">(</span><span class="n">DBI</span><span class="p">)</span>
 
 <span class="c1"># Create an SQLite connection via adbi</span>
-<span class="n">con</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">dbConnect</span><span class="p">(</span><span class="n">adbi</span><span class="o">::</span><span class="nf">adbi</span><span class="p">(</span><span class="n">adbcdrivermanager</span><span class="o">::</span><span class="nf">adbc_driver</span><span class="p">(</span><span class="s">&quot;sqlite&quot;</span><span class="p">)))</span>
+<span class="n">con</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">dbConnect</span><span class="p">(</span><span class="n">adbi</span><span class="o">::</span><span class="nf">adbi</span><span class="p">(</span><span class="n">adbcdrivermanager</span><span class="o">::</span><span class="nf">adbc_driver</span><span class="p">(</span><span class="s">"sqlite"</span><span class="p">)))</span>
 
 <span class="c1"># Write a data.frame to a table in SQLite</span>
-<span class="nf">dbWriteTable</span><span class="p">(</span><span class="n">con</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;swiss&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">datasets</span><span class="o">::</span><span class="n">swiss</span><span class="p">)</span>
+<span class="nf">dbWriteTable</span><span class="p">(</span><span class="n">con</span><span class="p">,</span><span class="w"> </span><span class="s">"swiss"</span><span class="p">,</span><span class="w"> </span><span class="n">datasets</span><span class="o">::</span><span class="n">swiss</span><span class="p">)</span>
 
 <span class="c1"># Query it back</span>
-<span class="nf">dbGetQuery</span><span class="p">(</span><span class="n">con</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;SELECT * from swiss WHERE Agriculture &lt; 40&quot;</span><span class="p">)</span>
+<span class="nf">dbGetQuery</span><span class="p">(</span><span class="n">con</span><span class="p">,</span><span class="w"> </span><span class="s">"SELECT * from swiss WHERE Agriculture &lt; 40"</span><span class="p">)</span>
 
-<span class="c1"># Take advantage of DBI&#39;s Arrow extension API to return results as Arrow (using nanoarrow)</span>
-<span class="nf">dbGetQueryArrow</span><span class="p">(</span><span class="n">con</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;SELECT * from swiss WHERE Agriculture &lt; 40&quot;</span><span class="p">)</span>
+<span class="c1"># Take advantage of DBI's Arrow extension API to return results as Arrow (using nanoarrow)</span>
+<span class="nf">dbGetQueryArrow</span><span class="p">(</span><span class="n">con</span><span class="p">,</span><span class="w"> </span><span class="s">"SELECT * from swiss WHERE Agriculture &lt; 40"</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
@@ -536,12 +536,12 @@
 <span class="nf">library</span><span class="p">(</span><span class="n">dplyr</span><span class="p">)</span>
 
 <span class="n">con</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="n">DBI</span><span class="o">::</span><span class="nf">dbConnect</span><span class="p">(</span>
-<span class="w">  </span><span class="nf">adbi</span><span class="p">(</span><span class="n">adbcdrivermanager</span><span class="o">::</span><span class="nf">adbc_driver</span><span class="p">(</span><span class="s">&quot;postgresql&quot;</span><span class="p">)),</span>
-<span class="w">  </span><span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">&quot;postgresql://localhost:5432/mydb&quot;</span>
+<span class="w">  </span><span class="nf">adbi</span><span class="p">(</span><span class="n">adbcdrivermanager</span><span class="o">::</span><span class="nf">adbc_driver</span><span class="p">(</span><span class="s">"postgresql"</span><span class="p">)),</span>
+<span class="w">  </span><span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"postgresql://localhost:5432/mydb"</span>
 <span class="p">)</span>
 
-<span class="n">orders</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">tbl</span><span class="p">(</span><span class="n">con</span><span class="p">,</span><span class="w"> </span><span class="s">&quot;orders&quot;</span><span class="p">)</span><span class="w"> </span><span class="o">|&gt;</span>
-<span class="w">  </span><span class="nf">filter</span><span class="p">(</span><span class="n">status</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">&quot;shipped&quot;</span><span class="p">)</span><span class="w"> </span><span class="o">|&gt;</span>
+<span class="n">orders</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">tbl</span><span class="p">(</span><span class="n">con</span><span class="p">,</span><span class="w"> </span><span class="s">"orders"</span><span class="p">)</span><span class="w"> </span><span class="o">|&gt;</span>
+<span class="w">  </span><span class="nf">filter</span><span class="p">(</span><span class="n">status</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s">"shipped"</span><span class="p">)</span><span class="w"> </span><span class="o">|&gt;</span>
 <span class="w">  </span><span class="nf">collect</span><span class="p">()</span>
 </pre></div>
 </div>

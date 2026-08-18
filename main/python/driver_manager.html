@@ -453,7 +453,7 @@ planned to make this as straightforward as using driver-specific packages.</p>
 
 <span class="c1"># Note: You must install the driver shared library (.so, .dylib, .dll)</span>
 <span class="c1"># separately</span>
-<span class="k">with</span> <span class="n">adbc_driver_manager</span><span class="o">.</span><span class="n">AdbcDatabase</span><span class="p">(</span><span class="n">driver</span><span class="o">=</span><span class="s2">&quot;PATH/TO/libadbc_driver_sqlite.so&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">db</span><span class="p">:</span>
+<span class="k">with</span> <span class="n">adbc_driver_manager</span><span class="o">.</span><span class="n">AdbcDatabase</span><span class="p">(</span><span class="n">driver</span><span class="o">=</span><span class="s2">"PATH/TO/libadbc_driver_sqlite.so"</span><span class="p">)</span> <span class="k">as</span> <span class="n">db</span><span class="p">:</span>
     <span class="k">with</span> <span class="n">adbc_driver_manager</span><span class="o">.</span><span class="n">AdbcConnection</span><span class="p">(</span><span class="n">db</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
         <span class="k">pass</span>
 </pre></div>
@@ -470,7 +470,7 @@ low-level API.</p>
 
 <span class="c1"># Note: You must install the driver shared library (.so, .dylib, .dll)</span>
 <span class="c1"># separately</span>
-<span class="k">with</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">driver</span><span class="o">=</span><span class="s2">&quot;PATH/TO/libadbc_driver_sqlite.so&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
+<span class="k">with</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">driver</span><span class="o">=</span><span class="s2">"PATH/TO/libadbc_driver_sqlite.so"</span><span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
    <span class="k">pass</span>
 </pre></div>
 </div>

@@ -442,7 +442,7 @@ style of the DBAPI standard.</p>
 <section id="creating-a-connection">
 <h3>Creating a Connection<a class="headerlink" href="#creating-a-connection" title="Link to this heading">¶</a></h3>
 <div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">dbapi</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;sqlite&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">"sqlite"</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>In application code, the connection must be closed after usage or
@@ -461,32 +461,32 @@ may leak.  Cursors can be used as context managers to accomplish this.</p>
 <h3>Executing a Query<a class="headerlink" href="#executing-a-query" title="Link to this heading">¶</a></h3>
 <p>We can execute a query and get the results via the normal,
 row-oriented DBAPI interface:</p>
-<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT 1, 2.0, &#39;Hello, world!&#39;&quot;</span><span class="p">)</span>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"SELECT 1, 2.0, 'Hello, world!'"</span><span class="p">)</span>
 <span class="go">&lt;adbc_driver_manager.dbapi.Cursor ...&gt;</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span>
-<span class="go">(1, 2.0, &#39;Hello, world!&#39;)</span>
+<span class="go">(1, 2.0, 'Hello, world!')</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span>
 </pre></div>
 </div>
 <p>We can also get the results as Arrow data via a non-standard method:</p>
-<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT 1, 2.0, &#39;Hello, world!&#39;&quot;</span><span class="p">)</span>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"SELECT 1, 2.0, 'Hello, world!'"</span><span class="p">)</span>
 <span class="go">&lt;adbc_driver_manager.dbapi.Cursor ...&gt;</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">fetch_arrow_table</span><span class="p">()</span>
 <span class="go">pyarrow.Table</span>
 <span class="go">1: int64</span>
 <span class="go">2.0: double</span>
-<span class="go">&#39;Hello, world!&#39;: string</span>
+<span class="go">'Hello, world!': string</span>
 <span class="go">----</span>
 <span class="go">1: [[1]]</span>
 <span class="go">2.0: [[2]]</span>
-<span class="go">&#39;Hello, world!&#39;: [[&quot;Hello, world!&quot;]]</span>
+<span class="go">'Hello, world!': [["Hello, world!"]]</span>
 </pre></div>
 </div>
 </section>
 <section id="parameterized-queries">
 <h3>Parameterized Queries<a class="headerlink" href="#parameterized-queries" title="Link to this heading">¶</a></h3>
 <p>We can bind parameters in our queries:</p>
-<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT ? + 1 AS the_answer&quot;</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="p">(</span><span class="mi">41</span><span class="p">,))</span>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"SELECT ? + 1 AS the_answer"</span><span class="p">,</span> <span class="n">parameters</span><span class="o">=</span><span class="p">(</span><span class="mi">41</span><span class="p">,))</span>
 <span class="go">&lt;adbc_driver_manager.dbapi.Cursor ...&gt;</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">fetch_arrow_table</span><span class="p">()</span>
 <span class="go">pyarrow.Table</span>
@@ -502,20 +502,20 @@ row-oriented DBAPI interface:</p>
 APIs also offer additional methods.  For example, we can insert a
 table of Arrow data into a new database table:</p>
 <div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">table</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">table</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="s2">&quot;a&quot;</span><span class="p">,</span> <span class="kc">None</span><span class="p">]],</span> <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ints&quot;</span><span class="p">,</span> <span class="s2">&quot;strs&quot;</span><span class="p">])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;sample&quot;</span><span class="p">,</span> <span class="n">table</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">table</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">table</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">],</span> <span class="p">[</span><span class="s2">"a"</span><span class="p">,</span> <span class="kc">None</span><span class="p">]],</span> <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s2">"ints"</span><span class="p">,</span> <span class="s2">"strs"</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">"sample"</span><span class="p">,</span> <span class="n">table</span><span class="p">)</span>
 <span class="go">2</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(DISTINCT ints) FROM sample&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"SELECT COUNT(DISTINCT ints) FROM sample"</span><span class="p">)</span>
 <span class="go">&lt;adbc_driver_manager.dbapi.Cursor ...&gt;</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
 <span class="go">[(2,)]</span>
 </pre></div>
 </div>
 <p>We can also append to an existing table:</p>
-<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">table</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">table</span><span class="p">([[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;c&quot;</span><span class="p">]],</span> <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;ints&quot;</span><span class="p">,</span> <span class="s2">&quot;strs&quot;</span><span class="p">])</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">&quot;sample&quot;</span><span class="p">,</span> <span class="n">table</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">&quot;append&quot;</span><span class="p">)</span>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">table</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">table</span><span class="p">([[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="s2">"c"</span><span class="p">]],</span> <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s2">"ints"</span><span class="p">,</span> <span class="s2">"strs"</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">adbc_ingest</span><span class="p">(</span><span class="s2">"sample"</span><span class="p">,</span> <span class="n">table</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="s2">"append"</span><span class="p">)</span>
 <span class="go">2</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT COUNT(DISTINCT ints) FROM sample&quot;</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"SELECT COUNT(DISTINCT ints) FROM sample"</span><span class="p">)</span>
 <span class="go">&lt;adbc_driver_manager.dbapi.Cursor ...&gt;</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">cursor</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
 <span class="go">[(3,)]</span>
@@ -526,10 +526,10 @@ table of Arrow data into a new database table:</p>
 <h3>Getting Database/Driver Metadata<a class="headerlink" href="#getting-database-driver-metadata" title="Link to this heading">¶</a></h3>
 <p>We can get information about the driver and the database using another
 extension method, this time on the connection itself:</p>
-<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">conn</span><span class="o">.</span><span class="n">adbc_get_info</span><span class="p">()[</span><span class="s2">&quot;vendor_name&quot;</span><span class="p">]</span>
-<span class="go">&#39;SQLite&#39;</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">conn</span><span class="o">.</span><span class="n">adbc_get_info</span><span class="p">()[</span><span class="s2">&quot;driver_name&quot;</span><span class="p">]</span>
-<span class="go">&#39;ADBC SQLite Driver&#39;</span>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">conn</span><span class="o">.</span><span class="n">adbc_get_info</span><span class="p">()[</span><span class="s2">"vendor_name"</span><span class="p">]</span>
+<span class="go">'SQLite'</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">conn</span><span class="o">.</span><span class="n">adbc_get_info</span><span class="p">()[</span><span class="s2">"driver_name"</span><span class="p">]</span>
+<span class="go">'ADBC SQLite Driver'</span>
 </pre></div>
 </div>
 <p>We can also query for tables and columns in the database.  This gives
@@ -537,16 +537,16 @@ a nested structure describing all the catalogs, schemas, tables, and
 columns:</p>
 <div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">info</span> <span class="o">=</span> <span class="n">conn</span><span class="o">.</span><span class="n">adbc_get_objects</span><span class="p">()</span><span class="o">.</span><span class="n">read_all</span><span class="p">()</span><span class="o">.</span><span class="n">to_pylist</span><span class="p">()</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">main_catalog</span> <span class="o">=</span> <span class="n">info</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">schema</span> <span class="o">=</span> <span class="n">main_catalog</span><span class="p">[</span><span class="s2">&quot;catalog_db_schemas&quot;</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">tables</span> <span class="o">=</span> <span class="n">schema</span><span class="p">[</span><span class="s2">&quot;db_schema_tables&quot;</span><span class="p">]</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="n">tables</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;table_name&quot;</span><span class="p">]</span>
-<span class="go">&#39;sample&#39;</span>
-<span class="gp">&gt;&gt;&gt; </span><span class="p">[</span><span class="n">column</span><span class="p">[</span><span class="s2">&quot;column_name&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">tables</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">&quot;table_columns&quot;</span><span class="p">]]</span>
-<span class="go">[&#39;ints&#39;, &#39;strs&#39;]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">schema</span> <span class="o">=</span> <span class="n">main_catalog</span><span class="p">[</span><span class="s2">"catalog_db_schemas"</span><span class="p">][</span><span class="mi">0</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tables</span> <span class="o">=</span> <span class="n">schema</span><span class="p">[</span><span class="s2">"db_schema_tables"</span><span class="p">]</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">tables</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">"table_name"</span><span class="p">]</span>
+<span class="go">'sample'</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="p">[</span><span class="n">column</span><span class="p">[</span><span class="s2">"column_name"</span><span class="p">]</span> <span class="k">for</span> <span class="n">column</span> <span class="ow">in</span> <span class="n">tables</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="s2">"table_columns"</span><span class="p">]]</span>
+<span class="go">['ints', 'strs']</span>
 </pre></div>
 </div>
 <p>We can get the Arrow schema of a table:</p>
-<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">conn</span><span class="o">.</span><span class="n">adbc_get_table_schema</span><span class="p">(</span><span class="s2">&quot;sample&quot;</span><span class="p">)</span>
+<div class="highlight-pycon notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">conn</span><span class="o">.</span><span class="n">adbc_get_table_schema</span><span class="p">(</span><span class="s2">"sample"</span><span class="p">)</span>
 <span class="go">ints: int64</span>
 <span class="go">strs: string</span>
 </pre></div>

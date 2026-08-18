@@ -438,13 +438,13 @@ can use our configuration to run both services:</p>
 <span class="linenos">23</span>
 <span class="linenos">24</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">dbapi</span>
 <span class="linenos">25</span>
-<span class="linenos">26</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_SQLITE_FLIGHTSQL_URI&quot;</span><span class="p">]</span>
-<span class="linenos">27</span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;flightsql&quot;</span><span class="p">,</span> <span class="n">uri</span><span class="p">)</span>
+<span class="linenos">26</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"ADBC_SQLITE_FLIGHTSQL_URI"</span><span class="p">]</span>
+<span class="linenos">27</span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">"flightsql"</span><span class="p">,</span> <span class="n">uri</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>We can then execute a simple query.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">31</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
-<span class="linenos">32</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT 1&quot;</span><span class="p">)</span>
+<span class="linenos">32</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"SELECT 1"</span><span class="p">)</span>
 <span class="linenos">33</span>
 <span class="linenos">34</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span>
 <span class="linenos">35</span>
@@ -462,11 +462,11 @@ service with authentication, provide the options at connection time.</p>
 <span class="linenos">27</span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_manager</span>
 <span class="linenos">28</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">dbapi</span>
 <span class="linenos">29</span>
-<span class="linenos">30</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_DREMIO_FLIGHTSQL_URI&quot;</span><span class="p">]</span>
-<span class="linenos">31</span><span class="n">username</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_DREMIO_FLIGHTSQL_USER&quot;</span><span class="p">]</span>
-<span class="linenos">32</span><span class="n">password</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_DREMIO_FLIGHTSQL_PASS&quot;</span><span class="p">]</span>
+<span class="linenos">30</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"ADBC_DREMIO_FLIGHTSQL_URI"</span><span class="p">]</span>
+<span class="linenos">31</span><span class="n">username</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"ADBC_DREMIO_FLIGHTSQL_USER"</span><span class="p">]</span>
+<span class="linenos">32</span><span class="n">password</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"ADBC_DREMIO_FLIGHTSQL_PASS"</span><span class="p">]</span>
 <span class="linenos">33</span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
-<span class="linenos">34</span>    <span class="s2">&quot;flightsql&quot;</span><span class="p">,</span>
+<span class="linenos">34</span>    <span class="s2">"flightsql"</span><span class="p">,</span>
 <span class="linenos">35</span>    <span class="n">uri</span><span class="p">,</span>
 <span class="linenos">36</span>    <span class="n">db_kwargs</span><span class="o">=</span><span class="p">{</span>
 <span class="linenos">37</span>        <span class="n">adbc_driver_manager</span><span class="o">.</span><span class="n">DatabaseOptions</span><span class="o">.</span><span class="n">USERNAME</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="n">username</span><span class="p">,</span>
@@ -477,7 +477,7 @@ service with authentication, provide the options at connection time.</p>
 </div>
 <p>We can then execute a simple query.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">44</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
-<span class="linenos">45</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT 1&quot;</span><span class="p">)</span>
+<span class="linenos">45</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"SELECT 1"</span><span class="p">)</span>
 <span class="linenos">46</span>
 <span class="linenos">47</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span>
 <span class="linenos">48</span>
@@ -494,21 +494,21 @@ service with authentication, provide the options at connection time.</p>
 <span class="linenos">24</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_flightsql</span><span class="w"> </span><span class="kn">import</span> <span class="n">ConnectionOptions</span><span class="p">,</span> <span class="n">DatabaseOptions</span>
 <span class="linenos">25</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">dbapi</span>
 <span class="linenos">26</span>
-<span class="linenos">27</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_SQLITE_FLIGHTSQL_URI&quot;</span><span class="p">]</span>
+<span class="linenos">27</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"ADBC_SQLITE_FLIGHTSQL_URI"</span><span class="p">]</span>
 </pre></div>
 </div>
 <p>We can enable cookie support, which some server implementations require.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">29</span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
-<span class="linenos">30</span>    <span class="s2">&quot;flightsql&quot;</span><span class="p">,</span>
+<span class="linenos">30</span>    <span class="s2">"flightsql"</span><span class="p">,</span>
 <span class="linenos">31</span>    <span class="n">uri</span><span class="p">,</span>
-<span class="linenos">32</span>    <span class="n">db_kwargs</span><span class="o">=</span><span class="p">{</span><span class="n">DatabaseOptions</span><span class="o">.</span><span class="n">WITH_COOKIE_MIDDLEWARE</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="s2">&quot;true&quot;</span><span class="p">},</span>
+<span class="linenos">32</span>    <span class="n">db_kwargs</span><span class="o">=</span><span class="p">{</span><span class="n">DatabaseOptions</span><span class="o">.</span><span class="n">WITH_COOKIE_MIDDLEWARE</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="s2">"true"</span><span class="p">},</span>
 <span class="linenos">33</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Other options are set on the connection or statement.</p>
 <p>For example, we can add a custom header to all outgoing requests.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">38</span><span class="n">custom_header</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">ConnectionOptions</span><span class="o">.</span><span class="n">RPC_CALL_HEADER_PREFIX</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">x-custom-header&quot;</span>
-<span class="linenos">39</span><span class="n">conn</span><span class="o">.</span><span class="n">adbc_connection</span><span class="o">.</span><span class="n">set_options</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="n">custom_header</span><span class="p">:</span> <span class="s2">&quot;value&quot;</span><span class="p">})</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">38</span><span class="n">custom_header</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">"</span><span class="si">{</span><span class="n">ConnectionOptions</span><span class="o">.</span><span class="n">RPC_CALL_HEADER_PREFIX</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s2">x-custom-header"</span>
+<span class="linenos">39</span><span class="n">conn</span><span class="o">.</span><span class="n">adbc_connection</span><span class="o">.</span><span class="n">set_options</span><span class="p">(</span><span class="o">**</span><span class="p">{</span><span class="n">custom_header</span><span class="p">:</span> <span class="s2">"value"</span><span class="p">})</span>
 </pre></div>
 </div>
 <p>We can also set timeouts.  These are in floating-point seconds.</p>
@@ -523,7 +523,7 @@ service with authentication, provide the options at connection time.</p>
 </div>
 <p>These options will apply to all cursors we create.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">52</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
-<span class="linenos">53</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT 1&quot;</span><span class="p">)</span>
+<span class="linenos">53</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"SELECT 1"</span><span class="p">)</span>
 <span class="linenos">54</span>
 <span class="linenos">55</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">1</span><span class="p">,)</span>
 <span class="linenos">56</span>
@@ -545,24 +545,24 @@ messages.  You might see an error like this if those limits are exceeded:</p>
 <span class="linenos">29</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_flightsql</span><span class="w"> </span><span class="kn">import</span> <span class="n">DatabaseOptions</span>
 <span class="linenos">30</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">dbapi</span>
 <span class="linenos">31</span>
-<span class="linenos">32</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_SQLITE_FLIGHTSQL_URI&quot;</span><span class="p">]</span>
+<span class="linenos">32</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"ADBC_SQLITE_FLIGHTSQL_URI"</span><span class="p">]</span>
 </pre></div>
 </div>
 <p>This query generates about 16 MiB per batch, which will trip the default
 limit.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">37</span><span class="n">query</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">37</span><span class="n">query</span> <span class="o">=</span> <span class="s2">"""</span>
 <span class="linenos">38</span><span class="s2">WITH RECURSIVE generate_series(value) AS (</span>
 <span class="linenos">39</span><span class="s2">  SELECT 1</span>
 <span class="linenos">40</span><span class="s2">  UNION ALL</span>
 <span class="linenos">41</span><span class="s2">  SELECT value + 1 FROM generate_series</span>
 <span class="linenos">42</span><span class="s2">   WHERE value + 1 &lt;= 2048</span>
 <span class="linenos">43</span><span class="s2">)</span>
-<span class="linenos">44</span><span class="s2">SELECT printf(&#39;</span><span class="si">%.*c</span><span class="s2">&#39;, 16384, &#39;x&#39;) FROM generate_series</span>
-<span class="linenos">45</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="linenos">44</span><span class="s2">SELECT printf('</span><span class="si">%.*c</span><span class="s2">', 16384, 'x') FROM generate_series</span>
+<span class="linenos">45</span><span class="s2">"""</span>
 </pre></div>
 </div>
 <p>When we execute the query, we’ll get an error.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">49</span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;flightsql&quot;</span><span class="p">,</span> <span class="n">uri</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">49</span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">"flightsql"</span><span class="p">,</span> <span class="n">uri</span><span class="p">)</span>
 <span class="linenos">50</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">51</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
 <span class="linenos">52</span>
@@ -572,16 +572,16 @@ limit.</p>
 <span class="linenos">56</span>        <span class="c1"># This exception is expected.</span>
 <span class="linenos">57</span>        <span class="k">pass</span>
 <span class="linenos">58</span>    <span class="k">else</span><span class="p">:</span>
-<span class="linenos">59</span>        <span class="k">assert</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">&quot;Did not raise expected exception&quot;</span>
+<span class="linenos">59</span>        <span class="k">assert</span> <span class="kc">False</span><span class="p">,</span> <span class="s2">"Did not raise expected exception"</span>
 <span class="linenos">60</span>
 <span class="linenos">61</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 </pre></div>
 </div>
 <p>We can instead change the limit when connecting.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">65</span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
-<span class="linenos">66</span>    <span class="s2">&quot;flightsql&quot;</span><span class="p">,</span>
+<span class="linenos">66</span>    <span class="s2">"flightsql"</span><span class="p">,</span>
 <span class="linenos">67</span>    <span class="n">uri</span><span class="p">,</span>
-<span class="linenos">68</span>    <span class="n">db_kwargs</span><span class="o">=</span><span class="p">{</span><span class="n">DatabaseOptions</span><span class="o">.</span><span class="n">WITH_MAX_MSG_SIZE</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="s2">&quot;2147483647&quot;</span><span class="p">},</span>
+<span class="linenos">68</span>    <span class="n">db_kwargs</span><span class="o">=</span><span class="p">{</span><span class="n">DatabaseOptions</span><span class="o">.</span><span class="n">WITH_MAX_MSG_SIZE</span><span class="o">.</span><span class="n">value</span><span class="p">:</span> <span class="s2">"2147483647"</span><span class="p">},</span>
 <span class="linenos">69</span><span class="p">)</span>
 <span class="linenos">70</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
 <span class="linenos">71</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">query</span><span class="p">)</span>
@@ -603,10 +603,10 @@ suitable for machine-to-machine authentication without user interaction.</p>
 <span class="linenos">26</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_flightsql</span><span class="w"> </span><span class="kn">import</span> <span class="n">DatabaseOptions</span><span class="p">,</span> <span class="n">OAuthFlowType</span>
 <span class="linenos">27</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">dbapi</span>
 <span class="linenos">28</span>
-<span class="linenos">29</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_TEST_FLIGHTSQL_URI&quot;</span><span class="p">]</span>
-<span class="linenos">30</span><span class="n">token_uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_OAUTH_TOKEN_URI&quot;</span><span class="p">]</span>
-<span class="linenos">31</span><span class="n">client_id</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_OAUTH_CLIENT_ID&quot;</span><span class="p">]</span>
-<span class="linenos">32</span><span class="n">client_secret</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_OAUTH_CLIENT_SECRET&quot;</span><span class="p">]</span>
+<span class="linenos">29</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"ADBC_TEST_FLIGHTSQL_URI"</span><span class="p">]</span>
+<span class="linenos">30</span><span class="n">token_uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"ADBC_OAUTH_TOKEN_URI"</span><span class="p">]</span>
+<span class="linenos">31</span><span class="n">client_id</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"ADBC_OAUTH_CLIENT_ID"</span><span class="p">]</span>
+<span class="linenos">32</span><span class="n">client_secret</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"ADBC_OAUTH_CLIENT_SECRET"</span><span class="p">]</span>
 </pre></div>
 </div>
 <p>Connect using OAuth 2.0 Client Credentials flow.
@@ -619,21 +619,21 @@ The driver will automatically obtain and refresh access tokens.</p>
 </pre></div>
 </div>
 <p>Optionally, request specific scopes</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">43</span>    <span class="c1"># DatabaseOptions.OAUTH_SCOPE.value: &quot;dremio.all&quot;,</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">43</span>    <span class="c1"># DatabaseOptions.OAUTH_SCOPE.value: "dremio.all",</span>
 <span class="linenos">44</span><span class="p">}</span>
 </pre></div>
 </div>
 <p>For testing with self-signed certificates, skip TLS verification.
 In production, you should provide proper TLS certificates.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">48</span><span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ADBC_OAUTH_SKIP_VERIFY&quot;</span><span class="p">,</span> <span class="s2">&quot;true&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;true&quot;</span><span class="p">):</span>
-<span class="linenos">49</span>    <span class="n">db_kwargs</span><span class="p">[</span><span class="n">DatabaseOptions</span><span class="o">.</span><span class="n">TLS_SKIP_VERIFY</span><span class="o">.</span><span class="n">value</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;true&quot;</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">48</span><span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ADBC_OAUTH_SKIP_VERIFY"</span><span class="p">,</span> <span class="s2">"true"</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"1"</span><span class="p">,</span> <span class="s2">"true"</span><span class="p">):</span>
+<span class="linenos">49</span>    <span class="n">db_kwargs</span><span class="p">[</span><span class="n">DatabaseOptions</span><span class="o">.</span><span class="n">TLS_SKIP_VERIFY</span><span class="o">.</span><span class="n">value</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"true"</span>
 <span class="linenos">50</span>
-<span class="linenos">51</span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;flightsql&quot;</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">db_kwargs</span><span class="o">=</span><span class="n">db_kwargs</span><span class="p">)</span>
+<span class="linenos">51</span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">"flightsql"</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">db_kwargs</span><span class="o">=</span><span class="n">db_kwargs</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>We can then execute queries as usual.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">55</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
-<span class="linenos">56</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT 1&quot;</span><span class="p">)</span>
+<span class="linenos">56</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"SELECT 1"</span><span class="p">)</span>
 <span class="linenos">57</span>
 <span class="linenos">58</span>    <span class="n">result</span> <span class="o">=</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span>
 <span class="linenos">59</span>    <span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>
@@ -653,19 +653,19 @@ for a new token that can be used to access the Flight SQL service.</p>
 <span class="linenos">26</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_flightsql</span><span class="w"> </span><span class="kn">import</span> <span class="n">DatabaseOptions</span><span class="p">,</span> <span class="n">OAuthFlowType</span><span class="p">,</span> <span class="n">OAuthTokenType</span>
 <span class="linenos">27</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">dbapi</span>
 <span class="linenos">28</span>
-<span class="linenos">29</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_TEST_FLIGHTSQL_URI&quot;</span><span class="p">]</span>
-<span class="linenos">30</span><span class="n">token_uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_OAUTH_TOKEN_URI&quot;</span><span class="p">]</span>
+<span class="linenos">29</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"ADBC_TEST_FLIGHTSQL_URI"</span><span class="p">]</span>
+<span class="linenos">30</span><span class="n">token_uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"ADBC_OAUTH_TOKEN_URI"</span><span class="p">]</span>
 </pre></div>
 </div>
 <p>This is typically a JWT or other token from your identity provider</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">32</span><span class="n">subject_token</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;ADBC_OAUTH_SUBJECT_TOKEN&quot;</span><span class="p">]</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">32</span><span class="n">subject_token</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"ADBC_OAUTH_SUBJECT_TOKEN"</span><span class="p">]</span>
 </pre></div>
 </div>
 <p>For testing with self-signed certificates, skip TLS verification.
 In production, you should provide proper TLS certificates.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">36</span><span class="n">db_kwargs</span> <span class="o">=</span> <span class="p">{}</span>
-<span class="linenos">37</span><span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;ADBC_OAUTH_SKIP_VERIFY&quot;</span><span class="p">,</span> <span class="s2">&quot;true&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;true&quot;</span><span class="p">):</span>
-<span class="linenos">38</span>    <span class="n">db_kwargs</span><span class="p">[</span><span class="n">DatabaseOptions</span><span class="o">.</span><span class="n">TLS_SKIP_VERIFY</span><span class="o">.</span><span class="n">value</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;true&quot;</span>
+<span class="linenos">37</span><span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">"ADBC_OAUTH_SKIP_VERIFY"</span><span class="p">,</span> <span class="s2">"true"</span><span class="p">)</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">"1"</span><span class="p">,</span> <span class="s2">"true"</span><span class="p">):</span>
+<span class="linenos">38</span>    <span class="n">db_kwargs</span><span class="p">[</span><span class="n">DatabaseOptions</span><span class="o">.</span><span class="n">TLS_SKIP_VERIFY</span><span class="o">.</span><span class="n">value</span><span class="p">]</span> <span class="o">=</span> <span class="s2">"true"</span>
 </pre></div>
 </div>
 <p>Connect using OAuth 2.0 Token Exchange flow.
@@ -689,16 +689,16 @@ The driver will exchange the subject token for an access token.</p>
 </pre></div>
 </div>
 <p>Optionally, specify the intended audience</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">56</span>        <span class="c1"># DatabaseOptions.OAUTH_EXCHANGE_AUD.value: &quot;my-service&quot;,</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">56</span>        <span class="c1"># DatabaseOptions.OAUTH_EXCHANGE_AUD.value: "my-service",</span>
 <span class="linenos">57</span>    <span class="p">}</span>
 <span class="linenos">58</span><span class="p">)</span>
 <span class="linenos">59</span>
-<span class="linenos">60</span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">&quot;flightsql&quot;</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">db_kwargs</span><span class="o">=</span><span class="n">db_kwargs</span><span class="p">)</span>
+<span class="linenos">60</span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">"flightsql"</span><span class="p">,</span> <span class="n">uri</span><span class="p">,</span> <span class="n">db_kwargs</span><span class="o">=</span><span class="n">db_kwargs</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>We can then execute queries as usual.</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">64</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
-<span class="linenos">65</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">&quot;SELECT 1&quot;</span><span class="p">)</span>
+<span class="linenos">65</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"SELECT 1"</span><span class="p">)</span>
 <span class="linenos">66</span>
 <span class="linenos">67</span>    <span class="n">result</span> <span class="o">=</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span>
 <span class="linenos">68</span>    <span class="nb">print</span><span class="p">(</span><span class="n">result</span><span class="p">)</span>

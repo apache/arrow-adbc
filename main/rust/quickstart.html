@@ -456,30 +456,30 @@ searches for a driver manifest (e.g. <code class="docutils literal notranslate">
 <span class="k">use</span><span class="w"> </span><span class="n">adbc_driver_manager</span><span class="p">::</span><span class="n">ManagedDriver</span><span class="p">;</span>
 
 <span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ManagedDriver</span><span class="p">::</span><span class="n">load_from_name</span><span class="p">(</span>
-<span class="w">    </span><span class="s">&quot;sqlite&quot;</span><span class="p">,</span>
+<span class="w">    </span><span class="s">"sqlite"</span><span class="p">,</span>
 <span class="w">    </span><span class="nb">None</span><span class="p">,</span>
 <span class="w">    </span><span class="n">AdbcVersion</span><span class="p">::</span><span class="n">default</span><span class="p">(),</span>
 <span class="w">    </span><span class="n">LOAD_FLAG_DEFAULT</span><span class="p">,</span>
 <span class="w">    </span><span class="nb">None</span><span class="p">,</span>
 <span class="p">)</span>
-<span class="p">.</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to load driver&quot;</span><span class="p">);</span>
-<span class="kd">let</span><span class="w"> </span><span class="n">db</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">driver</span><span class="p">.</span><span class="n">new_database</span><span class="p">().</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to create database handle&quot;</span><span class="p">);</span>
-<span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">conn</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">db</span><span class="p">.</span><span class="n">new_connection</span><span class="p">().</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to create connection&quot;</span><span class="p">);</span>
+<span class="p">.</span><span class="n">expect</span><span class="p">(</span><span class="s">"Failed to load driver"</span><span class="p">);</span>
+<span class="kd">let</span><span class="w"> </span><span class="n">db</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">driver</span><span class="p">.</span><span class="n">new_database</span><span class="p">().</span><span class="n">expect</span><span class="p">(</span><span class="s">"Failed to create database handle"</span><span class="p">);</span>
+<span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">conn</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">db</span><span class="p">.</span><span class="n">new_connection</span><span class="p">().</span><span class="n">expect</span><span class="p">(</span><span class="s">"Failed to create connection"</span><span class="p">);</span>
 </pre></div>
 </div>
 </section>
 <section id="running-queries">
 <h2>Running Queries<a class="headerlink" href="#running-queries" title="Link to this heading">¶</a></h2>
 <p>To run queries, create a statement and set a query:</p>
-<div class="highlight-rust notranslate"><div class="highlight"><pre><span></span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">stmt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">conn</span><span class="p">.</span><span class="n">new_statement</span><span class="p">().</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to create statement&quot;</span><span class="p">);</span>
-<span class="n">stmt</span><span class="p">.</span><span class="n">set_sql_query</span><span class="p">(</span><span class="s">&quot;SELECT 1&quot;</span><span class="p">).</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to set SQL query&quot;</span><span class="p">);</span>
+<div class="highlight-rust notranslate"><div class="highlight"><pre><span></span><span class="kd">let</span><span class="w"> </span><span class="k">mut</span><span class="w"> </span><span class="n">stmt</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">conn</span><span class="p">.</span><span class="n">new_statement</span><span class="p">().</span><span class="n">expect</span><span class="p">(</span><span class="s">"Failed to create statement"</span><span class="p">);</span>
+<span class="n">stmt</span><span class="p">.</span><span class="n">set_sql_query</span><span class="p">(</span><span class="s">"SELECT 1"</span><span class="p">).</span><span class="n">expect</span><span class="p">(</span><span class="s">"Failed to set SQL query"</span><span class="p">);</span>
 </pre></div>
 </div>
 <p>Execute the query to get an Arrow <code class="docutils literal notranslate"><span class="pre">RecordBatchReader</span></code>:</p>
-<div class="highlight-rust notranslate"><div class="highlight"><pre><span></span><span class="kd">let</span><span class="w"> </span><span class="n">reader</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">stmt</span><span class="p">.</span><span class="n">execute</span><span class="p">().</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to execute statement&quot;</span><span class="p">);</span>
+<div class="highlight-rust notranslate"><div class="highlight"><pre><span></span><span class="kd">let</span><span class="w"> </span><span class="n">reader</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">stmt</span><span class="p">.</span><span class="n">execute</span><span class="p">().</span><span class="n">expect</span><span class="p">(</span><span class="s">"Failed to execute statement"</span><span class="p">);</span>
 <span class="k">for</span><span class="w"> </span><span class="n">batch</span><span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="n">reader</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">batch</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">batch</span><span class="p">.</span><span class="n">expect</span><span class="p">(</span><span class="s">&quot;Failed to read batch&quot;</span><span class="p">);</span>
-<span class="w">    </span><span class="fm">println!</span><span class="p">(</span><span class="s">&quot;{:?}&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">batch</span><span class="p">);</span>
+<span class="w">    </span><span class="kd">let</span><span class="w"> </span><span class="n">batch</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">batch</span><span class="p">.</span><span class="n">expect</span><span class="p">(</span><span class="s">"Failed to read batch"</span><span class="p">);</span>
+<span class="w">    </span><span class="fm">println!</span><span class="p">(</span><span class="s">"{:?}"</span><span class="p">,</span><span class="w"> </span><span class="n">batch</span><span class="p">);</span>
 <span class="p">}</span>
 </pre></div>
 </div>
