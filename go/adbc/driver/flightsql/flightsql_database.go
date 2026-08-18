@@ -379,7 +379,10 @@ func (d *databaseImpl) Close() (err error) {
 
 	span.AddEvent("closing", trace.WithAttributes(attribute.String("target", d.uri.String())))
 	return closeTracing(context.Background(), &d.DatabaseImplBase, func(flushErr error) {
-		internal.EndSpanWithStartTime(span, &flushErr, &startTime)
+		internal.NewEndSpanHelper(span).
+			WithError(flushErr).
+			WithStartTime(startTime).
+			EndSpan()
 	})
 }
 
@@ -542,15 +545,28 @@ func closeCachedFlightClient(d *databaseImpl, location, client interface{}, reas
 			attribute.String("flight.location", fmt.Sprint(location)),
 			attribute.String("flight.cache.reason", reason),
 		))
-	defer internal.EndSpanWithStartTime(span, &err, &startTime)
+	defer func() {
+		internal.NewEndSpanHelper(span).
+			WithError(err).
+			WithStartTime(startTime).
+			EndSpan()
+	}()
 
 	err = client.(*flightsql.Client).Close()
 }
 
 func (d *databaseImpl) Open(ctx context.Context) (_ adbc.Connection, err error) {
-	startTime := time.Now()
-	ctx, span := internal.StartSpan(ctx, "FlightSQL.Database.Open", d, trace.WithAttributes(traceHeaderAttrsWithPrefix(d.hdrs, traceRequestMetadataPrefix)...))
-	defer internal.EndSpanWithStartTime(span, &err, &startTime)
+	ctx, span := internal.StartSpan(
+		ctx,
+		"FlightSQLDatabase.Open",
+		d,
+		trace.WithAttributes(traceHeaderAttrsWithPrefix(d.hdrs, traceRequestMetadataPrefix)...),
+	)
+	defer func() {
+		internal.NewEndSpanHelper(span).
+			WithError(err).
+			EndSpan()
+	}()
 
 	authMiddle := &bearerAuthMiddleware{
 		hdrs: d.hdrs.Copy(),
@@ -570,7 +586,12 @@ func (d *databaseImpl) Open(ctx context.Context) (_ adbc.Connection, err error) 
 		LoaderFunc(func(loc interface{}) (_ interface{}, err error) {
 			startTime := time.Now()
 			ctx, cacheSpan := internal.StartSpan(context.Background(), "FlightSQL.Database.LoadCachedClient", d)
-			defer internal.EndSpanWithStartTime(cacheSpan, &err, &startTime)
+			defer func() {
+				internal.NewEndSpanHelper(cacheSpan).
+					WithError(err).
+					WithStartTime(startTime).
+					EndSpan()
+			}()
 
 			uri, ok := loc.(string)
 			if !ok {

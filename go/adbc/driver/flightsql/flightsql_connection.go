@@ -252,11 +252,11 @@ func doGetWithTracer(ctx context.Context, cl *flightsql.Client, endpoint *flight
 	ctx, span := internal.StartSpan(ctx, spanName, tracing)
 	errorRecorded := false
 	defer func() {
-		if errorRecorded {
-			internal.EndSpanWithStartTimeAndRecordedError(span, &err, &startTime)
-			return
-		}
-		internal.EndSpanWithStartTime(span, &err, &startTime)
+		internal.NewEndSpanHelper(span).
+			WithStartTime(startTime).
+			WithError(err).
+			WithRecordedError(errorRecorded).
+			EndSpan()
 	}()
 
 	streamOpts := make([]grpc.CallOption, 0, len(opts))
@@ -735,7 +735,12 @@ func (c *connectionImpl) PrepareDriverInfo(ctx context.Context, infoCodes []adbc
 	startTime := time.Now()
 	const spanName = "FlightSQL.Connection.PrepareDriverInfo"
 	ctx, span := internal.StartSpan(ctx, spanName, c)
-	defer internal.EndSpanWithStartTime(span, &err, &startTime)
+	defer func() {
+		internal.NewEndSpanHelper(span).
+			WithError(err).
+			WithStartTime(startTime).
+			EndSpan()
+	}()
 
 	driverInfo := c.DriverInfo
 
@@ -861,7 +866,12 @@ func (c *connectionImpl) GetObjectsCatalogs(ctx context.Context, catalog *string
 	const spanName = "FlightSQL.Connection.GetObjectsCatalogs"
 	startTime := time.Now()
 	ctx, span := internal.StartSpan(ctx, spanName, c)
-	defer internal.EndSpanWithStartTime(span, &err, &startTime)
+	defer func() {
+		internal.NewEndSpanHelper(span).
+			WithError(err).
+			WithStartTime(startTime).
+			EndSpan()
+	}()
 	var (
 		header, trailer metadata.MD
 		numCatalogs     int64
@@ -910,7 +920,12 @@ func (c *connectionImpl) GetObjectsDbSchemas(ctx context.Context, depth adbc.Obj
 	const spanName = "FlightSQL.Connection.GetObjectsDbSchemas"
 	startTime := time.Now()
 	ctx, span := internal.StartSpan(ctx, spanName, c)
-	defer internal.EndSpanWithStartTime(span, &err, &startTime)
+	defer func() {
+		internal.NewEndSpanHelper(span).
+			WithError(err).
+			WithStartTime(startTime).
+			EndSpan()
+	}()
 	if depth == adbc.ObjectDepthCatalogs {
 		return
 	}
@@ -961,7 +976,12 @@ func (c *connectionImpl) GetObjectsTables(ctx context.Context, depth adbc.Object
 	const spanName = "FlightSQL.Connection.GetObjectsTables"
 	startTime := time.Now()
 	ctx, span := internal.StartSpan(ctx, spanName, c)
-	defer internal.EndSpanWithStartTime(span, &err, &startTime)
+	defer func() {
+		internal.NewEndSpanHelper(span).
+			WithError(err).
+			WithStartTime(startTime).
+			EndSpan()
+	}()
 
 	if depth == adbc.ObjectDepthCatalogs || depth == adbc.ObjectDepthDBSchemas {
 		return
@@ -1053,7 +1073,12 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 	const spanName = "FlightSQL.Connection.GetTableSchema"
 	startTime := time.Now()
 	ctx, span := internal.StartSpan(ctx, spanName, c)
-	defer internal.EndSpanWithStartTime(span, &err, &startTime)
+	defer func() {
+		internal.NewEndSpanHelper(span).
+			WithError(err).
+			WithStartTime(startTime).
+			EndSpan()
+	}()
 
 	opts := &flightsql.GetTablesOpts{
 		Catalog:                catalog,
@@ -1146,7 +1171,12 @@ func (c *connectionImpl) GetTableTypes(ctx context.Context) (reader array.Record
 	const spanName = "FlightSQL.Connection.GetTableTypes"
 	startTime := time.Now()
 	ctx, span := internal.StartSpan(ctx, spanName, c)
-	defer internal.EndSpanWithStartTime(span, &err, &startTime)
+	defer func() {
+		internal.NewEndSpanHelper(span).
+			WithError(err).
+			WithStartTime(startTime).
+			EndSpan()
+	}()
 
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
 	var header, trailer metadata.MD
@@ -1320,7 +1350,12 @@ func (c *connectionImpl) Close() (err error) {
 	const spanName = "FlightSQL.Connection.Close"
 	startTime := time.Now()
 	ctx, span := internal.StartSpan(context.Background(), spanName, c)
-	defer internal.EndSpanWithStartTime(span, &err, &startTime)
+	defer func() {
+		internal.NewEndSpanHelper(span).
+			WithError(err).
+			WithStartTime(startTime).
+			EndSpan()
+	}()
 
 	if c.cl == nil {
 		err = adbc.Error{
@@ -1377,7 +1412,12 @@ func (c *connectionImpl) ReadPartition(ctx context.Context, serializedPartition 
 	const spanName = "FlightSQL.Connection.ReadPartition"
 	startTime := time.Now()
 	ctx, span := internal.StartSpan(ctx, spanName, c)
-	defer internal.EndSpanWithStartTime(span, &err, &startTime)
+	defer func() {
+		internal.NewEndSpanHelper(span).
+			WithError(err).
+			WithStartTime(startTime).
+			EndSpan()
+	}()
 
 	var info flight.FlightInfo
 	if err := proto.Unmarshal(serializedPartition, &info); err != nil {

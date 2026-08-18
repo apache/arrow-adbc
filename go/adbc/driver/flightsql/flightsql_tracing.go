@@ -51,7 +51,7 @@ func captureResponseMetadata(ctx context.Context, value metadata.MD) {
 	}
 	collector.mutex.Lock()
 	collector.value = value.Copy()
-	collector.mutex.Unlock()
+	defer collector.mutex.Unlock()
 }
 
 func responseMetadataFromContext(ctx context.Context) (*responseMetadataCollector, bool) {

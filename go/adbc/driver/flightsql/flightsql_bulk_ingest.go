@@ -112,11 +112,11 @@ func (s *statement) executeIngest(ctx context.Context) (nRows int64, err error) 
 	ctx, span := internal.StartSpan(ctx, "FlightSQL.BulkIngest.Execute", s.cnxn)
 	errorRecorded := false
 	defer func() {
-		if errorRecorded {
-			internal.EndSpanWithStartTimeAndRecordedError(span, &err, &startTime)
-			return
-		}
-		internal.EndSpanWithStartTime(span, &err, &startTime)
+		internal.NewEndSpanHelper(span).
+			WithError(err).
+			WithStartTime(startTime).
+			WithRecordedError(errorRecorded).
+			EndSpan()
 	}()
 
 	if s.streamBind == nil && s.bound == nil {

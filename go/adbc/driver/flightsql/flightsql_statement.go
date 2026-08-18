@@ -488,7 +488,12 @@ func (s *statement) SetSqlQuery(query string) (err error) {
 	const spanName = "FlightSQL.Statement.SetSqlQuery"
 	startTime := time.Now()
 	_, span := internal.StartSpan(context.Background(), spanName, s.cnxn)
-	defer internal.EndSpanWithStartTime(span, &err, &startTime)
+	defer func() {
+		internal.NewEndSpanHelper(span).
+			WithError(err).
+			WithStartTime(startTime).
+			EndSpan()
+	}()
 
 	if s.prepared != nil {
 		if err = s.closePreparedStatement(); err != nil {
@@ -527,7 +532,12 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 	const spanName = "FlightSQL.Statement.ExecuteQuery"
 	startTime := time.Now()
 	ctx, span := internal.StartSpan(ctx, spanName, s.cnxn, trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...))
-	defer internal.EndSpanWithStartTime(span, &err, &startTime)
+	defer func() {
+		internal.NewEndSpanHelper(span).
+			WithError(err).
+			WithStartTime(startTime).
+			EndSpan()
+	}()
 
 	if err = s.clearIncrementalQuery(); err != nil {
 		return nil, -1, err
@@ -541,6 +551,18 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 		}
 		return nil, -1, err
 	}
+
+	ctx, span = internal.StartSpan(
+		ctx,
+		"FlightSQLStatement.ExecuteQuery",
+		s.cnxn,
+		trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...),
+	)
+	defer func() {
+		internal.NewEndSpanHelper(span).
+			WithError(err).
+			EndSpan()
+	}()
 
 	// Handle bulk ingest
 	if s.targetTable != "" {
@@ -600,7 +622,12 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 	const spanName = "FlightSQL.Statement.ExecuteUpdate"
 	startTime := time.Now()
 	ctx, span := internal.StartSpan(ctx, spanName, s.cnxn, trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...))
-	defer internal.EndSpanWithStartTime(span, &err, &startTime)
+	defer func() {
+		internal.NewEndSpanHelper(span).
+			WithError(err).
+			WithStartTime(startTime).
+			EndSpan()
+	}()
 
 	if err = s.clearIncrementalQuery(); err != nil {
 		return -1, err
@@ -614,6 +641,18 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 		}
 		return -1, err
 	}
+
+	ctx, span = internal.StartSpan(
+		ctx,
+		"FlightSQLStatement.ExecuteUpdate",
+		s.cnxn,
+		trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...),
+	)
+	defer func() {
+		internal.NewEndSpanHelper(span).
+			WithError(err).
+			EndSpan()
+	}()
 
 	// Handle bulk ingest
 	if s.targetTable != "" {
@@ -655,10 +694,27 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 // Prepare turns this statement into a prepared statement to be executed
 // multiple times. This invalidates any prior result sets.
 func (s *statement) Prepare(ctx context.Context) (err error) {
-	const spanName = "FlightSQL.Statement.Prepare"
+	ctx, span := internal.StartSpan(
+		ctx,
+		"FlightSQLStatement.Prepare",
+		s.cnxn,
+		trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...),
+	)
+	defer func() {
+		internal.NewEndSpanHelper(span).
+			WithError(err).
+			EndSpan()
+	}()
+
 	startTime := time.Now()
-	ctx, span := internal.StartSpan(ctx, spanName, s.cnxn, trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...))
-	defer internal.EndSpanWithStartTime(span, &err, &startTime)
+	const spanName = "FlightSQL.Statement.Prepare"
+	ctx, span = internal.StartSpan(ctx, spanName, s.cnxn, trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...))
+	defer func() {
+		internal.NewEndSpanHelper(span).
+			WithError(err).
+			WithStartTime(startTime).
+			EndSpan()
+	}()
 
 	span.AddEvent("starting", trace.WithAttributes(s.queryAttrs()...))
 
