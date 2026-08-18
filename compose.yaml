@@ -355,6 +355,129 @@ services:
     ports:
       - "5432:5432"
 
+  cedardb-test:
+    container_name: adbc_cedardb_test
+    image: cedardb/cedardb:v2026-08-13
+    environment:
+      CEDAR_PASSWORD: CedarDB2026!
+    healthcheck:
+      test: ["CMD-SHELL", "PGPASSWORD='CedarDB2026!' pg_isready -U postgres -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    ports:
+      - "5433:5432"
+
+  citus-test:
+    container_name: adbc_citus_test
+    image: citusdata/citus:14.1.0-pg17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5434:5432"
+
+  cockroachdb-test:
+    container_name: adbc_cockroachdb_test
+    image: cockroachdb/cockroach:v26.2.5
+    command: start-single-node --insecure
+    healthcheck:
+      test: ["CMD", "cockroach", "sql", "--insecure", "--host=localhost:26257", "--execute=SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    ports:
+      - "5435:26257"
+
+  cratedb-test:
+    container_name: adbc_cratedb_test
+    image: crate:6.4.2
+    command:
+      - -Cdiscovery.type=single-node
+      - -Cgateway.expected_data_nodes=1
+      - -Cgateway.recover_after_data_nodes=1
+    environment:
+      CRATE_HEAP_SIZE: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "curl --fail --silent --show-error --header 'Content-Type: application/json' --data '{\"stmt\":\"SELECT 1\"}' http://localhost:4200/_sql > /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+    ports:
+      - "5436:5432"
+
+  paradedb-test:
+    container_name: adbc_paradedb_test
+    image: paradedb/paradedb:0.25.3-pg18
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5437:5432"
+
+  timescaledb-test:
+    container_name: adbc_timescaledb_test
+    image: timescale/timescaledb-ha:pg18.4-ts2.29.1-all-oss
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    ports:
+      - "5438:5432"
+
+  yugabytedb-test:
+    container_name: adbc_yugabytedb_test
+    hostname: adbc-yugabytedb-test
+    image: yugabytedb/yugabyte:2026.1.1.0-b91
+    command: >-
+      bin/yugabyted start --background=false
+      --master_flags=reject_writes_when_disk_full=false
+      --tserver_flags=reject_writes_when_disk_full=false
+    healthcheck:
+      test: ["CMD-SHELL", "/home/yugabyte/bin/ysqlsh --host adbc-yugabytedb-test --username yugabyte --dbname yugabyte --command 'SELECT 1' > /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    ports:
+      - "5439:5433"
+
+  alloydb-omni-test:
+    container_name: adbc_alloydb_omni_test
+    image: google/alloydbomni:17.9.0
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    ports:
+      - "5440:5432"
+
   spiceai-test:
     container_name: adbc-spiceai
     build:

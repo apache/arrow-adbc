@@ -92,4 +92,107 @@ class PostgreSQLQuirks(model.DriverQuirks):
         return quirks.split_statement(statement)
 
 
-QUIRKS = [PostgreSQLQuirks()]
+class CedarDBQuirks(PostgreSQLQuirks):
+    vendor_version = re.compile(r"16[0-9]{4}")
+    short_version = "16"
+    setup = model.DriverSetup(
+        database={
+            "uri": model.FromEnv("ADBC_POSTGRESQL_TEST_URI"),
+        },
+        connection={},
+        statement={"adbc.postgresql.use_copy": "false"},
+    )
+
+
+class CitusQuirks(PostgreSQLQuirks):
+    vendor_name = "PostgreSQL"
+    vendor_version = re.compile(r"17[0-9]{4}")
+    short_version = "17"
+
+
+class CockroachDBQuirks(PostgreSQLQuirks):
+    vendor_version = re.compile(r"13[0-9]{4}")
+    short_version = "13"
+    features = PostgreSQLQuirks.features.model_copy(
+        update={"connection_get_table_schema": False}
+    )
+    setup = model.DriverSetup(
+        database={
+            "uri": model.FromEnv("ADBC_POSTGRESQL_TEST_URI"),
+        },
+        connection={},
+        statement={"adbc.postgresql.use_copy": "false"},
+    )
+
+    @property
+    def queries_paths(self) -> tuple[Path]:
+        return (
+            *super().queries_paths,
+            Path(__file__).parent.parent / "queries-cockroachdb",
+        )
+
+
+class CrateDBQuirks(PostgreSQLQuirks):
+    vendor_version = re.compile(r"14[0-9]{4}")
+    short_version = "14"
+    features = PostgreSQLQuirks.features.with_values(
+        connection_get_table_schema=False,
+        current_catalog="crate",
+        current_schema="doc",
+    )
+    setup = model.DriverSetup(
+        database={
+            "uri": model.FromEnv("ADBC_POSTGRESQL_TEST_URI"),
+        },
+        connection={},
+        statement={"adbc.postgresql.use_copy": "false"},
+    )
+
+
+class ParadeDBQuirks(PostgreSQLQuirks):
+    pass
+
+
+class TimescaleDBQuirks(PostgreSQLQuirks):
+    pass
+
+
+class YugabyteDBQuirks(PostgreSQLQuirks):
+    vendor_version = re.compile(r"15[0-9]{4}")
+    short_version = "15"
+    features = PostgreSQLQuirks.features.with_values(current_catalog="yugabyte")
+
+
+class AlloyDBOmniQuirks(PostgreSQLQuirks):
+    vendor_version = re.compile(r"17[0-9]{4}")
+    short_version = "17"
+
+
+VENDORS = (
+    "postgresql",
+    "alloydb-omni",
+    "cedardb",
+    "citus",
+    "cockroachdb",
+    "cratedb",
+    "paradedb",
+    "timescaledb",
+    "yugabytedb",
+)
+
+_QUIRKS = {
+    "postgresql": PostgreSQLQuirks,
+    "alloydb-omni": AlloyDBOmniQuirks,
+    "cedardb": CedarDBQuirks,
+    "citus": CitusQuirks,
+    "cockroachdb": CockroachDBQuirks,
+    "cratedb": CrateDBQuirks,
+    "paradedb": ParadeDBQuirks,
+    "timescaledb": TimescaleDBQuirks,
+    "yugabytedb": YugabyteDBQuirks,
+}
+
+
+def get_quirks(vendor: str) -> PostgreSQLQuirks:
+    """Get the PostgreSQL-compatible quirks for one vendor."""
+    return _QUIRKS[vendor]()
