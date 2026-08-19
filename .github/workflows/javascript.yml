@@ -172,43 +172,21 @@ jobs:
         with:
           name: bindings-${{ matrix.settings.target }}
           path: javascript
-      - name: Setup conda (Windows)
-        # Miniforge does not publish a Windows ARM64 installer, so the ARM64
-        # leg uses micromamba (which ships native arm64 binaries) below.
-        if: runner.os == 'Windows' && runner.arch != 'ARM64'
-        uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5  # v4.0.1
-        with:
-          miniforge-version: latest
       - name: Install C++ dependencies (Windows)
-        if: runner.os == 'Windows' && runner.arch != 'ARM64'
-        run: conda install -c conda-forge --file ci/conda_env_cpp.txt
-      - name: Install C++ dependencies (Windows ARM64)
-        # mamba-org/setup-micromamba is not on the ASF actions allowlist, so
-        # fetch the official micromamba binary directly (pinned + checksummed).
-        # conda-forge's win-arm64 platform does not have cmake, compilers,
-        # libpq, or pkg-config yet, so install just what the SQLite driver
-        # build needs and use the runner's preinstalled MSVC and CMake.
-        # CONDA_PREFIX is exported so the shared "Set driver path (Windows)"
-        # step puts the env's Library\bin (sqlite3.dll) on PATH.
-        if: runner.os == 'Windows' && runner.arch == 'ARM64'
+        # SQLite is the only dependency the test driver build needs, so take
+        # it from the runner's preinstalled vcpkg (present on both the x64 and
+        # arm64 images) rather than conda. The static-md triplet links SQLite
+        # into the driver DLL, so nothing extra has to go on PATH at runtime.
+        if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          $version = "2.8.1-0"
-          $sha256 = "c90eda5e4c88ebd4fb4c857d7c98d7484156fae5419b72c9c652f331ad7aad9f"
-          $exe = "$env:RUNNER_TEMP\micromamba.exe"
-          Invoke-WebRequest -Uri "https://github.com/mamba-org/micromamba-releases/releases/download/$version/micromamba-win-arm64.exe" -OutFile $exe
-          if ((Get-FileHash $exe -Algorithm SHA256).Hash -ne $sha256) { throw "micromamba checksum mismatch" }
-          $prefix = "$env:RUNNER_TEMP\conda-env"
-          & $exe create --yes --prefix $prefix --channel conda-forge libsqlite
-          echo "CONDA_PREFIX=$prefix" >> $env:GITHUB_ENV
-          echo "ADBC_CMAKE_ARGS=-DCMAKE_PREFIX_PATH=$($prefix -replace '\\','/')/Library" >> $env:GITHUB_ENV
+          $triplet = if ($env:PROCESSOR_ARCHITECTURE -eq 'ARM64') { 'arm64-windows-static-md' } else { 'x64-windows-static-md' }
+          & "$env:VCPKG_INSTALLATION_ROOT\vcpkg.exe" install "sqlite3:$triplet"
+          $toolchain = "$env:VCPKG_INSTALLATION_ROOT\scripts\buildsystems\vcpkg.cmake" -replace '\\', '/'
+          echo "ADBC_CMAKE_ARGS=-DCMAKE_TOOLCHAIN_FILE=$toolchain -DVCPKG_TARGET_TRIPLET=$triplet" >> $env:GITHUB_ENV
       - name: Install C++ dependencies (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get install libsqlite3-dev
-      - name: Set cmake args (Windows)
-        if: runner.os == 'Windows' && runner.arch != 'ARM64'
-        shell: pwsh
-        run: echo "ADBC_CMAKE_ARGS=-DCMAKE_PREFIX_PATH=$env:CONDA_PREFIX/Library" >> $env:GITHUB_ENV
       - name: Build Driver
         # We need to build the SQLite driver for tests.
         shell: bash
@@ -223,7 +201,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          echo "PATH=${{ github.workspace }}/javascript/build/bin;$env:CONDA_PREFIX\Library\bin;$env:PATH" >> $env:GITHUB_ENV
+          echo "PATH=${{ github.workspace }}/javascript/build/bin;$env:PATH" >> $env:GITHUB_ENV
           echo "ADBC_DRIVER_MANAGER_TEST_LIB=${{ github.workspace }}/javascript/build/bin/adbc_driver_sqlite.dll" >> $env:GITHUB_ENV
       - name: Run Tests
         working-directory: javascript
