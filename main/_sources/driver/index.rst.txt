@@ -58,7 +58,7 @@ driver in the table below is packaged this way.
    * - `chDB <https://clickhouse.com/docs/chdb/install/adbc>`__
      - ``chdb``
      - Vendor
-     - :iconlink:`fa-brands fa-github|github.com/chdb-io/chdb-core|GitHub repository`
+     - :iconlink:`fa-brands fa-github|https://github.com/chdb-io/chdb-core|GitHub repository`
    * - `ClickHouse <https://adbc-drivers.org/drivers/clickhouse/>`__
      - ``clickhouse``
      - Vendor
