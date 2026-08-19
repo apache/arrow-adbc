@@ -233,9 +233,8 @@ var adbcToFlightSQLInfo = map[adbc.InfoCode]flightsql.SqlInfo{
 	adbc.InfoVendorSubstraitMaxVersion: flightsql.SqlInfoFlightSqlServerSubstraitMaxVersion,
 }
 
-// doGetWithTracer performs DoGet against an endpoint's locations, logging each
-// attempt and joining all per-location failures into the returned error so the
-// caller can see every location that was tried. logger may be nil.
+// doGetWithTracer performs DoGet against an endpoint's locations, tracing each
+// attempt and joining all per-location failures into the returned error.
 func doGetWithResponseMetadata(ctx context.Context, client *flightsql.Client, ticket *flight.Ticket, opts ...grpc.CallOption) (*flight.Reader, error) {
 	var header, trailer metadata.MD
 	callOpts := append(append([]grpc.CallOption{}, opts...), grpc.Header(&header), grpc.Trailer(&trailer))

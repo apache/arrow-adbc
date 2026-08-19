@@ -97,7 +97,7 @@
 
   <properties>
     <dep.arrow.version>19.0.0</dep.arrow.version>
-    <dep.org.checkerframework.version>4.2.1</dep.org.checkerframework.version>
+    <dep.org.checkerframework.version>4.2.2</dep.org.checkerframework.version>
     <!-- org.apache:apache overrides -->
     <minimalJavaBuildVersion>11</minimalJavaBuildVersion>
     <maven.compiler.release>11</maven.compiler.release>
@@ -184,7 +184,7 @@
         <plugin>
           <groupId>com.diffplug.spotless</groupId>
           <artifactId>spotless-maven-plugin</artifactId>
-          <version>3.8.0</version>
+          <version>3.9.0</version>
         </plugin>
         <plugin>
           <groupId>org.codehaus.mojo.natives</groupId>

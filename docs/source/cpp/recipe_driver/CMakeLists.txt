@@ -30,9 +30,10 @@ set(NANOARROW_IPC ON)
 set(NANOARROW_NAMESPACE "DriverExamplePrivate")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 fetchcontent_declare(nanoarrow
-                     URL "https://www.apache.org/dyn/closer.lua?action=download&filename=arrow/apache-arrow-nanoarrow-0.6.0/apache-arrow-nanoarrow-0.6.0.tar.gz"
-                     URL_HASH SHA256=e4a02ac51002ad1875bf09317e70adb959005fad52b240ff59f73b970fa485d1
-)
+                     GIT_REPOSITORY https://github.com/apache/arrow-nanoarrow.git
+                     GIT_TAG apache-arrow-nanoarrow-0.9.0
+                     GIT_SHALLOW TRUE
+                     EXCLUDE_FROM_ALL)
 fetchcontent_makeavailable(nanoarrow)
 
 # TODO: We could allow this to be installed + linked to as a target; however,
@@ -42,7 +43,7 @@ add_library(adbc_driver_framework ../../../../c/driver/framework/utility.cc
                                   ../../../../c/driver/framework/objects.cc)
 target_include_directories(adbc_driver_framework PRIVATE ../../../../c
                                                          ../../../../c/include)
-target_link_libraries(adbc_driver_framework PRIVATE nanoarrow::nanoarrow)
+target_link_libraries(adbc_driver_framework PRIVATE nanoarrow::nanoarrow_static)
 
 add_library(driver_example SHARED driver_example.cc)
 target_include_directories(driver_example PRIVATE ../../../../c ../../../../c/include)

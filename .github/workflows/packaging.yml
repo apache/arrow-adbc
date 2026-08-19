@@ -359,6 +359,24 @@ jobs:
           popd
           cp -a adbc/dist/ ./
 
+      # Basic sanity check; also don't ship binaries in sources JAR to avoid bloat
+      - name: Verify JNI JAR contents
+        run: |
+          sources_jar=$(find dist -maxdepth 1 -name 'adbc-driver-jni-*-sources.jar' -print -quit)
+          runtime_jar=${sources_jar%-sources.jar}.jar
+
+          jar tf "${sources_jar}" > temp_jni_sources_contents.txt
+          if grep -q '^adbc_driver_jni/' temp_jni_sources_contents.txt; then
+            echo "JNI source JAR contains native binaries: ${sources_jar}"
+            exit 1
+          fi
+
+          jar tf "${runtime_jar}" > temp_jni_runtime_contents.txt
+          if ! grep -q '^adbc_driver_jni/' temp_jni_runtime_contents.txt; then
+            echo "JNI runtime JAR does not contain native binaries: ${runtime_jar}"
+            exit 1
+          fi
+
       - name: Archive JARs
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -425,7 +443,7 @@ jobs:
           mv apache-arrow-adbc-$VERSION.tar.gz adbc/ci/linux-packages/
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@a30dfa457ad68707b8b910ac3a244714b61c0626  # v1.320.0
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b  # v1.321.0
         with:
           ruby-version: ruby
 
@@ -438,7 +456,7 @@ jobs:
           lookup-only: true
 
       - name: Login to GitHub Container registry
-        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0  # v4.4.0
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f  # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -810,18 +828,10 @@ jobs:
       - name: Install Homebrew dependencies
         run: brew install autoconf bash pkg-config ninja
 
-      - name: Retrieve VCPKG version from .env
-        id: vcpkg_version
-        run: |
-          pushd adbc
-          vcpkg_version=$(cat ".env" | grep "VCPKG" | cut -d "=" -f2 | tr -d '"')
-          echo "VCPKG_VERSION=$vcpkg_version" | tee -a "$GITHUB_ENV"
-          popd
-
       - name: Install vcpkg
         run: |
           pushd adbc
-          ci/scripts/install_vcpkg.sh $VCPKG_ROOT $VCPKG_VERSION
+          ci/scripts/install_vcpkg.sh "$VCPKG_ROOT"
           popd
 
       - name: Get required Go version
@@ -952,8 +962,7 @@ jobs:
         python_version: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.14t"]
     env:
       PYTHON_VERSION: "${{ matrix.python_version }}"
-      # Where to install vcpkg
-      VCPKG_ROOT: "${{ github.workspace }}\\vcpkg"
+      VCPKG_ROOT: "${{ github.workspace }}/vcpkg"
     steps:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -990,21 +999,11 @@ jobs:
           choco install --no-progress -y cmake --installargs 'ADD_CMAKE_TO_PATH=System'
           choco install --no-progress -y visualcpp-build-tools
 
-      - name: Retrieve VCPKG version from .env
-        shell: pwsh
-        run: |
-          pushd adbc
-          Select-String -Path .env -Pattern 'VCPKG="(.+)"' | % {"VCPKG_VERSION=$($_.matches.groups[1])"} >> $env:GITHUB_ENV
-          popd
-
       - name: Install vcpkg
-        shell: pwsh
+        shell: bash
         run: |
-          echo $env:VCPKG_VERSION
-          git clone --shallow-since=2024-06-01 https://github.com/microsoft/vcpkg $env:VCPKG_ROOT
-          pushd $env:VCPKG_ROOT
-          .\bootstrap-vcpkg.bat -disableMetrics
-          popd
+          cd adbc
+          ./ci/scripts/install_vcpkg.sh "$VCPKG_ROOT"
 
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
