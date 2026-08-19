@@ -141,8 +141,10 @@ class CrateDBQuirks(PostgreSQLQuirks):
     short_version = "14"
     features = PostgreSQLQuirks.features.with_values(
         connection_get_table_schema=False,
+        connection_transactions=False,
         current_catalog="crate",
         current_schema="doc",
+        get_objects=False,
         statement_bulk_ingest=False,
     )
     setup = model.DriverSetup(

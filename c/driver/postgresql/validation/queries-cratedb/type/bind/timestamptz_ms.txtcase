@@ -17,6 +17,8 @@
 
 // part: metadata
 
+skip = "CrateDB does not expose the PostgreSQL TIMEZONE session setting required by this binding path"
+
 [tags]
 sql-type-name = "TIMESTAMP WITH TIME ZONE"
 

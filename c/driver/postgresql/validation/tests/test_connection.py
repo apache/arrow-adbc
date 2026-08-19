@@ -22,6 +22,14 @@ from . import postgresql
 
 
 class TestConnection(test_connection.TestConnection):
+    def test_current_catalog(self, conn, driver) -> None:
+        if isinstance(driver, postgresql.CrateDBQuirks):
+            pytest.xfail(
+                "CrateDB has a fixed crate catalog, but libpq reports the doc "
+                "startup database/schema value as the current catalog"
+            )
+        super().test_current_catalog(driver, conn)
+
     def test_get_objects_column_filter_table(
         self, conn, driver, get_objects_table
     ) -> None:
