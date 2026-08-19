@@ -448,7 +448,7 @@ services:
   yugabytedb-test:
     container_name: adbc_yugabytedb_test
     hostname: adbc-yugabytedb-test
-    image: yugabytedb/yugabyte:2026.1.1.0-b91
+    image: yugabytedb/yugabyte:2026.1.1.1-b2
     command: >-
       bin/yugabyted start --background=false
       --master_flags=reject_writes_when_disk_full=false
