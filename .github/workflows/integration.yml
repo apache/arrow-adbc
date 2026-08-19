@@ -414,11 +414,6 @@ jobs:
         if: failure()
         run: |
           docker compose logs "${{ matrix.service }}"
-      - name: Stop ${{ matrix.name }}
-        if: always()
-        run: |
-          docker compose stop "${{ matrix.service }}"
-          docker compose rm --force --stop --volumes "${{ matrix.service }}"
 
   flightsql_interop:
     name: "FlightSQL C# Interop"
