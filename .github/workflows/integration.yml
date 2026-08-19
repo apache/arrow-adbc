@@ -349,7 +349,7 @@ jobs:
             vendor: yugabytedb
             uri: postgresql://localhost:5439/yugabyte?user=yugabyte&password=yugabyte
             experimental: false
-          # These two currently fail, but could be supported in the future.
+          # Currently fails, but could be supported in the future.
           # https://github.com/apache/arrow-adbc/issues/1755
           # - name: CedarDB
           #   service: cedardb-test
