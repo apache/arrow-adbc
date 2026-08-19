@@ -30,6 +30,16 @@ class TestConnection(test_connection.TestConnection):
             )
         super().test_current_catalog(driver, conn)
 
+    def test_get_objects_catalog(self, conn, driver) -> None:
+        if isinstance(driver, postgresql.CrateDBQuirks):
+            pytest.skip("GetObjects is marked unsupported for CrateDB")
+        super().test_get_objects_catalog(conn, driver)
+
+    def test_get_objects_table_not_exist(self, conn, driver) -> None:
+        if isinstance(driver, postgresql.CrateDBQuirks):
+            pytest.skip("GetObjects is marked unsupported for CrateDB")
+        super().test_get_objects_table_not_exist(conn, driver)
+
     def test_get_objects_column_filter_table(
         self, conn, driver, get_objects_table
     ) -> None:
