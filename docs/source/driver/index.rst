@@ -55,10 +55,14 @@ driver in the table below is packaged this way.
      - ``bigquery``
      - Foundry
      - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/bigquery|GitHub repository`
+   * - `chDB <https://clickhouse.com/docs/chdb/install/adbc>`__
+     - ``chdb``
+     - Vendor
+     - :iconlink:`fa-brands fa-github|github.com/chdb-io/chdb-core|GitHub repository`
    * - `ClickHouse <https://adbc-drivers.org/drivers/clickhouse/>`__
      - ``clickhouse``
      - Vendor
-     - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/clickhouse|GitHub repository`
+     - :iconlink:`fa-brands fa-github|https://github.com/ClickHouse/adbc_clickhouse|GitHub repository`
    * - `Databricks <https://adbc-drivers.org/drivers/databricks/>`__
      - ``databricks``
      - Foundry
