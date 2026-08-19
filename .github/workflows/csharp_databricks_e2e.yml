@@ -1,0 +1,147 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+
+name: C# Databricks E2E Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/csharp_databricks_e2e.yml'
+      - 'ci/scripts/csharp_databricks_e2e.sh'
+      - 'csharp/src/Apache.Arrow.Adbc/**'
+      - 'csharp/src/Client/**'
+      - 'csharp/src/Drivers/Apache/Hive2/**'
+      - 'csharp/src/Drivers/Apache/Spark/**'
+      - 'csharp/src/Drivers/Databricks/**'
+      - 'csharp/test/Drivers/Databricks/**'
+  pull_request_target:
+    paths:
+      - '.github/workflows/csharp_databricks_e2e.yml'
+      - 'ci/scripts/csharp_databricks_e2e.sh'
+      - 'csharp/src/Apache.Arrow.Adbc/**'
+      - 'csharp/src/Client/**'
+      - 'csharp/src/Drivers/Apache/Hive2/**'
+      - 'csharp/src/Drivers/Apache/Spark/**'
+      - 'csharp/src/Drivers/Databricks/**'
+      - 'csharp/test/Drivers/Databricks/**'
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.head_ref || github.sha }}-${{ github.workflow }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write  # Required for OIDC token exchange
+
+defaults:
+  run:
+    # 'bash' will expand to -eo pipefail
+    shell: bash
+
+jobs:
+  csharp-databricks-e2e:
+    name: "C# ${{ matrix.os }} ${{ matrix.dotnet }}"
+    runs-on: ${{ matrix.os }}
+    environment: databricks-e2e
+    if: ${{ !contains(github.event.pull_request.title, 'WIP') }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        dotnet: ['8.0.x']
+        os: [ubuntu-latest, windows-2022, macos-13, macos-latest]
+    steps:
+      - name: Install C#
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ matrix.dotnet }}
+      - name: Checkout ADBC
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          submodules: recursive
+      - name: Build
+        shell: bash
+        run: ci/scripts/csharp_build.sh $(pwd)
+      - name: Set up Databricks testing
+        shell: bash
+        env:
+          DATABRICKS_WORKSPACE_URL: 'adb-6436897454825492.12.azuredatabricks.net'
+          DATABRICKS_WAREHOUSE_PATH: '/sql/1.0/warehouses/2f03dd43e35e2aa0'
+          DATABRICKS_SP_CLIENT_ID: '8335020c-9ba9-4821-92bb-0e8657759cda'
+        run: |
+          # Set up cross-platform variables
+          if [[ "$RUNNER_OS" == "Windows" ]]; then
+            DATABRICKS_DIR="$USERPROFILE/.databricks"
+            DATABRICKS_CONFIG_FILE="$USERPROFILE/.databricks/connection.json"
+          else
+            DATABRICKS_DIR="$HOME/.databricks"
+            DATABRICKS_CONFIG_FILE="$HOME/.databricks/connection.json"
+          fi
+
+          # Get GitHub OIDC token
+          GITHUB_TOKEN=$(curl -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://github.com/apache" | jq -r '.value')
+
+          if [ "$GITHUB_TOKEN" = "null" ] || [ -z "$GITHUB_TOKEN" ]; then
+            echo "Failed to get GitHub OIDC token"
+            exit 1
+          fi
+
+          # Mask the GitHub OIDC token
+          echo "::add-mask::$GITHUB_TOKEN"
+
+          # Exchange OIDC token for Databricks OAuth token
+          OAUTH_RESPONSE=$(curl -X POST "https://$DATABRICKS_WORKSPACE_URL/oidc/v1/token" \
+            -H "Content-Type: application/x-www-form-urlencoded" \
+            -d "grant_type=urn:ietf:params:oauth:grant-type:token-exchange" \
+            -d "client_id=$DATABRICKS_SP_CLIENT_ID" \
+            -d "subject_token=$GITHUB_TOKEN" \
+            -d "subject_token_type=urn:ietf:params:oauth:token-type:jwt" \
+            -d "scope=sql")
+
+          DATABRICKS_TOKEN=$(echo "$OAUTH_RESPONSE" | jq -r '.access_token')
+
+          if [ "$DATABRICKS_TOKEN" = "null" ] || [ -z "$DATABRICKS_TOKEN" ]; then
+            echo "Failed to get Databricks access token. Response:"
+            echo "$OAUTH_RESPONSE"
+            exit 1
+          fi
+
+          # Mask the Databricks access token
+          echo "::add-mask::$DATABRICKS_TOKEN"
+
+          # Create Databricks configuration file
+          mkdir -p "$DATABRICKS_DIR"
+          cat > "$DATABRICKS_CONFIG_FILE" << EOF
+          {
+            "hostName": "$DATABRICKS_WORKSPACE_URL",
+            "port": "443",
+            "path": "$DATABRICKS_WAREHOUSE_PATH",
+            "auth_type": "oauth",
+            "access_token": "$DATABRICKS_TOKEN"
+          }
+          EOF
+
+          echo "DATABRICKS_TEST_CONFIG_FILE=$DATABRICKS_CONFIG_FILE" >> $GITHUB_ENV
+
+          echo "Databricks configuration created successfully at $DATABRICKS_CONFIG_FILE"
+      - name: Test Databricks
+        shell: bash
+        run: ci/scripts/csharp_test_databricks_e2e.sh $(pwd)
