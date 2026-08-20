@@ -247,7 +247,7 @@ func doGetWithResponseMetadata(ctx context.Context, client *flightsql.Client, ti
 
 func doGetWithTracer(ctx context.Context, cl *flightsql.Client, endpoint *flight.FlightEndpoint, clientCache gcache.Cache, tracing adbc.OTelTracing, opts ...grpc.CallOption) (rdr *flight.Reader, err error) {
 	const spanName = "FlightSQL.Connection.DoGet"
-	var startTime = time.Now()
+	startTime := time.Now()
 	ctx, span := internal.StartSpan(ctx, spanName, tracing)
 	errorRecorded := false
 	defer func() {
@@ -1357,11 +1357,10 @@ func (c *connectionImpl) Close() (err error) {
 	}()
 
 	if c.cl == nil {
-		err = adbc.Error{
+		return adbc.Error{
 			Msg:  "[Flight SQL Connection] trying to close already closed connection",
 			Code: adbc.StatusInvalidState,
 		}
-		return err
 	}
 
 	// Snapshot fields before tearing down c.cl; log "closing" and

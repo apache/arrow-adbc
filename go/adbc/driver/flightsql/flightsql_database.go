@@ -415,8 +415,7 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 	var uri *url.URL
 	uri, err = url.Parse(loc)
 	if err != nil {
-		err = adbc.Error{Msg: fmt.Sprintf("Invalid URI '%s': %s", loc, err), Code: adbc.StatusInvalidArgument}
-		return nil, err
+		return nil, adbc.Error{Msg: fmt.Sprintf("Invalid URI '%s': %s", loc, err), Code: adbc.StatusInvalidArgument}
 	}
 	creds := d.creds
 

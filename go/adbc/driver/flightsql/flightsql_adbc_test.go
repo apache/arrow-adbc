@@ -369,7 +369,7 @@ func TestFlightSQLTracingProducesTraceFiles(t *testing.T) {
 
 	output := traceOutput.String()
 	require.Contains(t, output, "FlightSQL.Database.Open")
-	require.Contains(t, output, "FlightSQLStatement.ExecuteQuery")
+	require.Contains(t, output, "FlightSQL.Statement.ExecuteQuery")
 }
 
 // Run the test suite, but validating that a header set on the database is ALWAYS passed
