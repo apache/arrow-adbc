@@ -22,11 +22,14 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
 	"github.com/apache/arrow-go/v18/arrow/flight"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+	"golang.org/x/exp/maps"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -63,6 +66,41 @@ func (c *responseMetadataCollector) snapshot() metadata.MD {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 	return c.value.Copy()
+}
+
+func responseMetadataUnaryInterceptor(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) (err error) {
+	span := trace.SpanFromContext(ctx)
+
+	// Ignore errors
+	outgoing, _ := metadata.FromOutgoingContext(ctx)
+	err = invoker(ctx, method, req, reply, cc, opts...)
+
+	if span.IsRecording() {
+		keys := maps.Keys(outgoing)
+		slices.Sort(keys)
+		args := []attribute.KeyValue{
+			attribute.String("target", cc.Target()),
+			attribute.StringSlice("metadata", keys),
+		}
+		// Surface curated outbound correlation IDs regardless of level.
+		args = append(args, outgoingCallHeaderKeyValues(ctx)...)
+		args = append(args, grpcStatusKeyValues(err)...)
+		span.AddEvent("Metadata.Unary.Interceptor."+method, trace.WithAttributes(args...))
+	}
+	return err
+}
+
+// outgoingCallHeaderAttrs returns slog attributes for well-known correlation
+// headers on ctx's outbound gRPC metadata. Uses the "out_hdr_" prefix.
+func outgoingCallHeaderKeyValues(ctx context.Context) []attribute.KeyValue {
+	if ctx == nil {
+		return nil
+	}
+	md, ok := metadata.FromOutgoingContext(ctx)
+	if !ok {
+		return nil
+	}
+	return headerKeyValuesWithPrefix(md, "out_hdr_")
 }
 
 func responseMetadataStreamInterceptor(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
