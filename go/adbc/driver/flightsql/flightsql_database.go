@@ -21,8 +21,8 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
-	"log/slog"
 	"net/url"
 	"strconv"
 	"strings"
@@ -36,6 +36,8 @@ import (
 	"github.com/apache/arrow-go/v18/arrow/flight"
 	"github.com/apache/arrow-go/v18/arrow/flight/flightsql"
 	"github.com/bluele/gcache"
+	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -369,25 +371,32 @@ func (d *databaseImpl) SetOptionDouble(key string, value float64) error {
 	return d.DatabaseImplBase.SetOptionDouble(key, value)
 }
 
-func (d *databaseImpl) Close() error {
-	if d.Logger != nil {
-		d.Logger.Info("FlightSQL database closed",
-			"target", d.uri.String(),
-		)
-	}
-	return d.DatabaseImplBase.Close()
+func (d *databaseImpl) Close() (err error) {
+	const spanName = "FlightSQL.Database.Close"
+	startTime := time.Now()
+	var span trace.Span
+	_, span = internal.StartSpan(context.Background(), spanName, d)
+
+	span.AddEvent("closing", trace.WithAttributes(attribute.String("target", d.uri.String())))
+	flushErr := d.ForceFlushTracing(context.Background())
+	internal.NewEndSpanHelper(span).
+		WithError(flushErr).
+		WithStartTime(startTime).
+		EndSpan()
+	shutdownErr := d.DatabaseImplBase.Close()
+	return errors.Join(flushErr, shutdownErr)
 }
 
-func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddle *bearerAuthMiddleware, cookies flight.CookieMiddleware) (*flightsql.Client, error) {
+func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddle *bearerAuthMiddleware, cookies flight.CookieMiddleware, span trace.Span) (client *flightsql.Client, err error) {
 	middleware := []flight.ClientMiddleware{
-		{
-			Unary:  makeUnaryLoggingInterceptor(d.Logger),
-			Stream: makeStreamLoggingInterceptor(d.Logger),
-		},
 		flight.CreateClientMiddleware(authMiddle),
 		{
 			Unary:  unaryTimeoutInterceptor,
 			Stream: streamTimeoutInterceptor,
+		},
+		{
+			Unary:  responseMetadataUnaryInterceptor,
+			Stream: responseMetadataStreamInterceptor,
 		},
 	}
 
@@ -395,7 +404,8 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 		middleware = append(middleware, flight.CreateClientMiddleware(cookies))
 	}
 
-	uri, err := url.Parse(loc)
+	var uri *url.URL
+	uri, err = url.Parse(loc)
 	if err != nil {
 		return nil, adbc.Error{Msg: fmt.Sprintf("Invalid URI '%s': %s", loc, err), Code: adbc.StatusInvalidArgument}
 	}
@@ -436,80 +446,110 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 
 	dv, _ := d.DriverInfo.GetInfoForInfoCode(adbc.InfoDriverVersion)
 	driverVersion := dv.(string)
-	dialOpts := append(d.dialOpts.opts, grpc.WithConnectParams(d.timeout.connectParams()), grpc.WithTransportCredentials(creds), grpc.WithUserAgent("ADBC Flight SQL Driver "+driverVersion))
+	dialOpts := append(d.dialOpts.opts,
+		grpc.WithStatsHandler(otelgrpc.NewClientHandler(
+			otelgrpc.WithTracerProvider(d.GetTracerProvider()),
+		)),
+		grpc.WithConnectParams(d.timeout.connectParams()),
+		grpc.WithTransportCredentials(creds),
+		grpc.WithUserAgent("ADBC Flight SQL Driver "+driverVersion),
+	)
 	dialOpts = append(dialOpts, d.userDialOpts...)
 
 	if d.oauthToken != nil {
 		dialOpts = append(dialOpts, grpc.WithPerRPCCredentials(d.oauthToken))
 	}
 
-	d.Logger.DebugContext(ctx, "new client", "location", loc)
-	cl, err := flightsql.NewClient(target, nil, middleware, dialOpts...)
+	span.AddEvent("flight.client.connecting", trace.WithAttributes(
+		attribute.String("flight.location", loc),
+	))
+	client, err = flightsql.NewClient(target, nil, middleware, dialOpts...)
 	if err != nil {
-		return nil, adbc.Error{
+		err = adbc.Error{
 			Msg:  err.Error(),
 			Code: adbc.StatusIO,
 		}
+		return nil, err
 	}
 
-	cl.Alloc = d.Alloc
+	client.Alloc = d.Alloc
 	// Authorization header is already set, continue
 	if len(authMiddle.hdrs.Get("authorization")) > 0 {
-		d.Logger.DebugContext(ctx, "reusing auth token", "location", loc)
-		return cl, nil
+		span.AddEvent("flight.auth.token.reused", trace.WithAttributes(
+			attribute.String("flight.location", loc),
+		))
+		return client, nil
 	}
 
 	var authValue string
 
 	if d.user != "" || d.pass != "" {
 		authStart := time.Now()
-		d.Logger.InfoContext(ctx, "FlightSQL basic auth started",
-			"target", loc,
-			"user", d.user,
-		)
+		span.AddEvent("flight.auth.basic.started", trace.WithAttributes(
+			attribute.String("target", loc),
+			attribute.String("user", d.user),
+		))
 		var header, trailer metadata.MD
-		ctx, err = cl.Client.AuthenticateBasicToken(ctx, d.user, d.pass, grpc.Header(&header), grpc.Trailer(&trailer), d.timeout)
+		ctx, err = client.Client.AuthenticateBasicToken(ctx, d.user, d.pass, grpc.Header(&header), grpc.Trailer(&trailer), d.timeout)
 		if err != nil {
-			args := []any{
-				"target", loc,
-				"user", d.user,
-				"duration", time.Since(authStart),
-				"err", err,
+			args := []attribute.KeyValue{
+				attribute.String("target", loc),
+				attribute.String("user", d.user),
+				attribute.Float64("duration_s", time.Since(authStart).Seconds()),
 			}
-			args = append(args, correlationHeaderAttrs(header)...)
-			args = append(args, correlationHeaderAttrs(trailer)...)
-			args = append(args, grpcStatusAttrs(err)...)
-			d.Logger.InfoContext(ctx, "FlightSQL basic auth failed", args...)
-			return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "AuthenticateBasicToken")
+			args = append(args, correlationHeaderKeyValues(header)...)
+			args = append(args, correlationHeaderKeyValues(trailer)...)
+			args = append(args, grpcStatusKeyValues(err)...)
+			span.SetAttributes(args...)
+			err = adbcFromFlightStatusWithDetails(err, header, trailer, "AuthenticateBasicToken")
+			return nil, err
 		}
 
 		if md, ok := metadata.FromOutgoingContext(ctx); ok {
 			authValue = md.Get("Authorization")[0]
 		}
 
-		d.Logger.InfoContext(ctx, "FlightSQL basic auth succeeded",
-			"target", loc,
-			"user", d.user,
-			"duration", time.Since(authStart),
-			"token_length", len(authValue),
-		)
+		span.AddEvent("flight.auth.basic.completed", trace.WithAttributes(
+			attribute.String("target", loc),
+			attribute.String("user", d.user),
+			attribute.String("duration_s", time.Since(authStart).String()),
+			attribute.Int("token_length", len(authValue)),
+		))
 	}
 
 	if authValue != "" {
-		authMiddle.SetHeader(authValue)
+		authMiddle.SetHeader(authValue, span)
 	}
 
-	return cl, nil
+	return client, nil
 }
 
 type support struct {
 	transactions bool
 }
 
+func closeCachedFlightClient(d *databaseImpl, location, client interface{}, reason string) {
+	startTime := time.Now()
+	var err error
+	_, span := internal.StartSpan(context.Background(), "FlightSQL.Database.CloseCachedClient", d,
+		trace.WithAttributes(
+			attribute.String("flight.location", fmt.Sprint(location)),
+			attribute.String("flight.cache.reason", reason),
+		))
+	defer func() {
+		internal.NewEndSpanHelper(span).
+			WithError(err).
+			WithStartTime(startTime).
+			EndSpan()
+	}()
+
+	err = client.(*flightsql.Client).Close()
+}
+
 func (d *databaseImpl) Open(ctx context.Context) (_ adbc.Connection, err error) {
 	ctx, span := internal.StartSpan(
 		ctx,
-		"FlightSQLDatabase.Open",
+		"FlightSQL.Database.Open",
 		d,
 		trace.WithAttributes(traceHeaderAttrsWithPrefix(d.hdrs, traceRequestMetadataPrefix)...),
 	)
@@ -519,25 +559,37 @@ func (d *databaseImpl) Open(ctx context.Context) (_ adbc.Connection, err error) 
 			EndSpan()
 	}()
 
-	authMiddle := &bearerAuthMiddleware{hdrs: d.hdrs.Copy(), logger: safeLogger(d.Logger)}
+	authMiddle := &bearerAuthMiddleware{
+		hdrs: d.hdrs.Copy(),
+	}
 	var cookies flight.CookieMiddleware
 	if d.enableCookies {
 		cookies = flight.NewCookieMiddleware()
 	}
 
-	cl, err := getFlightClient(ctx, d.uri.String(), d, authMiddle, cookies)
+	cl, err := getFlightClient(ctx, d.uri.String(), d, authMiddle, cookies, span)
 	if err != nil {
 		return nil, err
 	}
 
 	cache := gcache.New(20).LRU().
 		Expiration(5 * time.Minute).
-		LoaderFunc(func(loc interface{}) (interface{}, error) {
+		LoaderFunc(func(loc interface{}) (_ interface{}, err error) {
+			startTime := time.Now()
+			ctx, cacheSpan := internal.StartSpan(context.Background(), "FlightSQL.Database.LoadCachedClient", d)
+			defer func() {
+				internal.NewEndSpanHelper(cacheSpan).
+					WithError(err).
+					WithStartTime(startTime).
+					EndSpan()
+			}()
+
 			uri, ok := loc.(string)
 			if !ok {
 				return nil, adbc.Error{Msg: fmt.Sprintf("Location must be a string, got %#v",
 					uri), Code: adbc.StatusInternal}
 			}
+			cacheSpan.SetAttributes(attribute.String("flight.location", uri))
 
 			var cookieMiddleware flight.CookieMiddleware
 			// if cookies are enabled, start by cloning the existing cookies
@@ -545,8 +597,13 @@ func (d *databaseImpl) Open(ctx context.Context) (_ adbc.Connection, err error) 
 				cookieMiddleware = cookies.Clone()
 			}
 			// use the existing auth token if there is one
-			cl, err := getFlightClient(context.Background(), uri, d,
-				&bearerAuthMiddleware{hdrs: authMiddle.hdrs.Copy(), logger: safeLogger(d.Logger)}, cookieMiddleware)
+			cl, err := getFlightClient(
+				ctx,
+				uri,
+				d,
+				&bearerAuthMiddleware{hdrs: authMiddle.hdrs.Copy()},
+				cookieMiddleware,
+				cacheSpan)
 			if err != nil {
 				return nil, err
 			}
@@ -554,18 +611,10 @@ func (d *databaseImpl) Open(ctx context.Context) (_ adbc.Connection, err error) 
 			cl.Alloc = d.Alloc
 			return cl, nil
 		}).
-		EvictedFunc(func(_, client interface{}) {
-			conn := client.(*flightsql.Client)
-			err := conn.Close()
-			if err != nil {
-				d.Logger.Debug("failed to close client", "error", err.Error())
-			}
-		}).PurgeVisitorFunc(func(_ interface{}, client interface{}) {
-		conn := client.(*flightsql.Client)
-		err := conn.Close()
-		if err != nil {
-			d.Logger.Debug("failed to close client", "error", err.Error())
-		}
+		EvictedFunc(func(location, client interface{}) {
+			closeCachedFlightClient(d, location, client, "evicted")
+		}).PurgeVisitorFunc(func(location, client interface{}) {
+		closeCachedFlightClient(d, location, client, "purged")
 	}).Build()
 
 	var cnxnSupport support
@@ -576,7 +625,7 @@ func (d *databaseImpl) Open(ctx context.Context) (_ adbc.Connection, err error) 
 		const int32code = 3
 
 		for _, endpoint := range info.Endpoint {
-			rdr, err := doGetWithLogger(ctx, cl, endpoint, cache, d.Logger, d.timeout)
+			rdr, err := doGetWithTracer(ctx, cl, endpoint, cache, d, d.timeout)
 			if err != nil {
 				continue
 			}
@@ -619,12 +668,11 @@ func (d *databaseImpl) Open(ctx context.Context) (_ adbc.Connection, err error) 
 	// this connection (and any statements derived from it).
 	conn.id = newRandomID("conn")
 	conn.openedAt = time.Now()
-	conn.Logger = safeLogger(conn.Logger).With("connection_id", conn.id)
-	conn.Logger.InfoContext(ctx, "FlightSQL connection opened",
-		"target", d.uri.String(),
-		"transactionsSupported", cnxnSupport.transactions,
-		"driver", infoDriverName,
-	)
+	span.AddEvent("finished", trace.WithAttributes(
+		attribute.String("target", d.uri.String()),
+		attribute.Bool("transactionsSupported", cnxnSupport.transactions),
+		attribute.String("driver", infoDriverName),
+	))
 
 	return driverbase.NewConnectionBuilder(conn).
 		WithDriverInfoPreparer(conn).
@@ -636,9 +684,6 @@ func (d *databaseImpl) Open(ctx context.Context) (_ adbc.Connection, err error) 
 type bearerAuthMiddleware struct {
 	mutex sync.RWMutex
 	hdrs  metadata.MD
-	// logger, when non-nil, receives an Info event each time the bearer
-	// token is rotated. Only token lengths are logged, never values.
-	logger *slog.Logger
 }
 
 func (b *bearerAuthMiddleware) StartCall(ctx context.Context) context.Context {
@@ -649,50 +694,46 @@ func (b *bearerAuthMiddleware) StartCall(ctx context.Context) context.Context {
 }
 
 // rotateAuth atomically replaces the stored Authorization metadata and
-// returns the previous value plus the current logger. Callers invoke
-// the logger outside the critical section.
-func (b *bearerAuthMiddleware) rotateAuth(headers ...string) (previous []string, logger *slog.Logger) {
+// returns the previous value.
+func (b *bearerAuthMiddleware) rotateAuth(headers ...string) (previous []string) {
 	b.mutex.Lock()
 	defer b.mutex.Unlock()
 	previous = b.hdrs.Get("authorization")
 	b.hdrs.Set("authorization", headers...)
-	return previous, b.logger
+	return previous
 }
 
 func (b *bearerAuthMiddleware) HeadersReceived(ctx context.Context, md metadata.MD) {
+	captureResponseMetadata(ctx, md)
 	// apache/arrow-adbc#584
 	headers := md.Get("authorization")
 	if len(headers) == 0 {
 		return
 	}
-	previous, logger := b.rotateAuth(headers...)
-	if logger == nil {
-		return
-	}
+	previous := b.rotateAuth(headers...)
 	// Log lengths, never values, so credentials never reach the log path.
 	var prevLen int
 	if len(previous) > 0 {
 		prevLen = len(previous[0])
 	}
-	logger.InfoContext(ctx, "FlightSQL bearer token rotated by server",
-		"previous_token_length", prevLen,
-		"new_token_length", len(headers[0]),
-		"source", "HeadersReceived",
-	)
+	if span := trace.SpanFromContext(ctx); span != nil && span.IsRecording() {
+		span.AddEvent("auth_token.rotated_by_server", trace.WithAttributes(
+			attribute.Int("previous_token_length", prevLen),
+			attribute.Int("new_token_length", len(headers[0])),
+			attribute.String("source", "HeadersReceived"),
+		))
+	}
 }
 
-func (b *bearerAuthMiddleware) SetHeader(authValue string) {
-	previous, logger := b.rotateAuth(authValue)
-	if logger == nil {
-		return
-	}
+func (b *bearerAuthMiddleware) SetHeader(authValue string, span trace.Span) {
+	previous := b.rotateAuth(authValue)
 	var prevLen int
 	if len(previous) > 0 {
 		prevLen = len(previous[0])
 	}
-	logger.Info("FlightSQL bearer token rotated by client",
-		"previous_token_length", prevLen,
-		"new_token_length", len(authValue),
-		"source", "SetHeader",
-	)
+	span.AddEvent("auth_token.rotated_by_client", trace.WithAttributes(
+		attribute.Int("previous_token_length", prevLen),
+		attribute.Int("new_token_length", len(authValue)),
+		attribute.String("source", "SetHeader"),
+	))
 }

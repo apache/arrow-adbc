@@ -20,18 +20,13 @@ package flightsql
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/hex"
 	"io"
 	"log/slog"
 	"strconv"
 	"time"
 
-	"github.com/apache/arrow-go/v18/arrow/flight"
 	"go.opentelemetry.io/otel/trace"
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
-	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
@@ -93,118 +88,6 @@ func (p *streamProgress) summary() string {
 // formatInt formats an int64 without pulling in fmt.
 func formatInt(n int64) string {
 	return strconv.FormatInt(n, 10)
-}
-
-func makeUnaryLoggingInterceptor(logger *slog.Logger) grpc.UnaryClientInterceptor {
-	interceptor := func(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) error {
-		start := time.Now()
-		// Ignore errors
-		outgoing, _ := metadata.FromOutgoingContext(ctx)
-		err := invoker(ctx, method, req, reply, cc, opts...)
-		if logger.Enabled(ctx, slog.LevelDebug) {
-			args := []any{"target", cc.Target(), "duration", time.Since(start), "err", err, "metadata", outgoing}
-			args = append(args, outgoingCallHeaderAttrs(ctx)...)
-			args = append(args, grpcStatusAttrs(err)...)
-			logger.DebugContext(ctx, method, args...)
-		} else {
-			keys := maps.Keys(outgoing)
-			slices.Sort(keys)
-			args := []any{"target", cc.Target(), "duration", time.Since(start), "err", err, "metadata", keys}
-			// Surface curated outbound correlation IDs regardless of level.
-			args = append(args, outgoingCallHeaderAttrs(ctx)...)
-			args = append(args, grpcStatusAttrs(err)...)
-			logger.InfoContext(ctx, method, args...)
-		}
-		return err
-	}
-	return interceptor
-}
-
-func makeStreamLoggingInterceptor(logger *slog.Logger) grpc.StreamClientInterceptor {
-	interceptor := func(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
-		start := time.Now()
-		// Ignore errors
-		outgoing, _ := metadata.FromOutgoingContext(ctx)
-		stream, err := streamer(ctx, desc, cc, method, opts...)
-		if err != nil {
-			args := []any{"target", cc.Target(), "duration", time.Since(start), "err", err}
-			args = append(args, outgoingCallHeaderAttrs(ctx)...)
-			args = append(args, grpcStatusAttrs(err)...)
-			logger.InfoContext(ctx, method, args...)
-			return stream, err
-		}
-
-		return &loggedStream{ClientStream: stream, logger: logger, ctx: ctx, method: method, start: start, target: cc.Target(), outgoing: outgoing}, err
-	}
-	return interceptor
-}
-
-type loggedStream struct {
-	grpc.ClientStream
-
-	logger   *slog.Logger
-	ctx      context.Context
-	method   string
-	start    time.Time
-	target   string
-	outgoing metadata.MD
-
-	// recvCount tracks how many messages were received before the stream
-	// ended; logged on termination so EOFs on empty streams are distinguishable
-	// from mid-stream failures.
-	recvCount int64
-}
-
-func (stream *loggedStream) RecvMsg(m any) error {
-	err := stream.ClientStream.RecvMsg(m)
-	if err == nil {
-		stream.recvCount++
-		return nil
-	}
-
-	loggedErr := err
-	if loggedErr == io.EOF {
-		loggedErr = nil
-	}
-
-	// Capture trailers from the terminated stream; they often carry
-	// server-side diagnostic information for failure triage.
-	trailer := stream.Trailer()
-
-	if stream.logger.Enabled(stream.ctx, slog.LevelDebug) {
-		stream.logger.DebugContext(stream.ctx, stream.method,
-			"target", stream.target,
-			"duration", time.Since(stream.start),
-			"err", loggedErr,
-			"recvMessages", stream.recvCount,
-			"metadata", stream.outgoing,
-			"trailer", trailer,
-		)
-	} else {
-		keys := maps.Keys(stream.outgoing)
-		slices.Sort(keys)
-		trailerKeys := maps.Keys(trailer)
-		slices.Sort(trailerKeys)
-		args := []any{
-			"target", stream.target,
-			"duration", time.Since(stream.start),
-			"err", loggedErr,
-			"recvMessages", stream.recvCount,
-			"metadata", keys,
-			"trailer", trailerKeys,
-		}
-		// Promote curated correlation headers from the trailer.
-		args = append(args, correlationHeaderAttrs(trailer)...)
-		// Promote the outbound correlation IDs the caller supplied.
-		args = append(args, outgoingCallHeaderAttrs(stream.ctx)...)
-		// EOF is a clean close in Flight, so loggedErr was nil-ed above;
-		// only attach status attrs for real errors.
-		if loggedErr != nil {
-			args = append(args, grpcStatusAttrs(loggedErr)...)
-		}
-		stream.logger.InfoContext(stream.ctx, stream.method, args...)
-	}
-	return err
 }
 
 // wellKnownCorrelationHeaders is the curated allow-list of inbound gRPC
@@ -344,81 +227,4 @@ func newRandomID(prefix string) string {
 		return prefix + "-" + strconv.FormatInt(time.Now().UnixNano(), 16)
 	}
 	return prefix + "-" + hex.EncodeToString(b[:])
-}
-
-// queryFingerprintAttrs builds slog attributes identifying a SQL query
-// without exposing it: length and a SHA-256 prefix. The query text itself
-// is never logged because it can embed end-user PII as literals.
-func queryFingerprintAttrs(query string) []any {
-	if query == "" {
-		return []any{slog.String("query_type", "empty")}
-	}
-	h := sha256.Sum256([]byte(query))
-	return []any{
-		slog.String("query_type", "sql"),
-		slog.Int("query_length", len(query)),
-		slog.String("query_sha256_prefix", hex.EncodeToString(h[:8])),
-	}
-}
-
-// substraitFingerprintAttrs builds slog attributes identifying a Substrait
-// plan: length, SHA-256 prefix, and protocol version. Plan bytes are never
-// logged.
-func substraitFingerprintAttrs(plan []byte, version string) []any {
-	if len(plan) == 0 {
-		return []any{slog.String("query_type", "substrait_empty")}
-	}
-	h := sha256.Sum256(plan)
-	attrs := []any{
-		slog.String("query_type", "substrait"),
-		slog.Int("substrait_plan_bytes", len(plan)),
-		slog.String("substrait_plan_sha256_prefix", hex.EncodeToString(h[:8])),
-	}
-	if version != "" {
-		attrs = append(attrs, slog.String("substrait_version", version))
-	}
-	return attrs
-}
-
-// flightInfoLogAttrs returns slog attributes describing a FlightInfo:
-// descriptor type and command prefix, AppMetadata prefix (some backends
-// embed a server-side query handle there), and advisory record/byte
-// counts. Returns nil for a nil info.
-func flightInfoLogAttrs(info *flight.FlightInfo) []any {
-	if info == nil {
-		return nil
-	}
-	attrs := []any{
-		slog.Int("numEndpoints", len(info.Endpoint)),
-		slog.Int64("totalRecords", info.TotalRecords),
-		slog.Int64("totalBytes", info.TotalBytes),
-		slog.Bool("haveSchemaInFlightInfo", len(info.Schema) > 0),
-	}
-	if desc := info.FlightDescriptor; desc != nil {
-		attrs = append(attrs, slog.String("descriptorType", desc.Type.String()))
-		if len(desc.Cmd) > 0 {
-			limit := len(desc.Cmd)
-			if limit > maxLoggedBlobBytes {
-				limit = maxLoggedBlobBytes
-			}
-			attrs = append(attrs,
-				slog.Int("descriptorCmdBytes", len(desc.Cmd)),
-				slog.String("descriptorCmdPrefixHex", hex.EncodeToString(desc.Cmd[:limit])),
-			)
-		}
-		if len(desc.Path) > 0 {
-			attrs = append(attrs, slog.Any("descriptorPath", desc.Path))
-		}
-	}
-	if len(info.AppMetadata) > 0 {
-		limit := len(info.AppMetadata)
-		if limit > maxLoggedBlobBytes {
-			limit = maxLoggedBlobBytes
-		}
-		attrs = append(attrs,
-			slog.Int("appMetadataBytes", len(info.AppMetadata)),
-			slog.String("appMetadataPrefixHex", hex.EncodeToString(info.AppMetadata[:limit])),
-		)
-	}
-	return attrs
 }
