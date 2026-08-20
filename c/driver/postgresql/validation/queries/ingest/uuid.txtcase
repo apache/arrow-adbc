@@ -19,6 +19,7 @@
 
 [tags]
 sql-type-name = "UUID"
+field-type-name = "uuid"
 
 // part: input_schema
 

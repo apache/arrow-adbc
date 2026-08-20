@@ -18,35 +18,4 @@
 // part: metadata
 
 [tags]
-field-type-name = "numeric"
-
-// part: expected_schema
-
-{
-    "format": "+s",
-    "children": [
-        {
-            "name": "idx",
-            "format": "l",
-            "flags": ["nullable"]
-        },
-        {
-            "name": "value",
-            "format": "u",
-            "flags": ["nullable"],
-            "metadata": {
-                "ARROW:extension:name": "arrow.opaque",
-                "ARROW:extension:metadata": "{\"type_name\": \"numeric\", \"vendor_name\": \"PostgreSQL\"}"
-            }
-        }
-    ]
-}
-
-// part: expected
-
-{"idx": 0, "value": null}
-{"idx": 1, "value": "0"}
-{"idx": 2, "value": "0.99"}
-{"idx": 3, "value": "-0.99"}
-{"idx": 4, "value": "0.1"}
-{"idx": 5, "value": "-0.1"}
+field-type-name = "date"

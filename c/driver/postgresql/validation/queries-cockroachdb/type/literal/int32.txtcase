@@ -15,15 +15,6 @@
 // specific language governing permissions and limitations
 // under the License.
 
-// part: expected_schema
+// part: query
 
-{
-    "format": "+s",
-    "children": [
-        {
-            "name": "res",
-            "format": "l",
-            "flags": ["nullable"]
-        }
-    ]
-}
+SELECT CAST(131072 AS INT4) AS res
