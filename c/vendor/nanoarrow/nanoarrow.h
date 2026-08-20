@@ -21,7 +21,7 @@
 #define NANOARROW_VERSION_MAJOR 0
 #define NANOARROW_VERSION_MINOR 9
 #define NANOARROW_VERSION_PATCH 0
-#define NANOARROW_VERSION "0.9.0-SNAPSHOT"
+#define NANOARROW_VERSION "0.9.0"
 
 #define NANOARROW_VERSION_INT                                        \
   (NANOARROW_VERSION_MAJOR * 10000 + NANOARROW_VERSION_MINOR * 100 + \
@@ -512,7 +512,7 @@ enum ArrowType {
 /// \brief Get a string value of an enum ArrowType value
 /// \ingroup nanoarrow-utils
 ///
-/// Returns NULL for invalid values for type
+/// Returns "<unknown type identifier>" for invalid values for type
 static inline const char* ArrowTypeString(enum ArrowType type);
 
 static inline const char* ArrowTypeString(enum ArrowType type) {
@@ -608,7 +608,7 @@ static inline const char* ArrowTypeString(enum ArrowType type) {
     case NANOARROW_TYPE_LARGE_LIST_VIEW:
       return "large_list_view";
     default:
-      return NULL;
+      return "<unknown type identifier>";
   }
 }
 
@@ -1140,6 +1140,17 @@ static inline void ArrowDecimalSetBytes(struct ArrowDecimal* decimal,
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowBufferAllocatorDefault)
 #define ArrowBufferDeallocator \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowBufferDeallocator)
+#define ArrowSharedBufferInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSharedBufferInit)
+#define ArrowSharedBufferIsThreadSafe \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSharedBufferIsThreadSafe)
+#define ArrowSharedBufferClone \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSharedBufferClone)
+#define ArrowSharedArrayInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSharedArrayInit)
+#define ArrowSharedArrayRelease \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSharedArrayRelease)
+#define ArrowSharedArrayBuffer \
+  NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSharedArrayBuffer)
+#define ArrowIsSharedBuffer NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowIsSharedBuffer)
 #define ArrowErrorSet NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowErrorSet)
 #define ArrowLayoutInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowLayoutInit)
 #define ArrowDecimalSetDigits NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowDecimalSetDigits)
@@ -1189,6 +1200,7 @@ static inline void ArrowDecimalSetBytes(struct ArrowDecimal* decimal,
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowMetadataBuilderRemove)
 #define ArrowSchemaViewInit NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaViewInit)
 #define ArrowSchemaToString NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowSchemaToString)
+#define ArrowArrayIsInternal NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayIsInternal)
 #define ArrowArrayInitFromType \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayInitFromType)
 #define ArrowArrayInitFromSchema \
@@ -1209,6 +1221,8 @@ static inline void ArrowDecimalSetBytes(struct ArrowDecimal* decimal,
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayFinishBuilding)
 #define ArrowArrayFinishBuildingDefault \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayFinishBuildingDefault)
+#define ArrowArrayMoveShared NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayMoveShared)
+#define ArrowArrayCloneShared NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayCloneShared)
 #define ArrowArrayViewInitFromType \
   NANOARROW_SYMBOL(NANOARROW_NAMESPACE, ArrowArrayViewInitFromType)
 #define ArrowArrayViewInitFromSchema \
@@ -1295,6 +1309,85 @@ NANOARROW_DLL struct ArrowBufferAllocator ArrowBufferAllocatorDefault(void);
 /// infrastructure provided here (e.g., by an R or Python object).
 NANOARROW_DLL struct ArrowBufferAllocator ArrowBufferDeallocator(
     ArrowBufferDeallocatorCallback, void* private_data);
+
+/// @}
+
+/// \defgroup nanoarrow-shared-buffer Shared buffers and arrays
+///
+/// The nanoarrow library implements two kinds of shared buffers: those backed by
+/// a reference-counted ArrowBuffer and those backed by a reference-counted ArrowArray.
+/// These are useful for building ArrowArrays using buffers without copying the bytes
+/// of the source. For example the IPC implementation uses shared buffers derived from an
+/// ArrowBuffer to avoid copying buffers from an IPC message, and the Shared buffers
+/// derived from arrays are used to make a safe shallow clone of an array.
+///
+/// Reference counts are implemented using C11 atomics and not necessarily thread safe
+/// on all platforms (notably, MSVC requires `/experimental:c11atomics`). Use
+/// ArrowSharedBufferIsThreadSafe() to check for thread safety if this is needed.
+///
+/// @{
+
+/// \brief Initialize a shared buffer from an ArrowBuffer
+///
+/// If NANOARROW_OK is returned, shared is a reference-counted buffer that
+/// took ownership of src. The caller should release the shared buffer
+/// using ArrowBufferReset() when finished. The underlying data will persist
+/// until all clones have also been released.
+NANOARROW_DLL ArrowErrorCode ArrowSharedBufferInit(struct ArrowBuffer* shared,
+                                                   struct ArrowBuffer* src);
+
+/// \brief Check for shared buffer thread safety
+///
+/// Thread-safe shared buffers require C11 and the stdatomic.h header.
+/// If either are unavailable, shared buffers are still possible but
+/// the resulting arrays must not be passed to other threads to be released.
+NANOARROW_DLL int ArrowSharedBufferIsThreadSafe(void);
+
+/// \brief Check if a buffer is a shared buffer
+///
+/// Returns non-zero if buffer was created by ArrowSharedBufferInit() or
+/// obtained from ArrowSharedArrayBuffer().
+NANOARROW_DLL int ArrowIsSharedBuffer(struct ArrowBuffer* buffer);
+
+/// \brief Clone a shared buffer, incrementing its reference count
+///
+/// This creates a new ArrowBuffer that shares the same underlying data with the
+/// original shared buffer. The reference count is incremented. Returns EINVAL
+/// if shared is not a shared buffer (i.e. ArrowIsSharedBuffer() returns false).
+NANOARROW_DLL ArrowErrorCode ArrowSharedBufferClone(struct ArrowBuffer* shared,
+                                                    struct ArrowBuffer* shared_out);
+
+/// \brief An opaque handle to a shared, reference-counted ArrowArray
+struct ArrowSharedArray {
+  void* private_data;
+};
+
+/// \brief Initialize a shared array from an ArrowArray
+///
+/// Takes ownership of src (sets src->release to NULL). The shared array
+/// should be released with ArrowSharedArrayRelease() when all buffers have
+/// been extracted from the source. The original array will be released
+/// when all borrowed buffers have been released.
+NANOARROW_DLL ArrowErrorCode ArrowSharedArrayInit(struct ArrowSharedArray* shared,
+                                                  struct ArrowArray* src);
+
+/// \brief Release the caller's reference to a shared array
+///
+/// Decrements the reference count. When no more references remain
+/// (including any buffers obtained via ArrowSharedArrayBuffer()),
+/// the underlying ArrowArray is released.
+NANOARROW_DLL void ArrowSharedArrayRelease(struct ArrowSharedArray* shared);
+
+/// \brief Obtain a buffer from a shared array
+///
+/// Returns an ArrowBuffer that views buffer i of the underlying ArrowArray.
+/// If the source array was built with nanoarrow (i.e. ArrowArrayIsInternal()
+/// returns true), buffer sizes are known and propagated to the output.
+/// Otherwise the output buffer's size_bytes will be 0. The shared array's
+/// reference count is incremented. The returned buffer is compatible with
+/// ArrowSharedBufferClone().
+NANOARROW_DLL ArrowErrorCode ArrowSharedArrayBuffer(struct ArrowSharedArray* shared,
+                                                    int64_t i, struct ArrowBuffer* out);
 
 /// @}
 
@@ -2133,6 +2226,12 @@ static inline ArrowErrorCode ArrowArrayShrinkToFit(struct ArrowArray* array);
 NANOARROW_DLL ArrowErrorCode ArrowArrayFinishBuildingDefault(struct ArrowArray* array,
                                                              struct ArrowError* error);
 
+/// \brief Check if an ArrowArray was allocated by nanoarrow
+///
+/// Returns non-zero if array was allocated using ArrowArrayInitFromType(),
+/// ArrowArrayInitFromSchema(), or ArrowArrayInitFromArrayView().
+NANOARROW_DLL int ArrowArrayIsInternal(struct ArrowArray* array);
+
 /// \brief Finish building an ArrowArray with explicit validation
 ///
 /// Finish building with an explicit validation level. This could perform less validation
@@ -2143,6 +2242,28 @@ NANOARROW_DLL ArrowErrorCode ArrowArrayFinishBuildingDefault(struct ArrowArray* 
 NANOARROW_DLL ArrowErrorCode ArrowArrayFinishBuilding(
     struct ArrowArray* array, enum ArrowValidationLevel validation_level,
     struct ArrowError* error);
+
+/// \brief Create a shared copy of an ArrowArray
+///
+/// Recursively converts array into a version where all buffers are
+/// reference-counted. On success, shared is a new ArrowArray whose buffers
+/// are backed by ArrowSharedArray references, and array is consumed
+/// (release set to NULL). The resulting shared array can be safely moved
+/// or have its buffers cloned via ArrowSharedBufferClone(). On error,
+/// (e.g., failure to allocate a copy of a buffer), the input array is
+/// released as it may have been partially moved at the point the error
+/// occurs.
+NANOARROW_DLL ArrowErrorCode ArrowArrayMoveShared(struct ArrowArray* array,
+                                                  struct ArrowArray* shared);
+
+/// \brief Clone a shared ArrowArray
+///
+/// Creates a new ArrowArray whose buffers share the same underlying data as
+/// the source shared array. The source must have been created by
+/// ArrowArrayMoveShared() (i.e. all buffers are reference-counted).
+/// Returns EINVAL if shared is not a shared array.
+NANOARROW_DLL ArrowErrorCode ArrowArrayCloneShared(struct ArrowArray* shared,
+                                                   struct ArrowArray* array);
 
 /// @}
 

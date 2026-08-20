@@ -632,7 +632,7 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 
 	ctx, span = internal.StartSpan(
 		ctx,
-		"FlightSQLStatement.ExecuteUpdate",
+		"FlightSQL.Statement.ExecuteUpdate",
 		s.cnxn,
 		trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...),
 	)
@@ -684,7 +684,7 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 func (s *statement) Prepare(ctx context.Context) (err error) {
 	ctx, span := internal.StartSpan(
 		ctx,
-		"FlightSQLStatement.Prepare",
+		"FlightSQL.Statement.Prepare",
 		s.cnxn,
 		trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...),
 	)

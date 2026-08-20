@@ -378,23 +378,12 @@ func (d *databaseImpl) Close() (err error) {
 	_, span = internal.StartSpan(context.Background(), spanName, d)
 
 	span.AddEvent("closing", trace.WithAttributes(attribute.String("target", d.uri.String())))
-	return closeTracing(context.Background(), &d.DatabaseImplBase, func(flushErr error) {
-		internal.NewEndSpanHelper(span).
-			WithError(flushErr).
-			WithStartTime(startTime).
-			EndSpan()
-	})
-}
-
-type tracingLifecycle interface {
-	ForceFlushTracing(context.Context) error
-	Close() error
-}
-
-func closeTracing(ctx context.Context, lifecycle tracingLifecycle, finishSpan func(error)) error {
-	flushErr := lifecycle.ForceFlushTracing(ctx)
-	finishSpan(flushErr)
-	shutdownErr := lifecycle.Close()
+	flushErr := d.ForceFlushTracing(context.Background())
+	internal.NewEndSpanHelper(span).
+		WithError(flushErr).
+		WithStartTime(startTime).
+		EndSpan()
+	shutdownErr := d.DatabaseImplBase.Close()
 	return errors.Join(flushErr, shutdownErr)
 }
 
@@ -415,8 +404,7 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 	var uri *url.URL
 	uri, err = url.Parse(loc)
 	if err != nil {
-		err = adbc.Error{Msg: fmt.Sprintf("Invalid URI '%s': %s", loc, err), Code: adbc.StatusInvalidArgument}
-		return nil, err
+		return nil, adbc.Error{Msg: fmt.Sprintf("Invalid URI '%s': %s", loc, err), Code: adbc.StatusInvalidArgument}
 	}
 	creds := d.creds
 

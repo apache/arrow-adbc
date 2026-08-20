@@ -181,14 +181,20 @@ jobs:
             -Zcrate-attr='feature(non_exhaustive_omitted_patterns_lint)' \
             -Zcrate-attr='allow(unused_features)'
       - name: Test (Default Features)
+        env:
+          RUST_BACKTRACE: "1"
         working-directory: rust
         run: >
           cargo test --all-targets --workspace
       - name: Test (All Features)
+        env:
+          RUST_BACKTRACE: "1"
         working-directory: rust
         run: >
           cargo test --all-targets --all-features --workspace
       - name: Doctests
+        env:
+          RUST_BACKTRACE: "1"
         working-directory: rust
         run: >
           cargo test --doc --all-features --workspace

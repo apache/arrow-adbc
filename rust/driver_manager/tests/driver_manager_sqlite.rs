@@ -128,9 +128,10 @@ fn test_connection_get_option() {
 fn test_connection_cancel() {
     let mut driver = get_driver();
     let database = get_database(&mut driver);
-    let mut connection = database.new_connection().unwrap();
+    let connection = database.new_connection().unwrap();
 
-    let error = connection.cancel().unwrap_err();
+    let handle = connection.get_cancel_handle();
+    let error = handle.try_cancel().unwrap_err();
     assert_eq!(error.status, Status::NotImplemented);
 }
 
@@ -285,9 +286,10 @@ fn test_statement_cancel() {
     let mut driver = get_driver();
     let database = get_database(&mut driver);
     let mut connection = database.new_connection().unwrap();
-    let mut statement = connection.new_statement().unwrap();
+    let statement = connection.new_statement().unwrap();
 
-    let error = statement.cancel().unwrap_err();
+    let handle = statement.get_cancel_handle();
+    let error = handle.try_cancel().unwrap_err();
     assert_eq!(error.status, Status::NotImplemented);
 }
 

@@ -88,7 +88,7 @@ func TestTraceHeaderAttrsWithPrefix_AppliedToSpan(t *testing.T) {
 
 	ctx, span := internal.StartSpan(
 		context.Background(),
-		"FlightSQLStatement.ExecuteQuery",
+		"FlightSQL.Statement.ExecuteQuery",
 		tracing,
 		trace.WithAttributes(traceHeaderAttrsWithPrefix(metadata.New(map[string]string{
 			"x-request-id":    "req-123",
@@ -114,7 +114,7 @@ func TestTraceHeaderAttrsWithPrefix_AppliedToSpan(t *testing.T) {
 	if _, ok := got["rpc.request.metadata.x-random-header"]; ok {
 		t.Fatalf("x-random-header leaked into span attrs: %v", got)
 	}
-	if v := got["db.operation.name"]; len(v) != 1 || v[0] != "FlightSQLStatement.ExecuteQuery" {
+	if v := got["db.operation.name"]; len(v) != 1 || v[0] != "FlightSQL.Statement.ExecuteQuery" {
 		t.Fatalf("db.operation.name = %v, want [FlightSQLStatement.ExecuteQuery]", v)
 	}
 }
