@@ -15,34 +15,36 @@
 // specific language governing permissions and limitations
 // under the License.
 
+// part: setup_query
+
+CREATE TABLE test_timestamptz (
+    idx INT,
+    res TIMESTAMP(6) WITH TIME ZONE,
+    res2 TIMESTAMP(6) WITH TIME ZONE
+);
+
 // part: expected_schema
+
 {
     "format": "+s",
     "children": [
         {
-            "name": "idx",
-            "format": "l",
+            "name": "res",
+            "format": "tsu:UTC",
             "flags": ["nullable"]
         },
         {
-            "name": "value",
-            "format": "u",
-            "flags": ["nullable"],
-            "metadata": {
-                "ARROW:extension:name": "arrow.opaque",
-                "ARROW:extension:metadata": "{\"type_name\": \"numeric\", \"vendor_name\": \"PostgreSQL\"}"
-            }
+            "name": "res2",
+            "format": "tsu:UTC",
+            "flags": ["nullable"]
         }
     ]
 }
 
 // part: expected
 
-{"idx": 0, "value": null}
-{"idx": 1, "value": "0"}
-{"idx": 2, "value": "123.45"}
-{"idx": 3, "value": "-123.45"}
-{"idx": 4, "value": "9999999.99"}
-{"idx": 5, "value": "-9999999.99"}
-{"idx": 6, "value": "99999999.99"}
-{"idx": 7, "value": "-99999999.99"}
+{"res": null, "res2": null}
+{"res": -9223372036854775, "res2": -9223372036854775}
+{"res": 946684800000000, "res2": 946684800000000}
+{"res": 1684158330000000, "res2": 1684158330000000}
+{"res": 9223372036854775, "res2": 9223372036854775}

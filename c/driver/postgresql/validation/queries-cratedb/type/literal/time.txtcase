@@ -15,34 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
-// part: expected_schema
-{
-    "format": "+s",
-    "children": [
-        {
-            "name": "idx",
-            "format": "l",
-            "flags": ["nullable"]
-        },
-        {
-            "name": "value",
-            "format": "u",
-            "flags": ["nullable"],
-            "metadata": {
-                "ARROW:extension:name": "arrow.opaque",
-                "ARROW:extension:metadata": "{\"type_name\": \"numeric\", \"vendor_name\": \"PostgreSQL\"}"
-            }
-        }
-    ]
-}
+// part: metadata
 
-// part: expected
-
-{"idx": 0, "value": null}
-{"idx": 1, "value": "0"}
-{"idx": 2, "value": "123.45"}
-{"idx": 3, "value": "-123.45"}
-{"idx": 4, "value": "9999999.99"}
-{"idx": 5, "value": "-9999999.99"}
-{"idx": 6, "value": "99999999.99"}
-{"idx": 7, "value": "-99999999.99"}
+# CrateDB does not support TIME WITHOUT TIME ZONE:
+# https://cratedb.com/docs/crate/reference/en/6.4/general/ddl/data-types.html#time
+hide = true
