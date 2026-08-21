@@ -49,6 +49,13 @@ def test_options(sqlite):
                 adbc_driver_sqlite.StatementOptions.BATCH_ROWS.value: "1",
             }
         )
+        assert (
+            stmt.get_option(adbc_driver_sqlite.StatementOptions.BATCH_ROWS.value) == "1"
+        )
+        assert (
+            stmt.get_option_int(adbc_driver_sqlite.StatementOptions.BATCH_ROWS.value)
+            == 1
+        )
         stmt.set_sql_query("SELECT 1")
         stream, _ = stmt.execute_query()
         reader = pyarrow.RecordBatchReader._import_from_c(stream.address)
