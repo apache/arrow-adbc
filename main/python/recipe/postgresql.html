@@ -913,37 +913,49 @@ In this case, you can explicitly disable the <code class="docutils literal notra
 </pre></div>
 </div>
 <p>Or it can be set afterwards:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">50</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
-<span class="linenos">51</span>    <span class="n">cur</span><span class="o">.</span><span class="n">adbc_statement</span><span class="o">.</span><span class="n">set_options</span><span class="p">(</span>
-<span class="linenos">52</span>        <span class="o">**</span><span class="p">{</span>
-<span class="linenos">53</span>            <span class="s2">"adbc.postgresql.use_copy"</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
-<span class="linenos">54</span>        <span class="p">}</span>
-<span class="linenos">55</span>    <span class="p">)</span>
-<span class="linenos">56</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"SHOW ALL"</span><span class="p">)</span>
-<span class="linenos">57</span>    <span class="nb">print</span><span class="p">(</span><span class="n">cur</span><span class="o">.</span><span class="n">fetch_arrow_table</span><span class="p">()</span><span class="o">.</span><span class="n">schema</span><span class="p">)</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">56</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">57</span>    <span class="n">cur</span><span class="o">.</span><span class="n">adbc_statement</span><span class="o">.</span><span class="n">set_options</span><span class="p">(</span>
+<span class="linenos">58</span>        <span class="o">**</span><span class="p">{</span>
+<span class="linenos">59</span>            <span class="s2">"adbc.postgresql.use_copy"</span><span class="p">:</span> <span class="kc">False</span><span class="p">,</span>
+<span class="linenos">60</span>        <span class="p">}</span>
+<span class="linenos">61</span>    <span class="p">)</span>
+<span class="linenos">62</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"SHOW ALL"</span><span class="p">)</span>
+<span class="linenos">63</span>    <span class="nb">print</span><span class="p">(</span><span class="n">cur</span><span class="o">.</span><span class="n">fetch_arrow_table</span><span class="p">()</span><span class="o">.</span><span class="n">schema</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>Without the option, the query fails as the driver attempts to execute the
 query with <code class="docutils literal notranslate"><span class="pre">COPY</span></code>:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">66</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
-<span class="linenos">67</span>    <span class="k">try</span><span class="p">:</span>
-<span class="linenos">68</span>        <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"SHOW ALL"</span><span class="p">)</span>
-<span class="linenos">69</span>    <span class="k">except</span> <span class="n">conn</span><span class="o">.</span><span class="n">Error</span><span class="p">:</span>
-<span class="linenos">70</span>        <span class="k">pass</span>
-<span class="linenos">71</span>    <span class="k">else</span><span class="p">:</span>
-<span class="linenos">72</span>        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">"Expected error"</span><span class="p">)</span>
-<span class="linenos">73</span>
-<span class="linenos">74</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">78</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">79</span>    <span class="k">try</span><span class="p">:</span>
+<span class="linenos">80</span>        <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"SHOW ALL"</span><span class="p">)</span>
+<span class="linenos">81</span>    <span class="k">except</span> <span class="n">conn</span><span class="o">.</span><span class="n">Error</span><span class="p">:</span>
+<span class="linenos">82</span>        <span class="k">pass</span>
+<span class="linenos">83</span>    <span class="k">else</span><span class="p">:</span>
+<span class="linenos">84</span>        <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span><span class="s2">"Expected error"</span><span class="p">)</span>
+<span class="linenos">85</span>
+<span class="linenos">86</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 </pre></div>
 </div>
 <div class="literal-block-wrapper docutils container" id="id2">
 <div class="code-block-caption"><span class="caption-text">stdout</span><a class="headerlink" href="#id2" title="Link to this code">¶</a></div>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>name: string
+  -- field metadata --
+  POSTGRESQL:type: 'text'
 setting: string
+  -- field metadata --
+  POSTGRESQL:type: 'text'
 description: string
+  -- field metadata --
+  POSTGRESQL:type: 'text'
 name: string
+  -- field metadata --
+  POSTGRESQL:type: 'text'
 setting: string
+  -- field metadata --
+  POSTGRESQL:type: 'text'
 description: string
+  -- field metadata --
+  POSTGRESQL:type: 'text'
 </pre></div>
 </div>
 </div>
