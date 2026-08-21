@@ -15,15 +15,15 @@
 // specific language governing permissions and limitations
 // under the License.
 
-// part: expected_schema
+// part: setup_query
 
-{
-    "format": "+s",
-    "children": [
-        {
-            "name": "res",
-            "format": "l",
-            "flags": ["nullable"]
-        }
-    ]
-}
+CREATE TABLE test_int32 (
+    idx INTEGER,
+    res INT4
+);
+
+INSERT INTO test_int32 (idx, res) VALUES (1, 131072);
+INSERT INTO test_int32 (idx, res) VALUES (2, 2147483647);
+INSERT INTO test_int32 (idx, res) VALUES (3, -2147483648);
+INSERT INTO test_int32 (idx, res) VALUES (4, 0);
+INSERT INTO test_int32 (idx, res) VALUES (5, NULL);

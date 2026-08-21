@@ -42,8 +42,14 @@ with conn.cursor(
     print(cur.fetch_arrow_table().schema)
     # Output:
     # name: string
+    #   -- field metadata --
+    #   POSTGRESQL:type: 'text'
     # setting: string
+    #   -- field metadata --
+    #   POSTGRESQL:type: 'text'
     # description: string
+    #   -- field metadata --
+    #   POSTGRESQL:type: 'text'
 
 #: Or it can be set afterwards:
 
@@ -57,8 +63,14 @@ with conn.cursor() as cur:
     print(cur.fetch_arrow_table().schema)
     # Output:
     # name: string
+    #   -- field metadata --
+    #   POSTGRESQL:type: 'text'
     # setting: string
+    #   -- field metadata --
+    #   POSTGRESQL:type: 'text'
     # description: string
+    #   -- field metadata --
+    #   POSTGRESQL:type: 'text'
 
 #: Without the option, the query fails as the driver attempts to execute the
 #: query with ``COPY``:

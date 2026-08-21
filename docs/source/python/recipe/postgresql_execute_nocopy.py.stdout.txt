@@ -1,6 +1,18 @@
 name: string
+  -- field metadata --
+  POSTGRESQL:type: 'text'
 setting: string
+  -- field metadata --
+  POSTGRESQL:type: 'text'
 description: string
+  -- field metadata --
+  POSTGRESQL:type: 'text'
 name: string
+  -- field metadata --
+  POSTGRESQL:type: 'text'
 setting: string
+  -- field metadata --
+  POSTGRESQL:type: 'text'
 description: string
+  -- field metadata --
+  POSTGRESQL:type: 'text'

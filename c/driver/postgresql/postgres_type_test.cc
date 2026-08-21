@@ -221,6 +221,11 @@ TEST(PostgresTypeTest, PostgresTypeSetSchema) {
                         &typnameMetadataValue);
   EXPECT_EQ(std::string(typnameMetadataValue.data, typnameMetadataValue.size_bytes),
             "numeric");
+  typnameMetadataValue = ArrowCharView("<not found>");
+  ArrowMetadataGetValue(schema->metadata, ArrowCharView("POSTGRESQL:type"),
+                        &typnameMetadataValue);
+  EXPECT_EQ(std::string(typnameMetadataValue.data, typnameMetadataValue.size_bytes),
+            "numeric");
   ArrowMetadataGetValue(schema->metadata, ArrowCharView("ARROW:extension:name"),
                         &typnameMetadataValue);
   EXPECT_EQ(std::string(typnameMetadataValue.data, typnameMetadataValue.size_bytes),
@@ -239,6 +244,11 @@ TEST(PostgresTypeTest, PostgresTypeSetSchema) {
   typnameMetadataValue = ArrowCharView("<not found>");
   ArrowMetadataGetValue(schema->children[0]->metadata,
                         ArrowCharView("ADBC:postgresql:typname"), &typnameMetadataValue);
+  EXPECT_EQ(std::string(typnameMetadataValue.data, typnameMetadataValue.size_bytes),
+            "numeric");
+  typnameMetadataValue = ArrowCharView("<not found>");
+  ArrowMetadataGetValue(schema->children[0]->metadata, ArrowCharView("POSTGRESQL:type"),
+                        &typnameMetadataValue);
   EXPECT_EQ(std::string(typnameMetadataValue.data, typnameMetadataValue.size_bytes),
             "numeric");
   schema.reset();
@@ -264,6 +274,11 @@ TEST(PostgresTypeTest, PostgresTypeSetSchema) {
   EXPECT_STREQ(schema->format, "z");
   typnameMetadataValue = ArrowCharView("<not found>");
   ArrowMetadataGetValue(schema->metadata, ArrowCharView("ADBC:postgresql:typname"),
+                        &typnameMetadataValue);
+  EXPECT_EQ(std::string(typnameMetadataValue.data, typnameMetadataValue.size_bytes),
+            "some_name");
+  typnameMetadataValue = ArrowCharView("<not found>");
+  ArrowMetadataGetValue(schema->metadata, ArrowCharView("POSTGRESQL:type"),
                         &typnameMetadataValue);
   EXPECT_EQ(std::string(typnameMetadataValue.data, typnameMetadataValue.size_bytes),
             "some_name");

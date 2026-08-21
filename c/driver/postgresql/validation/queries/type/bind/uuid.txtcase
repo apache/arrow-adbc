@@ -21,7 +21,7 @@
 drop = "test_uuid"
 
 [tags]
-sql-type-name = "UUID"
+sql-type-name = "uuid"
 
 // part: setup_query
 
