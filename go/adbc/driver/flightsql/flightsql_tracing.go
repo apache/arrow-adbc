@@ -28,6 +28,7 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 type responseMetadataKey struct{}
@@ -133,6 +134,46 @@ func (p *streamProgress) logKeyValues() []attribute.KeyValue {
 		attrs = append(attrs, attribute.String("timeSinceLastBatch", time.Since(p.lastBatchAt).String()))
 	}
 	return attrs
+}
+
+// headerKeyValuesWithPrefix is the shared implementation behind
+// correlationHeaderAttrs (incoming) and outgoingCallHeaderAttrs
+// (outbound). Only headers in wellKnownCorrelationHeaders are emitted;
+// returns nil when none are present.
+func headerKeyValuesWithPrefix(md metadata.MD, prefix string) []attribute.KeyValue {
+	if len(md) == 0 {
+		return nil
+	}
+	out := make([]attribute.KeyValue, 0, 4)
+	for _, k := range wellKnownCorrelationHeaders {
+		if vals := md.Get(k); len(vals) > 0 {
+			out = append(out, attribute.StringSlice(prefix+k, vals))
+		}
+	}
+	return out
+}
+
+// correlationHeaderKeyValues returns OpenTelemetry attributes for well-known
+// correlation headers present in md (typically incoming headers/trailers). Uses the
+// "hdr_" prefix; only allow-listed headers are emitted.
+func correlationHeaderKeyValues(md metadata.MD) []attribute.KeyValue {
+	return headerKeyValuesWithPrefix(md, "hdr_")
+}
+
+// grpcStatusKeyValues returns OpenTelemetry attributes for the gRPC status
+// embedded in err, or nil if err has no status.
+func grpcStatusKeyValues(err error) []attribute.KeyValue {
+	if err == nil {
+		return nil
+	}
+	st, ok := status.FromError(err)
+	if !ok {
+		return nil
+	}
+	return []attribute.KeyValue{
+		attribute.String("grpc_code", st.Code().String()),
+		attribute.String("grpc_message", st.Message()),
+	}
 }
 
 // flightInfoTracingKeyValues returns OpenTelemetry attributes describing a FlightInfo:
