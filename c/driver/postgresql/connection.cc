@@ -503,7 +503,7 @@ AdbcStatusCode PostgresConnection::EnsureTransaction(struct AdbcError* error) {
     return ADBC_STATUS_OK;
   }
   auto txstatus = PQtransactionStatus(conn_);
-  if (txstatus == PQTRANS_ACTIVE || txstatus == PQTRANS_INTRANS) {
+  if (txstatus == PQTRANS_INTRANS) {
     return ADBC_STATUS_OK;
   } else if (txstatus == PQTRANS_INERROR) {
     InternalAdbcSetError(error,
