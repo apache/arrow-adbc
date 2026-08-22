@@ -138,3 +138,7 @@ javascript/**/target/
 javascript/**/dist/
 javascript/native/*.node
 javascript/native/build/
+
+# Static assets with a license that precludes them from being included in
+# source distributions. Downloaded at docs build time instead.
+docs/source/_static/fontawesome/

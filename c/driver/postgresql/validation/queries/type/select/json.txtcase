@@ -21,7 +21,7 @@
 drop = "test_json"
 
 [tags]
-sql-type-name = "JSON"
+sql-type-name = "json"
 
 // part: setup_query
 

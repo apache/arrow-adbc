@@ -56,10 +56,19 @@ main() {
         echo "=== Copying artifacts to dist dir ==="
         mkdir -p "${dist_dir}"
 
-        find "${maven_repo}" \
-             "(" -name "*.jar" -o -name "*.pom" ")" \
-             -exec echo {} ";" \
-             -exec cp {} "${dist_dir}" ";"
+        while IFS= read -r pom; do
+            if grep -Eq '<maven\.deploy\.skip>[[:space:]]*true[[:space:]]*</maven\.deploy\.skip>' "${pom}"; then
+                echo "Skipping deployment artifacts for ${pom}"
+                continue
+            fi
+
+            find "$(dirname "${pom}")" \
+                 -maxdepth 1 \
+                 -type f \
+                 "(" -name "*.jar" -o -name "*.pom" ")" \
+                 -exec echo {} ";" \
+                 -exec cp {} "${dist_dir}" ";"
+        done < <(find "${maven_repo}" -name "*.pom" -type f)
     fi
 }
 

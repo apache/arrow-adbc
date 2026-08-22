@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -26,6 +27,7 @@
 #include <libpq-fe.h>
 
 #include <fmt/core.h>
+#include <fmt/format.h>
 
 #include "driver/framework/status.h"
 
@@ -55,21 +57,7 @@ static const std::vector<DetailField> kDetailFields = {
     {PG_DIAG_TABLE_NAME, "PG_DIAG_TABLE_NAME"},
 };
 
-// The printf checking attribute doesn't work properly on gcc 4.8
-// and results in spurious compiler warnings
-#if defined(__clang__) || (defined(__GNUC__) && __GNUC__ >= 5)
-#define ADBC_CHECK_PRINTF_ATTRIBUTE(x, y) __attribute__((format(printf, x, y)))
-#else
-#define ADBC_CHECK_PRINTF_ATTRIBUTE(x, y)
-#endif
-
-/// \brief Set an error based on a PGresult, inferring the proper ADBC status
-///   code from the PGresult. Deprecated and is currently a thin wrapper around
-///   MakeStatus() below.
-AdbcStatusCode SetError(struct AdbcError* error, PGresult* result, const char* format,
-                        ...) ADBC_CHECK_PRINTF_ATTRIBUTE(3, 4);
-
-#undef ADBC_CHECK_PRINTF_ATTRIBUTE
+AdbcStatusCode ClassifySqlState(const char* sqlstate);
 
 template <typename... Args>
 Status MakeStatus(PGresult* result, const char* format_string, Args&&... args) {
@@ -85,17 +73,7 @@ Status MakeStatus(PGresult* result, const char* format_string, Args&&... args) {
 
   const char* sqlstate = PQresultErrorField(result, PG_DIAG_SQLSTATE);
   if (sqlstate) {
-    // https://www.postgresql.org/docs/current/errcodes-appendix.html
-    // This can be extended in the future
-    if (std::strcmp(sqlstate, "57014") == 0) {
-      code = ADBC_STATUS_CANCELLED;
-    } else if (std::strcmp(sqlstate, "42P01") == 0 ||
-               std::strcmp(sqlstate, "42602") == 0) {
-      code = ADBC_STATUS_NOT_FOUND;
-    } else if (std::strncmp(sqlstate, "42", 0) == 0) {
-      // Class 42 — Syntax Error or Access Rule Violation
-      code = ADBC_STATUS_INVALID_ARGUMENT;
-    }
+    code = ClassifySqlState(sqlstate);
   }
 
   Status status(code, message);

@@ -223,7 +223,7 @@ set_resolved_issues() {
                                  --jq ".[] | select(.title | test(\"ADBC Libraries ${version}\$\"))")
     local -r milestone_number=$(echo "${milestone_info}" | jq -r '.number')
 
-    local -r graphql_query="query {
+    local -r resolved_issues_query="query {
     repository(owner: \"apache\", name: \"arrow-adbc\") {
         milestone(number: ${milestone_number}) {
             issues(states: CLOSED) {
@@ -234,8 +234,20 @@ set_resolved_issues() {
 }
 "
 
+    local -r merged_prs_query="query {
+  search(type: ISSUE, query: \"type:pr repo:apache/arrow-adbc milestone:\\\"ADBC Libraries ${version}\\\" -author:app/dependabot\") {
+    issueCount
+  }
+}"
+
+    local -r urlencoded=$(echo -n "ADBC Libraries ${version}" | jq -sRr @uri)
+    export ISSUES_URL="https://github.com/apache/arrow-adbc/issues?q=is%3Aissue%20state%3Aclosed%20milestone%3A%22${urlencoded}%22"
+    export PRS_URL="https://github.com/apache/arrow-adbc/pulls?q=is%3Apr%20state%3Aclosed%20milestone%3A%22${urlencoded}%22%20-author%3Aapp%2Fdependabot"
     export MILESTONE_URL=$(echo "${milestone_info}" | jq -r '.html_url')
     export RESOLVED_ISSUES=$(gh api graphql \
-                            -f query="${graphql_query}" \
+                            -f query="${resolved_issues_query}" \
                             --jq '.data.repository.milestone.issues.totalCount')
+    export MERGED_PRS=$(gh api graphql \
+                            -f query="${merged_prs_query}" \
+                            --jq '.data.search.issueCount')
 }

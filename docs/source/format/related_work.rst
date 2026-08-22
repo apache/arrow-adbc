@@ -19,9 +19,10 @@
 Related Work
 ============
 
-In the initial proposal, a survey of existing solutions and systems was
-included, which is partially reproduced below for context, though note the
-descriptions are only kept up-to-date on a best-effort basis.
+In the initial proposal for ADBC, a survey of existing solutions and
+systems was included, which is partially reproduced below for context,
+though note the descriptions are only kept up-to-date on a best-effort
+basis.
 
 Preexisting database client APIs
 ================================

@@ -28,7 +28,7 @@ lower level, ADBC is two separate but related things:
 1. An abstract API for working with databases and Arrow data.
 
 2. A set of concrete implementations of that abstract API in different languages
-   and drivers for different databases (see :doc:`driver/status`).
+   and drivers for different databases (see :doc:`driver/index`).
 
 Why not just use JDBC/ODBC?
 ===========================
@@ -250,7 +250,7 @@ When/where is 1.0? Is this project ready?
 
 Different parts of the project have different version numbers.  We consider
 certain implementations (like Go) to be "1.0"-ready, while others (like Java)
-are still pre-1.0.  :doc:`driver/status` has a rough overview of the status of
+are still pre-1.0.  :doc:`driver/index` has a rough overview of the status of
 individual driver implementations.
 
 Where can I learn more about the rationale for ADBC?

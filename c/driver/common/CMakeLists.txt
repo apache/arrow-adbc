@@ -47,7 +47,7 @@ if(ADBC_BUILD_TESTS)
                 utils_test.cc
                 EXTRA_LINK_LIBS
                 adbc_driver_common)
-  target_compile_features(adbc-driver-common-test PRIVATE cxx_std_17)
+  target_compile_features(adbc-driver-common-test PRIVATE cxx_std_20)
   target_include_directories(adbc-driver-common-test
                              PRIVATE "${REPOSITORY_ROOT}/c/include")
   adbc_configure_target(adbc-driver-common-test)

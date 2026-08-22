@@ -50,9 +50,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ["macos-15-intel", "macos-latest", "ubuntu-latest"]
+        os: ["macos-15-intel", "macos-latest", "ubuntu-latest", "windows-latest"]
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -84,7 +84,7 @@ jobs:
       matrix:
         os: ["macos-15-intel", "macos-latest", "ubuntu-latest", "windows-latest"]
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -132,6 +132,10 @@ jobs:
           # Required for macOS
           export CXXFLAGS="${CXXFLAGS} -D_LIBCPP_DISABLE_AVAILABILITY"
           echo "CXXFLAGS=${CXXFLAGS}"
+          if [[ $(uname) == "Linux" ]]; then
+            # conda-forge's R makevars doesn't seem to define CXX20 on Linux
+            export R_MAKEVARS_USER="$(pwd)/ci/r_makevars_cxx20"
+          fi
           ./dev/release/verify-release-candidate.sh ${INPUTS_VERSION} ${INPUTS_RC}
       - name: Verify
         if: matrix.os == 'windows-latest'

@@ -317,7 +317,7 @@ impl<'a> DriverLibrary<'a> {
 
             libloading::os::unix::Library::open(
                 Some(filename.as_ref()),
-                libloading::os::unix::RTLD_LAZY | libloading::os::unix::RTLD_LOCAL | RTLD_NODELETE,
+                libloading::os::unix::RTLD_NOW | libloading::os::unix::RTLD_LOCAL | RTLD_NODELETE,
             )
             .map(Into::into)
             .map_err(libloading_error_to_adbc_error)?

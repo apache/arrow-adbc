@@ -23,7 +23,7 @@ project(adbc
         VERSION "${ADBC_BASE_VERSION}"
         LANGUAGES C CXX)
 set(CMAKE_C_STANDARD 99)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(AdbcDefines)
 include(BuildUtils)

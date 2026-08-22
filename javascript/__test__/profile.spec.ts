@@ -20,9 +20,23 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs'
 import { join, isAbsolute } from 'node:path'
 import { tmpdir } from 'node:os'
-import { AdbcDatabase } from '../lib/index.js'
+import { AdbcDatabase, AdbcError } from '../lib/index.js'
 
 const testLib = process.env.ADBC_DRIVER_MANAGER_TEST_LIB
+
+function tomlPath(p: string): string {
+  return p.replaceAll('\\', '/')
+}
+
+function writeProfileToml(dir: string, name: string, driver: string, options: Record<string, string> = {}): void {
+  const optLines = Object.entries(options)
+    .map(([k, v]) => `${k} = "${tomlPath(v)}"`)
+    .join('\n')
+  writeFileSync(
+    join(dir, `${name}.toml`),
+    `profile_version = 1\ndriver = "${tomlPath(driver)}"\n\n[Options]\n${optLines}\n`,
+  )
+}
 
 test('profile: load database from profile:// URI', async () => {
   const driver = testLib ?? 'sqlite'
@@ -38,12 +52,7 @@ test('profile: load database from profile:// URI', async () => {
     await setupConn.close()
     await setupDb.close()
 
-    // TOML requires forward slashes — backslashes are escape sequences
-    const toml = (p: string) => p.replaceAll('\\', '/')
-    writeFileSync(
-      join(tmpDir, 'test_sqlite.toml'),
-      `profile_version = 1\ndriver = "${toml(driver)}"\n\n[Options]\nuri = "${toml(dbPath)}"\n`,
-    )
+    writeProfileToml(tmpDir, 'test_sqlite', driver, { uri: dbPath })
 
     const db = new AdbcDatabase({
       driver: 'profile://test_sqlite',
@@ -67,13 +76,168 @@ test('profile: load database from profile:// URI', async () => {
 // test env var is set to an absolute path (e.g. on Windows CI).
 test('profile: load database from sqlite: URI', { skip: testLib !== undefined && isAbsolute(testLib) }, async () => {
   const driver = testLib ?? 'sqlite'
-  const db = new AdbcDatabase({
-    driver: `${driver}::memory:`,
-  })
+  const db = new AdbcDatabase({ driver: `${driver}::memory:` })
   const conn = await db.connect()
 
   await conn.query('SELECT 1 AS n')
 
   await conn.close()
   await db.close()
+})
+
+test(
+  'profile: omit driver, load from URI in databaseOptions.uri',
+  { skip: testLib !== undefined && isAbsolute(testLib) },
+  async () => {
+    const driver = testLib ?? 'sqlite'
+    const db = new AdbcDatabase({
+      databaseOptions: { uri: `${driver}::memory:` },
+    })
+    const conn = await db.connect()
+
+    await conn.query('SELECT 1 AS n')
+
+    await conn.close()
+    await db.close()
+  },
+)
+
+test('profile: omit driver, load from profile:// URI in databaseOptions.uri', async () => {
+  const driver = testLib ?? 'sqlite'
+  const tmpDir = mkdtempSync(join(tmpdir(), 'adbc-profile-test-'))
+  try {
+    writeProfileToml(tmpDir, 'my_profile', driver)
+
+    const db = new AdbcDatabase({
+      databaseOptions: { uri: 'profile://my_profile' },
+      profileSearchPaths: [tmpDir],
+    })
+    const conn = await db.connect()
+
+    await conn.query('SELECT 1 AS n')
+
+    await conn.close()
+    await db.close()
+  } finally {
+    rmSync(tmpDir, { recursive: true })
+  }
+})
+
+test('profile: omit driver, load from bare profile name in databaseOptions.profile', async () => {
+  const driver = testLib ?? 'sqlite'
+  const tmpDir = mkdtempSync(join(tmpdir(), 'adbc-profile-test-'))
+  try {
+    writeProfileToml(tmpDir, 'my_profile', driver)
+
+    const db = new AdbcDatabase({
+      databaseOptions: { profile: 'my_profile' },
+      profileSearchPaths: [tmpDir],
+    })
+    const conn = await db.connect()
+
+    await conn.query('SELECT 1 AS n')
+
+    await conn.close()
+    await db.close()
+  } finally {
+    rmSync(tmpDir, { recursive: true })
+  }
+})
+
+test('profile: driver + databaseOptions.profile loads from profile', async () => {
+  const driver = tomlPath(testLib ?? 'sqlite')
+  const tmpDir = mkdtempSync(join(tmpdir(), 'adbc-profile-test-'))
+  try {
+    writeProfileToml(tmpDir, 'my_profile', driver)
+
+    const db = new AdbcDatabase({
+      driver,
+      databaseOptions: { profile: 'my_profile' },
+      profileSearchPaths: [tmpDir],
+    })
+    const conn = await db.connect()
+
+    await conn.query('SELECT 1 AS n')
+
+    await conn.close()
+    await db.close()
+  } finally {
+    rmSync(tmpDir, { recursive: true })
+  }
+})
+
+test('profile: driver + databaseOptions.uri profile:// loads from profile', async () => {
+  const driver = tomlPath(testLib ?? 'sqlite')
+  const tmpDir = mkdtempSync(join(tmpdir(), 'adbc-profile-test-'))
+  try {
+    writeProfileToml(tmpDir, 'my_profile', driver)
+
+    const db = new AdbcDatabase({
+      driver,
+      databaseOptions: { uri: 'profile://my_profile' },
+      profileSearchPaths: [tmpDir],
+    })
+    const conn = await db.connect()
+
+    await conn.query('SELECT 1 AS n')
+
+    await conn.close()
+    await db.close()
+  } finally {
+    rmSync(tmpDir, { recursive: true })
+  }
+})
+
+test('profile: error when profile key and profile:// uri are both provided', async () => {
+  assert.throws(
+    () =>
+      new AdbcDatabase({
+        databaseOptions: { profile: 'p1', uri: 'profile://p2' },
+      }),
+    (err: unknown) => {
+      assert.ok(err instanceof Error)
+      assert.ok(err.message.includes('mutually exclusive'), `unexpected message: ${err.message}`)
+      return true
+    },
+  )
+})
+
+test('profile: driver disagreeing with profile errors', async () => {
+  const driver = tomlPath(testLib ?? 'sqlite')
+  const tmpDir = mkdtempSync(join(tmpdir(), 'adbc-profile-test-'))
+  try {
+    writeProfileToml(tmpDir, 'my_profile', driver)
+
+    assert.throws(
+      () =>
+        new AdbcDatabase({
+          driver: 'some_other_driver',
+          databaseOptions: { profile: 'my_profile' },
+          profileSearchPaths: [tmpDir],
+        }),
+      (err: unknown) => {
+        assert.ok(err instanceof AdbcError)
+        assert.strictEqual(err.code, 'InvalidArguments')
+        assert.strictEqual(
+          err.message,
+          `profile specifies driver \`${tomlPath(driver)}\` which does not match requested driver \`some_other_driver\``,
+        )
+        return true
+      },
+    )
+  } finally {
+    rmSync(tmpDir, { recursive: true })
+  }
+})
+
+test('profile: error when driver is omitted and neither uri nor profile is present', async () => {
+  assert.throws(
+    // @ts-expect-error — intentionally invalid: neither uri nor profile present
+    () => new AdbcDatabase({ databaseOptions: { username: 'foo' } }),
+    (err: unknown) => {
+      assert.ok(err instanceof Error)
+      assert.ok(err.message.includes('driver is required'), `unexpected message: ${err.message}`)
+      return true
+    },
+  )
 })

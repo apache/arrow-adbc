@@ -15,13 +15,15 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
-================
-BigQuery Support
-================
+:orphan:
+
+=============
+BigQuery (C#)
+=============
 
 .. adbc_driver_status:: ../../../csharp/src/Drivers/BigQuery/readme.md
 
-The C# BigQuery Driver (Beta) is available as a `NuGet package <https://www.nuget.org/packages/Apache.Arrow.Adbc.Drivers.BigQuery>`__
+The C# BigQuery Driver (Beta) is available as a `NuGet package <https://www.nuget.org/packages/Apache.Arrow.Adbc.Drivers.BigQuery>`__.
 
 C# BigQuery Driver
 ==================

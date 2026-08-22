@@ -35,7 +35,10 @@ There are two ways to load a driver with the driver manager:
 With either method, you specify the dynamic library or driver manifest as the
 ``driver`` option to the driver manager or you can use an explicit function for
 loading drivers if your driver manager library exposes one (e.g., C++, see
-example below).
+example below).  With either method, you can also specify the driver in a
+:doc:`connection profile <connection_profiles>`.  You can additionally let the
+driver manager select the driver from the scheme of the ADBC connection URI
+(see :ref:`driver-uri-scheme`).
 
 .. note:: In addition to the ``driver`` option, there is also an
           :term:`entrypoint` option that should be used if the driver uses a
@@ -324,6 +327,8 @@ The construction of the platform tuple is: ``<OS>_<Architecture>``, for example:
    (glibc) or MinGW, the tuple should have the appropriate suffix for that
    environment. i.e. ``linux_amd64_musl`` or ``windows_amd64_mingw``.
 
+.. _driver-manifest-discovery:
+
 Manifest Location and Discovery
 -------------------------------
 
@@ -505,3 +510,31 @@ would happen for ODBC drivers. The search for a manifest on Windows would be the
 
    * The registry is searched for the key ``HKEY_LOCAL_MACHINE\SOFTWARE\ADBC\Drivers\${name}``. If it exists, then the same sub-keys
      as above are used.
+
+.. _driver-uri-scheme:
+
+Resolving a Driver from a Connection URI
+----------------------------------------
+
+Most ADBC drivers accept connection parameters as a URI, which is passed using
+the ``uri`` option.  By convention, a driver's connection URIs use a scheme that
+matches the driver's name. For example, the PostgreSQL driver uses
+``postgresql://`` URIs and the SQLite driver uses ``sqlite://`` URIs.
+
+When a driver has not otherwise been specified (that is, no ``driver`` option
+was given), the driver manager will use the **scheme** of the ``uri`` option as
+the driver name and resolve it using the discovery process described above.  For
+example, given only::
+
+   uri = "postgresql://localhost:5432/postgres"
+
+the driver manager takes ``postgresql`` as the driver name, searches for a
+matching driver (e.g. a ``postgresql.toml`` manifest), loads it, and then passes
+the full URI to the driver as the ``uri`` option.  This lets an application
+connect using just a connection URI, without separately naming the driver.
+
+The scheme is matched against the driver name using the same rules as any other
+driver name, so the corresponding driver must be discoverable as a manifest or
+shared library (see :ref:`driver-manifest-discovery`).  A driver may accept
+multiple URI schemes; consult the documentation for the specific driver for the
+schemes and connection URI formats it supports.

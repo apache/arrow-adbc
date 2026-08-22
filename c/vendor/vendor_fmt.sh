@@ -19,7 +19,7 @@
 # Check for updates: https://fmt.dev/latest/index.html
 # XXX: manually update fmt/CMakeLists.txt so add fmt as STATIC
 rm -rf fmt
-curl -L https://github.com/fmtlib/fmt/archive/refs/heads/master.zip > fmt.zip
+curl -L https://github.com/fmtlib/fmt/releases/download/12.2.0/fmt-12.2.0.zip > fmt.zip
 unzip fmt.zip -d .
 rm fmt.zip
 mv fmt-* fmt

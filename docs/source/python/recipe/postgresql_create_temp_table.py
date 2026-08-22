@@ -24,10 +24,10 @@ import os
 
 import pyarrow
 
-import adbc_driver_postgresql.dbapi
+from adbc_driver_manager import dbapi
 
 uri = os.environ["ADBC_POSTGRESQL_TEST_URI"]
-conn = adbc_driver_postgresql.dbapi.connect(uri)
+conn = dbapi.connect("postgresql", uri)
 
 #: For the purposes of testing, we'll first make sure the tables we're about
 #: to use don't exist.
@@ -82,7 +82,7 @@ conn.close()
 #: After closing the connection, the temporary table is implicitly dropped.
 #: If we reconnect, the table won't exist; we'll see only the 'normal' table.
 
-with adbc_driver_postgresql.dbapi.connect(uri) as conn:
+with dbapi.connect("postgresql", uri) as conn:
     with conn.cursor() as cur:
         cur.execute("SELECT COUNT(*) FROM example")
         assert cur.fetchone() == (2,)

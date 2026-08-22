@@ -83,7 +83,7 @@ def test_query(sqlite: dbapi.Connection) -> None:
     with sqlite.cursor() as cursor:
         cursor.execute("SELECT 1 AS theresult")
         capsule = cursor.fetch_arrow()
-        df = polars.from_arrow(capsule)
+        df = polars.DataFrame(capsule)
         polars.testing.assert_frame_equal(
             df,
             polars.DataFrame(
@@ -274,7 +274,7 @@ def test_query_not_permitted(sqlite: dbapi.Connection) -> None:
 
         capsule = cursor.fetch_arrow()
         # Import the result to free memory
-        polars.from_arrow(capsule)
+        polars.DataFrame(capsule)
 
 
 def test_query_double_capsule(sqlite: dbapi.Connection) -> None:
@@ -287,7 +287,7 @@ def test_query_double_capsule(sqlite: dbapi.Connection) -> None:
             cursor.fetch_arrow()
 
         # Import the result to free memory
-        polars.from_arrow(capsule)
+        polars.DataFrame(capsule)
 
 
 @pytest.mark.xfail(raises=dbapi.NotSupportedError)

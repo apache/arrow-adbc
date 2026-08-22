@@ -25,9 +25,9 @@
 #: result set has many NULL rows up front, you may consider increasing the
 #: batch size so that the driver can infer the correct types.
 
-import adbc_driver_sqlite.dbapi
+from adbc_driver_manager import dbapi
 
-conn = adbc_driver_sqlite.dbapi.connect()
+conn = dbapi.connect("sqlite")
 
 #: First we'll set up a demo table with 1024 NULL values.
 
@@ -73,7 +73,7 @@ with conn.cursor() as cur:
 with conn.cursor() as cur:
     cur.adbc_statement.set_options(
         **{
-            adbc_driver_sqlite.StatementOptions.BATCH_ROWS.value: 2048,
+            "adbc.sqlite.query.batch_rows": 2048,
         }
     )
     cur.execute("SELECT * FROM demo")

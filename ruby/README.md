@@ -47,7 +47,7 @@ $ gem install red-adbc
 ```ruby
 require "adbc"
 
-ADBC::Database.open(driver: "adbc_driver_sqlite",
+ADBC::Database.open(driver: "sqlite",
                     uri: ":memory:") do |database|
   database.connect do |connection|
     puts(connection.query("SELECT 1"))

@@ -64,6 +64,8 @@ cd c
 %adbc_cmake \
   -DCMAKE_BUILD_TYPE=${cmake_build_type} \
   -G"Unix Makefiles" \
+  -DADBC_BUILD_SHARED=ON \
+  -DADBC_BUILD_STATIC=ON \
   -DADBC_DRIVER_FLIGHTSQL=ON \
   -DADBC_DRIVER_MANAGER=ON \
   -DADBC_DRIVER_POSTGRESQL=ON \

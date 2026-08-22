@@ -19,21 +19,16 @@
 Quickstart
 ==========
 
-Here we'll briefly tour using ADBC with the `DataFusion`_ driver.
-
-.. _DataFusion: https://datafusion.apache.org/
-
-.. note:: The DataFusion driver is maintained by a third party, the ADBC Driver Foundry (https://adbc-drivers.org). We're using it here since we don't maintain any Rust-based drivers directly.
+Here we'll briefly tour basic features of ADBC with Rust using the SQLite driver.
 
 Installation
 ============
 
-Add a dependency on ``adbc_core`` and ``adbc_datafusion``:
+Add a dependency on ``adbc_core`` and ``adbc_driver_manager``:
 
 .. code-block:: shell
 
-   cargo add adbc_core
-   cargo add --git https://github.com/adbc-drivers/datafusion adbc-driver-datafusion
+   cargo add adbc_core adbc_driver_manager
 
 .. note:: If you get a compiler error (E0308, mismatched types) and a note about
           multiple versions of the arrow crates in the dependency graph when you
@@ -49,34 +44,52 @@ Add a dependency on ``adbc_core`` and ``adbc_datafusion``:
           the `Version Incompatibility Hazards <https://doc.rust-lang.org/cargo/reference/resolver.html#version-incompatibility-hazards>`__
           in the Cargo documentation for more information.
 
-Loading DataFusion
-==================
+Installing Drivers
+------------------
 
-Create a driver instance, then a database handle, and then finally a
-connection.  (This is a bit redundant for something like DataFusion, but the
-intent is that the database handle can hold shared state that multiple
-connections can share.)
+See :ref:`driver-table-install` for instructions on installing ADBC drivers for
+the database you want to connect to. For the example below, you could install
+`dbc <https://docs.columnar.tech/dbc>`__ and then install the SQLite driver with:
+
+.. code-block:: shell
+
+   dbc install sqlite
+
+Loading a Driver
+================
+
+Use ``ManagedDriver::load_from_name`` to locate and load a driver by name. The driver manager
+searches for a driver manifest (e.g. ``sqlite.toml``) in the directories controlled by
+``load_flags``. See :doc:`/format/driver_manifests` for details on manifest search paths.
 
 .. code-block:: rust
 
-   // These traits must be in scope
-   use adbc_core::{Connection, Database, Driver, Statement};
+   use adbc_core::options::AdbcVersion;
+   use adbc_core::{Connection, Database, Driver, Statement, LOAD_FLAG_DEFAULT};
+   use adbc_driver_manager::ManagedDriver;
 
-   let mut driver = adbc_driver_datafusion::DataFusionDriver {};
+   let mut driver = ManagedDriver::load_from_name(
+       "sqlite",
+       None,
+       AdbcVersion::default(),
+       LOAD_FLAG_DEFAULT,
+       None,
+   )
+   .expect("Failed to load driver");
    let db = driver.new_database().expect("Failed to create database handle");
    let mut conn = db.new_connection().expect("Failed to create connection");
 
 Running Queries
 ===============
 
-To run queries, we can create a statement and set a query:
+To run queries, create a statement and set a query:
 
 .. code-block:: rust
 
    let mut stmt = conn.new_statement().expect("Failed to create statement");
    stmt.set_sql_query("SELECT 1").expect("Failed to set SQL query");
 
-We can then execute the query to get an Arrow ``RecordBatchReader``:
+Execute the query to get an Arrow ``RecordBatchReader``:
 
 .. code-block:: rust
 
@@ -85,3 +98,11 @@ We can then execute the query to get an Arrow ``RecordBatchReader``:
        let batch = batch.expect("Failed to read batch");
        println!("{:?}", batch);
    }
+
+Next Steps
+==========
+
+- Check out the :doc:`Rust API documentation <index>` for more details
+- See the :doc:`drivers </driver/index>` to see which databases are supported
+- Explore more examples in the `adbc-quickstarts repository <https://github.com/columnar-tech/adbc-quickstarts/tree/main/rust>`_
+- Explore the `Rust source code <https://github.com/apache/arrow-adbc/tree/main/rust>`_ for additional examples

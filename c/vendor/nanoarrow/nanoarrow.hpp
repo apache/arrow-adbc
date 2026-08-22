@@ -861,7 +861,7 @@ class ViewArrayAs {
   using const_iterator = typename internal::RandomAccessRange<Get>::const_iterator;
   const_iterator begin() const { return range_.begin(); }
   const_iterator end() const { return range_.end(); }
-  value_type operator[](int64_t i) const { return range_.get(i); }
+  value_type operator[](int64_t i) const { return range_.get(range_.offset + i); }
 };
 
 /// \brief A range-for compatible wrapper for ArrowArray of binary or utf8

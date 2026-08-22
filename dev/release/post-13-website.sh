@@ -68,7 +68,8 @@ limitations under the License.
 
 The Apache Arrow team is pleased to announce the version ${RELEASE} release of
 the Apache Arrow ADBC libraries. This release includes [**${RESOLVED_ISSUES}
-resolved issues**][1] from [**${contributors} distinct contributors**][2].
+resolved issues**][1] and [**${MERGED_PRS} merged pull requests**][2] from
+[**${contributors} distinct contributors**](#contributors).
 
 This is a release of the **libraries**, which are at version ${RELEASE}.  The
 [**API specification**][specification] is versioned separately and is at
@@ -79,6 +80,7 @@ The subcomponents are versioned independently:
 - C/C++/GLib/Go/Python/Ruby: ${VERSION_NATIVE}
 - C#: ${VERSION_CSHARP}
 - Java: ${VERSION_JAVA}
+- JavaScript: ${VERSION_JS}
 - R: ${VERSION_R}
 - Rust: ${VERSION_RUST}
 
@@ -90,6 +92,7 @@ been made: we refer you to the [complete changelog][3].
 
 <!-- TODO: fill this portion in. -->
 
+<a id="contributors"></a>
 ## Contributors
 
 \`\`\`
@@ -107,8 +110,8 @@ We welcome questions and contributions from all interested.  Issues
 can be filed on [GitHub][4], and questions can be directed to GitHub
 or the [Arrow mailing lists][5].
 
-[1]: ${MILESTONE_URL}
-[2]: #contributors
+[1]: ${ISSUES_URL}
+[2]: ${PRS_URL}
 [3]: https://github.com/apache/arrow-adbc/blob/apache-arrow-adbc-${RELEASE}/CHANGELOG.md
 [4]: https://github.com/apache/arrow-adbc/issues
 [5]: {% link community.md %}

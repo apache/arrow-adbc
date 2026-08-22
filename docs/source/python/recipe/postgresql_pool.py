@@ -29,11 +29,11 @@ import os
 
 import sqlalchemy.pool
 
-import adbc_driver_postgresql.dbapi
+from adbc_driver_manager import dbapi
 
 uri = os.environ["ADBC_POSTGRESQL_TEST_URI"]
 
-source = adbc_driver_postgresql.dbapi.connect(uri)
+source = dbapi.connect("postgresql", uri)
 #: :meth:`adbc_driver_manager.dbapi.Connection.adbc_clone` opens a new
 #: connection from an existing connection, sharing internal resources where
 #: possible.  For example, the PostgreSQL driver will share the internal OID

@@ -19,12 +19,16 @@
 ADBC Driver Manager and Connection Profiles
 ===========================================
 
-.. note:: This document describes using the :term:`driver manager` to load
-          drivers.  The driver manager is not required to use ADBC in general
-          but it allows loading drivers written in a different language from the
-          application and improves the experience when using multiple drivers in
-          a single application. For more information on how the driver manager
-          works see :doc:`how_manager`.
+.. note:: This page is a detailed reference on the connection profile format and
+          behavior, aimed at developers of ADBC drivers and libraries and
+          advanced users. For basic usage of connection profiles, see
+          :doc:`Connection Profiles <../connection_profiles>` instead.
+
+          Profiles are loaded by the :term:`driver manager`, which is not
+          required to use ADBC in general but which allows loading drivers
+          written in a different language from the application and improves the
+          experience when using multiple drivers in a single application. For
+          more on how the driver manager works, see :doc:`how_manager`.
 
 There are two ways to pass database options through the driver manager:
 
@@ -199,6 +203,8 @@ Profile values can reference environment variables using the ``{{ env_var() }}``
    adbc.snowflake.sql.warehouse = "COMPUTE_WH"
 
 When the driver manager encounters ``{{ env_var(VAR_NAME) }}``, it replaces the placeholder with the contents of environment variable ``VAR_NAME``. If the environment variable is not set, the placeholder is replaced with an empty string and processing of the rest of the value continues (e.g. ``"foo{{ env_var(MISSING) }}bar"`` becomes ``"foobar"``).
+
+.. _profile-search-locations:
 
 Profile Search Locations
 =========================

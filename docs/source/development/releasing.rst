@@ -88,6 +88,14 @@ Before creating a Release Candidate
 
       ./dev/release/assign-milestone.sh
 
+4. Create a fresh clone of the latest apache/arrow repo, which is used by several steps below.
+
+   .. warning:: Make sure an up-to-date clone is used, so that the Linux packaging scripts in particular are in sync, else there is the possibility of corrupting the shared Linux package repositories.
+
+   .. code-block::
+
+      git clone git@github.com:apache/arrow
+
 Check Nightly Verification Job
 ------------------------------
 
@@ -155,6 +163,7 @@ Create the Release Candidate tag from the updated maintenance branch
    # <rc-number> starts at 0 and increments every time the Release Candidate is burned
    # so for the first RC this would be: dev/release/01-prepare.sh 1.0.0 0
 
+   # make sure <arrow-dir> is up-to-date with apache/arrow:main
    dev/release/01-prepare.sh <arrow-dir> <rc-number>
 
    git push -u apache apache-arrow-adbc-<release>-rc<rc-number> maint-<release>
@@ -187,6 +196,8 @@ Build source and binaries and submit them
     #
     # This reuses release scripts in apache/arrow. So you need to
     # specify cloned apache/arrow directory.
+
+    # make sure <arrow-dir> is up-to-date with apache/arrow:main
     dev/release/05-linux-upload.sh <arrow-dir> <rc-number>
 
     # Start verifications for binaries and wheels
@@ -205,6 +216,9 @@ Approval requires a net of 3 +1 votes from PMC members. A release cannot be veto
 
 How to Verify Release Candidates
 --------------------------------
+
+Linux/macOS
+~~~~~~~~~~~
 
 #. Install dependencies.  At minimum, you will need:
 
@@ -242,7 +256,7 @@ How to Verify Release Candidates
 
      $ cd arrow-adbc
      # Pass the release and the RC number
-     $ ./dev/release/verify-release-candidate.sh 0.1.0 6
+     $ ./dev/release/verify-release-candidate.sh 24 2
 
    These environment variables may be helpful:
 
@@ -256,6 +270,44 @@ How to Verify Release Candidates
 
 #. Once finished and once the script passes, reply to the mailing list
    vote thread with a +1 or a -1.
+
+Windows
+~~~~~~~
+
+#. Install dependencies. At minimum, you will need:
+
+   - PowerShell (built into Windows)
+   - `Mamba/miniforge <https://github.com/conda-forge/miniforge>`_ (the script currently assumes it can use conda/mamba to construct environments)
+   - Python 3
+   - Java 11+ (with JDK)
+   - Maven
+
+#. Allow PowerShell to run unsigned scripts
+
+   .. code-block:: powershell
+
+      $ Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+#. Clone the project:
+
+   .. code-block:: powershell
+
+      $ git clone https://github.com/apache/arrow-adbc.git
+
+#. Run the verification script:
+
+   .. code-block:: powershell
+
+      $ cd arrow-adbc
+      # Pass the release and the RC number
+      $ .\dev\release\verify-release-candidate.ps1 24 2
+
+   These environment variables may be helpful:
+
+   - ``$env:ARROW_TMPDIR = C:\path\to\directory`` to specify the temporary
+     directory used.  Using a fixed directory can help avoid repeating
+     the same setup and build steps if the script has to be run
+     multiple times.
 
 Post-release tasks
 ==================
@@ -347,6 +399,8 @@ Be sure to go through on the following checklist:
       # specify cloned apache/arrow directory.
       #
       # dev/release/post-05-linux.sh ../arrow 0
+
+      # make sure <arrow-dir> is up-to-date with apache/arrow:main
       dev/release/post-05-linux.sh <arrow-dir> <rc-number>
 
 .. dropdown:: Update R packages
@@ -481,6 +535,8 @@ Be sure to go through on the following checklist:
    .. code-block:: Bash
 
       # dev/release/post-12-bump-versions.sh ../arrow
+
+      # make sure <arrow-dir> is up-to-date with apache/arrow:main
       dev/release/post-12-bump-versions.sh <arrow-dir>
 
 .. dropdown:: Publish release blog post

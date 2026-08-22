@@ -46,7 +46,7 @@ test_subproject() {
     fi
 
     bundle config set --local path 'vendor/bundle'
-    bundle install
+    bundle check || bundle install --jobs=4 --retry=5
     bundle exec \
            env DYLD_LIBRARY_PATH="${DYLD_LIBRARY_PATH}" \
            ruby "${source_dir}/glib/test/run.rb"

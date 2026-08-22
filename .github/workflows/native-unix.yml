@@ -81,7 +81,7 @@ jobs:
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
       CXXFLAGS: "-D_LIBCPP_DISABLE_AVAILABILITY"
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -106,7 +106,7 @@ jobs:
         run: |
           ./ci/scripts/remamba.sh install -c conda-forge \
             --file ci/conda_env_cpp.txt
-      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -162,7 +162,7 @@ jobs:
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
       CXXFLAGS: "-D_LIBCPP_DISABLE_AVAILABILITY"
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -221,7 +221,7 @@ jobs:
       matrix:
         os: ["ubuntu-latest"]
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -232,14 +232,14 @@ jobs:
       - name: Get required Go version
         run: |
           (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
-      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
       - name: Setup Python
-        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.x'
       - name: Install Meson via Python
@@ -283,7 +283,7 @@ jobs:
     name: "clang-tidy"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -329,7 +329,7 @@ jobs:
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
       CXXFLAGS: "-D_LIBCPP_DISABLE_AVAILABILITY"
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -401,7 +401,7 @@ jobs:
       contents: 'read'
       id-token: 'write'
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -410,7 +410,7 @@ jobs:
       # the 'toolchain' parameter and staticcheck tends to need the latest Go
       - id: toolchain
         run: echo "GO_VERSION=$(sed -n 's/^toolchain go//p' go/adbc/go.mod)" >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: ${{ steps.toolchain.outputs.GO_VERSION }}
           check-latest: true
@@ -449,7 +449,7 @@ jobs:
       contents: 'read'
       id-token: 'write'
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -479,7 +479,7 @@ jobs:
         run: |
           ./ci/scripts/remamba.sh install -c conda-forge \
             --file ci/conda_env_cpp.txt
-      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -523,7 +523,7 @@ jobs:
       # https://conda-forge.org/docs/maintainer/knowledge_base.html#newer-c-features-with-old-sdk
       CXXFLAGS: "-D_LIBCPP_DISABLE_AVAILABILITY"
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -546,15 +546,18 @@ jobs:
           use-mamba: true
       - name: Install Dependencies
         run: |
+          # N.B. explicitly install a compiler package which will cause the
+          # Conda environment to set CC/CXX
           ./ci/scripts/remamba.sh install -c conda-forge \
             python=${{ matrix.python }} \
             --file ci/conda_env_cpp.txt \
-            --file ci/conda_env_python.txt
+            --file ci/conda_env_python.txt \
+            ${{ (runner.os == 'Linux' && 'gcc gxx') || 'clang clangxx' }}
       - name: Work around ASAN issue (GH-1617)
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
-      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -649,7 +652,7 @@ jobs:
         os: ["ubuntu-latest"]
         python: ["3.14"]
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -695,6 +698,21 @@ jobs:
           ADBC_USE_UBSAN: "0"
         run: |
           ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
+      - name: Create manifests
+        run: |
+          # Create manifests so the C++ examples/doctests can find SQLite via
+          # just "sqlite" (and so on)
+          mkdir -p ~/.config/adbc/drivers
+          for d in flightsql postgresql sqlite; do
+            lib_path=$(readlink -f "$HOME/local/lib/libadbc_driver_$d.so")
+            cat <<EOF > "$HOME/.config/adbc/drivers/$d.toml"
+            manifest_version = 1
+            [Driver]
+            shared = "$lib_path"
+          EOF
+          done
+          ls ~/.config/adbc/drivers
+          cat ~/.config/adbc/drivers/*.toml
       # Docs requires Python packages since it runs doctests
       - name: Build Docs
         run: |

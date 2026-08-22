@@ -23,10 +23,10 @@
 
 import os
 
-import adbc_driver_postgresql.dbapi
+from adbc_driver_manager import dbapi
 
 uri = os.environ["ADBC_POSTGRESQL_TEST_URI"]
-conn = adbc_driver_postgresql.dbapi.connect(uri)
+conn = dbapi.connect("postgresql", uri)
 
 #: We'll create an example table to look for.
 with conn.cursor() as cur:

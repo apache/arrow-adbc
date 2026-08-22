@@ -106,21 +106,7 @@ export type InfoCode = (typeof InfoCode)[keyof typeof InfoCode]
  *
  * These options configure how the ADBC driver is loaded and how the initial connection is established.
  */
-export interface ConnectOptions {
-  /**
-   * Driver to load. Accepts any of the following forms:
-   * - Short name: `"sqlite"`, `"postgresql"` — the driver manager searches for a matching
-   *   manifest file (e.g. `sqlite.toml`) in the configured directories, then falls back to
-   *   `LD_LIBRARY_PATH` / `PATH`.
-   * - Absolute path to a shared library: `"/usr/lib/libadbc_driver_sqlite.so"`
-   * - Absolute path to a driver manifest `.toml` file (with or without the `.toml` extension).
-   * - Relative path (only valid when {@link LoadFlags.AllowRelativePaths} is set).
-   * - URI-style string: `"sqlite:file::memory:"`, `"postgresql://user:pass@host/db"` — the
-   *   driver name is the URI scheme and the remainder is passed as the connection URI.
-   * - Connection profile URI: `"profile://my_profile"` — loads a named profile from a
-   *   `.toml` file found in {@link profileSearchPaths} or the default search directories.
-   */
-  driver: string
+interface ConnectOptionsBase {
   /**
    * Name of the entrypoint function (optional).
    * If not provided, ADBC will attempt to guess the entrypoint symbol name based on the driver name.
@@ -142,12 +128,37 @@ export interface ConnectOptions {
    * Defaults to {@link LoadFlags.Default} (all search locations enabled) when omitted.
    */
   loadFlags?: number
-  /**
-   * Database-specific options.
-   * Key-value pairs passed to the driver during database initialization (e.g., "uri", "username").
-   */
-  databaseOptions?: Record<string, string>
 }
+
+export type ConnectOptions =
+  | (ConnectOptionsBase & {
+      /**
+       * Driver to load. Accepts any of the following forms:
+       * - Short name: `"sqlite"`, `"postgresql"` — the driver manager searches for a matching
+       *   manifest file (e.g. `sqlite.toml`) in the configured directories, then falls back to
+       *   `LD_LIBRARY_PATH` / `PATH`.
+       * - Absolute path to a shared library: `"/usr/lib/libadbc_driver_sqlite.so"`
+       * - Absolute path to a driver manifest `.toml` file (with or without the `.toml` extension).
+       * - Relative path (only valid when {@link LoadFlags.AllowRelativePaths} is set).
+       * - URI-style string: `"sqlite:file::memory:"`, `"postgresql://user:pass@host/db"` — the
+       *   driver name is the URI scheme and the remainder is passed as the connection URI.
+       * - Connection profile URI: `"profile://my_profile"` — loads a named profile from a
+       *   `.toml` file found in {@link profileSearchPaths} or the default search directories.
+       */
+      driver: string
+      /** Database-specific options passed to the driver during initialization. */
+      databaseOptions?: Record<string, string>
+    })
+  | (ConnectOptionsBase & {
+      /**
+       * Database-specific options passed to the driver during initialization.
+       *
+       * When `driver` is omitted, either `uri` or `profile` is required:
+       * - `uri` — passed directly to the driver manager (e.g. `"sqlite::memory:"`, `"profile://name"`)
+       * - `profile` — bare connection profile name; the profile file specifies the driver
+       */
+      databaseOptions: ({ uri: string } | { profile: string }) & Record<string, string>
+    })
 
 /**
  * Ingestion modes for the `ingest` convenience method.

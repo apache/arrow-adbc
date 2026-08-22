@@ -19,6 +19,7 @@ import sys
 from pathlib import Path
 
 import adbc_drivers_validation.model
+import adbc_drivers_validation.tests.conftest
 import pytest
 from adbc_drivers_validation.tests.conftest import (  # noqa: F401
     conn,
@@ -26,18 +27,26 @@ from adbc_drivers_validation.tests.conftest import (  # noqa: F401
     db_kwargs,
     manual_test,
     noci,
-    pytest_addoption,
     pytest_collection_modifyitems,
 )
 
-from .postgresql import PostgreSQLQuirks
+from .postgresql import VENDORS, get_quirks
+
+
+def pytest_addoption(parser) -> None:
+    adbc_drivers_validation.tests.conftest.pytest_addoption(parser)
+    parser.addoption(
+        "--vendor",
+        choices=VENDORS,
+        default="postgresql",
+        help="PostgreSQL-compatible database vendor to validate",
+    )
 
 
 @pytest.fixture(scope="session")
 def driver(request) -> adbc_drivers_validation.model.DriverQuirks:
-    driver = request.param
-    assert driver.startswith("postgresql:")
-    return PostgreSQLQuirks()
+    assert request.param.startswith("postgresql:")
+    return get_quirks(request.config.getoption("vendor"))
 
 
 @pytest.fixture(scope="session")

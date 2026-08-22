@@ -97,8 +97,9 @@ int TupleReader::GetCopyData() {
     result_ = PQgetResult(conn_);
     const ExecStatusType pq_status = PQresultStatus(result_);
     if (pq_status != PGRES_COMMAND_OK) {
-      status_ = SetError(&error_, result_, "[libpq] Execution error [%s]: %s",
-                         PQresStatus(pq_status), PQresultErrorMessage(result_));
+      status_ = MakeStatus(result_, "[libpq] Execution error [{}]: {}",
+                           PQresStatus(pq_status), PQresultErrorMessage(result_))
+                    .ToAdbc(&error_);
       return InternalAdbcStatusCodeToErrno(status_);
     } else {
       return ENODATA;
@@ -441,8 +442,9 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(const std::string& current_sch
                                       /*resultFormat=*/1 /*(binary)*/);
       if (PQresultStatus(result) != PGRES_COMMAND_OK) {
         AdbcStatusCode code =
-            SetError(error, result, "[libpq] Failed to drop table: %s\nQuery was: %s",
-                     PQerrorMessage(conn), drop.c_str());
+            MakeStatus(result, "[libpq] Failed to drop table: {}\nQuery was: {}",
+                       PQerrorMessage(conn), drop)
+                .ToAdbc(error);
         PQclear(result);
         return code;
       }
@@ -503,8 +505,9 @@ AdbcStatusCode PostgresStatement::CreateBulkTable(const std::string& current_sch
                                   /*resultFormat=*/1 /*(binary)*/);
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
     AdbcStatusCode code =
-        SetError(error, result, "[libpq] Failed to create table: %s\nQuery was: %s",
-                 PQerrorMessage(conn), create.c_str());
+        MakeStatus(result, "[libpq] Failed to create table: {}\nQuery was: {}",
+                   PQerrorMessage(conn), create)
+            .ToAdbc(error);
     PQclear(result);
     return code;
   }
@@ -755,8 +758,9 @@ AdbcStatusCode PostgresStatement::ExecuteIngest(struct ArrowArrayStream* stream,
   PGresult* result = PQexec(connection_->conn(), query.c_str());
   if (PQresultStatus(result) != PGRES_COPY_IN) {
     AdbcStatusCode code =
-        SetError(error, result, "[libpq] COPY query failed: %s\nQuery was:%s",
-                 PQerrorMessage(connection_->conn()), query.c_str());
+        MakeStatus(result, "[libpq] COPY query failed: {}\nQuery was:{}",
+                   PQerrorMessage(connection_->conn()), query)
+            .ToAdbc(error);
     PQclear(result);
     return code;
   }
@@ -765,7 +769,7 @@ AdbcStatusCode PostgresStatement::ExecuteIngest(struct ArrowArrayStream* stream,
   RAISE_STATUS(
       error, bind_stream.ExecuteCopy(connection_->conn(), *connection_->type_resolver(),
                                      has_copy_target_types ? &copy_target_types : nullptr,
-                                     rows_affected));
+                                     disable_decimal_fast_path_, rows_affected));
   return ADBC_STATUS_OK;
 }
 
@@ -799,6 +803,8 @@ AdbcStatusCode PostgresStatement::GetOption(const char* key, char* value, size_t
     } else {
       result = "false";
     }
+  } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_DISABLE_DECIMAL_FAST_PATH) == 0) {
+    result = disable_decimal_fast_path_ ? "true" : "false";
   } else {
     InternalAdbcSetError(error, "[libpq] Unknown statement option '%s'", key);
     return ADBC_STATUS_NOT_FOUND;
@@ -942,6 +948,16 @@ AdbcStatusCode PostgresStatement::SetOption(const char* key, const char* value,
       use_copy_ = true;
     } else if (std::strcmp(value, ADBC_OPTION_VALUE_DISABLED) == 0) {
       use_copy_ = false;
+    } else {
+      InternalAdbcSetError(error, "[libpq] Invalid value '%s' for option '%s'", value,
+                           key);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+  } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_DISABLE_DECIMAL_FAST_PATH) == 0) {
+    if (std::strcmp(value, ADBC_OPTION_VALUE_ENABLED) == 0) {
+      disable_decimal_fast_path_ = true;
+    } else if (std::strcmp(value, ADBC_OPTION_VALUE_DISABLED) == 0) {
+      disable_decimal_fast_path_ = false;
     } else {
       InternalAdbcSetError(error, "[libpq] Invalid value '%s' for option '%s'", value,
                            key);

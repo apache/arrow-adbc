@@ -248,6 +248,18 @@ $ make -f mermaid.makefile -j all
 # Check in the updated files
 ```
 
+The documentation uses icons from [FontAwesome 7
+Free](https://fontawesome.com/). These must be downloaded separately (the icons
+themselves cannot be included in Apache source distributions and as such are not
+included in the repository, and CSP policy prohibits external CSS for our
+website). Run the `docs_download_resources.sh` script to download these files:
+
+```shell
+$ ./ci/scripts/docs_download_resources.sh "$(pwd)"
+```
+
+The `docs_build.sh` script below will also perform this step for you.
+
 [mermaid]: https://mermaid.js.org/
 [sphinx]: https://www.sphinx-doc.org/en/master/
 

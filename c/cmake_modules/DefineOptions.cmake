@@ -81,6 +81,13 @@ macro(define_option_string name description default)
   endif()
 endmacro()
 
+# On Windows, we can't build both static and shared (they both generate a .lib), so default static build to off
+if(WIN32)
+  set(_STATIC_BUILD_DEFAULT OFF)
+else()
+  set(_STATIC_BUILD_DEFAULT ON)
+endif()
+
 # Top level cmake dir
 if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
   #----------------------------------------------------------------------
@@ -94,7 +101,7 @@ if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
   define_option_string(ADBC_GO_BUILD_TAGS
                        "Build tags to append when compiling ADBC Go libraries" "")
 
-  define_option(ADBC_BUILD_STATIC "Build static libraries" ON)
+  define_option(ADBC_BUILD_STATIC "Build static libraries" "${_STATIC_BUILD_DEFAULT}")
 
   define_option(ADBC_BUILD_SHARED "Build shared libraries" ON)
 
@@ -230,10 +237,6 @@ if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
   define_option(ADBC_DRIVER_SQLITE "Build the SQLite driver" OFF)
 
   define_option(ADBC_INTEGRATION_DUCKDB "Build the test suite for DuckDB" OFF)
-
-  define_option(ADBC_BUILD_VCPKG
-                "Build on Windows using vcpkg for dependencies and Visual Studio generator."
-                OFF)
 endif()
 
 macro(validate_config)
@@ -250,8 +253,17 @@ macro(validate_config)
         endif()
       endif()
     endforeach()
-
   endforeach()
+
+  # https://github.com/apache/arrow-adbc/issues/4581
+  # Don't allow building both static and shared libraries on Windows
+  # They both generate a .lib file, and so you get one or the other at random
+  if(WIN32
+     AND ADBC_BUILD_STATIC
+     AND ADBC_BUILD_SHARED)
+    message(FATAL_ERROR "Cannot enable both ADBC_BUILD_STATIC and ADBC_BUILD_SHARED on Windows"
+    )
+  endif()
 endmacro()
 
 macro(config_summary_message)

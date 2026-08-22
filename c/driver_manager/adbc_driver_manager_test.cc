@@ -716,7 +716,7 @@ class DriverManifest : public ::testing::Test {
          toml::table{
              {"shared",
               toml::table{
-                  {adbc::CurrentArch(), driver_path.string()},
+                  {InternalAdbcCurrentArch(), driver_path.string()},
               }},
          }},
     };
@@ -753,28 +753,28 @@ class DriverManifest : public ::testing::Test {
 };
 
 TEST_F(DriverManifest, LoadDriverEnv) {
-  ASSERT_THAT(AdbcFindLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0,
+  ASSERT_THAT(AdbcFindLoadDriver("test_sqlite", nullptr, ADBC_VERSION_1_1_0,
                                  ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
               Not(IsOkStatus(&error)));
 
-  std::ofstream test_manifest_file(temp_dir / "sqlite.toml");
+  std::ofstream test_manifest_file(temp_dir / "test_sqlite.toml");
   ASSERT_TRUE(test_manifest_file.is_open());
   test_manifest_file << simple_manifest;
   test_manifest_file.close();
 
   SetDriverPath(temp_dir.string().c_str());
 
-  ASSERT_THAT(AdbcFindLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0,
+  ASSERT_THAT(AdbcFindLoadDriver("test_sqlite", nullptr, ADBC_VERSION_1_1_0,
                                  ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
               IsOkStatus(&error));
 
-  ASSERT_TRUE(std::filesystem::remove(temp_dir / "sqlite.toml"));
+  ASSERT_TRUE(std::filesystem::remove(temp_dir / "test_sqlite.toml"));
 
   UnsetDriverPath();
 }
 
 TEST_F(DriverManifest, LoadNonAsciiPath) {
-  ASSERT_THAT(AdbcFindLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0,
+  ASSERT_THAT(AdbcFindLoadDriver("test_sqlite", nullptr, ADBC_VERSION_1_1_0,
                                  ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
               Not(IsOkStatus(&error)));
 
@@ -786,24 +786,24 @@ TEST_F(DriverManifest, LoadNonAsciiPath) {
 
   ASSERT_TRUE(std::filesystem::create_directories(non_ascii_dir));
 
-  std::ofstream test_manifest_file(non_ascii_dir / "sqlite.toml");
+  std::ofstream test_manifest_file(non_ascii_dir / "test_sqlite.toml");
   ASSERT_TRUE(test_manifest_file.is_open());
   test_manifest_file << simple_manifest;
   test_manifest_file.close();
 
   SetDriverPath(non_ascii_dir.string().c_str());
 
-  ASSERT_THAT(AdbcFindLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0,
+  ASSERT_THAT(AdbcFindLoadDriver("test_sqlite", nullptr, ADBC_VERSION_1_1_0,
                                  ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
               IsOkStatus(&error));
 
-  ASSERT_TRUE(std::filesystem::remove(non_ascii_dir / "sqlite.toml"));
+  ASSERT_TRUE(std::filesystem::remove(non_ascii_dir / "test_sqlite.toml"));
 
   UnsetDriverPath();
 }
 
 TEST_F(DriverManifest, DisallowEnvConfig) {
-  std::ofstream test_manifest_file(temp_dir / "sqlite.toml");
+  std::ofstream test_manifest_file(temp_dir / "test_sqlite.toml");
   ASSERT_TRUE(test_manifest_file.is_open());
   test_manifest_file << simple_manifest;
   test_manifest_file.close();
@@ -811,11 +811,11 @@ TEST_F(DriverManifest, DisallowEnvConfig) {
   SetDriverPath(temp_dir.string().c_str());
 
   auto load_options = ADBC_LOAD_FLAG_DEFAULT & ~ADBC_LOAD_FLAG_SEARCH_ENV;
-  ASSERT_THAT(AdbcFindLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0, load_options,
+  ASSERT_THAT(AdbcFindLoadDriver("test_sqlite", nullptr, ADBC_VERSION_1_1_0, load_options,
                                  nullptr, &driver, &error),
               Not(IsOkStatus(&error)));
 
-  ASSERT_TRUE(std::filesystem::remove(temp_dir / "sqlite.toml"));
+  ASSERT_TRUE(std::filesystem::remove(temp_dir / "test_sqlite.toml"));
 
   UnsetDriverPath();
 }
@@ -829,7 +829,7 @@ TEST_F(DriverManifest, ConfigEntrypoint) {
                     {"entrypoint", "BadEntrypointSymbolName"},
                     {"shared",
                      toml::table{
-                         {adbc::CurrentArch(), driver_path.string()},
+                         {InternalAdbcCurrentArch(), driver_path.string()},
                      }},
                 });
 
@@ -1036,7 +1036,7 @@ TEST_F(DriverManifest, ManifestDriverMissingArchAdbcDatabase) {
   // Similar test as above but with AdbcDatabaseInit path and using the
   // additional search path.
   // Create a manifest without the "Driver" section
-  auto filepath = temp_dir / "sqlite.toml";
+  auto filepath = temp_dir / "test_sqlite.toml";
   toml::table manifest_without_driver = simple_manifest;
   manifest_without_driver.erase("Driver");
   manifest_without_driver.insert("Driver",
@@ -1055,7 +1055,7 @@ TEST_F(DriverManifest, ManifestDriverMissingArchAdbcDatabase) {
 
   adbc_validation::Handle<struct AdbcDatabase> database;
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
-  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "driver", "sqlite", &error),
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "driver", "test_sqlite", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcDriverManagerDatabaseSetLoadFlags(&database.value,
                                                     ADBC_LOAD_FLAG_DEFAULT, &error),
@@ -1066,7 +1066,7 @@ TEST_F(DriverManifest, ManifestDriverMissingArchAdbcDatabase) {
               IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
               IsStatus(ADBC_STATUS_NOT_FOUND, &error));
-  ASSERT_THAT(error.message, ::testing::HasSubstr("sqlite.toml but:"));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("test_sqlite.toml but:"));
   ASSERT_THAT(error.message,
               ::testing::HasSubstr("Architectures found: non-existent windows-alpha64"));
 
@@ -1077,7 +1077,7 @@ TEST_F(DriverManifest, ManifestDriverPointsNowhere) {
   // Similar test as above but with AdbcDatabaseInit path and using the
   // additional search path.
   // Create a manifest without the "Driver" section
-  auto filepath = temp_dir / "sqlite.toml";
+  auto filepath = temp_dir / "test_sqlite.toml";
   toml::table manifest_without_driver = simple_manifest;
   manifest_without_driver.erase("Driver");
   // The idea is that we can find the manifest, but not the driver it points to.
@@ -1100,7 +1100,7 @@ TEST_F(DriverManifest, ManifestDriverPointsNowhere) {
 
   adbc_validation::Handle<struct AdbcDatabase> database;
   ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
-  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "driver", "sqlite", &error),
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "driver", "test_sqlite", &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcDriverManagerDatabaseSetLoadFlags(&database.value,
                                                     ADBC_LOAD_FLAG_DEFAULT, &error),
@@ -1111,7 +1111,7 @@ TEST_F(DriverManifest, ManifestDriverPointsNowhere) {
               IsOkStatus(&error));
   ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
               IsStatus(ADBC_STATUS_NOT_FOUND, &error));
-  ASSERT_THAT(error.message, ::testing::HasSubstr("sqlite.toml but:"));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("test_sqlite.toml but:"));
   // Message is platform-specific but something like "dlopen() failed:
   // adbc-goosedb: cannot open shared object file..."
   ASSERT_THAT(error.message, ::testing::HasSubstr("adbc-goosedb"));
@@ -1337,7 +1337,7 @@ TEST_F(DriverManifest, CondaPrefix) {
   std::cerr << "ADBC_CONDA_BUILD: " << (is_conda_build ? "defined" : "not defined")
             << std::endl;
 
-  auto filepath = temp_dir / "etc" / "adbc" / "drivers" / "sqlite.toml";
+  auto filepath = temp_dir / "etc" / "adbc" / "drivers" / "test_sqlite.toml";
   std::filesystem::create_directories(filepath.parent_path());
   std::ofstream test_manifest_file(filepath);
   ASSERT_TRUE(test_manifest_file.is_open());
@@ -1351,8 +1351,8 @@ TEST_F(DriverManifest, CondaPrefix) {
 #endif  // _WIN32
 
   AdbcStatusCode result =
-      AdbcFindLoadDriver("sqlite", nullptr, ADBC_VERSION_1_1_0, ADBC_LOAD_FLAG_DEFAULT,
-                         nullptr, &driver, &error);
+      AdbcFindLoadDriver("test_sqlite", nullptr, ADBC_VERSION_1_1_0,
+                         ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error);
 
   if constexpr (is_conda_build) {
     ASSERT_THAT(result, IsOkStatus(&error));
@@ -2059,6 +2059,46 @@ TEST_F(ConnectionProfiles, CustomProfileProvider) {
   ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
 }
 
+TEST_F(ConnectionProfiles, ProfileParseErrorIncludesLocation) {
+  auto filepath = temp_dir / "badprofile.toml";
+  std::ofstream file(filepath);
+  ASSERT_TRUE(file.is_open());
+  file << "profile_version = 1\n"
+       << "driver = unquoted_value\n"
+       << "[Options]\n";
+  file.close();
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "profile", filepath.string().c_str(),
+                                    &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("line 2"));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("column"));
+  ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
+}
+
+TEST_F(DriverManifest, ManifestParseErrorIncludesLocation) {
+  std::ofstream file(temp_dir / "baddriver.toml");
+  ASSERT_TRUE(file.is_open());
+  file << "manifest_version = 1\n"
+       << "[Driver]\n"
+       << "shared = unquoted_value\n";
+  file.close();
+
+  SetDriverPath(temp_dir.string().c_str());
+
+  ASSERT_THAT(AdbcFindLoadDriver("baddriver", nullptr, ADBC_VERSION_1_1_0,
+                                 ADBC_LOAD_FLAG_DEFAULT, nullptr, &driver, &error),
+              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("line 3"));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("column"));
+
+  UnsetDriverPath();
+}
+
 struct DriverUriProfile {
   std::string name;
   std::string driver;
@@ -2166,7 +2206,7 @@ class DriverUriProfileTest : public ConnectionProfiles,
          toml::table{
              {"shared",
               toml::table{
-                  {adbc::CurrentArch(), driver_path.string()},
+                  {InternalAdbcCurrentArch(), driver_path.string()},
               }},
          }},
     };

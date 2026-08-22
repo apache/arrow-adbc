@@ -26,39 +26,51 @@
 
 import os
 
-import adbc_driver_postgresql.dbapi
+from adbc_driver_manager import dbapi
 
 uri = os.environ["ADBC_POSTGRESQL_TEST_URI"]
-conn = adbc_driver_postgresql.dbapi.connect(uri)
+conn = dbapi.connect("postgresql", uri)
 
 #: The option can be set when creating the cursor:
 
 with conn.cursor(
     adbc_stmt_kwargs={
-        adbc_driver_postgresql.StatementOptions.USE_COPY.value: False,
+        "adbc.postgresql.use_copy": False,
     }
 ) as cur:
     cur.execute("SHOW ALL")
     print(cur.fetch_arrow_table().schema)
     # Output:
     # name: string
+    #   -- field metadata --
+    #   POSTGRESQL:type: 'text'
     # setting: string
+    #   -- field metadata --
+    #   POSTGRESQL:type: 'text'
     # description: string
+    #   -- field metadata --
+    #   POSTGRESQL:type: 'text'
 
 #: Or it can be set afterwards:
 
 with conn.cursor() as cur:
     cur.adbc_statement.set_options(
         **{
-            adbc_driver_postgresql.StatementOptions.USE_COPY.value: False,
+            "adbc.postgresql.use_copy": False,
         }
     )
     cur.execute("SHOW ALL")
     print(cur.fetch_arrow_table().schema)
     # Output:
     # name: string
+    #   -- field metadata --
+    #   POSTGRESQL:type: 'text'
     # setting: string
+    #   -- field metadata --
+    #   POSTGRESQL:type: 'text'
     # description: string
+    #   -- field metadata --
+    #   POSTGRESQL:type: 'text'
 
 #: Without the option, the query fails as the driver attempts to execute the
 #: query with ``COPY``:

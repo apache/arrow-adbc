@@ -86,7 +86,7 @@ class SqlServerIntegrationTest {
     allocator = new RootAllocator();
     driver = new JniDriver(allocator);
     Map<String, Object> parameters = new HashMap<>();
-    JniDriver.PARAM_DRIVER.set(parameters, "mssql");
+    JniDriver.PARAM_DRIVER.set(parameters, "test_mssql");
     AdbcDriver.PARAM_URI.set(parameters, URI);
     db = driver.open(parameters);
     conn = db.connect();
@@ -104,7 +104,7 @@ class SqlServerIntegrationTest {
     File profile = tempDir.resolve("myprofile.toml").toFile();
     Files.writeString(
         profile.toPath(),
-        String.format("profile_version = 1\ndriver=\"mssql\"\n[Options]\nuri=\"%s\"\n", URI));
+        String.format("profile_version = 1\ndriver=\"test_mssql\"\n[Options]\nuri=\"%s\"\n", URI));
 
     Map<String, Object> parameters = new HashMap<>();
     JniDriver.PARAM_PROFILE.set(parameters, "myprofile");
