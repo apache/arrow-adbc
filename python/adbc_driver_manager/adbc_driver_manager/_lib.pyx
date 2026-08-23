@@ -1016,6 +1016,18 @@ cdef class AdbcConnection(_AdbcHandle):
             column_name = _to_bytes(column_name, "column_name")
             c_column_name = column_name
 
+        cdef c_vector[const char*] c_table_types
+        cdef const char** c_table_types_ptr = NULL
+        if table_types:
+            # Keep the encoded bytes alive while c_table_types points into their buffers
+            table_types = [
+                _to_bytes(table_type, "table_types") for table_type in table_types
+            ]
+            for table_type in table_types:
+                c_table_types.push_back(table_type)
+            c_table_types.push_back(<const char*> NULL)
+            c_table_types_ptr = c_table_types.data()
+
         with nogil:
             status = AdbcConnectionGetObjects(
                 &self.connection,
@@ -1023,7 +1035,7 @@ cdef class AdbcConnection(_AdbcHandle):
                 c_catalog,
                 c_db_schema,
                 c_table_name,
-                NULL,  # TODO: support table_types
+                c_table_types_ptr,
                 c_column_name,
                 &stream.stream,
                 &c_error)
