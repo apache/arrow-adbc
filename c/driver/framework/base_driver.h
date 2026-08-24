@@ -30,6 +30,8 @@
 
 #include <arrow-adbc/adbc.h>
 
+#include "fmt/core.h"
+
 #include "driver/framework/status.h"
 
 /// \file base.h ADBC Driver Framework
@@ -170,19 +172,16 @@ class Option {
             using T = std::decay_t<decltype(value)>;
             if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, int64_t> ||
                           std::is_same_v<T, double>) {
-              char formatted[24];  // Enough room for double/int64_t
               std::string_view string_value;
-              if constexpr (std::is_same_v<T, std::string>) {
-                string_value = value;
+              std::string allocated_value;
+              if constexpr (std::is_same_v<T, int64_t>) {
+                allocated_value = fmt::format("{}", value);
+                string_value = allocated_value;
+              } else if constexpr (std::is_same_v<T, double>) {
+                allocated_value = fmt::format("{}", value);
+                string_value = allocated_value;
               } else {
-                auto result =
-                    std::to_chars(formatted, formatted + sizeof(formatted), value);
-                if (result.ec != std::errc()) {
-                  return status::Internal("Could not format numeric option value")
-                      .ToAdbc(error);
-                }
-                string_value = std::string_view(
-                    formatted, static_cast<size_t>(result.ptr - formatted));
+                string_value = value;
               }
               size_t value_size_with_terminator = string_value.size() + 1;
               if (*length >= value_size_with_terminator) {
