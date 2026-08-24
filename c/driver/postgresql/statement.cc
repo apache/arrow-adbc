@@ -96,14 +96,20 @@ int TupleReader::GetCopyData() {
     PQclear(result_);
     result_ = PQgetResult(conn_);
     const ExecStatusType pq_status = PQresultStatus(result_);
+    int errno_result = ENODATA;
     if (pq_status != PGRES_COMMAND_OK) {
       status_ = MakeStatus(result_, "[libpq] Execution error [{}]: {}",
                            PQresStatus(pq_status), PQresultErrorMessage(result_))
                     .ToAdbc(&error_);
-      return InternalAdbcStatusCodeToErrno(status_);
-    } else {
-      return ENODATA;
+      errno_result = InternalAdbcStatusCodeToErrno(status_);
     }
+
+    // Drain remaining responses
+    PQclear(result_);
+    while ((result_ = PQgetResult(conn_)) != nullptr) {
+      PQclear(result_);
+    }
+    return errno_result;
   }
 
   data_.size_bytes = get_copy_res;

@@ -309,6 +309,10 @@ jobs:
 
       - name: clang-tidy
         run: |
+          # conda-forge changed compilers to inject includes internally
+          # instead of doing things like setting CXXARGS, so now we need to
+          # explicitly tell clang-tidy the include path
+          export ADBC_CLANG_TIDY_ARGS="-extra-arg=-isystem${CONDA_PREFIX}/include"
           ./ci/scripts/cpp_clang_tidy.sh "$(pwd)" "$(pwd)/build"
 
   # ------------------------------------------------------------

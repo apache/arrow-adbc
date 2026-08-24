@@ -31,6 +31,7 @@ set -e
 : ${ADBC_USE_UBSAN:=ON}
 
 : ${ADBC_CMAKE_ARGS:=""}
+: ${ADBC_CLANG_TIDY_ARGS:=""}
 : ${CMAKE_BUILD_TYPE:=Debug}
 
 build_subproject() {
@@ -63,6 +64,7 @@ build_subproject() {
         -DCMAKE_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}"
 
     run-clang-tidy \
+        ${ADBC_CLANG_TIDY_ARGS} \
         -extra-arg=-Wno-unknown-warning-option \
         -extra-arg=-Wno-unused-command-line-argument \
         -j $(nproc) \
