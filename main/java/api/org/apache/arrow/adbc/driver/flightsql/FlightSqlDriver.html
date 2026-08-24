@@ -84,7 +84,13 @@ loadScripts(document, 'script');</script>
 <div class="type-signature"><span class="modifiers">public class </span><span class="element-name type-name-label">FlightSqlDriver</span>
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>
 implements <a href="../../core/AdbcDriver.html" title="interface in org.apache.arrow.adbc.core">AdbcDriver</a></span></div>
-<div class="block">An ADBC driver wrapping Arrow Flight SQL.</div>
+<div class="block">An ADBC driver wrapping Arrow Flight SQL.
+
+ <p>The "uri" option accepts the <code>flightsql://</code> scheme: secure TLS by default, or add <code>
+ ?transport=tcp</code> for plaintext, or <code>?transport=unix</code> with a socket path for a Unix domain
+ socket. The <code>transport</code> value is matched case-insensitively, and an unrecognized value is
+ rejected rather than silently falling back to a default. The legacy <code>grpc://</code>, <code>
+ grpc+tcp://</code>, <code>grpc+tls://</code>, and <code>grpc+unix://</code> schemes are also still accepted.</div>
 </section>
 <section class="summary">
 <ul class="summary-list">
