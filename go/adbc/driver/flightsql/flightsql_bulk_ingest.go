@@ -120,11 +120,10 @@ func (s *statement) executeIngest(ctx context.Context) (nRows int64, err error) 
 	}()
 
 	if s.streamBind == nil && s.bound == nil {
-		err = adbc.Error{
+		return -1, adbc.Error{
 			Msg:  "[Flight SQL Statement] must call Bind before bulk ingestion",
 			Code: adbc.StatusInvalidState,
 		}
-		return -1, err
 	}
 
 	catalogStr := ""

@@ -545,11 +545,10 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 
 	// Reject staged binds if no ingest target was provided
 	if s.targetTable == "" && s.prepared == nil && (s.bound != nil || s.streamBind != nil) {
-		err = adbc.Error{
+		return nil, -1, adbc.Error{
 			Msg:  "[Flight SQL Statement] must set IngestTargetTable before bulk ingestion",
 			Code: adbc.StatusInvalidState,
 		}
-		return nil, -1, err
 	}
 
 	// Handle bulk ingest
@@ -588,8 +587,7 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 	}()
 
 	if err != nil {
-		err = adbcFromFlightStatusWithDetails(err, header, trailer, spanName)
-		return nil, -1, err
+		return nil, -1, adbcFromFlightStatusWithDetails(err, header, trailer, spanName)
 	}
 
 	nrec = info.TotalRecords
@@ -623,11 +621,10 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 
 	// Reject staged binds if no ingest target was provided
 	if s.targetTable == "" && s.prepared == nil && (s.bound != nil || s.streamBind != nil) {
-		err = adbc.Error{
+		return -1, adbc.Error{
 			Msg:  "[Flight SQL Statement] must set IngestTargetTable before bulk ingestion",
 			Code: adbc.StatusInvalidState,
 		}
-		return -1, err
 	}
 
 	ctx, span = internal.StartSpan(
@@ -719,8 +716,7 @@ func (s *statement) Prepare(ctx context.Context) (err error) {
 	}()
 
 	if err != nil {
-		err = adbcFromFlightStatusWithDetails(err, header, trailer, spanName)
-		return err
+		return adbcFromFlightStatusWithDetails(err, header, trailer, spanName)
 	}
 	s.prepared = prep
 	return nil

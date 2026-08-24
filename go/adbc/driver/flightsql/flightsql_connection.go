@@ -820,11 +820,10 @@ func (c *connectionImpl) PrepareDriverInfo(ctx context.Context, infoCodes []adbc
 				case *array.Boolean:
 					v = arr.Value(idx)
 				default:
-					err = adbc.Error{
+					return adbc.Error{
 						Msg:  fmt.Sprintf("unsupported field_type %T for info_value", arr),
 						Code: adbc.StatusInvalidArgument,
 					}
-					return err
 				}
 
 				if err = driverInfo.RegisterInfoCode(adbcInfoCode, v); err != nil {
@@ -834,8 +833,7 @@ func (c *connectionImpl) PrepareDriverInfo(ctx context.Context, infoCodes []adbc
 		}
 
 		if err = checkContext(rdr.Err(), ctx); err != nil {
-			err = adbcFromFlightStatusWithDetails(err, responseMetadata.snapshot(), nil, "GetInfo(DoGet): endpoint %d: %s", i, endpoint.Location)
-			return err
+			return adbcFromFlightStatusWithDetails(err, responseMetadata.snapshot(), nil, "GetInfo(DoGet): endpoint %d: %s", i, endpoint.Location)
 		}
 	}
 
@@ -897,8 +895,7 @@ func (c *connectionImpl) GetObjectsCatalogs(ctx context.Context, catalog *string
 	var rdr array.RecordReader
 	rdr, err = c.readInfo(ctx, schema_ref.Catalogs, info, c.timeouts, grpc.Header(&header), grpc.Trailer(&trailer))
 	if err != nil {
-		err = adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetCatalogs)")
-		return nil, err
+		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetCatalogs)")
 	}
 	defer rdr.Release()
 
@@ -913,8 +910,7 @@ func (c *connectionImpl) GetObjectsCatalogs(ctx context.Context, catalog *string
 	}
 
 	if err = checkContext(rdr.Err(), ctx); err != nil {
-		err = adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetCatalogs)")
-		return nil, err
+		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetCatalogs)")
 	}
 
 	return catalogs, nil
@@ -941,8 +937,7 @@ func (c *connectionImpl) GetObjectsDbSchemas(ctx context.Context, depth adbc.Obj
 	var info *flight.FlightInfo
 	info, err = c.cl.GetDBSchemas(ctx, &flightsql.GetDBSchemasOpts{DbSchemaFilterPattern: dbSchema}, grpc.Header(&header), grpc.Trailer(&trailer), c.timeouts)
 	if err != nil {
-		err = adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetDBSchemas)")
-		return nil, err
+		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetDBSchemas)")
 	}
 
 	header = metadata.MD{}
@@ -950,8 +945,7 @@ func (c *connectionImpl) GetObjectsDbSchemas(ctx context.Context, depth adbc.Obj
 	var rdr array.RecordReader
 	rdr, err = c.readInfo(ctx, schema_ref.DBSchemas, info, c.timeouts, grpc.Header(&header), grpc.Trailer(&trailer))
 	if err != nil {
-		err = adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetDBSchemas)")
-		return nil, err
+		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetDBSchemas)")
 	}
 	defer rdr.Release()
 
@@ -971,8 +965,7 @@ func (c *connectionImpl) GetObjectsDbSchemas(ctx context.Context, depth adbc.Obj
 	}
 
 	if err := checkContext(rdr.Err(), ctx); err != nil {
-		err = adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetCatalogs)")
-		return nil, err
+		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetCatalogs)")
 	}
 	return
 }
@@ -1005,8 +998,7 @@ func (c *connectionImpl) GetObjectsTables(ctx context.Context, depth adbc.Object
 		IncludeSchema:          includeSchema,
 	}, grpc.Header(&header), grpc.Trailer(&trailer), c.timeouts)
 	if err != nil {
-		err = adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetTables)")
-		return nil, err
+		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetTables)")
 	}
 
 	expectedSchema := schema_ref.Tables
@@ -1018,8 +1010,7 @@ func (c *connectionImpl) GetObjectsTables(ctx context.Context, depth adbc.Object
 	var rdr array.RecordReader
 	rdr, err = c.readInfo(ctx, expectedSchema, info, c.timeouts, grpc.Header(&header), grpc.Trailer(&trailer))
 	if err != nil {
-		err = adbcFromFlightStatus(err, "GetObjects(GetTables)")
-		return nil, err
+		return nil, adbcFromFlightStatus(err, "GetObjects(GetTables)")
 	}
 	defer rdr.Release()
 
@@ -1068,8 +1059,7 @@ func (c *connectionImpl) GetObjectsTables(ctx context.Context, depth adbc.Object
 	}
 
 	if err = checkContext(rdr.Err(), ctx); err != nil {
-		err = adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetTables)")
-		return nil, err
+		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetObjects(GetTables)")
 	}
 	return
 }
@@ -1104,8 +1094,7 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 	var rdr *flight.Reader
 	rdr, err = doGetWithTracer(ctx, c.cl, info.Endpoint[0], c.clientCache, c, c.timeouts)
 	if err != nil {
-		err = adbcFromFlightStatusWithDetails(err, responseMetadata.snapshot(), nil, "GetTableSchema(DoGet)")
-		return nil, err
+		return nil, adbcFromFlightStatusWithDetails(err, responseMetadata.snapshot(), nil, "GetTableSchema(DoGet)")
 	}
 	defer rdr.Release()
 
@@ -1113,29 +1102,25 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 	rec, err = rdr.Read()
 	if err != nil {
 		if err == io.EOF {
-			err = adbc.Error{
+			return nil, adbc.Error{
 				Msg:  "No table found",
 				Code: adbc.StatusNotFound,
 			}
-			return nil, err
 		}
-		err = adbcFromFlightStatusWithDetails(err, responseMetadata.snapshot(), nil, "GetTableSchema(DoGet)")
-		return nil, err
+		return nil, adbcFromFlightStatusWithDetails(err, responseMetadata.snapshot(), nil, "GetTableSchema(DoGet)")
 	}
 
 	numRows := rec.NumRows()
 	switch {
 	case numRows == 0:
-		err = adbc.Error{
+		return nil, adbc.Error{
 			Code: adbc.StatusNotFound,
 		}
-		return nil, err
 	case numRows > math.MaxInt32:
-		err = adbc.Error{
+		return nil, adbc.Error{
 			Msg:  "[Flight SQL] GetTableSchema cannot handle tables with number of rows > 2^31 - 1",
 			Code: adbc.StatusNotImplemented,
 		}
-		return nil, err
 	}
 
 	var s *arrow.Schema
@@ -1151,18 +1136,16 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 			schemaBytes := rec.Column(4).(*array.Binary).Value(i)
 			s, err = flight.DeserializeSchema(schemaBytes, c.db.Alloc)
 			if err != nil {
-				err = adbcFromFlightStatus(err, "GetTableSchema")
-				return nil, err
+				return nil, adbcFromFlightStatus(err, "GetTableSchema")
 			}
 			return s, nil
 		}
 	}
 
-	err = adbc.Error{
+	return s, adbc.Error{
 		Msg:  "[Flight SQL] GetTableSchema could not find a table with a matching schema",
 		Code: adbc.StatusNotFound,
 	}
-	return s, err
 }
 
 // GetTableTypes returns a list of the table types in the database.
@@ -1188,8 +1171,7 @@ func (c *connectionImpl) GetTableTypes(ctx context.Context) (reader array.Record
 	var info *flight.FlightInfo
 	info, err = c.cl.GetTableTypes(ctx, c.timeouts, grpc.Header(&header), grpc.Trailer(&trailer))
 	if err != nil {
-		err = adbcFromFlightStatusWithDetails(err, header, trailer, "GetTableTypes")
-		return nil, err
+		return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "GetTableTypes")
 	}
 
 	reader, err = newRecordReader(ctx, recordReaderConfig{
@@ -1404,8 +1386,7 @@ func (c *connectionImpl) Close() (err error) {
 	}
 	span.AddEvent("closed", trace.WithAttributes(args...))
 
-	err = adbcFromFlightStatus(err, spanName)
-	return err
+	return adbcFromFlightStatus(err, spanName)
 }
 
 // ReadPartition constructs a statement for a partition of a query. The

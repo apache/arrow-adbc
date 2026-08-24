@@ -465,11 +465,10 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 	))
 	client, err = flightsql.NewClient(target, nil, middleware, dialOpts...)
 	if err != nil {
-		err = adbc.Error{
+		return nil, adbc.Error{
 			Msg:  err.Error(),
 			Code: adbc.StatusIO,
 		}
-		return nil, err
 	}
 
 	client.Alloc = d.Alloc
@@ -501,8 +500,7 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 			args = append(args, correlationHeaderKeyValues(trailer)...)
 			args = append(args, grpcStatusKeyValues(err)...)
 			span.SetAttributes(args...)
-			err = adbcFromFlightStatusWithDetails(err, header, trailer, "AuthenticateBasicToken")
-			return nil, err
+			return nil, adbcFromFlightStatusWithDetails(err, header, trailer, "AuthenticateBasicToken")
 		}
 
 		if md, ok := metadata.FromOutgoingContext(ctx); ok {
