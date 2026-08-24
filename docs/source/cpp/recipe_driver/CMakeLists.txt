@@ -49,7 +49,7 @@ add_library(adbc_driver_framework ../../../../c/driver/framework/utility.cc
                                   ../../../../c/driver/framework/objects.cc)
 target_include_directories(adbc_driver_framework PRIVATE ../../../../c
                                                          ../../../../c/include)
-target_link_libraries(adbc_driver_framework PRIVATE nanoarrow::nanoarrow_static)
+target_link_libraries(adbc_driver_framework PRIVATE fmt::fmt nanoarrow::nanoarrow_static)
 
 add_library(driver_example SHARED driver_example.cc)
 target_include_directories(driver_example PRIVATE ../../../../c ../../../../c/include)
