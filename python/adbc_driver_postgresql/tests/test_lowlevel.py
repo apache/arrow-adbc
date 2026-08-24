@@ -55,3 +55,43 @@ def test_failed_connection() -> None:
         adbc_driver_manager.OperationalError, match=".*libpq.*Failed to connect.*"
     ):
         adbc_driver_postgresql.connect("invalid")
+
+
+@pytest.mark.parametrize("drain", [False, True])
+def test_transaction(postgres_uri: str, drain: bool) -> None:
+    # regression test for https://github.com/apache/arrow-adbc/issues/4695
+    status = adbc_driver_postgresql.ConnectionOptions.TRANSACTION_STATUS.value
+    with adbc_driver_postgresql.connect(postgres_uri) as db:
+        with adbc_driver_manager.AdbcConnection(db) as conn:
+            with adbc_driver_manager.AdbcStatement(conn) as stmt:
+                stmt.set_sql_query("DROP TABLE IF EXISTS test_transaction")
+                stmt.execute_update()
+                stmt.set_sql_query("CREATE TABLE test_transaction (id INT)")
+                stmt.execute_update()
+
+        with adbc_driver_manager.AdbcConnection(db) as conn:
+            with adbc_driver_manager.AdbcStatement(conn) as stmt:
+                stmt.set_sql_query("SELECT COUNT(*) FROM test_transaction")
+                handle, _ = stmt.execute_query()
+                with pyarrow.RecordBatchReader._import_from_c(handle.address) as reader:
+                    if drain:
+                        result = reader.read_all()
+                        assert result[0][0].as_py() == 0
+            assert conn.get_option(status) == ("idle" if drain else "active")
+
+            conn.set_autocommit(False)
+            assert conn.get_option(status) == ("idle" if drain else "active")
+            with adbc_driver_manager.AdbcStatement(conn) as stmt:
+                stmt.set_sql_query("INSERT INTO test_transaction (id) VALUES (1)")
+                stmt.execute_update()
+            assert conn.get_option(status) == "intrans"
+            conn.rollback()
+            assert conn.get_option(status) == "idle"
+
+        with adbc_driver_manager.AdbcConnection(db) as conn:
+            with adbc_driver_manager.AdbcStatement(conn) as stmt:
+                stmt.set_sql_query("SELECT COUNT(*) FROM test_transaction")
+                handle, _ = stmt.execute_query()
+                with pyarrow.RecordBatchReader._import_from_c(handle.address) as reader:
+                    result = reader.read_all()
+                assert result[0][0].as_py() == 0

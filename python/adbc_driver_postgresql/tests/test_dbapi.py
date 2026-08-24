@@ -575,11 +575,13 @@ def test_txn_status(postgres: dbapi.Connection) -> None:
 
     assert status() == "idle"
     postgres.rollback()
-    assert status() == "idle"
+    assert status() == "idle"  # because txn is lazily started
 
     with postgres.cursor() as cur:
         cur.execute("SELECT 1")
-        assert status() == "active"
+        assert status() == "active"  # because result is unread
+        cur.fetchall()
+        assert status() == "intrans"
         postgres.commit()
         assert status() == "idle"
         cur.execute("SELECT 1")
