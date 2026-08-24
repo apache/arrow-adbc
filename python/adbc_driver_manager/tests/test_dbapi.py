@@ -117,6 +117,30 @@ def test_get_objects(sqlite) -> None:
 
 
 @pytest.mark.sqlite
+def test_get_objects_table_types_filter(sqlite) -> None:
+    with sqlite.cursor() as cur:
+        cur.execute("CREATE TABLE base (ints)")
+        cur.execute("CREATE VIEW derived AS SELECT * FROM base")
+
+    def table_names(table_types_filter):
+        metadata = (
+            sqlite.adbc_get_objects(table_types_filter=table_types_filter)
+            .read_all()
+            .to_pylist()
+        )
+        return sorted(
+            table["table_name"]
+            for catalog in metadata
+            for schema in catalog["catalog_db_schemas"]
+            for table in schema["db_schema_tables"]
+        )
+
+    assert table_names(["table"]) == ["base"]
+    assert table_names(["view"]) == ["derived"]
+    assert table_names(["table", "view"]) == ["base", "derived"]
+
+
+@pytest.mark.sqlite
 def test_get_table_schema(sqlite) -> None:
     with sqlite.cursor() as cur:
         cur.execute("CREATE TABLE temporary (ints)")
