@@ -23,7 +23,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.Supplier;
 import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcException;
@@ -108,67 +107,41 @@ public class FlightSqlDriver implements AdbcDriver {
     final String transport = transportOf(uri, parsed);
     final String host = parsed.getHost();
     final String path = parsed.getPath();
-    switch (transport) {
-      case "":
-      case "tls":
-        requireNoPath(uri, path);
-        requireHost(uri, host);
-        return buildLocation(uri, () -> Location.forGrpcTls(host, parsed.getPort()));
-      case "tcp":
-        requireNoPath(uri, path);
-        requireHost(uri, host);
-        return buildLocation(uri, () -> Location.forGrpcInsecure(host, parsed.getPort()));
-      case "unix":
-        if (host != null && !host.isEmpty()) {
-          throw AdbcException.invalidArgument(
-              String.format(
-                  "[Flight SQL] Invalid URI '%s': a host is not valid with transport=unix", uri));
-        }
-        if (path == null || path.isEmpty()) {
-          throw AdbcException.invalidArgument(
-              String.format(
-                  "[Flight SQL] Invalid URI '%s': transport=unix requires a socket path", uri));
-        }
-        return buildLocation(uri, () -> Location.forGrpcDomainSocket(path));
-      default:
+
+    if (transport.isEmpty() || "tls".equals(transport) || "tcp".equals(transport)) {
+      if (path != null && !path.isEmpty()) {
         throw AdbcException.invalidArgument(
             String.format(
-                "[Flight SQL] Invalid URI '%s': unrecognized transport '%s' (expected 'tls',"
-                    + " 'tcp', or 'unix')",
-                uri, transport));
+                "[Flight SQL] Invalid URI '%s': a socket path is only valid with transport=unix",
+                uri));
+      }
+      if (host == null || host.isEmpty()) {
+        throw AdbcException.invalidArgument(
+            String.format("[Flight SQL] Invalid URI '%s': a valid host is required", uri));
+      }
+      if ("tcp".equals(transport)) {
+        return Location.forGrpcInsecure(host, parsed.getPort());
+      } else {
+        return Location.forGrpcTls(host, parsed.getPort());
+      }
+    } else if ("unix".equals(transport)) {
+      if (host != null && !host.isEmpty()) {
+        throw AdbcException.invalidArgument(
+            String.format(
+                "[Flight SQL] Invalid URI '%s': a host is not valid with transport=unix", uri));
+      }
+      if (path == null || path.isEmpty()) {
+        throw AdbcException.invalidArgument(
+            String.format(
+                "[Flight SQL] Invalid URI '%s': transport=unix requires a socket path", uri));
+      }
+      return Location.forGrpcDomainSocket(path);
     }
-  }
-
-  private static void requireNoPath(String uri, String path) throws AdbcException {
-    if (path != null && !path.isEmpty()) {
-      throw AdbcException.invalidArgument(
-          String.format(
-              "[Flight SQL] Invalid URI '%s': a socket path is only valid with transport=unix",
-              uri));
-    }
-  }
-
-  private static void requireHost(String uri, String host) throws AdbcException {
-    if (host == null || host.isEmpty()) {
-      throw AdbcException.invalidArgument(
-          String.format("[Flight SQL] Invalid URI '%s': a host is required", uri));
-    }
-  }
-
-  /**
-   * Builds a {@link Location} via the given factory, wrapping the {@link IllegalArgumentException}
-   * that {@link Location}'s {@code forGrpc*} factories document throwing on an invalid URI into an
-   * {@link AdbcException} instead of letting it escape as an unchecked exception.
-   */
-  private static Location buildLocation(String uri, Supplier<Location> factory)
-      throws AdbcException {
-    try {
-      return factory.get();
-    } catch (IllegalArgumentException e) {
-      throw AdbcException.invalidArgument(
-              String.format("[Flight SQL] Location %s is invalid: %s", uri, e))
-          .withCause(e);
-    }
+    throw AdbcException.invalidArgument(
+        String.format(
+            "[Flight SQL] Invalid URI '%s': unrecognized transport '%s' (expected 'tls',"
+                + " 'tcp', or 'unix')",
+            uri, transport));
   }
 
   /** Extracts and lowercases the {@code transport} query parameter, defaulting to "". */
