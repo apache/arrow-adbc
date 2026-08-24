@@ -127,8 +127,7 @@ class FlightSqlDriverUriTest {
         assertThrows(
             AdbcException.class,
             () ->
-                FlightSqlDriver.parseLocation(
-                    "flightsql://localhost:1234/socket?transport=unix"));
+                FlightSqlDriver.parseLocation("flightsql://localhost:1234/socket?transport=unix"));
     assertThat(ex.getStatus()).isEqualTo(AdbcStatusCode.INVALID_ARGUMENT);
   }
 
@@ -137,8 +136,7 @@ class FlightSqlDriverUriTest {
     AdbcException ex =
         assertThrows(
             AdbcException.class,
-            () ->
-                FlightSqlDriver.parseLocation("flightsql://localhost:1234/socket?transport=tcp"));
+            () -> FlightSqlDriver.parseLocation("flightsql://localhost:1234/socket?transport=tcp"));
     assertThat(ex.getStatus()).isEqualTo(AdbcStatusCode.INVALID_ARGUMENT);
   }
 
@@ -210,5 +208,4 @@ class FlightSqlDriverUriTest {
             () -> FlightSqlDriver.parseLocation("flightsql://localhost:1234#frag"));
     assertThat(ex.getStatus()).isEqualTo(AdbcStatusCode.INVALID_ARGUMENT);
   }
-
 }
