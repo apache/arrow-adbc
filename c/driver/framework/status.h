@@ -26,10 +26,8 @@
 #include <variant>
 #include <vector>
 
-#if defined(ADBC_FRAMEWORK_USE_FMT)
 #include <fmt/core.h>
 #include <fmt/format.h>
-#endif
 
 #include <arrow-adbc/adbc.h>
 
@@ -326,7 +324,6 @@ STATUS_CTOR(Unknown, UNKNOWN)
 
 }  // namespace adbc::driver::status
 
-#if defined(ADBC_FRAMEWORK_USE_FMT)
 namespace adbc::driver::status::fmt {
 
 #define STATUS_CTOR(NAME, CODE)                                                     \
@@ -348,7 +345,6 @@ STATUS_CTOR(Unknown, UNKNOWN)
 #undef STATUS_CTOR
 
 }  // namespace adbc::driver::status::fmt
-#endif
 
 #define UNWRAP_ERRNO_IMPL(NAME, CODE, RHS)                                               \
   do {                                                                                   \
