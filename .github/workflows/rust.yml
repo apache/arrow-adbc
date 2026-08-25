@@ -69,6 +69,7 @@ jobs:
     env:
       CARGO_INCREMENTAL: 0
       RUSTFLAGS: "-Adead_code" # TODO(alexandreyc): remove this line when implementation is complete
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg-cache
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -149,18 +150,35 @@ jobs:
           cmake --build . --target install
           popd
 
+      - name: Ensure vcpkg binary cache directory
+        if: runner.os == 'Windows' && runner.arch != 'X64'
+        run: |
+          New-Item -ItemType Directory -Force `
+            $env:VCPKG_DEFAULT_BINARY_CACHE | Out-Null
+      # reuse the cache from native-vcpkg.yml if it exists but don't write to
+      # it since we don't build all the packages
+      - name: Cache vcpkg packages
+        if: runner.os == 'Windows' && runner.arch != 'X64'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+          key: vcpkg-${{ runner.os }}-${{ matrix.arch }}-${{ hashFiles('.env', 'ci/vcpkg/**', 'c/**/vcpkg.json', '.github/workflows/native-vcpkg.yml') }}
       - name: Build C++/Go drivers (Windows on ARM)
         if: runner.os == 'Windows' && runner.arch != 'X64'
         env:
+          VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg-cache
+          VCPKG_DEFAULT_TRIPLET: arm64-windows-static-release
           VCPKG_ROOT: ${{ github.workspace }}/vcpkg
         run: |
           ./ci/scripts/install_vcpkg.sh "$VCPKG_ROOT"
-          "$VCPKG_ROOT/vcpkg" install sqlite3
+          "$VCPKG_ROOT/vcpkg" install sqlite3 --overlay-triplets ./ci/vcpkg/triplets
           mkdir -p build
           mkdir -p local
           pushd build
           cmake \
             -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake \
+            -DVCPKG_TARGET_TRIPLET=$VCPKG_DEFAULT_TRIPLET \
+            -DVCPKG_OVERLAY_TRIPLETS=$(pwd)/../ci/vcpkg/triplets \
             -DADBC_BUILD_TESTS=OFF \
             -DADBC_DRIVER_FLIGHTSQL=ON \
             -DADBC_DRIVER_MANAGER=ON \
