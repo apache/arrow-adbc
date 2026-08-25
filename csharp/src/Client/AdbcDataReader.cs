@@ -44,6 +44,8 @@ namespace Apache.Arrow.Adbc.Client
     /// </summary>
     public sealed class AdbcDataReader : DbDataReader, IDbColumnSchemaGenerator
     {
+        private static readonly Task<bool> s_true = Task.FromResult(true);
+
         private readonly AdbcCommand adbcCommand;
         private readonly bool closeConnection;
         private readonly QueryResult adbcQueryResult;
@@ -336,7 +338,30 @@ namespace Apache.Arrow.Adbc.Client
             // old batch — they must see the exception again immediately.
             this.recordBatch?.Dispose();
             this.recordBatch = null;
-            this.recordBatch = ReadNextRecordBatchAsync().Result;
+
+            this.recordBatch = ReadNextRecordBatchAsync().AsTask().GetAwaiter().GetResult();
+
+            return this.recordBatch != null;
+        }
+
+        public override Task<bool> ReadAsync(CancellationToken cancellationToken)
+        {
+            if (this.recordBatch != null && this.currentRowInRecordBatch < this.recordBatch.Length - 1)
+            {
+                this.currentRowInRecordBatch++;
+                return s_true;
+            }
+
+            return FetchNextBatchAsync(cancellationToken);
+        }
+
+        private async Task<bool> FetchNextBatchAsync(CancellationToken cancellationToken)
+        {
+            // Clear the previous batch first: a caller retrying after a mid-stream error
+            // must see the exception again, never stale rows from the old batch.
+            this.recordBatch?.Dispose();
+            this.recordBatch = null;
+            this.recordBatch = await ReadNextRecordBatchAsync(cancellationToken).ConfigureAwait(false);
 
             return this.recordBatch != null;
         }
@@ -389,18 +414,20 @@ namespace Apache.Arrow.Adbc.Client
         /// </summary>
         /// <param name="cancellationToken">An optional cancellation token</param>
         /// <returns><see cref="RecordBatch"/> or null</returns>
-        private ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+        private async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
             this.currentRowInRecordBatch = 0;
 
-            RecordBatch? recordBatch = this.adbcQueryResult.Stream?.ReadNextRecordBatchAsync(cancellationToken).Result;
+            RecordBatch? recordBatch = this.adbcQueryResult.Stream is not null
+                ? await this.adbcQueryResult.Stream.ReadNextRecordBatchAsync(cancellationToken).ConfigureAwait(false)
+                : null;
 
             if (recordBatch != null)
             {
                 this.TotalBatches += 1;
             }
 
-            return new ValueTask<RecordBatch?>(recordBatch);
+            return recordBatch;
         }
     }
 }
