@@ -35,11 +35,11 @@ if (-not $env:VCPKG_ROOT) {
 if ($Architecture -eq "amd64") {
     $CMakePlatform = "x64"
     $PlatformTag = "win_amd64"
-    $VcpkgTriplet = "x64-windows-static"
+    $VcpkgTriplet = "x64-windows-static-release"
 } else {
     $CMakePlatform = "ARM64"
     $PlatformTag = "win_arm64"
-    $VcpkgTriplet = "arm64-windows-static"
+    $VcpkgTriplet = "arm64-windows-static-release"
 }
 
 $BuildType = "RelWithDebInfo"
@@ -52,7 +52,8 @@ Write-Host "=== Building ADBC drivers for $Architecture ==="
 & (Join-Path $env:VCPKG_ROOT "vcpkg.exe") install `
     "--triplet=$VcpkgTriplet" `
     "libpq" `
-    "sqlite3[dbstat,fts3,fts4,fts5,geopoly,json1,limit,math,rtree,session,snapshot,soundex]"
+    "sqlite3[dbstat,fts3,fts4,fts5,geopoly,json1,limit,math,rtree,session,snapshot,soundex]" `
+    --overlay-triplets $(Join-Path $SourceDir "ci\vcpkg\triplets")
 if (-not $?) { throw "Failed to install vcpkg dependencies" }
 
 New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
@@ -67,6 +68,7 @@ cmake `
     "-DCMAKE_INSTALL_PREFIX=$BuildDir" `
     "-DCMAKE_TOOLCHAIN_FILE=$(Join-Path $env:VCPKG_ROOT 'scripts/buildsystems/vcpkg.cmake')" `
     -DCMAKE_UNITY_BUILD=ON `
+    "-DVCPKG_OVERLAY_TRIPLETS=$(Join-Path $SourceDir 'ci\vcpkg\triplets')" `
     "-DVCPKG_TARGET_TRIPLET=$VcpkgTriplet" `
     -DADBC_DRIVER_FLIGHTSQL=ON `
     -DADBC_DRIVER_MANAGER=ON `

@@ -963,6 +963,7 @@ jobs:
           - { arch: amd64, python_arch: x64, runner: windows-latest }
           - { arch: arm64, python_arch: arm64, runner: windows-11-vs2026-arm }
     env:
+      VCPKG_DEFAULT_TRIPLET: ${{ matrix.python_arch }}-windows-static-release
       VCPKG_ROOT: "${{ github.workspace }}/vcpkg"
     steps:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
