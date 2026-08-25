@@ -155,9 +155,9 @@ func (base *ConnectionImplBase) Rollback(context.Context) error {
 
 func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (reader array.RecordReader, err error) {
 	startTime := time.Now()
-	_, span := internal.StartSpan(ctx, "ConnectionImplBase.GetInfo", base)
+	_, _, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, "ConnectionImplBase.GetInfo", base)
 	defer func() {
-		internal.NewEndSpanHelper(span).
+		endSpanHelper.
 			WithError(err).
 			WithStartTime(startTime).
 			EndSpan()

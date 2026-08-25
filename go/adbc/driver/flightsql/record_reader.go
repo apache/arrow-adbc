@@ -71,12 +71,12 @@ type recordReaderConfig struct {
 func newRecordReader(ctx context.Context, cfg recordReaderConfig, opts ...grpc.CallOption) (rdr array.RecordReader, err error) {
 	const spanName = "FlightSQL.RecordReader.newRecordReader"
 	startTime := time.Now()
-	ctx, span := internal.StartSpan(ctx, spanName, cfg.tracing)
+	ctx, span, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, spanName, cfg.tracing)
 	spanOwnedByReader := false
 	errorRecorded := false
 	defer func() {
 		if !spanOwnedByReader {
-			internal.NewEndSpanHelper(span).
+			endSpanHelper.
 				WithStartTime(startTime).
 				WithError(err).
 				WithRecordedError(errorRecorded).
@@ -303,7 +303,7 @@ func newRecordReader(ctx context.Context, cfg recordReaderConfig, opts ...grpc.C
 			))
 		}
 		errorRecorded := reader.err != nil
-		internal.NewEndSpanHelper(span).
+		endSpanHelper.
 			WithStartTime(startTime).
 			WithError(reader.err).
 			WithRecordedError(errorRecorded).

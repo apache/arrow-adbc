@@ -248,10 +248,10 @@ func doGetWithResponseMetadata(ctx context.Context, client *flightsql.Client, ti
 func doGetWithTracer(ctx context.Context, cl *flightsql.Client, endpoint *flight.FlightEndpoint, clientCache gcache.Cache, tracing adbc.OTelTracing, opts ...grpc.CallOption) (rdr *flight.Reader, err error) {
 	const spanName = "FlightSQL.Connection.DoGet"
 	startTime := time.Now()
-	ctx, span := internal.StartSpan(ctx, spanName, tracing)
+	ctx, span, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, spanName, tracing)
 	errorRecorded := false
 	defer func() {
-		internal.NewEndSpanHelper(span).
+		endSpanHelper.
 			WithStartTime(startTime).
 			WithError(err).
 			WithRecordedError(errorRecorded).
@@ -733,9 +733,9 @@ func (c *connectionImpl) SetOptionDouble(key string, value float64) error {
 func (c *connectionImpl) PrepareDriverInfo(ctx context.Context, infoCodes []adbc.InfoCode) (err error) {
 	startTime := time.Now()
 	const spanName = "FlightSQL.Connection.PrepareDriverInfo"
-	ctx, span := internal.StartSpan(ctx, spanName, c)
+	ctx, _, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, spanName, c)
 	defer func() {
-		internal.NewEndSpanHelper(span).
+		endSpanHelper.
 			WithError(err).
 			WithStartTime(startTime).
 			EndSpan()
@@ -862,9 +862,9 @@ func (c *connectionImpl) readInfo(ctx context.Context, expectedSchema *arrow.Sch
 func (c *connectionImpl) GetObjectsCatalogs(ctx context.Context, catalog *string) (catalogs []string, err error) {
 	const spanName = "FlightSQL.Connection.GetObjectsCatalogs"
 	startTime := time.Now()
-	ctx, span := internal.StartSpan(ctx, spanName, c)
+	ctx, _, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, spanName, c)
 	defer func() {
-		internal.NewEndSpanHelper(span).
+		endSpanHelper.
 			WithError(err).
 			WithStartTime(startTime).
 			EndSpan()
@@ -914,9 +914,9 @@ func (c *connectionImpl) GetObjectsCatalogs(ctx context.Context, catalog *string
 func (c *connectionImpl) GetObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string) (result map[string][]string, err error) {
 	const spanName = "FlightSQL.Connection.GetObjectsDbSchemas"
 	startTime := time.Now()
-	ctx, span := internal.StartSpan(ctx, spanName, c)
+	ctx, _, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, spanName, c)
 	defer func() {
-		internal.NewEndSpanHelper(span).
+		endSpanHelper.
 			WithError(err).
 			WithStartTime(startTime).
 			EndSpan()
@@ -967,9 +967,9 @@ func (c *connectionImpl) GetObjectsDbSchemas(ctx context.Context, depth adbc.Obj
 func (c *connectionImpl) GetObjectsTables(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (result internal.SchemaToTableInfo, err error) {
 	const spanName = "FlightSQL.Connection.GetObjectsTables"
 	startTime := time.Now()
-	ctx, span := internal.StartSpan(ctx, spanName, c)
+	ctx, _, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, spanName, c)
 	defer func() {
-		internal.NewEndSpanHelper(span).
+		endSpanHelper.
 			WithError(err).
 			WithStartTime(startTime).
 			EndSpan()
@@ -1061,9 +1061,9 @@ func (c *connectionImpl) GetObjectsTables(ctx context.Context, depth adbc.Object
 func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (schema *arrow.Schema, err error) {
 	const spanName = "FlightSQL.Connection.GetTableSchema"
 	startTime := time.Now()
-	ctx, span := internal.StartSpan(ctx, spanName, c)
+	ctx, _, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, spanName, c)
 	defer func() {
-		internal.NewEndSpanHelper(span).
+		endSpanHelper.
 			WithError(err).
 			WithStartTime(startTime).
 			EndSpan()
@@ -1152,9 +1152,9 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 func (c *connectionImpl) GetTableTypes(ctx context.Context) (reader array.RecordReader, err error) {
 	const spanName = "FlightSQL.Connection.GetTableTypes"
 	startTime := time.Now()
-	ctx, span := internal.StartSpan(ctx, spanName, c)
+	ctx, _, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, spanName, c)
 	defer func() {
-		internal.NewEndSpanHelper(span).
+		endSpanHelper.
 			WithError(err).
 			WithStartTime(startTime).
 			EndSpan()
@@ -1330,9 +1330,9 @@ func (c *connectionImpl) prepareSubstrait(ctx context.Context, plan flightsql.Su
 func (c *connectionImpl) Close() (err error) {
 	const spanName = "FlightSQL.Connection.Close"
 	startTime := time.Now()
-	ctx, span := internal.StartSpan(context.Background(), spanName, c)
+	ctx, span, endSpanHelper := internal.StartSpanWithEndSpanHelper(context.Background(), spanName, c)
 	defer func() {
-		internal.NewEndSpanHelper(span).
+		endSpanHelper.
 			WithError(err).
 			WithStartTime(startTime).
 			EndSpan()
@@ -1390,9 +1390,9 @@ func (c *connectionImpl) Close() (err error) {
 func (c *connectionImpl) ReadPartition(ctx context.Context, serializedPartition []byte) (rdr array.RecordReader, err error) {
 	const spanName = "FlightSQL.Connection.ReadPartition"
 	startTime := time.Now()
-	ctx, span := internal.StartSpan(ctx, spanName, c)
+	ctx, _, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, spanName, c)
 	defer func() {
-		internal.NewEndSpanHelper(span).
+		endSpanHelper.
 			WithError(err).
 			WithStartTime(startTime).
 			EndSpan()

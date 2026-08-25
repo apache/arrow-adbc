@@ -86,7 +86,7 @@ func TestTraceHeaderAttrsWithPrefix_AppliedToSpan(t *testing.T) {
 		},
 	}
 
-	ctx, span := internal.StartSpan(
+	ctx, _, endSpanHelper := internal.StartSpanWithEndSpanHelper(
 		context.Background(),
 		"FlightSQL.Statement.ExecuteQuery",
 		tracing,
@@ -97,7 +97,7 @@ func TestTraceHeaderAttrsWithPrefix_AppliedToSpan(t *testing.T) {
 		}), traceRequestMetadataPrefix)...),
 	)
 	_ = ctx
-	span.End()
+	endSpanHelper.EndSpan()
 
 	spans := recorder.Ended()
 	if len(spans) != 1 {
