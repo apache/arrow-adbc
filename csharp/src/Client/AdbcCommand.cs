@@ -23,6 +23,7 @@ using System.Data.Common;
 using System.Data.SqlTypes;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Types;
 
@@ -209,6 +210,18 @@ namespace Apache.Arrow.Adbc.Client
             return ExecuteReader(behavior);
         }
 
+        protected override async Task<DbDataReader> ExecuteDbDataReaderAsync(CommandBehavior behavior, CancellationToken cancellationToken)
+        {
+            bool closeConnection = ValidateReaderBehavior(behavior);
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            BindParameters();
+            QueryResult result = await AdbcStatement.ExecuteQueryAsync().ConfigureAwait(false);
+
+            return new AdbcDataReader(this, result, this.DecimalBehavior, this.StructBehavior, closeConnection);
+        }
+
         /// <summary>
         /// Executes the reader with the default behavior.
         /// </summary>
@@ -227,20 +240,32 @@ namespace Apache.Arrow.Adbc.Client
         /// <returns><see cref="AdbcDataReader"/></returns>
         public new AdbcDataReader ExecuteReader(CommandBehavior behavior)
         {
+            bool closeConnection = ValidateReaderBehavior(behavior);
+            QueryResult result = this.ExecuteQuery();
+
+            return new AdbcDataReader(this, result, this.DecimalBehavior, this.StructBehavior, closeConnection);
+        }
+
+        /// <summary>
+        /// Validates the behavior and reports whether the connection should be closed
+        /// when the reader is disposed.
+        /// </summary>
+        private bool ValidateReaderBehavior(CommandBehavior behavior)
+        {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(AdbcCommand));
 
-            bool closeConnection = (behavior & CommandBehavior.CloseConnection) != 0;
             switch (behavior & ~CommandBehavior.CloseConnection)
             {
                 case CommandBehavior.SchemaOnly:   // The schema is not known until a read happens
                 case CommandBehavior.Default:
-                    QueryResult result = this.ExecuteQuery();
-                    return new AdbcDataReader(this, result, this.DecimalBehavior, this.StructBehavior, closeConnection);
+                    break;
 
                 default:
                     throw new InvalidOperationException($"{behavior} is not supported with this provider");
             }
+
+            return (behavior & CommandBehavior.CloseConnection) != 0;
         }
 
         protected override void Dispose(bool disposing)
