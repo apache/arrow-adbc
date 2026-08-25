@@ -129,6 +129,8 @@ jobs:
         run: |
           "$($env:MSYS_LOCATION)\clangarm64\bin" |
             Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          New-Item -ItemType Directory -Force `
+            $env:VCPKG_DEFAULT_BINARY_CACHE | Out-Null
 
       - name: Build C++/Go drivers
         if: runner.os != 'Windows' || runner.arch == 'X64'
@@ -150,11 +152,6 @@ jobs:
           cmake --build . --target install
           popd
 
-      - name: Ensure vcpkg binary cache directory
-        if: runner.os == 'Windows' && runner.arch != 'X64'
-        run: |
-          New-Item -ItemType Directory -Force `
-            $env:VCPKG_DEFAULT_BINARY_CACHE | Out-Null
       # reuse the cache from native-vcpkg.yml if it exists but don't write to
       # it since we don't build all the packages
       - name: Cache vcpkg packages
