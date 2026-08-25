@@ -56,6 +56,7 @@ jobs:
           - macos-latest
           - ubuntu-latest
           - windows-latest
+          - windows-11-arm
         minimal-versions:
           - false
         include:
@@ -68,6 +69,7 @@ jobs:
     env:
       CARGO_INCREMENTAL: 0
       RUSTFLAGS: "-Adead_code" # TODO(alexandreyc): remove this line when implementation is complete
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg-cache
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -94,37 +96,44 @@ jobs:
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
-      - name: Install Protoc
-        if: runner.os == 'Linux'
-        run: |
-          curl -L "https://github.com/protocolbuffers/protobuf/releases/download/v28.3/protoc-28.3-linux-$(uname -m).zip" -o protoc.zip
-          unzip protoc.zip -d $HOME/.local
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - name: Install Protoc
-        if: runner.os == 'macOS'
-        run: |
-          curl -L "https://github.com/protocolbuffers/protobuf/releases/download/v28.3/protoc-28.3-osx-universal_binary.zip" -o protoc.zip
-          unzip "protoc.zip" -d $HOME/.local
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-      - name: Install Protoc
-        if: runner.os == 'Windows'
-        run: |
-          curl -L "https://github.com/protocolbuffers/protobuf/releases/download/v28.3/protoc-28.3-win64.zip" -o protoc.zip
-          unzip "protoc.zip" -d $HOME/.local
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Install sqlite3
         if: runner.os == 'Linux'
         run: sudo apt-get install libsqlite3-dev
+
+      # Windows on x64
       - name: Setup conda
         uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5  # v4.0.1
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && runner.arch == 'X64'
         with:
           miniforge-version: latest
       - name: Install Dependencies
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && runner.arch == 'X64'
         run: |
           conda install -c conda-forge --file ci/conda_env_cpp.txt
+
+      # Windows on ARM
+      - uses: msys2/setup-msys2@66cd2cce69caa17b53920067426061ca1de3a884  # v2.32.0
+        if: runner.os == 'Windows' && runner.arch != 'X64'
+        id: msys2
+        with:
+          msystem: CLANGARM64
+          update: true
+          install: |
+            mingw-w64-clang-aarch64-gcc-compat
+            mingw-w64-clang-aarch64-tools
+      - name: Add msys2 toolchain to PATH
+        if: runner.os == 'Windows' && runner.arch != 'X64'
+        shell: pwsh
+        env:
+          MSYS_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
+        run: |
+          "$($env:MSYS_LOCATION)\clangarm64\bin" |
+            Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          New-Item -ItemType Directory -Force `
+            $env:VCPKG_DEFAULT_BINARY_CACHE | Out-Null
+
       - name: Build C++/Go drivers
+        if: runner.os != 'Windows' || runner.arch == 'X64'
         run: |
           mkdir -p build
           mkdir -p local
@@ -142,6 +151,44 @@ jobs:
             ../c
           cmake --build . --target install
           popd
+
+      # reuse the cache from native-vcpkg.yml if it exists but don't write to
+      # it since we don't build all the packages
+      - name: Cache vcpkg packages
+        if: runner.os == 'Windows' && runner.arch != 'X64'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ env.VCPKG_DEFAULT_BINARY_CACHE }}
+          key: vcpkg-${{ runner.os }}-arm64-${{ hashFiles('.env', 'ci/vcpkg/**', 'c/**/vcpkg.json', '.github/workflows/native-vcpkg.yml') }}
+      - name: Build C++/Go drivers (Windows on ARM)
+        if: runner.os == 'Windows' && runner.arch != 'X64'
+        env:
+          VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg-cache
+          VCPKG_DEFAULT_TRIPLET: arm64-windows-static-release
+          VCPKG_ROOT: ${{ github.workspace }}/vcpkg
+        run: |
+          ./ci/scripts/install_vcpkg.sh "$VCPKG_ROOT"
+          "$VCPKG_ROOT/vcpkg" install sqlite3 --overlay-triplets ./ci/vcpkg/triplets
+          mkdir -p build
+          mkdir -p local
+          pushd build
+          cmake \
+            -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake \
+            -DVCPKG_TARGET_TRIPLET=$VCPKG_DEFAULT_TRIPLET \
+            -DVCPKG_OVERLAY_TRIPLETS=$(pwd)/../ci/vcpkg/triplets \
+            -DADBC_BUILD_TESTS=OFF \
+            -DADBC_DRIVER_FLIGHTSQL=ON \
+            -DADBC_DRIVER_MANAGER=ON \
+            -DADBC_DRIVER_SQLITE=ON \
+            -DADBC_USE_ASAN=OFF \
+            -DADBC_USE_UBSAN=OFF \
+            -DADBC_SQLITE_COMPILE_DEFINES=-DADBC_SQLITE_WITH_NO_LOAD_EXTENSION \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_INSTALL_PREFIX=../local \
+            ../c
+          cmake --build . --target install
+          popd
+
       - name: Set dynamic linker path
         if: runner.os == 'Linux'
         run: |
@@ -212,6 +259,7 @@ jobs:
 
           curl -L "https://github.com/foresterre/cargo-msrv/releases/download/${cargo_msrv_version}/cargo-msrv-x86_64-unknown-linux-gnu-${cargo_msrv_version}.tgz" -o "${cargo_msrv_archive}"
           echo "${cargo_msrv_hash}  ${cargo_msrv_archive}" | sha256sum -c -
+          mkdir -p $HOME/.local/bin
           tar xz -f "${cargo_msrv_archive}" --wildcards --strip-components=1 -C "$HOME/.local/bin" "*/cargo-msrv"
           rm "${cargo_msrv_archive}"
 
