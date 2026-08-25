@@ -529,7 +529,10 @@ func (s *statement) queryAttrs() []attribute.KeyValue {
 //
 // This invalidates any prior result sets on this statement.
 func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, nrec int64, err error) {
-	const spanName = "FlightSQL.Statement.ExecuteQuery"
+	const (
+		operationName = "ExecuteQuery"
+		spanName      = "FlightSQL.Statement." + operationName
+	)
 	startTime := time.Now()
 	ctx, span := internal.StartSpan(ctx, spanName, s.cnxn, trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...))
 	defer func() {
@@ -587,7 +590,7 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 	}()
 
 	if err != nil {
-		return nil, -1, adbcFromFlightStatusWithDetails(err, header, trailer, spanName)
+		return nil, -1, adbcFromFlightStatusWithDetails(err, header, trailer, operationName)
 	}
 
 	nrec = info.TotalRecords
@@ -605,7 +608,10 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 // ExecuteUpdate executes a statement that does not generate a result
 // set. It returns the number of rows affected if known, otherwise -1.
 func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
-	const spanName = "FlightSQL.Statement.ExecuteUpdate"
+	const (
+		operationName = "ExecuteUpdate"
+		spanName      = "FlightSQL.Statement." + operationName
+	)
 	startTime := time.Now()
 	ctx, span := internal.StartSpan(ctx, spanName, s.cnxn, trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...))
 	defer func() {
@@ -626,18 +632,6 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 			Code: adbc.StatusInvalidState,
 		}
 	}
-
-	ctx, span = internal.StartSpan(
-		ctx,
-		"FlightSQL.Statement.ExecuteUpdate",
-		s.cnxn,
-		trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...),
-	)
-	defer func() {
-		internal.NewEndSpanHelper(span).
-			WithError(err).
-			EndSpan()
-	}()
 
 	// Handle bulk ingest
 	if s.targetTable != "" {
@@ -670,7 +664,7 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 	}()
 
 	if err != nil {
-		err = adbcFromFlightStatusWithDetails(err, header, trailer, spanName)
+		err = adbcFromFlightStatusWithDetails(err, header, trailer, operationName)
 	}
 
 	return
@@ -679,21 +673,12 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 // Prepare turns this statement into a prepared statement to be executed
 // multiple times. This invalidates any prior result sets.
 func (s *statement) Prepare(ctx context.Context) (err error) {
-	ctx, span := internal.StartSpan(
-		ctx,
-		"FlightSQL.Statement.Prepare",
-		s.cnxn,
-		trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...),
+	const (
+		operationName = "Prepare"
+		spanName      = "FlightSQL.Statement." + operationName
 	)
-	defer func() {
-		internal.NewEndSpanHelper(span).
-			WithError(err).
-			EndSpan()
-	}()
-
 	startTime := time.Now()
-	const spanName = "FlightSQL.Statement.Prepare"
-	ctx, span = internal.StartSpan(ctx, spanName, s.cnxn, trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...))
+	ctx, span := internal.StartSpan(ctx, spanName, s.cnxn, trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...))
 	defer func() {
 		internal.NewEndSpanHelper(span).
 			WithError(err).
@@ -716,7 +701,7 @@ func (s *statement) Prepare(ctx context.Context) (err error) {
 	}()
 
 	if err != nil {
-		return adbcFromFlightStatusWithDetails(err, header, trailer, spanName)
+		return adbcFromFlightStatusWithDetails(err, header, trailer, operationName)
 	}
 	s.prepared = prep
 	return nil
