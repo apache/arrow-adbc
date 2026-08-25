@@ -551,7 +551,7 @@ namespace Apache.Arrow.Adbc.Client
                     State state = new State(result, indices.ToArray(), loaders.ToArray());
                     while (true)
                     {
-                        using (RecordBatch? batch = stream.ReadNextRecordBatchAsync().Result)
+                        using (RecordBatch? batch = stream.ReadNextRecordBatchAsync().AsTask().GetAwaiter().GetResult())
                         {
                             if (batch == null) { return result; }
 
