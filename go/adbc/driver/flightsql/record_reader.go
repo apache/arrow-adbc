@@ -55,6 +55,9 @@ var errReaderReleased = errors.New("record reader released")
 
 type recordReaderCallerContextKey struct{}
 
+// isRecordReaderSiblingCancellation reports whether the record reader's
+// derived context was canceled while its original caller context remains
+// active, indicating that another endpoint goroutine triggered cancellation.
 func isRecordReaderSiblingCancellation(ctx context.Context) bool {
 	callerCtx, ok := ctx.Value(recordReaderCallerContextKey{}).(context.Context)
 	return ok && ctx.Err() == context.Canceled && callerCtx.Err() == nil

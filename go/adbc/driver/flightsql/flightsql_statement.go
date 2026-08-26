@@ -485,16 +485,6 @@ func (s *statement) SetOptionDouble(key string, value float64) error {
 // For queries expected to be executed repeatedly, Prepare should be
 // called before execution.
 func (s *statement) SetSqlQuery(query string) (err error) {
-	const spanName = "FlightSQL.Statement.SetSqlQuery"
-	startTime := time.Now()
-	_, span := internal.StartSpan(context.Background(), spanName, s.cnxn)
-	defer func() {
-		internal.NewEndSpanHelper(span).
-			WithError(err).
-			WithStartTime(startTime).
-			EndSpan()
-	}()
-
 	if s.prepared != nil {
 		if err = s.closePreparedStatement(); err != nil {
 			return err
@@ -506,7 +496,6 @@ func (s *statement) SetSqlQuery(query string) (err error) {
 	}
 	s.targetTable = ""
 	s.query.setSqlQuery(query)
-	span.AddEvent("finished", trace.WithAttributes(s.queryAttrs()...))
 	return nil
 }
 

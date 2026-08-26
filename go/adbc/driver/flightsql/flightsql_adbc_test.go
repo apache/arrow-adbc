@@ -373,6 +373,9 @@ func TestFlightSQLTracingProducesTraceFiles(t *testing.T) {
 	require.Contains(t, output, "FlightSQL.Statement.ExecuteQuery")
 }
 
+// TestFlightSQLTracingCleansUpAfterConstructionFailure verifies that failures
+// after tracing initialization closes the exporter and release its file handles.
+// Removing the trace directory must succeed after URI or option validation fails.
 func TestFlightSQLTracingCleansUpAfterConstructionFailure(t *testing.T) {
 	alloc := memory.NewCheckedAllocator(memory.DefaultAllocator)
 	defer alloc.AssertSize(t, 0)
