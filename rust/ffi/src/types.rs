@@ -283,6 +283,7 @@ unsafe extern "C" fn release_ffi_partitions(partitions: *mut FFI_AdbcPartitions)
             // Finally, C should call the release function only once.
             let private_data = Box::from_raw(partitions.private_data as *mut PartitionsPrivateData);
 
+            #[allow(clippy::needless_range_loop)]
             for p in 0..partitions.num_partitions {
                 let partition_ptr = *partitions.partitions.add(p);
                 let partition_len = *partitions.partition_lengths.add(p);
