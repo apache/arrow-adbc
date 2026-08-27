@@ -120,10 +120,23 @@ jobs:
           if (-not $?) { throw "failed to configure CMake" }
 
           cmake --build .\build\${{ matrix.config }} --target install --config ${{ matrix.config }} --parallel
-      - name: Test
+      - name: Test (C++)
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
           BUILD_DRIVER_MANAGER_USER_CONFIG_TEST: "1"
           BUILD_DRIVER_SQLITE: "1"
         run: .\ci\scripts\cpp_test.ps1 $pwd\build\${{ matrix.config }} $pwd\local\${{ matrix.config }}
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          check-latest: true
+          cache: true
+          cache-dependency-path: go/adbc/go.sum
+          go-version-file: go/adbc/go.sum
+      - name: Test (Go/CGO)
+        env:
+          CGO_ENABLED: "1"
+        run: |
+          .\ci\scripts\go_build.ps1 $pwd $pwd\build\${{ matrix.config }} $pwd\local\${{ matrix.config }}
+          .\ci\scripts\go_test.ps1 $pwd $pwd\build\${{ matrix.config }} $pwd\local\${{ matrix.config }}
