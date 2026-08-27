@@ -36,7 +36,7 @@
     <PackageVersion Include="Google.Cloud.BigQuery.Storage.V1" Version="3.17.0" />
     <PackageVersion Include="Google.Cloud.BigQuery.V2" Version="3.11.0" />
     <PackageVersion Include="Microsoft.IO.RecyclableMemoryStream" Version="3.0.1" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.8.1" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.9.0" />
     <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.301" />
     <PackageVersion Include="Moq" Version="4.20.72" />
     <PackageVersion Include="OpenTelemetry" Version="1.12.0" />
@@ -49,7 +49,7 @@
     <PackageVersion Include="System.Threading.Channels" Version="9.0.8" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio"
-                    Version="3.1.5"
+                    Version="4.0.0"
                     Condition="'$(TargetFramework)' != 'net472'" />
     <PackageVersion Include="xunit.runner.visualstudio"
                     Version="2.8.2"

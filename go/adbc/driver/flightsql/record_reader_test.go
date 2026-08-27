@@ -75,6 +75,10 @@ func (f *testFlightService) DoGet(request *flight.Ticket, stream flight.FlightSe
 		f.failureCount--
 		return fmt.Errorf("Failed request")
 	}
+	if request.Ticket[0] == 125 {
+		<-stream.Context().Done()
+		return stream.Context().Err()
+	}
 
 	schema := orderingSchema()
 	wr := flight.NewRecordWriter(stream, ipc.WithSchema(schema))
@@ -302,7 +306,7 @@ func (suite *RecordReaderTests) TestSiblingCancellationRecordsOneException() {
 			Schema: flight.SerializeSchema(orderingSchema(), suite.alloc),
 			Endpoint: []*flight.FlightEndpoint{
 				{Ticket: &flight.Ticket{Ticket: []byte{127}}},
-				{Ticket: &flight.Ticket{Ticket: []byte{126}}},
+				{Ticket: &flight.Ticket{Ticket: []byte{125}}},
 			},
 		},
 		clientCache: suite.clCache,
