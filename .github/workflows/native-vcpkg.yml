@@ -60,9 +60,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - { os: windows-latest, arch: x64, config: debug, msystem: UCRT64, msysbin: mingw64, env: x86_64, triplet: x64-windows }
-          - { os: windows-latest, arch: x64, config: release, msystem: UCRT64, msysbin: mingw64, env: x86_64, triplet: x64-windows-static-release }
-          - { os: windows-11-arm, arch: arm64, config: release, msystem: CLANGARM64, msysbin: clangarm64, env: clang-aarch64, triplet: arm64-windows-static-release }
+          - { os: windows-latest, arch: x64, config: debug, msystem: UCRT64, msysbin: mingw64, env: x86_64, compiler-package: mingw-w64-x86_64-gcc, triplet: x64-windows }
+          - { os: windows-latest, arch: x64, config: release, msystem: UCRT64, msysbin: mingw64, env: x86_64, compiler-package: mingw-w64-x86_64-gcc, triplet: x64-windows-static-release }
+          - { os: windows-11-arm, arch: arm64, config: release, msystem: CLANGARM64, msysbin: clangarm64, env: clang-aarch64, compiler-package: mingw-w64-clang-aarch64-gcc-compat, triplet: arm64-windows-static-release }
     env:
       VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}/vcpkg-cache
       VCPKG_DEFAULT_TRIPLET: ${{ matrix.triplet }}
@@ -80,18 +80,13 @@ jobs:
           # Needed for gendef tool in GoUtils.cmake
           install: |
             mingw-w64-${{ matrix.env }}-tools
+            ${{ matrix.compiler-package }}
       - name: Add msys2 toolchain to PATH
         env:
           MSYS_LOCATION: ${{ steps.msys2.outputs.msys2-location }}
         run: |
           "$($env:MSYS_LOCATION)\${{ matrix.msysbin }}\bin" |
             Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-      - name: Setup MSYS2 tools
-        if: matrix.arch == 'arm64'
-        shell: msys2 {0}
-        run: |
-          # Needed for CGO
-          pacman --noconfirm -S mingw-w64-${{ matrix.env }}-gcc-compat
       - name: Ensure vcpkg binary cache directory
         run: |
           New-Item -ItemType Directory -Force `
