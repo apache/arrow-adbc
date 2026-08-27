@@ -35,6 +35,11 @@
 
 /// \file status.h
 
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-template"
+#endif
+
 namespace adbc::driver {
 
 /// \brief A wrapper around AdbcStatusCode + AdbcError.
@@ -129,8 +134,6 @@ class Status {
   // Helpers to create statuses with known codes
   static Status Ok() { return Status(); }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-template"
 #define STATUS_CTOR(NAME, CODE)                  \
   template <typename... Args>                    \
   static Status NAME(Args&&... args) {           \
@@ -148,7 +151,6 @@ class Status {
   STATUS_CTOR(Unknown, UNKNOWN)
 
 #undef STATUS_CTOR
-#pragma clang diagnostic pop
 
  private:
   /// \brief Private Status implementation details
@@ -308,8 +310,6 @@ namespace adbc::driver::status {
 
 inline driver::Status Ok() { return driver::Status(); }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-template"
 #define STATUS_CTOR(NAME, CODE)                  \
   template <typename... Args>                    \
   static Status NAME(Args&&... args) {           \
@@ -328,15 +328,12 @@ STATUS_CTOR(NotImplemented, NOT_IMPLEMENTED)
 STATUS_CTOR(Unknown, UNKNOWN)
 
 #undef STATUS_CTOR
-#pragma clang diagnostic pop
 
 }  // namespace adbc::driver::status
 
 #if defined(ADBC_FRAMEWORK_USE_FMT)
 namespace adbc::driver::status::fmt {
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-template"
 #define STATUS_CTOR(NAME, CODE)                                                     \
   template <typename... Args>                                                       \
   static Status NAME(std::string_view format_string, Args&&... args) {              \
@@ -354,7 +351,6 @@ STATUS_CTOR(NotImplemented, NOT_IMPLEMENTED)
 STATUS_CTOR(Unknown, UNKNOWN)
 
 #undef STATUS_CTOR
-#pragma clang diagnostic pop
 
 }  // namespace adbc::driver::status::fmt
 #endif
@@ -384,3 +380,7 @@ STATUS_CTOR(Unknown, UNKNOWN)
 #define UNWRAP_NANOARROW(ERROR, CODE, RHS)                                              \
   UNWRAP_NANOARROW_IMPL(UNWRAP_RESULT_NAME(driver_errno_na, RESULT_NAME_SUFFIX), ERROR, \
                         CODE, RHS)
+
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
