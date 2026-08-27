@@ -373,15 +373,11 @@ func (d *databaseImpl) SetOptionDouble(key string, value float64) error {
 
 func (d *databaseImpl) Close() (err error) {
 	const spanName = "FlightSQL.Database.Close"
-	startTime := time.Now()
 	_, span, endSpanHelper := internal.StartSpanWithEndSpanHelper(context.Background(), spanName, d)
 
 	span.AddEvent("closing", trace.WithAttributes(attribute.String("target", d.uri.String())))
 	flushErr := d.ForceFlushTracing(context.Background())
-	endSpanHelper.
-		WithError(flushErr).
-		WithStartTime(startTime).
-		EndSpan()
+	endSpanHelper.WithError(flushErr).EndSpan()
 	shutdownErr := d.DatabaseImplBase.Close()
 	return errors.Join(flushErr, shutdownErr)
 }
@@ -526,7 +522,6 @@ type support struct {
 }
 
 func closeCachedFlightClient(d *databaseImpl, location, client interface{}, reason string) {
-	startTime := time.Now()
 	var err error
 	_, _, endSpanHelper := internal.StartSpanWithEndSpanHelper(context.Background(), "FlightSQL.Database.CloseCachedClient", d,
 		trace.WithAttributes(
@@ -534,10 +529,7 @@ func closeCachedFlightClient(d *databaseImpl, location, client interface{}, reas
 			attribute.String("flight.cache.reason", reason),
 		))
 	defer func() {
-		endSpanHelper.
-			WithError(err).
-			WithStartTime(startTime).
-			EndSpan()
+		endSpanHelper.WithError(err).EndSpan()
 	}()
 
 	err = client.(*flightsql.Client).Close()
@@ -551,9 +543,7 @@ func (d *databaseImpl) Open(ctx context.Context) (_ adbc.Connection, err error) 
 		trace.WithAttributes(traceHeaderAttrsWithPrefix(d.hdrs, traceRequestMetadataPrefix)...),
 	)
 	defer func() {
-		endSpanHelper.
-			WithError(err).
-			EndSpan()
+		endSpanHelper.WithError(err).EndSpan()
 	}()
 
 	authMiddle := &bearerAuthMiddleware{
@@ -572,13 +562,9 @@ func (d *databaseImpl) Open(ctx context.Context) (_ adbc.Connection, err error) 
 	cache := gcache.New(20).LRU().
 		Expiration(5 * time.Minute).
 		LoaderFunc(func(loc interface{}) (_ interface{}, err error) {
-			startTime := time.Now()
 			ctx, cacheSpan, endCacheSpanHelper := internal.StartSpanWithEndSpanHelper(context.Background(), "FlightSQL.Database.LoadCachedClient", d)
 			defer func() {
-				endCacheSpanHelper.
-					WithError(err).
-					WithStartTime(startTime).
-					EndSpan()
+				endCacheSpanHelper.WithError(err).EndSpan()
 			}()
 
 			uri, ok := loc.(string)

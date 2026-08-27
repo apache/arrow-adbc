@@ -523,12 +523,9 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 		spanName      = "FlightSQL.Statement." + operationName
 	)
 	startTime := time.Now()
-	ctx, span := internal.StartSpan(ctx, spanName, s.cnxn, trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...))
+	ctx, span, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, spanName, s.cnxn, trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...))
 	defer func() {
-		internal.NewEndSpanHelper(span).
-			WithError(err).
-			WithStartTime(startTime).
-			EndSpan()
+		endSpanHelper.WithError(err).EndSpan()
 	}()
 
 	if err = s.clearIncrementalQuery(); err != nil {
@@ -602,12 +599,9 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 		spanName      = "FlightSQL.Statement." + operationName
 	)
 	startTime := time.Now()
-	ctx, span := internal.StartSpan(ctx, spanName, s.cnxn, trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...))
+	ctx, span, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, spanName, s.cnxn, trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...))
 	defer func() {
-		internal.NewEndSpanHelper(span).
-			WithError(err).
-			WithStartTime(startTime).
-			EndSpan()
+		endSpanHelper.WithError(err).EndSpan()
 	}()
 
 	if err = s.clearIncrementalQuery(); err != nil {
@@ -667,12 +661,9 @@ func (s *statement) Prepare(ctx context.Context) (err error) {
 		spanName      = "FlightSQL.Statement." + operationName
 	)
 	startTime := time.Now()
-	ctx, span := internal.StartSpan(ctx, spanName, s.cnxn, trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...))
+	ctx, span, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, spanName, s.cnxn, trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...))
 	defer func() {
-		endSpanHelper.
-			WithError(err).
-			WithStartTime(startTime).
-			EndSpan()
+		endSpanHelper.WithError(err).EndSpan()
 	}()
 
 	span.AddEvent("starting", trace.WithAttributes(s.queryAttrs()...))

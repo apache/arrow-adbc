@@ -25,7 +25,6 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
-	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
@@ -154,13 +153,9 @@ func (base *ConnectionImplBase) Rollback(context.Context) error {
 }
 
 func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (reader array.RecordReader, err error) {
-	startTime := time.Now()
 	_, _, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, "ConnectionImplBase.GetInfo", base)
 	defer func() {
-		endSpanHelper.
-			WithError(err).
-			WithStartTime(startTime).
-			EndSpan()
+		endSpanHelper.WithError(err).EndSpan()
 	}()
 
 	if len(infoCodes) == 0 {

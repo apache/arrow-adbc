@@ -764,9 +764,10 @@ func StartSpan(ctx context.Context, spanName string, tracing adbc.OTelTracing, o
 // Starts a trace.Span with the given spanName for the tracing object with
 // the given ctx context. Returns an EndSpanHelper to centralize span completion for operations that may fail.
 func StartSpanWithEndSpanHelper(ctx context.Context, spanName string, tracing adbc.OTelTracing, opts ...trace.SpanStartOption) (context.Context, trace.Span, *EndSpanHelper) {
+	startTime := time.Now()
 	if tracing == nil {
 		span := trace.SpanFromContext(ctx)
-		return ctx, span, NewEndSpanHelper(span)
+		return ctx, span, NewEndSpanHelper(span).WithStartTime(startTime)
 	}
 
 	attrs := tracing.GetInitialSpanAttributes()
@@ -774,7 +775,7 @@ func StartSpanWithEndSpanHelper(ctx context.Context, spanName string, tracing ad
 	opts = append(opts, trace.WithAttributes(attrs...))
 
 	newCtx, span := tracing.StartSpan(ctx, spanName, opts...)
-	return newCtx, span, NewEndSpanHelper(span)
+	return newCtx, span, NewEndSpanHelper(span).WithStartTime(startTime)
 }
 
 // Ends the given span. If err is not nil, then the
