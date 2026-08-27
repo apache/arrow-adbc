@@ -394,7 +394,10 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 			Unary:  unaryTimeoutInterceptor,
 			Stream: streamTimeoutInterceptor,
 		},
-		{Stream: responseMetadataStreamInterceptor},
+		{
+			Unary:  responseMetadataUnaryInterceptor,
+			Stream: responseMetadataStreamInterceptor,
+		},
 	}
 
 	if d.enableCookies {

@@ -19,13 +19,17 @@ package flightsql
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
 	"github.com/apache/arrow-go/v18/arrow/flight"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
+	"golang.org/x/exp/maps"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -62,6 +66,41 @@ func (c *responseMetadataCollector) snapshot() metadata.MD {
 	c.mutex.RLock()
 	defer c.mutex.RUnlock()
 	return c.value.Copy()
+}
+
+func responseMetadataUnaryInterceptor(ctx context.Context, method string, req, reply any, cc *grpc.ClientConn, invoker grpc.UnaryInvoker, opts ...grpc.CallOption) (err error) {
+	span := trace.SpanFromContext(ctx)
+
+	// Ignore errors
+	outgoing, _ := metadata.FromOutgoingContext(ctx)
+	err = invoker(ctx, method, req, reply, cc, opts...)
+
+	if span.IsRecording() {
+		keys := maps.Keys(outgoing)
+		slices.Sort(keys)
+		args := []attribute.KeyValue{
+			attribute.String("target", cc.Target()),
+			attribute.StringSlice("metadata", keys),
+		}
+		// Surface curated outbound correlation IDs regardless of level.
+		args = append(args, outgoingCallHeaderKeyValues(ctx)...)
+		args = append(args, grpcStatusKeyValues(err)...)
+		span.AddEvent("Metadata.Unary.Interceptor."+method, trace.WithAttributes(args...))
+	}
+	return err
+}
+
+// outgoingCallHeaderAttrs returns slog attributes for well-known correlation
+// headers on ctx's outbound gRPC metadata. Uses the "out_hdr_" prefix.
+func outgoingCallHeaderKeyValues(ctx context.Context) []attribute.KeyValue {
+	if ctx == nil {
+		return nil
+	}
+	md, ok := metadata.FromOutgoingContext(ctx)
+	if !ok {
+		return nil
+	}
+	return headerKeyValuesWithPrefix(md, "out_hdr_")
 }
 
 func responseMetadataStreamInterceptor(ctx context.Context, desc *grpc.StreamDesc, cc *grpc.ClientConn, method string, streamer grpc.Streamer, opts ...grpc.CallOption) (grpc.ClientStream, error) {
@@ -174,6 +213,40 @@ func grpcStatusKeyValues(err error) []attribute.KeyValue {
 		attribute.String("grpc_code", st.Code().String()),
 		attribute.String("grpc_message", st.Message()),
 	}
+}
+
+// queryFingerprintKeyValues builds OpenTelemetry attributes identifying a SQL query
+// without exposing it: length and a SHA-256 prefix. The query text itself
+// is never recorded because it can embed end-user PII as literals.
+func queryFingerprintKeyValues(query string) []attribute.KeyValue {
+	if query == "" {
+		return []attribute.KeyValue{attribute.String("query_type", "empty")}
+	}
+	h := sha256.Sum256([]byte(query))
+	return []attribute.KeyValue{
+		attribute.String("query_type", "sql"),
+		attribute.Int("query_length", len(query)),
+		attribute.String("query_sha256_prefix", hex.EncodeToString(h[:8])),
+	}
+}
+
+// substraitFingerprintKeyValues builds OpenTelemetry attributes identifying a Substrait
+// plan: length, SHA-256 prefix, and protocol version. Plan bytes are never
+// recorded.
+func substraitFingerprintKeyValues(plan []byte, version string) []attribute.KeyValue {
+	if len(plan) == 0 {
+		return []attribute.KeyValue{attribute.String("query_type", "substrait_empty")}
+	}
+	h := sha256.Sum256(plan)
+	attrs := []attribute.KeyValue{
+		attribute.String("query_type", "substrait"),
+		attribute.Int("substrait_plan_bytes", len(plan)),
+		attribute.String("substrait_plan_sha256_prefix", hex.EncodeToString(h[:8])),
+	}
+	if version != "" {
+		attrs = append(attrs, attribute.String("substrait_version", version))
+	}
+	return attrs
 }
 
 // flightInfoTracingKeyValues returns OpenTelemetry attributes describing a FlightInfo:

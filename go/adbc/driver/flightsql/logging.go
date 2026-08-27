@@ -20,14 +20,12 @@ package flightsql
 import (
 	"context"
 	"crypto/rand"
-	"crypto/sha256"
 	"encoding/hex"
 	"io"
 	"log/slog"
 	"strconv"
 	"time"
 
-	"github.com/apache/arrow-go/v18/arrow/flight"
 	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
@@ -229,81 +227,4 @@ func newRandomID(prefix string) string {
 		return prefix + "-" + strconv.FormatInt(time.Now().UnixNano(), 16)
 	}
 	return prefix + "-" + hex.EncodeToString(b[:])
-}
-
-// queryFingerprintAttrs builds slog attributes identifying a SQL query
-// without exposing it: length and a SHA-256 prefix. The query text itself
-// is never logged because it can embed end-user PII as literals.
-func queryFingerprintAttrs(query string) []any {
-	if query == "" {
-		return []any{slog.String("query_type", "empty")}
-	}
-	h := sha256.Sum256([]byte(query))
-	return []any{
-		slog.String("query_type", "sql"),
-		slog.Int("query_length", len(query)),
-		slog.String("query_sha256_prefix", hex.EncodeToString(h[:8])),
-	}
-}
-
-// substraitFingerprintAttrs builds slog attributes identifying a Substrait
-// plan: length, SHA-256 prefix, and protocol version. Plan bytes are never
-// logged.
-func substraitFingerprintAttrs(plan []byte, version string) []any {
-	if len(plan) == 0 {
-		return []any{slog.String("query_type", "substrait_empty")}
-	}
-	h := sha256.Sum256(plan)
-	attrs := []any{
-		slog.String("query_type", "substrait"),
-		slog.Int("substrait_plan_bytes", len(plan)),
-		slog.String("substrait_plan_sha256_prefix", hex.EncodeToString(h[:8])),
-	}
-	if version != "" {
-		attrs = append(attrs, slog.String("substrait_version", version))
-	}
-	return attrs
-}
-
-// flightInfoLogAttrs returns slog attributes describing a FlightInfo:
-// descriptor type and command prefix, AppMetadata prefix (some backends
-// embed a server-side query handle there), and advisory record/byte
-// counts. Returns nil for a nil info.
-func flightInfoLogAttrs(info *flight.FlightInfo) []any {
-	if info == nil {
-		return nil
-	}
-	attrs := []any{
-		slog.Int("numEndpoints", len(info.Endpoint)),
-		slog.Int64("totalRecords", info.TotalRecords),
-		slog.Int64("totalBytes", info.TotalBytes),
-		slog.Bool("haveSchemaInFlightInfo", len(info.Schema) > 0),
-	}
-	if desc := info.FlightDescriptor; desc != nil {
-		attrs = append(attrs, slog.String("descriptorType", desc.Type.String()))
-		if len(desc.Cmd) > 0 {
-			limit := len(desc.Cmd)
-			if limit > maxLoggedBlobBytes {
-				limit = maxLoggedBlobBytes
-			}
-			attrs = append(attrs,
-				slog.Int("descriptorCmdBytes", len(desc.Cmd)),
-				slog.String("descriptorCmdPrefixHex", hex.EncodeToString(desc.Cmd[:limit])),
-			)
-		}
-		if len(desc.Path) > 0 {
-			attrs = append(attrs, slog.Any("descriptorPath", desc.Path))
-		}
-	}
-	if len(info.AppMetadata) > 0 {
-		limit := len(info.AppMetadata)
-		if limit > maxLoggedBlobBytes {
-			limit = maxLoggedBlobBytes
-		}
-		attrs = append(attrs,
-			slog.Int("appMetadataBytes", len(info.AppMetadata)),
-			slog.String("appMetadataPrefixHex", hex.EncodeToString(info.AppMetadata[:limit])),
-		)
-	}
-	return attrs
 }

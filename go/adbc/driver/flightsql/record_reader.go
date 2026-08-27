@@ -21,7 +21,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log/slog"
 	"sync/atomic"
 	"time"
 
@@ -54,6 +53,16 @@ type reader struct {
 
 var errReaderReleased = errors.New("record reader released")
 
+type recordReaderCallerContextKey struct{}
+
+// isRecordReaderSiblingCancellation reports whether the record reader's
+// derived context was canceled while its original caller context remains
+// active, indicating that another endpoint goroutine triggered cancellation.
+func isRecordReaderSiblingCancellation(ctx context.Context) bool {
+	callerCtx, ok := ctx.Value(recordReaderCallerContextKey{}).(context.Context)
+	return ok && ctx.Err() == context.Canceled && callerCtx.Err() == nil
+}
+
 // recordReaderConfig bundles the dependencies that newRecordReader
 // needs to spin up its per-endpoint goroutines.
 type recordReaderConfig struct {
@@ -63,7 +72,6 @@ type recordReaderConfig struct {
 	clientCache gcache.Cache
 	bufferSize  int
 	tracing     adbc.OTelTracing
-	logger      *slog.Logger
 }
 
 // newRecordReader kicks off a goroutine for each endpoint and returns a
@@ -108,6 +116,7 @@ func newRecordReader(ctx context.Context, cfg recordReaderConfig, opts ...grpc.C
 	callerCtx := ctx
 	group, ctx := errgroup.WithContext(ctx)
 	ctx, cancelFn := context.WithCancelCause(ctx)
+	ctx = context.WithValue(ctx, recordReaderCallerContextKey{}, callerCtx)
 	goEndpoint := func(endpointFn func() error) {
 		group.Go(func() error {
 			err := endpointFn()
@@ -233,6 +242,9 @@ func newRecordReader(ctx context.Context, cfg recordReaderConfig, opts ...grpc.C
 			endpointCtx, responseMetadata := withResponseMetadata(ctx)
 			rdr, err := doGetWithTracer(endpointCtx, cfg.cl, endpoint, cfg.clientCache, cfg.tracing, opts...)
 			if err != nil {
+				if checkRecordReaderContext(err, ctx, callerCtx) == nil {
+					return nil
+				}
 				span.RecordError(err, trace.WithAttributes(
 					append(
 						append([]attribute.KeyValue{}, epAttrs...),
