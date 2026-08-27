@@ -133,7 +133,7 @@ jobs:
           check-latest: true
           cache: true
           cache-dependency-path: go/adbc/go.sum
-          go-version-file: go/adbc/go.sum
+          go-version-file: go/adbc/go.mod
       - name: Test (Go/CGO)
         env:
           CGO_ENABLED: "1"
