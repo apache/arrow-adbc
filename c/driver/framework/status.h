@@ -35,6 +35,11 @@
 
 /// \file status.h
 
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-template"
+#endif
+
 namespace adbc::driver {
 
 /// \brief A wrapper around AdbcStatusCode + AdbcError.
@@ -375,3 +380,7 @@ STATUS_CTOR(Unknown, UNKNOWN)
 #define UNWRAP_NANOARROW(ERROR, CODE, RHS)                                              \
   UNWRAP_NANOARROW_IMPL(UNWRAP_RESULT_NAME(driver_errno_na, RESULT_NAME_SUFFIX), ERROR, \
                         CODE, RHS)
+
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
