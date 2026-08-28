@@ -1,0 +1,45 @@
+;; Licensed to the Apache Software Foundation (ASF) under one
+;; or more contributor license agreements.  See the NOTICE file
+;; distributed with this work for additional information
+;; regarding copyright ownership.  The ASF licenses this file
+;; to you under the Apache License, Version 2.0 (the
+;; "License"); you may not use this file except in compliance
+;; with the License.  You may obtain a copy of the License at
+;;
+;;   http://www.apache.org/licenses/LICENSE-2.0
+;;
+;; Unless required by applicable law or agreed to in writing,
+;; software distributed under the License is distributed on an
+;; "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+;; KIND, either express or implied.  See the License for the
+;; specific language governing permissions and limitations
+;; under the License.
+
+(ns adbc.status
+  (:export [ok unknown not-implemented not-found already-exists
+            invalid-argument invalid-state invalid-data integrity
+            internal io cancelled timeout unauthenticated unauthorized
+            ok?]))
+
+;; ADBC status codes from adbc.h (AdbcStatusCode). Kept as i64 so this
+;; module compiles to the kotoba i64-v1 wasm profile with no host imports.
+;; Kotoba cannot FFI libadbc; the host owns drivers.
+
+(defn ok [] :i64 0)
+(defn unknown [] :i64 1)
+(defn not-implemented [] :i64 2)
+(defn not-found [] :i64 3)
+(defn already-exists [] :i64 4)
+(defn invalid-argument [] :i64 5)
+(defn invalid-state [] :i64 6)
+(defn invalid-data [] :i64 7)
+(defn integrity [] :i64 8)
+(defn internal [] :i64 9)
+(defn io [] :i64 10)
+(defn cancelled [] :i64 11)
+(defn timeout [] :i64 12)
+(defn unauthenticated [] :i64 13)
+(defn unauthorized [] :i64 14)
+
+(defn ok? [code :i64] :i64
+  (if (= code 0) 1 0))
