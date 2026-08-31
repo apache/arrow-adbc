@@ -35,11 +35,6 @@
 
 /// \file status.h
 
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunused-template"
-#endif
-
 namespace adbc::driver {
 
 /// \brief A wrapper around AdbcStatusCode + AdbcError.
@@ -134,12 +129,12 @@ class Status {
   // Helpers to create statuses with known codes
   static Status Ok() { return Status(); }
 
-#define STATUS_CTOR(NAME, CODE)                  \
-  template <typename... Args>                    \
-  static Status NAME(Args&&... args) {           \
-    std::stringstream ss;                        \
-    ([&] { ss << args; }(), ...);                \
-    return Status(ADBC_STATUS_##CODE, ss.str()); \
+#define STATUS_CTOR(NAME, CODE)                         \
+  template <typename... Args>                           \
+  [[maybe_unused]] static Status NAME(Args&&... args) { \
+    std::stringstream ss;                               \
+    ([&] { ss << args; }(), ...);                       \
+    return Status(ADBC_STATUS_##CODE, ss.str());        \
   }
 
   STATUS_CTOR(Internal, INTERNAL)
@@ -310,12 +305,12 @@ namespace adbc::driver::status {
 
 inline driver::Status Ok() { return driver::Status(); }
 
-#define STATUS_CTOR(NAME, CODE)                  \
-  template <typename... Args>                    \
-  static Status NAME(Args&&... args) {           \
-    std::stringstream ss;                        \
-    ([&] { ss << args; }(), ...);                \
-    return Status(ADBC_STATUS_##CODE, ss.str()); \
+#define STATUS_CTOR(NAME, CODE)                         \
+  template <typename... Args>                           \
+  [[maybe_unused]] static Status NAME(Args&&... args) { \
+    std::stringstream ss;                               \
+    ([&] { ss << args; }(), ...);                       \
+    return Status(ADBC_STATUS_##CODE, ss.str());        \
   }
 
 // TODO: unit tests for internal utilities
@@ -334,11 +329,11 @@ STATUS_CTOR(Unknown, UNKNOWN)
 #if defined(ADBC_FRAMEWORK_USE_FMT)
 namespace adbc::driver::status::fmt {
 
-#define STATUS_CTOR(NAME, CODE)                                                     \
-  template <typename... Args>                                                       \
-  static Status NAME(std::string_view format_string, Args&&... args) {              \
-    auto message = ::fmt::vformat(format_string, ::fmt::make_format_args(args...)); \
-    return Status(ADBC_STATUS_##CODE, std::move(message));                          \
+#define STATUS_CTOR(NAME, CODE)                                                         \
+  template <typename... Args>                                                           \
+  [[maybe_unused]] static Status NAME(std::string_view format_string, Args&&... args) { \
+    auto message = ::fmt::vformat(format_string, ::fmt::make_format_args(args...));     \
+    return Status(ADBC_STATUS_##CODE, std::move(message));                              \
   }
 
 // TODO: unit tests for internal utilities
@@ -380,7 +375,3 @@ STATUS_CTOR(Unknown, UNKNOWN)
 #define UNWRAP_NANOARROW(ERROR, CODE, RHS)                                              \
   UNWRAP_NANOARROW_IMPL(UNWRAP_RESULT_NAME(driver_errno_na, RESULT_NAME_SUFFIX), ERROR, \
                         CODE, RHS)
-
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif

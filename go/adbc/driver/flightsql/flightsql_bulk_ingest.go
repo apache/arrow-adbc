@@ -109,14 +109,10 @@ func createRecordReaderFromBatch(batch arrow.RecordBatch) (array.RecordReader, e
 // This is called from the statement when a target table has been set for bulk ingest.
 func (s *statement) executeIngest(ctx context.Context) (nRows int64, err error) {
 	var startTime = time.Now()
-	ctx, span := internal.StartSpan(ctx, "FlightSQL.BulkIngest.Execute", s.cnxn)
+	ctx, span, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, "FlightSQL.BulkIngest.Execute", s.cnxn)
 	errorRecorded := false
 	defer func() {
-		internal.NewEndSpanHelper(span).
-			WithError(err).
-			WithStartTime(startTime).
-			WithRecordedError(errorRecorded).
-			EndSpan()
+		endSpanHelper.WithError(err).WithRecordedError(errorRecorded).EndSpan()
 	}()
 
 	if s.streamBind == nil && s.bound == nil {

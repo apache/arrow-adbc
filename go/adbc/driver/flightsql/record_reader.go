@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"sync/atomic"
-	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
@@ -78,17 +77,12 @@ type recordReaderConfig struct {
 // reader which gathers all of the records as they come in.
 func newRecordReader(ctx context.Context, cfg recordReaderConfig, opts ...grpc.CallOption) (rdr array.RecordReader, err error) {
 	const spanName = "FlightSQL.RecordReader.newRecordReader"
-	startTime := time.Now()
-	ctx, span := internal.StartSpan(ctx, spanName, cfg.tracing)
+	ctx, span, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, spanName, cfg.tracing)
 	spanOwnedByReader := false
 	errorRecorded := false
 	defer func() {
 		if !spanOwnedByReader {
-			internal.NewEndSpanHelper(span).
-				WithStartTime(startTime).
-				WithError(err).
-				WithRecordedError(errorRecorded).
-				EndSpan()
+			endSpanHelper.WithError(err).WithRecordedError(errorRecorded).EndSpan()
 		}
 	}()
 
@@ -315,11 +309,7 @@ func newRecordReader(ctx context.Context, cfg recordReaderConfig, opts ...grpc.C
 			))
 		}
 		errorRecorded := reader.err != nil
-		internal.NewEndSpanHelper(span).
-			WithStartTime(startTime).
-			WithError(reader.err).
-			WithRecordedError(errorRecorded).
-			EndSpan()
+		endSpanHelper.WithError(reader.err).WithRecordedError(errorRecorded).EndSpan()
 		// Don't close the last channel until after the group is finished, so that
 		// Next() can only return after reader.err and tracing have been finalized.
 		close(chs[lastChannelIndex])
