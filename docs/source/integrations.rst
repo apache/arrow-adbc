@@ -34,8 +34,10 @@ adbcBridge
 
    # adbcBridge must be installed first (its install.sh registers the driver
    # manifest); "SQLite3" here is any ODBC driver registered on the system.
-   conn = dbapi.connect(driver="odbc", db_kwargs={"uri": "Driver=SQLite3;Database=my.db;"})
-   with conn.cursor() as cur:
+   with dbapi.connect(
+       driver="odbc",
+       db_kwargs={"uri": "Driver=SQLite3;Database=my.db;"},
+   ) as conn, conn.cursor() as cur:
        cur.execute("SELECT 42 AS answer")
        print(cur.fetch_arrow_table())
 
