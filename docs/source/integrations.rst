@@ -26,7 +26,7 @@ ADBC works alongside many popular data tools and frameworks. This page describes
 adbcBridge
 ==========
 
-`adbcBridge <https://adbcbridge.org>`_ is an ADBC driver, written in C, that loads an ODBC driver and exposes it through the ADBC API — an ADBC path to databases that have an ODBC driver but no native ADBC one. It reads with ODBC block cursors and converts column-wise into Arrow record batches, and supports bulk ingest, partitioned reads, and catalog metadata.
+`adbcBridge <https://adbcbridge.org>`_ is an ADBC driver, written in C, that loads an ODBC driver and exposes it through the ADBC API. It provides an ADBC path to databases that have an ODBC driver but no native ADBC one. It reads with ODBC block cursors and converts column-wise into Arrow record batches, and supports bulk ingest, partitioned reads, and catalog metadata.
 
 .. code-block:: python
 
