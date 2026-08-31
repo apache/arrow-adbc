@@ -598,13 +598,13 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// \brief Whether the driver supports getting table schemas (type: bool).
 /// \since ADBC API revision 1.2.0
 /// \see AdbcConnectionGetInfo
-/// \see AdbcConnectionGetObjects
+/// \see AdbcConnectionGetTableSchema
 #define ADBC_INFO_FEATURE_TABLE_SCHEMA 221
 
 /// \brief Whether the driver supports getting table types (type: bool).
 /// \since ADBC API revision 1.2.0
 /// \see AdbcConnectionGetInfo
-/// \see AdbcConnectionGetObjects
+/// \see AdbcConnectionGetTableTypes
 #define ADBC_INFO_FEATURE_TABLE_TYPES 222
 
 /// \brief Whether the driver supports transactions (true), or if autocommit
@@ -1247,6 +1247,7 @@ struct ADBC_EXPORT AdbcMultiResultSet {
 /// \param[out] error An optional location to return an error message if necessary.
 ///
 /// \return ADBC_STATUS_OK on success or an appropriate error code.
+ADBC_EXPORT
 AdbcStatusCode AdbcMultiResultSetRelease(struct AdbcMultiResultSet* result_set,
                                          struct AdbcError* error);
 
@@ -1279,6 +1280,7 @@ AdbcStatusCode AdbcMultiResultSetRelease(struct AdbcMultiResultSet* result_set,
 ///
 /// \return ADBC_STATUS_NOT_IMPLEMENTED if the driver only supports fetching results
 ///   as partitions or ADBC_STATUS_OK (or an appropriate error code) otherwise.
+ADBC_EXPORT
 AdbcStatusCode AdbcMultiResultSetNext(struct AdbcMultiResultSet* result_set,
                                       struct ArrowArrayStream* out,
                                       int64_t* rows_affected, struct AdbcError* error);
@@ -1315,6 +1317,7 @@ AdbcStatusCode AdbcMultiResultSetNext(struct AdbcMultiResultSet* result_set,
 /// \return ADBC_STATUS_NOT_IMPLEMENTED if the driver only supports fetching results
 ///   as a stream, ADBC_STATUS_INVALID_STATE if called at an inappropriate time, and
 ///   ADBC_STATUS_OK (or an appropriate error code) otherwise.
+ADBC_EXPORT
 AdbcStatusCode AdbcMultiResultSetNextPartitions(struct AdbcMultiResultSet* result_set,
                                                 struct ArrowSchema* schema,
                                                 struct AdbcPartitions* partitions,
@@ -1503,7 +1506,10 @@ struct ADBC_EXPORT AdbcDriver {
   ///
   /// @{
 
-  int (*AdbcErrorGetVendorCode)(const struct AdbcError*);
+  int (*ErrorGetVendorCode)(const struct AdbcError*);
+
+  AdbcStatusCode (*DriverGetOptionsList)(uint32_t, struct ArrowArrayStream*,
+                                         struct AdbcError*);
 
   AdbcStatusCode (*MultiResultSetNext)(struct AdbcMultiResultSet*,
                                        struct ArrowArrayStream*, int64_t*,
@@ -1515,8 +1521,8 @@ struct ADBC_EXPORT AdbcDriver {
   AdbcStatusCode (*MultiResultSetRelease)(struct AdbcMultiResultSet*, struct AdbcError*);
 
   AdbcStatusCode (*ConnectionSetWarningHandler)(struct AdbcConnection*,
-                                                AdbcWarningHandler handler,
-                                                void* user_data, struct AdbcError*);
+                                                AdbcWarningHandler, void*,
+                                                struct AdbcError*);
 
   AdbcStatusCode (*StatementExecuteSchemaMulti)(struct AdbcStatement*,
                                                 struct AdbcMultiResultSet*,
@@ -1544,7 +1550,7 @@ struct ADBC_EXPORT AdbcDriver {
 /// ADBC_VERSION_1_1_0.
 ///
 /// \since ADBC API revision 1.1.0
-#define ADBC_DRIVER_1_1_0_SIZE (offsetof(struct AdbcDriver, StatementExecuteMulti))
+#define ADBC_DRIVER_1_1_0_SIZE (offsetof(struct AdbcDriver, ErrorGetVendorCode))
 
 /// \brief The size of the AdbcDriver structure in ADBC 1.2.0.
 /// Drivers written for ADBC 1.2.0 and later should never touch more
@@ -1569,8 +1575,9 @@ struct ADBC_EXPORT AdbcDriver {
 /// \brief An option that can be set on a database, connection, or statement.
 /// \see AdbcDriverGetOptionsList
 /// \since ADBC API revision 1.2.0
-#define ADBC_OPTION_LEVEL_ALL \
-  (ADBC_OPTION_LEVEL_DATABASE | ADBC_OPTION_CONNECTION | ADBC_OPTION_STATEMENT)
+#define ADBC_OPTION_LEVEL_ALL                                  \
+  (ADBC_OPTION_LEVEL_DATABASE | ADBC_OPTION_LEVEL_CONNECTION | \
+   ADBC_OPTION_LEVEL_STATEMENT)
 
 /// \brief A string-valued option.
 /// \see AdbcDriverGetOptionsList
@@ -2116,58 +2123,20 @@ AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
 /// | constraint_type          | utf8 not null           | (1)      |
 /// | constraint_column_names  | list<utf8> not null     | (2)      |
 /// | constraint_column_usage  | list<USAGE_SCHEMA>      | (3)      |
-/// | constraint_expression    | utf8                    | (4)      |
-/// | constraint_update_rule   | int16                   | (5)      |
-/// | constraint_delete_rule   | int16                   | (5)      |
-/// | constraint_enforced      | bool                    | (6)      |
-/// | constraint_deferrability | int16                   | (7)      |
-/// | constraint_match_type    | int16                   | (8)      |
 ///
-/// 1. One of 'CHECK', 'FOREIGN KEY', 'PRIMARY KEY', or 'UNIQUE', or a
-///    vendor-specific type.
+/// 1. One of 'CHECK', 'FOREIGN KEY', 'PRIMARY KEY', or 'UNIQUE'.
 /// 2. The columns on the current table that are constrained, in
 ///    order.
 /// 3. For FOREIGN KEY only, the referenced table and columns.
-/// 4. [Since version 1.2.0] The vendor-specific definition of the constraint
-///    (e.g. the SQL expression to be checked).  This field is optional.
-/// 5. [Since version 1.2.0] The action to be taken when the primary key is
-///    updated or deleted.  The value is one of the ADBC_CONSTRAINT_ACTION_
-///    constants. This field is optional.
-/// 6. [Since version 1.2.0] Whether the constraint is currently enabled.
-///    This field is optional.
-/// 7. [Since version 1.2.0] Whether the constraint can be deferred, and if
-///    so, whether it starts deferred.  The value is one of the
-///    ADBC_CONSTRAINT_DEFERRABLE_ constants or
-///    ADBC_CONSTRAINT_NOT_DEFERRABLE.  This field is optional.
-/// 8. [Since version 1.2.0] How the foreign key constraint should be matched.
-///    The value is one of the ADBC_CONSTRAINT_MATCH_ constants.  This field
-///    is optional.
 ///
 /// USAGE_SCHEMA is a Struct with fields:
 ///
-/// | Field Name               | Field Type              | Comments |
-/// |--------------------------|-------------------------|----------|
-/// | fk_catalog               | utf8                    |          |
-/// | fk_db_schema             | utf8                    |          |
-/// | fk_table                 | utf8 not null           |          |
-/// | fk_column_name           | utf8 not null           |          |
-/// | fk_key_seq               | int32                   | (1)      |
-/// | fk_pk_name               | utf8                    | (2)      |
-///
-/// 1. [Since version 1.2.0] The ordinal position of the column within the
-///    foreign key.  If present, the driver should sort the rows on this
-///    column.  This field is optional.
-/// 2. [Since version 1.2.0] The name of the referenced primary key.  This
-///    field is optional.
-///
-/// Starting in version 1.2.0, optional fields were introduced to the schema.
-/// Optional fields may not be present in the returned schema/data and
-/// applications should check for their presence before using them.  Drivers
-/// may choose to include optional fields (with null values) even if not
-/// supported, but are not required to.  If an optional field is present, all
-/// optional fields defined before it in the schema must be present (but the
-/// values may still be null if the driver does not actually support that
-/// field).
+/// | Field Name               | Field Type              |
+/// |--------------------------|-------------------------|
+/// | fk_catalog               | utf8                    |
+/// | fk_db_schema             | utf8                    |
+/// | fk_table                 | utf8 not null           |
+/// | fk_column_name           | utf8 not null           |
 ///
 /// This AdbcConnection must outlive the returned ArrowArrayStream.
 ///
