@@ -91,14 +91,14 @@ driver in the table below is packaged this way.
      - ``mysql``
      - Foundry
      - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/mysql|GitHub repository`
-   * - `Presto <https://adbc-drivers.org/drivers/presto/>`__
-     - ``presto``
-     - Foundry
-     - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/presto|GitHub repository`
    * - :doc:`PostgreSQL <postgresql>` [#compat-postgresql]_
      - ``postgresql``
      - ASF
      - :iconlink:`fa-brands fa-github|https://github.com/apache/arrow-adbc/tree/main/c/driver/postgresql|GitHub repository`
+   * - `Presto <https://adbc-drivers.org/drivers/presto/>`__
+     - ``presto``
+     - Foundry
+     - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/presto|GitHub repository`
    * - `DuckDB Quack <https://adbc-drivers.org/drivers/quack/>`__
      - ``quack``
      - Foundry
