@@ -1114,14 +1114,18 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// give applications flexibility over output type and shape (e.g. reducing
 /// memory pressure by run-end-encoding or dictionary-encoding primary key
 /// columns; optimizing queries by using simpler queries and eliminating joins
-/// if the application drops certain columns).
+/// if the application drops certain columns). Unless requested, however,
+/// drivers should return the type specified below and not substitute a
+/// logically equivalent type (e.g. utf8 below should be a string array by
+/// default, and not a utf8view or large string or other array).
 ///
 /// Drivers may add more fields at the end of standard schemas to reflect
-/// vendor-specific metadata. Applications must access these using an offset
-/// from the end of the schema and cannot assume that the index of the field
-/// will remain stable.  Drivers must add the fields at the end and must
-/// prefix field names with the vendor/driver name to differentiate them
-/// (e.g. 'POSTGRESQL:owner', not just 'owner').
+/// vendor-specific metadata. Applications must access these by name or using
+/// an offset from the end of the schema and cannot assume that the index of
+/// the field will remain stable.  Hence, it is discouraged to access these
+/// fields by ordinal as this is brittle.  Drivers must add the fields at the
+/// end and must prefix field names with the vendor/driver name to
+/// differentiate them (e.g. 'POSTGRESQL:owner', not just 'owner').
 ///
 /// Similarly, future standard revisions may add more fields to existing
 /// standard schemas. Applications must not assume the number of fields is
@@ -1265,18 +1269,6 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// Separator: comma (',').
 /// The type is char*.
 #define ADBC_METADATA_FILTER_ROUTINE_TYPES "adbc.metadata.filter.routine_types"
-
-/// \brief Only show namespaces in the given multi-part namespace.
-///
-/// Separator: ASCII unit separator (0x1F).
-/// The type is char*.
-#define ADBC_METADATA_FILTER_NAMESPACE "adbc.metadata.filter.namespace"
-
-/// \brief Only show namespaces with the given name. This filter only applies
-///   to the last namespace component.
-///
-/// The type is char*.
-#define ADBC_METADATA_FILTER_NAMESPACE_NAME "adbc.metadata.filter.namespace_name"
 
 /// \brief Get or set a pagination token.
 ///
@@ -1674,25 +1666,6 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// - ADBC_METADATA_FILTER_COLUMN
 /// - ADBC_METADATA_FILTER_PATTERN_COLUMN
 #define ADBC_METADATA_COLLECTION_ROUTINE_COLUMNS "routine_columns"
-
-/// \brief The "namespaces" collection returns a level of namespaces defined
-///   in the database.
-///
-/// This collection generally results in an "N+1" query pattern. This is
-/// intended for systems that do not follow the SQL catalog-schema-table
-/// hierarchy; for systems that do, collections like "catalogs", "schemas",
-/// and "tables" will be more efficient as they can return multiple levels at
-/// once.
-///
-/// | Field Name               | Field Type                   | Comments |
-/// |--------------------------|------------------------------|----------|
-/// | namespace_parent         | list<utf8 not null> not null |          |
-/// | namespace_name           | utf8 not null                |          |
-///
-/// Supported filters:
-/// - ADBC_METADATA_FILTER_NAMESPACE
-/// - ADBC_METADATA_FILTER_NAMESPACE_NAME
-#define ADBC_METADATA_COLLECTION_NAMESPACES "namespaces"
 
 /// @}
 
