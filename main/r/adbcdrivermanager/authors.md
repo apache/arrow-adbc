@@ -18,7 +18,10 @@ Dunnington D, Apache Arrow (2026). *adbcdrivermanager: 'Arrow' Database
 Connectivity ('ADBC') Driver Manager*. R package version 0.24.0.9000,
 <https://arrow.apache.org/adbc/current/r/adbcdrivermanager/>.
 
-@Manual{, title = {adbcdrivermanager: 'Arrow' Database Connectivity
-('ADBC') Driver Manager}, author = {Dewey Dunnington and {Apache
-Arrow}}, year = {2026}, note = {R package version 0.24.0.9000}, url =
-{https://arrow.apache.org/adbc/current/r/adbcdrivermanager/}, }
+@Manual{,\
+  title = {adbcdrivermanager: 'Arrow' Database Connectivity ('ADBC') Driver Manager},\
+  author = {Dewey Dunnington and {Apache Arrow}},\
+  year = {2026},\
+  note = {R package version 0.24.0.9000},\
+  url = {https://arrow.apache.org/adbc/current/r/adbcdrivermanager/},\
+}
