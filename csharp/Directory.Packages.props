@@ -54,6 +54,6 @@
     <PackageVersion Include="xunit.runner.visualstudio"
                     Version="2.8.2"
                     Condition="'$(TargetFramework)' == 'net472'" />
-    <PackageVersion Include="Xunit.SkippableFact" Version="1.5.61" />
+    <PackageVersion Include="Xunit.SkippableFact" Version="1.5.85" />
   </ItemGroup>
 </Project>
