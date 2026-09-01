@@ -26,7 +26,6 @@
 #include <sqlite3.h>
 #include <nanoarrow/nanoarrow.hpp>
 
-#define ADBC_FRAMEWORK_USE_FMT
 #include "driver/framework/base_driver.h"
 #include "driver/framework/connection.h"
 #include "driver/framework/database.h"

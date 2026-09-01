@@ -29,6 +29,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(NANOARROW_IPC ON)
 set(NANOARROW_NAMESPACE "DriverExamplePrivate")
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
+fetchcontent_declare(fmt
+                     GIT_REPOSITORY https://github.com/fmtlib/fmt
+                     GIT_TAG 1be298e1bd68957e4cd352e1f676f00e07dcfb57) # 12.2.0
+fetchcontent_makeavailable(fmt)
+
 fetchcontent_declare(nanoarrow
                      GIT_REPOSITORY https://github.com/apache/arrow-nanoarrow.git
                      GIT_TAG apache-arrow-nanoarrow-0.9.0
@@ -43,11 +49,11 @@ add_library(adbc_driver_framework ../../../../c/driver/framework/utility.cc
                                   ../../../../c/driver/framework/objects.cc)
 target_include_directories(adbc_driver_framework PRIVATE ../../../../c
                                                          ../../../../c/include)
-target_link_libraries(adbc_driver_framework PRIVATE nanoarrow::nanoarrow_static)
+target_link_libraries(adbc_driver_framework PRIVATE fmt::fmt nanoarrow::nanoarrow_static)
 
 add_library(driver_example SHARED driver_example.cc)
 target_include_directories(driver_example PRIVATE ../../../../c ../../../../c/include)
-target_link_libraries(driver_example PRIVATE adbc_driver_framework
+target_link_libraries(driver_example PRIVATE adbc_driver_framework fmt::fmt
                                              nanoarrow::nanoarrow_ipc)
 
 install(TARGETS driver_example)
