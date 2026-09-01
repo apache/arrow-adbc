@@ -9,10 +9,10 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://arrow.apache.org/adbc/main/integrations.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="ADBC works alongside many popular data tools and frameworks. This page describes how ADBC fits into each ecosystem. Apache DataFusion: Apache DataFusion integrates with ADBC in two ways: DataFusion..." />
+<meta property="og:description" content="ADBC works alongside many popular data tools and frameworks. This page describes how ADBC fits into each ecosystem. adbcBridge: adbcBridge is an ADBC driver, written in C, that loads an ODBC driver..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="ADBC works alongside many popular data tools and frameworks. This page describes how ADBC fits into each ecosystem. Apache DataFusion: Apache DataFusion integrates with ADBC in two ways: DataFusion..." />
+<meta name="description" content="ADBC works alongside many popular data tools and frameworks. This page describes how ADBC fits into each ecosystem. adbcBridge: adbcBridge is an ADBC driver, written in C, that loads an ODBC driver..." />
 <link rel="index" title="Index" href="genindex.html"><link rel="search" title="Search" href="search.html"><link rel="next" title="Connection Profiles" href="connection_profiles.html"><link rel="prev" title="Drivers" href="driver/index.html">
         <link rel="prefetch" href="_static/logo-light.png" as="image">
         <link rel="prefetch" href="_static/logo-dark.png" as="image">
@@ -417,6 +417,24 @@
 <h1>Tools &amp; Integrations<a class="headerlink" href="#tools-integrations" title="Link to this heading">¶</a></h1>
 <p>ADBC works alongside many popular data tools and frameworks. This page describes how ADBC fits into each ecosystem.</p>
 <hr class="docutils" />
+<section id="adbcbridge">
+<h2>adbcBridge<a class="headerlink" href="#adbcbridge" title="Link to this heading">¶</a></h2>
+<p><a class="reference external" href="https://adbcbridge.org">adbcBridge</a> is an ADBC driver, written in C, that loads an ODBC driver and exposes it through the ADBC API. It provides an ADBC path to databases that have an ODBC driver but no native ADBC one. It reads with ODBC block cursors and converts column-wise into Arrow record batches, and supports bulk ingest, partitioned reads, and catalog metadata.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_manager.dbapi</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">dbapi</span>
+
+<span class="c1"># adbcBridge must be installed first (its install.sh registers the driver</span>
+<span class="c1"># manifest); "SQLite3" here is any ODBC driver registered on the system.</span>
+<span class="k">with</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span>
+    <span class="n">driver</span><span class="o">=</span><span class="s2">"odbc"</span><span class="p">,</span>
+    <span class="n">db_kwargs</span><span class="o">=</span><span class="p">{</span><span class="s2">"uri"</span><span class="p">:</span> <span class="s2">"Driver=SQLite3;Database=my.db;"</span><span class="p">},</span>
+<span class="p">)</span> <span class="k">as</span> <span class="n">conn</span><span class="p">,</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"SELECT 42 AS answer"</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">cur</span><span class="o">.</span><span class="n">fetch_arrow_table</span><span class="p">())</span>
+</pre></div>
+</div>
+<p>See the <a class="reference external" href="https://adbcbridge.org">adbcBridge documentation</a> for the tested databases and usage details.</p>
+</section>
+<hr class="docutils" />
 <section id="apache-datafusion">
 <h2>Apache DataFusion<a class="headerlink" href="#apache-datafusion" title="Link to this heading">¶</a></h2>
 <p><a class="reference external" href="https://datafusion.apache.org">Apache DataFusion</a> integrates with ADBC in two ways:</p>
@@ -433,7 +451,7 @@
 <hr class="docutils" />
 </section>
 <section id="dbc">
-<span id="id3"></span><h2>dbc<a class="headerlink" href="#dbc" title="Link to this heading">¶</a></h2>
+<span id="id4"></span><h2>dbc<a class="headerlink" href="#dbc" title="Link to this heading">¶</a></h2>
 <p><a class="reference external" href="https://docs.columnar.tech/dbc">dbc</a> is a command-line tool from <a class="reference external" href="https://columnar.tech">Columnar</a> for installing and managing ADBC drivers on your system. It handles downloading driver binaries, placing them in standard locations, and keeping them up to date—so you don’t have to build drivers from source or manage shared libraries by hand.</p>
 <p>See the <a class="reference external" href="https://docs.columnar.tech/dbc">dbc documentation</a> for how to install and use dbc.</p>
 </section>
@@ -555,7 +573,7 @@
 <hr class="docutils" />
 <section id="add-your-own-here">
 <h2>Add Your Own Here<a class="headerlink" href="#add-your-own-here" title="Link to this heading">¶</a></h2>
-<p>Know of an integratoin or tool not listed here? Contributions to this page are welcome via pull requests on <a class="reference external" href="https://github.com/apache/arrow-adbc">GitHub</a>.</p>
+<p>Know of an integration or tool not listed here? Contributions to this page are welcome via pull requests on <a class="reference external" href="https://github.com/apache/arrow-adbc">GitHub</a>.</p>
 </section>
 </section>
 
@@ -618,6 +636,7 @@ United States and other countries.
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Tools &amp; Integrations</a><ul>
+<li><a class="reference internal" href="#adbcbridge">adbcBridge</a></li>
 <li><a class="reference internal" href="#apache-datafusion">Apache DataFusion</a></li>
 <li><a class="reference internal" href="#databow">databow</a></li>
 <li><a class="reference internal" href="#dbc">dbc</a></li>
