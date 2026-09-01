@@ -428,7 +428,7 @@ never change the signatures of existing functions.</p>
 API, and not the driver-internal API (<a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/group__adbc-driver.html#structAdbcDriver" title="(in ADBC C vversion)"><code class="xref c c-struct docutils literal notranslate"><span class="pre">AdbcDriver</span></code></a>).  New
 members were added to this struct in the 1.1.0 revision.
 Compatibility is handled as follows:</p>
-<p>The driver entrypoint, <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/group__adbc-driver.html#ga5fb0507a84a8d440448d1c6b5cb0d1db" title="(in ADBC C vversion)"><code class="xref c c-type docutils literal notranslate"><span class="pre">AdbcDriverInitFunc</span></code></a>, is given a
+<p>The driver entrypoint, <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/group__adbc-driver.html#gad7cbd3b4cf3b504773f5756699b5e7c3" title="(in ADBC C vversion)"><code class="xref c c-type docutils literal notranslate"><span class="pre">AdbcDriverInitFunc</span></code></a>, is given a
 version and a pointer to a table of function pointers to initialize
 (the <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/group__adbc-driver.html#structAdbcDriver" title="(in ADBC C vversion)"><code class="xref c c-struct docutils literal notranslate"><span class="pre">AdbcDriver</span></code></a>).  The size of the table will depend on
 the version; when a new version of ADBC is accepted, then a new table
