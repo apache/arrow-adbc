@@ -104,6 +104,43 @@ class ExampleEnum(enum.Enum):
     BAR = "BAR"
 
 
+class ExampleStringEnum(str, enum.Enum):
+    BATCH_ROWS = "adbc.sqlite.query.batch_rows"
+    BIND_BY_NAME = "adbc.statement.bind_by_name"
+    CONNECTION_AUTOCOMMIT = "adbc.connection.autocommit"
+    DATABASE_URI = "uri"
+
+
+@pytest.mark.parametrize("key_as_bytes", [False, True], ids=["str-subclass", "bytes"])
+@pytest.mark.sqlite
+def test_typed_get_option_key_types(sqlite_raw, key_as_bytes) -> None:
+    def key(option: ExampleStringEnum) -> str | bytes:
+        if key_as_bytes:
+            return option.value.encode()
+        return option
+
+    database, connection = sqlite_raw
+    assert database.get_option_bytes(key(ExampleStringEnum.DATABASE_URI)).startswith(
+        b"file:"
+    )
+    assert database.get_option_float(key(ExampleStringEnum.BATCH_ROWS)) == 1024.0
+    assert database.get_option_int(key(ExampleStringEnum.BATCH_ROWS)) == 1024
+
+    assert (
+        connection.get_option_bytes(key(ExampleStringEnum.CONNECTION_AUTOCOMMIT))
+        == b"true"
+    )
+    assert connection.get_option_float(key(ExampleStringEnum.BATCH_ROWS)) == 1024.0
+    assert connection.get_option_int(key(ExampleStringEnum.BATCH_ROWS)) == 1024
+
+    with adbc_driver_manager.AdbcStatement(connection) as statement:
+        assert (
+            statement.get_option_bytes(key(ExampleStringEnum.BIND_BY_NAME)) == b"false"
+        )
+        assert statement.get_option_float(key(ExampleStringEnum.BATCH_ROWS)) == 1024.0
+        assert statement.get_option_int(key(ExampleStringEnum.BATCH_ROWS)) == 1024
+
+
 @pytest.mark.sqlite
 def test_database_init(tmp_path) -> None:
     option = "adbc.sqlite.query.batch_rows"
