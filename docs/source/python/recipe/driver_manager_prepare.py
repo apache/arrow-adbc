@@ -37,9 +37,9 @@
 
 import pyarrow
 
-import adbc_driver_sqlite.dbapi
+from adbc_driver_manager import dbapi
 
-conn = adbc_driver_sqlite.dbapi.connect()
+conn = dbapi.connect("sqlite")
 
 with conn.cursor() as cur:
     param_schema = cur.adbc_prepare("SELECT ? + 1")

@@ -49,7 +49,7 @@ import (
 )
 
 func main() {
-	db, err := sql.Open("flightsql", "uri=grpc://localhost:12345")
+	db, err := sql.Open("flightsql", "uri=flightsql://localhost:12345?transport=tcp")
 	if err != nil {
 		panic(err)
 	}

@@ -19,8 +19,7 @@
 Quickstart
 ==========
 
-Here we'll briefly tour basic features of ADBC with the SQLite driver for
-Node.js.
+Here we'll briefly tour basic features of ADBC with JavaScript using the SQLite driver for Node.js.
 
 Installation
 ============
@@ -36,37 +35,32 @@ Installation
 
 .. note::
 
-   Node.js 22+, Deno 2.0+, or Bun 1.1+ are required.
+   Node.js 22+, Deno 2.0+, or Bun 1.1+ are required. This does not work in the
+   browser: the driver manager loads driver shared libraries from the
+   filesystem, which browsers cannot do.
 
-To use any driver with the JavaScript driver manager, you'll need install the
-appropriate driver shared library for your platform separately and pass the
-absolute path to the driver manager.
+Installing Drivers
+------------------
 
-Some examples for the SQLite driver are provided below for convenience:
-
-`conda-forge <https://conda-forge.org/>`_:
-
-.. code-block:: shell
-
-   conda create -n adbc-sqlite -c conda-forge adbc-driver-sqlite
-   conda run -n adbc-sqlite python -c "import adbc_driver_sqlite; print(adbc_driver_sqlite._driver_path())"
-
-`PyPI <https://pypi.org>`_:
+See :ref:`driver-table-install` for instructions on installing ADBC drivers for
+the database you want to connect to. For the example below, you could install
+`dbc <https://docs.columnar.tech/dbc>`__ from npm with:
 
 .. code-block:: shell
 
-   python -m venv .venv
-   source .venv/bin/activate
-   pip install adbc-driver-sqlite
-   python -c "import adbc_driver_sqlite; print(adbc_driver_sqlite._driver_path())"
+   npm install -g @columnar-tech/dbc
 
-For apt and dnf packages, see :doc:`/driver/installation`.
+and then install the SQLite driver with:
+
+.. code-block:: shell
+
+   dbc install sqlite
 
 Creating a Database and Connection
 ==================================
 
 The entry point is :external+js_adbc:jsclass:`AdbcDatabase`.  Pass a ``driver``
-option to identify the backend — either a short name (resolved via
+option to identify the backend—either a short name (resolved via
 :doc:`/format/driver_manifests` search paths) or absolute path to a driver
 shared library:
 
@@ -251,3 +245,11 @@ queries:
    }
 
    await stmt.close();
+
+Next Steps
+==========
+
+- Check out the :doc:`JavaScript API documentation <index>` for more details
+- See the :doc:`drivers </driver/index>` to see which databases are supported
+- Explore more examples in the `adbc-quickstarts repository <https://github.com/columnar-tech/adbc-quickstarts/tree/main/javascript>`_
+- Explore the `JavaScript source code <https://github.com/apache/arrow-adbc/tree/main/js>`_ for additional examples

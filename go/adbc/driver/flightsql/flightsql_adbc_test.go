@@ -58,6 +58,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/proto"
+	_ "modernc.org/sqlite"
 )
 
 type HeaderServerMiddleware struct {
@@ -314,6 +315,61 @@ func TestADBCFlightSQL(t *testing.T) {
 	suite.Run(t, &TLSTests{Quirks: &FlightSQLQuirks{db: db}})
 	suite.Run(t, &ConnectionTests{})
 	suite.Run(t, &DomainSocketTests{db: db})
+}
+
+func TestFlightSQLTracingProducesTraceFiles(t *testing.T) {
+	// TODO: Reuse example.CreateDB() here after apache/arrow-go#916 isolates
+	// the shared in-memory SQLite database per call.
+	db, err := sql.Open("sqlite", fmt.Sprintf("file:%s-%d?mode=memory&cache=private", strings.ToLower(t.Name()), time.Now().UnixNano()))
+	require.NoError(t, err)
+	defer validation.CheckedClose(t, db)
+
+	q := &FlightSQLQuirks{db: db}
+	drv := q.SetupDriver(t)
+	defer q.TearDownDriver(t, drv)
+
+	traceDir := t.TempDir()
+	opts := q.DatabaseOptions()
+	opts[adbc.OptionKeyTelemetryTracesExporter] = string(adbc.TelemetryExporterAdbcFile)
+	opts[adbc.OptionKeyTelemetryTracesFolderPath] = traceDir
+
+	func() {
+		adbcDB, err := drv.NewDatabase(opts)
+		require.NoError(t, err)
+		defer validation.CheckedClose(t, adbcDB)
+
+		cnxn, err := adbcDB.Open(context.Background())
+		require.NoError(t, err)
+		defer validation.CheckedClose(t, cnxn)
+
+		stmt, err := cnxn.NewStatement()
+		require.NoError(t, err)
+		defer validation.CheckedClose(t, stmt)
+
+		require.NoError(t, stmt.SetSqlQuery("SELECT 1"))
+		reader, _, err := stmt.ExecuteQuery(context.Background())
+		require.NoError(t, err)
+		defer reader.Release()
+
+		for reader.Next() {
+		}
+		require.NoError(t, reader.Err())
+	}()
+
+	files, err := filepath.Glob(filepath.Join(traceDir, "*.jsonl"))
+	require.NoError(t, err)
+	require.NotEmpty(t, files)
+
+	var traceOutput strings.Builder
+	for _, file := range files {
+		data, err := os.ReadFile(file)
+		require.NoError(t, err)
+		traceOutput.Write(data)
+	}
+
+	output := traceOutput.String()
+	require.Contains(t, output, "FlightSQLDatabase.Open")
+	require.Contains(t, output, "FlightSQLStatement.ExecuteQuery")
 }
 
 // Run the test suite, but validating that a header set on the database is ALWAYS passed
@@ -945,6 +1001,32 @@ func (suite *TLSTests) TestSimpleQuery() {
 	suite.NoError(reader.Err())
 }
 
+func (suite *TLSTests) TestFlightSQLSchemeDefaultTLS() {
+	db, err := suite.Driver.NewDatabase(map[string]string{
+		adbc.OptionKeyURI: "flightsql://" + suite.Quirks.s.Addr().String(),
+		"adbc.flight.sql.client_option.tls_skip_verify": "true",
+	})
+	suite.Require().NoError(err)
+	defer validation.CheckedClose(suite.T(), db)
+
+	cnxn, err := db.Open(suite.ctx)
+	suite.Require().NoError(err)
+	defer validation.CheckedClose(suite.T(), cnxn)
+}
+
+func (suite *TLSTests) TestFlightSQLSchemeExplicitTLS() {
+	db, err := suite.Driver.NewDatabase(map[string]string{
+		adbc.OptionKeyURI: "flightsql://" + suite.Quirks.s.Addr().String() + "?transport=tls",
+		"adbc.flight.sql.client_option.tls_skip_verify": "true",
+	})
+	suite.Require().NoError(err)
+	defer validation.CheckedClose(suite.T(), db)
+
+	cnxn, err := db.Open(suite.ctx)
+	suite.Require().NoError(err)
+	defer validation.CheckedClose(suite.T(), cnxn)
+}
+
 func (suite *TLSTests) TestInvalidOptions() {
 	db, err := suite.Driver.NewDatabase(map[string]string{
 		adbc.OptionKeyURI: "grpc+tls://" + suite.Quirks.s.Addr().String(),
@@ -1046,6 +1128,18 @@ func (suite *ConnectionTests) TestGetInfo() {
 	suite.Require().True(driverArrowVersion)
 }
 
+func (suite *ConnectionTests) TestFlightSQLSchemeTCP() {
+	db, err := suite.Driver.NewDatabase(map[string]string{
+		adbc.OptionKeyURI: "flightsql://" + suite.server.Addr().String() + "?transport=tcp",
+	})
+	suite.Require().NoError(err)
+	defer validation.CheckedClose(suite.T(), db)
+
+	cnxn, err := db.Open(suite.ctx)
+	suite.Require().NoError(err)
+	defer validation.CheckedClose(suite.T(), cnxn)
+}
+
 type DomainSocketTests struct {
 	suite.Suite
 
@@ -1132,4 +1226,46 @@ func (suite *DomainSocketTests) TestSimpleQueryDomainSocket() {
 	for reader.Next() {
 	}
 	suite.NoError(reader.Err())
+}
+
+func (suite *DomainSocketTests) TestFlightSQLSchemeUnixSocket() {
+	db, err := suite.Driver.NewDatabase(map[string]string{
+		adbc.OptionKeyURI: "flightsql://" + suite.server.Addr().String() + "?transport=unix",
+	})
+	suite.Require().NoError(err)
+	defer validation.CheckedClose(suite.T(), db)
+
+	cnxn, err := db.Open(suite.ctx)
+	suite.Require().NoError(err)
+	defer validation.CheckedClose(suite.T(), cnxn)
+}
+
+func TestFlightSQLSchemeInvalidURIs(t *testing.T) {
+	alloc := memory.NewCheckedAllocator(memory.DefaultAllocator)
+	defer alloc.AssertSize(t, 0)
+	drv := driver.NewDriver(alloc)
+
+	tests := []struct {
+		name string
+		uri  string
+	}{
+		{"unrecognized transport", "flightsql://localhost:1234?transport=bogus"},
+		{"host with unix transport", "flightsql://localhost:1234/socket?transport=unix"},
+		{"path with tcp transport", "flightsql://localhost:1234/socket?transport=tcp"},
+		{"path with default (tls) transport", "flightsql://localhost:1234/socket"},
+		{"unix transport without a path", "flightsql://?transport=unix"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db, err := drv.NewDatabase(map[string]string{
+				adbc.OptionKeyURI: tt.uri,
+			})
+			require.NoError(t, err)
+			defer validation.CheckedClose(t, db)
+
+			_, err = db.Open(context.Background())
+			require.Error(t, err)
+		})
+	}
 }

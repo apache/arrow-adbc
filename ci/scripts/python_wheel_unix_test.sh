@@ -55,7 +55,7 @@ for component in ${COMPONENTS}; do
     fi
 done
 
-python -m pip install importlib-resources pytest pyarrow pandas protobuf
+python -m pip install pytest pyarrow pandas protobuf
 if [[ -z "${PYTHON_FLAGS}" ]]; then
     # polars does not support freethreading and will try to build from source
     python -m pip install polars

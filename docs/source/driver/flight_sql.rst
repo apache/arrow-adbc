@@ -15,6 +15,8 @@
 .. specific language governing permissions and limitations
 .. under the License.
 
+:orphan:
+
 =================
 Flight SQL Driver
 =================
@@ -48,7 +50,7 @@ the :c:struct:`AdbcDatabase`.
          struct AdbcDatabase database;
          AdbcDatabaseNew(&database, nullptr);
          AdbcDatabaseSetOption(&database, "driver", "adbc_driver_flightsql", nullptr);
-         AdbcDatabaseSetOption(&database, "uri", "grpc://localhost:8080", nullptr);
+         AdbcDatabaseSetOption(&database, "uri", "flightsql://localhost:8080?transport=tcp", nullptr);
          AdbcDatabaseInit(&database, nullptr);
 
    .. tab-item:: Python
@@ -64,7 +66,7 @@ the :c:struct:`AdbcDatabase`.
          headers = {"foo": "bar"}
 
          with connect(
-             "grpc+tls://localhost:8080",
+             "flightsql://localhost:8080",
              db_kwargs={
                  DatabaseOptions.AUTHORIZATION_HEADER.value: "Bearer <token>",
                  DatabaseOptions.TLS_SKIP_VERIFY.value: "true",
@@ -80,6 +82,45 @@ the :c:struct:`AdbcDatabase`.
       :sync: go
 
       .. recipe:: ../../../go/adbc/driver/flightsql/example_usage_test.go
+
+URI Format
+----------
+
+The "uri" option accepts URIs using the ``flightsql://`` scheme.  The
+transport is selected with the ``transport`` query parameter, which is
+matched case-insensitively:
+
+``flightsql://<host>:<port>``
+    Connect over gRPC with TLS (secure).  This is the default when no
+    ``transport`` query parameter is given.
+
+``flightsql://<host>:<port>?transport=tls``
+    Same as above; an explicit way to request TLS (secure).
+
+``flightsql://<host>:<port>?transport=tcp``
+    Connect over gRPC without TLS (plaintext).
+
+``flightsql:///<path/to/socket>?transport=unix``
+    Connect over gRPC via a Unix domain socket at the given path.
+
+An unrecognized ``transport`` value (anything other than ``tls``,
+``tcp``, or ``unix``) is rejected with an error rather than silently
+falling back to a default.  Similarly, supplying a host with
+``transport=unix``, or a socket path with ``transport=tcp`` or the
+default TLS transport, is rejected as an invalid combination.
+
+.. note:: For backwards compatibility, the driver also still accepts
+          the following legacy schemes, each equivalent to a
+          ``flightsql://`` URI with the given ``transport``:
+
+          =====================  =========================
+          Legacy scheme           Equivalent ``transport``
+          =====================  =========================
+          ``grpc://``              ``tcp``
+          ``grpc+tcp://``          ``tcp``
+          ``grpc+tls://``          ``tls`` (default)
+          ``grpc+unix://``         ``unix``
+          =====================  =========================
 
 Supported Features
 ==================
@@ -191,6 +232,88 @@ The options used for creating the Flight RPC client can be customized.
     is ``false``.
 
     Python: :attr:`adbc_driver_flightsql.DatabaseOptions.WITH_COOKIE_MIDDLEWARE`
+
+OpenTelemetry Tracing
+---------------------
+
+The Go-based Flight SQL driver can emit OpenTelemetry traces for
+connection and statement activity.
+
+Tracing can be configured with database options or with environment
+variables.
+
+Database options
+~~~~~~~~~~~~~~~~
+
+``adbc.telemetry.traces_exporter``
+    Selects the traces exporter to use when the driver initializes its
+    tracer provider.
+
+    Supported values:
+
+    - ``none``: disable driver-managed trace exporting
+    - ``otlp``: export traces via OpenTelemetry OTLP exporters
+    - ``console``: write traces to standard output
+    - ``adbcfile``: write traces to rotated ``.jsonl`` files
+
+    When this option is set, it takes precedence over the
+    ``OTEL_TRACES_EXPORTER`` environment variable. If neither is set,
+    the driver falls back to the process-global OpenTelemetry tracer
+    provider.
+
+``adbc.telemetry.traces_folder_path``
+    Overrides the output folder used by the ``adbcfile`` exporter.
+    This option is ignored for other exporters.
+
+    If unset, the ``adbcfile`` exporter writes traces under a
+    platform-specific directory:
+
+    - Windows: ``%LOCALAPPDATA%\ADBC\Traces``
+    - macOS: ``~/Library/Application Support/ADBC/Traces``
+    - Linux: ``$XDG_STATE_HOME/adbc/traces`` or ``~/.local/state/adbc/traces``
+      if ``$XDG_STATE_HOME`` is not set
+
+``adbc.telemetry.trace_parent``
+    Sets the W3C Trace Context ``traceparent`` value used as the parent
+    for spans started by the driver.
+
+Environment variables
+~~~~~~~~~~~~~~~~~~~~~
+
+``OTEL_TRACES_EXPORTER``
+    Selects the traces exporter when
+    ``adbc.telemetry.traces_exporter`` is not set. Supported values are
+    ``none``, ``otlp``, ``console``, and ``adbcfile``.
+
+    When ``otlp`` is selected, the driver follows the standard
+    OpenTelemetry OTLP environment configuration for endpoints,
+    headers, and related exporter settings. Common variables include:
+
+    - ``OTEL_EXPORTER_OTLP_ENDPOINT``
+    - ``OTEL_EXPORTER_OTLP_TRACES_ENDPOINT``
+    - ``OTEL_EXPORTER_OTLP_HEADERS``
+    - ``OTEL_EXPORTER_OTLP_TRACES_HEADERS``
+    - ``OTEL_EXPORTER_OTLP_PROTOCOL``
+    - ``OTEL_EXPORTER_OTLP_TRACES_PROTOCOL``
+
+    For the complete set of supported OTLP environment variables, see
+    the `OpenTelemetry exporter configuration documentation
+    <https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/>`_.
+
+There is no dedicated environment variable for the ``adbcfile`` output
+folder. Use ``adbc.telemetry.traces_folder_path`` to override the
+default location.
+
+Structured Logging
+------------------
+
+The Go-based Flight SQL driver also supports structured client-side
+logging via:
+
+``ADBC_DRIVER_FLIGHTSQL_LOG_LEVEL``
+    Supported values are ``debug``, ``info``, ``warn``, and ``error``.
+
+The logging setting is independent from trace exporter configuration.
 
 Custom Call Headers
 -------------------

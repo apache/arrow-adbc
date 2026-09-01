@@ -17,7 +17,6 @@
 package org.apache.arrow.adbc.core;
 
 import java.nio.ByteBuffer;
-import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.ipc.ArrowReader;
 import org.apache.arrow.vector.types.pojo.Schema;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -52,7 +51,7 @@ public interface AdbcConnection extends AutoCloseable, AdbcOptions {
   AdbcStatement createStatement() throws AdbcException;
 
   /**
-   * Create a new statement to bulk insert a {@link VectorSchemaRoot} into a table.
+   * Create a new statement to bulk ingest Arrow data into a table.
    *
    * <p>Bind data to the statement, then call {@link AdbcStatement#executeUpdate()}. See {@link
    * BulkIngestMode} for description of behavior around creating tables.
@@ -64,7 +63,7 @@ public interface AdbcConnection extends AutoCloseable, AdbcOptions {
   }
 
   /**
-   * Create a new statement to bulk insert a {@link VectorSchemaRoot} into a table.
+   * Create a new statement to bulk ingest Arrow data into a table.
    *
    * <p>Bind data to the statement, then call {@link AdbcStatement#executeUpdate()}. See {@link
    * BulkIngestMode} for description of behavior around creating tables.
@@ -73,6 +72,11 @@ public interface AdbcConnection extends AutoCloseable, AdbcOptions {
       String targetTableName, BulkIngestMode mode, IngestOption... options) throws AdbcException {
     throw AdbcException.notImplemented(
         "Connection does not support bulkIngest(String, BulkIngestMode, IngestOption...)");
+  }
+
+  /** Bulk ingest Arrow data into a table, using a fluent builder-style API. */
+  default BulkIngestBuilder bulkIngest() {
+    return new BulkIngestBuilderImpl(this);
   }
 
   /**
@@ -459,4 +463,7 @@ public interface AdbcConnection extends AutoCloseable, AdbcOptions {
   default void setIsolationLevel(IsolationLevel level) throws AdbcException {
     throw AdbcException.notImplemented("Connection does not support setting isolation level");
   }
+
+  @Override
+  void close() throws AdbcException;
 }

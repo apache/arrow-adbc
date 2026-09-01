@@ -22,6 +22,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -152,12 +153,30 @@ func NewRotatingFileWriter(options ...rotatingFileWriterOption) (*rotatingFileWr
 }
 
 func getDefaultTracingFolderPath() (string, error) {
-	userConfigDir, err := os.UserConfigDir()
-	if err != nil {
-		return "", err
+	switch runtime.GOOS {
+	case "darwin":
+		userConfigDir, err := os.UserConfigDir()
+		if err != nil {
+			return "", err
+		}
+		return filepath.Join(userConfigDir, "ADBC", "Traces"), nil
+	case "windows":
+		userCacheDir, err := os.UserCacheDir()
+		if err != nil {
+			return "", err
+		}
+		return filepath.Join(userCacheDir, "ADBC", "Traces"), nil
+	default:
+		stateDir := os.Getenv("XDG_STATE_HOME")
+		if strings.TrimSpace(stateDir) == "" {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return "", err
+			}
+			stateDir = filepath.Join(home, ".local", "state")
+		}
+		return filepath.Join(stateDir, "adbc", "traces"), nil
 	}
-	fullPath := filepath.Join(userConfigDir, ".adbc", "traces")
-	return fullPath, nil
 }
 
 // Closes the rotating file write

@@ -163,6 +163,14 @@ AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
     // differentiate between bad syntax and other I/O error.
     std::string message = "Could not open manifest. ";
     message += err.what();
+    const auto& src = err.source();
+    if (src.begin) {
+      message += " (line ";
+      message += std::to_string(src.begin.line);
+      message += ", column ";
+      message += std::to_string(src.begin.column);
+      message += ")";
+    }
     message += ". Manifest: ";
     message += driver_manifest.string();
     SetError(error, std::move(message));
@@ -195,12 +203,12 @@ AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
 
   auto driver = config.at_path("Driver.shared");
   if (toml::table* platforms = driver.as_table()) {
-    auto view = platforms->at_path(adbc::CurrentArch());
+    auto view = platforms->at_path(InternalAdbcCurrentArch());
     if (!view) {
       std::string message = "Driver path not found in manifest '";
       message += driver_manifest.string();
       message += "' for current architecture '";
-      message += adbc::CurrentArch();
+      message += InternalAdbcCurrentArch();
       message += "'. Architectures found:";
       for (const auto& [key, val] : *platforms) {
         message += " ";
@@ -213,7 +221,7 @@ AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
         std::string message = "Driver path is an empty string in manifest '";
         message += driver_manifest.string();
         message += "' for current architecture '";
-        message += adbc::CurrentArch();
+        message += InternalAdbcCurrentArch();
         message += "'";
         SetError(error, std::move(message));
         return ADBC_STATUS_INVALID_ARGUMENT;
@@ -225,7 +233,7 @@ AdbcStatusCode LoadDriverManifest(const std::filesystem::path& driver_manifest,
     std::string message = "Driver path not found in manifest '";
     message += driver_manifest.string();
     message += "' for current architecture '";
-    message += adbc::CurrentArch();
+    message += InternalAdbcCurrentArch();
     message += "'. Value was not a string";
     SetError(error, std::move(message));
     return ADBC_STATUS_INVALID_ARGUMENT;

@@ -27,6 +27,7 @@ import org.apache.arrow.adbc.core.AdbcDatabase;
 import org.apache.arrow.adbc.core.AdbcDriver;
 import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcInfoCode;
+import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.adbc.drivermanager.AdbcDriverManager;
 import org.apache.arrow.driver.jdbc.utils.MockFlightSqlProducer;
@@ -55,16 +56,18 @@ public class HeaderTest {
   private AdbcConnection connection;
   private BufferAllocator allocator;
   private HeaderValidator.Factory headerValidatorFactory;
+  private MockFlightSqlProducer producer;
 
   @BeforeEach
   public void setUp() {
     allocator = new RootAllocator(Long.MAX_VALUE);
     headerValidatorFactory = new HeaderValidator.Factory();
+    producer = new MockFlightSqlProducer();
     builder =
         FlightServer.builder()
             .middleware(HeaderValidator.KEY, headerValidatorFactory)
             .location(Location.forGrpcInsecure("localhost", 0))
-            .producer(new MockFlightSqlProducer());
+            .producer(producer);
     params = new HashMap<>();
   }
 
@@ -87,6 +90,40 @@ public class HeaderTest {
 
     CallHeaders headers = headerValidatorFactory.getHeadersReceivedAtRequest(0);
     assertEquals(dummyValue, headers.get(dummyHeaderName));
+  }
+
+  /**
+   * The connection's call options (which carry arbitrary headers, auth, cookies, etc.) must ride on
+   * every RPC the driver issues on that connection's behalf, including the ClosePreparedStatement
+   * call made when a prepared statement is closed. This regression test guards against dropping the
+   * connection options on close.
+   */
+  @Test
+  public void testHeaderSentWhenClosingPreparedStatement() throws Exception {
+    final String dummyValue = "dummy";
+    final String dummyHeaderName = "test-header";
+    final String query = "UPDATE the_table SET x = 1";
+    params.put(FlightSqlConnectionProperties.RPC_CALL_HEADER_PREFIX + dummyHeaderName, dummyValue);
+    producer.addUpdateQuery(query, /* updatedRows= */ 1L);
+    server = builder.build();
+    server.start();
+    connect();
+
+    // Prepare and then close a statement. Closing triggers a ClosePreparedStatement RPC, which must
+    // still carry the connection header. Before the fix, close() dropped the call options.
+    try (AdbcStatement statement = connection.createStatement()) {
+      statement.setSqlQuery(query);
+      statement.prepare();
+    }
+
+    // The connection header must appear on every RPC, including the final ClosePreparedStatement.
+    final int requestCount = headerValidatorFactory.getRequestCount();
+    assertTrue(requestCount > 0);
+    for (int i = 0; i < requestCount; i++) {
+      CallHeaders headers = headerValidatorFactory.getHeadersReceivedAtRequest(i);
+      assertEquals(
+          dummyValue, headers.get(dummyHeaderName), "connection header missing on RPC #" + i);
+    }
   }
 
   @Test

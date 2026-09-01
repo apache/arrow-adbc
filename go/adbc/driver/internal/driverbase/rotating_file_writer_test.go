@@ -18,15 +18,51 @@
 package driverbase_test
 
 import (
+	"os"
+	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/stretchr/testify/require"
 )
 
+func TestDefaultTracingFolderPath(t *testing.T) {
+	tempDir := t.TempDir()
+
+	var expected string
+	switch runtime.GOOS {
+	case "windows":
+		localAppDataDir := filepath.Join(tempDir, "AppData", "Local")
+		t.Setenv("LocalAppData", localAppDataDir)
+		expected = filepath.Join(localAppDataDir, "ADBC", "Traces")
+	case "darwin":
+		t.Setenv("HOME", tempDir)
+		expected = filepath.Join(tempDir, "Library", "Application Support", "ADBC", "Traces")
+	default:
+		stateDir := filepath.Join(tempDir, ".local", "state")
+		t.Setenv("XDG_STATE_HOME", stateDir)
+		t.Setenv("HOME", tempDir)
+		expected = filepath.Join(stateDir, "adbc", "traces")
+	}
+
+	fw, err := driverbase.NewRotatingFileWriter()
+	require.NoError(t, err)
+	defer func() {
+		err := fw.Clear()
+		require.NoError(t, err)
+	}()
+
+	require.Equal(t, expected, fw.GetTracingFolderPath())
+	_, err = os.Stat(expected)
+	require.NoError(t, err)
+}
+
 func TestRotatingFileWriter(t *testing.T) {
+	traceDir := t.TempDir()
 
 	fw, err := driverbase.NewRotatingFileWriter(
+		driverbase.WithTracingFolderPath(traceDir),
 		driverbase.WithFileSizeMaxKb(1),
 		driverbase.WithFileCountMax(10),
 	)
@@ -49,7 +85,10 @@ func TestRotatingFileWriter(t *testing.T) {
 }
 
 func TestFileResuse(t *testing.T) {
+	traceDir := t.TempDir()
+
 	fw1, err := driverbase.NewRotatingFileWriter(
+		driverbase.WithTracingFolderPath(traceDir),
 		driverbase.WithFileSizeMaxKb(1000),
 		driverbase.WithFileCountMax(10),
 	)
@@ -70,6 +109,7 @@ func TestFileResuse(t *testing.T) {
 	require.NoError(t, err)
 
 	fw2, err := driverbase.NewRotatingFileWriter(
+		driverbase.WithTracingFolderPath(traceDir),
 		driverbase.WithFileSizeMaxKb(1000),
 		driverbase.WithFileCountMax(10),
 	)

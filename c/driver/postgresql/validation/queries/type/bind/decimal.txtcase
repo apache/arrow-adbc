@@ -15,6 +15,11 @@
 // specific language governing permissions and limitations
 // under the License.
 
+// part: metadata
+
+[tags]
+sql-type-name = "numeric"
+
 // part: expected_schema
 {
     "format": "+s",

@@ -469,8 +469,8 @@ fn test_profile_display() {
         .expect("Failed to close/remove temporary directory");
 }
 
-#[test]
 #[serial]
+#[test]
 fn test_profile_hierarchical_path_via_env_var() {
     use std::env;
 
@@ -527,8 +527,8 @@ fn test_profile_hierarchical_path_via_env_var() {
         .expect("Failed to close/remove temporary directory");
 }
 
-#[test]
 #[serial]
+#[test]
 fn test_profile_hierarchical_path_with_extension_via_env_var() {
     let tmp_dir = tempfile::Builder::new()
         .prefix("adbc_profile_env_test2")

@@ -61,11 +61,16 @@ impl<DriverType: Driver> ExportedDatabase<DriverType> {
     }
 }
 
+struct InitializedConnection<DriverType: Driver> {
+    connection: ConnectionType<DriverType>,
+    cancel_handle: Box<dyn adbc_core::CancelHandle>,
+}
+
 enum ExportedConnection<DriverType: Driver> {
     /// Pre-init options
     Options(HashMap<OptionConnection, OptionValue>),
     /// Initialized connection
-    Connection(ConnectionType<DriverType>),
+    Connection(InitializedConnection<DriverType>),
 }
 
 impl<DriverType: Driver> ExportedConnection<DriverType> {
@@ -77,13 +82,23 @@ impl<DriverType: Driver> ExportedConnection<DriverType> {
     ) {
         match self {
             Self::Options(options) => (Some(options), None),
-            Self::Connection(connection) => (None, Some(connection)),
+            Self::Connection(connection) => (None, Some(&mut connection.connection)),
         }
     }
 
     fn try_connection(&mut self) -> Result<&mut ConnectionType<DriverType>> {
         match self {
-            Self::Connection(connection) => Ok(connection),
+            Self::Connection(connection) => Ok(&mut connection.connection),
+            _ => Err(Error::with_message_and_status(
+                "Connection not initialized",
+                Status::InvalidState,
+            )),
+        }
+    }
+
+    fn try_cancel(&mut self) -> Result<&mut dyn adbc_core::CancelHandle> {
+        match self {
+            Self::Connection(connection) => Ok(connection.cancel_handle.as_mut()),
             _ => Err(Error::with_message_and_status(
                 "Connection not initialized",
                 Status::InvalidState,
@@ -92,7 +107,10 @@ impl<DriverType: Driver> ExportedConnection<DriverType> {
     }
 }
 
-struct ExportedStatement<DriverType: Driver>(StatementType<DriverType>);
+struct ExportedStatement<DriverType: Driver>(
+    StatementType<DriverType>,
+    Box<dyn adbc_core::CancelHandle>,
+);
 
 pub trait FFIDriver {
     fn ffi_driver() -> FFI_AdbcDriver;
@@ -238,12 +256,7 @@ macro_rules! check_err {
             Err(error) => {
                 let error = adbc_core::error::Error::from(error);
                 let status: adbc_core::error::AdbcStatusCode = error.status.into();
-                if !$err_out.is_null() {
-                    let mut ffi_error =
-                        $crate::FFI_AdbcError::try_from(error).unwrap_or_else(Into::into);
-                    ffi_error.private_driver = unsafe { (*$err_out).private_driver };
-                    unsafe { std::ptr::write_unaligned($err_out, ffi_error) };
-                }
+                unsafe { $crate::export_error($err_out, error) };
                 return status;
             }
         }
@@ -280,16 +293,11 @@ macro_rules! pointer_as_mut {
         match unsafe { $ptr.as_mut() } {
             Some(p) => p,
             None => {
-                if !$err_out.is_null() {
-                    let error = adbc_core::error::Error::with_message_and_status(
-                        format!("Passed null pointer for argument {:?}", stringify!($ptr)),
-                        adbc_core::error::Status::InvalidArguments,
-                    );
-                    let mut ffi_error =
-                        $crate::FFI_AdbcError::try_from(error).unwrap_or_else(Into::into);
-                    ffi_error.private_driver = unsafe { (*$err_out).private_driver };
-                    unsafe { std::ptr::write_unaligned($err_out, ffi_error) };
-                }
+                let error = adbc_core::error::Error::with_message_and_status(
+                    format!("Passed null pointer for argument {:?}", stringify!($ptr)),
+                    adbc_core::error::Status::InvalidArguments,
+                );
+                unsafe { $crate::export_error($err_out, error) };
                 return adbc_core::error::Status::InvalidArguments.into();
             }
         }
@@ -507,22 +515,18 @@ fn catch_panic<F: FnOnce() -> AdbcStatusCode + std::panic::UnwindSafe>(
         Err(cause) => {
             POISON.store(true, std::sync::atomic::Ordering::Release);
 
-            if !error.is_null() {
-                let message = if let Some(s) = cause.downcast_ref::<&str>() {
-                    s.to_string()
-                } else if let Some(s) = cause.downcast_ref::<String>() {
-                    s.clone()
-                } else {
-                    "Unknown panic".to_string()
-                };
-                let err = Error::with_message_and_status(
-                    format!("Uncaught panic in driver: {message}"),
-                    Status::Internal,
-                );
-                let mut ffi_error = FFI_AdbcError::try_from(err).unwrap_or_else(Into::into);
-                ffi_error.private_driver = unsafe { (*error).private_driver };
-                unsafe { std::ptr::write_unaligned(error, ffi_error) };
-            }
+            let message = if let Some(s) = cause.downcast_ref::<&str>() {
+                s.to_string()
+            } else if let Some(s) = cause.downcast_ref::<String>() {
+                s.clone()
+            } else {
+                "Unknown panic".to_string()
+            };
+            let err = Error::with_message_and_status(
+                format!("Uncaught panic in driver: {message}"),
+                Status::Internal,
+            );
+            unsafe { crate::export_error(error, err) };
             Status::Internal.into()
         }
     }
@@ -842,7 +846,10 @@ unsafe fn connection_set_option_impl<DriverType: Driver, Value: Into<OptionValue
             options.insert(key.into(), value.into());
         }
         ExportedConnection::Connection(connection) => {
-            check_err!(connection.set_option(key.into(), value.into()), error);
+            check_err!(
+                connection.connection.set_option(key.into(), value.into()),
+                error
+            );
         }
     }
 
@@ -892,7 +899,11 @@ extern "C" fn connection_init<DriverType: Driver>(
                 )),
             };
             let connection = check_err!(connection, error);
-            *exported_connection = ExportedConnection::Connection(connection);
+            let cancel_handle = connection.get_cancel_handle();
+            *exported_connection = ExportedConnection::Connection(InitializedConnection {
+                connection,
+                cancel_handle,
+            });
         } else {
             check_err!(
                 Err(Error::with_message_and_status(
@@ -1177,9 +1188,8 @@ extern "C" fn connection_get_info<DriverType: Driver + 'static>(
             None
         } else {
             let info_codes = unsafe { std::slice::from_raw_parts(info_codes, info_codes_length) };
-            let info_codes: Result<HashSet<InfoCode>> =
-                info_codes.iter().map(|c| InfoCode::try_from(*c)).collect();
-            let info_codes = check_err!(info_codes, error);
+            let info_codes: HashSet<InfoCode> =
+                info_codes.iter().map(|c| InfoCode::from(*c)).collect();
             Some(info_codes)
         };
 
@@ -1239,8 +1249,8 @@ extern "C" fn connection_cancel<DriverType: Driver>(
             unsafe { connection_private_data::<DriverType>(connection) },
             error
         );
-        let connection = check_err!(exported.try_connection(), error);
-        check_err!(connection.cancel(), error);
+        let handle = check_err!(exported.try_cancel(), error);
+        check_err!(handle.try_cancel(), error);
 
         ADBC_STATUS_OK
     })
@@ -1436,8 +1446,12 @@ extern "C" fn statement_new<DriverType: Driver>(
         let inner_connection = check_err!(exported_connection.try_connection(), error);
 
         let inner_statement = check_err!(inner_connection.new_statement(), error);
+        let cancel_handle = inner_statement.get_cancel_handle();
 
-        let exported = Box::new(ExportedStatement::<DriverType>(inner_statement));
+        let exported = Box::new(ExportedStatement::<DriverType>(
+            inner_statement,
+            cancel_handle,
+        ));
         statement.private_data = Box::into_raw(exported) as *mut c_void;
 
         ADBC_STATUS_OK
@@ -1700,9 +1714,8 @@ extern "C" fn statement_cancel<DriverType: Driver>(
             unsafe { statement_private_data::<DriverType>(statement) },
             error
         );
-        let statement = &mut exported.0;
-
-        check_err!(statement.cancel(), error);
+        let cancel_handle = &mut exported.1;
+        check_err!(cancel_handle.try_cancel(), error);
 
         ADBC_STATUS_OK
     })
@@ -1728,6 +1741,9 @@ extern "C" fn statement_execute_query<DriverType: Driver + 'static>(
             let reader = Box::new(reader);
             let reader = FFI_ArrowArrayStream::new(reader);
             unsafe { std::ptr::write_unaligned(out, reader) };
+            if !rows_affected.is_null() {
+                unsafe { std::ptr::write_unaligned(rows_affected, -1) };
+            }
         } else {
             let rows_affected_value = check_err!(statement.execute_update(), error).unwrap_or(-1);
             if !rows_affected.is_null() {

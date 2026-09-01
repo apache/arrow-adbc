@@ -30,8 +30,8 @@ adbc_connection_get_option_double(connection, option)
 \arguments{
 \item{database}{An \link[=adbc_database_init]{adbc_database}.}
 
-\item{...}{Driver-specific options. For the default method, these are
-named values that are converted to strings.}
+\item{...}{Driver-specific options. These are generally named values that
+are converted to strings.}
 
 \item{options}{A named \code{character()} or \code{list()} whose values are converted
 to strings.}

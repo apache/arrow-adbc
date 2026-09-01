@@ -20,6 +20,7 @@ package driverbase
 import (
 	"context"
 	"errors"
+	"io"
 	"log/slog"
 	"os"
 	"strings"
@@ -105,8 +106,10 @@ type DatabaseImplBase struct {
 	Logger      *slog.Logger
 	Tracer      trace.Tracer
 
-	tracerShutdownFunc func(context.Context) error
-	traceParent        string
+	tracerForceFlushFunc func(context.Context) error
+	tracerShutdownFunc   func(context.Context) error
+	tracerProvider       trace.TracerProvider
+	traceParent          string
 }
 
 type TracingOptions struct {
@@ -127,11 +130,12 @@ type TracingOptions struct {
 //     driver, allowing the Arrow allocator and error handler to be reused.
 func NewDatabaseImplBase(ctx context.Context, driver *DriverImplBase, opts TracingOptions) (DatabaseImplBase, error) {
 	database := DatabaseImplBase{
-		Alloc:       driver.Alloc,
-		ErrorHelper: driver.ErrorHelper,
-		DriverInfo:  driver.DriverInfo,
-		Logger:      nilLogger(),
-		Tracer:      nilTracer(),
+		Alloc:          driver.Alloc,
+		ErrorHelper:    driver.ErrorHelper,
+		DriverInfo:     driver.DriverInfo,
+		Logger:         nilLogger(),
+		Tracer:         nilTracer(),
+		tracerProvider: otel.GetTracerProvider(),
 	}
 	err := database.InitTracing(
 		ctx,
@@ -179,15 +183,23 @@ func (base *DatabaseImplBase) SetOptionInt(key string, val int64) error {
 }
 
 func (base *database) Close() error {
-	return base.Base().Close()
+	return base.DatabaseImpl.Close()
 }
 
 func (base *DatabaseImplBase) Close() (err error) {
 	if base.Base().tracerShutdownFunc != nil {
 		err = base.Base().tracerShutdownFunc(context.Background())
 		base.Base().tracerShutdownFunc = nil
+		base.Base().tracerForceFlushFunc = nil
 	}
 	return
+}
+
+func (base *DatabaseImplBase) ForceFlushTracing(ctx context.Context) error {
+	if base.Base().tracerForceFlushFunc == nil {
+		return nil
+	}
+	return base.Base().tracerForceFlushFunc(ctx)
 }
 
 func (base *DatabaseImplBase) Open(ctx context.Context) (adbc.Connection, error) {
@@ -222,6 +234,10 @@ func (d *DatabaseImplBase) StartSpan(
 ) (context.Context, trace.Span) {
 	ctx, _ = maybeAddTraceParent(ctx, d, nil)
 	return d.Tracer.Start(ctx, spanName, opts...)
+}
+
+func (d *DatabaseImplBase) GetTracerProvider() trace.TracerProvider {
+	return d.tracerProvider
 }
 
 // database is the implementation of adbc.Database.
@@ -263,6 +279,7 @@ func (base *DatabaseImplBase) InitTracing(
 
 	// Empty exporter
 	if exporterName == "" {
+		base.tracerProvider = otel.GetTracerProvider()
 		base.Tracer = otel.Tracer(fullyQualifiedDriverName)
 		return
 	}
@@ -360,7 +377,9 @@ func newTracer(
 	if err != nil {
 		return
 	}
+	base.Base().tracerForceFlushFunc = tracerProvider.ForceFlush
 	base.Base().tracerShutdownFunc = tracerProvider.Shutdown
+	base.Base().tracerProvider = tracerProvider
 	tracer = tracerProvider.Tracer(
 		fullyQualifiedDriverName,
 		trace.WithInstrumentationVersion(driverVersion),
@@ -423,7 +442,24 @@ func newOtlpTraceExporters(ctx context.Context) ([]sdktrace.SpanExporter, error)
 	return []sdktrace.SpanExporter{grpcExporter, httpExporter}, nil
 }
 
-func newAdbcFileExporter(driverName, folderPath string) (*stdouttrace.Exporter, error) {
+type closableSpanExporter struct {
+	exporter sdktrace.SpanExporter
+	closer   io.Closer
+}
+
+func (e *closableSpanExporter) ExportSpans(ctx context.Context, spans []sdktrace.ReadOnlySpan) error {
+	return e.exporter.ExportSpans(ctx, spans)
+}
+
+func (e *closableSpanExporter) Shutdown(ctx context.Context) error {
+	err := e.exporter.Shutdown(ctx)
+	if e.closer != nil {
+		err = errors.Join(err, e.closer.Close())
+	}
+	return err
+}
+
+func newAdbcFileExporter(driverName, folderPath string) (sdktrace.SpanExporter, error) {
 	fullyQualifiedDriverName := strings.ToLower(driverNamespace + "." + driverName)
 	writerOpts := []rotatingFileWriterOption{WithLogNamePrefix(fullyQualifiedDriverName)}
 	if strings.TrimSpace(folderPath) != "" {
@@ -433,7 +469,12 @@ func newAdbcFileExporter(driverName, folderPath string) (*stdouttrace.Exporter, 
 	if err != nil {
 		return nil, err
 	}
-	return stdouttrace.New(stdouttrace.WithWriter(fileWriter))
+	exporter, err := stdouttrace.New(stdouttrace.WithWriter(fileWriter))
+	if err != nil {
+		_ = fileWriter.Close()
+		return nil, err
+	}
+	return &closableSpanExporter{exporter: exporter, closer: fileWriter}, nil
 }
 
 func newTracerProvider(exporters ...sdktrace.SpanExporter) (*sdktrace.TracerProvider, error) {

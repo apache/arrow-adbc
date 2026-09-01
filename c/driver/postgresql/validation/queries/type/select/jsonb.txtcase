@@ -21,7 +21,7 @@
 drop = "test_jsonb"
 
 [tags]
-sql-type-name = "JSONB"
+sql-type-name = "jsonb"
 
 // part: setup_query
 

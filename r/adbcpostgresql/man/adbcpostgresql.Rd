@@ -44,7 +44,7 @@ autocommit behaviour.}
 \item{adbc.ingest.mode}{Whether to create (the default) or append.}
 }
 \value{
-An \code{\link[adbcdrivermanager:adbc_driver_void]{adbcdrivermanager::adbc_driver()}}
+An \code{\link[adbcdrivermanager:adbc_driver]{adbcdrivermanager::adbc_driver()}}
 }
 \description{
 ADBC PostgreSQL Driver

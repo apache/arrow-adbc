@@ -39,6 +39,8 @@ import (
 	flightproto "github.com/apache/arrow-go/v18/arrow/flight/gen/flight"
 	"github.com/apache/arrow-go/v18/arrow/ipc"
 	"github.com/bluele/gcache"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	grpccodes "google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -230,6 +232,153 @@ var adbcToFlightSQLInfo = map[adbc.InfoCode]flightsql.SqlInfo{
 	adbc.InfoVendorSubstrait:           flightsql.SqlInfoFlightSqlServerSubstrait,
 	adbc.InfoVendorSubstraitMinVersion: flightsql.SqlInfoFlightSqlServerSubstraitMinVersion,
 	adbc.InfoVendorSubstraitMaxVersion: flightsql.SqlInfoFlightSqlServerSubstraitMaxVersion,
+}
+
+func doGetWithResponseMetadata(ctx context.Context, client *flightsql.Client, ticket *flight.Ticket, opts ...grpc.CallOption) (*flight.Reader, error) {
+	var header, trailer metadata.MD
+	callOpts := append(append([]grpc.CallOption{}, opts...), grpc.Header(&header), grpc.Trailer(&trailer))
+	reader, err := client.DoGet(ctx, ticket, callOpts...)
+	if err != nil {
+		captureResponseMetadata(ctx, metadata.Join(header, trailer))
+	}
+	return reader, err
+}
+
+func doGetWithTracer(ctx context.Context, cl *flightsql.Client, endpoint *flight.FlightEndpoint, clientCache gcache.Cache, tracing adbc.OTelTracing, opts ...grpc.CallOption) (rdr *flight.Reader, err error) {
+	const spanName = "FlightSQL.Connection.DoGet"
+	startTime := time.Now()
+	ctx, span := internal.StartSpan(ctx, spanName, tracing)
+	errorRecorded := false
+	defer func() {
+		internal.NewEndSpanHelper(span).
+			WithStartTime(startTime).
+			WithError(err).
+			WithRecordedError(errorRecorded).
+			EndSpan()
+	}()
+
+	streamOpts := make([]grpc.CallOption, 0, len(opts))
+	for _, opt := range opts {
+		switch opt.(type) {
+		case grpc.HeaderCallOption, *grpc.HeaderCallOption, grpc.TrailerCallOption, *grpc.TrailerCallOption:
+			continue
+		default:
+			streamOpts = append(streamOpts, opt)
+		}
+	}
+
+	if len(endpoint.Location) == 0 {
+		span.AddEvent("flight.location.attempt", trace.WithAttributes(
+			attribute.String("flight.location.source", "default_client"),
+		))
+		start := time.Now()
+		rdr, err = doGetWithResponseMetadata(ctx, cl, endpoint.Ticket, streamOpts...)
+		attrs := []attribute.KeyValue{
+			attribute.Float64("duration_s", time.Since(start).Seconds()),
+			attribute.String("flight.location.source", "default_client"),
+		}
+		if err != nil {
+			attrs = append(attrs, attribute.String("flight.stage", "do_get"))
+			span.RecordError(err, trace.WithAttributes(attrs...), trace.WithStackTrace(true))
+			errorRecorded = true
+		} else {
+			span.AddEvent("flight.location.selected", trace.WithAttributes(attrs...))
+		}
+		return rdr, err
+	}
+
+	var (
+		cc            interface{}
+		hasFallback   bool
+		attemptErrors []string
+	)
+
+	for _, loc := range endpoint.Location {
+		if loc.Uri == flight.LocationReuseConnection {
+			hasFallback = true
+			continue
+		}
+
+		start := time.Now()
+		span.AddEvent("flight.location.attempt", trace.WithAttributes(
+			attribute.String("flight.location", loc.Uri),
+			attribute.String("flight.location.source", "endpoint"),
+		))
+		cc, err = clientCache.Get(loc.Uri)
+		if err != nil {
+			attemptErrors = append(attemptErrors, fmt.Sprintf("clientCache.Get(%q): %s", loc.Uri, err.Error()))
+			span.AddEvent("flight.location.failed", trace.WithAttributes(
+				attribute.String("flight.stage", "client_cache_get"),
+				attribute.String("flight.location", loc.Uri),
+				attribute.Float64("duration_s", time.Since(start).Seconds()),
+				attribute.String("error.message", err.Error()),
+			))
+			continue
+		}
+
+		conn := cc.(*flightsql.Client)
+		rdr, err = doGetWithResponseMetadata(ctx, conn, endpoint.Ticket, streamOpts...)
+		if err != nil {
+			attemptErrors = append(attemptErrors, fmt.Sprintf("DoGet(%q): %s", loc.Uri, err.Error()))
+			span.AddEvent("flight.location.failed", trace.WithAttributes(
+				attribute.String("flight.stage", "do_get"),
+				attribute.String("flight.location", loc.Uri),
+				attribute.Float64("duration_s", time.Since(start).Seconds()),
+				attribute.String("error.message", err.Error()),
+			))
+			continue
+		}
+
+		span.AddEvent("flight.location.selected", trace.WithAttributes(
+			attribute.String("flight.location", loc.Uri),
+			attribute.String("flight.location.source", "endpoint"),
+			attribute.Float64("duration_s", time.Since(start).Seconds()),
+		))
+		return
+	}
+
+	if hasFallback {
+		start := time.Now()
+		span.AddEvent("flight.location.attempt", trace.WithAttributes(
+			attribute.String("flight.location.source", "fallback"),
+		))
+		rdr, err = doGetWithResponseMetadata(ctx, cl, endpoint.Ticket, streamOpts...)
+		if err != nil {
+			attemptErrors = append(attemptErrors, fmt.Sprintf("DoGet(fallback to default client): %s", err.Error()))
+			span.AddEvent("flight.location.failed", trace.WithAttributes(
+				attribute.String("flight.stage", "do_get"),
+				attribute.String("flight.location.source", "fallback"),
+				attribute.Float64("duration_s", time.Since(start).Seconds()),
+				attribute.String("error.message", err.Error()),
+			))
+			err = fmt.Errorf("all DoGet attempts failed: %s; final: %w", strings.Join(attemptErrors, "; "), err)
+			span.RecordError(err, trace.WithAttributes(
+				attribute.String("flight.stage", "all_locations_failed"),
+				attribute.Int("flight.location.attempt_count", len(attemptErrors)),
+			), trace.WithStackTrace(true))
+			errorRecorded = true
+			return nil, err
+		}
+		span.AddEvent("flight.location.selected", trace.WithAttributes(
+			attribute.String("flight.location.source", "fallback"),
+			attribute.Float64("duration_s", time.Since(start).Seconds()),
+		))
+		return rdr, nil
+	}
+
+	if err != nil && len(attemptErrors) > 1 {
+		err = fmt.Errorf("all %d DoGet location(s) failed: %s; final: %w",
+			len(attemptErrors), strings.Join(attemptErrors, "; "), err)
+	}
+	if err != nil {
+		span.RecordError(err, trace.WithAttributes(
+			attribute.String("flight.stage", "all_locations_failed"),
+			attribute.Int("flight.location.attempt_count", len(attemptErrors)),
+		), trace.WithStackTrace(true))
+		errorRecorded = true
+	}
+
+	return nil, err
 }
 
 // doGetWithLogger performs DoGet against an endpoint's locations, logging each

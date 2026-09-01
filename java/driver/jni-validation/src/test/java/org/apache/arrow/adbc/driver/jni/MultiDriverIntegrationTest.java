@@ -73,7 +73,7 @@ public class MultiDriverIntegrationTest {
     {
       System.err.println("Connecting to MSSQL with URI: " + SqlServerIntegrationTest.URI);
       Map<String, Object> parameters = new HashMap<>();
-      JniDriver.PARAM_DRIVER.set(parameters, "mssql");
+      JniDriver.PARAM_DRIVER.set(parameters, "test_mssql");
       AdbcDriver.PARAM_URI.set(parameters, SqlServerIntegrationTest.URI);
       mssqlDb = driver.open(parameters);
       mssqlConn = mssqlDb.connect();
@@ -126,7 +126,7 @@ public class MultiDriverIntegrationTest {
   @Test
   void errorFailedConnection() throws Exception {
     Map<String, Object> parameters = new HashMap<>();
-    JniDriver.PARAM_DRIVER.set(parameters, "mssql");
+    JniDriver.PARAM_DRIVER.set(parameters, "test_mssql");
     AdbcDriver.PARAM_URI.set(parameters, "mssql://localhost:9999");
     try (var db = driver.open(parameters)) {
       assertThatThrownBy(db::connect).hasMessageContaining("Could not get connection");
@@ -136,7 +136,7 @@ public class MultiDriverIntegrationTest {
   @Test
   void errorBadConnectionParameter() throws Exception {
     Map<String, Object> parameters = new HashMap<>();
-    JniDriver.PARAM_DRIVER.set(parameters, "mssql");
+    JniDriver.PARAM_DRIVER.set(parameters, "test_mssql");
     parameters.put("this parameter does not exist", "");
     AdbcDriver.PARAM_URI.set(parameters, "mssql://localhost:9999");
     assertThatThrownBy(() -> driver.open(parameters))

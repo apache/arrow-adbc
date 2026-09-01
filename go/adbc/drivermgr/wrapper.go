@@ -337,10 +337,10 @@ func (c *cnxn) GetObjects(_ context.Context, depth adbc.ObjectDepth, catalog, db
 	}
 
 	if len(tableType) > 0 {
-		cArr := []*C.char{}
-		for _, tt := range tableType {
+		cArr := make([]*C.char, len(tableType)+1)
+		for i, tt := range tableType {
 			cs := C.CString(tt)
-			cArr = append(cArr, cs)
+			cArr[i] = cs
 			defer C.free(unsafe.Pointer(cs))
 		}
 		tableType_ = &cArr[0]

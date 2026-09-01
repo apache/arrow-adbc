@@ -46,7 +46,7 @@ autocommit behaviour.}
 \item{adbc.sqlite.query.batch_rows}{The number of rows per batch to return.}
 }
 \value{
-An \code{\link[adbcdrivermanager:adbc_driver_void]{adbcdrivermanager::adbc_driver()}}
+An \code{\link[adbcdrivermanager:adbc_driver]{adbcdrivermanager::adbc_driver()}}
 }
 \description{
 ADBC SQLite3 Driver

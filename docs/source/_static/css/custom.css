@@ -35,3 +35,113 @@ figcaption {
 h1, h2, h3, h4 {
     text-wrap: balance;
 }
+
+/* Two-part package badges (shields.io style) */
+.package-badge-link {
+    text-decoration: none;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 0.25rem;
+    margin-bottom: 0.25rem;
+    max-width: 100%;
+}
+
+.package-badge-container {
+    display: inline-flex;
+    border-radius: 0.25rem;
+    overflow: hidden;
+    font-size: 0.75rem;
+    line-height: 1;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+.package-badge-left {
+    background-color: #555;
+    color: white;
+    padding: 0.25em 0.4em;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.package-badge-right {
+    background-color: #007ec6;
+    color: white;
+    padding: 0.25em 0.4em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+/* Compact driver cards only */
+.driver-cards .sd-card-body {
+    padding: 0.75rem 0.5rem !important;
+}
+
+.driver-cards .sd-card-body p {
+    margin-bottom: 0.15rem;
+}
+
+.driver-cards .sd-card-body p:last-child {
+    margin-bottom: 0;
+}
+
+/* Add spacing between the icon and the text in card titles */
+.sd-card-title .sd-octicon {
+    margin-right: 0.5rem;
+}
+
+/* Icon-only links (e.g. GitHub source links in the driver table) */
+a.icon-link {
+    color: var(--color-foreground-muted);
+    font-size: 1.15rem;
+    text-decoration: none;
+}
+
+a.icon-link:hover {
+    color: var(--color-brand-content);
+}
+
+/* Unified driver table: keep it compact and scannable */
+table.driver-table {
+    width: 100%;
+}
+
+table.driver-table td,
+table.driver-table th {
+    vertical-align: middle;
+}
+
+/* Install column reads as a command, not prose */
+table.driver-table td code,
+table.driver-table td .docutils.literal {
+    white-space: nowrap;
+}
+
+/* Center the icon in the Repo column (last column) of the main driver table */
+table.driver-table-main td:last-child,
+table.driver-table-main th:last-child {
+    text-align: center;
+}
+
+/* Secondary hint text in a table header (e.g. "(click for docs)") */
+table.driver-table th .th-hint {
+    font-weight: normal;
+    font-size: 0.8em;
+    opacity: 0.75;
+}
+
+/* Shrink the sidebar logo slightly */
+.sidebar-logo {
+    max-width: 95%;
+    margin-left: 0;
+    margin-right: auto;
+}
+
+/* Emphasize and align the documentation title in the sidebar */
+.sidebar-brand-text {
+    font-weight: 700;
+    margin-left: 12px;
+    font-size: 1.6rem;
+}

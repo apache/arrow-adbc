@@ -57,8 +57,8 @@ static int adbc_update_parent_child_count(SEXP xptr, int delta) {
   SEXP child_count_sym = PROTECT(Rf_install(".child_count"));
 #if defined(R_VERSION) && R_VERSION >= R_Version(4, 5, 0)
   SEXP child_count_sexp =
-      PROTECT(R_getVarEx(child_count_sym, parent_env, FALSE, R_UnboundValue));
-  if (child_count_sexp == R_UnboundValue) {
+      PROTECT(R_getVarEx(child_count_sym, parent_env, FALSE, R_MissingArg));
+  if (child_count_sexp == R_MissingArg) {
     Rf_error("Internal error: .child_count not found");
   }
 #else
@@ -102,12 +102,11 @@ static void finalize_database_xptr(SEXP database_xptr) {
   adbc_xptr_default_finalize<AdbcDatabase>(database_xptr);
 }
 
-namespace adbc {
-const std::string& CurrentArch();
-}
+// Forward declared from the driver manager; we can't use its internal header here
+const std::string& InternalAdbcCurrentArch();
 
 extern "C" SEXP RAdbcCurrentArch(void) {
-  auto current_arch = adbc::CurrentArch();
+  auto current_arch = InternalAdbcCurrentArch();
   return Rf_mkString(current_arch.c_str());
 }
 

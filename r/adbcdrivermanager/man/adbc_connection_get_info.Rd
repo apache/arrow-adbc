@@ -91,8 +91,8 @@ Requesting exact values may be expensive or unsupported.}
 
 \item{value}{A string or identifier.}
 
-\item{...}{Driver-specific options. For the default method, these are
-named values that are converted to strings.}
+\item{...}{Driver-specific options. These are generally named values that
+are converted to strings.}
 }
 \value{
 \itemize{

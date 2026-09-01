@@ -29,6 +29,7 @@ import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.adbc.core.BulkIngestMode;
 import org.apache.arrow.adbc.core.PartitionDescriptor;
 import org.apache.arrow.adbc.sql.SqlQuirks;
+import org.apache.arrow.flight.CallOption;
 import org.apache.arrow.flight.FlightEndpoint;
 import org.apache.arrow.flight.FlightInfo;
 import org.apache.arrow.flight.FlightRuntimeException;
@@ -36,7 +37,6 @@ import org.apache.arrow.flight.Location;
 import org.apache.arrow.flight.impl.Flight;
 import org.apache.arrow.flight.sql.FlightSqlClient;
 import org.apache.arrow.memory.BufferAllocator;
-import org.apache.arrow.util.AutoCloseables;
 import org.apache.arrow.vector.VectorSchemaRoot;
 import org.apache.arrow.vector.types.pojo.Field;
 import org.apache.arrow.vector.types.pojo.Schema;
@@ -47,6 +47,7 @@ public class FlightSqlStatement implements AdbcStatement {
   private final FlightSqlClientWithCallOptions client;
   private final LoadingCache<Location, FlightSqlClientWithCallOptions> clientCache;
   private final SqlQuirks quirks;
+  private final CallOption[] connectionOptions;
 
   // State for SQL queries
   private @Nullable String sqlQuery;
@@ -59,7 +60,8 @@ public class FlightSqlStatement implements AdbcStatement {
       BufferAllocator allocator,
       FlightSqlClientWithCallOptions client,
       LoadingCache<Location, FlightSqlClientWithCallOptions> clientCache,
-      SqlQuirks quirks) {
+      SqlQuirks quirks,
+      CallOption... connectionOptions) {
     this.allocator = allocator;
     this.client = client;
     this.clientCache = clientCache;
@@ -68,6 +70,7 @@ public class FlightSqlStatement implements AdbcStatement {
     this.preparedStatement = null;
     this.bulkOperation = null;
     this.bindRoot = null;
+    this.connectionOptions = connectionOptions;
   }
 
   static FlightSqlStatement ingestRoot(
@@ -76,10 +79,11 @@ public class FlightSqlStatement implements AdbcStatement {
       LoadingCache<Location, FlightSqlClientWithCallOptions> clientCache,
       SqlQuirks quirks,
       String targetTableName,
-      BulkIngestMode mode) {
+      BulkIngestMode mode,
+      CallOption... connectionOptions) {
     Objects.requireNonNull(targetTableName);
     final FlightSqlStatement statement =
-        new FlightSqlStatement(allocator, client, clientCache, quirks);
+        new FlightSqlStatement(allocator, client, clientCache, quirks, connectionOptions);
     statement.bulkOperation = new BulkState(mode, targetTableName);
     return statement;
   }
@@ -170,7 +174,7 @@ public class FlightSqlStatement implements AdbcStatement {
         statement.setParameters(new NonOwningRoot(bindParams));
         client.executePreparedUpdate(statement);
       } finally {
-        statement.close();
+        statement.close(connectionOptions);
       }
     } catch (FlightRuntimeException e) {
       // XXX: FlightSqlClient.executeUpdate does some extra wrapping that we need to undo
@@ -309,10 +313,15 @@ public class FlightSqlStatement implements AdbcStatement {
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() throws AdbcException {
     // TODO(https://github.com/apache/arrow/issues/39814): this is annotated wrongly upstream
     if (preparedStatement != null) {
-      AutoCloseables.close(preparedStatement);
+      try {
+        preparedStatement.close(connectionOptions);
+      } catch (Exception e) {
+        throw AdbcException.internal("[Flight SQL] Could not close prepared statement")
+            .withCause(e);
+      }
     }
   }
 

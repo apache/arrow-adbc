@@ -183,7 +183,7 @@ function(ADD_ARROW_LIB LIB_NAME)
                                   ${ARG_STATIC_LINK_LIBS})
     adbc_configure_target(${LIB_NAME}_objlib)
     # https://github.com/apache/arrow-adbc/issues/81
-    target_compile_features(${LIB_NAME}_objlib PRIVATE cxx_std_11)
+    target_compile_features(${LIB_NAME}_objlib PRIVATE cxx_std_20)
   else()
     # Prepare arguments for separate compilation of static and shared libs below
     # TODO: add PCH directives
@@ -199,7 +199,7 @@ function(ADD_ARROW_LIB LIB_NAME)
 
   if(BUILD_SHARED)
     add_library(${LIB_NAME}_shared SHARED ${LIB_DEPS})
-    target_compile_features(${LIB_NAME}_shared PRIVATE cxx_std_17)
+    target_compile_features(${LIB_NAME}_shared PRIVATE cxx_std_20)
     set_property(TARGET ${LIB_NAME}_shared PROPERTY CXX_STANDARD_REQUIRED ON)
     adbc_configure_target(${LIB_NAME}_shared)
     if(EXTRA_DEPS)
@@ -253,7 +253,7 @@ function(ADD_ARROW_LIB LIB_NAME)
     endif()
 
     # https://github.com/apache/arrow-adbc/issues/81
-    target_compile_features(${LIB_NAME}_shared PRIVATE cxx_std_11)
+    target_compile_features(${LIB_NAME}_shared PRIVATE cxx_std_20)
 
     target_link_libraries(${LIB_NAME}_shared
                           LINK_PUBLIC
@@ -302,8 +302,7 @@ function(ADD_ARROW_LIB LIB_NAME)
             DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
     # If we're building on Windows using vcpkg, ensure the runtime dependencies of binaries are copied to the install folder.
-    # TODO(https://github.com/apache/arrow-adbc/issues/3826): auto-detect this
-    if(ADBC_BUILD_VCPKG)
+    if(WIN32 AND VCPKG_TOOLCHAIN)
       install(TARGETS ${LIB_NAME}_shared
                       RUNTIME_DEPENDENCIES
                       PRE_EXCLUDE_REGEXES
@@ -317,7 +316,7 @@ function(ADD_ARROW_LIB LIB_NAME)
 
   if(BUILD_STATIC)
     add_library(${LIB_NAME}_static STATIC ${LIB_DEPS})
-    target_compile_features(${LIB_NAME}_static PRIVATE cxx_std_11)
+    target_compile_features(${LIB_NAME}_static PRIVATE cxx_std_20)
     set_property(TARGET ${LIB_NAME}_static PROPERTY CXX_STANDARD_REQUIRED ON)
     adbc_configure_target(${LIB_NAME}_static)
     if(EXTRA_DEPS)
@@ -352,7 +351,7 @@ function(ADD_ARROW_LIB LIB_NAME)
                                      OUTPUT_NAME ${LIB_NAME_STATIC})
 
     # https://github.com/apache/arrow-adbc/issues/81
-    target_compile_features(${LIB_NAME}_static PRIVATE cxx_std_11)
+    target_compile_features(${LIB_NAME}_static PRIVATE cxx_std_20)
 
     if(ARG_STATIC_INSTALL_INTERFACE_LIBS)
       target_link_libraries(${LIB_NAME}_static LINK_PUBLIC

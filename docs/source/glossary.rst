@@ -23,25 +23,44 @@ Glossary
 
    Arrow Flight SQL
      A :term:`wire protocol` for data systems that uses Apache Arrow.
-     See the :external:doc:`specification <format/FlightSql>`.
+     See the :external:doc:`Flight SQL specification <format/FlightSql>`.
 
    client API
      The API that an application uses to interact with a database.  May
-     abstract over the underlying :term:`wire protocol` and other details.
-     For example, ADBC, JDBC, ODBC.
+     abstract over the underlying :term:`wire protocol` and other details.  A
+     client API is generally standardized so that many applications and
+     databases can interoperate through it: examples include ADBC (defined by
+     the :doc:`ADBC specification <format/specification>`), JDBC, and ODBC.
+
+   client library
+     A library an application uses to access databases from a particular
+     language. In ADBC, a client library exposes the ADBC :term:`client API`
+     and includes a :term:`driver manager` for loading and using
+     :term:`drivers <driver>`. Its API is designed to feel idiomatic in the host
+     language (for example, DBAPI in Python, ``database/sql`` in Go, or DBI in
+     R). The terms *client library* and *driver manager* are often used
+     interchangeably, though strictly the driver manager is the driver-loading
+     component within the client library.
 
    connection
-     In ADBC, the connection object/struct represents a single connection to a
-     database.  Multiple connections may be created from one :term:`database`.
+     In the ADBC API, the connection object/struct represents a single
+     connection to a database.  Multiple connections may be created from one
+     :term:`database`.
 
    connection profile
-     A preconfigured driver and options that can be loaded by the
-     :term:`driver manager` for convenience.  Specified via a TOML file.  See
-     :doc:`format/connection_profiles`.
+     In ADBC, a named, reusable configuration that pairs a :term:`driver` with
+     a set of options, stored in a TOML file. A :term:`client library` can load
+     a profile by name at connection time, so credentials and settings do not
+     have to be specified in application code.
 
    database
-     In ADBC, the database object/struct holds state that is shared across
-     connections.
+     In the ADBC API, the database object/struct holds state that is shared
+     across :term:`connections <connection>`.
+
+     In general usage, a database is the system that an ADBC :term:`driver`
+     connects to. This documentation uses the term broadly to refer not only to
+     databases proper but also to query engines, data warehouses, data
+     lakehouses, cloud data platforms, and the like.
 
    driver
      Loosely speaking, a library that implements a :term:`client API` using a
@@ -58,33 +77,28 @@ Glossary
      application in any supported language using a :term:`driver manager`.
 
    driver manager
-     A library for loading and using :term:`drivers <driver>`. A driver manager
-     implements the ADBC API and delegates to dynamically-loaded drivers. It
-     simplifies using multiple drivers in a single application and makes it
-     possible to use drivers written in any language, regardless of the language
-     the application is written in.
-
-     The driver manager in each language is similar.  In C/C++, it can
-     dynamically load drivers so that applications do not have to directly link
-     to them.  (Since all drivers expose the same API, their symbols would
-     collide otherwise.)  In Python, it loads drivers and provides Python
-     bindings on top.
+     A component that dynamically loads :term:`drivers <driver>` and forwards an
+     application's calls to them. In ADBC, the driver manager is the part of a
+     :term:`client library` that loads ADBC drivers. It can load any driver
+     built as a shared library, making it possible to use a driver written in
+     one language from an application written in another, and simplifies using
+     multiple drivers in a single application. The terms *driver manager* and
+     *client library* are often used interchangeably.
 
    driver manifest
-     A file (in TOML format) describing a :term:`driver`. This file's structure
-     is part of the ADBC :doc:`specification <format/specification>`. A
-     :term:`driver manager` can load a driver from a which simplifies the
-     process for users.
+     In ADBC, a file (in TOML format) describing a :term:`driver`, with a
+     structure defined by the ADBC specification. A :term:`driver manager` can
+     load a driver from its manifest, which simplifies the process for users.
 
    entrypoint
-     The name of a function exported by a driver that the :term:`driver manager`
-     calls when a driver is loaded to perform any initialization required by the
-     driver. The name follows a convention which is outlined in
-     :c:type:`AdbcDriverInitFunc` but another name may be used.
+     In ADBC, the name of a function exported by a driver that the
+     :term:`driver manager` calls when a driver is loaded to perform any
+     initialization required by the driver. The name follows a convention which
+     is outlined in :c:type:`AdbcDriverInitFunc` but another name may be used.
 
    statement
-     In ADBC, the statement object/struct holds state for executing a single
-     query.  The query itself, bind parameters, result sets, and so on are all
+     In the ADBC API, the statement object/struct holds state for executing a
+     single query.  The query itself, bind parameters, result sets, and so on are all
      tied to the statement.  Multiple statements may be created from one
      :term:`connection` (though not all drivers will support this).
 
@@ -96,12 +110,12 @@ Glossary
      predictable semantics.
 
    wire protocol
-     The actual way a database driver connects to a database, issues commands,
-     gets results, and so forth.  For example, :term:`Arrow Flight SQL`, the
-     `PostgreSQL wire protocol`_, or `Tabular Data Stream`_ (Microsoft SQL
-     Server).  Generally, an application is not going to implement and use this
-     directly, but instead use something higher-level, like an ADBC, JDBC, or
-     ODBC driver.
+     The actual way a driver connects to a :term:`database`, issues commands,
+     gets results, and so forth.  Also called a database client-server protocol.
+     For example, :term:`Arrow Flight SQL`, the `PostgreSQL wire protocol`_, or
+     `Tabular Data Stream`_ (Microsoft SQL Server).  Generally, an application
+     does not implement or use this directly, but instead uses something
+     higher-level, like an ADBC, JDBC, or ODBC driver.
 
 .. _PostgreSQL wire protocol: https://www.postgresql.org/docs/current/protocol.html
 .. _Substrait: https://substrait.io/

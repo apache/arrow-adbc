@@ -65,7 +65,7 @@ jobs:
     # For cron: only run on the main repo, not forks
     if: github.event_name != 'schedule' || github.repository == 'apache/arrow-adbc'
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -123,7 +123,7 @@ jobs:
         run: |
           (. adbc/.env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
       - name: Setup Go
-        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -284,6 +284,7 @@ jobs:
         working-directory: adbc
         env:
           ADBC_BUILD_STATIC: ON
+          ADBC_BUILD_SHARED: OFF
           ADBC_BUILD_TESTS: OFF
           ADBC_USE_ASAN: OFF
           ADBC_USE_UBSAN: OFF
@@ -358,6 +359,24 @@ jobs:
           popd
           cp -a adbc/dist/ ./
 
+      # Basic sanity check; also don't ship binaries in sources JAR to avoid bloat
+      - name: Verify JNI JAR contents
+        run: |
+          sources_jar=$(find dist -maxdepth 1 -name 'adbc-driver-jni-*-sources.jar' -print -quit)
+          runtime_jar=${sources_jar%-sources.jar}.jar
+
+          jar tf "${sources_jar}" > temp_jni_sources_contents.txt
+          if grep -q '^adbc_driver_jni/' temp_jni_sources_contents.txt; then
+            echo "JNI source JAR contains native binaries: ${sources_jar}"
+            exit 1
+          fi
+
+          jar tf "${runtime_jar}" > temp_jni_runtime_contents.txt
+          if ! grep -q '^adbc_driver_jni/' temp_jni_runtime_contents.txt; then
+            echo "JNI runtime JAR does not contain native binaries: ${runtime_jar}"
+            exit 1
+          fi
+
       - name: Archive JARs
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -387,7 +406,7 @@ jobs:
         with:
           name: source
 
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: apache/arrow
           path: arrow
@@ -424,12 +443,12 @@ jobs:
           mv apache-arrow-adbc-$VERSION.tar.gz adbc/ci/linux-packages/
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@89f90524b88a01fe6e0b732220432cc6142926af  # v1.313.0
+        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b  # v1.321.0
         with:
           ruby-version: ruby
 
       - name: Cache ccache
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: adbc/ci/linux-packages/${{ env.TASK_NAMESPACE }}/build/${{ matrix.target }}/ccache
           key: linux-${{ env.TASK_NAMESPACE }}-ccache-${{ matrix.target }}-{{ "${{ hashFiles('adbc.h', 'c/**', 'glib/**') }}" }}
@@ -437,7 +456,7 @@ jobs:
           lookup-only: true
 
       - name: Login to GitHub Container registry
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee  # v4.2.0
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f  # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -483,7 +502,6 @@ jobs:
             devscripts \
             gpg \
             rpm
-          gem install apt-dists-merge
           (echo "Key-Type: RSA"; \
            echo "Key-Length: 4096"; \
            echo "Name-Real: Test"; \
@@ -497,6 +515,7 @@ jobs:
       - name: Test
         run: |
           pushd adbc/ci/linux-packages
+          bundle install
           rake --trace ${TASK_NAMESPACE}:test
           popd
 
@@ -696,6 +715,7 @@ jobs:
 
           docker compose run \
             -e SETUPTOOLS_SCM_PRETEND_VERSION=$VERSION \
+            -e CIBW_ENVIRONMENT_PASS_LINUX=SETUPTOOLS_SCM_PRETEND_VERSION \
             python-wheel-manylinux-relocate
           popd
 
@@ -808,25 +828,17 @@ jobs:
       - name: Install Homebrew dependencies
         run: brew install autoconf bash pkg-config ninja
 
-      - name: Retrieve VCPKG version from .env
-        id: vcpkg_version
-        run: |
-          pushd adbc
-          vcpkg_version=$(cat ".env" | grep "VCPKG" | cut -d "=" -f2 | tr -d '"')
-          echo "VCPKG_VERSION=$vcpkg_version" | tee -a "$GITHUB_ENV"
-          popd
-
       - name: Install vcpkg
         run: |
           pushd adbc
-          ci/scripts/install_vcpkg.sh $VCPKG_ROOT $VCPKG_VERSION
+          ci/scripts/install_vcpkg.sh "$VCPKG_ROOT"
           popd
 
       - name: Get required Go version
         run: |
           (. adbc/.env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
 
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -950,8 +962,7 @@ jobs:
         python_version: ["3.10", "3.11", "3.12", "3.13", "3.14", "3.14t"]
     env:
       PYTHON_VERSION: "${{ matrix.python_version }}"
-      # Where to install vcpkg
-      VCPKG_ROOT: "${{ github.workspace }}\\vcpkg"
+      VCPKG_ROOT: "${{ github.workspace }}/vcpkg"
     steps:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
@@ -988,23 +999,13 @@ jobs:
           choco install --no-progress -y cmake --installargs 'ADD_CMAKE_TO_PATH=System'
           choco install --no-progress -y visualcpp-build-tools
 
-      - name: Retrieve VCPKG version from .env
-        shell: pwsh
-        run: |
-          pushd adbc
-          Select-String -Path .env -Pattern 'VCPKG="(.+)"' | % {"VCPKG_VERSION=$($_.matches.groups[1])"} >> $env:GITHUB_ENV
-          popd
-
       - name: Install vcpkg
-        shell: pwsh
+        shell: bash
         run: |
-          echo $env:VCPKG_VERSION
-          git clone --shallow-since=2024-06-01 https://github.com/microsoft/vcpkg $env:VCPKG_ROOT
-          pushd $env:VCPKG_ROOT
-          .\bootstrap-vcpkg.bat -disableMetrics
-          popd
+          cd adbc
+          ./ci/scripts/install_vcpkg.sh "$VCPKG_ROOT"
 
-      - uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -1012,7 +1013,7 @@ jobs:
           cache-dependency-path: adbc/go/adbc/go.sum
 
       - name: Install Python ${{ matrix.python_version }}
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           check-latest: true
           python-version: ${{ matrix.python_version }}
@@ -1141,7 +1142,7 @@ jobs:
           mv apache-arrow-adbc-${VERSION} adbc
 
       - name: Setup Node
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           package-manager-cache: false
@@ -1194,7 +1195,7 @@ jobs:
           mv apache-arrow-adbc-${VERSION} adbc
 
       - name: Setup Node
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
           package-manager-cache: false
@@ -1256,6 +1257,8 @@ jobs:
       - python-macos
       - python-windows
       - python-sdist
+    permissions:
+      contents: write
     steps:
       - name: Get All Artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -1314,7 +1317,7 @@ jobs:
       run:
         shell: bash -l -eo pipefail {0}
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: true
@@ -1353,11 +1356,11 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref_name == 'main' && (github.event.schedule || inputs.upload_artifacts)
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - name: Install Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.13'
       - name: Clean
@@ -1380,7 +1383,7 @@ jobs:
       - python-windows
       - python-sdist
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: true

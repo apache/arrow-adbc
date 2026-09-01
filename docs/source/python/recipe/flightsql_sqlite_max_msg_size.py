@@ -26,8 +26,8 @@
 
 import os
 
-import adbc_driver_flightsql.dbapi
 from adbc_driver_flightsql import DatabaseOptions
+from adbc_driver_manager import dbapi
 
 uri = os.environ["ADBC_SQLITE_FLIGHTSQL_URI"]
 
@@ -46,13 +46,13 @@ SELECT printf('%.*c', 16384, 'x') FROM generate_series
 
 #: When we execute the query, we'll get an error.
 
-conn = adbc_driver_flightsql.dbapi.connect(uri)
+conn = dbapi.connect("flightsql", uri)
 with conn.cursor() as cur:
     cur.execute(query)
 
     try:
         cur.fetchallarrow()
-    except adbc_driver_flightsql.dbapi.InternalError:
+    except dbapi.InternalError:
         # This exception is expected.
         pass
     else:
@@ -62,7 +62,8 @@ conn.close()
 
 #: We can instead change the limit when connecting.
 
-conn = adbc_driver_flightsql.dbapi.connect(
+conn = dbapi.connect(
+    "flightsql",
     uri,
     db_kwargs={DatabaseOptions.WITH_MAX_MSG_SIZE.value: "2147483647"},
 )

@@ -37,6 +37,8 @@ use adbc_core::{
     schemas,
 };
 
+pub const VENDOR_INFO_CODE: u32 = 10_042;
+
 #[derive(Debug)]
 pub struct SingleBatchReader {
     batch: Option<RecordBatch>,
@@ -306,15 +308,35 @@ impl Connection for DummyConnection {
         Err(error)
     }
 
+    /// This method is used to test that errors round-trip correctly.
+    fn get_cancel_handle(&self) -> Box<dyn adbc_core::CancelHandle> {
+        struct CancelHandle;
+
+        impl adbc_core::CancelHandle for CancelHandle {
+            fn try_cancel(&self) -> Result<()> {
+                let mut error = Error::with_message_and_status("message", Status::Cancelled);
+                error.vendor_code = constants::ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA;
+                error.sqlstate = [1, 2, 3, 4, 5];
+                error.details = Some(vec![
+                    ("key1".into(), b"AAA".into()),
+                    ("key2".into(), b"ZZZZZ".into()),
+                ]);
+                Err(error)
+            }
+        }
+
+        Box::new(CancelHandle)
+    }
+
     fn commit(&mut self) -> Result<()> {
         Ok(())
     }
 
     fn get_info(
         &self,
-        _codes: Option<HashSet<InfoCode>>,
+        codes: Option<HashSet<InfoCode>>,
     ) -> Result<Box<dyn RecordBatchReader + Send + 'static>> {
-        let string_value_array = StringArray::from(vec!["MyVendorName"]);
+        let string_value_array = StringArray::from(vec!["MyVendorName", "MyVendorInfoValue"]);
         let bool_value_array = BooleanArray::from(vec![true]);
         let int64_value_array = Int64Array::from(vec![42]);
         let int32_bitmask_array = Int32Array::from(vec![1337]);
@@ -355,20 +377,34 @@ impl Connection for DummyConnection {
             false,
         )?;
 
-        let name_array = UInt32Array::from(vec![
-            Into::<u32>::into(&InfoCode::VendorName),
-            Into::<u32>::into(&InfoCode::VendorVersion),
-            Into::<u32>::into(&InfoCode::VendorArrowVersion),
-            Into::<u32>::into(&InfoCode::DriverName),
-            Into::<u32>::into(&InfoCode::DriverVersion),
-            Into::<u32>::into(&InfoCode::DriverArrowVersion),
-        ]);
+        // Every info value this driver knows, as (code, union type id, offset into that type's
+        // child array). Includes a vendor-specific code to exercise `InfoCode::Other`.
+        let known_info: [(InfoCode, i8, i32); 7] = [
+            (InfoCode::VendorName, 0, 0),
+            (InfoCode::VendorVersion, 1, 0),
+            (InfoCode::VendorArrowVersion, 2, 0),
+            (InfoCode::DriverName, 3, 0),
+            (InfoCode::DriverVersion, 4, 0),
+            (InfoCode::DriverArrowVersion, 5, 0),
+            (InfoCode::Other(VENDOR_INFO_CODE), 0, 1),
+        ];
+        let rows: Vec<&(InfoCode, i8, i32)> = known_info
+            .iter()
+            .filter(|(code, _, _)| codes.as_ref().is_none_or(|codes| codes.contains(code)))
+            .collect();
 
-        let type_id_buffer = [0_i8, 1, 2, 3, 4, 5]
-            .into_iter()
+        let name_array = UInt32Array::from(
+            rows.iter()
+                .map(|(code, _, _)| code.into())
+                .collect::<Vec<u32>>(),
+        );
+        let type_id_buffer = rows
+            .iter()
+            .map(|(_, type_id, _)| *type_id)
             .collect::<ScalarBuffer<i8>>();
-        let value_offsets_buffer = [0_i32, 0, 0, 0, 0, 0]
-            .into_iter()
+        let value_offsets_buffer = rows
+            .iter()
+            .map(|(_, _, offset)| *offset)
             .collect::<ScalarBuffer<i32>>();
 
         let value_array = UnionArray::try_new(

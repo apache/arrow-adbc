@@ -108,7 +108,7 @@ if(ADBC_BUILD_TESTS)
                 adbc_driver_common
                 adbc_validation
                 ${TEST_LINK_LIBS})
-  target_compile_features(adbc-driver-manager-test PRIVATE cxx_std_17)
+  target_compile_features(adbc-driver-manager-test PRIVATE cxx_std_20)
   add_dependencies(adbc-driver-manager-test adbc_driver_entrypoint
                    adbc_driver_no_entrypoint)
 
@@ -153,7 +153,7 @@ if(ADBC_BUILD_TESTS)
                 EXTRA_LINK_LIBS
                 adbc_validation_util
                 ${TEST_LINK_LIBS})
-  target_compile_features(adbc-version-100-compatibility-test PRIVATE cxx_std_17)
+  target_compile_features(adbc-version-100-compatibility-test PRIVATE cxx_std_20)
   target_include_directories(adbc-version-100-compatibility-test SYSTEM
                              PRIVATE ${REPOSITORY_ROOT}/c/ ${REPOSITORY_ROOT}/c/include/
                                      ${LIBPQ_INCLUDE_DIRS} ${REPOSITORY_ROOT}/c/driver)

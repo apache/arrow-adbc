@@ -15,6 +15,7 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import datetime
 import os
 import sys
 from pathlib import Path
@@ -27,16 +28,18 @@ sys.path.append(str(Path("./ext").resolve()))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "ADBC"
-copyright = """2022–2025 The Apache Software Foundation.  Apache Arrow, Arrow,
-Apache, the Apache logo, and the Apache Arrow project logo are either
-registered trademarks or trademarks of The Apache Software Foundation in the
+copyright = f"""2022–{datetime.date.today().year} The Apache Software Foundation.
+Apache Arrow, Arrow, Apache, the Apache logo, and the Apache Arrow project logo are
+either registered trademarks or trademarks of The Apache Software Foundation in the
 United States and other countries."""
 author = "the Apache Arrow Developers"
-release = "24 (dev)"
+release = "25 (dev)"
 # Needed to generate version switcher
 version = release
+# Override Sphinx's default title to capitalize "Documentation"
+html_title = f"{project} {release} Documentation"
 # For linking to latest downloads
-latest_release = "23"
+latest_release = "24"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -58,6 +61,7 @@ extensions = [
     "sphinx_copybutton",
     "sphinx_design",
     "sphinxext.opengraph",
+    "sphinx_reredirects",
 ]
 templates_path = ["_templates"]
 
@@ -128,18 +132,18 @@ nitpick_ignore = [
 
 doctest_global_setup = """
 try:
-    import adbc_driver_sqlite
-    import adbc_driver_sqlite.dbapi  # noqa: F401
+    import adbc_driver_manager
+    import adbc_driver_manager.dbapi  # noqa: F401
 except ImportError:
-    adbc_driver_sqlite = None
+    adbc_driver_manager = None
 """
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_css_files = [
-    "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css",
     "css/custom.css",
+    "fontawesome/css/all.min.css",
 ]
 html_static_path = ["_static"]
 html_theme = "furo"
@@ -196,3 +200,13 @@ if "dev" in release:
 else:
     ogp_site_url = f"https://arrow.apache.org/adbc/{release}/"
 ogp_image = "_static/banner.png"
+
+# -- Options for sphinx_reredirects ------------------------------------------
+
+redirects = {
+    "driver/status": "./index.html",
+    "driver/snowflake": "./index.html",
+    "driver/installation": "../installation.html",
+    "python/api/adbc_driver_snowflake": "../../driver/index.html",
+    "python/api/adbc_driver_bigquery": "../../driver/index.html",
+}

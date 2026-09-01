@@ -65,6 +65,11 @@ main() {
     pushd "${ARROW_ARTIFACTS_DIR}"
 
     for pom in *.pom; do
+        if grep -Eq '<maven\.deploy\.skip>[[:space:]]*true[[:space:]]*</maven\.deploy\.skip>' "${pom}"; then
+            echo "Skipping deployment of ${pom}"
+            continue
+        fi
+
         base=$(basename "${pom}" .pom)
         files=()
         types=()

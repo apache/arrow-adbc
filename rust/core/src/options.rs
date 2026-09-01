@@ -223,6 +223,19 @@ pub enum InfoCode {
     ///
     /// ADBC API revision 1.1.0
     DriverAdbcVersion,
+    /// Any other info code than the ones listed above. The value is the raw code.
+    ///
+    /// Codes `[0, 10_000)` are reserved for ADBC usage (of which `[500, 1_000)`
+    /// is reserved for "XDBC" information since ADBC API revision 1.1.0), while
+    /// codes `10_000` and higher are driver/vendor-specific. Drivers ignore
+    /// requests for codes they don't recognize (the row is omitted from the
+    /// result).
+    ///
+    /// Note: to keep equality and hashing consistent, this variant should never
+    /// be constructed with the value of a code that has a dedicated variant;
+    /// use [InfoCode::from] to convert from a raw `u32`, which only produces
+    /// `Other` for values without one.
+    Other(u32),
 }
 
 impl From<&InfoCode> for u32 {
@@ -243,34 +256,30 @@ impl From<&InfoCode> for u32 {
             InfoCode::DriverVersion => constants::ADBC_INFO_DRIVER_VERSION,
             InfoCode::DriverArrowVersion => constants::ADBC_INFO_DRIVER_ARROW_VERSION,
             InfoCode::DriverAdbcVersion => constants::ADBC_INFO_DRIVER_ADBC_VERSION,
+            InfoCode::Other(v) => *v,
         }
     }
 }
 
-impl TryFrom<u32> for InfoCode {
-    type Error = Error;
-
-    fn try_from(value: u32) -> Result<Self, Self::Error> {
+impl From<u32> for InfoCode {
+    fn from(value: u32) -> Self {
         match value {
-            constants::ADBC_INFO_VENDOR_NAME => Ok(InfoCode::VendorName),
-            constants::ADBC_INFO_VENDOR_VERSION => Ok(InfoCode::VendorVersion),
-            constants::ADBC_INFO_VENDOR_ARROW_VERSION => Ok(InfoCode::VendorArrowVersion),
-            constants::ADBC_INFO_VENDOR_SQL => Ok(InfoCode::VendorSql),
-            constants::ADBC_INFO_VENDOR_SUBSTRAIT => Ok(InfoCode::VendorSubstrait),
+            constants::ADBC_INFO_VENDOR_NAME => InfoCode::VendorName,
+            constants::ADBC_INFO_VENDOR_VERSION => InfoCode::VendorVersion,
+            constants::ADBC_INFO_VENDOR_ARROW_VERSION => InfoCode::VendorArrowVersion,
+            constants::ADBC_INFO_VENDOR_SQL => InfoCode::VendorSql,
+            constants::ADBC_INFO_VENDOR_SUBSTRAIT => InfoCode::VendorSubstrait,
             constants::ADBC_INFO_VENDOR_SUBSTRAIT_MIN_VERSION => {
-                Ok(InfoCode::VendorSubstraitMinVersion)
+                InfoCode::VendorSubstraitMinVersion
             }
             constants::ADBC_INFO_VENDOR_SUBSTRAIT_MAX_VERSION => {
-                Ok(InfoCode::VendorSubstraitMaxVersion)
+                InfoCode::VendorSubstraitMaxVersion
             }
-            constants::ADBC_INFO_DRIVER_NAME => Ok(InfoCode::DriverName),
-            constants::ADBC_INFO_DRIVER_VERSION => Ok(InfoCode::DriverVersion),
-            constants::ADBC_INFO_DRIVER_ARROW_VERSION => Ok(InfoCode::DriverArrowVersion),
-            constants::ADBC_INFO_DRIVER_ADBC_VERSION => Ok(InfoCode::DriverAdbcVersion),
-            v => Err(Error::with_message_and_status(
-                format!("Unknown info code: {v}"),
-                Status::InvalidData,
-            )),
+            constants::ADBC_INFO_DRIVER_NAME => InfoCode::DriverName,
+            constants::ADBC_INFO_DRIVER_VERSION => InfoCode::DriverVersion,
+            constants::ADBC_INFO_DRIVER_ARROW_VERSION => InfoCode::DriverArrowVersion,
+            constants::ADBC_INFO_DRIVER_ADBC_VERSION => InfoCode::DriverAdbcVersion,
+            v => InfoCode::Other(v),
         }
     }
 }
@@ -739,5 +748,22 @@ impl AsRef<str> for Statistics {
 impl std::fmt::Display for Statistics {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.as_ref())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn info_code_u32_roundtrip() {
+        for code in (0..20_000_u32).chain([u32::MAX]) {
+            assert_eq!(u32::from(&InfoCode::from(code)), code);
+        }
+        assert_eq!(
+            InfoCode::from(constants::ADBC_INFO_VENDOR_NAME),
+            InfoCode::VendorName
+        );
+        assert_eq!(InfoCode::from(10_042), InfoCode::Other(10_042));
     }
 }

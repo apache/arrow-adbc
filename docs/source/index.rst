@@ -39,144 +39,43 @@ Apache Arrow ADBC
 
          **Cross-language**, **Arrow-native** database access.
 
-ADBC is a set of APIs and libraries for Arrow-native access to databases.
-Execute SQL and Substrait_ queries, query database catalogs, and more, all
-using Arrow data to eliminate unnecessary data copies, speed up access, and
-make it more convenient to build analytical applications.
+ADBC is a standardized set of APIs and libraries for fast, Arrow-native
+database access. Execute SQL queries, fetch results, ingest bulk data,
+explore catalogs, and more. ADBC uses Arrow columnar format to eliminate
+copies and conversions, speeding up data retrieval for analytics and AI
+applications.
 
+Getting Started
+---------------
+
+.. grid:: 1 1 2 3
+   :margin: 4 4 0 0
+   :gutter: 3
+
+   .. grid-item-card:: :octicon:`plug` Available Drivers
+      :link: driver/index
+      :link-type: doc
+
+      Connect to a growing list of databases using ADBC drivers.
+
+   .. grid-item-card:: :octicon:`code` Client Libraries
+      :link: client_libraries
+      :link-type: doc
+
+      Use ADBC from C/C++, C#, Go, Java, JavaScript, Python, R, Ruby, and Rust.
+
+   .. grid-item-card:: :octicon:`tools` Writing Drivers
+      :link: driver/authoring
+      :link-type: doc
+
+      Create your own ADBC driver using the driver SDKs available in multiple languages.
+
+
+.. _dbc: https://docs.columnar.tech/dbc
 .. _Substrait: https://substrait.io/
 
-.. div::
-
-   .. grid::
-      :margin: 4 4 0 0
-      :gutter: 1
-
-      .. grid-item-card::
-         :columns: 12 12 4 4
-
-         Quickstart
-         ^^^
-
-         Get started with simple examples in your language of choice.
-
-         +++
-
-         .. button-ref:: cpp/quickstart
-            :ref-type: doc
-            :color: secondary
-            :expand:
-
-            C/C++
-
-         .. button-link:: https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc
-            :color: secondary
-            :expand:
-
-            Go
-
-         .. button-ref:: java/quickstart
-            :ref-type: doc
-            :color: secondary
-            :expand:
-
-            Java
-
-         .. button-ref:: javascript/index
-            :ref-type: doc
-            :color: secondary
-            :expand:
-
-            JavaScript
-
-         .. button-ref:: python/quickstart
-            :ref-type: doc
-            :color: secondary
-            :expand:
-
-            Python
-
-         .. button-ref:: r/index
-            :ref-type: doc
-            :color: secondary
-            :expand:
-
-            R
-
-         .. button-ref:: rust/quickstart
-            :ref-type: doc
-            :color: secondary
-            :expand:
-
-            Rust
-
-      .. grid-item-card::
-         :columns: 12 4 4 4
-
-         Specification
-         ^^^
-
-         Learn about the underlying API specification.
-
-         +++
-
-         .. button-link:: https://arrow.apache.org/blog/2023/01/05/introducing-arrow-adbc/
-            :color: secondary
-            :expand:
-
-            Introducing ADBC :octicon:`cross-reference`
-
-         .. button-ref:: format/specification
-            :ref-type: doc
-            :color: secondary
-            :expand:
-
-            Specification
-
-         .. button-ref:: faq
-            :ref-type: doc
-            :color: secondary
-            :expand:
-
-            FAQ
-
-         .. button-ref:: glossary
-            :ref-type: doc
-            :color: secondary
-            :expand:
-
-            Glossary
-
-      .. grid-item-card::
-         :columns: 12 4 4 4
-
-         Development
-         ^^^
-
-         Report bugs, ask questions, and contribute to Apache Arrow.
-
-         +++
-
-         .. button-link:: https://github.com/apache/arrow-adbc/issues
-            :color: secondary
-            :expand:
-
-            :fab:`github` Issues/Questions
-
-         .. button-link:: https://arrow.apache.org/community/
-            :color: secondary
-            :expand:
-
-            Mailing List :octicon:`cross-reference`
-
-         .. button-link:: https://github.com/apache/arrow-adbc/blob/main/CONTRIBUTING.md
-            :color: secondary
-            :expand:
-
-            Contributing :octicon:`cross-reference`
-
 Why ADBC?
-=========
+---------
 
 .. grid:: 1 2 2 2
    :margin: 4 4 0 0
@@ -185,45 +84,132 @@ Why ADBC?
    .. grid-item-card:: Arrow-native
       :link: https://arrow.apache.org/
 
-      Execute queries and get back results in Arrow format, eliminating extra
-      data copies for Arrow-native backends.
+      Run queries and get back results in Arrow columnar format,
+      eliminating copies and conversions for blazing-fast transfer
+      to and from Arrow-native databases and engines.
 
       +++
       Learn about Apache Arrow
 
-   .. grid-item-card:: Backend-agnostic
-      :link: driver/status
+   .. grid-item-card:: Multi-database
+      :link: driver/index
       :link-type: doc
 
-      Connect to all kinds of databases, even ones that aren't Arrow-native.
-      ADBC drivers optimize conversion to/from Arrow where required, saving
-      work for developers.
+      Connect to all kinds of databases through one vendor-neutral standard,
+      even ones that aren't Arrow-native. ADBC drivers optimize conversion
+      to/from Arrow where required.
 
       +++
       See Supported Drivers
 
    .. grid-item-card:: Cross-language
+      :link: client_libraries
+      :link-type: doc
 
-      Work in C/C++, C#, Go, Java, Python, R, Ruby, Rust, and more.
+      Work in C/C++, C#, Go, Java, JavaScript / TypeScript, Python, R, Ruby,
+      Rust, and more. Use idiomatic APIs like DBAPI in Python,
+      ``database/sql`` in Go, and DBI in R.
+
+      +++
+      See Client Libraries
 
    .. grid-item-card:: Full-featured
+      :link: format/comparison
+      :link-type: doc
 
       Execute SQL and Substrait, query database catalogs, inspect table
       schemas, and more.  ADBC handles common tasks without having to pull in
       another database client.
 
-   .. grid-item-card:: Language-native
+      +++
+      Compare to Other APIs
 
-      Use language-native APIs that you're already familiar with, like DBAPI
-      in Python, ``database/sql`` in Go, or DBI in R.
+More Resources
+--------------
+
+.. grid:: 1 2 2 2
+   :margin: 4 4 0 0
+   :gutter: 2
+
+   .. grid-item-card:: Explore
+
+      .. button-ref:: integrations
+         :ref-type: doc
+         :color: secondary
+         :expand:
+
+         Tools & Integrations
+
+      .. button-ref:: connection_profiles
+         :ref-type: doc
+         :color: secondary
+         :expand:
+
+         Connection Profiles
+
+      .. button-link:: https://arrow.apache.org/blog/2023/01/05/introducing-arrow-adbc/
+         :color: secondary
+         :expand:
+
+         Introducing ADBC :octicon:`cross-reference`
+
+      .. button-ref:: faq
+         :ref-type: doc
+         :color: secondary
+         :expand:
+
+         FAQ
+
+      .. button-ref:: glossary
+         :ref-type: doc
+         :color: secondary
+         :expand:
+
+         Glossary
+
+   .. grid-item-card:: Community
+
+      .. button-link:: https://github.com/apache/arrow-adbc/issues
+         :color: secondary
+         :expand:
+
+         :fab:`github` Issues / Questions
+
+      .. button-link:: https://arrow.apache.org/community/
+         :color: secondary
+         :expand:
+
+         Mailing List :octicon:`cross-reference`
+
+      .. button-link:: https://github.com/apache/arrow-adbc/blob/main/CONTRIBUTING.md
+         :color: secondary
+         :expand:
+
+         Contributing :octicon:`cross-reference`
+
+      .. button-link:: https://adbc-drivers.org
+         :color: secondary
+         :expand:
+
+         Driver Foundry :octicon:`cross-reference`
 
 .. toctree::
    :maxdepth: 1
+   :titlesonly:
+   :caption: Connect
    :hidden:
 
-   faq
-   glossary
-   genindex
+   Client Libraries <client_libraries>
+   Drivers <driver/index>
+   Tools & Integrations <integrations>
+   Connection Profiles <connection_profiles>
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Build
+   :hidden:
+
+   Writing New Drivers <driver/authoring>
 
 .. toctree::
    :maxdepth: 1
@@ -237,22 +223,9 @@ Why ADBC?
    JavaScript <javascript/index>
    Python <python/index>
    R <r/index>
+   Ruby <ruby/index>
    Rust <rust/index>
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Drivers
-   :hidden:
-
-   driver/installation
-   driver/status
-   driver/bigquery
-   driver/duckdb
-   driver/flight_sql
-   driver/jdbc
-   driver/postgresql
-   driver/sqlite
-   driver/authoring
+   Installation <installation>
 
 .. toctree::
    :maxdepth: 1
@@ -269,10 +242,19 @@ Why ADBC?
 
 .. toctree::
    :maxdepth: 1
-   :caption: Development
+   :caption: Contribute
    :hidden:
 
    development/contributing
    development/nightly
    development/versioning
    development/releasing
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Resources
+   :hidden:
+
+   faq
+   glossary
+   genindex

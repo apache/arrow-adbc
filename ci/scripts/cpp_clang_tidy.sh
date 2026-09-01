@@ -44,8 +44,8 @@ build_subproject() {
 
     # XXX(https://github.com/llvm/llvm-project/issues/46804): expand
     # CC and CXX symlinks
-    env CC=$(readlink -f ${CC:-$(which cc)}) \
-        CXX=$(readlink -f ${CXX:-$(which c++)}) \
+    env CC=$(readlink -f $(which ${CC:-cc})) \
+        CXX=$(readlink -f $(which ${CXX:-c++})) \
         cmake "${source_dir}/c" \
         ${ADBC_CMAKE_ARGS} \
         -DADBC_BUILD_SHARED="${ADBC_BUILD_SHARED}" \

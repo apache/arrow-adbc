@@ -35,13 +35,35 @@ using adbc_validation::IsOkStatus;
 
 namespace adbcpq {
 
+// COPY (SELECT CAST(col AS NUMERIC(18, 6)) AS col FROM (VALUES
+// ('5000000000.000001'), ('4999999999.000001'), ('10000.000001'),
+// ('9999.000001'), ('10001.000001'), ('100000000.000001'),
+// ('-10000.000001')) AS drvd(col))
+// TO STDOUT WITH (FORMAT binary);
+static uint8_t kTestPgCopyNumericZeroIntegerGroups[] = {
+    0x50, 0x47, 0x43, 0x4f, 0x50, 0x59, 0x0a, 0xff, 0x0d, 0x0a, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x12, 0x00, 0x05, 0x00,
+    0x02, 0x00, 0x00, 0x00, 0x06, 0x00, 0x32, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x64, 0x00, 0x01, 0x00, 0x00, 0x00, 0x12, 0x00, 0x05, 0x00, 0x02, 0x00, 0x00, 0x00,
+    0x06, 0x00, 0x31, 0x27, 0x0f, 0x27, 0x0f, 0x00, 0x00, 0x00, 0x64, 0x00, 0x01, 0x00,
+    0x00, 0x00, 0x10, 0x00, 0x04, 0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x00, 0x01, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x64, 0x00, 0x01, 0x00, 0x00, 0x00, 0x0e, 0x00, 0x03, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x06, 0x27, 0x0f, 0x00, 0x00, 0x00, 0x64, 0x00, 0x01, 0x00,
+    0x00, 0x00, 0x10, 0x00, 0x04, 0x00, 0x01, 0x00, 0x00, 0x00, 0x06, 0x00, 0x01, 0x00,
+    0x01, 0x00, 0x00, 0x00, 0x64, 0x00, 0x01, 0x00, 0x00, 0x00, 0x12, 0x00, 0x05, 0x00,
+    0x02, 0x00, 0x00, 0x00, 0x06, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x64, 0x00, 0x01, 0x00, 0x00, 0x00, 0x10, 0x00, 0x04, 0x00, 0x01, 0x40, 0x00, 0x00,
+    0x06, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x64, 0xff, 0xff};
+
 class PostgresCopyStreamWriteTester {
  public:
   ArrowErrorCode Init(struct ArrowSchema* schema, struct ArrowArray* array,
                       const PostgresTypeResolver& type_resolver,
                       struct ArrowError* error = nullptr) {
     NANOARROW_RETURN_NOT_OK(writer_.Init(schema));
-    NANOARROW_RETURN_NOT_OK(writer_.InitFieldWriters(type_resolver, error));
+    NANOARROW_RETURN_NOT_OK(writer_.InitFieldWriters(type_resolver, nullptr,
+                                                     /*disable_decimal_fast_path=*/false,
+                                                     error));
     NANOARROW_RETURN_NOT_OK(writer_.SetArray(array));
     return NANOARROW_OK;
   }
@@ -109,6 +131,54 @@ class PostgresCopyTest : public ::testing::Test {
   struct AdbcDatabase database_ = {};
   std::shared_ptr<PostgresTypeResolver> type_resolver_;
 };
+
+template <enum ArrowType Type>
+static void AssertNumericZeroIntegerGroupsRoundTrip(
+    const PostgresTypeResolver& type_resolver) {
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+  constexpr int32_t size = (Type == NANOARROW_TYPE_DECIMAL128) ? 128 : 256;
+  constexpr int32_t precision = 18;
+  constexpr int32_t scale = 6;
+
+  struct ArrowDecimal decimals[7];
+  constexpr struct ArrowStringView digits[] = {
+      {"5000000000000001", 16}, {"4999999999000001", 16}, {"10000000001", 11},
+      {"9999000001", 10},       {"10001000001", 11},      {"100000000000001", 15},
+      {"-10000000001", 12}};
+
+  std::vector<std::optional<ArrowDecimal*>> values;
+  values.reserve(7);
+  for (size_t i = 0; i < 7; i++) {
+    ArrowDecimalInit(&decimals[i], size, precision, scale);
+    ASSERT_EQ(ArrowDecimalSetDigits(&decimals[i], digits[i]), 0);
+    values.push_back(&decimals[i]);
+  }
+
+  ArrowSchemaInit(&schema.value);
+  ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema.value, 1), 0);
+  ASSERT_EQ(ArrowSchemaSetTypeDecimal(schema.value.children[0], Type, precision, scale),
+            0);
+  ASSERT_EQ(ArrowSchemaSetName(schema.value.children[0], "col"), 0);
+  ASSERT_EQ(adbc_validation::MakeBatch<ArrowDecimal*>(&schema.value, &array.value,
+                                                      &na_error, values),
+            ADBC_STATUS_OK);
+
+  PostgresCopyStreamWriteTester tester;
+  ASSERT_EQ(tester.Init(&schema.value, &array.value, type_resolver), NANOARROW_OK);
+  ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
+
+  const struct ArrowBuffer buf = tester.WriteBuffer();
+  // The last 2 bytes of a message can be transmitted via PQputCopyData
+  // so no need to test those bytes from the Writer
+  constexpr size_t buf_size = sizeof(kTestPgCopyNumericZeroIntegerGroups) - 2;
+  ASSERT_EQ(buf.size_bytes, static_cast<int64_t>(buf_size));
+  for (size_t i = 0; i < buf_size; i++) {
+    ASSERT_EQ(buf.data[i], kTestPgCopyNumericZeroIntegerGroups[i])
+        << " at position " << i;
+  }
+}
 
 TEST_F(PostgresCopyTest, PostgresCopyWriteBoolean) {
   adbc_validation::Handle<struct ArrowSchema> schema;
@@ -1052,6 +1122,14 @@ TEST_F(PostgresCopyTest, PostgresCopyWriteNumericNegativeScale) {
   for (size_t i = 0; i < buf_size; i++) {
     ASSERT_EQ(buf.data[i], kTestPgCopyNumericNegScale2[i]) << " at position " << i;
   }
+}
+
+TEST_F(PostgresCopyTest, PostgresCopyWriteNumericPreservesZeroIntegerGroupsDecimal128) {
+  AssertNumericZeroIntegerGroupsRoundTrip<NANOARROW_TYPE_DECIMAL128>(*type_resolver_);
+}
+
+TEST_F(PostgresCopyTest, PostgresCopyWriteNumericPreservesZeroIntegerGroupsDecimal256) {
+  AssertNumericZeroIntegerGroupsRoundTrip<NANOARROW_TYPE_DECIMAL256>(*type_resolver_);
 }
 
 using TimestampTestParamType =

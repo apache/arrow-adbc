@@ -77,9 +77,15 @@ public final class JdbcDataSourceDatabase implements AdbcDatabase {
   }
 
   @Override
-  public void close() throws Exception {
+  public void close() throws AdbcException {
     if (connection != null) {
-      connection.close();
+      try {
+        connection.close();
+      } catch (Exception e) {
+        throw AdbcException.internal(
+                JdbcDriverUtil.prefixExceptionMessage("Could not close database"))
+            .withCause(e);
+      }
     }
     connection = null;
   }

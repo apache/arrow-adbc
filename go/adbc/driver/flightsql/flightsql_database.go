@@ -30,11 +30,13 @@ import (
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/flight"
 	"github.com/apache/arrow-go/v18/arrow/flight/flightsql"
 	"github.com/bluele/gcache"
+	"go.opentelemetry.io/otel/trace"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
@@ -373,7 +375,7 @@ func (d *databaseImpl) Close() error {
 			"target", d.uri.String(),
 		)
 	}
-	return nil
+	return d.DatabaseImplBase.Close()
 }
 
 func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddle *bearerAuthMiddleware, cookies flight.CookieMiddleware) (*flightsql.Client, error) {
@@ -406,6 +408,30 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 	case "grpc+unix":
 		creds = insecure.NewCredentials()
 		target = "unix:" + uri.Path
+	case "flightsql":
+		transport := strings.ToLower(uri.Query().Get("transport"))
+		switch transport {
+		case "", "tls":
+			if uri.Path != "" {
+				return nil, adbc.Error{Msg: fmt.Sprintf("Invalid URI '%s': a socket path is only valid with transport=unix", loc), Code: adbc.StatusInvalidArgument}
+			}
+		case "tcp":
+			if uri.Path != "" {
+				return nil, adbc.Error{Msg: fmt.Sprintf("Invalid URI '%s': a socket path is only valid with transport=unix", loc), Code: adbc.StatusInvalidArgument}
+			}
+			creds = insecure.NewCredentials()
+		case "unix":
+			if uri.Host != "" {
+				return nil, adbc.Error{Msg: fmt.Sprintf("Invalid URI '%s': a host is not valid with transport=unix", loc), Code: adbc.StatusInvalidArgument}
+			}
+			if uri.Path == "" {
+				return nil, adbc.Error{Msg: fmt.Sprintf("Invalid URI '%s': transport=unix requires a socket path", loc), Code: adbc.StatusInvalidArgument}
+			}
+			creds = insecure.NewCredentials()
+			target = "unix:" + uri.Path
+		default:
+			return nil, adbc.Error{Msg: fmt.Sprintf("Invalid URI '%s': unrecognized transport '%s' (expected 'tls', 'tcp', or 'unix')", loc, transport), Code: adbc.StatusInvalidArgument}
+		}
 	}
 
 	dv, _ := d.DriverInfo.GetInfoForInfoCode(adbc.InfoDriverVersion)
@@ -480,7 +506,19 @@ type support struct {
 	transactions bool
 }
 
-func (d *databaseImpl) Open(ctx context.Context) (adbc.Connection, error) {
+func (d *databaseImpl) Open(ctx context.Context) (_ adbc.Connection, err error) {
+	ctx, span := internal.StartSpan(
+		ctx,
+		"FlightSQLDatabase.Open",
+		d,
+		trace.WithAttributes(traceHeaderAttrsWithPrefix(d.hdrs, traceRequestMetadataPrefix)...),
+	)
+	defer func() {
+		internal.NewEndSpanHelper(span).
+			WithError(err).
+			EndSpan()
+	}()
+
 	authMiddle := &bearerAuthMiddleware{hdrs: d.hdrs.Copy(), logger: safeLogger(d.Logger)}
 	var cookies flight.CookieMiddleware
 	if d.enableCookies {

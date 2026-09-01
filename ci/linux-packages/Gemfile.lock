@@ -1,0 +1,14 @@
+GEM
+  remote: https://rubygems.org/
+  specs:
+    apt-dists-merge (1.0.2)
+
+PLATFORMS
+  ruby
+  x86_64-linux-gnu
+
+DEPENDENCIES
+  apt-dists-merge
+
+BUNDLED WITH
+   2.6.3

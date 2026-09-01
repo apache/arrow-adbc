@@ -19,3 +19,6 @@
 // part: metadata
 
 skip = "COPY Writer not implemented"
+
+[tags]
+field-type-name = "time"

@@ -22,10 +22,14 @@ use std::sync::mpsc;
 
 use adbc_core::{
   Connection, Database, Driver, LOAD_FLAG_DEFAULT, Optionable, Statement,
+  error::{Error as AdbcError, Status},
   options::{
     AdbcVersion, InfoCode, ObjectDepth, OptionConnection, OptionDatabase, OptionStatement,
     OptionValue,
   },
+};
+use adbc_driver_manager::profile::{
+  ConnectionProfile, ConnectionProfileProvider, FilesystemProfileProvider,
 };
 use adbc_driver_manager::{ManagedConnection, ManagedDatabase, ManagedDriver, ManagedStatement};
 use arrow_array::RecordBatchReader;
@@ -46,7 +50,7 @@ pub enum ClientError {
 pub type Result<T> = std::result::Result<T, ClientError>;
 
 pub struct ConnectOptions {
-  pub driver: String,
+  pub driver: Option<String>,
   pub entrypoint: Option<String>,
   pub manifest_search_paths: Option<Vec<String>>,
   pub profile_search_paths: Option<Vec<String>>,
@@ -87,34 +91,104 @@ impl AdbcDatabaseCore {
       .profile_search_paths
       .map(|paths| paths.into_iter().map(PathBuf::from).collect());
 
-    let database_opts = opts.database_options.map(map_database_options);
+    let mut raw_opts = opts.database_options.unwrap_or_default();
+    let profile_uri: Option<String> = if let Some(profile) = raw_opts.remove("profile") {
+      if raw_opts
+        .get("uri")
+        .is_some_and(|u| u.starts_with("profile://"))
+      {
+        return Err(ClientError::Other(
+          "multiple profile sources: databaseOptions.profile and a profile:// URI in databaseOptions.uri are mutually exclusive"
+            .to_string(),
+        ));
+      }
+      Some(format!("profile://{profile}"))
+    } else if raw_opts
+      .get("uri")
+      .is_some_and(|u| u.starts_with("profile://"))
+    {
+      Some(raw_opts.remove("uri").unwrap())
+    } else {
+      None
+    };
 
-    let database = if opts.driver.contains(':') {
-      let provider = adbc_driver_manager::profile::FilesystemProfileProvider::new_with_search_paths(
-        profile_search_paths,
-      );
-      // URI-style ("sqlite:file::memory:") or profile URI ("profile://my_profile")
+    let database = if let Some(ref uri) = profile_uri {
+      let provider = FilesystemProfileProvider::new_with_search_paths(profile_search_paths);
+
+      // If driver is also specified, validate it agrees with the profile's driver.
+      // The C driver manager errors on disagreement; we replicate that here until
+      // the Rust driver manager gains native support for this validation.
+      if let Some(ref driver) = opts.driver {
+        let profile_name = uri.trim_start_matches("profile://");
+        let profile = provider.clone().get_profile(profile_name)?;
+        let (profile_driver, _) = profile.get_driver_name()?;
+        if !driver.is_empty() && driver != profile_driver {
+          return Err(ClientError::Adbc(AdbcError::with_message_and_status(
+            format!(
+              "profile specifies driver `{profile_driver}` which does not match requested driver `{driver}`"
+            ),
+            Status::InvalidArguments,
+          )));
+        }
+      }
+
       ManagedDatabase::from_uri_with_profile_provider(
-        &opts.driver,
+        uri,
         entrypoint.as_deref(),
         version,
         load_flags,
         manifest_search_paths,
         provider,
-        database_opts.into_iter().flatten(),
+        map_database_options(raw_opts),
       )?
     } else {
-      // Short name ("sqlite") or path ("/usr/lib/libadbc_driver_sqlite.so")
-      let mut driver = ManagedDriver::load_from_name(
-        &opts.driver,
-        entrypoint.as_deref(),
-        version,
-        load_flags,
-        manifest_search_paths,
-      )?;
-      match database_opts {
-        Some(db_opts) => driver.new_database_with_opts(db_opts)?,
-        None => driver.new_database()?,
+      match opts.driver {
+        Some(ref driver) if driver.contains(':') => {
+          let provider =
+            adbc_driver_manager::profile::FilesystemProfileProvider::new_with_search_paths(
+              profile_search_paths,
+            );
+          ManagedDatabase::from_uri_with_profile_provider(
+            driver,
+            entrypoint.as_deref(),
+            version,
+            load_flags,
+            manifest_search_paths,
+            provider,
+            map_database_options(raw_opts),
+          )?
+        }
+        Some(ref driver) => {
+          let mut drv = ManagedDriver::load_from_name(
+            driver,
+            entrypoint.as_deref(),
+            version,
+            load_flags,
+            manifest_search_paths,
+          )?;
+          drv.new_database_with_opts(map_database_options(raw_opts))?
+        }
+        None => {
+          let Some(uri) = raw_opts.remove("uri") else {
+            return Err(ClientError::Other(
+              "driver is required unless databaseOptions.uri or databaseOptions.profile is provided"
+                .to_string(),
+            ));
+          };
+          let provider =
+            adbc_driver_manager::profile::FilesystemProfileProvider::new_with_search_paths(
+              profile_search_paths,
+            );
+          ManagedDatabase::from_uri_with_profile_provider(
+            &uri,
+            entrypoint.as_deref(),
+            version,
+            load_flags,
+            manifest_search_paths,
+            provider,
+            map_database_options(raw_opts),
+          )?
+        }
       }
     };
 
@@ -230,7 +304,7 @@ impl AdbcConnectionCore {
       .map_err(|e| ClientError::Other(e.to_string()))?;
     let codes: Option<HashSet<InfoCode>> = info_codes.map(|v| {
       v.into_iter()
-        .filter_map(|code| InfoCode::try_from(code).ok())
+        .map(InfoCode::from)
         .collect::<HashSet<InfoCode>>()
     });
     let reader = conn.get_info(codes)?;

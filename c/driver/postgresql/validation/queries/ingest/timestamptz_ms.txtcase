@@ -15,6 +15,11 @@
 // specific language governing permissions and limitations
 // under the License.
 
+// part: metadata
+
+[tags]
+field-type-name = "timestamptz"
+
 
 // part: expected_schema
 

@@ -25,6 +25,12 @@ test_that("drivers can be loaded by name/entrypoint", {
   driver <- adbc_driver(shared, "AdbcTestVoidDriverInit")
   expect_s3_class(driver, "adbc_driver")
   expect_identical(driver$name, shared)
+
+  database <- adbc_database_init(
+    shared,
+    entrypoint = "AdbcTestVoidDriverInit"
+  )
+  expect_s3_class(database, "adbc_database")
 })
 
 test_that("drivers are loaded using load_flags", {

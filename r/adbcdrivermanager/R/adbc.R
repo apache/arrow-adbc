@@ -17,15 +17,62 @@
 
 #' Databases
 #'
-#' @param driver An [adbc_driver()].
+#' @param driver The driver to use. This can be one of the following:
+#'
+#'   * A non-missing `character(1)` containing a driver or manifest name, a
+#'     relative or absolute path to a driver or manifest, or a URI. For a URI,
+#'     the driver manager uses the URI scheme as the driver name and passes the
+#'     URI to that driver. A `profile://` URI loads a connection profile.
+#'   * `NULL`, which leaves driver selection to the driver manager. In this
+#'     case, `...` must normally contain `uri` or `profile`; the driver is
+#'     inferred from the URI or loaded from the connection profile.
+#'   * An object that inherits from the `adbc_driver` class, such as one created
+#'     by [adbc_driver()]. This includes drivers provided by R packages, such as
+#'     `adbcsqlite::adbcsqlite()`.
 #' @param database An [adbc_database][adbc_database_init].
 #' @param option A specific option name
-#' @param ... Driver-specific options. For the default method, these are
-#'   named values that are converted to strings.
+#' @param ... Driver-specific options. These are generally named values that
+#'   are converted to strings.
 #' @param options A named `character()` or `list()` whose values are converted
 #'   to strings.
 #' @param subclass An extended class for an object so that drivers can specify
 #'   finer-grained control over behaviour at the R level.
+#'
+#' @section Driver inference and connection profiles:
+#' A driver can be selected by name, inferred from a URI, or loaded from a
+#' connection profile:
+#'
+#' ```r
+#' # Load a driver by name and pass it a URI
+#' adbc_database_init("postgresql", uri = "postgresql://localhost/database")
+#'
+#' # Infer "postgresql" from the URI scheme
+#' adbc_database_init(uri = "postgresql://localhost/database")
+#'
+#' # Load a named or absolute-path connection profile
+#' adbc_database_init(profile = "myprofile")
+#'
+#' # Equivalently, use a profile URI as the driver or URI
+#' adbc_database_init("profile://myprofile")
+#' adbc_database_init(uri = "profile://myprofile")
+#' ```
+#'
+#' A minimal connection profile is a TOML file containing a driver and its
+#' database options:
+#'
+#' ```toml
+#' profile_version = 1
+#' driver = "postgresql"
+#'
+#' [Options]
+#' uri = "postgresql://localhost/database"
+#' ```
+#'
+#' Named profiles are located using the driver manager's standard profile
+#' search paths. See the
+#' [ADBC connection profile documentation](https://arrow.apache.org/adbc/current/format/connection_profiles.html)
+#' for the file format, search locations, option precedence, and environment
+#' variable substitution.
 #'
 #' @return An object of class adbc_database
 #' @export
@@ -33,12 +80,37 @@
 #' @examples
 #' adbc_database_init(adbc_driver_void())
 #'
-adbc_database_init <- function(driver, ...) {
-  UseMethod("adbc_database_init")
+adbc_database_init <- function(driver = NULL, ...) {
+  UseMethod("adbc_database_init", driver)
 }
 
 #' @export
-adbc_database_init.default <- function(driver, ...) {
+adbc_database_init.NULL <- function(driver, ...) {
+  adbc_database_init_driver_manager(list(...))
+}
+
+#' @export
+adbc_database_init.character <- function(driver, ...) {
+  if (length(driver) != 1L || is.na(driver)) {
+    stop(
+      "When `driver` is a character vector, it must have length 1 and must not be `NA`.",
+      call. = FALSE
+    )
+  }
+
+  adbc_database_init_driver_manager(c(list(driver = driver), list(...)))
+}
+
+adbc_database_init_driver_manager <- function(options) {
+  driver <- list(
+    driver_init_func = NULL,
+    load_flags = adbc_load_flags()
+  )
+  adbc_database_init_default(driver, options)
+}
+
+#' @export
+adbc_database_init.adbc_driver <- function(driver, ...) {
   adbc_database_init_default(driver, list(...))
 }
 

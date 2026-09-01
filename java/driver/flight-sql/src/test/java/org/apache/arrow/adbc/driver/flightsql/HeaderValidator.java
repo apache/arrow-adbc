@@ -52,6 +52,10 @@ public class HeaderValidator implements FlightServerMiddleware {
       return cloneHeaders(headersReceived.get(request));
     }
 
+    public int getRequestCount() {
+      return headersReceived.size();
+    }
+
     private static CallHeaders cloneHeaders(CallHeaders headers) {
       FlightCallHeaders cloneHeaders = new FlightCallHeaders();
       for (String key : headers.keys()) {

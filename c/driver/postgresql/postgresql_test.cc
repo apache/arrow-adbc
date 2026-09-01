@@ -20,8 +20,10 @@
 #include <cmath>
 #include <cstdlib>
 #include <cstring>
+#include <fstream>
 #include <limits>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <variant>
@@ -475,6 +477,9 @@ TEST_F(PostgresConnectionTest, GetObjectsGetAllFindsPrimaryKey) {
   struct AdbcGetObjectsColumn* column = InternalAdbcGetObjectsDataGetColumnByName(
       *get_objects_data, "postgres", "public", "adbc_pkey_test", "id");
   ASSERT_NE(column, nullptr) << "could not find id column on adbc_pkey_test table";
+  auto xdbc_type_name =
+      std::string(column->xdbc_type_name.data, column->xdbc_type_name.size_bytes);
+  ASSERT_EQ(xdbc_type_name, "int4");
 
   ASSERT_EQ(table->n_table_constraints, 1)
       << "expected 1 constraint on adbc_pkey_test table, found: "
@@ -1344,6 +1349,226 @@ TEST_F(PostgresStatementTest, SqlIngestTemporaryTable) {
   }
 }
 
+TEST_F(PostgresStatementTest, SqlIngestAppendIntegerIntoNumeric) {
+  ASSERT_THAT(quirks()->DropTable(&connection, "numeric_ingest", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+  ASSERT_THAT(
+      AdbcStatementSetSqlQuery(
+          &statement, "CREATE TABLE numeric_ingest (amount NUMERIC(20, 2))", &error),
+      IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
+
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> batch;
+
+  ArrowSchemaInit(&schema.value);
+  ASSERT_THAT(ArrowSchemaSetTypeStruct(&schema.value, 1), adbc_validation::IsOkErrno());
+  ASSERT_THAT(ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_INT64),
+              adbc_validation::IsOkErrno());
+  ASSERT_THAT(ArrowSchemaSetName(schema->children[0], "amount"),
+              adbc_validation::IsOkErrno());
+
+  ASSERT_THAT((adbc_validation::MakeBatch<int64_t>(
+                  &schema.value, &batch.value, static_cast<struct ArrowError*>(nullptr),
+                  {1, 42, 9999, -7, std::nullopt})),
+              adbc_validation::IsOkErrno());
+
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                     "numeric_ingest", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
+                                     ADBC_INGEST_OPTION_MODE_APPEND, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &batch.value, &schema.value, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement,
+                                       "SELECT amount::text FROM numeric_ingest "
+                                       "ORDER BY numeric_ingest.amount NULLS FIRST",
+                                       &error),
+              IsOkStatus(&error));
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                        &reader.rows_affected, &error),
+              IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NE(nullptr, reader.array->release);
+  ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareArray<std::string>(
+      reader.array_view->children[0],
+      {std::nullopt, "-7.00", "1.00", "42.00", "9999.00"}));
+}
+
+TEST_F(PostgresStatementTest, SqlIngestAppendIntegerListIntoNumericArray) {
+  ASSERT_THAT(quirks()->DropTable(&connection, "numeric_array_ingest", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement,
+                  "CREATE TABLE numeric_array_ingest (amounts NUMERIC(20, 2)[])", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
+
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> batch;
+  struct ArrowError na_error;
+
+  ASSERT_EQ(adbc_validation::MakeSchema(
+                &schema.value,
+                {adbc_validation::SchemaField::Nested("amounts", NANOARROW_TYPE_LIST,
+                                                      {{"item", NANOARROW_TYPE_INT64}})}),
+            ADBC_STATUS_OK);
+  ASSERT_EQ(
+      adbc_validation::MakeBatch<std::vector<int64_t>>(
+          &schema.value, &batch.value, &na_error,
+          {std::vector<int64_t>{1, 42}, std::vector<int64_t>{-7, 9999}, std::nullopt}),
+      ADBC_STATUS_OK);
+
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                     "numeric_array_ingest", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
+                                     ADBC_INGEST_OPTION_MODE_APPEND, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &batch.value, &schema.value, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement,
+                  "SELECT amounts::text FROM numeric_array_ingest ORDER BY ctid", &error),
+              IsOkStatus(&error));
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                        &reader.rows_affected, &error),
+              IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NE(nullptr, reader.array->release);
+  ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareArray<std::string>(
+      reader.array_view->children[0], {"{1.00,42.00}", "{-7.00,9999.00}", std::nullopt}));
+}
+
+TEST_F(PostgresStatementTest, SqlIngestAppendIntegerBoundsIntoNumeric) {
+  ASSERT_THAT(quirks()->DropTable(&connection, "numeric_ingest", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement,
+                                       "CREATE TABLE numeric_ingest ("
+                                       "signed_amount NUMERIC(30, 0), "
+                                       "unsigned_amount NUMERIC(30, 0))",
+                                       &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
+
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> batch;
+
+  ArrowSchemaInit(&schema.value);
+  ASSERT_THAT(ArrowSchemaSetTypeStruct(&schema.value, 2), adbc_validation::IsOkErrno());
+  ASSERT_THAT(ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_INT64),
+              adbc_validation::IsOkErrno());
+  ASSERT_THAT(ArrowSchemaSetName(schema->children[0], "signed_amount"),
+              adbc_validation::IsOkErrno());
+  ASSERT_THAT(ArrowSchemaSetType(schema->children[1], NANOARROW_TYPE_UINT64),
+              adbc_validation::IsOkErrno());
+  ASSERT_THAT(ArrowSchemaSetName(schema->children[1], "unsigned_amount"),
+              adbc_validation::IsOkErrno());
+
+  ASSERT_THAT((adbc_validation::MakeBatch<int64_t, uint64_t>(
+                  &schema.value, &batch.value, static_cast<struct ArrowError*>(nullptr),
+                  {std::numeric_limits<int64_t>::min(), -10000, 0, 10000,
+                   std::numeric_limits<int64_t>::max()},
+                  {0, 10000, std::numeric_limits<uint64_t>::max(), 42, 1})),
+              adbc_validation::IsOkErrno());
+
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                     "numeric_ingest", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
+                                     ADBC_INGEST_OPTION_MODE_APPEND, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &batch.value, &schema.value, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
+
+  ASSERT_THAT(
+      AdbcStatementSetSqlQuery(&statement,
+                               "SELECT signed_amount::text, unsigned_amount::text "
+                               "FROM numeric_ingest ORDER BY ctid",
+                               &error),
+      IsOkStatus(&error));
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                        &reader.rows_affected, &error),
+              IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NE(nullptr, reader.array->release);
+  ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareArray<std::string>(
+      reader.array_view->children[0],
+      {"-9223372036854775808", "-10000", "0", "10000", "9223372036854775807"}));
+  ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareArray<std::string>(
+      reader.array_view->children[1], {"0", "10000", "18446744073709551615", "42", "1"}));
+}
+
+TEST_F(PostgresStatementTest, SqlIngestAppendFloatIntoNumericNotImplemented) {
+  ASSERT_THAT(quirks()->DropTable(&connection, "numeric_ingest", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+
+  ASSERT_THAT(
+      AdbcStatementSetSqlQuery(
+          &statement, "CREATE TABLE numeric_ingest (amount NUMERIC(20, 2))", &error),
+      IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
+
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> batch;
+
+  ArrowSchemaInit(&schema.value);
+  ASSERT_THAT(ArrowSchemaSetTypeStruct(&schema.value, 1), adbc_validation::IsOkErrno());
+  ASSERT_THAT(ArrowSchemaSetType(schema->children[0], NANOARROW_TYPE_DOUBLE),
+              adbc_validation::IsOkErrno());
+  ASSERT_THAT(ArrowSchemaSetName(schema->children[0], "amount"),
+              adbc_validation::IsOkErrno());
+
+  ASSERT_THAT(
+      (adbc_validation::MakeBatch<double>(
+          &schema.value, &batch.value, static_cast<struct ArrowError*>(nullptr), {1.25})),
+      adbc_validation::IsOkErrno());
+
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                     "numeric_ingest", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
+                                     ADBC_INGEST_OPTION_MODE_APPEND, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &batch.value, &schema.value, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsStatus(ADBC_STATUS_INTERNAL, &error));
+  ASSERT_THAT(error.message,
+              ::testing::HasSubstr(
+                  "COPY Writer from Arrow type 'double' to PostgreSQL numeric is not "
+                  "implemented"));
+}
+
 TEST_F(PostgresStatementTest, SqlIngestTimestampOverflow) {
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
 
@@ -1525,7 +1750,7 @@ TEST_F(PostgresStatementTest, SqlIngestJsonInvalid) {
   ASSERT_THAT(AdbcStatementBind(&statement, &batch.value, &schema.value, &error),
               IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
-              IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+              IsStatus(ADBC_STATUS_INVALID_DATA, &error));
   ASSERT_THAT(error.message, ::testing::HasSubstr("invalid input syntax for type json"));
 }
 
@@ -1579,12 +1804,22 @@ TEST_F(PostgresStatementTest, SqlIngestJsonb) {
                 IsOkStatus(&error));
     ASSERT_THAT(AdbcStatementBind(&statement, &batch.value, &schema.value, &error),
                 IsOkStatus(&error));
-    // TODO(https://github.com/apache/arrow-adbc/issues/3293): we need a
-    // different extension type for JSONB so the driver can know to generate
-    // the appropriate COPY representation
-    // (JSON-representation-version-prefixed JSON string).
     ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
-                IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+                IsOkStatus(&error));
+
+    ASSERT_THAT(AdbcStatementSetSqlQuery(
+                    &statement, "SELECT j::text FROM jsontable ORDER BY ctid", &error),
+                IsOkStatus(&error));
+
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_NE(nullptr, reader.array->release);
+    ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareArray<std::string>(
+        reader.array_view->children[0], {R"({"a": 1, "b": [1, 2, 3]})", std::nullopt}));
   }
 }
 
@@ -2092,13 +2327,13 @@ TEST_F(PostgresStatementTest, SqlExecuteCopyZeroRowOutputError) {
                                           &reader.rows_affected, &error),
                 IsOkStatus());
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
-    ASSERT_EQ(reader.MaybeNext(), EINVAL);
+    ASSERT_EQ(reader.MaybeNext(), EIO);
 
     AdbcStatusCode status = ADBC_STATUS_OK;
     const struct AdbcError* detail =
         AdbcErrorFromArrayStream(&reader.stream.value, &status);
     ASSERT_NE(nullptr, detail);
-    ASSERT_EQ(ADBC_STATUS_INVALID_ARGUMENT, status);
+    ASSERT_EQ(ADBC_STATUS_INVALID_DATA, status);
     ASSERT_EQ("22023", std::string_view(detail->sqlstate, 5));
   }
 }
@@ -2900,7 +3135,83 @@ struct DecimalTestCase {
   const std::vector<std::optional<std::string>> expected;
 };
 
-class PostgresDecimalTest : public ::testing::TestWithParam<DecimalTestCase> {
+struct DecimalFixtureGroup {
+  struct Value {
+    std::optional<int64_t> coefficient;
+    std::optional<std::string> expected;
+  };
+
+  int32_t precision;
+  int32_t scale;
+  std::vector<Value> values;
+};
+
+static DecimalFixtureGroup::Value DecimalCoefficientValue(
+    int64_t coefficient, std::optional<std::string> expected) {
+  return {coefficient, std::move(expected)};
+}
+
+static void AppendDecimalFixtureValue(std::vector<DecimalFixtureGroup>* groups,
+                                      int32_t precision, int32_t scale,
+                                      DecimalFixtureGroup::Value value) {
+  if (groups->empty() || groups->back().precision != precision ||
+      groups->back().scale != scale) {
+    groups->push_back({precision, scale, {}});
+  }
+
+  groups->back().values.push_back(std::move(value));
+}
+
+static std::vector<DecimalFixtureGroup> LoadGeneratedDecimalFixtureGroups() {
+  std::ifstream input(ADBC_POSTGRESQL_TESTDATA_DIR "/numeric_roundtrip_fixtures.csv");
+  if (!input.is_open()) {
+    ADD_FAILURE() << "Failed to open numeric fixture file at "
+                  << ADBC_POSTGRESQL_TESTDATA_DIR << "/numeric_roundtrip_fixtures.csv";
+    return {};
+  }
+
+  std::string line;
+  if (!std::getline(input, line)) {
+    ADD_FAILURE() << "Numeric fixture file is empty";
+    return {};
+  }
+
+  std::vector<DecimalFixtureGroup> groups;
+  while (std::getline(input, line)) {
+    if (line.empty()) continue;
+
+    std::stringstream line_stream(line);
+    std::string precision_str;
+    std::string scale_str;
+    std::string coefficient_str;
+    std::string expected_str;
+
+    if (!std::getline(line_stream, precision_str, ',') ||
+        !std::getline(line_stream, scale_str, ',') ||
+        !std::getline(line_stream, coefficient_str, ',') ||
+        !std::getline(line_stream, expected_str)) {
+      ADD_FAILURE() << "Malformed numeric fixture row: " << line;
+      return {};
+    }
+
+    const int32_t precision = std::stoi(precision_str);
+    const int32_t scale = std::stoi(scale_str);
+    const int64_t coefficient = std::stoll(coefficient_str);
+
+    AppendDecimalFixtureValue(&groups, precision, scale,
+                              DecimalCoefficientValue(coefficient, expected_str));
+  }
+
+  return groups;
+}
+
+static const std::vector<DecimalFixtureGroup>& DecimalFixtureGroups() {
+  static const std::vector<DecimalFixtureGroup> groups =
+      LoadGeneratedDecimalFixtureGroups();
+  return groups;
+}
+
+class PostgresDecimalTestBase : public ::testing::Test {
  public:
   void SetUp() override {
     ASSERT_THAT(AdbcDatabaseNew(&database_, &error_), IsOkStatus(&error_));
@@ -2939,6 +3250,12 @@ class PostgresDecimalTest : public ::testing::TestWithParam<DecimalTestCase> {
   struct AdbcConnection connection_ = {};
   struct AdbcStatement statement_ = {};
 };
+
+class PostgresDecimalTest : public PostgresDecimalTestBase,
+                            public ::testing::WithParamInterface<DecimalTestCase> {};
+
+class PostgresDecimalFixtureRoundTripTest : public PostgresDecimalTestBase,
+                                            public ::testing::WithParamInterface<bool> {};
 
 TEST_P(PostgresDecimalTest, SelectValue) {
   adbc_validation::Handle<struct ArrowSchema> schema;
@@ -3039,6 +3356,105 @@ TEST_P(PostgresDecimalTest, SelectValue) {
   }
 }
 
+TEST_P(PostgresDecimalFixtureRoundTripTest, Decimal128FixtureRoundTrip) {
+  const bool disable_decimal_fast_path = GetParam();
+  const char* fast_path_value =
+      disable_decimal_fast_path ? ADBC_OPTION_VALUE_ENABLED : ADBC_OPTION_VALUE_DISABLED;
+
+  ASSERT_THAT(
+      AdbcStatementSetOption(&statement_, "adbc.postgresql.disable_decimal_fast_path",
+                             fast_path_value, &error_),
+      IsOkStatus(&error_));
+
+  const auto& groups = DecimalFixtureGroups();
+  ASSERT_FALSE(groups.empty());
+
+  auto run_group = [&](const DecimalFixtureGroup& group) {
+    SCOPED_TRACE("precision=" + std::to_string(group.precision) +
+                 " scale=" + std::to_string(group.scale) + " disable_decimal_fast_path=" +
+                 std::string(disable_decimal_fast_path ? "true" : "false"));
+
+    ASSERT_THAT(quirks_.DropTable(&connection_, "bulk_ingest", &error_),
+                IsOkStatus(&error_));
+
+    adbc_validation::Handle<struct ArrowSchema> schema;
+    adbc_validation::Handle<struct ArrowArray> array;
+    struct ArrowError na_error;
+
+    std::vector<ArrowDecimal> decimals(group.values.size());
+    std::vector<std::optional<ArrowDecimal*>> values;
+    std::vector<std::optional<std::string>> expected;
+    values.reserve(group.values.size());
+    expected.reserve(group.values.size());
+    for (size_t i = 0; i < group.values.size(); i++) {
+      const auto& value = group.values[i];
+      expected.push_back(value.expected);
+      if (!value.coefficient.has_value()) {
+        values.push_back(std::nullopt);
+        continue;
+      }
+
+      ArrowDecimalInit(&decimals[i], /*bitwidth=*/128, group.precision, group.scale);
+      ArrowDecimalSetInt(&decimals[i], *value.coefficient);
+      values.push_back(&decimals[i]);
+    }
+
+    ArrowSchemaInit(&schema.value);
+    ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema.value, 1), 0);
+    ASSERT_EQ(
+        ArrowSchemaSetTypeDecimal(schema.value.children[0], NANOARROW_TYPE_DECIMAL128,
+                                  group.precision, group.scale),
+        0);
+    ASSERT_EQ(ArrowSchemaSetName(schema.value.children[0], "amount"), 0);
+    ASSERT_THAT(adbc_validation::MakeBatch<ArrowDecimal*>(&schema.value, &array.value,
+                                                          &na_error, values),
+                adbc_validation::IsOkErrno());
+
+    ASSERT_THAT(AdbcStatementSetOption(&statement_, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                       "bulk_ingest", &error_),
+                IsOkStatus(&error_));
+    ASSERT_THAT(AdbcStatementBind(&statement_, &array.value, &schema.value, &error_),
+                IsOkStatus(&error_));
+
+    int64_t rows_affected = 0;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement_, nullptr, &rows_affected, &error_),
+                IsOkStatus(&error_));
+    ASSERT_THAT(rows_affected,
+                ::testing::AnyOf(::testing::Eq(static_cast<int64_t>(values.size())),
+                                 ::testing::Eq(-1)));
+
+    ASSERT_THAT(
+        AdbcStatementSetSqlQuery(
+            &statement_, "SELECT amount::text AS amount FROM bulk_ingest ORDER BY ctid",
+            &error_),
+        IsOkStatus(&error_));
+
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement_, &reader.stream.value,
+                                          &reader.rows_affected, &error_),
+                IsOkStatus(&error_));
+    ASSERT_THAT(reader.rows_affected,
+                ::testing::AnyOf(::testing::Eq(static_cast<int64_t>(values.size())),
+                                 ::testing::Eq(-1)));
+
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_NE(nullptr, reader.array->release);
+    ASSERT_EQ(static_cast<int64_t>(values.size()), reader.array->length);
+    ASSERT_EQ(1, reader.array->n_children);
+
+    ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareArray<std::string>(
+        reader.array_view->children[0], expected));
+
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_EQ(nullptr, reader.array->release);
+  };
+
+  for (const auto& group : groups) {
+    run_group(group);
+  }
+}
+
 static std::vector<std::array<uint64_t, 4>> kDecimalData = {
     // -12345600000
     {18446744061363951616ULL, 18446744073709551615ULL, 0, 0},
@@ -3127,3 +3543,7 @@ INSTANTIATE_TEST_SUITE_P(Decimal256LargeTests, PostgresDecimalTest,
                          testing::ValuesIn(kDecimal256LargeCases));
 INSTANTIATE_TEST_SUITE_P(Decimal256LargeNoScale, PostgresDecimalTest,
                          testing::ValuesIn(kDecimal256LargeNoScaleCases));
+INSTANTIATE_TEST_SUITE_P(Decimal128FixtureRoundTrip, PostgresDecimalFixtureRoundTripTest,
+                         testing::Bool(), [](const testing::TestParamInfo<bool>& info) {
+                           return info.param ? "SlowPath" : "FastPath";
+                         });

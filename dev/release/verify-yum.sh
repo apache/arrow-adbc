@@ -107,11 +107,12 @@ else
     rc|staging-rc|staging-release)
       suffix=${TYPE%-release}
       sed \
-        -i"" \
+        -e "s,^\\[apache-arrow-,[apache-adbc-,g" \
         -e "s,/almalinux/,/almalinux-${suffix}/,g" \
         -e "s,/centos/,/centos-${suffix}/,g" \
         -e "s,/amazon-linux/,/amazon-linux-${suffix}/,g" \
-        /etc/yum.repos.d/Apache-Arrow.repo
+        /etc/yum.repos.d/Apache-Arrow.repo > \
+        /etc/yum.repos.d/Apache-ADBC.repo
       ;;
   esac
 fi

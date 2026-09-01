@@ -19,20 +19,27 @@
 /// directly using the Rust API (native) and through the exported driver via the
 /// driver manager (exported). That allows us to test that data correctly round-trip
 /// between C and Rust.
+use std::collections::HashSet;
+use std::ffi::CString;
 use std::ops::Deref;
 use std::sync::Arc;
 
+use arrow_array::cast::AsArray;
+use arrow_array::ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream};
+use arrow_array::types::UInt32Type;
 use arrow_array::{Array, Float64Array, Int64Array, RecordBatch, RecordBatchReader, StringArray};
 use arrow_schema::{DataType, Field, Schema};
 use arrow_select::concat::concat_batches;
 
 use adbc_core::Statement;
+use adbc_core::constants::ADBC_STATUS_OK;
 use adbc_core::options::{
     AdbcVersion, InfoCode, IngestMode, IsolationLevel, ObjectDepth, OptionConnection,
     OptionDatabase, OptionStatement,
 };
 use adbc_core::{Connection, Database, Driver, Optionable, schemas};
 use adbc_driver_manager::{ManagedConnection, ManagedDatabase, ManagedDriver, ManagedStatement};
+use adbc_ffi::{FFI_AdbcConnection, FFI_AdbcDatabase, FFI_AdbcError, FFI_AdbcStatement, FFIDriver};
 
 use adbc_dummy::{DummyConnection, DummyDatabase, DummyDriver, DummyStatement, SingleBatchReader};
 
@@ -361,16 +368,111 @@ fn test_connection_get_info() {
             .unwrap(),
     );
     assert_eq!(exported_info.schema(), *schemas::GET_INFO_SCHEMA.deref());
+    // The dummy driver recognizes `DriverName` but not `DriverAdbcVersion`, whose row is omitted.
+    assert_eq!(exported_info.num_rows(), 1);
     assert_eq!(exported_info, native_info);
+
+    let vendor_codes: HashSet<InfoCode> = [InfoCode::Other(adbc_dummy::VENDOR_INFO_CODE)].into();
+    let exported_info = concat_reader(
+        exported_connection
+            .get_info(Some(vendor_codes.clone()))
+            .unwrap(),
+    );
+    let native_info = concat_reader(native_connection.get_info(Some(vendor_codes)).unwrap());
+    assert_eq!(exported_info.num_rows(), 1);
+    assert_eq!(
+        exported_info
+            .column(0)
+            .as_primitive::<UInt32Type>()
+            .value(0),
+        adbc_dummy::VENDOR_INFO_CODE
+    );
+    assert_eq!(exported_info, native_info);
+}
+
+// Driven at the C ABI (unlike the other tests) to exercise the exporter's raw `u32` code
+// handling: codes without a dedicated `InfoCode` variant must reach the driver as
+// `InfoCode::Other` (so it can answer vendor-specific codes), and per the ADBC spec the driver
+// ignores requests for codes it doesn't recognize (the row is omitted) rather than failing the
+// call.
+#[test]
+fn test_connection_get_info_ignores_unrecognized_codes() {
+    let driver = DummyDriver::ffi_driver();
+    let mut error = FFI_AdbcError::default();
+    let err = &mut error as *mut FFI_AdbcError;
+
+    unsafe {
+        let mut database = FFI_AdbcDatabase::default();
+        assert_eq!(
+            driver.DatabaseNew.unwrap()(&mut database, err),
+            ADBC_STATUS_OK
+        );
+        assert_eq!(
+            driver.DatabaseInit.unwrap()(&mut database, err),
+            ADBC_STATUS_OK
+        );
+
+        let mut connection = FFI_AdbcConnection::default();
+        assert_eq!(
+            driver.ConnectionNew.unwrap()(&mut connection, err),
+            ADBC_STATUS_OK
+        );
+        assert_eq!(
+            driver.ConnectionInit.unwrap()(&mut connection, &mut database, err),
+            ADBC_STATUS_OK
+        );
+
+        let info_codes: [u32; 3] = [
+            Into::<u32>::into(&InfoCode::DriverName),
+            adbc_dummy::VENDOR_INFO_CODE,
+            u32::MAX,
+        ];
+        let mut stream = FFI_ArrowArrayStream::empty();
+        assert_eq!(
+            driver.ConnectionGetInfo.unwrap()(
+                &mut connection,
+                info_codes.as_ptr(),
+                info_codes.len(),
+                &mut stream,
+                err,
+            ),
+            ADBC_STATUS_OK,
+            "an unrecognized info code must be ignored, not fail the call"
+        );
+
+        let info = concat_reader(ArrowArrayStreamReader::try_new(stream).unwrap());
+        let returned_codes: HashSet<u32> = info
+            .column(0)
+            .as_primitive::<UInt32Type>()
+            .values()
+            .iter()
+            .copied()
+            .collect();
+        assert_eq!(
+            returned_codes,
+            [
+                Into::<u32>::into(&InfoCode::DriverName),
+                adbc_dummy::VENDOR_INFO_CODE
+            ]
+            .into(),
+            "the vendor-specific code must be answered and the unrecognized one omitted"
+        );
+
+        driver.ConnectionRelease.unwrap()(&mut connection, err);
+        driver.DatabaseRelease.unwrap()(&mut database, err);
+    }
 }
 
 #[test]
 fn test_connection_cancel() {
-    let (_, _, mut exported_connection, _) = get_exported();
-    let (_, _, mut native_connection, _) = get_native();
+    let (_, _, exported_connection, _) = get_exported();
+    let (_, _, native_connection, _) = get_native();
 
-    let exported_error = exported_connection.cancel().unwrap_err();
-    let native_error = native_connection.cancel().unwrap_err();
+    let exported_handle = exported_connection.get_cancel_handle();
+    let native_handle = native_connection.get_cancel_handle();
+
+    let exported_error = exported_handle.try_cancel().unwrap_err();
+    let native_error = native_handle.try_cancel().unwrap_err();
 
     assert_eq!(exported_error, native_error);
 }
@@ -569,11 +671,27 @@ fn test_statement_bind_stream() {
 
 #[test]
 fn test_statement_cancel() {
-    let (_, _, _, mut exported_statement) = get_exported();
-    let (_, _, _, mut native_statement) = get_native();
+    let (_, _, _, exported_statement) = get_exported();
+    let (_, _, _, native_statement) = get_native();
 
-    exported_statement.cancel().unwrap();
-    native_statement.cancel().unwrap();
+    let exported_handle = exported_statement.get_cancel_handle();
+    let native_handle = native_statement.get_cancel_handle();
+
+    let res = exported_handle.try_cancel();
+    assert!(res.is_err());
+    assert!(
+        res.unwrap_err()
+            .to_string()
+            .contains("cancellation not implemented")
+    );
+
+    let res = native_handle.try_cancel();
+    assert!(res.is_err());
+    assert!(
+        res.unwrap_err()
+            .to_string()
+            .contains("cancellation not implemented")
+    );
 }
 
 #[test]
@@ -588,6 +706,70 @@ fn test_statement_execute_query() {
     let exported_data = exported_statement.execute_update().unwrap();
     let native_data = native_statement.execute_update().unwrap();
     assert_eq!(exported_data, native_data);
+}
+
+// Driven at the C ABI (unlike the other tests): the driver manager passes a NULL
+// `rows_affected` on the query path, so the -1 the exporter must write there is not
+// observable through the high-level `Statement::execute`.
+#[test]
+fn test_statement_execute_query_sets_rows_affected() {
+    let driver = DummyDriver::ffi_driver();
+    let mut error = FFI_AdbcError::default();
+    let err = &mut error as *mut FFI_AdbcError;
+
+    unsafe {
+        let mut database = FFI_AdbcDatabase::default();
+        assert_eq!(
+            driver.DatabaseNew.unwrap()(&mut database, err),
+            ADBC_STATUS_OK
+        );
+        assert_eq!(
+            driver.DatabaseInit.unwrap()(&mut database, err),
+            ADBC_STATUS_OK
+        );
+
+        let mut connection = FFI_AdbcConnection::default();
+        assert_eq!(
+            driver.ConnectionNew.unwrap()(&mut connection, err),
+            ADBC_STATUS_OK
+        );
+        assert_eq!(
+            driver.ConnectionInit.unwrap()(&mut connection, &mut database, err),
+            ADBC_STATUS_OK
+        );
+
+        let mut statement = FFI_AdbcStatement::default();
+        assert_eq!(
+            driver.StatementNew.unwrap()(&mut connection, &mut statement, err),
+            ADBC_STATUS_OK
+        );
+        let query = CString::new("SELECT 1").unwrap();
+        assert_eq!(
+            driver.StatementSetSqlQuery.unwrap()(&mut statement, query.as_ptr(), err),
+            ADBC_STATUS_OK
+        );
+
+        // Seed `rows_affected` with a value the exporter must overwrite with -1.
+        let mut stream = FFI_ArrowArrayStream::empty();
+        let mut rows_affected: i64 = 42;
+        assert_eq!(
+            driver.StatementExecuteQuery.unwrap()(
+                &mut statement,
+                &mut stream,
+                &mut rows_affected,
+                err,
+            ),
+            ADBC_STATUS_OK
+        );
+        assert_eq!(
+            rows_affected, -1,
+            "a query must report rows_affected = -1 (not known), not a stale value"
+        );
+
+        driver.StatementRelease.unwrap()(&mut statement, err);
+        driver.ConnectionRelease.unwrap()(&mut connection, err);
+        driver.DatabaseRelease.unwrap()(&mut database, err);
+    }
 }
 
 #[test]

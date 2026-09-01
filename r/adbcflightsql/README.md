@@ -59,7 +59,8 @@ This is a basic example which shows you how to solve a common problem.
 library(adbcdrivermanager)
 
 # Use the driver manager to connect to a database. This example URI is
-# grpc://localhost:8080 and uses a Go FlightSQL/SQLite server docker image
+# flightsql://localhost:8080?transport=tcp and uses a Go FlightSQL/SQLite
+# server docker image
 uri <- Sys.getenv("ADBC_FLIGHTSQL_TEST_URI")
 db <- adbc_database_init(adbcflightsql::adbcflightsql(), uri = uri)
 con <- adbc_connection_init(db)

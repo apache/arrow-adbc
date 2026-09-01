@@ -71,6 +71,11 @@ SETTINGS
 
     local -r is_root='^arrow-adbc-java-root-.*'
     for pom in "$@"; do
+        if grep -Eq '<maven\.deploy\.skip>[[:space:]]*true[[:space:]]*</maven\.deploy\.skip>' "${pom}"; then
+            echo "Skipping deployment of ${pom}"
+            continue
+        fi
+
         echo "Deploying ${pom}"
         local mvnArgs=""
 

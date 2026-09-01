@@ -15,13 +15,62 @@
 # specific language governing permissions and limitations
 # under the License.
 
-from adbc_drivers_validation.tests.connection import (
-    TestConnection,  # noqa: F401
-    generate_tests,
-)
+import adbc_drivers_validation.tests.connection as test_connection
+import pytest
 
 from . import postgresql
 
 
+class TestConnection(test_connection.TestConnection):
+    def test_current_catalog(self, conn, driver) -> None:
+        if isinstance(driver, postgresql.CrateDBQuirks):
+            pytest.xfail(
+                "CrateDB has a fixed crate catalog, but libpq reports the doc "
+                "startup database/schema value as the current catalog"
+            )
+        super().test_current_catalog(driver, conn)
+
+    def test_get_objects_catalog(self, conn, driver) -> None:
+        if isinstance(driver, postgresql.CrateDBQuirks):
+            pytest.skip("GetObjects is marked unsupported for CrateDB")
+        super().test_get_objects_catalog(conn, driver)
+
+    def test_get_objects_table_not_exist(self, conn, driver) -> None:
+        if isinstance(driver, postgresql.CrateDBQuirks):
+            pytest.skip("GetObjects is marked unsupported for CrateDB")
+        super().test_get_objects_table_not_exist(conn, driver)
+
+    def test_get_objects_column_filter_table(
+        self, conn, driver, get_objects_table
+    ) -> None:
+        if isinstance(driver, postgresql.CockroachDBQuirks):
+            pytest.xfail(
+                "CockroachDB has an implicit rowid column and does not preserve "
+                "column order in GetObjects"
+            )
+        super().test_get_objects_column_filter_table(conn, driver, get_objects_table)
+
+    def test_get_objects_column_filter_table_name(
+        self, conn, driver, get_objects_table
+    ) -> None:
+        if isinstance(driver, postgresql.CockroachDBQuirks):
+            pytest.xfail(
+                "CockroachDB has an implicit rowid column and does not preserve "
+                "column order in GetObjects"
+            )
+        super().test_get_objects_column_filter_table_name(
+            conn, driver, get_objects_table
+        )
+
+    def test_get_objects_column_xdbc(self, conn, driver, get_objects_table) -> None:
+        if isinstance(driver, postgresql.CockroachDBQuirks):
+            pytest.xfail(
+                "CockroachDB has an implicit rowid column and does not preserve "
+                "column order in GetObjects"
+            )
+        super().test_get_objects_column_xdbc(conn, driver, get_objects_table)
+
+
 def pytest_generate_tests(metafunc) -> None:
-    return generate_tests(postgresql.QUIRKS, metafunc)
+    vendor = metafunc.config.getoption("vendor")
+    return test_connection.generate_tests([postgresql.get_quirks(vendor)], metafunc)

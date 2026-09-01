@@ -50,7 +50,7 @@ jobs:
     if: github.event_name != 'schedule' || github.repository == 'apache/arrow-adbc'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
@@ -110,16 +110,22 @@ jobs:
             apache-arrow-adbc-${{ env.VERSION }}.tar.gz.sha512
 
   source-conda:
-    name: "Verify Source (Conda)/${{ matrix.os }}"
+    name: "Verify Source (Conda)/${{ matrix.os }} ${{ matrix.shell }}"
     runs-on: ${{ matrix.os }}
     needs:
       - source
     strategy:
       fail-fast: false
       matrix:
-        os: ["macos-15-intel", "macos-latest", "ubuntu-latest", "windows-latest"]
+        include:
+          - { os: "macos-15-intel" }
+          - { os: "macos-latest" }
+          - { os: "ubuntu-latest" }
+          # Ensure the script works on both PowerShell 5.1 (bundled with Windows) and 7.x
+          - { os: "windows-latest", shell: "powershell" }
+          - { os: "windows-latest", shell: "pwsh" }
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           path: arrow-adbc
@@ -185,6 +191,10 @@ jobs:
           # Required for macOS
           export CXXFLAGS="${CXXFLAGS} -D_LIBCPP_DISABLE_AVAILABILITY"
           echo "CXXFLAGS=${CXXFLAGS}"
+          if [[ $(uname) == "Linux" ]]; then
+            # conda-forge's R makevars doesn't seem to define CXX20 on Linux
+            export R_MAKEVARS_USER="$(pwd)/arrow-adbc/ci/r_makevars_cxx20"
+          fi
           ./arrow-adbc/dev/release/verify-release-candidate.sh $VERSION 0
 
       - name: Verify
@@ -199,13 +209,13 @@ jobs:
           VERBOSE: "1"
           VERIFICATION_MOCK_DIST_DIR: ${{ github.workspace }}\apache-arrow-adbc-${{ env.VERSION }}-rc0
         run: |
-          .\arrow-adbc\dev\release\verify-release-candidate.ps1 $env:VERSION 0
+          ${{ matrix.shell }} .\arrow-adbc\dev\release\verify-release-candidate.ps1 $env:VERSION 0
 
   source-docker:
     name: "Run Docker Tests"
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           path: arrow-adbc
@@ -256,7 +266,7 @@ jobs:
           - os: ubuntu
             version: "24.04"
     steps:
-      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           path: arrow-adbc
