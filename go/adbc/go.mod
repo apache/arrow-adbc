@@ -17,11 +17,10 @@
 
 module github.com/apache/arrow-adbc/go/adbc
 
-go 1.25.0
+go 1.26
 
-// Only require 1.25, but prefer 1.26 to build to pick up latest CVE fixes in
-// Go itself.
-toolchain go1.26.6
+// Require the latest Go 1.26 to build to pick up CVE fixes in Go itself.
+toolchain go1.26.8
 
 require (
 	github.com/apache/arrow-go/v18 v18.7.0
