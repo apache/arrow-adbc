@@ -37,6 +37,8 @@
 
 namespace adbcpq {
 
+#define ADBC_POSTGRESQL_OPTION_USE_COPY "adbc.postgresql.use_copy"
+
 #if defined(_WIN32) && defined(_MSC_VER)
 static inline uint16_t SwapNetworkToHost(uint16_t x) { return ntohs(x); }
 static inline uint16_t SwapHostToNetwork(uint16_t x) { return htons(x); }

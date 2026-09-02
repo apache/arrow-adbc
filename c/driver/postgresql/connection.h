@@ -34,7 +34,11 @@ class PostgresDatabase;
 class PostgresConnection {
  public:
   PostgresConnection()
-      : database_(nullptr), conn_(nullptr), cancel_(nullptr), autocommit_(true) {}
+      : database_(nullptr),
+        conn_(nullptr),
+        cancel_(nullptr),
+        autocommit_(true),
+        use_copy_(true) {}
 
   AdbcStatusCode Cancel(struct AdbcError* error);
   AdbcStatusCode Commit(struct AdbcError* error);
@@ -77,6 +81,7 @@ class PostgresConnection {
     return type_resolver_;
   }
   bool autocommit() const { return autocommit_; }
+  bool use_copy() const { return use_copy_; }
   std::string_view VendorName();
   const std::array<int, 3>& VendorVersion();
 
@@ -90,6 +95,7 @@ class PostgresConnection {
   PGconn* conn_;
   PGcancel* cancel_;
   bool autocommit_;
+  bool use_copy_;
   std::vector<std::pair<std::string, std::string>> post_init_options_;
 };
 }  // namespace adbcpq

@@ -229,6 +229,73 @@ class PostgresDatabaseTest : public ::testing::Test,
 };
 ADBCV_TEST_DATABASE(PostgresDatabaseTest)
 
+TEST_F(PostgresDatabaseTest, UseCopyOption) {
+  const char* key = "adbc.postgresql.use_copy";
+  std::optional<std::string> use_copy;
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+  adbc_validation::Handle<struct AdbcConnection> connection;
+  adbc_validation::Handle<struct AdbcStatement> statement;
+
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(quirks_.SetupDatabase(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, key, "false", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error), IsOkStatus(&error));
+  use_copy = adbc_validation::DatabaseGetOption(&database.value, key, &error);
+  EXPECT_THAT(use_copy, ::testing::Optional("false"s));
+
+  ASSERT_THAT(AdbcConnectionNew(&connection.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection.value, &database.value, &error),
+              IsOkStatus(&error));
+  use_copy = adbc_validation::ConnectionGetOption(&connection.value, key, &error);
+  EXPECT_THAT(use_copy, ::testing::Optional("false"s));
+
+  ASSERT_THAT(AdbcStatementNew(&connection.value, &statement.value, &error),
+              IsOkStatus(&error));
+  use_copy = adbc_validation::StatementGetOption(&statement.value, key, &error);
+  EXPECT_THAT(use_copy, ::testing::Optional("false"s));
+  ASSERT_THAT(AdbcStatementRelease(&statement.value, &error), IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcConnectionSetOption(&connection.value, key, "true", &error),
+              IsOkStatus(&error));
+  use_copy = adbc_validation::ConnectionGetOption(&connection.value, key, &error);
+  EXPECT_THAT(use_copy, ::testing::Optional("true"s));
+
+  ASSERT_THAT(AdbcStatementNew(&connection.value, &statement.value, &error),
+              IsOkStatus(&error));
+  use_copy = adbc_validation::StatementGetOption(&statement.value, key, &error);
+  EXPECT_THAT(use_copy, ::testing::Optional("true"s));
+  ASSERT_THAT(AdbcStatementRelease(&statement.value, &error), IsOkStatus(&error));
+}
+
+TEST_F(PostgresDatabaseTest, UseCopyOptionDefault) {
+  const char* key = "adbc.postgresql.use_copy";
+  std::optional<std::string> use_copy;
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+  adbc_validation::Handle<struct AdbcConnection> connection;
+  adbc_validation::Handle<struct AdbcStatement> statement;
+
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(quirks_.SetupDatabase(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error), IsOkStatus(&error));
+  use_copy = adbc_validation::DatabaseGetOption(&database.value, key, &error);
+  EXPECT_THAT(use_copy, ::testing::Optional("true"s));
+
+  ASSERT_THAT(AdbcConnectionNew(&connection.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&connection.value, &database.value, &error),
+              IsOkStatus(&error));
+  use_copy = adbc_validation::ConnectionGetOption(&connection.value, key, &error);
+  EXPECT_THAT(use_copy, ::testing::Optional("true"s));
+
+  ASSERT_THAT(AdbcStatementNew(&connection.value, &statement.value, &error),
+              IsOkStatus(&error));
+  use_copy = adbc_validation::StatementGetOption(&statement.value, key, &error);
+  EXPECT_THAT(use_copy, ::testing::Optional("true"s));
+  ASSERT_THAT(AdbcStatementRelease(&statement.value, &error), IsOkStatus(&error));
+}
+
 int Canary(const struct AdbcError*) { return 0; }
 
 TEST_F(PostgresDatabaseTest, AdbcDriverBackwardsCompatibility) {

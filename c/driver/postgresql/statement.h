@@ -33,8 +33,6 @@
 #define ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES \
   "adbc.postgresql.batch_size_hint_bytes"
 
-#define ADBC_POSTGRESQL_OPTION_USE_COPY "adbc.postgresql.use_copy"
-
 // This is not a public-facing PostgreSQL driver option.
 #define ADBC_POSTGRESQL_OPTION_DISABLE_DECIMAL_FAST_PATH \
   "adbc.postgresql.disable_decimal_fast_path"
@@ -103,7 +101,7 @@ class PostgresStatement {
       : connection_(nullptr),
         query_(),
         prepared_(false),
-        use_copy_(-1),
+        use_copy_(true),
         disable_decimal_fast_path_(false),
         reader_(nullptr),
         batch_size_hint_bytes_(kDefaultBatchSizeHintBytes) {
@@ -156,6 +154,8 @@ class PostgresStatement {
   AdbcStatusCode ExecuteBind(struct ArrowArrayStream* stream, int64_t* rows_affected,
                              struct AdbcError* error);
 
+  bool use_copy() const { return use_copy_; }
+
  private:
   std::shared_ptr<PostgresTypeResolver> type_resolver_;
   std::shared_ptr<PostgresConnection> connection_;
@@ -174,7 +174,7 @@ class PostgresStatement {
   };
 
   // Options
-  int use_copy_;
+  bool use_copy_;
   bool disable_decimal_fast_path_;
 
   struct {
@@ -186,7 +186,5 @@ class PostgresStatement {
 
   std::shared_ptr<TupleReader> reader_;
   int64_t batch_size_hint_bytes_;
-
-  int UseCopy();
 };
 }  // namespace adbcpq

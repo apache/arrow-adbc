@@ -39,6 +39,10 @@ namespace adbc_validation {
 // ------------------------------------------------------------
 // ADBC helpers
 
+std::optional<std::string> DatabaseGetOption(struct AdbcDatabase* database,
+                                             std::string_view option,
+                                             struct AdbcError* error);
+
 std::optional<std::string> ConnectionGetOption(struct AdbcConnection* connection,
                                                std::string_view option,
                                                struct AdbcError* error);

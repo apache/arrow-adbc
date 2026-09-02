@@ -331,6 +331,7 @@ AdbcStatusCode PostgresStatement::New(struct AdbcConnection* connection,
   connection_ =
       *reinterpret_cast<std::shared_ptr<PostgresConnection>*>(connection->private_data);
   type_resolver_ = connection_->type_resolver();
+  use_copy_ = connection_->use_copy();
   ClearResult();
   return ADBC_STATUS_OK;
 }
@@ -607,7 +608,7 @@ AdbcStatusCode PostgresStatement::ExecuteQuery(struct ArrowArrayStream* stream,
 
   // If we have been requested to avoid COPY or there is no output requested,
   // execute using the PqResultArrayReader.
-  if (!stream || !UseCopy()) {
+  if (!stream || !use_copy()) {
     PqResultArrayReader reader(connection_->conn(), type_resolver_, query_);
     reader.SetVendorName(connection_->VendorName());
     RAISE_STATUS(error, reader.ToArrayStream(rows_affected, stream));
@@ -804,7 +805,7 @@ AdbcStatusCode PostgresStatement::GetOption(const char* key, char* value, size_t
   } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_BATCH_SIZE_HINT_BYTES) == 0) {
     result = std::to_string(reader_->batch_size_hint_bytes_);
   } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_USE_COPY) == 0) {
-    if (UseCopy()) {
+    if (use_copy()) {
       result = "true";
     } else {
       result = "false";
@@ -1010,7 +1011,5 @@ void PostgresStatement::ClearResult() {
   reader_ = std::make_shared<TupleReader>(connection_->conn());
   reader_->batch_size_hint_bytes_ = batch_size_hint_bytes_;
 }
-
-int PostgresStatement::UseCopy() { return use_copy_; }
 
 }  // namespace adbcpq
