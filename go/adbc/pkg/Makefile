@@ -37,6 +37,15 @@ endif
 GIT_VERSION ?= unknown
 VERSION=$(subst go/adbc/,,$(GIT_VERSION))
 
+EXCLUDE_SYMBOL_TABLES ?= -s
+ifeq ($(INCLUDE_SYMBOL_TABLES),true)
+	EXCLUDE_SYMBOL_TABLES =
+endif
+EXCLUDE_DEBUG_INFO ?= -w
+ifeq ($(INCLUDE_DEBUG_INFO),true)
+	EXCLUDE_DEBUG_INFO =
+endif
+
 # Expand dynamically libadbc_driver_.SUFFIX
 DRIVERS := $(addsuffix .$(SUFFIX),$(addprefix libadbc_driver_,$(MANAGERS)))
 
@@ -48,7 +57,7 @@ DRIVERS := $(addsuffix .$(SUFFIX),$(addprefix libadbc_driver_,$(MANAGERS)))
 all: $(DRIVERS)
 
 libadbc_driver_%.$(SUFFIX): % ../driver/% ../go.mod ../go.sum
-	$(GO_BUILD) -buildvcs=true -tags driverlib -o $@ -buildmode=c-shared -ldflags "-s -w -X github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase.infoDriverVersion=$(VERSION)" ./$*
+	$(GO_BUILD) -buildvcs=true -tags driverlib -o $@ -buildmode=c-shared -ldflags "$(EXCLUDE_SYMBOL_TABLES) $(EXCLUDE_DEBUG_INFO) -X github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase.infoDriverVersion=$(VERSION)" ./$*
 	$(RM) $(basename $@).h
 
 regenerate:
