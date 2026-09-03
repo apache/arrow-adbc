@@ -35,29 +35,32 @@ $location = Get-Location
 
 $file = "libadbc_driver_flightsql.dll"
 
-if(Test-Path $file)
-{
+if (Test-Path $file) {
     exit
 }
 
-cd ..\..\..\..\..\go\adbc\pkg
+try {
+    Set-Location ..\..\..\..\..\go\adbc\pkg
 
-make $file
+    make $file
 
-if(Test-Path $file)
-{
-    $processes = Get-Process | Where-Object { $_.Modules.ModuleName -contains $file }
+    if (Test-Path $file) {
+        $processes = Get-Process | Where-Object { $_.Modules.ModuleName -contains $file }
 
-    if ($processes.Count -eq 0) {
-        try {
-        # File is not being used, copy it to the destination
-            Copy-Item -Path $file -Destination $location
-            Write-Host "File copied successfully."
+        if ($processes.Count -eq 0) {
+            try {
+                # File is not being used, copy it to the destination
+                Copy-Item -Path $file -Destination $location
+                Write-Host "File copied successfully."
+            }
+            catch {
+                Write-Host "Caught error: $_"
+            }
         }
-        catch {
-            Write-Host "Caught error: $_"
+        else {
+            Write-Host "File is being used by another process. Cannot copy."
         }
-    } else {
-        Write-Host "File is being used by another process. Cannot copy."
     }
+} finally {
+    Set-Location $location
 }
