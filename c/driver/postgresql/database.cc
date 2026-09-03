@@ -36,6 +36,7 @@
 #include <nanoarrow/nanoarrow.h>
 
 #include "driver/common/utils.h"
+#include "postgres_util.h"
 #include "result_helper.h"
 
 namespace adbcpq {
@@ -47,7 +48,18 @@ PostgresDatabase::~PostgresDatabase() = default;
 
 AdbcStatusCode PostgresDatabase::GetOption(const char* option, char* value,
                                            size_t* length, struct AdbcError* error) {
-  return ADBC_STATUS_NOT_FOUND;
+  std::string output;
+  if (std::strcmp(option, ADBC_POSTGRESQL_OPTION_USE_COPY) == 0) {
+    output = use_copy_ ? ADBC_OPTION_VALUE_ENABLED : ADBC_OPTION_VALUE_DISABLED;
+  } else {
+    InternalAdbcSetError(error, "[libpq] unknown database option '%s'", option);
+    return ADBC_STATUS_NOT_FOUND;
+  }
+  if (output.size() + 1 <= *length) {
+    std::memcpy(value, output.c_str(), output.size() + 1);
+  }
+  *length = output.size() + 1;
+  return ADBC_STATUS_OK;
 }
 AdbcStatusCode PostgresDatabase::GetOptionBytes(const char* option, uint8_t* value,
                                                 size_t* length, struct AdbcError* error) {
@@ -89,8 +101,17 @@ AdbcStatusCode PostgresDatabase::Release(struct AdbcError* error) {
 
 AdbcStatusCode PostgresDatabase::SetOption(const char* key, const char* value,
                                            struct AdbcError* error) {
-  if (strcmp(key, "uri") == 0) {
+  if (std::strcmp(key, "uri") == 0) {
     uri_ = value;
+  } else if (strcmp(key, ADBC_POSTGRESQL_OPTION_USE_COPY) == 0) {
+    if (strcmp(value, ADBC_OPTION_VALUE_ENABLED) == 0) {
+      use_copy_ = true;
+    } else if (strcmp(value, ADBC_OPTION_VALUE_DISABLED) == 0) {
+      use_copy_ = false;
+    } else {
+      InternalAdbcSetError(error, "[libpq] Invalid value for option %s=%s", key, value);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
   } else {
     InternalAdbcSetError(error, "%s%s", "[libpq] Unknown database option ", key);
     return ADBC_STATUS_NOT_IMPLEMENTED;

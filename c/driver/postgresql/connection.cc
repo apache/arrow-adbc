@@ -45,6 +45,7 @@
 #include "driver/framework/objects.h"
 #include "driver/framework/utility.h"
 #include "error.h"
+#include "postgres_util.h"
 #include "result_helper.h"
 
 using adbc::driver::Result;
@@ -668,6 +669,8 @@ AdbcStatusCode PostgresConnection::GetOption(const char* option, char* value,
         output = "unknown";
         break;
     }
+  } else if (std::strcmp(option, ADBC_POSTGRESQL_OPTION_USE_COPY) == 0) {
+    output = use_copy_ ? ADBC_OPTION_VALUE_ENABLED : ADBC_OPTION_VALUE_DISABLED;
   } else {
     return ADBC_STATUS_NOT_FOUND;
   }
@@ -1130,6 +1133,7 @@ AdbcStatusCode PostgresConnection::Init(struct AdbcDatabase* database,
   database_ =
       *reinterpret_cast<std::shared_ptr<PostgresDatabase>*>(database->private_data);
   type_resolver_ = database_->type_resolver();
+  use_copy_ = database_->use_copy();
 
   RAISE_ADBC(database_->Connect(&conn_, error));
 
@@ -1264,6 +1268,22 @@ AdbcStatusCode PostgresConnection::SetOption(const char* key, const char* value,
         "SET SESSION CHARACTERISTICS AS TRANSACTION ISOLATION LEVEL {}", pg_level);
     PqResultHelper result_helper{conn_, query};
     RAISE_STATUS(error, result_helper.Execute());
+    return ADBC_STATUS_OK;
+  } else if (std::strcmp(key, ADBC_POSTGRESQL_OPTION_USE_COPY) == 0) {
+    if (!conn_) {
+      post_init_options_.emplace_back(key, value);
+      return ADBC_STATUS_OK;
+    }
+
+    if (std::strcmp(value, ADBC_OPTION_VALUE_ENABLED) == 0) {
+      use_copy_ = true;
+    } else if (std::strcmp(value, ADBC_OPTION_VALUE_DISABLED) == 0) {
+      use_copy_ = false;
+    } else {
+      InternalAdbcSetError(error, "%s%s%s%s", "[libpq] Invalid value for option ", key,
+                           ": ", value);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
     return ADBC_STATUS_OK;
   }
   InternalAdbcSetError(error, "%s%s", "[libpq] Unknown option ", key);
