@@ -42,10 +42,6 @@ if (Test-Path $file) {
 try {
     Set-Location ..\..\..\..\..\go\adbc\pkg
 
-    # Ensure full symbols and debug info
-    $env:INCLUDE_SYMBOL_TABLES="true"
-    $env:INCLUDE_DEBUG_INFO="true"
-
     make $file
 
     if (Test-Path $file) {
