@@ -24,7 +24,7 @@ import (
 	"sync/atomic"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
+	"github.com/apache/arrow-adbc/go/adbc/driver/driverbase"
 	"github.com/apache/arrow-adbc/go/adbc/utils"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
@@ -77,7 +77,7 @@ type recordReaderConfig struct {
 // reader which gathers all of the records as they come in.
 func newRecordReader(ctx context.Context, cfg recordReaderConfig, opts ...grpc.CallOption) (rdr array.RecordReader, err error) {
 	const spanName = "FlightSQL.RecordReader.newRecordReader"
-	ctx, span, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, spanName, cfg.tracing)
+	ctx, span, endSpanHelper := driverbase.StartSpanWithEndSpanHelper(ctx, spanName, cfg.tracing)
 	spanOwnedByReader := false
 	errorRecorded := false
 	defer func() {

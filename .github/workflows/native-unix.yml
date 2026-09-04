@@ -616,10 +616,10 @@ jobs:
         run: |
           export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/x64/bin:$PATH
           # Can't use Docker on macOS
-          pushd $(pwd)/go/adbc
-          go build -o testserver ./driver/flightsql/cmd/testserver
+          pushd $(pwd)/go/flightsql
+          go build -o testserver ./cmd/testserver
           popd
-          $(pwd)/go/adbc/testserver -host 0.0.0.0 -port 41414 &
+          $(pwd)/go/flightsql/testserver -host 0.0.0.0 -port 41414 &
           while ! curl --http2-prior-knowledge -H "content-type: application/grpc" -v localhost:41414 -XPOST;
           do
               echo "Waiting for test server..."

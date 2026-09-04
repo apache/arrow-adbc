@@ -25,7 +25,7 @@ go/adbc/drivermgr/adbc_driver_manager_driver_loading.cc linguist-generated
 go/adbc/drivermgr/adbc_driver_manager_internal.h linguist-generated
 go/adbc/drivermgr/adbc_driver_manager_profiles.cc linguist-generated
 go/adbc/drivermgr/current_arch.h linguist-generated
-go/adbc/pkg/flightsql/* linguist-generated
+go/adbc/flightsql/pkg/* linguist-generated
 go/adbc/pkg/panicdummy/* linguist-generated
 python/adbc_driver_flightsql/adbc_driver_flightsql/_static_version.py export-subst
 python/adbc_driver_manager/adbc_driver_manager/_static_version.py export-subst

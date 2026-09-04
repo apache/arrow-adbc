@@ -30,8 +30,7 @@ import (
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
-	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
+	"github.com/apache/arrow-adbc/go/adbc/driver/driverbase"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/flight"
 	"github.com/apache/arrow-go/v18/arrow/flight/flightsql"
@@ -373,7 +372,7 @@ func (d *databaseImpl) SetOptionDouble(key string, value float64) error {
 
 func (d *databaseImpl) Close() (err error) {
 	const spanName = "FlightSQL.Database.Close"
-	_, span, endSpanHelper := internal.StartSpanWithEndSpanHelper(context.Background(), spanName, d)
+	_, span, endSpanHelper := driverbase.StartSpanWithEndSpanHelper(context.Background(), spanName, d)
 
 	span.AddEvent("closing", trace.WithAttributes(attribute.String("target", d.uri.String())))
 	flushErr := d.ForceFlushTracing(context.Background())
@@ -523,7 +522,7 @@ type support struct {
 
 func closeCachedFlightClient(d *databaseImpl, location, client interface{}, reason string) {
 	var err error
-	_, _, endSpanHelper := internal.StartSpanWithEndSpanHelper(context.Background(), "FlightSQL.Database.CloseCachedClient", d,
+	_, _, endSpanHelper := driverbase.StartSpanWithEndSpanHelper(context.Background(), "FlightSQL.Database.CloseCachedClient", d,
 		trace.WithAttributes(
 			attribute.String("flight.location", fmt.Sprint(location)),
 			attribute.String("flight.cache.reason", reason),
@@ -536,7 +535,7 @@ func closeCachedFlightClient(d *databaseImpl, location, client interface{}, reas
 }
 
 func (d *databaseImpl) Open(ctx context.Context) (_ adbc.Connection, err error) {
-	ctx, span, endSpanHelper := internal.StartSpanWithEndSpanHelper(
+	ctx, span, endSpanHelper := driverbase.StartSpanWithEndSpanHelper(
 		ctx,
 		"FlightSQL.Database.Open",
 		d,
@@ -562,7 +561,7 @@ func (d *databaseImpl) Open(ctx context.Context) (_ adbc.Connection, err error) 
 	cache := gcache.New(20).LRU().
 		Expiration(5 * time.Minute).
 		LoaderFunc(func(loc interface{}) (_ interface{}, err error) {
-			ctx, cacheSpan, endCacheSpanHelper := internal.StartSpanWithEndSpanHelper(context.Background(), "FlightSQL.Database.LoadCachedClient", d)
+			ctx, cacheSpan, endCacheSpanHelper := driverbase.StartSpanWithEndSpanHelper(context.Background(), "FlightSQL.Database.LoadCachedClient", d)
 			defer func() {
 				endCacheSpanHelper.WithError(err).EndSpan()
 			}()

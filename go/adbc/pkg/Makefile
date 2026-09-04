@@ -47,8 +47,12 @@ DRIVERS := $(addsuffix .$(SUFFIX),$(addprefix libadbc_driver_,$(MANAGERS)))
 .PHONY: all regenerate
 all: $(DRIVERS)
 
+libadbc_driver_%.$(SUFFIX): ../../% ../../%/pkg ../../%/go.mod ../../%/go.sum
+	$(GO_BUILD) -C ../../$* -buildvcs=true -tags driverlib -o $(CURDIR)/$@ -buildmode=c-shared -ldflags "-X github.com/apache/arrow-adbc/go/adbc/driver/driverbase.infoDriverVersion=$(VERSION)" ./pkg
+	$(RM) $(basename $@).h
+
 libadbc_driver_%.$(SUFFIX): % ../driver/% ../go.mod ../go.sum
-	$(GO_BUILD) -buildvcs=true -tags driverlib -o $@ -buildmode=c-shared -ldflags "-X github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase.infoDriverVersion=$(VERSION)" ./$*
+	$(GO_BUILD) -buildvcs=true -tags driverlib -o $@ -buildmode=c-shared -ldflags "-X github.com/apache/arrow-adbc/go/adbc/driver/driverbase.infoDriverVersion=$(VERSION)" ./$*
 	$(RM) $(basename $@).h
 
 regenerate:

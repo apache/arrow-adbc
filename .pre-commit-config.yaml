@@ -61,10 +61,15 @@ repos:
         - "--linelength=90"
         - "--verbose=2"
   - repo: https://github.com/golangci/golangci-lint
-    rev: 72798d34b1eb36745915b0d4eea5c2b3b31bdfe3  # frozen: v2.9.0
+    rev: c4e8435b673b0c51918007429309bf9d3cbca904  # frozen: v2.13.2
     hooks:
     - id: golangci-lint
+      name: "lint go/adbc"
       entry: bash -c 'cd go/adbc && golangci-lint run --fix --timeout 5m'
+      types_or: [go, go-mod]
+    - id: golangci-lint
+      name: "lint go/flightsql"
+      entry: bash -c 'cd go/flightsql && golangci-lint run --fix --timeout 5m'
       types_or: [go, go-mod]
   - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
     rev: a6273196190bb0f68caf1dc68073cf62c719f725  # v2.14.0
