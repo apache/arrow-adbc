@@ -20,13 +20,13 @@ package flightsql
 import (
 	"database/sql"
 
-	"github.com/apache/arrow-adbc/go/adbc/driver/flightsql"
 	"github.com/apache/arrow-adbc/go/adbc/sqldriver"
+	driver "github.com/apache/arrow-adbc/go/flightsql"
 	"github.com/apache/arrow-go/v18/arrow/memory"
 )
 
 func init() {
 	sql.Register("flightsql", sqldriver.Driver{
-		Driver: flightsql.NewDriver(memory.DefaultAllocator),
+		Driver: driver.NewDriver(memory.DefaultAllocator),
 	})
 }

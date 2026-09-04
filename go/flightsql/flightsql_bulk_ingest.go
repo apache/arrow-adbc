@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
+	"github.com/apache/arrow-adbc/go/adbc/driver/driverbase"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/flight/flightsql"
@@ -109,7 +109,7 @@ func createRecordReaderFromBatch(batch arrow.RecordBatch) (array.RecordReader, e
 // This is called from the statement when a target table has been set for bulk ingest.
 func (s *statement) executeIngest(ctx context.Context) (nRows int64, err error) {
 	var startTime = time.Now()
-	ctx, span, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, "FlightSQL.BulkIngest.Execute", s.cnxn)
+	ctx, span, endSpanHelper := driverbase.StartSpanWithEndSpanHelper(ctx, "FlightSQL.BulkIngest.Execute", s.cnxn)
 	errorRecorded := false
 	defer func() {
 		endSpanHelper.WithError(err).WithRecordedError(errorRecorded).EndSpan()

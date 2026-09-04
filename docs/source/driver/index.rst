@@ -82,7 +82,7 @@ driver in the table below is packaged this way.
    * - :doc:`Apache Arrow Flight SQL <flight_sql>` [#compat-flightsql]_
      - ``flightsql``
      - ASF
-     - :iconlink:`fa-brands fa-github|https://github.com/apache/arrow-adbc/tree/main/go/adbc/driver/flightsql|GitHub repository`
+     - :iconlink:`fa-brands fa-github|https://github.com/apache/arrow-adbc/tree/main/go/flightsql|GitHub repository`
    * - `Microsoft SQL Server <https://adbc-drivers.org/drivers/mssql/>`__
      - ``mssql``
      - Foundry

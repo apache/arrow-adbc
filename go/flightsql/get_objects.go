@@ -15,33 +15,19 @@
 // specific language governing permissions and limitations
 // under the License.
 
-package internal
+package flightsql
 
 import (
 	"context"
 	"regexp"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
+	"github.com/apache/arrow-adbc/go/adbc/driver/driverbase"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/codes"
-	semconv "go.opentelemetry.io/otel/semconv/v1.30.0"
-	"go.opentelemetry.io/otel/trace"
-)
-
-const (
-	Unique     = "UNIQUE"
-	PrimaryKey = "PRIMARY KEY"
-	ForeignKey = "FOREIGN KEY"
-)
-
-var (
-	AcceptAll = regexp.MustCompile(".*")
 )
 
 type CatalogAndSchema struct {
@@ -503,14 +489,14 @@ func (c *DefaultXdbcMetadataBuilder) findInt16Val(key string) (int16, bool) {
 }
 
 func (c *DefaultXdbcMetadataBuilder) SetOrdinalPosition(defaultPos int32, b *array.Int32Builder) {
-	if v, ok := c.findInt32Val(ORDINAL_POSITION); ok {
+	if v, ok := c.findInt32Val(driverbase.ORDINAL_POSITION); ok {
 		b.Append(v)
 	} else {
 		b.Append(defaultPos)
 	}
 }
 func (b *DefaultXdbcMetadataBuilder) SetRemarks(builder *array.StringBuilder) {
-	if v, ok := b.findStrVal(REMARKS); ok {
+	if v, ok := b.findStrVal(driverbase.REMARKS); ok {
 		builder.Append(v)
 	} else {
 		builder.AppendNull()
@@ -518,15 +504,15 @@ func (b *DefaultXdbcMetadataBuilder) SetRemarks(builder *array.StringBuilder) {
 }
 
 func (b *DefaultXdbcMetadataBuilder) SetXdbcDataType(columnType arrow.DataType, builder *array.Int16Builder) {
-	if v, ok := b.findInt16Val(XDBC_DATA_TYPE); ok {
+	if v, ok := b.findInt16Val(driverbase.XDBC_DATA_TYPE); ok {
 		builder.Append(v)
 	} else {
-		builder.Append(int16(ToXdbcDataType(columnType)))
+		builder.Append(int16(driverbase.ToXdbcDataType(columnType)))
 	}
 }
 
 func (b *DefaultXdbcMetadataBuilder) SetXdbcTypeName(builder *array.StringBuilder) {
-	if v, ok := b.findStrVal(XDBC_TYPE_NAME); ok {
+	if v, ok := b.findStrVal(driverbase.XDBC_TYPE_NAME); ok {
 		builder.Append(v)
 	} else {
 		builder.AppendNull()
@@ -534,7 +520,7 @@ func (b *DefaultXdbcMetadataBuilder) SetXdbcTypeName(builder *array.StringBuilde
 }
 
 func (b *DefaultXdbcMetadataBuilder) SetXdbcColumnSize(builder *array.Int32Builder) {
-	if v, ok := b.findInt32Val(XDBC_COLUMN_SIZE); ok {
+	if v, ok := b.findInt32Val(driverbase.XDBC_COLUMN_SIZE); ok {
 		builder.Append(v)
 	} else {
 		builder.AppendNull()
@@ -542,7 +528,7 @@ func (b *DefaultXdbcMetadataBuilder) SetXdbcColumnSize(builder *array.Int32Build
 }
 
 func (b *DefaultXdbcMetadataBuilder) SetXdbcDecimalDigits(builder *array.Int16Builder) {
-	if v, ok := b.findInt16Val(XDBC_DECIMAL_DIGITS); ok {
+	if v, ok := b.findInt16Val(driverbase.XDBC_DECIMAL_DIGITS); ok {
 		builder.Append(v)
 	} else {
 		builder.AppendNull()
@@ -550,7 +536,7 @@ func (b *DefaultXdbcMetadataBuilder) SetXdbcDecimalDigits(builder *array.Int16Bu
 }
 
 func (b *DefaultXdbcMetadataBuilder) SetXdbcNumPrecRadix(builder *array.Int16Builder) {
-	if v, ok := b.findInt16Val(XDBC_NUM_PREC_RADIX); ok {
+	if v, ok := b.findInt16Val(driverbase.XDBC_NUM_PREC_RADIX); ok {
 		builder.Append(v)
 	} else {
 		builder.AppendNull()
@@ -558,7 +544,7 @@ func (b *DefaultXdbcMetadataBuilder) SetXdbcNumPrecRadix(builder *array.Int16Bui
 }
 
 func (b *DefaultXdbcMetadataBuilder) SetXdbcNullable(builder *array.Int16Builder) {
-	if v, ok := b.findInt16Val(XDBC_NULLABLE); ok {
+	if v, ok := b.findInt16Val(driverbase.XDBC_NULLABLE); ok {
 		builder.Append(v)
 	} else {
 		builder.AppendNull()
@@ -566,7 +552,7 @@ func (b *DefaultXdbcMetadataBuilder) SetXdbcNullable(builder *array.Int16Builder
 }
 
 func (b *DefaultXdbcMetadataBuilder) SetXdbcColumnDef(builder *array.StringBuilder) {
-	if v, ok := b.findStrVal(XDBC_COLUMN_DEF); ok {
+	if v, ok := b.findStrVal(driverbase.XDBC_COLUMN_DEF); ok {
 		builder.Append(v)
 	} else {
 		builder.AppendNull()
@@ -574,7 +560,7 @@ func (b *DefaultXdbcMetadataBuilder) SetXdbcColumnDef(builder *array.StringBuild
 }
 
 func (b *DefaultXdbcMetadataBuilder) SetXdbcSqlDataType(columnType arrow.DataType, builder *array.Int16Builder) {
-	if v, ok := b.findInt16Val(XDBC_SQL_DATA_TYPE); ok {
+	if v, ok := b.findInt16Val(driverbase.XDBC_SQL_DATA_TYPE); ok {
 		builder.Append(v)
 	} else {
 		builder.AppendNull()
@@ -582,7 +568,7 @@ func (b *DefaultXdbcMetadataBuilder) SetXdbcSqlDataType(columnType arrow.DataTyp
 }
 
 func (b *DefaultXdbcMetadataBuilder) SetXdbcDatetimeSub(builder *array.Int16Builder) {
-	if v, ok := b.findInt16Val(XDBC_DATETIME_SUB); ok {
+	if v, ok := b.findInt16Val(driverbase.XDBC_DATETIME_SUB); ok {
 		builder.Append(v)
 	} else {
 		builder.AppendNull()
@@ -590,7 +576,7 @@ func (b *DefaultXdbcMetadataBuilder) SetXdbcDatetimeSub(builder *array.Int16Buil
 }
 
 func (b *DefaultXdbcMetadataBuilder) SetXdbcCharOctetLength(builder *array.Int32Builder) {
-	if v, ok := b.findInt32Val(XDBC_CHAR_OCTET_LENGTH); ok {
+	if v, ok := b.findInt32Val(driverbase.XDBC_CHAR_OCTET_LENGTH); ok {
 		builder.Append(v)
 	} else {
 		builder.AppendNull()
@@ -598,7 +584,7 @@ func (b *DefaultXdbcMetadataBuilder) SetXdbcCharOctetLength(builder *array.Int32
 }
 
 func (b *DefaultXdbcMetadataBuilder) SetXdbcIsNullable(builder *array.StringBuilder) {
-	if v, ok := b.findStrVal(XDBC_IS_NULLABLE); ok {
+	if v, ok := b.findStrVal(driverbase.XDBC_IS_NULLABLE); ok {
 		builder.Append(v)
 	} else {
 		builder.AppendNull()
@@ -606,7 +592,7 @@ func (b *DefaultXdbcMetadataBuilder) SetXdbcIsNullable(builder *array.StringBuil
 }
 
 func (b *DefaultXdbcMetadataBuilder) SetXdbcScopeCatalog(builder *array.StringBuilder) {
-	if v, ok := b.findStrVal(XDBC_SCOPE_CATALOG); ok {
+	if v, ok := b.findStrVal(driverbase.XDBC_SCOPE_CATALOG); ok {
 		builder.Append(v)
 	} else {
 		builder.AppendNull()
@@ -614,7 +600,7 @@ func (b *DefaultXdbcMetadataBuilder) SetXdbcScopeCatalog(builder *array.StringBu
 }
 
 func (b *DefaultXdbcMetadataBuilder) SetXdbcScopeSchema(builder *array.StringBuilder) {
-	if v, ok := b.findStrVal(XDBC_SCOPE_SCHEMA); ok {
+	if v, ok := b.findStrVal(driverbase.XDBC_SCOPE_SCHEMA); ok {
 		builder.Append(v)
 	} else {
 		builder.AppendNull()
@@ -622,7 +608,7 @@ func (b *DefaultXdbcMetadataBuilder) SetXdbcScopeSchema(builder *array.StringBui
 }
 
 func (b *DefaultXdbcMetadataBuilder) SetXdbcScopeTable(builder *array.StringBuilder) {
-	if v, ok := b.findStrVal(XDBC_SCOPE_TABLE); ok {
+	if v, ok := b.findStrVal(driverbase.XDBC_SCOPE_TABLE); ok {
 		builder.Append(v)
 	} else {
 		builder.AppendNull()
@@ -630,7 +616,7 @@ func (b *DefaultXdbcMetadataBuilder) SetXdbcScopeTable(builder *array.StringBuil
 }
 
 func (b *DefaultXdbcMetadataBuilder) SetXdbcIsAutoincrement(builder *array.BooleanBuilder) {
-	if v, ok := b.findBoolVal(XDBC_IS_AUTOINCREMENT); ok {
+	if v, ok := b.findBoolVal(driverbase.XDBC_IS_AUTOINCREMENT); ok {
 		builder.Append(v)
 	} else {
 		builder.AppendNull()
@@ -638,250 +624,9 @@ func (b *DefaultXdbcMetadataBuilder) SetXdbcIsAutoincrement(builder *array.Boole
 }
 
 func (b *DefaultXdbcMetadataBuilder) SetXdbcIsAutogeneratedColumn(builder *array.BooleanBuilder) {
-	if v, ok := b.findBoolVal(XDBC_IS_AUTOGENERATEDCOLUMN); ok {
+	if v, ok := b.findBoolVal(driverbase.XDBC_IS_AUTOGENERATEDCOLUMN); ok {
 		builder.Append(v)
 	} else {
 		builder.AppendNull()
-	}
-}
-
-const (
-	COLUMN_NAME                 = "COLUMN_NAME"
-	ORDINAL_POSITION            = "ORDINAL_POSITION"
-	REMARKS                     = "REMARKS"
-	XDBC_DATA_TYPE              = "XDBC_DATA_TYPE"
-	XDBC_TYPE_NAME              = "XDBC_TYPE_NAME"
-	XDBC_COLUMN_SIZE            = "XDBC_COLUMN_SIZE"
-	XDBC_DECIMAL_DIGITS         = "XDBC_DECIMAL_DIGITS"
-	XDBC_NUM_PREC_RADIX         = "XDBC_NUM_PREC_RADIX"
-	XDBC_NULLABLE               = "XDBC_NULLABLE"
-	XDBC_COLUMN_DEF             = "XDBC_COLUMN_DEF"
-	XDBC_SQL_DATA_TYPE          = "XDBC_SQL_DATA_TYPE"
-	XDBC_DATETIME_SUB           = "XDBC_DATETIME_SUB"
-	XDBC_CHAR_OCTET_LENGTH      = "XDBC_CHAR_OCTET_LENGTH"
-	XDBC_IS_NULLABLE            = "XDBC_IS_NULLABLE"
-	XDBC_SCOPE_CATALOG          = "XDBC_SCOPE_CATALOG"
-	XDBC_SCOPE_SCHEMA           = "XDBC_SCOPE_SCHEMA"
-	XDBC_SCOPE_TABLE            = "XDBC_SCOPE_TABLE"
-	XDBC_IS_AUTOINCREMENT       = "XDBC_IS_AUTOINCREMENT"
-	XDBC_IS_AUTOGENERATEDCOLUMN = "XDBC_IS_AUTOGENERATEDCOLUMN"
-)
-
-// The JDBC/ODBC-defined type of any object.
-// All the values here are the sames as in the JDBC and ODBC specs.
-type XdbcDataType int32
-
-const (
-	XdbcDataType_XDBC_UNKNOWN_TYPE  XdbcDataType = 0
-	XdbcDataType_XDBC_CHAR          XdbcDataType = 1
-	XdbcDataType_XDBC_NUMERIC       XdbcDataType = 2
-	XdbcDataType_XDBC_DECIMAL       XdbcDataType = 3
-	XdbcDataType_XDBC_INTEGER       XdbcDataType = 4
-	XdbcDataType_XDBC_SMALLINT      XdbcDataType = 5
-	XdbcDataType_XDBC_FLOAT         XdbcDataType = 6
-	XdbcDataType_XDBC_REAL          XdbcDataType = 7
-	XdbcDataType_XDBC_DOUBLE        XdbcDataType = 8
-	XdbcDataType_XDBC_DATETIME      XdbcDataType = 9
-	XdbcDataType_XDBC_INTERVAL      XdbcDataType = 10
-	XdbcDataType_XDBC_VARCHAR       XdbcDataType = 12
-	XdbcDataType_XDBC_DATE          XdbcDataType = 91
-	XdbcDataType_XDBC_TIME          XdbcDataType = 92
-	XdbcDataType_XDBC_TIMESTAMP     XdbcDataType = 93
-	XdbcDataType_XDBC_LONGVARCHAR   XdbcDataType = -1
-	XdbcDataType_XDBC_BINARY        XdbcDataType = -2
-	XdbcDataType_XDBC_VARBINARY     XdbcDataType = -3
-	XdbcDataType_XDBC_LONGVARBINARY XdbcDataType = -4
-	XdbcDataType_XDBC_BIGINT        XdbcDataType = -5
-	XdbcDataType_XDBC_TINYINT       XdbcDataType = -6
-	XdbcDataType_XDBC_BIT           XdbcDataType = -7
-	XdbcDataType_XDBC_WCHAR         XdbcDataType = -8
-	XdbcDataType_XDBC_WVARCHAR      XdbcDataType = -9
-)
-
-func ToXdbcDataType(dt arrow.DataType) (xdbcType XdbcDataType) {
-	if dt == nil {
-		return XdbcDataType_XDBC_UNKNOWN_TYPE
-	}
-
-	switch dt.ID() {
-	case arrow.EXTENSION:
-		return ToXdbcDataType(dt.(arrow.ExtensionType).StorageType())
-	case arrow.DICTIONARY:
-		return ToXdbcDataType(dt.(*arrow.DictionaryType).ValueType)
-	case arrow.RUN_END_ENCODED:
-		return ToXdbcDataType(dt.(*arrow.RunEndEncodedType).Encoded())
-	case arrow.INT8, arrow.UINT8:
-		return XdbcDataType_XDBC_TINYINT
-	case arrow.INT16, arrow.UINT16:
-		return XdbcDataType_XDBC_SMALLINT
-	case arrow.INT32, arrow.UINT32:
-		return XdbcDataType_XDBC_INTEGER
-	case arrow.INT64, arrow.UINT64:
-		return XdbcDataType_XDBC_BIGINT
-	case arrow.FLOAT32, arrow.FLOAT16, arrow.FLOAT64:
-		return XdbcDataType_XDBC_FLOAT
-	case arrow.DECIMAL, arrow.DECIMAL256:
-		return XdbcDataType_XDBC_DECIMAL
-	case arrow.STRING, arrow.LARGE_STRING:
-		return XdbcDataType_XDBC_VARCHAR
-	case arrow.BINARY, arrow.LARGE_BINARY:
-		return XdbcDataType_XDBC_BINARY
-	case arrow.FIXED_SIZE_BINARY:
-		return XdbcDataType_XDBC_BINARY
-	case arrow.BOOL:
-		return XdbcDataType_XDBC_BIT
-	case arrow.TIME32, arrow.TIME64:
-		return XdbcDataType_XDBC_TIME
-	case arrow.DATE32, arrow.DATE64:
-		return XdbcDataType_XDBC_DATE
-	case arrow.TIMESTAMP:
-		return XdbcDataType_XDBC_TIMESTAMP
-	case arrow.DENSE_UNION, arrow.SPARSE_UNION:
-		return XdbcDataType_XDBC_VARBINARY
-	case arrow.LIST, arrow.LARGE_LIST, arrow.FIXED_SIZE_LIST:
-		return XdbcDataType_XDBC_VARBINARY
-	case arrow.STRUCT, arrow.MAP:
-		return XdbcDataType_XDBC_VARBINARY
-	default:
-		return XdbcDataType_XDBC_UNKNOWN_TYPE
-	}
-}
-
-// Starts a trace.Span with the given spanName for the tracing object with
-// the given ctx context.
-func StartSpan(ctx context.Context, spanName string, tracing adbc.OTelTracing, opts ...trace.SpanStartOption) (context.Context, trace.Span) {
-	if tracing == nil {
-		return ctx, trace.SpanFromContext(ctx)
-	}
-
-	attrs := tracing.GetInitialSpanAttributes()
-	attrs = append(attrs, semconv.DBOperationName(spanName))
-	opts = append(opts, trace.WithAttributes(attrs...))
-
-	return tracing.StartSpan(ctx, spanName, opts...)
-}
-
-// Starts a trace.Span with the given spanName for the tracing object with
-// the given ctx context. Returns an EndSpanHelper to centralize span completion for operations that may fail.
-func StartSpanWithEndSpanHelper(ctx context.Context, spanName string, tracing adbc.OTelTracing, opts ...trace.SpanStartOption) (context.Context, trace.Span, *EndSpanHelper) {
-	startTime := time.Now()
-	if tracing == nil {
-		span := trace.SpanFromContext(ctx)
-		return ctx, span, NewEndSpanHelper(span).WithStartTime(startTime)
-	}
-
-	attrs := tracing.GetInitialSpanAttributes()
-	attrs = append(attrs, semconv.DBOperationName(spanName))
-	opts = append(opts, trace.WithAttributes(attrs...))
-
-	newCtx, span := tracing.StartSpan(ctx, spanName, opts...)
-	return newCtx, span, NewEndSpanHelper(span).WithStartTime(startTime)
-}
-
-// Ends the given span. If err is not nil, then the
-// error is recorded and the status is set appropriately.
-// Otherwise, the status is set to Ok.
-func EndSpan(span trace.Span, err error, options ...trace.SpanEndOption) {
-	if err != nil {
-		span.RecordError(err)
-		if adbcError, ok := err.(adbc.Error); ok {
-			span.SetAttributes(semconv.ErrorTypeKey.String(adbcError.Code.String()))
-		}
-		span.SetStatus(codes.Error, err.Error())
-	} else {
-		span.SetStatus(codes.Ok, "")
-	}
-	span.End(options...)
-}
-
-// Ends the given span. If err is not nil, then the
-// error is recorded and the status is set appropriately.
-// Otherwise, the status is set to Ok.
-func EndSpanWithError(span trace.Span, err *error, options ...trace.SpanEndOption) {
-	if err != nil && *err != nil {
-		span.RecordError(*err)
-		setSpanStatus(span, *err)
-	} else {
-		setSpanStatus(span, nil)
-	}
-	span.End(options...)
-}
-
-// EndSpanHelper centralizes span completion for operations that may fail.
-// It records errors when present, records the elapsed duration if a start time
-// was provided, and ensures the span status and end options are applied uniformly.
-type EndSpanHelper struct {
-	span          trace.Span
-	err           *error
-	errorRecorded bool
-	startTime     *time.Time
-	options       []trace.SpanEndOption
-}
-
-// NewEndSpanHelper creates a helper for finalizing a span after an operation.
-func NewEndSpanHelper(span trace.Span) *EndSpanHelper {
-	return &EndSpanHelper{
-		span:          span,
-		errorRecorded: false,
-		startTime:     nil,
-		err:           nil,
-	}
-}
-
-// WithError configures the error to be recorded and reported on the span.
-// It returns the helper itself to allow fluent chaining.
-func (h *EndSpanHelper) WithError(err error) *EndSpanHelper {
-	h.err = &err
-	return h
-}
-
-// WithRecordedError marks whether an error has already been recorded elsewhere.
-// It returns the helper itself to allow fluent chaining.
-func (h *EndSpanHelper) WithRecordedError(errorRecorded bool) *EndSpanHelper {
-	h.errorRecorded = errorRecorded
-	return h
-}
-
-// WithOptions sets the span end options to apply when the span is closed.
-// It returns the helper itself to allow fluent chaining.
-func (h *EndSpanHelper) WithOptions(options ...trace.SpanEndOption) *EndSpanHelper {
-	h.options = options
-	return h
-}
-
-// WithStartTime sets the operation start time so the elapsed duration can be recorded.
-// It returns the helper itself to allow fluent chaining.
-func (h *EndSpanHelper) WithStartTime(startTime time.Time) *EndSpanHelper {
-	h.startTime = &startTime
-	return h
-}
-
-// EndSpan completes the span, records any error, sets status, and emits duration metadata if available.
-func (h *EndSpanHelper) EndSpan() {
-	if h.span == nil {
-		return
-	}
-	if h.startTime != nil {
-		h.span.SetAttributes(attribute.Float64("span.duration_s", time.Since(*h.startTime).Seconds()))
-	}
-	if !h.errorRecorded && h.err != nil && *h.err != nil {
-		h.span.RecordError(*h.err)
-	}
-	if h.err != nil && *h.err != nil {
-		setSpanStatus(h.span, *h.err)
-	} else {
-		setSpanStatus(h.span, nil)
-	}
-	h.span.End(h.options...)
-}
-
-func setSpanStatus(span trace.Span, err error) {
-	if err != nil {
-		if adbcError, ok := err.(adbc.Error); ok {
-			span.SetAttributes(semconv.ErrorTypeKey.String(adbcError.Code.String()))
-		}
-		span.SetStatus(codes.Error, err.Error())
-	} else {
-		span.SetStatus(codes.Ok, "")
 	}
 }

@@ -21,7 +21,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
+	"github.com/apache/arrow-adbc/go/adbc/driver/driverbase"
 	"go.opentelemetry.io/otel/attribute"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
@@ -144,7 +144,7 @@ func TestTraceHeaderAttrsWithPrefix_AppliedToSpan(t *testing.T) {
 		},
 	}
 
-	ctx, _, endSpanHelper := internal.StartSpanWithEndSpanHelper(
+	ctx, _, endSpanHelper := driverbase.StartSpanWithEndSpanHelper(
 		context.Background(),
 		"FlightSQL.Statement.ExecuteQuery",
 		tracing,

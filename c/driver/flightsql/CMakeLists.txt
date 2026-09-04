@@ -18,7 +18,7 @@
 include(GoUtils)
 
 set(LDFLAGS "$<$<CONFIG:Release>:-s> $<$<CONFIG:Release>:-w>")
-add_go_lib("${REPOSITORY_ROOT}/go/adbc/pkg/flightsql/"
+add_go_lib("${REPOSITORY_ROOT}/go/flightsql/pkg"
            adbc_driver_flightsql
            SOURCES
            driver.go

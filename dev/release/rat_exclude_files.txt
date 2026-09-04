@@ -35,6 +35,7 @@ go/adbc/drivermgr/adbc_driver_manager.h
 go/adbc/status_string.go
 go/adbc/infocode_string.go
 go/adbc/go.sum
+go/flightsql/go.sum
 java/.mvn/jvm.config
 python/*/*/py.typed
 rat.txt

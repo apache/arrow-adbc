@@ -29,7 +29,7 @@ import (
 	"unsafe"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
+	"github.com/apache/arrow-adbc/go/adbc/driver/driverbase"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/flight"
@@ -523,7 +523,7 @@ func (s *statement) ExecuteQuery(ctx context.Context) (rdr array.RecordReader, n
 		spanName      = "FlightSQL.Statement." + operationName
 	)
 	startTime := time.Now()
-	ctx, span, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, spanName, s.cnxn, trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...))
+	ctx, span, endSpanHelper := driverbase.StartSpanWithEndSpanHelper(ctx, spanName, s.cnxn, trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...))
 	defer func() {
 		endSpanHelper.WithError(err).EndSpan()
 	}()
@@ -599,7 +599,7 @@ func (s *statement) ExecuteUpdate(ctx context.Context) (n int64, err error) {
 		spanName      = "FlightSQL.Statement." + operationName
 	)
 	startTime := time.Now()
-	ctx, span, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, spanName, s.cnxn, trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...))
+	ctx, span, endSpanHelper := driverbase.StartSpanWithEndSpanHelper(ctx, spanName, s.cnxn, trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...))
 	defer func() {
 		endSpanHelper.WithError(err).EndSpan()
 	}()
@@ -661,7 +661,7 @@ func (s *statement) Prepare(ctx context.Context) (err error) {
 		spanName      = "FlightSQL.Statement." + operationName
 	)
 	startTime := time.Now()
-	ctx, span, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, spanName, s.cnxn, trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...))
+	ctx, span, endSpanHelper := driverbase.StartSpanWithEndSpanHelper(ctx, spanName, s.cnxn, trace.WithAttributes(traceHeaderAttrsWithPrefix(s.hdrs, traceRequestMetadataPrefix)...))
 	defer func() {
 		endSpanHelper.WithError(err).EndSpan()
 	}()

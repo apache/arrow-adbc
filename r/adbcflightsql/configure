@@ -124,7 +124,7 @@ sed \
   -e "s|@nproc@|$GOMAXPROCS|" \
   src/Makevars.in > src/Makevars
 
-if [ -f "src/go/adbc/pkg/flightsql/driver.go" ]; then
+if [ -f "src/go/flightsql/pkg/driver.go" ]; then
   echo "Found vendored ADBC FlightSQL driver"
   exit 0
 fi

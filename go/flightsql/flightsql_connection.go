@@ -28,8 +28,7 @@ import (
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
-	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
+	"github.com/apache/arrow-adbc/go/adbc/driver/driverbase"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/flight"
@@ -69,7 +68,7 @@ type connectionImpl struct {
 }
 
 type flightSqlMetadata struct {
-	internal.DefaultXdbcMetadataBuilder
+	DefaultXdbcMetadataBuilder
 	columnMetadata *flightsql.ColumnMetadata
 }
 
@@ -102,7 +101,7 @@ func (md *flightSqlMetadata) SetXdbcScopeTable(b *array.StringBuilder) {
 }
 
 func (md *flightSqlMetadata) SetXdbcSqlDataType(columnType arrow.DataType, b *array.Int16Builder) {
-	b.Append(int16(internal.ToXdbcDataType(columnType)))
+	b.Append(int16(driverbase.ToXdbcDataType(columnType)))
 }
 
 func (md *flightSqlMetadata) SetXdbcTypeName(b *array.StringBuilder) {
@@ -123,7 +122,7 @@ func (md *flightSqlMetadata) SetXdbcIsAutoincrement(builder *array.BooleanBuilde
 
 func (c *connectionImpl) GetObjects(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (array.RecordReader, error) {
 	// To avoid an N+1 query problem, we assume result sets here will fit in memory and build up a single response.
-	g := internal.GetObjects{Ctx: ctx, Depth: depth, Catalog: catalog, DbSchema: dbSchema, TableName: tableName, ColumnName: columnName, TableType: tableType}
+	g := GetObjects{Ctx: ctx, Depth: depth, Catalog: catalog, DbSchema: dbSchema, TableName: tableName, ColumnName: columnName, TableType: tableType}
 	if err := g.Init(c.Base().Alloc, c.GetObjectsDbSchemas, c.GetObjectsTables, &flightSqlMetadata{}); err != nil {
 		return nil, err
 	}
@@ -247,7 +246,7 @@ func doGetWithResponseMetadata(ctx context.Context, client *flightsql.Client, ti
 
 func doGetWithTracer(ctx context.Context, cl *flightsql.Client, endpoint *flight.FlightEndpoint, clientCache gcache.Cache, tracing adbc.OTelTracing, opts ...grpc.CallOption) (rdr *flight.Reader, err error) {
 	const spanName = "FlightSQL.Connection.DoGet"
-	ctx, span, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, spanName, tracing)
+	ctx, span, endSpanHelper := driverbase.StartSpanWithEndSpanHelper(ctx, spanName, tracing)
 	errorRecorded := false
 	defer func() {
 		endSpanHelper.WithError(err).WithRecordedError(errorRecorded).EndSpan()
@@ -733,7 +732,7 @@ func (c *connectionImpl) SetOptionDouble(key string, value float64) error {
 
 func (c *connectionImpl) PrepareDriverInfo(ctx context.Context, infoCodes []adbc.InfoCode) (err error) {
 	const spanName = "FlightSQL.Connection.PrepareDriverInfo"
-	ctx, _, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, spanName, c)
+	ctx, _, endSpanHelper := driverbase.StartSpanWithEndSpanHelper(ctx, spanName, c)
 	defer func() {
 		endSpanHelper.WithError(err).EndSpan()
 	}()
@@ -858,7 +857,7 @@ func (c *connectionImpl) readInfo(ctx context.Context, expectedSchema *arrow.Sch
 
 func (c *connectionImpl) GetObjectsCatalogs(ctx context.Context, catalog *string) (catalogs []string, err error) {
 	const spanName = "FlightSQL.Connection.GetObjectsCatalogs"
-	ctx, _, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, spanName, c)
+	ctx, _, endSpanHelper := driverbase.StartSpanWithEndSpanHelper(ctx, spanName, c)
 	defer func() {
 		endSpanHelper.WithError(err).EndSpan()
 	}()
@@ -906,7 +905,7 @@ func (c *connectionImpl) GetObjectsCatalogs(ctx context.Context, catalog *string
 // Helper function to build up a map of catalogs to DB schemas
 func (c *connectionImpl) GetObjectsDbSchemas(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string) (result map[string][]string, err error) {
 	const spanName = "FlightSQL.Connection.GetObjectsDbSchemas"
-	ctx, _, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, spanName, c)
+	ctx, _, endSpanHelper := driverbase.StartSpanWithEndSpanHelper(ctx, spanName, c)
 	defer func() {
 		endSpanHelper.WithError(err).EndSpan()
 	}()
@@ -953,9 +952,9 @@ func (c *connectionImpl) GetObjectsDbSchemas(ctx context.Context, depth adbc.Obj
 	return
 }
 
-func (c *connectionImpl) GetObjectsTables(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (result internal.SchemaToTableInfo, err error) {
+func (c *connectionImpl) GetObjectsTables(ctx context.Context, depth adbc.ObjectDepth, catalog *string, dbSchema *string, tableName *string, columnName *string, tableType []string) (result SchemaToTableInfo, err error) {
 	const spanName = "FlightSQL.Connection.GetObjectsTables"
-	ctx, _, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, spanName, c)
+	ctx, _, endSpanHelper := driverbase.StartSpanWithEndSpanHelper(ctx, spanName, c)
 	defer func() {
 		endSpanHelper.WithError(err).EndSpan()
 	}()
@@ -964,7 +963,7 @@ func (c *connectionImpl) GetObjectsTables(ctx context.Context, depth adbc.Object
 		return
 	}
 	ctx = metadata.NewOutgoingContext(ctx, c.hdrs)
-	result = make(map[internal.CatalogAndSchema][]internal.TableInfo)
+	result = make(map[CatalogAndSchema][]TableInfo)
 
 	// Pre-populate the map of which schemas are in which catalogs
 	includeSchema := depth == adbc.ObjectDepthAll || depth == adbc.ObjectDepthColumns
@@ -1010,7 +1009,7 @@ func (c *connectionImpl) GetObjectsTables(ctx context.Context, depth adbc.Object
 			if !dbSchema.IsNull(i) {
 				dbSchemaName = string([]byte(dbSchema.Value(i)))
 			}
-			key := internal.CatalogAndSchema{
+			key := CatalogAndSchema{
 				Catalog: catalogName,
 				Schema:  dbSchemaName,
 			}
@@ -1029,7 +1028,7 @@ func (c *connectionImpl) GetObjectsTables(ctx context.Context, depth adbc.Object
 				reader.Release()
 			}
 
-			result[key] = append(result[key], internal.TableInfo{
+			result[key] = append(result[key], TableInfo{
 				Name:      string([]byte(tableName.Value(i))),
 				TableType: string([]byte(tableType.Value(i))),
 				Schema:    schema,
@@ -1045,7 +1044,7 @@ func (c *connectionImpl) GetObjectsTables(ctx context.Context, depth adbc.Object
 
 func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, dbSchema *string, tableName string) (schema *arrow.Schema, err error) {
 	const spanName = "FlightSQL.Connection.GetTableSchema"
-	ctx, _, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, spanName, c)
+	ctx, _, endSpanHelper := driverbase.StartSpanWithEndSpanHelper(ctx, spanName, c)
 	defer func() {
 		endSpanHelper.WithError(err).EndSpan()
 	}()
@@ -1132,7 +1131,7 @@ func (c *connectionImpl) GetTableSchema(ctx context.Context, catalog *string, db
 //	table_type			| utf8 not null
 func (c *connectionImpl) GetTableTypes(ctx context.Context) (reader array.RecordReader, err error) {
 	const spanName = "FlightSQL.Connection.GetTableTypes"
-	ctx, _, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, spanName, c)
+	ctx, _, endSpanHelper := driverbase.StartSpanWithEndSpanHelper(ctx, spanName, c)
 	defer func() {
 		endSpanHelper.WithError(err).EndSpan()
 	}()
@@ -1306,7 +1305,7 @@ func (c *connectionImpl) prepareSubstrait(ctx context.Context, plan flightsql.Su
 // Close closes this connection and releases any associated resources.
 func (c *connectionImpl) Close() (err error) {
 	const spanName = "FlightSQL.Connection.Close"
-	ctx, span, endSpanHelper := internal.StartSpanWithEndSpanHelper(context.Background(), spanName, c)
+	ctx, span, endSpanHelper := driverbase.StartSpanWithEndSpanHelper(context.Background(), spanName, c)
 	defer func() {
 		endSpanHelper.WithError(err).EndSpan()
 	}()
@@ -1362,7 +1361,7 @@ func (c *connectionImpl) Close() (err error) {
 // A partition can be retrieved by using ExecutePartitions on a statement.
 func (c *connectionImpl) ReadPartition(ctx context.Context, serializedPartition []byte) (rdr array.RecordReader, err error) {
 	const spanName = "FlightSQL.Connection.ReadPartition"
-	ctx, _, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, spanName, c)
+	ctx, _, endSpanHelper := driverbase.StartSpanWithEndSpanHelper(ctx, spanName, c)
 	defer func() {
 		endSpanHelper.WithError(err).EndSpan()
 	}()

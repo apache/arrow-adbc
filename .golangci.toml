@@ -15,25 +15,13 @@
 # specific language governing permissions and limitations
 # under the License.
 
-$ErrorActionPreference = "Stop"
+version = "2"
 
-$SourceDir = $Args[0]
-$BuildDir = $Args[1]
-$InstallDir = if ($Args[2] -ne $null) { $Args[2] } else { Join-Path $BuildDir "local/" }
+[formatters]
+enable = [
+  "gofmt",
+]
 
-if ($env:CGO_ENABLED -eq "1") {
-    $env:PATH = "$($InstallDir)\bin;$env:PATH"
-}
-
-$GoDir = Join-Path $SourceDir "go" "adbc"
-$FlightSqlDir = Join-Path $SourceDir "go" "flightsql"
-
-Push-Location $GoDir
-go test -v ./...
-if (-not $?) { exit 1 }
-Pop-Location
-
-Push-Location $FlightSqlDir
-go test -v ./...
-if (-not $?) { exit 1 }
-Pop-Location
+[linters.settings.govet]
+# appears to be broken in go 1.27
+disable = ["inline"]

@@ -37,7 +37,7 @@ adbc_driver_flightsql_lib = custom_target(
         golang,
         'build',
         '-C',
-        meson.project_source_root() + '/../go/adbc/pkg/flightsql',
+        meson.project_source_root() + '/../go/flightsql/pkg',
         '-tags=driverlib',
         '-buildmode=c-shared',
         '-o',

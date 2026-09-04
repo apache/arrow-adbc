@@ -21,7 +21,7 @@ package main
 
 // #cgo CFLAGS: -DADBC_EXPORTING
 // #cgo CXXFLAGS: -std=c++17 -DADBC_EXPORTING
-// #include "../../drivermgr/arrow-adbc/adbc.h"
+// #include "../../adbc/drivermgr/arrow-adbc/adbc.h"
 // #include "utils.h"
 // #include <errno.h>
 // #include <string.h>
