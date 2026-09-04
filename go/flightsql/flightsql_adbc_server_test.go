@@ -47,9 +47,9 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	driver "github.com/apache/arrow-adbc/go/adbc/driver/flightsql"
-	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
+	"github.com/apache/arrow-adbc/go/adbc/driver/driverbase"
 	"github.com/apache/arrow-adbc/go/adbc/validation"
+	driver "github.com/apache/arrow-adbc/go/flightsql"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/flight"
@@ -2523,9 +2523,9 @@ func (suite *GetObjectsTests) TestMetadataGetObjectsColumnsXdbc() {
 			//[]string{"1", "2", "3"}, //ordinalPosition
 			[]string{"currencycol_", "floatcols_", "intcols_"}, //remarks
 			[]string{ //xdbcDataType
-				"currencycol_" + strconv.Itoa(int(internal.ToXdbcDataType(arrow.PrimitiveTypes.Float64))),
-				"floatcols_" + strconv.Itoa(int(internal.ToXdbcDataType(arrow.PrimitiveTypes.Float32))),
-				"intcols_" + strconv.Itoa(int(internal.ToXdbcDataType(arrow.PrimitiveTypes.Int32))),
+				"currencycol_" + strconv.Itoa(int(driverbase.ToXdbcDataType(arrow.PrimitiveTypes.Float64))),
+				"floatcols_" + strconv.Itoa(int(driverbase.ToXdbcDataType(arrow.PrimitiveTypes.Float32))),
+				"intcols_" + strconv.Itoa(int(driverbase.ToXdbcDataType(arrow.PrimitiveTypes.Int32))),
 			},
 			[]string{ //xdbcTypeName
 				"currencycol_CURRENCY",
@@ -2538,9 +2538,9 @@ func (suite *GetObjectsTests) TestMetadataGetObjectsColumnsXdbc() {
 			[]string{"currencycol_0", "floatcols_0", "intcols_0"}, //xdbcNullable
 			[]string{"currencycol_", "floatcols_", "intcols_"},    //xdbcColumnDef
 			[]string{ //xdbcSqlDataType
-				"currencycol_" + strconv.Itoa(int(internal.ToXdbcDataType(arrow.PrimitiveTypes.Float64))),
-				"floatcols_" + strconv.Itoa(int(internal.ToXdbcDataType(arrow.PrimitiveTypes.Float32))),
-				"intcols_" + strconv.Itoa(int(internal.ToXdbcDataType(arrow.PrimitiveTypes.Int32))),
+				"currencycol_" + strconv.Itoa(int(driverbase.ToXdbcDataType(arrow.PrimitiveTypes.Float64))),
+				"floatcols_" + strconv.Itoa(int(driverbase.ToXdbcDataType(arrow.PrimitiveTypes.Float32))),
+				"intcols_" + strconv.Itoa(int(driverbase.ToXdbcDataType(arrow.PrimitiveTypes.Int32))),
 			},
 			[]string{"currencycol_0", "floatcols_0", "intcols_0"}, //xdbcDatetimeSub
 			[]string{"currencycol_0", "floatcols_0", "intcols_0"}, //xdbcCharOctetLength

@@ -22,8 +22,8 @@ import (
 	"os"
 	"testing"
 
-	_ "github.com/apache/arrow-adbc/go/adbc/sqldriver/flightsql"
 	"github.com/apache/arrow-adbc/go/adbc/validation"
+	_ "github.com/apache/arrow-adbc/go/flightsql/sqldriver"
 	"github.com/apache/arrow-go/v18/arrow/flight"
 	"github.com/apache/arrow-go/v18/arrow/flight/flightsql"
 	"github.com/apache/arrow-go/v18/arrow/flight/flightsql/example"

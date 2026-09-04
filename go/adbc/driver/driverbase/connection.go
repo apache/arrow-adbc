@@ -27,7 +27,6 @@ import (
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow-adbc/go/adbc/driver/internal"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
@@ -153,7 +152,7 @@ func (base *ConnectionImplBase) Rollback(context.Context) error {
 }
 
 func (base *ConnectionImplBase) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (reader array.RecordReader, err error) {
-	_, _, endSpanHelper := internal.StartSpanWithEndSpanHelper(ctx, "ConnectionImplBase.GetInfo", base)
+	_, _, endSpanHelper := StartSpanWithEndSpanHelper(ctx, "ConnectionImplBase.GetInfo", base)
 	defer func() {
 		endSpanHelper.WithError(err).EndSpan()
 	}()

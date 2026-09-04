@@ -81,7 +81,7 @@ the :c:struct:`AdbcDatabase`.
    .. tab-item:: Go
       :sync: go
 
-      .. recipe:: ../../../go/adbc/driver/flightsql/example_usage_test.go
+      .. recipe:: ../../../go/flightsql/example_usage_test.go
 
 URI Format
 ----------
