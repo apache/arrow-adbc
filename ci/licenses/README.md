@@ -35,9 +35,10 @@ go install github.com/google/go-licenses@latest
 Then generate the license:
 
 ```
-cd go/adbc
+cd go/driver
 go-licenses report ./... \
   --ignore github.com/apache/arrow-adbc/go/adbc \
+  --ignore github.com/apache/arrow-adbc/go/driver \
   --ignore github.com/apache/arrow/go/v18 \
   --template ../../ci/licenses/flightsql.tpl > ../../ci/licenses/flightsql.txt 2> /dev/null
 ```

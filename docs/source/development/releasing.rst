@@ -384,6 +384,14 @@ Be sure to go through on the following checklist:
    :class-title: sd-fs-5
    :class-container: sd-shadow-md
 
+   The script will walk you through the following steps:
+
+   1. Create the tag ``go/adbc/vX.Y.Z``
+   2. Push the tag
+   3. Update ``go/driver/go.mod`` to reference the new tag
+   4. Create the tag ``go/driver/vX.Y.Z``
+   5. Push the tag
+
    .. code-block:: Bash
 
       # dev/release/post-04-go.sh

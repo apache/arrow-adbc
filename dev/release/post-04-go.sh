@@ -34,12 +34,43 @@ main() {
     header "Tagging Go release ${VERSION_NATIVE}"
 
     version_tag="apache-arrow-adbc-${RELEASE}"
-    go_arrow_tag="go/adbc/v${VERSION_NATIVE}"
+    go_adbc_tag="go/adbc/v${VERSION_NATIVE}"
+    go_driver_tag="go/driver/v${VERSION_NATIVE}"
 
-    git tag "${go_arrow_tag}" "${version_tag}"
-    echo "Created tag ${go_arrow_tag}"
+    # Tag go/adbc module and release
+    git tag "${go_adbc_tag}" "${version_tag}"
+    echo "Created tag ${go_adbc_tag}"
     echo "Please verify and push the tag:"
-    echo git push apache "${go_arrow_tag}"
+    echo git push apache "${go_adbc_tag}"
+    read -p "After pushing the tag, press ENTER to continue..." ignored
+
+    # Update go/driver module; tag and release
+    git switch -c "go-driver-${VERSION_NATIVE}" "${version_tag}"
+    pushd go/driver
+    go get "github.com/apache/arrow-adbc/go/adbc@v${VERSION_NATIVE}"
+    go mod tidy
+    popd
+    git add go/driver/go.mod go/driver/go.sum
+    git commit -m "chore: update go.mod and go.sum for ${VERSION_NATIVE}"
+    read -p "Verify the commit, then press ENTER to continue..." ignored
+    git tag "${go_driver_tag}" "go-driver-${VERSION_NATIVE}"
+    echo "Created tag ${go_driver_tag}"
+    echo "Please verify and push the tag:"
+    echo git push apache "${go_driver_tag}"
+    read -p "After pushing the tag, press ENTER to continue..." ignored
+
+    # Update go/driver module on main, too
+    git fetch apache main
+    git switch -c "go-driver-main-${VERSION_NATIVE}" apache/main
+    pushd go/driver
+    go get "github.com/apache/arrow-adbc/go/adbc@v${VERSION_NATIVE}"
+    go mod tidy
+    popd
+    git add go/driver/go.mod go/driver/go.sum
+    git commit -m "chore: update go.mod and go.sum for ${VERSION_NATIVE}"
+    read -p "Verify the commit, then press ENTER to continue..." ignored
+    echo "Please create a PR for the branch: go-driver-main-${VERSION_NATIVE}"
+    read -p "After creating a PR, press ENTER to continue..." ignored
 }
 
 main "$@"

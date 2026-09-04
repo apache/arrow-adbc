@@ -26,7 +26,11 @@
 //
 // These generations are added here using go generate to make it easy to
 // generate all drivers via a single `go generate` command.
+//
+// Note that the driver sources are in go/driver; the infrastructure is kept
+// here for backwards compatibility (as some consumers directly build their
+// drivers out of this repo).
 package pkg
 
-//go:generate go run ./gen -prefix "FlightSQL" -driver ../driver/flightsql -o flightsql
-//go:generate go run ./gen -prefix "PanicDummy" -driver ../driver/panicdummy -o panicdummy
+//go:generate go run ./gen -prefix "FlightSQL" -driver ../../driver/flightsql -o ../../driver/flightsql/pkg
+//go:generate go run ./gen -prefix "PanicDummy" -driver ../../driver/panicdummy -o ../../driver/panicdummy/pkg

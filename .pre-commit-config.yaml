@@ -61,10 +61,15 @@ repos:
         - "--linelength=90"
         - "--verbose=2"
   - repo: https://github.com/golangci/golangci-lint
-    rev: 72798d34b1eb36745915b0d4eea5c2b3b31bdfe3  # frozen: v2.9.0
+    rev: c4e8435b673b0c51918007429309bf9d3cbca904  # frozen: v2.13.2
     hooks:
     - id: golangci-lint
+      name: "lint go/adbc"
       entry: bash -c 'cd go/adbc && golangci-lint run --fix --timeout 5m'
+      types_or: [go, go-mod]
+    - id: golangci-lint
+      name: "lint go/driver"
+      entry: bash -c 'cd go/driver && golangci-lint run --fix --timeout 5m'
       types_or: [go, go-mod]
   - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
     rev: a6273196190bb0f68caf1dc68073cf62c719f725  # v2.14.0
@@ -105,23 +110,29 @@ repos:
       pass_filenames: false
       entry: "./ci/scripts/run_rat_local.sh"
     - id: check-cgo-adbc-header
-      name: Ensure CGO adbc.h is syncd
+      name: Ensure adbc.h is synced to go/adbc/drivermgr
       language: script
       pass_filenames: true
       files: '^c/include/arrow-adbc/[^/]*\.h$'
-      entry: "./ci/scripts/run_cgo_drivermgr_check.sh"
+      entry: "./ci/scripts/run_cgo_drivermgr_check.sh go/adbc/drivermgr/arrow-adbc"
     - id: check-cgo-adbc-impl
-      name: Ensure CGO adbc_driver_manager*.cc is syncd
+      name: Ensure adbc_driver_manager*.cc is synced to go/adbc/drivermgr
       language: script
       pass_filenames: true
       files: '^c/driver_manager/adbc_driver_manager(|_api|_profiles|_driver_loading)\.cc$'
-      entry: "./ci/scripts/run_cgo_drivermgr_check.sh"
+      entry: "./ci/scripts/run_cgo_drivermgr_check.sh go/adbc/drivermgr"
     - id: check-cgo-adbc-impl-headers
-      name: Ensure CGO adbc_driver_manager headers are syncd
+      name: Ensure adbc_driver_manager headers are synced to go/adbc/drivermgr
       language: script
       pass_filenames: true
       files: '^c/driver_manager/(adbc_driver_manager_internal|current_arch)\.h$'
-      entry: "./ci/scripts/run_cgo_drivermgr_check.sh"
+      entry: "./ci/scripts/run_cgo_drivermgr_check.sh go/adbc/drivermgr"
+    - id: check-cgo-adbc-driver-header
+      name: Ensure adbc.h is synced to go/driver
+      language: script
+      pass_filenames: true
+      files: '^c/include/arrow-adbc/adbc\.h$'
+      entry: "./ci/scripts/run_cgo_drivermgr_check.sh go/driver/arrow-adbc"
     # https://infra.apache.org/github-actions-policy.html
     - id: check-pin
       name: Ensure GitHub Actions and pre-commit hooks are pinned to a specific SHA
