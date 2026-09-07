@@ -607,6 +607,12 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// \see AdbcConnectionGetTableTypes
 #define ADBC_INFO_FEATURE_TABLE_TYPES 222
 
+/// \brief Whether the driver supports getting metadata collections (type: bool).
+/// \since ADBC API revision 1.2.0
+/// \see AdbcConnectionGetInfo
+/// \see ADBC_METADATA_COLLECTION
+#define ADBC_INFO_FEATURE_METADATA_COLLECTION 223
+
 /// \brief Whether the driver supports transactions (true), or if autocommit
 ///   is always enabled (false) (type: bool).
 /// \since ADBC API revision 1.2.0
@@ -1084,6 +1090,609 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 ///
 /// The type is char*.
 #define ADBC_INGEST_OPTION_TEMPORARY "adbc.ingest.temporary"
+
+/// @}
+
+/// \defgroup adbc-statement-metadata-collection Metadata Collections
+///
+/// Fetch (catalog) metadata from the database. On a statement, set
+/// ADBC_METADATA_COLLECTION to one of the collection names below, and set any
+/// filters via the options defined below. (There are driver/vendor-specific
+/// collections and filters as well.) Then call AdbcStatementExecuteQuery or
+/// AdbcStatementExecuteSchema. The result is an Arrow dataset with a schema
+/// defined by the collection. For example, a client may request a list of
+/// tables in the database, or a list of supported data types.
+///
+/// All drivers must implement a collection called "meta" (which is aliased to
+/// NULL and blank string) that defines the available collections. See
+/// ADBC_METADATA_COLLECTION_META.
+///
+/// Drivers may also implement AdbcStatementRequestSchema to (1) request
+/// different data types and (2) drop fields from the result. Drivers are not
+/// required to support this, and are not required to support other changes
+/// like reordering collection fields. Drivers are encouraged to use this to
+/// give applications flexibility over output type and shape (e.g. reducing
+/// memory pressure by run-end-encoding or dictionary-encoding primary key
+/// columns; optimizing queries by using simpler queries and eliminating joins
+/// if the application drops certain columns).
+///
+/// Drivers may add more fields at the end of standard schemas to reflect
+/// vendor-specific metadata. Applications must access these using an offset
+/// from the end of the schema and cannot assume that the index of the field
+/// will remain stable.  Drivers must add the fields at the end and must
+/// prefix field names with the vendor/driver name to differentiate them
+/// (e.g. 'POSTGRESQL:owner', not just 'owner').
+///
+/// Similarly, future standard revisions may add more fields to existing
+/// standard schemas. Applications must not assume the number of fields is
+/// fixed.
+///
+/// Drivers may implement collections beyond those defined by ADBC, but must
+/// use a vendor-specific prefix (e.g. `postgresql.`) to avoid conflicts with
+/// future standardized collections. Drivers must not use the `adbc.` prefix.
+///
+/// Drivers may not necessarily accept filter options or other options before
+/// the collection name option is set.
+///
+/// This is intended to replace AdbcConnectionGetObjects, but both APIs will
+/// be supported for the time being. AdbcConnectionGetObjects may be
+/// deprecated in a future revision.
+///
+/// \since ADBC API revision 1.2.0
+///
+/// @{
+
+/// \brief Prepare to fetch a metadata collection.
+///
+/// The type is char*.
+#define ADBC_METADATA_COLLECTION "adbc.metadata.collection"
+
+/// \brief Filter the collection on the literal catalog name.
+///
+/// The type is char*.
+#define ADBC_METADATA_FILTER_CATALOG "adbc.metadata.filter.catalog"
+
+/// \brief Filter the collection on the catalog name, matching a search
+///   pattern.
+///
+/// If both this and ADBC_METADATA_FILTER_CATALOG are set, then the last set
+/// option wins.
+///
+/// The type is char*.
+#define ADBC_METADATA_FILTER_PATTERN_CATALOG "adbc.metadata.filter_pattern.catalog"
+
+/// \brief Filter the collection on the literal schema name.
+///
+/// The type is char*.
+#define ADBC_METADATA_FILTER_DB_SCHEMA "adbc.metadata.filter.schema"
+
+/// \brief Filter the collection on the schema name, matching a search
+///   pattern.
+///
+/// If both this and ADBC_METADATA_FILTER_DB_SCHEMA are set, then the last set
+/// option wins.
+///
+/// The type is char*.
+#define ADBC_METADATA_FILTER_PATERN_DB_SCHEMA "adbc.metadata.filter_pattern.schema"
+
+/// \brief Filter the collection on the literal table name.
+///
+/// The type is char*.
+#define ADBC_METADATA_FILTER_TABLE "adbc.metadata.filter.table"
+
+/// \brief Filter the collection on the table name, matching a search pattern.
+///
+/// If both this and ADBC_METADATA_FILTER_TABLE are set, then the last set
+/// option wins.
+///
+/// The type is char*.
+#define ADBC_METADATA_FILTER_PATTERN_TABLE "adbc.metadata.filter_pattern.table"
+
+/// \brief Filter the collection on the literal column name.
+///
+/// The type is char*.
+#define ADBC_METADATA_FILTER_COLUMN "adbc.metadata.filter.column"
+
+/// \brief Filter the collection on the column name, matching a search
+///   pattern.
+///
+/// If both this and ADBC_METADATA_FILTER_COLUMN are set, then the last set
+/// option wins.
+///
+/// The type is char*.
+#define ADBC_METADATA_FILTER_PATTERN_COLUMN "adbc.metadata.filter_pattern.column"
+
+/// \brief Filter the collection on the table types.
+///
+/// Separator: comma (',').
+/// The type is char*.
+#define ADBC_METADATA_FILTER_TABLE_TYPES "adbc.metadata.filter.table_types"
+
+/// \brief Filter the collection on the literal catalog name of the foreign
+///   key.
+///
+/// The type is char*.
+#define ADBC_METADATA_FILTER_FOREIGN_CATALOG "adbc.metadata.filter.foreign_catalog"
+
+/// \brief Filter the collection on the literal catalog name of the foreign
+///   key.
+///
+/// The type is char*.
+#define ADBC_METADATA_FILTER_FOREIGN_DB_SCHEMA "adbc.metadata.filter.foreign_schema"
+
+/// \brief Filter the collection on the literal catalog name of the foreign
+///   key.
+///
+/// The type is char*.
+#define ADBC_METADATA_FILTER_FOREIGN_TABLE "adbc.metadata.filter.foreign_table"
+
+/// \brief Filter the collection on the literal constraint name.
+///
+/// The type is char*.
+#define ADBC_METADATA_FILTER_CONSTRAINT "adbc.metadata.filter.constraint"
+
+/// \brief Filter the collection on the constraint name, matching a search
+///   pattern.
+///
+/// If both this and ADBC_METADATA_FILTER_CONSTRAINT are set, then the last set
+/// option wins.
+///
+/// The type is char*.
+#define ADBC_METADATA_FILTER_PATTERN_CONSTRAINT "adbc.metadata.filter_pattern.constraint"
+
+/// \brief Filter the collection on the constraint types.
+///
+/// Separator: comma (',').
+/// The type is char*.
+#define ADBC_METADATA_FILTER_CONSTRAINT_TYPES "adbc.metadata.filter.constraint_types"
+
+/// \brief Filter the collection on the literal routine name.
+///
+/// The type is char*.
+#define ADBC_METADATA_FILTER_ROUTINE "adbc.metadata.filter.routine"
+
+/// \brief Filter the collection on the routine name, matching a search
+///   pattern.
+///
+/// If both this and ADBC_METADATA_FILTER_ROUTINE are set, then the last set
+/// option wins.
+///
+/// The type is char*.
+#define ADBC_METADATA_FILTER_PATTERN_ROUTINE "adbc.metadata.filter_pattern.routine"
+
+/// \brief Filter the collection on the routine types.
+///
+/// Separator: comma (',').
+/// The type is char*.
+#define ADBC_METADATA_FILTER_ROUTINE_TYPES "adbc.metadata.filter.routine_types"
+
+/// \brief Only show namespaces in the given multi-part namespace.
+///
+/// Separator: ASCII unit separator (0x1F).
+/// The type is char*.
+#define ADBC_METADATA_FILTER_NAMESPACE "adbc.metadata.filter.namespace"
+
+/// \brief Only show namespaces with the given name. This filter only applies
+///   to the last namespace component.
+///
+/// The type is char*.
+#define ADBC_METADATA_FILTER_NAMESPACE_NAME "adbc.metadata.filter.namespace_name"
+
+/// \brief Get or set a pagination token.
+///
+/// Some drivers may support this to allow fetching a large metadata
+/// collection in multiple calls. If the pagination token could not be used,
+/// the driver should return an error.
+#define ADBC_METADATA_OPTION_PAGINATION_TOKEN "adbc.metadata.pagination_token"
+
+/// \brief The "meta" collection returns the available metadata collections.
+///
+/// | Field Name               | Field Type                   | Comments |
+/// |--------------------------|------------------------------|----------|
+/// | collection_name          | utf8 not null                |          |
+/// | collection_description   | utf8                         |          |
+/// | collection_schema        | extension<arrow.schema_json> |          |
+/// | collection_filters       | list<FILTER_SCHEMA>          |          |
+///
+/// FILTER_SCHEMA is a Struct with fields:
+///
+/// | Field Name               | Field Type                   | Comments |
+/// |--------------------------|------------------------------|----------|
+/// | filter_description       | utf8                         |          |
+/// | required                 | bool not null                |          |
+#define ADBC_METADATA_COLLECTION_META "meta"
+
+/// \brief The "catalogs" collection returns the catalogs defined in the
+///   database.
+///
+/// Some systems may not have the concept of catalogs, in which case this
+/// collection should contain a single entry with an empty, non-null name.
+///
+/// | Field Name               | Field Type                   | Comments |
+/// |--------------------------|------------------------------|----------|
+/// | catalog_name             | utf8                         |          |
+/// | catalog_remarks          | utf8                         | (1)      |
+///
+/// (1) A description of the catalog.
+///
+/// Supported filters:
+/// - ADBC_METADATA_FILTER_CATALOG
+/// - ADBC_METADATA_FILTER_PATTERN_CATALOG
+#define ADBC_METADATA_COLLECTION_CATALOGS "catalogs"
+
+/// \brief The "schemas" collection returns the schemas defined in the
+///   database.
+///
+/// Some systems may not have the concept of schemas, in which case this
+/// collection should contain a single entry per catalog with an empty,
+/// non-null name.
+///
+/// | Field Name               | Field Type                   | Comments |
+/// |--------------------------|------------------------------|----------|
+/// | catalog_name             | utf8                         |          |
+/// | db_schema_name           | utf8                         |          |
+/// | db_schema_remarks        | utf8                         | (1)      |
+///
+/// (1) A description of the schema.
+///
+/// Supported filters:
+/// - ADBC_METADATA_FILTER_CATALOG
+/// - ADBC_METADATA_FILTER_PATTERN_CATALOG
+/// - ADBC_METADATA_FILTER_DB_SCHEMA
+/// - ADBC_METADATA_FILTER_PATTERN_DB_SCHEMA
+#define ADBC_METADATA_COLLECTION_SCHEMAS "schemas"
+
+/// \brief The "tables" collection returns the tables defined in the
+///   database.
+///
+/// | Field Name               | Field Type                   | Comments |
+/// |--------------------------|------------------------------|----------|
+/// | catalog_name             | utf8                         |          |
+/// | db_schema_name           | utf8                         |          |
+/// | table_name               | utf8 not null                |          |
+/// | table_type               | utf8 not null                |          |
+/// | table_definition         | utf8                         | (1)      |
+/// | table_remarks            | utf8                         | (2)      |
+/// | table_schema             | extension<arrow.schema_json> | (3)      |
+///
+/// (1) The table or view definition (e.g. the SQL DDL statement).
+/// (2) A description of the table.
+/// (3) The Arrow schema of the table, equivalent to
+///     AdbcConnectionGetTableSchema.
+///
+///
+/// Supported filters:
+/// - ADBC_METADATA_FILTER_CATALOG
+/// - ADBC_METADATA_FILTER_PATTERN_CATALOG
+/// - ADBC_METADATA_FILTER_DB_SCHEMA
+/// - ADBC_METADATA_FILTER_PATTERN_DB_SCHEMA
+/// - ADBC_METADATA_FILTER_TABLE
+/// - ADBC_METADATA_FILTER_PATTERN_TABLE
+/// - ADBC_METADATA_FILTER_TABLE_TYPES
+#define ADBC_METADATA_COLLECTION_TABLES "tables"
+
+/// \brief The "columns" collection returns table columns.
+///
+/// | Field Name               | Field Type                   | Comments |
+/// |--------------------------|------------------------------|----------|
+/// | catalog_name             | utf8                         |          |
+/// | db_schema_name           | utf8                         |          |
+/// | table_name               | utf8 not null                |          |
+/// | column_name              | utf8 not null                |          |
+/// | ordinal_position         | int32                        | (1)      |
+/// | remarks                  | utf8                         | (2)      |
+/// | xdbc_data_type           | int16                        | (3)      |
+/// | xdbc_type_name           | utf8                         | (3)      |
+/// | xdbc_column_size         | int32                        | (3)      |
+/// | xdbc_decimal_digits      | int16                        | (3)      |
+/// | xdbc_num_prec_radix      | int16                        | (3)      |
+/// | xdbc_nullable            | int16                        | (3)      |
+/// | xdbc_column_def          | utf8                         | (3)      |
+/// | xdbc_sql_data_type       | int16                        | (3)      |
+/// | xdbc_datetime_sub        | int16                        | (3)      |
+/// | xdbc_char_octet_length   | int32                        | (3)      |
+/// | xdbc_is_nullable         | utf8                         | (3)      |
+/// | xdbc_scope_catalog       | utf8                         | (3)      |
+/// | xdbc_scope_schema        | utf8                         | (3)      |
+/// | xdbc_scope_table         | utf8                         | (3)      |
+/// | xdbc_is_autoincrement    | bool                         | (3)      |
+/// | xdbc_is_generatedcolumn  | bool                         | (3)      |
+/// | xdbc_source_data_type    | bool                         | (3)      |
+///
+/// 1. The column's ordinal position in the table (starting from 1).
+/// 2. Database-specific description of the column.
+/// 3. Optional value.  Should be null if not supported by the driver.
+///    xdbc_ values are meant to provide JDBC/ODBC-compatible metadata
+///    in an agnostic manner.
+///
+/// Supported filters:
+/// - ADBC_METADATA_FILTER_CATALOG
+/// - ADBC_METADATA_FILTER_PATTERN_CATALOG
+/// - ADBC_METADATA_FILTER_DB_SCHEMA
+/// - ADBC_METADATA_FILTER_PATTERN_DB_SCHEMA
+/// - ADBC_METADATA_FILTER_TABLE
+/// - ADBC_METADATA_FILTER_PATTERN_TABLE
+/// - ADBC_METADATA_FILTER_TABLE_TYPES
+/// - ADBC_METADATA_FILTER_COLUMN
+/// - ADBC_METADATA_FILTER_PATTERN_COLUMN
+#define ADBC_METADATA_COLLECTION_COLUMNS "columns"
+
+/// \brief The "imported_keys" collection, given a table, describes the
+///   primary key(s) referenced by the given table's foreign key(s).
+///
+/// | Field Name               | Field Type              | Comments |
+/// |--------------------------|-------------------------|----------|
+/// | pk_catalog_name          | utf8                    |          |
+/// | pk_schema_name           | utf8                    |          |
+/// | pk_table_name            | utf8 not null           |          |
+/// | pk_column_name           | utf8 not null           |          |
+/// | pk_name                  | utf8                    |          |
+/// | fk_catalog_name          | utf8                    |          |
+/// | fk_schema_name           | utf8                    |          |
+/// | fk_table_name            | utf8 not null           |          |
+/// | fk_column_name           | utf8 not null           |          |
+/// | fk_name                  | utf8                    |          |
+/// | key_seq                  | int16                   | (1)      |
+/// | constraint_update_rule   | int16                   | (2)      |
+/// | constraint_delete_rule   | int16                   | (3)      |
+/// | constraint_enforced      | bool                    | (3)      |
+/// | constraint_deferrability | int16                   | (4)      |
+/// | constraint_match_type    | int16                   | (5)      |
+///
+/// 1. The 1-based index of the column pair within the foreign key (1 => first
+///    column of the foreign key, 2 => second column of the foreign key, ...).
+/// 2. If applicable, the action to be taken when the primary key is updated
+///    or deleted.  The value is one of the ADBC_CONSTRAINT_ACTION_ constants.
+/// 3. Whether the constraint is currently enabled.
+/// 4. Whether the constraint can be deferred, and if so, whether it starts
+///    deferred.  The value is one of the ADBC_CONSTRAINT_DEFERRABLE_
+///    constants or ADBC_CONSTRAINT_NOT_DEFERRABLE.
+/// 5. How the foreign key constraint should be matched.  The value is one of
+///    the ADBC_CONSTRAINT_MATCH_ constants.
+///
+/// Filters:
+/// - ADBC_METADATA_FILTER_CATALOG (applies to fk_catalog_name)
+/// - ADBC_METADATA_FILTER_DB_SCHEMA (applies to fk_schema_name)
+/// - ADBC_METADATA_FILTER_TABLE (required; applies to fk_table_name)
+#define ADBC_METADATA_COLLECTION_IMPORTED_KEYS "imported_keys"
+
+/// \brief The "exported_keys" collection, given a table, describes the
+///   foreign key(s) referencing the given table's primary key(s).
+///
+/// | Field Name               | Field Type              | Comments |
+/// |--------------------------|-------------------------|----------|
+/// | pk_catalog_name          | utf8                    |          |
+/// | pk_schema_name           | utf8                    |          |
+/// | pk_table_name            | utf8 not null           |          |
+/// | pk_column_name           | utf8 not null           |          |
+/// | pk_name                  | utf8                    |          |
+/// | fk_catalog_name          | utf8                    |          |
+/// | fk_schema_name           | utf8                    |          |
+/// | fk_table_name            | utf8 not null           |          |
+/// | fk_column_name           | utf8 not null           |          |
+/// | fk_name                  | utf8                    |          |
+/// | key_seq                  | int16                   | (1)      |
+/// | constraint_update_rule   | int16                   | (2)      |
+/// | constraint_delete_rule   | int16                   | (3)      |
+/// | constraint_enforced      | bool                    | (3)      |
+/// | constraint_deferrability | int16                   | (4)      |
+/// | constraint_match_type    | int16                   | (5)      |
+///
+/// 1. The 1-based index of the column pair within the foreign key (1 => first
+///    column of the foreign key, 2 => second column of the foreign key, ...).
+/// 2. If applicable, the action to be taken when the primary key is updated
+///    or deleted.  The value is one of the ADBC_CONSTRAINT_ACTION_ constants.
+/// 3. Whether the constraint is currently enabled.
+/// 4. Whether the constraint can be deferred, and if so, whether it starts
+///    deferred.  The value is one of the ADBC_CONSTRAINT_DEFERRABLE_
+///    constants or ADBC_CONSTRAINT_NOT_DEFERRABLE.
+/// 5. How the foreign key constraint should be matched.  The value is one of
+///    the ADBC_CONSTRAINT_MATCH_ constants.
+///
+/// Filters:
+/// - ADBC_METADATA_FILTER_CATALOG (applies to pk_catalog_name)
+/// - ADBC_METADATA_FILTER_DB_SCHEMA (applies to pk_schema_name)
+/// - ADBC_METADATA_FILTER_TABLE (required; applies to pk_table_name)
+/// - ADBC_METADATA_FILTER_FOREIGN_CATALOG (applies to fk_catalog_name)
+/// - ADBC_METADATA_FILTER_FOREIGN_DB_SCHEMA (applies to fk_schema_name)
+/// - ADBC_METADATA_FILTER_FOREIGN_TABLE (required; applies to fk_table_name)
+#define ADBC_METADATA_COLLECTION_EXPORTED_KEYS "exported_keys"
+
+/// \brief The "cross_reference" collection, given a "parent" table and a
+///   "foreign" table, describes the foreign key(s) in the "foreign" table
+///   referencing the "parent" table's primary key(s) or unique columns.
+///
+/// | Field Name               | Field Type              | Comments |
+/// |--------------------------|-------------------------|----------|
+/// | pk_catalog_name          | utf8                    |          |
+/// | pk_schema_name           | utf8                    |          |
+/// | pk_table_name            | utf8 not null           |          |
+/// | pk_column_name           | utf8 not null           |          |
+/// | pk_name                  | utf8                    |          |
+/// | fk_catalog_name          | utf8                    |          |
+/// | fk_schema_name           | utf8                    |          |
+/// | fk_table_name            | utf8 not null           |          |
+/// | fk_column_name           | utf8 not null           |          |
+/// | fk_name                  | utf8                    |          |
+/// | key_seq                  | int16                   | (1)      |
+/// | constraint_update_rule   | int16                   | (2)      |
+/// | constraint_delete_rule   | int16                   | (3)      |
+/// | constraint_enforced      | bool                    | (3)      |
+/// | constraint_deferrability | int16                   | (4)      |
+/// | constraint_match_type    | int16                   | (5)      |
+///
+/// 1. The 1-based index of the column pair within the foreign key (1 => first
+///    column of the foreign key, 2 => second column of the foreign key, ...).
+/// 2. If applicable, the action to be taken when the primary key is updated
+///    or deleted.  The value is one of the ADBC_CONSTRAINT_ACTION_ constants.
+/// 3. Whether the constraint is currently enabled.
+/// 4. Whether the constraint can be deferred, and if so, whether it starts
+///    deferred.  The value is one of the ADBC_CONSTRAINT_DEFERRABLE_
+///    constants or ADBC_CONSTRAINT_NOT_DEFERRABLE.
+/// 5. How the foreign key constraint should be matched.  The value is one of
+///    the ADBC_CONSTRAINT_MATCH_ constants.
+///
+/// Filters:
+/// 1. The catalog of the parent table; required but may be NULL.
+/// 2. The schema of the parent table; required but may be NULL.
+/// 3. The name of the parent table; required.
+/// 4. The catalog of the foreign table; required but may be NULL.
+/// 5. The schema of the foreign table; required but may be NULL.
+/// 6. The name of the foreign table; required.
+#define ADBC_METADATA_COLLECTION_CROSS_REFERENCE "cross_reference"
+
+/// \brief The "constraints" collection describes constraints on the selected
+///   tables: primary keys, foreign keys, unique columns, and check
+///   constraints.
+///
+/// | Field Name               | Field Type              | Comments |
+/// |--------------------------|-------------------------|----------|
+/// | catalog_name             | utf8                    |          |
+/// | schema_name              | utf8                    |          |
+/// | table_name               | utf8 not null           |          |
+/// | constraint_name          | utf8                    |          |
+/// | constraint_type          | utf8 not null           | (1)      |
+/// | constraint_column_names  | list<utf8> not null     | (2)      |
+/// | constraint_expression    | utf8                    | (3)      |
+/// | constraint_update_rule   | int16                   | (4)      |
+/// | constraint_delete_rule   | int16                   | (4)      |
+/// | constraint_enforced      | bool                    | (5)      |
+/// | constraint_deferrability | int16                   | (6)      |
+/// | constraint_match_type    | int16                   | (7)      |
+///
+/// 1. One of 'CHECK', 'FOREIGN KEY', 'PRIMARY KEY', or 'UNIQUE', or a
+///    vendor-specific type.
+/// 2. The columns on the current table that are constrained, in
+///    order.
+/// 3. The vendor-specific definition of the constraint (e.g. the SQL
+///    expression to be checked).
+/// 4. If applicable, the action to be taken when the primary key is updated
+///    or deleted.  The value is one of the ADBC_CONSTRAINT_ACTION_ constants.
+/// 5. Whether the constraint is currently enabled.
+/// 6. Whether the constraint can be deferred, and if so, whether it starts
+///    deferred.  The value is one of the ADBC_CONSTRAINT_DEFERRABLE_
+///    constants or ADBC_CONSTRAINT_NOT_DEFERRABLE.
+/// 7. How the foreign key constraint should be matched.  The value is one of
+///    the ADBC_CONSTRAINT_MATCH_ constants.
+///
+/// Supported filters:
+/// - ADBC_METADATA_FILTER_CATALOG
+/// - ADBC_METADATA_FILTER_PATTERN_CATALOG
+/// - ADBC_METADATA_FILTER_DB_SCHEMA
+/// - ADBC_METADATA_FILTER_PATTERN_DB_SCHEMA
+/// - ADBC_METADATA_FILTER_TABLE
+/// - ADBC_METADATA_FILTER_PATTERN_TABLE
+/// - ADBC_METADATA_FILTER_CONSTRAINT
+/// - ADBC_METADATA_FILTER_PATTERN_CONSTRAINT
+/// - ADBC_METADATA_FILTER_CONSTRAINT_TYPES
+#define ADBC_METADATA_COLLECTION_CONSTRAINTS "constraints"
+
+/// \brief The "routines" collection returns functions and procedures.
+///
+/// | Field Name                  | Field Type                   | Comments |
+/// |-----------------------------|------------------------------|----------|
+/// | catalog_name                | utf8                         |          |
+/// | schema_name                 | utf8                         |          |
+/// | routine_name                | utf8 not null                |          |
+/// | routine_type                | utf8 not null                | (1)      |
+/// | routine_specific_name       | utf8                         | (2)      |
+/// | routine_remarks             | utf8                         | (3)      |
+/// | routine_examples            | list<utf8>                   | (3)      |
+/// | routine_definition          | utf8                         | (4)      |
+/// | routine_definition_language | utf8                         | (4)      |
+/// | routine_parameter_schema    | extension<arrow.schema_json> | (5)      |
+/// | routine_result_schema       | extension<arrow.schema_json> | (5)      |
+///
+/// 1. 'FUNCTION', 'PROCEDURE', or a vendor-specific name (e.g. 'TABLE
+///    FUNCTION').
+/// 2. A name that uniquely identifies the routine, to disambiguate
+///    overloads.
+/// 3. Vendor-specific description or help text, along with examples of the
+///    syntax.
+/// 4. The definition (e.g. SQL text used to create a procedure) and the
+///    language of the definition (e.g. SQL, Python)
+/// 5. Metadata about the accepted parameters and return values as an Arrow
+///    schema.
+///
+/// Supported filters:
+/// - ADBC_METADATA_FILTER_CATALOG
+/// - ADBC_METADATA_FILTER_PATTERN_CATALOG
+/// - ADBC_METADATA_FILTER_DB_SCHEMA
+/// - ADBC_METADATA_FILTER_PATTERN_DB_SCHEMA
+/// - ADBC_METADATA_FILTER_TABLE
+/// - ADBC_METADATA_FILTER_PATTERN_TABLE
+/// - ADBC_METADATA_FILTER_ROUTINE
+/// - ADBC_METADATA_FILTER_PATTERN_ROUTINE
+/// - ADBC_METADATA_FILTER_ROUTINE_TYPES
+#define ADBC_METADATA_COLLECTION_ROUTINES "routines"
+
+/// \brief The "routine_columns" collection returns input/output columns and
+///   parameters of functions and procedures.
+///
+/// | Field Name                  | Field Type                   | Comments |
+/// |-----------------------------|------------------------------|----------|
+/// | catalog_name                | utf8                         |          |
+/// | schema_name                 | utf8                         |          |
+/// | routine_name                | utf8 not null                |          |
+/// | routine_type                | utf8 not null                |          |
+/// | routine_specific_name       | utf8                         |          |
+/// | column_name                 | utf8                         |          |
+/// | ordinal_position            | int32                        | (1)      |
+/// | column_remarks              | utf8                         | (2)      |
+/// | column_type                 | utf8                         | (3)      |
+/// | xdbc_data_type              | int16                        | (4)      |
+/// | xdbc_type_name              | utf8                         | (4)      |
+/// | xdbc_precision              | int32                        | (4)      |
+/// | xdbc_length                 | int32                        | (4)      |
+/// | xdbc_scale                  | int16                        | (4)      |
+/// | xdbc_radix                  | int16                        | (4)      |
+/// | xdbc_nullable               | int16                        | (4)      |
+/// | xdbc_column_def             | utf8                         | (4)      |
+/// | xdbc_sql_data_type          | int16                        | (4)      |
+/// | xdbc_datetime_sub           | int16                        | (4)      |
+/// | xdbc_char_octet_length      | int32                        | (4)      |
+/// | xdbc_is_nullable            | utf8                         | (4)      |
+///
+/// 1. The ordinal position of the parameter or return value (1-indexed).
+/// 2. Vendor-specific description of the parameter or return value.
+/// 3. The type of column or parameter; NULL if not known. Otherwise, 'IN',
+///    'OUT', 'INOUT', 'RETURN', 'RESULT', or a vendor-specific name.
+/// 4. Optional value.  Should be null if not supported by the driver.
+///    xdbc_ values are meant to provide JDBC/ODBC-compatible metadata
+///    in an agnostic manner.
+///
+/// Supported filters:
+/// - ADBC_METADATA_FILTER_CATALOG
+/// - ADBC_METADATA_FILTER_PATTERN_CATALOG
+/// - ADBC_METADATA_FILTER_DB_SCHEMA
+/// - ADBC_METADATA_FILTER_PATTERN_DB_SCHEMA
+/// - ADBC_METADATA_FILTER_TABLE
+/// - ADBC_METADATA_FILTER_PATTERN_TABLE
+/// - ADBC_METADATA_FILTER_ROUTINE
+/// - ADBC_METADATA_FILTER_PATTERN_ROUTINE
+/// - ADBC_METADATA_FILTER_ROUTINE_TYPES
+/// - ADBC_METADATA_FILTER_COLUMN
+/// - ADBC_METADATA_FILTER_PATTERN_COLUMN
+#define ADBC_METADATA_COLLECTION_ROUTINE_COLUMNS "routine_columns"
+
+/// \brief The "namespaces" collection returns a level of namespaces defined
+///   in the database.
+///
+/// This collection generally results in an "N+1" query pattern. This is
+/// intended for systems that do not follow the SQL catalog-schema-table
+/// hierarchy; for systems that do, collections like "catalogs", "schemas",
+/// and "tables" will be more efficient as they can return multiple levels at
+/// once.
+///
+/// | Field Name               | Field Type                   | Comments |
+/// |--------------------------|------------------------------|----------|
+/// | namespace_parent         | list<utf8 not null> not null |          |
+/// | namespace_name           | utf8 not null                |          |
+///
+/// Supported filters:
+/// - ADBC_METADATA_FILTER_NAMESPACE
+/// - ADBC_METADATA_FILTER_NAMESPACE_NAME
+#define ADBC_METADATA_COLLECTION_NAMESPACES "namespaces"
 
 /// @}
 
