@@ -1307,8 +1307,8 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// \brief The "catalogs" collection returns the catalogs defined in the
 ///   database.
 ///
-/// Some systems may not have the concept of catalogs, in which case this
-/// collection should contain a single entry with an empty, non-null name.
+/// Some systems may not have the concept of catalogs, in which case it is
+/// recommended that this collection should contain no rows.
 ///
 /// | Field Name               | Field Type                   | Comments |
 /// |--------------------------|------------------------------|----------|
@@ -1325,14 +1325,15 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// \brief The "schemas" collection returns the schemas defined in the
 ///   database.
 ///
-/// Some systems may not have the concept of schemas, in which case this
-/// collection should contain a single entry per catalog with an empty,
-/// non-null name.
+/// Some systems may not have the concept of catalogs or schemas. If
+/// catalogs are not supported, it is recommended to set catalog_name to
+/// NULL. If schemas are not supported, it is recommended that this
+/// collection should contain no rows.
 ///
 /// | Field Name               | Field Type                   | Comments |
 /// |--------------------------|------------------------------|----------|
 /// | catalog_name             | utf8                         |          |
-/// | db_schema_name           | utf8                         |          |
+/// | db_schema_name           | utf8 not null                |          |
 /// | db_schema_remarks        | utf8                         | (1)      |
 ///
 /// (1) A description of the schema.
