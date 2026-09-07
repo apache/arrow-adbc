@@ -19,7 +19,7 @@
 
 # flightsql - A FlightSQL driver for the database/sql package
 
-[![Go Reference](https://pkg.go.dev/badge/github.com/apache/arrow-adbc/go/flightsql/sqldriver.svg)](https://pkg.go.dev/github.com/apache/arrow-adbc/go/flightsql/sqldriver)
+[![Go Reference](https://pkg.go.dev/badge/github.com/apache/arrow-adbc/go/driver/flightsql/sqldriver.svg)](https://pkg.go.dev/github.com/apache/arrow-adbc/go/driver/flightsql/sqldriver)
 
 Golang database/sql driver for [FlightSQL](https://arrow.apache.org/docs/format/FlightSql.html).
 
@@ -34,7 +34,7 @@ which is itself database/sql wrapper driver for any
 [ADBC](https://arrow.apache.org/docs/format/ADBC.html) driver.
 
 This package simply registers the
-[FlightSQL ADBC driver](https://pkg.go.dev/github.com/apache/arrow-adbc/go/flightsql)
+[FlightSQL ADBC driver](https://pkg.go.dev/github.com/apache/arrow-adbc/go/driver/flightsql)
 with the database/sql package.
 Understanding ADBC is not necessary to use this driver.
 
@@ -45,7 +45,7 @@ package main
 
 import (
 	"database/sql"
-	_ "github.com/apache/arrow-adbc/go/flightsql/sqldriver"
+	_ "github.com/apache/arrow-adbc/go/driver/flightsql/sqldriver"
 )
 
 func main() {

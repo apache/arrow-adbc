@@ -21,7 +21,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/apache/arrow-adbc/go/adbc/driver/driverbase"
+	"github.com/apache/arrow-adbc/go/driver/internal/driverbase"
 	"go.opentelemetry.io/otel/attribute"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"

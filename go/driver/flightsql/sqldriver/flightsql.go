@@ -21,7 +21,7 @@ import (
 	"database/sql"
 
 	"github.com/apache/arrow-adbc/go/adbc/sqldriver"
-	driver "github.com/apache/arrow-adbc/go/flightsql"
+	driver "github.com/apache/arrow-adbc/go/driver/flightsql"
 	"github.com/apache/arrow-go/v18/arrow/memory"
 )
 

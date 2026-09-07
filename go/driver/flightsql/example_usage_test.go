@@ -29,7 +29,7 @@ import (
 	"log"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	drv "github.com/apache/arrow-adbc/go/flightsql"
+	drv "github.com/apache/arrow-adbc/go/driver/flightsql"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/flight"
 	"github.com/apache/arrow-go/v18/arrow/flight/flightsql"
