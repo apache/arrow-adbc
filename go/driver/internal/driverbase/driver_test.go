@@ -27,8 +27,8 @@ import (
 	"testing"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow-adbc/go/driver/internal/driverbase"
 	"github.com/apache/arrow-adbc/go/adbc/validation"
+	"github.com/apache/arrow-adbc/go/driver/internal/driverbase"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/memory"
