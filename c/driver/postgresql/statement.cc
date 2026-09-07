@@ -765,7 +765,7 @@ AdbcStatusCode PostgresStatement::ExecuteIngest(struct ArrowArrayStream* stream,
   PGresult* result = PQexec(connection_->conn(), query.c_str());
   if (PQresultStatus(result) != PGRES_COPY_IN) {
     AdbcStatusCode code =
-        MakeStatus(result, "[libpq] COPY query failed: {}\nQuery was:{}",
+        MakeStatus(result, "[libpq] COPY query failed: {}\nQuery was: {}",
                    PQerrorMessage(connection_->conn()), query)
             .ToAdbc(error);
     PQclear(result);
