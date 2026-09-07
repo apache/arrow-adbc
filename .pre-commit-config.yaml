@@ -68,8 +68,8 @@ repos:
       entry: bash -c 'cd go/adbc && golangci-lint run --fix --timeout 5m'
       types_or: [go, go-mod]
     - id: golangci-lint
-      name: "lint go/flightsql"
-      entry: bash -c 'cd go/flightsql && golangci-lint run --fix --timeout 5m'
+      name: "lint go/driver"
+      entry: bash -c 'cd go/driver && golangci-lint run --fix --timeout 5m'
       types_or: [go, go-mod]
   - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
     rev: a6273196190bb0f68caf1dc68073cf62c719f725  # v2.14.0
