@@ -30,6 +30,8 @@
 
 #include <arrow-adbc/adbc.h>
 
+#include "fmt/core.h"
+
 #include "driver/framework/status.h"
 
 /// \file base.h ADBC Driver Framework
@@ -54,8 +56,7 @@ enum class LifecycleState {
   kInitialized,
 };
 
-/// \brief A typed option value wrapper. It currently does not attempt
-/// conversion (i.e., getting a double option as a string).
+/// \brief A typed option value wrapper. Attempts some conversions between types.
 class Option {
  public:
   /// \brief The option is unset.
@@ -169,11 +170,23 @@ class Option {
       return std::visit(
           [&](auto&& value) -> AdbcStatusCode {
             using T = std::decay_t<decltype(value)>;
-            if constexpr (std::is_same_v<T, std::string>) {
-              size_t value_size_with_terminator = value.size() + 1;
+            if constexpr (std::is_same_v<T, std::string> || std::is_same_v<T, int64_t> ||
+                          std::is_same_v<T, double>) {
+              std::string_view string_value;
+              std::string allocated_value;
+              if constexpr (std::is_same_v<T, int64_t>) {
+                allocated_value = fmt::format("{}", value);
+                string_value = allocated_value;
+              } else if constexpr (std::is_same_v<T, double>) {
+                allocated_value = fmt::format("{}", value);
+                string_value = allocated_value;
+              } else {
+                string_value = value;
+              }
+              size_t value_size_with_terminator = string_value.size() + 1;
               if (*length >= value_size_with_terminator) {
-                std::memcpy(out, value.data(), value.size());
-                out[value.size()] = 0;
+                std::memcpy(out, string_value.data(), string_value.size());
+                out[string_value.size()] = 0;
               }
               *length = value_size_with_terminator;
               return ADBC_STATUS_OK;
