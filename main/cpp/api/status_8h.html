@@ -112,6 +112,8 @@ document.addEventListener('DOMContentLoaded', codefold.init);
 <code>#include &lt;utility&gt;</code><br />
 <code>#include &lt;variant&gt;</code><br />
 <code>#include &lt;vector&gt;</code><br />
+<code>#include &lt;fmt/core.h&gt;</code><br />
+<code>#include &lt;fmt/format.h&gt;</code><br />
 <code>#include &lt;<a class="el" href="adbc_8h_source.html">arrow-adbc/adbc.h</a>&gt;</code><br />
 </div>
 <p><a href="status_8h_source.html">Go to the source code of this file.</a></p>
@@ -145,6 +147,7 @@ Macros</h2></td></tr>
 <tr class="memitem:a8560097676cd8a3cb41ba50cc8a46883" id="r_a8560097676cd8a3cb41ba50cc8a46883"><td class="memItemLeft">#define&#160;</td><td class="memItemRight"><a class="el" href="#a8560097676cd8a3cb41ba50cc8a46883">UNWRAP_STATUS</a>(rhs)</td></tr>
 <tr class="memdesc:a8560097676cd8a3cb41ba50cc8a46883"><td class="mdescLeft">&#160;</td><td class="mdescRight">A helper to unwrap a Status in functions returning Result/Status.  <br /></td></tr>
 <tr class="memitem:a3e2070cce96848756e8e437e2a416176" id="r_a3e2070cce96848756e8e437e2a416176"><td class="memItemLeft">#define&#160;</td><td class="memItemRight"><a class="el" href="#a3e2070cce96848756e8e437e2a416176">STATUS_CTOR</a>(NAME,  CODE)</td></tr>
+<tr class="memitem:aa1340154ee2bcc585c40e51868794ae3" id="r_aa1340154ee2bcc585c40e51868794ae3"><td class="memItemLeft">#define&#160;</td><td class="memItemRight"><a class="el" href="#aa1340154ee2bcc585c40e51868794ae3">STATUS_CTOR</a>(NAME,  CODE)</td></tr>
 <tr class="memitem:a7c908009d374053653c467b26777a5ba" id="r_a7c908009d374053653c467b26777a5ba"><td class="memItemLeft">#define&#160;</td><td class="memItemRight"><a class="el" href="#a7c908009d374053653c467b26777a5ba">UNWRAP_ERRNO_IMPL</a>(NAME,  CODE,  RHS)</td></tr>
 <tr class="memitem:a4536a039c9d1d48c1b0f33d8c800c834" id="r_a4536a039c9d1d48c1b0f33d8c800c834"><td class="memItemLeft">#define&#160;</td><td class="memItemRight"><a class="el" href="#a4536a039c9d1d48c1b0f33d8c800c834">UNWRAP_ERRNO</a>(CODE,  RHS)</td></tr>
 <tr class="memitem:a9d129ac0509430d18b7395eec90c0be1" id="r_a9d129ac0509430d18b7395eec90c0be1"><td class="memItemLeft">#define&#160;</td><td class="memItemRight"><a class="el" href="#a9d129ac0509430d18b7395eec90c0be1">UNWRAP_NANOARROW_IMPL</a>(NAME,  ERROR,  CODE,  RHS)</td></tr>
@@ -303,8 +306,34 @@ Functions</h2></td></tr>
 </div><!-- fragment -->
 </div>
 </div>
+<a id="aa1340154ee2bcc585c40e51868794ae3" name="aa1340154ee2bcc585c40e51868794ae3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa1340154ee2bcc585c40e51868794ae3">&#9670;&#160;</a></span>STATUS_CTOR <span class="overload">[1/3]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">#define STATUS_CTOR</td>
+          <td>(</td>
+          <td class="paramtype"></td>          <td class="paramname"><span class="paramname"><em>NAME</em></span>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"></td>          <td class="paramname"><span class="paramname"><em>CODE</em></span>&#160;)</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<b>Value:</b><div class="fragment"><div class="line"><span class="keyword">template</span> &lt;<span class="keyword">typename</span>... Args&gt;                                                           \</div>
+<div class="line">[[maybe_unused]] <span class="keyword">static</span> Status NAME(std::string_view format_string, Args&amp;&amp;... args) { \</div>
+<div class="line">  <span class="keyword">auto</span> message = ::fmt::vformat(format_string, ::fmt::make_format_args(args...));     \</div>
+<div class="line">  <span class="keywordflow">return</span> Status(ADBC_STATUS_##CODE, std::move(message));                              \</div>
+<div class="line">}</div>
+</div><!-- fragment -->
+</div>
+</div>
 <a id="a3e2070cce96848756e8e437e2a416176" name="a3e2070cce96848756e8e437e2a416176"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a3e2070cce96848756e8e437e2a416176">&#9670;&#160;</a></span>STATUS_CTOR <span class="overload">[1/2]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a3e2070cce96848756e8e437e2a416176">&#9670;&#160;</a></span>STATUS_CTOR <span class="overload">[2/3]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -331,7 +360,7 @@ Functions</h2></td></tr>
 </div>
 </div>
 <a id="add6b3ef76c8ad13acd4247cae140c118" name="add6b3ef76c8ad13acd4247cae140c118"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#add6b3ef76c8ad13acd4247cae140c118">&#9670;&#160;</a></span>STATUS_CTOR <span class="overload">[2/2]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#add6b3ef76c8ad13acd4247cae140c118">&#9670;&#160;</a></span>STATUS_CTOR <span class="overload">[3/3]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
