@@ -26,14 +26,14 @@ if ($env:CGO_ENABLED -eq "1") {
 }
 
 $GoDir = Join-Path $SourceDir "go" "adbc"
-$FlightSqlDir = Join-Path $SourceDir "go" "flightsql"
+$DriverDir = Join-Path $SourceDir "go" "driver"
 
 Push-Location $GoDir
 go test -v ./...
 if (-not $?) { exit 1 }
 Pop-Location
 
-Push-Location $FlightSqlDir
+Push-Location $DriverDir
 go test -v ./...
 if (-not $?) { exit 1 }
 Pop-Location

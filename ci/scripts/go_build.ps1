@@ -22,20 +22,20 @@ $BuildDir = $Args[1]
 $InstallDir = if ($Args[2] -ne $null) { $Args[2] } else { Join-Path $BuildDir "local/" }
 
 $GoDir = Join-Path $SourceDir "go" "adbc"
-$FlightSqlDir = Join-Path $SourceDir "go" "flightsql"
+$DriverDir = Join-Path $SourceDir "go" "driver"
 
 Push-Location $GoDir
 go build -v ./...
 if (-not $?) { exit 1 }
 Pop-Location
 
-Push-Location $FlightSqlDir
+Push-Location $DriverDir
 go build -v ./...
 if (-not $?) { exit 1 }
 Pop-Location
 
 if ($env:CGO_ENABLED -eq "1") {
-    Push-Location $FlightSqlDir
+    Push-Location $(Join-Path $DriverDir "flightsql")
     go build `
       -tags driverlib `
       -o adbc_driver_flightsql.dll `
