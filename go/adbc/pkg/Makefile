@@ -52,8 +52,8 @@ libadbc_driver_%.$(SUFFIX): ../../driver/% ../../driver/%/pkg ../../driver/go.mo
 	$(RM) $(basename $@).h
 
 regenerate:
-	go run gen/main.go -prefix FlightSQL -o ./flightsql/ -driver ../driver/flightsql
-	go run gen/main.go -prefix PanicDummy -o ./panicdummy/ -driver ../driver/panicdummy
+	go run gen/main.go -prefix FlightSQL -o ../../driver/flightsql/pkg -driver ../../driver/flightsql
+	go run gen/main.go -prefix PanicDummy -o ../../driver/panicdummy/pkg -driver ../../driver/panicdummy
 
 clean:
 	$(RM) $(DRIVERS)
