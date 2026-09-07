@@ -35,7 +35,7 @@ dir.create("src/arrow-adbc", showWarnings = FALSE)
 file.copy("../../c/include/arrow-adbc/adbc.h", "src/arrow-adbc/adbc.h")
 
 unlink("src/go/adbc", recursive = TRUE)
-unlink("src/go/flightsql", recursive = TRUE)
+unlink("src/go/driver", recursive = TRUE)
 
 cat(
   sprintf(
