@@ -39,7 +39,7 @@ Status PqResultHelper::PrepareInternal(int n_params, const Oid* param_oids) cons
   PGresult* result =
       PQprepare(conn_, /*stmtName=*/"", query_.c_str(), n_params, param_oids);
   if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-    auto status = MakeStatus(result, "Failed to prepare query: {}\nQuery was:{}",
+    auto status = MakeStatus(result, "Failed to prepare query: {}\nQuery was: {}",
                              PQerrorMessage(conn_), query_.c_str());
     PQclear(result);
     return status;
@@ -60,7 +60,7 @@ Status PqResultHelper::DescribePrepared() {
   result_ = PQdescribePrepared(conn_, /*stmtName=*/"");
   if (PQresultStatus(result_) != PGRES_COMMAND_OK) {
     Status status = MakeStatus(
-        result_, "[libpq] Failed to describe prepared statement: {}\nQuery was:{}",
+        result_, "[libpq] Failed to describe prepared statement: {}\nQuery was: {}",
         PQerrorMessage(conn_), query_.c_str());
     ClearResult();
     return status;
