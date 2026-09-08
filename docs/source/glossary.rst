@@ -94,7 +94,9 @@ Glossary
      In ADBC, the name of a function exported by a driver that the
      :term:`driver manager` calls when a driver is loaded to perform any
      initialization required by the driver. The name follows a convention which
-     is outlined in :c:type:`AdbcDriverInitFunc` but another name may be used.
+     is outlined in :c:type:`AdbcDriverInitFunc`. Any name may be used but, for
+     maximum compatibility, following the convention in
+     :c:type:`AdbcDriverInitFunc` is recommended.
 
    statement
      In the ADBC API, the statement object/struct holds state for executing a
