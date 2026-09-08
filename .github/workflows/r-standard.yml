@@ -52,7 +52,7 @@ jobs:
         os: [ubuntu, macOS, windows]
         pkg: [adbcdrivermanager, adbcsqlite, adbcpostgresql]
 
-    uses: ./.github/workflows/r-check.yml
+    uses: $/.github/workflows/r-check.yml
     with:
       os: ${{ matrix.os }}
       pkg: ${{ matrix.pkg }}
@@ -64,7 +64,7 @@ jobs:
         os: [ubuntu, macOS, windows]
         pkg: [adbcflightsql]
 
-    uses: ./.github/workflows/r-check.yml
+    uses: $/.github/workflows/r-check.yml
     with:
       os: ${{ matrix.os }}
       pkg: ${{ matrix.pkg }}
