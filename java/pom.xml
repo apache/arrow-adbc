@@ -97,7 +97,7 @@
 
   <properties>
     <dep.arrow.version>19.0.0</dep.arrow.version>
-    <dep.org.checkerframework.version>4.2.2</dep.org.checkerframework.version>
+    <dep.org.checkerframework.version>4.2.3</dep.org.checkerframework.version>
     <!-- org.apache:apache overrides -->
     <minimalJavaBuildVersion>11</minimalJavaBuildVersion>
     <maven.compiler.release>11</maven.compiler.release>
@@ -322,7 +322,7 @@
                 <path>
                   <groupId>com.uber.nullaway</groupId>
                   <artifactId>nullaway</artifactId>
-                  <version>0.14.0</version>
+                  <version>0.14.1</version>
                 </path>
                 <path>
                   <groupId>org.checkerframework</groupId>
