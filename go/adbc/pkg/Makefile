@@ -47,13 +47,13 @@ DRIVERS := $(addsuffix .$(SUFFIX),$(addprefix libadbc_driver_,$(MANAGERS)))
 .PHONY: all regenerate
 all: $(DRIVERS)
 
-libadbc_driver_%.$(SUFFIX): % ../driver/% ../go.mod ../go.sum
-	$(GO_BUILD) -buildvcs=true -tags driverlib -o $@ -buildmode=c-shared -ldflags "-X github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase.infoDriverVersion=$(VERSION)" ./$*
+libadbc_driver_%.$(SUFFIX): ../../driver/% ../../driver/%/pkg ../../driver/go.mod ../../driver/go.sum
+	$(GO_BUILD) -C ../../driver/$* -buildvcs=true -tags driverlib -o $(CURDIR)/$@ -buildmode=c-shared -ldflags "-X github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase.infoDriverVersion=$(VERSION)" ./pkg
 	$(RM) $(basename $@).h
 
 regenerate:
-	go run gen/main.go -prefix FlightSQL -o ./flightsql/ -driver ../driver/flightsql
-	go run gen/main.go -prefix PanicDummy -o ./panicdummy/ -driver ../driver/panicdummy
+	go run gen/main.go -prefix FlightSQL -o ../../driver/flightsql/pkg -driver ../../driver/flightsql
+	go run gen/main.go -prefix PanicDummy -o ../../driver/panicdummy/pkg -driver ../../driver/panicdummy
 
 clean:
 	$(RM) $(DRIVERS)
