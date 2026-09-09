@@ -470,7 +470,8 @@ services:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: postgres
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d postgres"]
+      # Run an actual query as alloydb appears to run into "the database system is starting up"
+      test: ["CMD-SHELL", "PGPASSWORD=\"$$POSTGRES_PASSWORD\" psql -h 127.0.0.1 -p 5432 -U postgres -d postgres -w -v ON_ERROR_STOP=1 -c 'SELECT 1' > /dev/null"]
       interval: 10s
       timeout: 5s
       retries: 10
