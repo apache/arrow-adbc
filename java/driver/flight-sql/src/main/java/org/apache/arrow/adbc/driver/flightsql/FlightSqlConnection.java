@@ -38,13 +38,22 @@ import org.apache.arrow.adbc.core.AdbcException;
 import org.apache.arrow.adbc.core.AdbcStatement;
 import org.apache.arrow.adbc.core.AdbcStatusCode;
 import org.apache.arrow.adbc.core.BulkIngestMode;
+import org.apache.arrow.adbc.core.TypedKey;
 import org.apache.arrow.adbc.sql.SqlQuirks;
 import org.apache.arrow.flight.CallOption;
+import org.apache.arrow.flight.CloseSessionRequest;
 import org.apache.arrow.flight.FlightCallHeaders;
 import org.apache.arrow.flight.FlightClient;
 import org.apache.arrow.flight.FlightEndpoint;
+import org.apache.arrow.flight.FlightRuntimeException;
+import org.apache.arrow.flight.FlightStatusCode;
+import org.apache.arrow.flight.GetSessionOptionsRequest;
 import org.apache.arrow.flight.HeaderCallOption;
 import org.apache.arrow.flight.Location;
+import org.apache.arrow.flight.SessionOptionValue;
+import org.apache.arrow.flight.SessionOptionValueFactory;
+import org.apache.arrow.flight.SetSessionOptionsRequest;
+import org.apache.arrow.flight.SetSessionOptionsResult;
 import org.apache.arrow.flight.Ticket;
 import org.apache.arrow.flight.auth2.BasicAuthCredentialWriter;
 import org.apache.arrow.flight.client.ClientCookieMiddleware;
@@ -209,10 +218,173 @@ public class FlightSqlConnection implements AdbcConnection {
   }
 
   @Override
+  public <T> T getOption(TypedKey<T> key) throws AdbcException {
+    final String k = key.getKey();
+
+    if (k.equals(FlightSqlConnectionProperties.SESSION_OPTIONS)) {
+      if (key.getType() != String.class) {
+        return AdbcConnection.super.getOption(key);
+      }
+      return key.cast(FlightSqlSessionUtil.toJson(fetchSessionOptionsOrEmpty()));
+    }
+
+    final String prefix;
+    if (k.startsWith(FlightSqlConnectionProperties.SESSION_OPTION_BOOL_PREFIX)) {
+      prefix = FlightSqlConnectionProperties.SESSION_OPTION_BOOL_PREFIX;
+    } else if (k.startsWith(FlightSqlConnectionProperties.SESSION_OPTION_STRING_LIST_PREFIX)) {
+      prefix = FlightSqlConnectionProperties.SESSION_OPTION_STRING_LIST_PREFIX;
+    } else if (k.startsWith(FlightSqlConnectionProperties.SESSION_OPTION_PREFIX)) {
+      prefix = FlightSqlConnectionProperties.SESSION_OPTION_PREFIX;
+    } else {
+      return AdbcConnection.super.getOption(key);
+    }
+
+    final String name = k.substring(prefix.length());
+    if (name.isEmpty()) {
+      throw AdbcException.invalidArgument("[Flight SQL] Session option name must not be empty");
+    }
+    if (!FlightSqlSessionUtil.supportsType(key, prefix)) {
+      return AdbcConnection.super.getOption(key);
+    }
+
+    final Object raw =
+        FlightSqlSessionUtil.require(fetchSessionOptionsOrEmpty(), name)
+            .acceptVisitor(FlightSqlSessionUtil.TO_JAVA);
+    if (raw == null) {
+      throw new AdbcException(
+          "[Flight SQL] Session option not found: " + name,
+          null,
+          AdbcStatusCode.NOT_FOUND,
+          null,
+          0);
+    }
+    final T result = FlightSqlSessionUtil.cast(key, raw, name);
+    return result != null ? result : AdbcConnection.super.getOption(key);
+  }
+
+  @Override
+  public <T> void setOption(TypedKey<T> key, T value) throws AdbcException {
+    final String k = key.getKey();
+
+    if (k.startsWith(FlightSqlConnectionProperties.SESSION_OPTION_ERASE_PREFIX)) {
+      final String name =
+          k.substring(FlightSqlConnectionProperties.SESSION_OPTION_ERASE_PREFIX.length());
+      doSetSessionOption(name, SessionOptionValueFactory.makeEmptySessionOptionValue());
+
+    } else if (k.startsWith(FlightSqlConnectionProperties.SESSION_OPTION_BOOL_PREFIX)) {
+      if (value == null) {
+        throw invalidNullValue(k);
+      }
+      final String name =
+          k.substring(FlightSqlConnectionProperties.SESSION_OPTION_BOOL_PREFIX.length());
+      final boolean b;
+      if (key.getType() == Boolean.class) {
+        if (!(value instanceof Boolean)) {
+          throw invalidValueType(k, value, Boolean.class);
+        }
+        b = (Boolean) value;
+      } else if (key.getType() == String.class) {
+        if (!(value instanceof String)) {
+          throw invalidValueType(k, value, String.class);
+        }
+        b = FlightSqlSessionUtil.parseStrictBoolean((String) value, name);
+      } else {
+        AdbcConnection.super.setOption(key, value);
+        return;
+      }
+      doSetSessionOption(name, SessionOptionValueFactory.makeSessionOptionValue(b));
+
+    } else if (k.startsWith(FlightSqlConnectionProperties.SESSION_OPTION_STRING_LIST_PREFIX)) {
+      if (value == null) {
+        throw invalidNullValue(k);
+      }
+      final String name =
+          k.substring(FlightSqlConnectionProperties.SESSION_OPTION_STRING_LIST_PREFIX.length());
+      final String[] arr;
+      if (key.getType() == String[].class) {
+        if (!(value instanceof String[])) {
+          throw invalidValueType(k, value, String[].class);
+        }
+        arr = FlightSqlSessionUtil.validateStringArray((String[]) value);
+      } else if (key.getType() == String.class) {
+        if (!(value instanceof String)) {
+          throw invalidValueType(k, value, String.class);
+        }
+        arr = FlightSqlSessionUtil.parseJsonArray((String) value);
+      } else {
+        AdbcConnection.super.setOption(key, value);
+        return;
+      }
+      doSetSessionOption(name, SessionOptionValueFactory.makeSessionOptionValue(arr));
+
+    } else if (k.startsWith(FlightSqlConnectionProperties.SESSION_OPTION_PREFIX)) {
+      if (value == null) {
+        throw invalidNullValue(k);
+      }
+      final String name = k.substring(FlightSqlConnectionProperties.SESSION_OPTION_PREFIX.length());
+      final SessionOptionValue sv;
+      if (key.getType() == String.class) {
+        if (!(value instanceof String)) {
+          throw invalidValueType(k, value, String.class);
+        }
+        sv = SessionOptionValueFactory.makeSessionOptionValue((String) value);
+      } else if (key.getType() == Long.class) {
+        if (!(value instanceof Long)) {
+          throw invalidValueType(k, value, Long.class);
+        }
+        sv = SessionOptionValueFactory.makeSessionOptionValue((Long) value);
+      } else if (key.getType() == Double.class) {
+        if (!(value instanceof Double)) {
+          throw invalidValueType(k, value, Double.class);
+        }
+        sv = SessionOptionValueFactory.makeSessionOptionValue((Double) value);
+      } else {
+        AdbcConnection.super.setOption(key, value);
+        return;
+      }
+      doSetSessionOption(name, sv);
+
+    } else if (k.equals(FlightSqlConnectionProperties.SESSION_OPTIONS)) {
+      throw AdbcException.notImplemented(
+          "[Flight SQL] adbc.flight.sql.session.options is read-only");
+
+    } else {
+      AdbcConnection.super.setOption(key, value);
+    }
+  }
+
+  private static AdbcException invalidNullValue(String key) {
+    return AdbcException.invalidArgument(
+        "[Flight SQL] null value not allowed for key: "
+            + key
+            + " - use adbc.flight.sql.session.optionerase.<name> to erase an option");
+  }
+
+  private static AdbcException invalidValueType(String key, Object value, Class<?> expectedType) {
+    return AdbcException.invalidArgument(
+        "[Flight SQL] invalid value type for key "
+            + key
+            + ": expected "
+            + expectedType.getSimpleName()
+            + ", got "
+            + value.getClass().getSimpleName());
+  }
+
+  @Override
   public void close() throws AdbcException {
-    clientCache.invalidateAll();
     try {
-      AutoCloseables.close(client, allocator);
+      AutoCloseables.close(
+          () -> {
+            try {
+              // Best-effort: the Go driver also ignores all errors closing the session.
+              client.closeSession(new CloseSessionRequest());
+            } catch (FlightRuntimeException e) {
+              // ignore
+            }
+          },
+          clientCache::invalidateAll,
+          client,
+          allocator);
     } catch (Exception e) {
       throw AdbcException.internal("[Flight SQL] Failed to close connection").withCause(e);
     }
@@ -221,6 +393,39 @@ public class FlightSqlConnection implements AdbcConnection {
   @Override
   public String toString() {
     return "FlightSqlConnection{" + "client=" + client + '}';
+  }
+
+  private Map<String, SessionOptionValue> fetchSessionOptionsOrEmpty() throws AdbcException {
+    try {
+      return client.getSessionOptions(new GetSessionOptionsRequest()).getSessionOptions();
+    } catch (FlightRuntimeException e) {
+      // Go also treats INVALID_ARGUMENT as "server doesn't support sessions" here.
+      if (e.status().code() == FlightStatusCode.UNIMPLEMENTED
+          || e.status().code() == FlightStatusCode.INVALID_ARGUMENT) {
+        return Collections.emptyMap();
+      }
+      throw FlightSqlDriverUtil.fromFlightException(e);
+    }
+  }
+
+  private void doSetSessionOption(String name, SessionOptionValue value) throws AdbcException {
+    if (name.isEmpty()) {
+      throw AdbcException.invalidArgument("[Flight SQL] Session option name must not be empty");
+    }
+    final SetSessionOptionsResult result;
+    try {
+      result =
+          client.setSessionOptions(
+              new SetSessionOptionsRequest(Collections.singletonMap(name, value)));
+    } catch (FlightRuntimeException e) {
+      throw FlightSqlDriverUtil.fromFlightException(e);
+    }
+    if (result.hasErrors()) {
+      final SetSessionOptionsResult.Error err = result.getErrors().get(name);
+      final String errType = (err != null) ? err.value.name() : "UNKNOWN";
+      throw AdbcException.invalidArgument(
+          "[Flight SQL] Failed to set session option '" + name + "': " + errType);
+    }
   }
 
   /**
