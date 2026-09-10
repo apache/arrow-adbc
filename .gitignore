@@ -132,6 +132,9 @@ target/
 /c/subprojects/*
 !/c/subprojects/*.wrap
 
+# Kotoba wasm artifacts
+kotoba/**/*.wasm
+
 # Node.js specific ignores
 javascript/**/node_modules/
 javascript/**/target/
