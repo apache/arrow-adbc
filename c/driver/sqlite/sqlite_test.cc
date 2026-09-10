@@ -1121,6 +1121,24 @@ TEST_F(SqliteReaderTest, BindByNameKeepsExactPrefixPrecedence) {
   ASSERT_NO_FATAL_FAILURE(CompareArray<int64_t>(reader.array_view->children[1], {1}));
 }
 
+TEST_F(SqliteReaderTest, BindByNameRejectsDuplicateResolvedIndex) {
+  Handle<struct ArrowSchema> schema;
+  Handle<struct ArrowArray> batch;
+  ASSERT_THAT(adbc_validation::MakeSchema(&schema.value, {{"a", NANOARROW_TYPE_INT64},
+                                                          {":a", NANOARROW_TYPE_INT64}}),
+              IsOkErrno());
+  ASSERT_THAT((adbc_validation::MakeBatch<int64_t, int64_t>(&schema.value, &batch.value,
+                                                            nullptr, {1}, {2})),
+              IsOkErrno());
+  ASSERT_NO_FATAL_FAILURE(Bind(&batch.value, &schema.value, true));
+  ASSERT_EQ(SQLITE_OK, sqlite3_prepare_v2(db, "SELECT :a, @b", -1, &stmt, nullptr));
+  char finished = 0;
+  ASSERT_EQ(ADBC_STATUS_INVALID_ARGUMENT,
+            InternalAdbcSqliteBinderBindNext(&binder, db, stmt, &finished, &error));
+  ASSERT_THAT(error.message,
+              ::testing::HasSubstr("both resolve to SQLite parameter `:a`"));
+}
+
 TEST_F(SqliteReaderTest, MultiValueParams) {
   // Regression test for apache/arrow-adbc#734
   adbc_validation::StreamReader reader;

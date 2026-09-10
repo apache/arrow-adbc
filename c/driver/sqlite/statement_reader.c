@@ -366,6 +366,18 @@ AdbcStatusCode InternalAdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder,
                              binder->schema.children[i]->name);
         return ADBC_STATUS_INVALID_ARGUMENT;
       }
+      for (int previous = 0; previous < i; previous++) {
+        if (binder->param_indices[previous] == binder->param_indices[i]) {
+          const char* name = sqlite3_bind_parameter_name(stmt, binder->param_indices[i]);
+          binder->param_indices[0] = 0;
+          InternalAdbcSetError(
+              error,
+              "parameter fields `%s` and `%s` both resolve to SQLite parameter `%s`",
+              binder->schema.children[previous]->name, binder->schema.children[i]->name,
+              name);
+          return ADBC_STATUS_INVALID_ARGUMENT;
+        }
+      }
     }
   }
 

@@ -62,6 +62,15 @@ def test_named_parameters_ambiguous(sqlite) -> None:
         assert cur.fetchone() == (1, 2)
 
 
+def test_named_parameters_duplicate_resolved_index(sqlite) -> None:
+    with sqlite.cursor() as cur:
+        with pytest.raises(
+            dbapi.ProgrammingError,
+            match="both resolve to SQLite parameter `:a`",
+        ):
+            cur.execute("SELECT :a, @b", {"a": 1, ":a": 2})
+
+
 def test_named_parameters_missing(sqlite) -> None:
     with sqlite.cursor() as cur:
         with pytest.raises(
