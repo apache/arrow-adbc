@@ -343,9 +343,40 @@ AdbcStatusCode InternalAdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder,
       binder->param_indices[i] =
           sqlite3_bind_parameter_index(stmt, binder->schema.children[i]->name);
       if (binder->param_indices[i] == 0) {
+        // Accept names without a prefix when the match is unique. Exact names
+        // above retain precedence and their existing behavior.
+        for (int parameter = 1; parameter <= sqlite3_bind_parameter_count(stmt);
+             parameter++) {
+          const char* name = sqlite3_bind_parameter_name(stmt, parameter);
+          if (name != NULL && (name[0] == ':' || name[0] == '@' || name[0] == '$') &&
+              strcmp(name + 1, binder->schema.children[i]->name) == 0) {
+            if (binder->param_indices[i] != 0) {
+              binder->param_indices[0] = 0;
+              InternalAdbcSetError(error, "ambiguous parameter `%s`; include its prefix",
+                                   binder->schema.children[i]->name);
+              return ADBC_STATUS_INVALID_ARGUMENT;
+            }
+            binder->param_indices[i] = parameter;
+          }
+        }
+      }
+      if (binder->param_indices[i] == 0) {
+        binder->param_indices[0] = 0;
         InternalAdbcSetError(error, "could not find parameter `%s`",
                              binder->schema.children[i]->name);
         return ADBC_STATUS_INVALID_ARGUMENT;
+      }
+      for (int previous = 0; previous < i; previous++) {
+        if (binder->param_indices[previous] == binder->param_indices[i]) {
+          const char* name = sqlite3_bind_parameter_name(stmt, binder->param_indices[i]);
+          binder->param_indices[0] = 0;
+          InternalAdbcSetError(
+              error,
+              "parameter fields `%s` and `%s` both resolve to SQLite parameter `%s`",
+              binder->schema.children[previous]->name, binder->schema.children[i]->name,
+              name);
+          return ADBC_STATUS_INVALID_ARGUMENT;
+        }
       }
     }
   }
