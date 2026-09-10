@@ -35,6 +35,41 @@ def test_query_trivial(sqlite) -> None:
         assert cur.fetchone() == (1,)
 
 
+@pytest.mark.parametrize("prefix", [":", "@", "$"])
+@pytest.mark.parametrize("include_prefix", [False, True])
+def test_named_parameters(sqlite, prefix: str, include_prefix: bool) -> None:
+    # Regression test for apache/arrow-adbc#3520.
+    name_prefix = prefix if include_prefix else ""
+    with sqlite.cursor() as cur:
+        cur.execute(
+            f"SELECT {prefix}a, {prefix}b, {prefix}a",
+            {f"{name_prefix}b": 2, f"{name_prefix}a": 1},
+        )
+        assert cur.fetchone() == (1, 2, 1)
+
+
+def test_named_parameters_mixed_prefixes(sqlite) -> None:
+    with sqlite.cursor() as cur:
+        cur.execute("SELECT :a, @b, $c", {"c": 3, "b": 2, "a": 1})
+        assert cur.fetchone() == (1, 2, 3)
+
+
+def test_named_parameters_ambiguous(sqlite) -> None:
+    with sqlite.cursor() as cur:
+        with pytest.raises(dbapi.ProgrammingError, match="ambiguous parameter `a`"):
+            cur.execute("SELECT :a, @a", {"a": 1, "@a": 2})
+        cur.execute("SELECT :a, @a", {"@a": 2, ":a": 1})
+        assert cur.fetchone() == (1, 2)
+
+
+def test_named_parameters_missing(sqlite) -> None:
+    with sqlite.cursor() as cur:
+        with pytest.raises(
+            dbapi.ProgrammingError, match="could not find parameter `b`"
+        ):
+            cur.execute("SELECT :a", {"b": 1})
+
+
 def test_autocommit(tmp_path: Path) -> None:
     # apache/arrow-adbc#599
     db = tmp_path / "tmp.sqlite"
