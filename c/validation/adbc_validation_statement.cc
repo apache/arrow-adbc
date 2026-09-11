@@ -316,11 +316,16 @@ void StatementTest::TestSqlIngestBinaryView() {
   }
 
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestType<std::vector<std::byte>>(
-      NANOARROW_TYPE_LARGE_BINARY,
-      {std::nullopt, std::vector<std::byte>{},
+      NANOARROW_TYPE_BINARY_VIEW,
+      {std::nullopt,
+       // Empty vectors trigger a null-pointer memcpy in nanoarrow.
+       // TODO: Restore after vendoring the fix:
+       // https://github.com/apache/arrow-nanoarrow/pull/940
+       // std::vector<std::byte>{},
        std::vector<std::byte>{std::byte{0x00}, std::byte{0x01}},
        std::vector<std::byte>{std::byte{0x01}, std::byte{0x02}, std::byte{0x03},
                               std::byte{0x04}},
+       std::vector<std::byte>(32, std::byte{0x05}),
        std::vector<std::byte>{std::byte{0xfe}, std::byte{0xff}}},
       false));
 }
