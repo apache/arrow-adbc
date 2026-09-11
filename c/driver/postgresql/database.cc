@@ -85,7 +85,25 @@ AdbcStatusCode PostgresDatabase::Init(struct AdbcError* error) {
     return status.ToAdbc(error);
   }
 
-  status = RebuildTypeResolver(conn);
+  switch (type_resolver_mode_) {
+    case TypeResolverMode::kAuto:
+    case TypeResolverMode::kBuiltin: {
+      auto resolver = std::make_shared<PostgresTypeResolver>();
+      ArrowError na_error = {};
+      int rc = InitializeTypeResolver(*resolver, &na_error);
+      if (rc != NANOARROW_OK) {
+        return Status::Internal("Failed to initialize type resolver: (", rc, ") ",
+                                na_error.message)
+            .ToAdbc(error);
+      }
+      type_resolver_ = std::move(resolver);
+      break;
+    }
+    case TypeResolverMode::kServer: {
+      status = RebuildTypeResolver(conn);
+      break;
+    }
+  }
   RAISE_ADBC(Disconnect(&conn, nullptr));
   return status.ToAdbc(error);
 }
@@ -108,6 +126,20 @@ AdbcStatusCode PostgresDatabase::SetOption(const char* key, const char* value,
       use_copy_ = true;
     } else if (strcmp(value, ADBC_OPTION_VALUE_DISABLED) == 0) {
       use_copy_ = false;
+    } else {
+      InternalAdbcSetError(error, "[libpq] Invalid value for option %s=%s", key, value);
+      return ADBC_STATUS_INVALID_ARGUMENT;
+    }
+  } else if (strcmp(key, "adbc.postgresql.internal_rebuild_type_resolver") == 0) {
+    // TODO:
+    return Init(error);
+  } else if (strcmp(key, "adbc.postgresql.type_resolver_mode") == 0) {
+    if (std::strcmp(value, "auto") == 0) {
+      type_resolver_mode_ = TypeResolverMode::kAuto;
+    } else if (std::strcmp(value, "builtin") == 0) {
+      type_resolver_mode_ = TypeResolverMode::kBuiltin;
+    } else if (std::strcmp(value, "server") == 0) {
+      type_resolver_mode_ = TypeResolverMode::kServer;
     } else {
       InternalAdbcSetError(error, "[libpq] Invalid value for option %s=%s", key, value);
       return ADBC_STATUS_INVALID_ARGUMENT;

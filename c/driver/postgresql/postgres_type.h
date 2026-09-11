@@ -1149,4 +1149,6 @@ static inline std::vector<PostgresTypeId> PostgresTypeIdAll(bool nested) {
   return base;
 }
 
+ArrowErrorCode InitializeTypeResolver(PostgresTypeResolver& resolver, ArrowError* error);
+
 }  // namespace adbcpq

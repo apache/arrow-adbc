@@ -31,6 +31,12 @@
 namespace adbcpq {
 using adbc::driver::Status;
 
+enum class TypeResolverMode {
+  kAuto,
+  kBuiltin,
+  kServer,
+};
+
 class PostgresDatabase {
  public:
   PostgresDatabase();
@@ -74,5 +80,6 @@ class PostgresDatabase {
   std::shared_ptr<PostgresTypeResolver> type_resolver_;
   std::array<int, 3> postgres_server_version_{};
   bool use_copy_ = true;
+  TypeResolverMode type_resolver_mode_ = TypeResolverMode::kServer;
 };
 }  // namespace adbcpq
