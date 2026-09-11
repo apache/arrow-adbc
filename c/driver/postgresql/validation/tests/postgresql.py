@@ -16,6 +16,7 @@
 # under the License.
 
 import contextlib
+import os
 import re
 import typing
 from pathlib import Path
@@ -57,6 +58,9 @@ class PostgreSQLQuirks(model.DriverQuirks):
     setup = model.DriverSetup(
         database={
             "uri": model.FromEnv("ADBC_POSTGRESQL_TEST_URI"),
+            "adbc.postgresql.type_resolver_mode": os.environ.get(
+                "POSTGRES_TYPE_RESOLVER_MODE", "server"
+            ),
         },
         connection={},
         statement={},

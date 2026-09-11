@@ -23,6 +23,7 @@ OBJECTS = init.o \
     c/driver/common/utils.o \
     c/driver/framework/objects.o \
     c/driver/framework/utility.o \
+    c/driver/postgresql/codegen/pgtype.o \
     c/driver/postgresql/connection.o \
     c/driver/postgresql/database.o \
     c/driver/postgresql/error.o \
