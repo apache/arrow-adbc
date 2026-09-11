@@ -31,12 +31,6 @@
 namespace adbcpq {
 using adbc::driver::Status;
 
-enum class TypeResolverMode {
-  kAuto,
-  kBuiltin,
-  kServer,
-};
-
 class PostgresDatabase {
  public:
   PostgresDatabase();
@@ -69,7 +63,6 @@ class PostgresDatabase {
   }
 
   Status InitVersions(PGconn* conn);
-  Status RebuildTypeResolver(PGconn* conn);
   std::string_view VendorName() { return "PostgreSQL"; }
   const std::array<int, 3>& VendorVersion() { return postgres_server_version_; }
   bool use_copy() const { return use_copy_; }

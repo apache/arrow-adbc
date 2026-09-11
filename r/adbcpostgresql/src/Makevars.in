@@ -28,6 +28,7 @@ OBJECTS = init.o \
     c/driver/postgresql/database.o \
     c/driver/postgresql/error.o \
     c/driver/postgresql/postgresql.o \
+    c/driver/postgresql/postgres_type.o \
     c/driver/postgresql/result_helper.o \
     c/driver/postgresql/result_reader.o \
     c/driver/postgresql/statement.o \

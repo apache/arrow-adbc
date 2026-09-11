@@ -32,6 +32,7 @@ add_arrow_lib(adbc_driver_postgresql
               error.cc
               database.cc
               postgresql.cc
+              postgres_type.cc
               result_helper.cc
               result_reader.cc
               statement.cc
