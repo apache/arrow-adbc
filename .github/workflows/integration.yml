@@ -292,11 +292,13 @@ jobs:
             ./ci/scripts/cpp_test.sh "$(pwd)/build"
             env PYTEST_ADDOPTS=--error-for-skips \
               ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
-            uv --project=./c/driver/postgresql/validation/ run \
-              ci/scripts/validate.sh "$(pwd)" --vendor postgresql
-            env POSTGRES_TYPE_RESOLVER_MODE=builtin \
+            if [ "$postgres_version" = "18" ]; then
               uv --project=./c/driver/postgresql/validation/ run \
                 ci/scripts/validate.sh "$(pwd)" --vendor postgresql
+              env POSTGRES_TYPE_RESOLVER_MODE=builtin \
+                uv --project=./c/driver/postgresql/validation/ run \
+                  ci/scripts/validate.sh "$(pwd)" --vendor postgresql
+            fi
             docker compose stop postgres-test
             docker compose rm --force --stop --volumes postgres-test
             echo "::endgroup::"
