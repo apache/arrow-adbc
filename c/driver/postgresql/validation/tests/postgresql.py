@@ -16,6 +16,7 @@
 # under the License.
 
 import contextlib
+import os
 import re
 import typing
 from pathlib import Path
@@ -23,6 +24,13 @@ from pathlib import Path
 from adbc_drivers_validation import model, quirks
 
 import adbc_driver_manager.dbapi
+
+_database_args = {
+    "uri": model.FromEnv("ADBC_POSTGRESQL_TEST_URI"),
+    "adbc.postgresql.type_resolver_mode": os.environ.get(
+        "POSTGRES_TYPE_RESOLVER_MODE", "server"
+    ),
+}
 
 
 class PostgreSQLQuirks(model.DriverQuirks):
@@ -55,9 +63,7 @@ class PostgreSQLQuirks(model.DriverQuirks):
         supported_xdbc_fields=["xdbc_type_name"],
     )
     setup = model.DriverSetup(
-        database={
-            "uri": model.FromEnv("ADBC_POSTGRESQL_TEST_URI"),
-        },
+        database=_database_args,
         connection={},
         statement={},
     )
@@ -101,12 +107,17 @@ class CedarDBQuirks(PostgreSQLQuirks):
     vendor_version = re.compile(r"16[0-9]{4}")
     short_version = "16"
     setup = model.DriverSetup(
-        database={
-            "uri": model.FromEnv("ADBC_POSTGRESQL_TEST_URI"),
-        },
+        database=_database_args,
         connection={},
         statement={"adbc.postgresql.use_copy": "false"},
     )
+
+    @property
+    def queries_paths(self) -> tuple[Path]:
+        return (
+            *super().queries_paths,
+            Path(__file__).parent.parent / "queries-cedardb",
+        )
 
 
 class CitusQuirks(PostgreSQLQuirks):
@@ -122,9 +133,7 @@ class CockroachDBQuirks(PostgreSQLQuirks):
         update={"connection_get_table_schema": False}
     )
     setup = model.DriverSetup(
-        database={
-            "uri": model.FromEnv("ADBC_POSTGRESQL_TEST_URI"),
-        },
+        database=_database_args,
         connection={},
         statement={"adbc.postgresql.use_copy": "false"},
     )
@@ -149,18 +158,22 @@ class CrateDBQuirks(PostgreSQLQuirks):
         statement_bulk_ingest=False,
     )
     setup = model.DriverSetup(
-        database={
-            "uri": model.FromEnv("ADBC_POSTGRESQL_TEST_URI"),
-        },
+        database=_database_args,
         connection={},
         statement={"adbc.postgresql.use_copy": "false"},
     )
 
     @property
     def queries_paths(self) -> tuple[Path]:
+        extra_paths: tuple[str] = ()
+        if os.environ.get("POSTGRES_TYPE_RESOLVER_MODE") != "builtin":
+            extra_paths = (
+                Path(__file__).parent.parent / "queries-cratedb-notyperesolver",
+            )
         return (
             *super().queries_paths,
             Path(__file__).parent.parent / "queries-cratedb",
+            *extra_paths,
         )
 
     @contextlib.contextmanager

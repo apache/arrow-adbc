@@ -20,15 +20,17 @@ libpq_dep = dependency('libpq')
 adbc_postgres_driver_lib = library(
     'adbc_driver_postgresql',
     sources: [
+        'codegen/pgtype.cc',
         'connection.cc',
         'error.cc',
         'database.cc',
         'postgresql.cc',
+        'postgres_type.cc',
         'result_helper.cc',
         'result_reader.cc',
         'statement.cc',
     ],
-    include_directories: [include_dir, c_dir, safe_math_dir],
+    include_directories: [include_dir, c_dir, driver_dir, safe_math_dir],
     link_with: [adbc_common_lib, adbc_framework_lib],
     dependencies: [nanoarrow_dep, fmt_dep, libpq_dep],
 )
