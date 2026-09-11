@@ -227,6 +227,10 @@ void StatementTest::TestSqlIngestUInt32() {
 }
 
 void StatementTest::TestSqlIngestUInt64() {
+  if (!quirks()->supports_ingest_uint64()) {
+    GTEST_SKIP();
+  }
+
   ASSERT_NO_FATAL_FAILURE(TestSqlIngestNumericType<uint64_t>(NANOARROW_TYPE_UINT64));
 }
 
