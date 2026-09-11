@@ -165,9 +165,15 @@ class CrateDBQuirks(PostgreSQLQuirks):
 
     @property
     def queries_paths(self) -> tuple[Path]:
+        extra_paths: tuple[str] = ()
+        if os.environ.get("POSTGRES_TYPE_RESOLVER_MODE") != "builtin":
+            extra_paths = (
+                Path(__file__).parent.parent / "queries-cratedb-notyperesolver",
+            )
         return (
             *super().queries_paths,
             Path(__file__).parent.parent / "queries-cratedb",
+            *extra_paths,
         )
 
     @contextlib.contextmanager

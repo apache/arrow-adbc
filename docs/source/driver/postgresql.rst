@@ -363,10 +363,14 @@ the PostgreSQL wire protocol:
 - TimescaleDB
 - YugabyteDB
 
+Note that for vendors besides PostgreSQL, certain features and/or data types
+may not be supported. In particular, COPY query execution (see above) is often
+not supported.
+
 We are aware that the driver is not currently compatible with the following
 vendors:
 
-- CedarDB
+- CedarDB v2026-8-13 (unless the "builtin" type resolver is used, see above)
 
 The driver is not and will not support the following vendors:
 
