@@ -17,6 +17,12 @@
 
 libpq_dep = dependency('libpq')
 
+postgresql_deps = [nanoarrow_dep, fmt_dep, libpq_dep]
+if host_machine.system() == 'windows'
+    # The ntohs/ntohl byte-swap functions come from Winsock on Windows.
+    postgresql_deps += compiler_cc.find_library('ws2_32')
+endif
+
 adbc_postgres_driver_lib = library(
     'adbc_driver_postgresql',
     sources: [
@@ -30,7 +36,8 @@ adbc_postgres_driver_lib = library(
     ],
     include_directories: [include_dir, c_dir, safe_math_dir],
     link_with: [adbc_common_lib, adbc_framework_lib],
-    dependencies: [nanoarrow_dep, fmt_dep, libpq_dep],
+    dependencies: postgresql_deps,
+    cpp_args: adbc_export_args,
 )
 
 pkg.generate(
