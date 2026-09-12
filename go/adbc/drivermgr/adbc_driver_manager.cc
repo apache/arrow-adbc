@@ -63,7 +63,6 @@
 #include <cstring>
 #include <filesystem>
 #include <functional>
-#include <regex>
 #include <string>
 #include <unordered_map>
 #include <utility>
