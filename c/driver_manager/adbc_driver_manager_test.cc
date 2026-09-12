@@ -1788,7 +1788,7 @@ TEST_F(ConnectionProfiles, ProcessProfileValueDelimiters) {
     SCOPED_TRACE(input);
     std::string out = "previous output";
     SetProfilePath("profile-value");
-    const auto status = ProcessProfileValue("foo", input, out, &error);
+    const auto status = InternalAdbcProcessProfileValue("foo", input, out, &error);
     UnsetProfilePath();
     ASSERT_THAT(status, IsOkStatus(&error));
     EXPECT_EQ(out, expected);
@@ -1811,8 +1811,9 @@ TEST_F(ConnectionProfiles, ProcessProfileValueErrors) {
   for (const auto& [input, expected] : cases) {
     SCOPED_TRACE(input);
     std::string out;
-    ASSERT_THAT(ProcessProfileValue("foo", "prefix" + input + "suffix", out, &error),
-                IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+    ASSERT_THAT(
+        InternalAdbcProcessProfileValue("foo", "prefix" + input + "suffix", out, &error),
+        IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
     EXPECT_STREQ(error.message, ("[Driver Manager] In profile: " + expected).c_str());
     EXPECT_EQ(out, "prefix");
     if (error.release) {
@@ -1824,8 +1825,8 @@ TEST_F(ConnectionProfiles, ProcessProfileValueErrors) {
 TEST_F(ConnectionProfiles, ProcessProfileValueDoesNotRecurse) {
   std::string out;
   SetProfilePath("{{ unsupported() }}");
-  const auto status =
-      ProcessProfileValue("foo", "{{env_var(ADBC_PROFILE_PATH)}}", out, &error);
+  const auto status = InternalAdbcProcessProfileValue(
+      "foo", "{{env_var(ADBC_PROFILE_PATH)}}", out, &error);
   UnsetProfilePath();
   ASSERT_THAT(status, IsOkStatus(&error));
   EXPECT_EQ(out, "{{ unsupported() }}");

@@ -204,8 +204,9 @@ struct ProfileVisitor {
 };
 
 // Public implementations (non-static for use across translation units)
-AdbcStatusCode ProcessProfileValue(std::string_view key, std::string_view value,
-                                   std::string& out, struct AdbcError* error) {
+AdbcStatusCode InternalAdbcProcessProfileValue(std::string_view key,
+                                               std::string_view value, std::string& out,
+                                               struct AdbcError* error) {
   if (value.empty()) {
     out = "";
     return ADBC_STATUS_OK;
