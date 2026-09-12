@@ -23,7 +23,7 @@
 #include "adbc_driver_manager_internal.h"
 
 #include <filesystem>
-#include <regex>
+#include <locale>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -204,29 +204,47 @@ struct ProfileVisitor {
 };
 
 // Public implementations (non-static for use across translation units)
-AdbcStatusCode ProcessProfileValue(std::string_view key, std::string_view value,
-                                   std::string& out, struct AdbcError* error) {
+AdbcStatusCode InternalAdbcProcessProfileValue(std::string_view key,
+                                               std::string_view value, std::string& out,
+                                               struct AdbcError* error) {
   if (value.empty()) {
     out = "";
     return ADBC_STATUS_OK;
   }
 
-  static const std::regex pattern(R"(\{\{\s*([^{}]*?)\s*\}\})");
-  auto end_of_last_match = value.begin();
-  auto begin = std::regex_iterator(value.begin(), value.end(), pattern);
-  auto end = decltype(begin){};
-  std::match_results<std::string_view::iterator>::difference_type pos_last_match = 0;
+  static const std::locale locale;
+  size_t end_of_last_match = 0;
+  size_t start_match = 0;
 
   out.resize(0);
-  for (auto itr = begin; itr != end; ++itr) {
-    auto match = *itr;
-    auto pos_match = match.position();
-    auto diff = pos_match - pos_last_match;
-    auto start_match = end_of_last_match;
-    std::advance(start_match, diff);
-    out.append(end_of_last_match, start_match);
+  while ((start_match = value.find("{{", start_match)) != std::string_view::npos) {
+    const auto end_match = value.find_first_of("{}", start_match + 2);
+    if (end_match == std::string_view::npos) {
+      break;
+    }
+    if (value[end_match] == '{') {
+      // Braces cannot occur inside an interpolation. Allow overlapping opening
+      // delimiters so that "{{{ env_var(NAME) }}" still expands the inner pair.
+      start_match = end_match - 1;
+      continue;
+    }
+    if (end_match + 1 == value.size() || value[end_match + 1] != '}') {
+      start_match = end_match + 1;
+      continue;
+    }
+    out.append(value.substr(end_of_last_match, start_match - end_of_last_match));
 
-    const auto content = match[1].str();
+    auto content_start = start_match + 2;
+    auto content_end = end_match;
+    while (content_start < content_end && std::isspace(value[content_start], locale)) {
+      ++content_start;
+    }
+    while (content_start < content_end && std::isspace(value[content_end - 1], locale)) {
+      --content_end;
+    }
+
+    const auto content =
+        std::string(value.substr(content_start, content_end - content_start));
     if (content.rfind("env_var(", 0) != 0) {
       std::string message = "In profile: unsupported interpolation type in key `" +
                             std::string(key) + "`: `" + content + "`";
@@ -270,13 +288,11 @@ AdbcStatusCode ProcessProfileValue(std::string_view key, std::string_view value,
 #endif
     out.append(env_var_value);
 
-    auto length_match = match.length();
-    pos_last_match = pos_match + length_match;
-    end_of_last_match = start_match;
-    std::advance(end_of_last_match, length_match);
+    end_of_last_match = end_match + 2;
+    start_match = end_of_last_match;
   }
 
-  out.append(end_of_last_match, value.end());
+  out.append(value.substr(end_of_last_match));
   return ADBC_STATUS_OK;
 }
 

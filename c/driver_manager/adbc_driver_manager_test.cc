@@ -1759,6 +1759,79 @@ TEST_F(ConnectionProfiles, DuplicateQuotedKey) {
   UnsetProfilePath();
 }
 
+TEST_F(ConnectionProfiles, ProcessProfileValueDelimiters) {
+  const std::vector<std::pair<std::string, std::string>> cases = {
+      {"", ""},
+      {"literal text", "literal text"},
+      {"{{env_var(ADBC_PROFILE_PATH)}}", "profile-value"},
+      {"{{ \t\n\r\f\venv_var(ADBC_PROFILE_PATH)\v\f\r\n\t }}", "profile-value"},
+      {"before{{env_var(ADBC_PROFILE_PATH)}}after", "beforeprofile-valueafter"},
+      {"{{env_var(ADBC_PROFILE_PATH)}}{{env_var(ADBC_PROFILE_PATH)}}",
+       "profile-valueprofile-value"},
+      {"{env_var(ADBC_PROFILE_PATH)}", "{env_var(ADBC_PROFILE_PATH)}"},
+      {"{{env_var(ADBC_PROFILE_PATH)", "{{env_var(ADBC_PROFILE_PATH)"},
+      {"{{env_var(ADBC_PROFILE_PATH)}", "{{env_var(ADBC_PROFILE_PATH)}"},
+      {"{{env_var(ADBC_PROFILE_PATH)} }", "{{env_var(ADBC_PROFILE_PATH)} }"},
+      {"{{env_var(ADBC_{PROFILE_PATH)}}", "{{env_var(ADBC_{PROFILE_PATH)}}"},
+      {"{{env_var(ADBC_}PROFILE_PATH)}}", "{{env_var(ADBC_}PROFILE_PATH)}}"},
+      {"{{{env_var(ADBC_PROFILE_PATH)}}}", "{profile-value}"},
+      {"{{outer {{env_var(ADBC_PROFILE_PATH)}} }}", "{{outer profile-value }}"},
+      {"{{broken} {{env_var(ADBC_PROFILE_PATH)}}", "{{broken} profile-value"},
+      {"}}{{env_var(ADBC_PROFILE_PATH)}}{{", "}}profile-value{{"},
+      {std::string("before\0", 7) + "{{env_var(ADBC_PROFILE_PATH)}}" +
+           std::string("\0after", 6),
+       std::string("before\0profile-value\0after", 26)},
+      {std::string(10000, '{') + "env_var(ADBC_PROFILE_PATH)}}",
+       std::string(9998, '{') + "profile-value"},
+  };
+  for (const auto& [input, expected] : cases) {
+    SCOPED_TRACE(input);
+    std::string out = "previous output";
+    SetProfilePath("profile-value");
+    const auto status = InternalAdbcProcessProfileValue("foo", input, out, &error);
+    UnsetProfilePath();
+    ASSERT_THAT(status, IsOkStatus(&error));
+    EXPECT_EQ(out, expected);
+  }
+}
+
+TEST_F(ConnectionProfiles, ProcessProfileValueErrors) {
+  const std::vector<std::pair<std::string, std::string>> cases = {
+      {"{{}}", "unsupported interpolation type in key `foo`: ``"},
+      {"{{ \t\n\r\f\v }}", "unsupported interpolation type in key `foo`: ``"},
+      {"{{ unknown() }}", "unsupported interpolation type in key `foo`: `unknown()`"},
+      {"{{ env_var (NAME) }}",
+       "unsupported interpolation type in key `foo`: `env_var (NAME)`"},
+      {"{{ env_var(NAME }}",
+       "malformed env_var() in key `foo`: missing closing parenthesis"},
+      {"{{ env_var( }}", "malformed env_var() in key `foo`: missing closing parenthesis"},
+      {"{{ env_var() }}",
+       "malformed env_var() in key `foo`: missing environment variable name"},
+  };
+  for (const auto& [input, expected] : cases) {
+    SCOPED_TRACE(input);
+    std::string out;
+    ASSERT_THAT(
+        InternalAdbcProcessProfileValue("foo", "prefix" + input + "suffix", out, &error),
+        IsStatus(ADBC_STATUS_INVALID_ARGUMENT, &error));
+    EXPECT_STREQ(error.message, ("[Driver Manager] In profile: " + expected).c_str());
+    EXPECT_EQ(out, "prefix");
+    if (error.release) {
+      error.release(&error);
+    }
+  }
+}
+
+TEST_F(ConnectionProfiles, ProcessProfileValueDoesNotRecurse) {
+  std::string out;
+  SetProfilePath("{{ unsupported() }}");
+  const auto status = InternalAdbcProcessProfileValue(
+      "foo", "{{env_var(ADBC_PROFILE_PATH)}}", out, &error);
+  UnsetProfilePath();
+  ASSERT_THAT(status, IsOkStatus(&error));
+  EXPECT_EQ(out, "{{ unsupported() }}");
+}
+
 TEST_F(ConnectionProfiles, UseEnvVar) {
   auto filepath = temp_dir / "profile.toml";
   toml::table profile = toml::parse(R"|(
