@@ -33,7 +33,7 @@ adbc_driver_manager_lib = library(
         'adbc_driver_manager_api.cc',
     ],
     include_directories: [include_dir, vendor_dir],
-    cpp_args: adbc_export_args,
+    cpp_shared_args: adbc_export_args,
     install: true,
     dependencies: deps,
 )
