@@ -29,5 +29,5 @@ option('example',
 
 option('vapi',
        type: 'boolean',
-       value: false,
+       value: true,
        description: 'Build Vala API')
