@@ -562,10 +562,10 @@ TEST(PostgresTypeTest, BuiltinResolver) {
   }
 
   auto* conn = PQconnectdb(uri);
-  if (PQstatus(conn) != CONNECTION_OK) {
+  if (auto status = PQstatus(conn); status != CONNECTION_OK) {
     std::string message = PQerrorMessage(conn);
     PQfinish(conn);
-    ASSERT_EQ(CONNECTION_OK, PQstatus(conn)) << message;
+    ASSERT_EQ(CONNECTION_OK, status) << message;
   }
 
   PostgresTypeResolver builtin, dynamic;

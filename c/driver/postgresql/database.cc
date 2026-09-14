@@ -135,7 +135,10 @@ AdbcStatusCode PostgresDatabase::SetOption(const char* key, const char* value,
     return Init(error);
   } else if (strcmp(key, "adbc.postgresql.type_resolver_mode") == 0) {
     if (std::strcmp(value, "auto") == 0) {
-      type_resolver_mode_ = TypeResolverMode::kAuto;
+      // TODO(lidavidm): implement fallback-based modes
+      // type_resolver_mode_ = TypeResolverMode::kAuto;
+      InternalAdbcSetError(error, "[libpq] %s=%s not yet supported", key, value);
+      return ADBC_STATUS_NOT_IMPLEMENTED;
     } else if (std::strcmp(value, "builtin") == 0) {
       type_resolver_mode_ = TypeResolverMode::kBuiltin;
     } else if (std::strcmp(value, "server") == 0) {
