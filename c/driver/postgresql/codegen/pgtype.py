@@ -16,7 +16,11 @@
 # under the License.
 
 """
-Parse pg_type.dat and generate C++ code.
+Parse pg_type.dat (in the PostgreSQL source tree) and generate C++ code
+that pre-initializes a TypeResolver based on the given information.
+
+pg_type.dat is effectively a list of (OID, typrecv) rows (as far as we're
+concerned) in a custom format.
 """
 
 import argparse
@@ -91,7 +95,10 @@ constexpr std::array<PostgresTypeResolver::Item, {item_count}> kBuiltinTypeItems
 
 
 def parse(pgtypedat):
-    # Not a real parser, just kitbashing
+    # Don't attempt to build a full parser; just remove comments, then extract
+    # dictionary-shaped blocks and munge the result so we can hand it to
+    # ast.literal_eval. May need adjusting if the format of pg_type.dat
+    # changes in future PostgreSQL versions.
     lines = [(i + 1, line.strip()) for i, line in enumerate(pgtypedat.splitlines())]
     lines = [
         (lineno, line) for (lineno, line) in lines if line and not line.startswith("#")

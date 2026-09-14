@@ -87,7 +87,6 @@ AdbcStatusCode PostgresDatabase::Init(struct AdbcError* error) {
 
   auto resolver = std::make_shared<PostgresTypeResolver>();
   switch (type_resolver_mode_) {
-    case TypeResolverMode::kAuto:
     case TypeResolverMode::kBuiltin: {
       status = InitializeTypeResolver(*resolver);
       break;
@@ -130,13 +129,9 @@ AdbcStatusCode PostgresDatabase::SetOption(const char* key, const char* value,
       InternalAdbcSetError(error, "[libpq] Invalid value for option %s=%s", key, value);
       return ADBC_STATUS_INVALID_ARGUMENT;
     }
-  } else if (strcmp(key, "adbc.postgresql.internal_rebuild_type_resolver") == 0) {
-    // TODO:
-    return Init(error);
   } else if (strcmp(key, "adbc.postgresql.type_resolver_mode") == 0) {
     if (std::strcmp(value, "auto") == 0) {
-      // TODO(lidavidm): implement fallback-based modes
-      // type_resolver_mode_ = TypeResolverMode::kAuto;
+      // TODO(https://github.com/apache/arrow-adbc/issues/4782): implement fallback mode
       InternalAdbcSetError(error, "[libpq] %s=%s not yet supported", key, value);
       return ADBC_STATUS_NOT_IMPLEMENTED;
     } else if (std::strcmp(value, "builtin") == 0) {

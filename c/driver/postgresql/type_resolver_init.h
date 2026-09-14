@@ -25,10 +25,6 @@
 namespace adbcpq {
 
 enum class TypeResolverMode {
-  // (Not yet implemented) start as kBuiltin, and query the database if a type
-  // is not found. Eventually, only query the database for types that are
-  // unknown instead of rebuilding the entire resolver.
-  kAuto,
   // Only use the built-in type OID definitions
   kBuiltin,
   // Query the database up front
