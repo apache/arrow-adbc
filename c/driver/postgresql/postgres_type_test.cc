@@ -25,6 +25,7 @@
 
 #include "database.h"
 #include "postgres_type.h"
+#include "type_resolver_init.h"
 
 namespace adbcpq {
 

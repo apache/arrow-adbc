@@ -24,12 +24,7 @@
 #include <utility>
 #include <vector>
 
-#include <libpq-fe.h>
 #include <nanoarrow/nanoarrow.hpp>
-
-#include "driver/framework/status.h"
-
-using adbc::driver::Status;
 
 namespace adbcpq {
 
@@ -1156,27 +1151,4 @@ static inline std::vector<PostgresTypeId> PostgresTypeIdAll(bool nested) {
   return base;
 }
 
-enum class TypeResolverMode {
-  // (Not yet implemented) start as kBuiltin, and query the database if a type
-  // is not found. Eventually, only query the database for types that are
-  // unknown instead of rebuilding the entire resolver.
-  kAuto,
-  // Only use the built-in type OID definitions
-  kBuiltin,
-  // Query the database up front
-  kServer,
-};
-
-Status RebuildTypeResolver(PGconn* conn, PostgresTypeResolver& resolver);
-Status InitializeTypeResolver(PostgresTypeResolver& resolver);
-
 }  // namespace adbcpq
-
-// exposed for testing
-
-ADBC_EXPORT
-Status InternalAdbcRebuildTypeResolver(PGconn* conn,
-                                       adbcpq::PostgresTypeResolver& resolver);
-
-ADBC_EXPORT
-Status InternalAdbcInitializeTypeResolver(adbcpq::PostgresTypeResolver& resolver);

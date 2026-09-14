@@ -20,16 +20,27 @@
 #include <winsock2.h>
 #endif
 
-#include "postgres_type.h"
+#include "type_resolver_init.h"
 
 #include <cstdint>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "codegen/pgtype.h"
 #include "postgresql/result_helper.h"
 
+using adbc::driver::Status;
+
 namespace adbcpq {
+
+Status InitializeTypeResolver(PostgresTypeResolver& resolver) {
+  ArrowError na_error = {};
+  for (const auto& item : kBuiltinTypeItems) {
+    UNWRAP_NANOARROW(na_error, Internal, resolver.Insert(item, &na_error));
+  }
+  return Status::Ok();
+}
 
 static Status InsertPgAttributeResult(const PqResultHelper& result,
                                       PostgresTypeResolver& resolver) {

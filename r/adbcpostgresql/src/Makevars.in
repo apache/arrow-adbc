@@ -23,13 +23,12 @@ OBJECTS = init.o \
     c/driver/common/utils.o \
     c/driver/framework/objects.o \
     c/driver/framework/utility.o \
-    c/driver/postgresql/codegen/pgtype.o \
     c/driver/postgresql/connection.o \
     c/driver/postgresql/database.o \
     c/driver/postgresql/error.o \
     c/driver/postgresql/postgresql.o \
-    c/driver/postgresql/postgres_type.o \
     c/driver/postgresql/result_helper.o \
     c/driver/postgresql/result_reader.o \
     c/driver/postgresql/statement.o \
+    c/driver/postgresql/type_resolver_init.o \
     c/vendor/nanoarrow/nanoarrow.o
