@@ -168,7 +168,7 @@ class CrateDBQuirks(PostgreSQLQuirks):
         extra_paths: tuple[str] = ()
         if os.environ.get("POSTGRES_TYPE_RESOLVER_MODE") != "builtin":
             extra_paths = (
-                Path(__file__).parent.parent / "queries-cratedb-notyperesolver",
+                Path(__file__).parent.parent / "queries-cratedb-typeresolver",
             )
         return (
             *super().queries_paths,
