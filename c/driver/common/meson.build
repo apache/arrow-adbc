@@ -20,7 +20,7 @@ adbc_common_lib = library(
     sources: ['utils.c'],
     include_directories: [include_dir],
     dependencies: [nanoarrow_dep],
-    c_args: adbc_export_args,
+    c_shared_args: adbc_export_args,
     install: true,
 )
 

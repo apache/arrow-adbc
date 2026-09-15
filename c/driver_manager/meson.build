@@ -20,8 +20,11 @@ if host_machine.system() != 'windows'
     deps = [dl_dep]
 else
     dl_dep = declare_dependency()
-    # The MinGW toolchain already links shell32/advapi32 by default.
-    deps = [dependency('uuid')]
+    deps = [
+        dependency('uuid'), 
+        compiler_cc.find_library('shell32'),
+        compiler_cc.find_library('advapi32')
+    ]
 endif
 
 adbc_driver_manager_lib = library(

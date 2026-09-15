@@ -85,6 +85,9 @@ jobs:
           extra-packages: any::rcmdcheck, local::../adbcdrivermanager
           needs: check
           working-directory: r/${{ inputs.pkg }}
+          # These packages do not need Pandoc. Auto-detection ignores the local
+          # dependency override and tries to resolve adbcdrivermanager from CRAN.
+          install-pandoc: false
 
       - name: Start postgres test database
         if: inputs.pkg == 'adbcpostgresql' && runner.os == 'Linux'
