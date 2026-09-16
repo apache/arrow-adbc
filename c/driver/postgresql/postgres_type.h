@@ -580,9 +580,11 @@ class PostgresTypeResolver {
     classes_.insert({oid, cls});
   }
 
- private:
-  friend class PostgresTypeTest_BuiltinResolver_Test;
+  std::unordered_map<uint32_t, PostgresType> const& oid_mapping() const {
+    return mapping_;
+  }
 
+ private:
   std::unordered_map<uint32_t, PostgresType> mapping_;
   // We can't use PostgresTypeId as an unordered map key because there is no
   // built-in hasher for an enum on gcc 4.8 (i.e., R 3.6 on Windows).

@@ -575,7 +575,7 @@ TEST(PostgresTypeTest, BuiltinResolver) {
 
   PQfinish(conn);
 
-  for (const auto& [oid, type] : builtin.mapping_) {
+  for (const auto& [oid, type] : builtin.oid_mapping()) {
     // types from PostgreSQL 19 - ignore them
     if (oid == 6437) continue;  // oid8
     if (oid == 6442) continue;  // oid8 array
@@ -583,9 +583,9 @@ TEST(PostgresTypeTest, BuiltinResolver) {
     if (oid == 6491) continue;  // regdatabase array
 
     SCOPED_TRACE("oid = " + std::to_string(oid));
-    auto dynamic_type = dynamic.mapping_.find(oid);
-    EXPECT_NE(dynamic_type, dynamic.mapping_.end());
-    if (dynamic_type == dynamic.mapping_.end()) {
+    auto dynamic_type = dynamic.oid_mapping().find(oid);
+    EXPECT_NE(dynamic_type, dynamic.oid_mapping().end());
+    if (dynamic_type == dynamic.oid_mapping().end()) {
       continue;
     }
     EXPECT_EQ(type.type_id(), dynamic_type->second.type_id());
