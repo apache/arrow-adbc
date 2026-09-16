@@ -583,7 +583,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
 
                 foreach (string projectId in projectIds)
                 {
-                    if (Regex.IsMatch(projectId, catalogRegexp, RegexOptions.IgnoreCase))
+                    if (Regex.IsMatch(projectId, catalogRegexp))
                     {
                         catalogNameBuilder.Append(projectId);
 
@@ -641,7 +641,7 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 {
                     foreach (BigQueryDataset schema in schemas)
                     {
-                        if (Regex.IsMatch(schema.Reference.DatasetId, dbSchemaRegexp, RegexOptions.IgnoreCase))
+                        if (Regex.IsMatch(schema.Reference.DatasetId, dbSchemaRegexp))
                         {
                             dbSchemaNameBuilder.Append(schema.Reference.DatasetId);
                             length++;
@@ -694,27 +694,34 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 int length = 0;
 
                 string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.TABLES",
-                    Sanitize(catalog), Sanitize(dbSchema));
+                    SanitizeIdentifier(catalog), SanitizeIdentifier(dbSchema));
+
+                List<BigQueryParameter> parameters = new List<BigQueryParameter>();
+                List<string> predicates = new List<string>();
 
                 if (tableNamePattern != null)
                 {
-                    query = string.Concat(query, string.Format(" WHERE table_name LIKE '{0}'", Sanitize(tableNamePattern)));
-                    if (tableTypes?.Count > 0)
-                    {
-                        IEnumerable<string> sanitizedTypes = tableTypes.Select(x => Sanitize(x));
-                        query = string.Concat(query, string.Format(" AND table_type IN ('{0}')", string.Join("', '", sanitizedTypes).ToUpper()));
-                    }
-                }
-                else
-                {
-                    if (tableTypes?.Count > 0)
-                    {
-                        IEnumerable<string> sanitizedTypes = tableTypes.Select(x => Sanitize(x));
-                        query = string.Concat(query, string.Format(" WHERE table_type IN ('{0}')", string.Join("', '", sanitizedTypes).ToUpper()));
-                    }
+                    predicates.Add("table_name LIKE @tableNamePattern");
+                    parameters.Add(new BigQueryParameter("tableNamePattern", BigQueryDbType.String, EscapeLikePattern(tableNamePattern)));
                 }
 
-                BigQueryResults? result = ExecuteQuery(query, parameters: null);
+                if (tableTypes?.Count > 0)
+                {
+                    // IN UNNEST rather than IN, because BigQuery does not expand a single array
+                    // parameter into an IN list.
+                    predicates.Add("table_type IN UNNEST(@tableTypes)");
+                    parameters.Add(new BigQueryParameter("tableTypes", BigQueryDbType.Array, tableTypes.Select(x => x.ToUpperInvariant()).ToList())
+                    {
+                        ArrayElementType = BigQueryDbType.String,
+                    });
+                }
+
+                if (predicates.Count > 0)
+                {
+                    query = string.Concat(query, " WHERE ", string.Join(" AND ", predicates));
+                }
+
+                BigQueryResults? result = ExecuteQuery(query, parameters);
 
                 if (result != null)
                 {
@@ -800,15 +807,21 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 ArrowBuffer.BitmapBuilder nullBitmapBuffer = new ArrowBuffer.BitmapBuilder();
                 int length = 0;
 
-                string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.COLUMNS WHERE table_name = '{2}'",
-                    Sanitize(catalog), Sanitize(dbSchema), Sanitize(table));
+                string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.COLUMNS WHERE table_name = @tableName",
+                    SanitizeIdentifier(catalog), SanitizeIdentifier(dbSchema));
+
+                List<BigQueryParameter> parameters = new List<BigQueryParameter>
+                {
+                    new BigQueryParameter("tableName", BigQueryDbType.String, table),
+                };
 
                 if (columnNamePattern != null)
                 {
-                    query = string.Concat(query, string.Format("AND column_name LIKE '{0}'", Sanitize(columnNamePattern)));
+                    query = string.Concat(query, " AND column_name LIKE @columnNamePattern");
+                    parameters.Add(new BigQueryParameter("columnNamePattern", BigQueryDbType.String, EscapeLikePattern(columnNamePattern)));
                 }
 
-                BigQueryResults? result = ExecuteQuery(query, parameters: null);
+                BigQueryResults? result = ExecuteQuery(query, parameters);
 
                 if (result != null)
                 {
@@ -902,10 +915,13 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 ArrowBuffer.BitmapBuilder nullBitmapBuffer = new ArrowBuffer.BitmapBuilder();
                 int length = 0;
 
-                string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE table_name = '{2}'",
-                   Sanitize(catalog), Sanitize(dbSchema), Sanitize(table));
+                string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.TABLE_CONSTRAINTS WHERE table_name = @tableName",
+                   SanitizeIdentifier(catalog), SanitizeIdentifier(dbSchema));
 
-                BigQueryResults? result = ExecuteQuery(query, parameters: null);
+                BigQueryResults? result = ExecuteQuery(query, new List<BigQueryParameter>
+                {
+                    new BigQueryParameter("tableName", BigQueryDbType.String, table),
+                });
 
                 if (result != null)
                 {
@@ -966,12 +982,16 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             return this.TraceActivity(activity =>
             {
-                string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE table_name = '{2}' AND constraint_name = '{3}' ORDER BY ordinal_position",
-               Sanitize(catalog), Sanitize(dbSchema), Sanitize(table), Sanitize(constraintName));
+                string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.KEY_COLUMN_USAGE WHERE table_name = @tableName AND constraint_name = @constraintName ORDER BY ordinal_position",
+               SanitizeIdentifier(catalog), SanitizeIdentifier(dbSchema));
 
                 StringArray.Builder constraintColumnNamesBuilder = new StringArray.Builder();
 
-                BigQueryResults? result = ExecuteQuery(query, parameters: null);
+                BigQueryResults? result = ExecuteQuery(query, new List<BigQueryParameter>
+                {
+                    new BigQueryParameter("tableName", BigQueryDbType.String, table),
+                    new BigQueryParameter("constraintName", BigQueryDbType.String, constraintName),
+                });
 
                 if (result != null)
                 {
@@ -1001,10 +1021,13 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
                 ArrowBuffer.BitmapBuilder nullBitmapBuffer = new ArrowBuffer.BitmapBuilder();
                 int length = 0;
 
-                string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE WHERE constraint_name = '{2}'",
-                   Sanitize(catalog), Sanitize(dbSchema), Sanitize(constraintName));
+                string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.CONSTRAINT_COLUMN_USAGE WHERE constraint_name = @constraintName",
+                   SanitizeIdentifier(catalog), SanitizeIdentifier(dbSchema));
 
-                BigQueryResults? result = ExecuteQuery(query, parameters: null);
+                BigQueryResults? result = ExecuteQuery(query, new List<BigQueryParameter>
+                {
+                    new BigQueryParameter("constraintName", BigQueryDbType.String, constraintName),
+                });
 
                 if (result != null)
                 {
@@ -1042,15 +1065,42 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             });
         }
 
-        private string PatternToRegEx(string? pattern)
+        /// <summary>
+        /// Translates an ADBC search pattern into an equivalent regular expression, for the
+        /// catalog and dataset patterns that are matched client-side against listing results
+        /// rather than server-side by a SQL LIKE.
+        /// </summary>
+        /// <remarks>
+        /// Only "%" and "_" carry meaning in an ADBC search pattern; every other character is
+        /// literal, so each one is escaped rather than passed through to the regex engine. The
+        /// match is case-sensitive so that these patterns behave the same way as the table and
+        /// column patterns, which reach BigQuery as a case-sensitive LIKE.
+        /// </remarks>
+        internal static string PatternToRegEx(string? pattern)
         {
             if (pattern == null)
                 return ".*";
 
-            StringBuilder builder = new StringBuilder("(?i)^");
-            string convertedPattern = pattern.Replace("_", ".").Replace("%", ".*");
-            builder.Append(convertedPattern);
-            builder.Append("$");
+            StringBuilder builder = new StringBuilder(@"\A");
+
+            foreach (char c in pattern)
+            {
+                switch (c)
+                {
+                    case '_':
+                        builder.Append('.');
+                        break;
+                    case '%':
+                        builder.Append(".*");
+                        break;
+                    default:
+                        builder.Append(Regex.Escape(c.ToString()));
+                        break;
+                }
+            }
+
+            // \z rather than $, which in .NET also matches before a trailing newline.
+            builder.Append(@"\z");
 
             return builder.ToString();
         }
@@ -1141,10 +1191,13 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
         {
             return this.TraceActivity(activity =>
             {
-                string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.COLUMNS WHERE table_name = '{2}'",
-                Sanitize(catalog), Sanitize(dbSchema), Sanitize(tableName));
+                string query = string.Format("SELECT * FROM `{0}`.`{1}`.INFORMATION_SCHEMA.COLUMNS WHERE table_name = @tableName",
+                SanitizeIdentifier(catalog), SanitizeIdentifier(dbSchema));
 
-                BigQueryResults? result = ExecuteQuery(query, parameters: null);
+                BigQueryResults? result = ExecuteQuery(query, new List<BigQueryParameter>
+                {
+                    new BigQueryParameter("tableName", BigQueryDbType.String, tableName),
+                });
 
                 List<Field> fields = new List<Field>();
 
@@ -1344,24 +1397,53 @@ namespace Apache.Arrow.Adbc.Drivers.BigQuery
             this._fileActivityListener?.Dispose();
         }
 
-        private static Regex sanitizedInputRegex = new Regex("^[a-zA-Z0-9_-]+");
+        /// <summary>
+        /// Matches a complete BigQuery project or dataset identifier. The character class is the
+        /// union of what BigQuery permits in each: a project id allows lowercase letters, digits
+        /// and hyphens, a dataset id allows letters, digits and underscores. Both anchors are
+        /// required - \A and \z rather than ^ and $, because .NET's $ also matches immediately
+        /// before a trailing newline.
+        /// </summary>
+        private static readonly Regex s_identifierRegex = new Regex(@"\A[a-zA-Z0-9_-]+\z", RegexOptions.CultureInvariant);
 
-        private string Sanitize(string? input)
+        /// <summary>
+        /// Validates a value that is interpolated into a query as a quoted identifier.
+        /// </summary>
+        /// <remarks>
+        /// BigQuery query parameters cannot stand in for identifiers, so the catalog and dataset
+        /// that name an INFORMATION_SCHEMA view have to be embedded in the query text. They are
+        /// therefore checked against the full set of characters BigQuery allows in those names;
+        /// anything else - a backtick that would close the identifier especially - is rejected.
+        /// Every other caller-supplied value is passed as a query parameter instead.
+        /// </remarks>
+        internal static string SanitizeIdentifier(string? input)
         {
             if (string.IsNullOrEmpty(input))
                 return string.Empty;
 
-            bool isValidInput = sanitizedInputRegex.IsMatch(input);
+            if (!s_identifierRegex.IsMatch(input))
+            {
+                // The rejected value is deliberately omitted: it failed validation precisely
+                // because it may contain characters - newlines and other control characters
+                // among them - that would let it forge or split log/error output if embedded.
+                throw new AdbcException("catalog or dataset identifier is invalid", AdbcStatusCode.InvalidArgument);
+            }
 
-            if (isValidInput)
-            {
-                return input!;
-            }
-            else
-            {
-                throw new AdbcException($"{input} is invalid", AdbcStatusCode.InvalidArgument);
-            }
+            return input!;
         }
+
+        /// <summary>
+        /// Escapes an ADBC search pattern so that BigQuery's LIKE operator gives it the meaning
+        /// the ADBC specification defines.
+        /// </summary>
+        /// <remarks>
+        /// An ADBC search pattern gives special meaning to "%" (zero or more characters) and "_"
+        /// (exactly one character) and nothing else - the specification states that escaping is
+        /// not supported. BigQuery's LIKE additionally treats "\" as an escape character, so a
+        /// backslash is doubled here to keep it literal. The two wildcards are deliberately left
+        /// alone so they still reach LIKE as wildcards.
+        /// </remarks>
+        internal static string EscapeLikePattern(string pattern) => pattern.Replace("\\", "\\\\");
 
         /// <summary>
         /// Gets the access token from the token endpoint.
