@@ -296,6 +296,32 @@ TEST_F(PostgresDatabaseTest, UseCopyOptionDefault) {
   ASSERT_THAT(AdbcStatementRelease(&statement.value, &error), IsOkStatus(&error));
 }
 
+TEST_F(PostgresDatabaseTest, TypeResolverModeOption) {
+  const char* key = "adbc.postgresql.type_resolver_mode";
+  std::optional<std::string> type_resolver_mode;
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(quirks_.SetupDatabase(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseSetOption(&database.value, key, "builtin", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error), IsOkStatus(&error));
+  type_resolver_mode = adbc_validation::DatabaseGetOption(&database.value, key, &error);
+  EXPECT_THAT(type_resolver_mode, ::testing::Optional("builtin"s));
+}
+
+TEST_F(PostgresDatabaseTest, TypeResolverModeOptionDefault) {
+  const char* key = "adbc.postgresql.type_resolver_mode";
+  std::optional<std::string> type_resolver_mode;
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(quirks_.SetupDatabase(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcDatabaseInit(&database.value, &error), IsOkStatus(&error));
+  type_resolver_mode = adbc_validation::DatabaseGetOption(&database.value, key, &error);
+  EXPECT_THAT(type_resolver_mode, ::testing::Optional("server"s));
+}
+
 int Canary(const struct AdbcError*) { return 0; }
 
 TEST_F(PostgresDatabaseTest, AdbcDriverBackwardsCompatibility) {
