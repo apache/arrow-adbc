@@ -580,6 +580,10 @@ class PostgresTypeResolver {
     classes_.insert({oid, cls});
   }
 
+  std::unordered_map<uint32_t, PostgresType> const& oid_mapping() const {
+    return mapping_;
+  }
+
  private:
   std::unordered_map<uint32_t, PostgresType> mapping_;
   // We can't use PostgresTypeId as an unordered map key because there is no

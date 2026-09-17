@@ -20,9 +20,12 @@
 #include <vector>
 
 #include <gtest/gtest.h>
+#include <libpq-fe.h>
 #include <nanoarrow/nanoarrow.hpp>
 
+#include "database.h"
 #include "postgres_type.h"
+#include "type_resolver_init.h"
 
 namespace adbcpq {
 
@@ -551,6 +554,43 @@ TEST(PostgresTypeTest, PostgresTypeResolveInt2vector) {
   EXPECT_EQ(type.typname(), "int2vector");
   EXPECT_EQ(type.type_id(), PostgresTypeId::kInt2vector);
   EXPECT_EQ(0, type.n_children());
+}
+
+TEST(PostgresTypeTest, BuiltinResolver) {
+  const char* uri = std::getenv("ADBC_POSTGRESQL_TEST_URI");
+  if (!uri) {
+    FAIL() << "Must provide env var ADBC_POSTGRESQL_TEST_URI";
+  }
+
+  auto* conn = PQconnectdb(uri);
+  if (auto status = PQstatus(conn); status != CONNECTION_OK) {
+    std::string message = PQerrorMessage(conn);
+    PQfinish(conn);
+    ASSERT_EQ(CONNECTION_OK, status) << message;
+  }
+
+  PostgresTypeResolver builtin, dynamic;
+  ASSERT_TRUE(InternalAdbcInitializeTypeResolver(builtin).ok());
+  ASSERT_TRUE(InternalAdbcRebuildTypeResolver(conn, dynamic).ok());
+
+  PQfinish(conn);
+
+  for (const auto& [oid, type] : builtin.oid_mapping()) {
+    // types from PostgreSQL 19 - ignore them
+    if (oid == 6437) continue;  // oid8
+    if (oid == 6442) continue;  // oid8 array
+    if (oid == 6490) continue;  // regdatabase
+    if (oid == 6491) continue;  // regdatabase array
+
+    SCOPED_TRACE("oid = " + std::to_string(oid));
+    auto dynamic_type = dynamic.oid_mapping().find(oid);
+    EXPECT_NE(dynamic_type, dynamic.oid_mapping().end());
+    if (dynamic_type == dynamic.oid_mapping().end()) {
+      continue;
+    }
+    EXPECT_EQ(type.type_id(), dynamic_type->second.type_id());
+    EXPECT_EQ(type.typname(), dynamic_type->second.typname());
+  }
 }
 
 }  // namespace adbcpq

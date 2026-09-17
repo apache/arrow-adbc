@@ -295,6 +295,9 @@ jobs:
             if [ "$postgres_version" = "18" ]; then
               uv --project=./c/driver/postgresql/validation/ run \
                 ci/scripts/validate.sh "$(pwd)" --vendor postgresql
+              env POSTGRES_TYPE_RESOLVER_MODE=builtin \
+                uv --project=./c/driver/postgresql/validation/ run \
+                  ci/scripts/validate.sh "$(pwd)" --vendor postgresql
             fi
             docker compose stop postgres-test
             docker compose rm --force --stop --volumes postgres-test
@@ -349,13 +352,11 @@ jobs:
             vendor: yugabytedb
             uri: postgresql://localhost:5439/yugabyte?user=yugabyte&password=yugabyte
             experimental: false
-          # Currently fails, but could be supported in the future.
-          # https://github.com/apache/arrow-adbc/issues/1755
-          # - name: CedarDB
-          #   service: cedardb-test
-          #   vendor: cedardb
-          #   uri: postgresql://localhost:5433/postgres?user=postgres&password=CedarDB2026%21
-          #   experimental: true
+          - name: CedarDB
+            service: cedardb-test
+            vendor: cedardb
+            uri: postgresql://localhost:5433/postgres?user=postgres&password=CedarDB2026%21
+            experimental: true
     steps:
       - name: Free up disk space
         run: |
@@ -401,12 +402,26 @@ jobs:
         run: |
           docker compose up --wait --detach "${{ matrix.service }}"
       - name: Run validation suite
+        # Currently fails, but could be supported in the future.
+        # https://github.com/apache/arrow-adbc/issues/1755
+        if: matrix.vendor != 'cedardb'
         env:
           ADBC_POSTGRESQL_TEST_URI: ${{ matrix.uri }}
           ADBC_USE_ASAN: "ON"
           ADBC_USE_UBSAN: "ON"
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
+        run: |
+          uv --project=./c/driver/postgresql/validation/ run \
+            ci/scripts/validate.sh "$(pwd)" --vendor "${{ matrix.vendor }}"
+      - name: Run validation suite (with alternate type resolver)
+        env:
+          ADBC_POSTGRESQL_TEST_URI: ${{ matrix.uri }}
+          ADBC_USE_ASAN: "ON"
+          ADBC_USE_UBSAN: "ON"
+          BUILD_ALL: "0"
+          BUILD_DRIVER_POSTGRESQL: "1"
+          POSTGRES_TYPE_RESOLVER_MODE: "builtin"
         run: |
           uv --project=./c/driver/postgresql/validation/ run \
             ci/scripts/validate.sh "$(pwd)" --vendor "${{ matrix.vendor }}"
