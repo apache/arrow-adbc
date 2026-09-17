@@ -141,7 +141,7 @@ driver in the table below is packaged this way.
    ``duckdb`` driver fetches a prebuilt binary. This driver is also compatible
    with MotherDuck.
 .. [#compat-flightsql] This driver works with Flight SQL-compatible systems,
-   including Apache Doris, Dremio, GizmoSQL, InfluxDB, Sail, and StarRocks.
+   including Apache Doris, Dremio, GizmoSQL, InfluxDB, Sail, StarRocks, and Teradata.
 .. [#compat-mysql] This driver also works with MySQL-compatible systems including
    TiDB and Vitess.
 .. [#compat-postgresql] This driver also works with PostgreSQL wire
