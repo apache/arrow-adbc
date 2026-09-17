@@ -337,6 +337,11 @@ jobs:
             vendor: cratedb
             uri: postgresql://crate@localhost:5436/doc?sslmode=disable
             experimental: true
+          - name: Materialize
+            service: materialize-test
+            vendor: materialize
+            uri: postgresql://materialize@localhost:5441/materialize?sslmode=disable
+            experimental: true
           - name: ParadeDB
             service: paradedb-test
             vendor: paradedb

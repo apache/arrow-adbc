@@ -479,6 +479,18 @@ services:
     ports:
       - "5440:5432"
 
+  materialize-test:
+    container_name: adbc_materialize_test
+    image: materialize/materialized:v26.41.1
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:6878/api/readyz"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 60s
+    ports:
+      - "5441:6875"
+
   spiceai-test:
     container_name: adbc-spiceai
     build:
