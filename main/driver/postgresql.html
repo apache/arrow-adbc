@@ -771,14 +771,62 @@ column, but this has been deprecated in favor of the Opaque type
 and you should not rely on this key continuing to exist.</p>
 </div>
 </section>
+<section id="resolving-composite-and-user-defined-types">
+<h4>Resolving Composite and User-Defined Types<a class="headerlink" href="#resolving-composite-and-user-defined-types" title="Link to this heading">¶</a></h4>
+<p>PostgreSQL allows users to define their own types. On top of that, databases
+may use the PostgreSQL wire protocol and binary format but not necessarily the
+same data types. The driver has to somehow determine which Arrow type to use
+for a given PostgreSQL type.</p>
+<p>By default, the driver will query system tables upon initial connection to
+determine the type mapping, and to be able to understand user-defined and
+composite types. This can result in a significant startup cost, however,
+especially if the database contains many tables, columns, and/or user-defined
+types; some users have reported that initial connection takes several minutes!
+(Note that in PostgreSQL, every table automatically has a user-defined type
+defined for it.)</p>
+<p>Starting in driver version 1.13 (ADBC release 25), the driver now has an
+alternative: by setting the database option
+<code class="docutils literal notranslate"><span class="pre">adbc.postgresql.type_resolver_mode</span></code> to <code class="docutils literal notranslate"><span class="pre">builtin</span></code> on initial connect, the
+driver will skip these queries and instead use a hardcoded table of <em>type
+OIDs</em>. In this mode, the driver will be unable to read composite and
+user-defined types, because it does not have the necessary information. We
+cannot guarantee compatibility with non-PostgreSQL database vendors that use
+the PostgreSQL wire protocol in this mode.</p>
+<p>We plan to improve support here: eventually, the driver will start with the
+hardcoded type table and will fetch type information on-the-fly as necessary.</p>
 </section>
 </section>
-<section id="software-versions">
-<h2>Software Versions<a class="headerlink" href="#software-versions" title="Link to this heading">¶</a></h2>
+</section>
+<section id="software-versions-vendor-compatibility">
+<h2>Software Versions &amp; Vendor Compatibility<a class="headerlink" href="#software-versions-vendor-compatibility" title="Link to this heading">¶</a></h2>
 <p>For Python wheels, the shipped version of the PostgreSQL client libraries is
 18.4.  For conda-forge packages, the version of libpq is the same as the
 version of libpq in your Conda environment.</p>
-<p>The PostgreSQL driver is tested against PostgreSQL versions 14 through 18.</p>
+<p>The PostgreSQL driver is tested against the following DBMSes, which all use
+the PostgreSQL wire protocol:</p>
+<ul class="simple">
+<li><p>PostgreSQL (version 14 through 18)</p></li>
+<li><p>Citus</p></li>
+<li><p>CockroachDB</p></li>
+<li><p>CrateDB</p></li>
+<li><p>Google AlloyDB Omni</p></li>
+<li><p>ParadeDB</p></li>
+<li><p>TimescaleDB</p></li>
+<li><p>YugabyteDB</p></li>
+</ul>
+<p>Note that for vendors besides PostgreSQL, certain features and/or data types
+may not be supported. In particular, COPY query execution (see above) is often
+not supported.</p>
+<p>We are aware that the driver is not currently compatible with the following
+vendors:</p>
+<ul class="simple">
+<li><p>CedarDB v2026-8-13 (unless the “builtin” type resolver is used, see above)</p></li>
+</ul>
+<p>The driver is not and will not support the following vendors:</p>
+<ul class="simple">
+<li><p>Amazon Redshift (note that a dedicated driver is available for Redshift from
+a third party, see <a class="reference internal" href="index.html#driver-table"><span class="std std-ref">Available Drivers</span></a>)</p></li>
+</ul>
 </section>
 </section>
 
@@ -832,11 +880,12 @@ United States and other countries.
 <li><a class="reference internal" href="#transactions">Transactions</a></li>
 <li><a class="reference internal" href="#type-support">Type Support</a><ul>
 <li><a class="reference internal" href="#unknown-types">Unknown Types</a></li>
+<li><a class="reference internal" href="#resolving-composite-and-user-defined-types">Resolving Composite and User-Defined Types</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li><a class="reference internal" href="#software-versions">Software Versions</a></li>
+<li><a class="reference internal" href="#software-versions-vendor-compatibility">Software Versions &amp; Vendor Compatibility</a></li>
 </ul>
 </li>
 </ul>
