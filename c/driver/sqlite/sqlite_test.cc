@@ -1062,6 +1062,83 @@ TEST_F(SqliteReaderTest, BindByName) {
   ASSERT_NO_FATAL_FAILURE(CompareArray<int64_t>(reader.array_view->children[1], {1}));
 }
 
+class SqliteUnprefixedNameTest : public SqliteReaderTest,
+                                 public ::testing::WithParamInterface<const char*> {};
+
+TEST_P(SqliteUnprefixedNameTest, BindByNameWithoutPrefix) {
+  adbc_validation::StreamReader reader;
+  Handle<struct ArrowSchema> schema;
+  Handle<struct ArrowArray> batch;
+  ASSERT_THAT(adbc_validation::MakeSchema(&schema.value, {{"b", NANOARROW_TYPE_INT64},
+                                                          {"a", NANOARROW_TYPE_INT64}}),
+              IsOkErrno());
+  ASSERT_THAT((adbc_validation::MakeBatch<int64_t, int64_t>(&schema.value, &batch.value,
+                                                            nullptr, {1, 3}, {2, 4})),
+              IsOkErrno());
+  ASSERT_NO_FATAL_FAILURE(Bind(&batch.value, &schema.value, true));
+  ASSERT_NO_FATAL_FAILURE(Exec(GetParam(), 2, &reader));
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(CompareArray<int64_t>(reader.array_view->children[0], {2, 4}));
+  ASSERT_NO_FATAL_FAILURE(CompareArray<int64_t>(reader.array_view->children[1], {1, 3}));
+}
+
+INSTANTIATE_TEST_SUITE_P(Prefixes, SqliteUnprefixedNameTest,
+                         ::testing::Values("SELECT :a, :b", "SELECT @a, @b",
+                                           "SELECT $a, $b", "SELECT :a, @b"));
+
+TEST_F(SqliteReaderTest, BindByNameRejectsAmbiguousUnprefixedName) {
+  Handle<struct ArrowSchema> schema;
+  Handle<struct ArrowArray> batch;
+  ASSERT_THAT(adbc_validation::MakeSchema(&schema.value, {{"a", NANOARROW_TYPE_INT64}}),
+              IsOkErrno());
+  ASSERT_THAT(
+      adbc_validation::MakeBatch<int64_t>(&schema.value, &batch.value, nullptr, {42}),
+      IsOkErrno());
+  ASSERT_NO_FATAL_FAILURE(Bind(&batch.value, &schema.value, true));
+  ASSERT_EQ(SQLITE_OK, sqlite3_prepare_v2(db, "SELECT :a, @a", -1, &stmt, nullptr));
+  char finished = 0;
+  ASSERT_EQ(ADBC_STATUS_INVALID_ARGUMENT,
+            InternalAdbcSqliteBinderBindNext(&binder, db, stmt, &finished, &error));
+  ASSERT_THAT(error.message, ::testing::HasSubstr("ambiguous parameter `a`"));
+  ASSERT_EQ(ADBC_STATUS_INVALID_ARGUMENT,
+            InternalAdbcSqliteBinderBindNext(&binder, db, stmt, &finished, &error));
+}
+
+TEST_F(SqliteReaderTest, BindByNameKeepsExactPrefixPrecedence) {
+  adbc_validation::StreamReader reader;
+  Handle<struct ArrowSchema> schema;
+  Handle<struct ArrowArray> batch;
+  ASSERT_THAT(adbc_validation::MakeSchema(&schema.value, {{"@a", NANOARROW_TYPE_INT64},
+                                                          {":a", NANOARROW_TYPE_INT64}}),
+              IsOkErrno());
+  ASSERT_THAT((adbc_validation::MakeBatch<int64_t, int64_t>(&schema.value, &batch.value,
+                                                            nullptr, {1}, {2})),
+              IsOkErrno());
+  ASSERT_NO_FATAL_FAILURE(Bind(&batch.value, &schema.value, true));
+  ASSERT_NO_FATAL_FAILURE(Exec("SELECT :a, @a", 2, &reader));
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(CompareArray<int64_t>(reader.array_view->children[0], {2}));
+  ASSERT_NO_FATAL_FAILURE(CompareArray<int64_t>(reader.array_view->children[1], {1}));
+}
+
+TEST_F(SqliteReaderTest, BindByNameRejectsDuplicateResolvedIndex) {
+  Handle<struct ArrowSchema> schema;
+  Handle<struct ArrowArray> batch;
+  ASSERT_THAT(adbc_validation::MakeSchema(&schema.value, {{"a", NANOARROW_TYPE_INT64},
+                                                          {":a", NANOARROW_TYPE_INT64}}),
+              IsOkErrno());
+  ASSERT_THAT((adbc_validation::MakeBatch<int64_t, int64_t>(&schema.value, &batch.value,
+                                                            nullptr, {1}, {2})),
+              IsOkErrno());
+  ASSERT_NO_FATAL_FAILURE(Bind(&batch.value, &schema.value, true));
+  ASSERT_EQ(SQLITE_OK, sqlite3_prepare_v2(db, "SELECT :a, @b", -1, &stmt, nullptr));
+  char finished = 0;
+  ASSERT_EQ(ADBC_STATUS_INVALID_ARGUMENT,
+            InternalAdbcSqliteBinderBindNext(&binder, db, stmt, &finished, &error));
+  ASSERT_THAT(error.message,
+              ::testing::HasSubstr("both resolve to SQLite parameter `:a`"));
+}
+
 TEST_F(SqliteReaderTest, MultiValueParams) {
   // Regression test for apache/arrow-adbc#734
   adbc_validation::StreamReader reader;

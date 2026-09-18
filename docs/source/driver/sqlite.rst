@@ -138,6 +138,17 @@ shared across all connections.
 Supported Features
 ==================
 
+Named Parameters
+----------------
+
+When binding by name, parameter names may include their ``:``, ``@``, or ``$``
+prefix, or omit it when the remaining name identifies a unique SQL parameter.
+For example, Python's ``cursor.execute("SELECT :a", {"a": 1})`` and
+``cursor.execute("SELECT :a", {":a": 1})`` are both supported.
+Exact prefixed names take precedence. If a query contains both ``:a`` and
+``@a``, an unprefixed ``a`` is ambiguous and must be replaced by the exact
+prefixed names.
+
 Bulk Ingestion
 --------------
 
