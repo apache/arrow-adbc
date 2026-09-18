@@ -21,6 +21,10 @@
 #include <cassert>
 #include <cerrno>
 #include <cstring>
+#include <iomanip>
+#include <limits>
+#include <locale>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -402,6 +406,55 @@ AdbcStatusCode StatementSetOptionDouble(struct AdbcStatement* statement, const c
                                         double value, struct AdbcError* error) {
   SetError(error, "AdbcStatementSetOptionDouble not implemented");
   return ADBC_STATUS_NOT_IMPLEMENTED;
+}
+
+// Bridge numeric options only for drivers negotiated down to ADBC 1.0.0.
+// Bytes deliberately remain unsupported: embedded NUL bytes have no lossless
+// representation in the string-only API.
+template <typename Object, typename Value, typename Setter>
+AdbcStatusCode SetNumericOptionAsString(Object* object, const char* key, Value value,
+                                        struct AdbcError* error, Setter setter) {
+  std::ostringstream text;
+  text.imbue(std::locale::classic());
+  text << std::setprecision(std::numeric_limits<double>::max_digits10) << value;
+  return setter(object, key, text.str().c_str(), error);
+}
+
+AdbcStatusCode DatabaseSetOptionIntLegacy(AdbcDatabase* database, const char* key,
+                                          int64_t value, AdbcError* error) {
+  return SetNumericOptionAsString(database, key, value, error,
+                                  database->private_driver->DatabaseSetOption);
+}
+
+AdbcStatusCode DatabaseSetOptionDoubleLegacy(AdbcDatabase* database, const char* key,
+                                             double value, AdbcError* error) {
+  return SetNumericOptionAsString(database, key, value, error,
+                                  database->private_driver->DatabaseSetOption);
+}
+
+AdbcStatusCode ConnectionSetOptionIntLegacy(AdbcConnection* connection, const char* key,
+                                            int64_t value, AdbcError* error) {
+  return SetNumericOptionAsString(connection, key, value, error,
+                                  connection->private_driver->ConnectionSetOption);
+}
+
+AdbcStatusCode ConnectionSetOptionDoubleLegacy(AdbcConnection* connection,
+                                               const char* key, double value,
+                                               AdbcError* error) {
+  return SetNumericOptionAsString(connection, key, value, error,
+                                  connection->private_driver->ConnectionSetOption);
+}
+
+AdbcStatusCode StatementSetOptionIntLegacy(AdbcStatement* statement, const char* key,
+                                           int64_t value, AdbcError* error) {
+  return SetNumericOptionAsString(statement, key, value, error,
+                                  statement->private_driver->StatementSetOption);
+}
+
+AdbcStatusCode StatementSetOptionDoubleLegacy(AdbcStatement* statement, const char* key,
+                                              double value, AdbcError* error) {
+  return SetNumericOptionAsString(statement, key, value, error,
+                                  statement->private_driver->StatementSetOption);
 }
 
 AdbcStatusCode StatementSetSqlQuery(struct AdbcStatement*, const char*,
@@ -1475,10 +1528,14 @@ AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, int vers
   // succession with the underlying driver until we find one that's
   // accepted.
   AdbcStatusCode result = ADBC_STATUS_NOT_IMPLEMENTED;
+  int negotiated_version = version;
   for (const int try_version : kSupportedVersions) {
     if (try_version > version) continue;
     result = init_func(try_version, raw_driver, error);
-    if (result != ADBC_STATUS_NOT_IMPLEMENTED) break;
+    if (result != ADBC_STATUS_NOT_IMPLEMENTED) {
+      negotiated_version = try_version;
+      break;
+    }
   }
   if (result != ADBC_STATUS_OK) {
     return result;
@@ -1517,6 +1574,14 @@ AdbcStatusCode AdbcLoadDriverFromInitFunc(AdbcDriverInitFunc init_func, int vers
   }
   if (version >= ADBC_VERSION_1_1_0) {
     auto* driver = reinterpret_cast<struct AdbcDriver*>(raw_driver);
+    if (negotiated_version == ADBC_VERSION_1_0_0) {
+      driver->DatabaseSetOptionInt = DatabaseSetOptionIntLegacy;
+      driver->DatabaseSetOptionDouble = DatabaseSetOptionDoubleLegacy;
+      driver->ConnectionSetOptionInt = ConnectionSetOptionIntLegacy;
+      driver->ConnectionSetOptionDouble = ConnectionSetOptionDoubleLegacy;
+      driver->StatementSetOptionInt = StatementSetOptionIntLegacy;
+      driver->StatementSetOptionDouble = StatementSetOptionDoubleLegacy;
+    }
     FILL_DEFAULT(driver, ErrorGetDetailCount);
     FILL_DEFAULT(driver, ErrorGetDetail);
     FILL_DEFAULT(driver, ErrorFromArrayStream);
