@@ -263,6 +263,9 @@ class DriverQuirks {
 
   /// \brief Default database schema to use for tests
   virtual std::string db_schema() const { return ""; }
+
+  /// \brief Secondary database schema to use for tests
+  virtual std::string secondary_db_schema() const { return "otherschema"; }
 };
 
 class DatabaseTest {
