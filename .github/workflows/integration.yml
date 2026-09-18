@@ -341,7 +341,7 @@ jobs:
             service: materialize-test
             vendor: materialize
             uri: postgresql://materialize@localhost:5441/materialize?sslmode=disable
-            experimental: true
+            experimental: false
           - name: ParadeDB
             service: paradedb-test
             vendor: paradedb
@@ -361,7 +361,7 @@ jobs:
             service: cedardb-test
             vendor: cedardb
             uri: postgresql://localhost:5433/postgres?user=postgres&password=CedarDB2026%21
-            experimental: true
+            experimental: false
     steps:
       - name: Free up disk space
         run: |
