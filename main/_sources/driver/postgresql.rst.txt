@@ -359,6 +359,7 @@ the PostgreSQL wire protocol:
 - CockroachDB
 - CrateDB
 - Google AlloyDB Omni
+- Materialize
 - ParadeDB
 - TimescaleDB
 - YugabyteDB
@@ -372,7 +373,7 @@ vendors:
 
 - CedarDB v2026-8-13 (unless the "builtin" type resolver is used, see above)
 
-The driver is not and will not support the following vendors:
+The driver does not and will not support the following vendors:
 
 - Amazon Redshift (note that a dedicated driver is available for Redshift from
   a third party, see :ref:`driver-table`)
