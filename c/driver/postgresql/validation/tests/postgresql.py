@@ -69,7 +69,7 @@ class PostgreSQLQuirks(model.DriverQuirks):
     )
 
     @property
-    def queries_paths(self) -> tuple[Path]:
+    def queries_paths(self) -> tuple[Path, ...]:
         return (Path(__file__).parent.parent / "queries",)
 
     def bind_parameter(self, index: int) -> str:
@@ -113,7 +113,7 @@ class CedarDBQuirks(PostgreSQLQuirks):
     )
 
     @property
-    def queries_paths(self) -> tuple[Path]:
+    def queries_paths(self) -> tuple[Path, ...]:
         return (
             *super().queries_paths,
             Path(__file__).parent.parent / "queries-cedardb",
@@ -139,7 +139,7 @@ class CockroachDBQuirks(PostgreSQLQuirks):
     )
 
     @property
-    def queries_paths(self) -> tuple[Path]:
+    def queries_paths(self) -> tuple[Path, ...]:
         return (
             *super().queries_paths,
             Path(__file__).parent.parent / "queries-cockroachdb",
@@ -164,8 +164,8 @@ class CrateDBQuirks(PostgreSQLQuirks):
     )
 
     @property
-    def queries_paths(self) -> tuple[Path]:
-        extra_paths: tuple[str] = ()
+    def queries_paths(self) -> tuple[Path, ...]:
+        extra_paths: tuple[Path, ...] = ()
         if os.environ.get("POSTGRES_TYPE_RESOLVER_MODE") != "builtin":
             extra_paths = (
                 Path(__file__).parent.parent / "queries-cratedb-typeresolver",
@@ -190,6 +190,28 @@ class CrateDBQuirks(PostgreSQLQuirks):
                     )
                     cursor.adbc_statement.execute_update()
             yield
+
+
+class MaterializeQuirks(PostgreSQLQuirks):
+    vendor_version = re.compile(r"905[0-9]{2}")
+    short_version = "9.5"
+    features = PostgreSQLQuirks.features.with_values(
+        # Materialize cannot decode the driver's text parameter as regclass.
+        connection_get_table_schema=False,
+        current_catalog="materialize",
+        # The table metadata query fails with "function unnest(text) does not exist".
+        get_objects=False,
+        # COPY FROM only supports TEXT and CSV, while ingestion uses binary COPY.
+        # https://materialize.com/docs/sql/copy-from/
+        statement_bulk_ingest=False,
+    )
+
+    @property
+    def queries_paths(self) -> tuple[Path, ...]:
+        return (
+            *super().queries_paths,
+            Path(__file__).parent.parent / "queries-materialize",
+        )
 
 
 class ParadeDBQuirks(PostgreSQLQuirks):
@@ -218,6 +240,7 @@ VENDORS = (
     "citus",
     "cockroachdb",
     "cratedb",
+    "materialize",
     "paradedb",
     "timescaledb",
     "yugabytedb",
@@ -230,6 +253,7 @@ _QUIRKS = {
     "citus": CitusQuirks,
     "cockroachdb": CockroachDBQuirks,
     "cratedb": CrateDBQuirks,
+    "materialize": MaterializeQuirks,
     "paradedb": ParadeDBQuirks,
     "timescaledb": TimescaleDBQuirks,
     "yugabytedb": YugabyteDBQuirks,

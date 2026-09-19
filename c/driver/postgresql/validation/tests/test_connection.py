@@ -33,11 +33,20 @@ class TestConnection(test_connection.TestConnection):
     def test_get_objects_catalog(self, conn, driver) -> None:
         if isinstance(driver, postgresql.CrateDBQuirks):
             pytest.skip("GetObjects is marked unsupported for CrateDB")
+        if isinstance(driver, postgresql.MaterializeQuirks):
+            pytest.skip("GetObjects is marked unsupported for Materialize")
         super().test_get_objects_catalog(conn, driver)
+
+    def test_get_objects_schema(self, conn, driver) -> None:
+        if isinstance(driver, postgresql.MaterializeQuirks):
+            pytest.skip("GetObjects is marked unsupported for Materialize")
+        super().test_get_objects_schema(conn, driver)
 
     def test_get_objects_table_not_exist(self, conn, driver) -> None:
         if isinstance(driver, postgresql.CrateDBQuirks):
             pytest.skip("GetObjects is marked unsupported for CrateDB")
+        if isinstance(driver, postgresql.MaterializeQuirks):
+            pytest.skip("GetObjects is marked unsupported for Materialize")
         super().test_get_objects_table_not_exist(conn, driver)
 
     def test_get_objects_column_filter_table(
