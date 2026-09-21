@@ -33,13 +33,13 @@ Apache Arrow, Arrow, Apache, the Apache logo, and the Apache Arrow project logo 
 either registered trademarks or trademarks of The Apache Software Foundation in the
 United States and other countries."""
 author = "the Apache Arrow Developers"
-release = "25 (dev)"
+release = "25"
 # Needed to generate version switcher
 version = release
 # Override Sphinx's default title to capitalize "Documentation"
 html_title = f"{project} {release} Documentation"
 # For linking to latest downloads
-latest_release = "24"
+latest_release = "25"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
