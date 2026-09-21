@@ -408,9 +408,6 @@ AdbcStatusCode StatementSetOptionDouble(struct AdbcStatement* statement, const c
   return ADBC_STATUS_NOT_IMPLEMENTED;
 }
 
-// Bridge numeric options only for drivers negotiated down to ADBC 1.0.0.
-// Bytes deliberately remain unsupported: embedded NUL bytes have no lossless
-// representation in the string-only API.
 template <typename Object, typename Value, typename Setter>
 AdbcStatusCode SetNumericOptionAsString(Object* object, const char* key, Value value,
                                         struct AdbcError* error, Setter setter) {
