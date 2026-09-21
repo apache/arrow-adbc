@@ -15,6 +15,8 @@
 # specific language governing permissions and limitations
 # under the License.
 
+import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 import pyarrow as pa
@@ -40,35 +42,73 @@ def test_query_trivial(sqlite) -> None:
 def test_named_parameters(sqlite, prefix: str, include_prefix: bool) -> None:
     # Regression test for apache/arrow-adbc#3520.
     name_prefix = prefix if include_prefix else ""
+    query = f"SELECT {prefix}a, {prefix}b, {prefix}a"
+    parameters = {f"{name_prefix}b": 2, f"{name_prefix}a": 1}
     with sqlite.cursor() as cur:
-        cur.execute(
-            f"SELECT {prefix}a, {prefix}b, {prefix}a",
-            {f"{name_prefix}b": 2, f"{name_prefix}a": 1},
-        )
+        cur.execute(query, parameters)
         assert cur.fetchone() == (1, 2, 1)
+    with closing(sqlite3.connect(":memory:")) as conn:
+        if include_prefix:
+            # ADBC retains exact-name binding; stdlib requires unprefixed keys.
+            with pytest.raises(sqlite3.ProgrammingError):
+                conn.execute(query, parameters)
+        else:
+            assert conn.execute(query, parameters).fetchone() == (1, 2, 1)
 
 
 def test_named_parameters_mixed_prefixes(sqlite) -> None:
+    query = "SELECT :a, @b, $c"
+    parameters = {"c": 3, "b": 2, "a": 1}
     with sqlite.cursor() as cur:
-        cur.execute("SELECT :a, @b, $c", {"c": 3, "b": 2, "a": 1})
+        cur.execute(query, parameters)
         assert cur.fetchone() == (1, 2, 3)
+    with closing(sqlite3.connect(":memory:")) as conn:
+        assert conn.execute(query, parameters).fetchone() == (1, 2, 3)
 
 
 def test_named_parameters_ambiguous(sqlite) -> None:
+    query = "SELECT :a, @a"
+    parameters = {"a": 1, "@a": 2}
     with sqlite.cursor() as cur:
         with pytest.raises(dbapi.ProgrammingError, match="ambiguous parameter `a`"):
-            cur.execute("SELECT :a, @a", {"a": 1, "@a": 2})
-        cur.execute("SELECT :a, @a", {"@a": 2, ":a": 1})
+            cur.execute(query, parameters)
+        cur.execute(query, {"@a": 2, ":a": 1})
         assert cur.fetchone() == (1, 2)
+    with closing(sqlite3.connect(":memory:")) as conn:
+        # Stdlib reuses "a" for both SQL parameters and ignores the "@a" key.
+        assert conn.execute(query, parameters).fetchone() == (1, 1)
+
+
+@pytest.mark.parametrize(
+    "query, parameters, expected",
+    [
+        ("SELECT :a, @a", {"a": 1}, (1, 1)),
+        ("SELECT :a", {"a": 1, "unused": 2}, (1,)),
+    ],
+)
+def test_named_parameters_count_differs_from_stdlib(
+    sqlite, query, parameters, expected
+) -> None:
+    with sqlite.cursor() as cur:
+        with pytest.raises(dbapi.ProgrammingError, match="parameter count mismatch"):
+            cur.execute(query, parameters)
+    with closing(sqlite3.connect(":memory:")) as conn:
+        assert conn.execute(query, parameters).fetchone() == expected
 
 
 def test_named_parameters_duplicate_resolved_index(sqlite) -> None:
+    query = "SELECT :a, @b"
+    parameters = {"a": 1, ":a": 2}
     with sqlite.cursor() as cur:
         with pytest.raises(
             dbapi.ProgrammingError,
             match="both resolve to SQLite parameter `:a`",
         ):
-            cur.execute("SELECT :a, @b", {"a": 1, ":a": 2})
+            cur.execute(query, parameters)
+    with closing(sqlite3.connect(":memory:")) as conn:
+        # Both reject the input, but stdlib fails because "b" is missing.
+        with pytest.raises(sqlite3.ProgrammingError):
+            conn.execute(query, parameters)
 
 
 def test_named_parameters_missing(sqlite) -> None:

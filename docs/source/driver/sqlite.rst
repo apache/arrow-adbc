@@ -149,6 +149,13 @@ Exact prefixed names take precedence. If a query contains both ``:a`` and
 ``@a``, an unprefixed ``a`` is ambiguous and must be replaced by the exact
 prefixed names.
 
+These rules differ from Python's standard library ``sqlite3`` module, which
+requires unprefixed dictionary keys, uses the same key for SQL parameters with
+different prefixes (for example, ``:a`` and ``@a``), and ignores extra keys.
+ADBC retains exact prefixed names and requires the number of supplied fields
+to match the number of SQLite parameter slots; each field must resolve to a
+different slot.
+
 Bulk Ingestion
 --------------
 
