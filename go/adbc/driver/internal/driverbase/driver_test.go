@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"runtime/debug"
 	"slices"
 	"strings"
 	"testing"
@@ -49,6 +50,26 @@ func NewDriver(alloc memory.Allocator, handler slog.Handler, useHelpers bool) ad
 	info := driverbase.DefaultDriverInfo("MockDriver")
 	_ = info.RegisterInfoCode(adbc.InfoCode(10_001), "my custom info")
 	return driverbase.NewDriver(&driverImpl{DriverImplBase: driverbase.NewDriverImplBase(info, alloc), handler: handler, useHelpers: useHelpers})
+}
+
+func expectedDriverVersions() (string, string) {
+	driverVersion, arrowVersion := driverbase.UnknownVersion, driverbase.UnknownVersion
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, setting := range info.Settings {
+			if setting.Key == "vcs.modified" && setting.Value == "true" {
+				driverVersion = "-dev"
+			}
+		}
+		for _, dep := range info.Deps {
+			if strings.HasPrefix(dep.Path, "github.com/apache/arrow-go/") {
+				if dep.Version != "" {
+					arrowVersion = dep.Version
+				}
+				break
+			}
+		}
+	}
+	return driverVersion, arrowVersion
 }
 
 func TestDefaultDriver(t *testing.T) {
@@ -94,7 +115,8 @@ func TestDefaultDriver(t *testing.T) {
 
 	// This is what the driverbase provided GetInfo result should look like out of the box,
 	// with one custom setting registered at initialization
-	expectedGetInfoTable, err := array.TableFromJSON(alloc, adbc.GetInfoSchema, []string{`[
+	driverVersion, arrowVersion := expectedDriverVersions()
+	expectedGetInfoTable, err := array.TableFromJSON(alloc, adbc.GetInfoSchema, []string{fmt.Sprintf(`[
 		{
 			"info_name": 0,
 			"info_value": [0, "MockDriver"]
@@ -113,11 +135,11 @@ func TestDefaultDriver(t *testing.T) {
 		},
 		{
 			"info_name": 101,
-			"info_value": [0, "(unknown or development build)"]
+			"info_value": [0, %q]
 		},
 		{
 			"info_name": 102,
-			"info_value": [0, "(unknown or development build)"]
+			"info_value": [0, %q]
 		},
 		{
 			"info_name": 103,
@@ -127,7 +149,7 @@ func TestDefaultDriver(t *testing.T) {
 			"info_name": 10001,
 			"info_value": [0, "my custom info"]
 		}
-	]`})
+	]`, driverVersion, arrowVersion)})
 	require.NoError(t, err)
 	defer expectedGetInfoTable.Release()
 
@@ -223,7 +245,8 @@ func TestCustomizedDriver(t *testing.T) {
 	//  - the default DriverInfo set at initialization
 	//  - the DriverInfo set once in the NewDriver constructor
 	//  - the DriverInfo set dynamically when GetInfo is called by implementing DriverInfoPreparer interface
-	expectedGetInfoTable, err := array.TableFromJSON(alloc, adbc.GetInfoSchema, []string{`[
+	driverVersion, arrowVersion := expectedDriverVersions()
+	expectedGetInfoTable, err := array.TableFromJSON(alloc, adbc.GetInfoSchema, []string{fmt.Sprintf(`[
 		{
 			"info_name": 0,
 			"info_value": [0, "MockDriver"]
@@ -250,11 +273,11 @@ func TestCustomizedDriver(t *testing.T) {
 		},
 		{
 			"info_name": 101,
-			"info_value": [0, "(unknown or development build)"]
+			"info_value": [0, %q]
 		},
 		{
 			"info_name": 102,
-			"info_value": [0, "(unknown or development build)"]
+			"info_value": [0, %q]
 		},
 		{
 			"info_name": 103,
@@ -268,7 +291,7 @@ func TestCustomizedDriver(t *testing.T) {
 			"info_name": 10002,
 			"info_value": [0, "this was fetched dynamically"]
 		}
-	]`})
+	]`, driverVersion, arrowVersion)})
 	require.NoError(t, err)
 	defer expectedGetInfoTable.Release()
 

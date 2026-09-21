@@ -38,6 +38,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"slices"
 	"strings"
 	"testing"
@@ -45,6 +46,7 @@ import (
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	driver "github.com/apache/arrow-adbc/go/adbc/driver/flightsql"
+	"github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase"
 	"github.com/apache/arrow-adbc/go/adbc/validation"
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
@@ -256,16 +258,37 @@ func (s *FlightSQLQuirks) SupportsStatistics() bool                    { return 
 func (s *FlightSQLQuirks) SupportsTransactions() bool                  { return true }
 func (s *FlightSQLQuirks) SupportsGetParameterSchema() bool            { return false }
 func (s *FlightSQLQuirks) SupportsDynamicParameterBinding() bool       { return true }
+
+func expectedDriverVersions() (string, string) {
+	driverVersion, arrowVersion := driverbase.UnknownVersion, driverbase.UnknownVersion
+	if info, ok := debug.ReadBuildInfo(); ok {
+		for _, setting := range info.Settings {
+			if setting.Key == "vcs.modified" && setting.Value == "true" {
+				driverVersion = "-dev"
+			}
+		}
+		for _, dep := range info.Deps {
+			if strings.HasPrefix(dep.Path, "github.com/apache/arrow-go/") {
+				if dep.Version != "" {
+					arrowVersion = dep.Version
+				}
+				break
+			}
+		}
+	}
+	return driverVersion, arrowVersion
+}
+
 func (s *FlightSQLQuirks) GetMetadata(code adbc.InfoCode) interface{} {
 	switch code {
 	case adbc.InfoDriverName:
 		return "ADBC Flight SQL Driver - Go"
-	// runtime/debug.ReadBuildInfo doesn't currently work for tests
-	// github.com/golang/go/issues/33976
 	case adbc.InfoDriverVersion:
-		return "(unknown or development build)"
+		driverVersion, _ := expectedDriverVersions()
+		return driverVersion
 	case adbc.InfoDriverArrowVersion:
-		return "(unknown or development build)"
+		_, arrowVersion := expectedDriverVersions()
+		return arrowVersion
 	case adbc.InfoDriverADBCVersion:
 		return adbc.AdbcVersion1_1_0
 	case adbc.InfoVendorName:
@@ -1147,12 +1170,12 @@ func (suite *ConnectionTests) TestGetInfo() {
 			case adbc.InfoDriverVersion:
 				{
 					driverVersion = true
-					// Can't assert on value here since test won't have debug.ReadBuildInfo
+					// Version values are checked by TestMetadataGetInfo.
 				}
 			case adbc.InfoDriverArrowVersion:
 				{
 					driverArrowVersion = true
-					// Can't assert on value here since test won't have debug.ReadBuildInfo
+					// Version values are checked by TestMetadataGetInfo.
 				}
 			}
 		}
