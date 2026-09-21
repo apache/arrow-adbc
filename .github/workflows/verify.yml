@@ -44,18 +44,69 @@ defaults:
     shell: bash
 
 jobs:
-  binary-unix:
+  binary:
     name: "Verify Binaries/${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: ["macos-15-intel", "macos-latest", "ubuntu-latest", "windows-latest"]
+        os: ["macos-15-intel", "macos-latest", "ubuntu-latest", "windows-latest", "windows-11-arm"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
+      - uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5  # v4.0.1
+        if: matrix.os == 'windows-latest'
+        with:
+          miniforge-version: latest
+          use-mamba: true
+      - name: Install Python 3.11
+        if: matrix.os == 'windows-11-arm'
+        id: python311
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          architecture: arm64
+          check-latest: true
+          python-version: "3.11"
+          # Keep this interpreter on PATH for the artifact downloader.
+          update-environment: true
+      - name: Install Python 3.12
+        if: matrix.os == 'windows-11-arm'
+        id: python312
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          architecture: arm64
+          check-latest: true
+          python-version: "3.12"
+          update-environment: false
+      - name: Install Python 3.13
+        if: matrix.os == 'windows-11-arm'
+        id: python313
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          architecture: arm64
+          check-latest: true
+          python-version: "3.13"
+          update-environment: false
+      - name: Install Python 3.14
+        if: matrix.os == 'windows-11-arm'
+        id: python314
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          architecture: arm64
+          check-latest: true
+          python-version: "3.14"
+          update-environment: false
+      - name: Install Python 3.14t
+        if: matrix.os == 'windows-11-arm'
+        id: python314t
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          architecture: arm64
+          check-latest: true
+          python-version: "3.14t"
+          update-environment: false
       # No Docker on M1
       - name: Skip Binary Verifiction
         if: matrix.os == 'macos-latest'
@@ -63,6 +114,7 @@ jobs:
           echo "TEST_APT=0" | tee -a $GITHUB_ENV
           echo "TEST_YUM=0" | tee -a $GITHUB_ENV
       - name: Verify
+        if: runner.os != 'Windows'
         env:
           CI: "false"
           REPOSITORY: ${{ github.repository }}
@@ -76,6 +128,28 @@ jobs:
           INPUTS_RC: ${{ inputs.rc }}
         run: |
           ./dev/release/verify-release-candidate.sh ${INPUTS_VERSION} ${INPUTS_RC}
+
+      - name: Verify
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          CI: "false"
+          PYTHON_311_PATH: ${{ steps.python311.outputs.python-path }}
+          PYTHON_312_PATH: ${{ steps.python312.outputs.python-path }}
+          PYTHON_313_PATH: ${{ steps.python313.outputs.python-path }}
+          PYTHON_314_PATH: ${{ steps.python314.outputs.python-path }}
+          PYTHON_314T_PATH: ${{ steps.python314t.outputs.python-path }}
+          REPOSITORY: ${{ github.repository }}
+          TEST_DEFAULT: "0"
+          TEST_BINARIES: "1"
+          USE_CONDA: "1"
+          VERBOSE: "1"
+          # Make this available to download_rc_binaries.py
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUTS_VERSION: ${{ inputs.version }}
+          INPUTS_RC: ${{ inputs.rc }}
+        run: |
+          ./dev/release/verify-release-candidate.ps1 $env:INPUTS_VERSION $env:INPUTS_RC
 
   source-conda:
     name: "Verify Source (Conda)/${{ matrix.os }}"
