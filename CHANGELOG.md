@@ -1494,3 +1494,60 @@
 ### Performance Improvements
 
 - **c/driver/postgresql**: speed up decimal128 COPY encoding (#4498)
+
+## ADBC Libraries 25 (2026-09-21)
+
+### Versions
+
+- C/C++/GLib/Go/Python/Ruby: 1.13.0
+- C#: 0.25.0
+- Java: 0.25.0
+- R: 0.25.0
+- Rust: 0.25.0
+
+### New Features
+
+- **c**: add source context to manifest and profile parse errors (#4633)
+- **c**: require C++20 as the baseline (#4610)
+- **c/driver/postgresql**: add `POSTGRESQL:type` metadata (#4687)
+- **c/driver/postgresql**: set use_copy on connect (#4750)
+- **c/driver/postgresql**: support bind/query arrow.uuid <=> uuid (#4612)
+- **c/driver/postgresql**: use preinitialized type resolver (#4775)
+- **c/driver/sqlite**: ensure batch rows option can be retrieved (#4645)
+- **dev/release**: verify binary JARs on Unix-like platforms (#4646)
+- **dev/release**: verify binary JARs on Windows (#4624)
+- **go/adbc**: require go1.26 and bump toolchain to 1.26.8 (#4748)
+- **go/adbc/driver/flightsql**: promote safe call headers into FlightSQL spans (#4570)
+- **java/driver/flight-sql**: support flightsql:// URI scheme (#4539)
+- **javascript**: publish a win32-arm64 native package (#4634)
+- **rust**: define cancellation in a sensible way (#3905)
+
+### Bugfixes
+
+- **c/driver/postgresql**: add missing space in error messages (#4756)
+- **c/driver/postgresql**: drain all results post-query (#4710)
+- **c/driver/postgresql**: improve SQLSTATE error mapping (#4587)
+- **c/driver/postgresql**: use fmt for error messages (#4627)
+- **c/validation**: allow configuring the secondary database schema (#4793)
+- **c/validation**: compare widened ingestion values (#4778)
+- **c/validation**: exercise binary view input in ingestion test (#4777)
+- **csharp**: build net472 on all platforms so the Testing package ships it (#4605)
+- **csharp**: update Microsoft.SourceLink.GitHub for vulnerability (#4772)
+- **csharp/src/Client**: stop blocking on async calls in the ADO.NET wrapper (#4716)
+- **csharp/src/Drivers/BigQuery**: harden metadata query identifier and pattern handling (#4757)
+- **go/adbc/drivermgr**: terminate GetObjects table_types with NULL (#4596)
+- **go/adbc/sqldriver**: return owned copies of string/binary values (#4625)
+- **python/adbc_driver_manager**: allow more key types in get_option (#4734)
+- **python/adbc_driver_manager**: pass table_types filter to GetObjects (#4712)
+- **python/adbc_driver_manager**: reimport PyArrow if installed mid-session (#4641)
+- **rust/driver_manager**: load with RTLD_NOW (#4665)
+
+### Documentation Improvements
+
+- add adbcBridge to the Tools & Integrations page (#4733)
+- add chdb to drivers table (#4707)
+- add presto to drivers table (#4732)
+- describe Windows/PowerShell verification as well (#4662)
+- fix chdb url in drivers table (#4708)
+- make sure release maintainer updates arrow clone (#4607)
+- use better example version number in verification docs (#4598)
