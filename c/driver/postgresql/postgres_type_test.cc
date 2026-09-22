@@ -29,6 +29,39 @@
 
 namespace adbcpq {
 
+TEST(PostgresTypeTest, NumericTypeModifier) {
+  for (const int32_t typmod : {-1, 1900557, 329729, 131080}) {
+    SCOPED_TRACE(typmod);
+    nanoarrow::UniqueSchema schema;
+    ArrowSchemaInit(schema.get());
+    ASSERT_EQ(PostgresType(PostgresTypeId::kNumeric)
+                  .WithTypeModifier(typmod)
+                  .WithFieldName("amount")
+                  .SetSchema(schema.get()),
+              NANOARROW_OK);
+    EXPECT_STREQ(schema->format, "u");
+    EXPECT_STREQ(schema->name, "amount");
+    ArrowStringView value = ArrowCharView("");
+    ASSERT_EQ(ArrowMetadataGetValue(schema->metadata, ArrowCharView("POSTGRESQL:typmod"),
+                                    &value),
+              NANOARROW_OK);
+    EXPECT_EQ(std::string(value.data, value.size_bytes), std::to_string(typmod));
+    ASSERT_EQ(ArrowMetadataGetValue(schema->metadata,
+                                    ArrowCharView("ARROW:extension:name"), &value),
+              NANOARROW_OK);
+    EXPECT_EQ(std::string(value.data, value.size_bytes), "arrow.opaque");
+  }
+
+  nanoarrow::UniqueSchema schema;
+  ArrowSchemaInit(schema.get());
+  ASSERT_EQ(PostgresType(PostgresTypeId::kNumeric).SetSchema(schema.get()), NANOARROW_OK);
+  ArrowStringView value = {nullptr, 0};
+  ASSERT_EQ(
+      ArrowMetadataGetValue(schema->metadata, ArrowCharView("POSTGRESQL:typmod"), &value),
+      NANOARROW_OK);
+  EXPECT_EQ(value.data, nullptr);
+}
+
 class MockTypeResolver : public PostgresTypeResolver {
  public:
   ArrowErrorCode Init() {

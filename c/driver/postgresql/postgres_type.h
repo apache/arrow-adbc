@@ -19,6 +19,7 @@
 
 #include <cerrno>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -163,6 +164,12 @@ class PostgresType {
     PostgresType out(*this);
     out.oid_ = oid;
     out.typname_ = typname;
+    return out;
+  }
+
+  PostgresType WithTypeModifier(int32_t typmod) const {
+    PostgresType out(*this);
+    out.typmod_ = typmod;
     return out;
   }
 
@@ -369,6 +376,7 @@ class PostgresType {
 
  private:
   uint32_t oid_;
+  std::optional<int32_t> typmod_;
   PostgresTypeId type_id_;
   std::string typname_;
   std::string field_name_;
@@ -376,6 +384,7 @@ class PostgresType {
 
   static constexpr const char* kPostgresTypeKey = "ADBC:postgresql:typname";
   static constexpr const char* kTypeKey = "POSTGRESQL:type";
+  static constexpr const char* kTypeModifierKey = "POSTGRESQL:typmod";
   static constexpr const char* kExtensionName = "ARROW:extension:name";
   static constexpr const char* kOpaqueExtensionName = "arrow.opaque";
   static constexpr const char* kJsonExtensionName = "arrow.json";
@@ -389,6 +398,11 @@ class PostgresType {
     NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderInit(buffer.get(), schema->metadata));
     NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderAppend(
         buffer.get(), ArrowCharView(kTypeKey), ArrowCharView(typname)));
+    if (type_id_ == PostgresTypeId::kNumeric && typmod_.has_value()) {
+      const std::string typmod = std::to_string(*typmod_);
+      NANOARROW_RETURN_NOT_OK(ArrowMetadataBuilderAppend(
+          buffer.get(), ArrowCharView(kTypeModifierKey), ArrowCharView(typmod.c_str())));
+    }
     NANOARROW_RETURN_NOT_OK(
         ArrowSchemaSetMetadata(schema, reinterpret_cast<char*>(buffer->data)));
     return NANOARROW_OK;

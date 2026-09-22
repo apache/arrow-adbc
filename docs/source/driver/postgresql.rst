@@ -299,6 +299,23 @@ being read or written.
                 overflow/underflow; an error will be returned if this would be
                 the case.
 
+Numeric Result Metadata
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Numeric result fields include ``POSTGRESQL:typmod`` metadata containing the
+signed decimal string returned by libpq's ``PQfmod``. This preserves declared
+precision and scale without changing the Arrow string representation or
+performing decimal conversion. The value is ``-1`` when PostgreSQL supplies
+no type modifier; it is not inferred from result values.
+
+For example, ``NUMERIC(29,9)`` has modifier ``1900557``. After subtracting
+4, the upper 16 bits contain precision and the lower 11 bits contain signed
+scale. Expressions need not retain their operands' modifiers.
+
+This metadata is available for numeric result columns from both COPY and
+non-COPY execution and from ``AdbcStatementExecuteSchema``, including empty
+results. It does not add modifiers to parameter schemas or catalog discovery.
+
 Unknown Types
 ~~~~~~~~~~~~~
 

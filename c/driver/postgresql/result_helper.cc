@@ -183,7 +183,8 @@ Status PqResultHelper::ResolveOutputTypes(PostgresTypeResolver& type_resolver,
       pg_type = PostgresType::Unnamed(pg_oid);
     }
 
-    root_type.AppendChild(PQfname(result_, i), pg_type);
+    root_type.AppendChild(PQfname(result_, i),
+                          pg_type.WithTypeModifier(PQfmod(result_, i)));
   }
 
   *result_types = root_type;
