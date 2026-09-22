@@ -376,9 +376,9 @@ class PostgresType {
 
  private:
   uint32_t oid_;
-  std::optional<int32_t> typmod_;
   PostgresTypeId type_id_;
   std::string typname_;
+  std::optional<int32_t> typmod_;
   std::string field_name_;
   std::vector<PostgresType> children_;
 
