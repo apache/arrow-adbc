@@ -29,9 +29,9 @@ napi = "3.0.0"
 napi-derive = "3.0.0"
 adbc_core = { path = "../rust/core" }
 adbc_driver_manager = { path = "../rust/driver_manager" }
-arrow-array = { version = ">=58, <60", default-features = false, features = ["ffi"] }
-arrow-ipc = { version = ">=58, <60" }
-arrow-schema = { version = ">=58, <60" }
+arrow-array = { version = ">=58, <61", default-features = false, features = ["ffi"] }
+arrow-ipc = { version = ">=58, <61" }
+arrow-schema = { version = ">=58, <61" }
 thiserror = "2.0"
 
 [build-dependencies]
