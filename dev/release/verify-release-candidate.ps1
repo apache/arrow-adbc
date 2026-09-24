@@ -51,7 +51,9 @@ Usage:
     `$env:TEST_WHEELS = "1"
     $($script) X.Y.Z RC_NUMBER
 
-Assumes Mamba is set up and available on the path.
+Assumes Mamba is set up and available on the path, except for Windows ARM64
+binary verification. On Windows ARM64, supply Python executable paths using
+PYTHON_310_PATH, etc. (Source verification is not supported on Windows/ARM64.)
 "@
     exit 1
 }
@@ -125,6 +127,145 @@ function Enable-Conda {
         Invoke-Expression $(conda shell.powershell hook | Out-String)
         $script:CondaInitialized = $true
     }
+}
+
+function Test-PythonWheels($PythonVersion, $PythonPath) {
+    Show-Header "Verify Python $($PythonVersion) Wheels for $($Platform)/$($Architecture)"
+    $FreeThreaded = $PythonVersion.EndsWith("t")
+    $PythonTag = "cp$($PythonVersion.TrimEnd('t').Replace('.', ''))"
+    if ($FreeThreaded) {
+        $AbiTag = "$($PythonTag)t"
+    } else {
+        $AbiTag = $PythonTag
+    }
+    $IsWindowsArm = $IsWindowsPlatform -and $Architecture -eq "arm64"
+
+    $env:PYTHON_VERSION = $PythonVersion
+    $env:ADBC_NO_SKIP_TESTS = "0"
+    if ($IsWindowsArm -and -not $FreeThreaded) {
+        $env:ADBC_NO_SKIP_TESTS = "1"
+    }
+    try {
+        if ($FreeThreaded) {
+            $env:PYTHON_GIL = "0"
+        } else {
+            Remove-Item -Path Env:PYTHON_GIL -ErrorAction SilentlyContinue
+        }
+
+        $WheelPaths = @()
+        foreach ($Component in $Components) {
+            if ($Component -eq "adbc_driver_manager") {
+                $WheelPattern = "$($Component)-*-$($PythonTag)-$($AbiTag)-$($PlatformPattern).whl"
+            } else {
+                $WheelPattern = "$($Component)-*-py3-none-$($PlatformPattern).whl"
+            }
+            $MatchingWheels = @(Get-ChildItem -Path $BinaryDir -Filter $WheelPattern)
+            if ($MatchingWheels.Count -ne 1) {
+                throw "Expected exactly one $($Component) wheel matching $($WheelPattern), found $($MatchingWheels.Count)"
+            }
+            $WheelPaths += $MatchingWheels[0].FullName
+        }
+
+        & $PythonPath -m pip install --no-deps --force-reinstall $WheelPaths
+        if (-not $?) { throw "Failed to install Python $($PythonVersion) wheels" }
+
+        $TestDependencies = @("pytest", "typing-extensions")
+        if ($IsWindowsPlatform -and -not $IsWindowsArm) {
+            $TestDependencies += @("pyarrow", "pandas", "protobuf")
+        }
+        & $PythonPath -m pip install $TestDependencies
+        if (-not $?) { throw "Failed to install Python $($PythonVersion) wheel test dependencies" }
+
+        if (-not $IsWindowsPlatform) {
+            & $(Join-Path $AdbcSourceDir "ci/scripts/python_wheel_unix_test.sh") $AdbcSourceDir
+            if (-not $?) { throw "Failed to test wheels with Python $($PythonVersion)" }
+            return
+        }
+
+        foreach ($Component in $Components) {
+            & $PythonPath -c "import $($Component); import $($Component).dbapi"
+            if (-not $?) { throw "Failed to import $($Component) with Python $($PythonVersion)" }
+        }
+
+        if (-not $IsWindowsArm) {
+            foreach ($Component in $Components) {
+                echo "Testing $($Component)"
+                $TestsPath = Join-Path $AdbcSourceDir "python/$($Component)/tests"
+                & $PythonPath -m pytest -vvx --import-mode=append `
+                    -k "not duckdb and not sqlite and not polars" $TestsPath
+                if (-not $?) { throw "Failed to test $($Component) with Python $($PythonVersion)" }
+            }
+        } elseif ($FreeThreaded) {
+            & $PythonPath -m pytest -vvx --import-mode append `
+                -k "unknown_driver or missing_platform or bad" `
+                (Join-Path $AdbcSourceDir "python/adbc_driver_manager/tests/test_manifest.py")
+            if (-not $?) { throw "Failed to test the free-threaded driver manager with Python $($PythonVersion)" }
+        } else {
+            & $PythonPath -m pip install polars
+            if (-not $?) { throw "Failed to install Polars with Python $($PythonVersion)" }
+            # The fixture loads SQLite by name, but wheels bundle the library inside
+            # the Python package as libadbc_driver_sqlite.so, even on Windows.
+            $SqliteDriverPath = & $PythonPath -c "import adbc_driver_sqlite; print(adbc_driver_sqlite._driver_path())"
+            if (-not $?) { throw "Failed to locate the SQLite driver with Python $($PythonVersion)" }
+            $DriverManifestDir = Join-Path $ArrowTempDir "wheel-drivers-$($PythonVersion)-$($Platform)-$($Architecture)"
+            New-Item -ItemType Directory -Force -Path $DriverManifestDir | Out-Null
+            $DriverManifest = Join-Path $DriverManifestDir "adbc_driver_sqlite.toml"
+            $DriverPathJson = $SqliteDriverPath | ConvertTo-Json -Compress
+            [System.IO.File]::WriteAllText($DriverManifest, "[Driver]`nshared = $($DriverPathJson)`n")
+            try {
+                $env:ADBC_DRIVER_PATH = $DriverManifestDir
+                & $PythonPath -m pytest -vvx --import-mode append `
+                    (Join-Path $AdbcSourceDir "python/adbc_driver_manager/tests/test_dbapi_polars_nopyarrow.py")
+                if (-not $?) { throw "Failed to test the driver manager with Polars with Python $($PythonVersion)" }
+            } finally {
+                Remove-Item -Path Env:ADBC_DRIVER_PATH -ErrorAction SilentlyContinue
+            }
+        }
+    } finally {
+        Remove-Item -Path Env:PYTHON_GIL -ErrorAction SilentlyContinue
+    }
+}
+
+function Test-PythonWheelsConda($PythonVersion) {
+    Enable-Conda
+    $CondaEnv = Join-Path $ArrowTempDir "wheel-$($PythonVersion)-$($Platform)-$($Architecture)"
+    if ($IsWindowsPlatform) {
+        $CondaPython = Join-Path $CondaEnv "python.exe"
+    } else {
+        $CondaPython = Join-Path $CondaEnv "bin/python"
+    }
+    if (-not (Test-Path -Path $CondaPython -PathType Leaf)) {
+        $CondaPackages = @("python=$($PythonVersion.TrimEnd('t'))")
+        if ($PythonVersion.EndsWith("t")) {
+            $CondaPackages += "python-freethreading"
+        }
+        mamba create -c conda-forge --yes --prefix $CondaEnv $CondaPackages
+        if (-not $?) { throw "Failed to create Python $($PythonVersion) Conda environment" }
+    } else {
+        echo "Using cached $($CondaEnv)"
+    }
+    conda activate $CondaEnv
+    Test-PythonWheels $PythonVersion $CondaPython
+}
+
+function Test-PythonWheelsWithInterpreter($PythonVersion) {
+    $PythonPathVariable = "PYTHON_$($PythonVersion.Replace('.', '').ToUpperInvariant())_PATH"
+    $PythonPath = [Environment]::GetEnvironmentVariable($PythonPathVariable)
+    if ([string]::IsNullOrEmpty($PythonPath)) {
+        echo "Skipping Python $($PythonVersion): $($PythonPathVariable) is not set or empty"
+        return
+    }
+    if (-not (Test-Path -LiteralPath $PythonPath -PathType Leaf)) {
+        throw "Invalid Python executable in $($PythonPathVariable): $($PythonPath)"
+    }
+
+    # Let the supplied interpreter use its default GIL setting during setup.
+    Remove-Item -Path Env:PYTHON_GIL -ErrorAction SilentlyContinue
+    $VenvDir = Join-Path $ArrowTempDir "wheel-venv-$($PythonVersion)-$($Platform)-$($Architecture)"
+    & $PythonPath -m venv --clear $VenvDir
+    if (-not $?) { throw "Failed to create Python $($PythonVersion) virtual environment" }
+    $VenvPython = Join-Path $VenvDir "Scripts/python.exe"
+    Test-PythonWheels $PythonVersion $VenvPython
 }
 
 # ============================================================
@@ -264,14 +405,20 @@ if ($TestBinaryArtifacts) {
     if ($TestWheels) {
         Show-Header "Verify Python Wheels"
 
+        $UseCondaForWheels = $true
         $IsWindowsPlatform = $env:OS -eq "Windows_NT"
         if ($IsWindowsPlatform) {
-            if ($env:PROCESSOR_ARCHITECTURE -ne "AMD64") {
-                throw "Unsupported Windows architecture: $($env:PROCESSOR_ARCHITECTURE)"
-            }
             $Platform = "windows"
-            $PlatformPattern = "win_amd64"
-            $Architecture = "amd64"
+            if ($env:PROCESSOR_ARCHITECTURE -eq "AMD64") {
+                $PlatformPattern = "win_amd64"
+                $Architecture = "amd64"
+            } elseif ($env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
+                $UseCondaForWheels = $false
+                $PlatformPattern = "win_arm64"
+                $Architecture = "arm64"
+            } else {
+                throw "Unknown Windows architecture: $($env:PROCESSOR_ARCHITECTURE)"
+            }
         } else {
             $Kernel = (uname -s)
             $Machine = (uname -m)
@@ -295,8 +442,6 @@ if ($TestBinaryArtifacts) {
             $PlatformPattern = "$($Platform)*$($Architecture)*"
         }
 
-        Enable-Conda
-
         if ($env:TEST_PYTHON_VERSIONS -eq $null) {
             $PythonVersions = @("3.10", "3.11", "3.12", "3.13", "3.14", "3.14t")
         } else {
@@ -311,79 +456,12 @@ if ($TestBinaryArtifacts) {
         )
 
         foreach ($PythonVersion in $PythonVersions) {
-            Show-Header "Verify Python $($PythonVersion) Wheels for $($Platform)/$($Architecture)"
-
-            $FreeThreaded = $PythonVersion.EndsWith("t")
-            $CondaPythonVersion = $PythonVersion.TrimEnd("t")
-            $PythonTag = "cp$($CondaPythonVersion.Replace('.', ''))"
-            if ($FreeThreaded) {
-                $AbiTag = "$($PythonTag)t"
+            if ($UseCondaForWheels) {
+                Test-PythonWheelsConda $PythonVersion
             } else {
-                $AbiTag = $PythonTag
-            }
-
-            $CondaEnv = Join-Path $ArrowTempDir "wheel-$($PythonVersion)-$($Platform)-$($Architecture)"
-            if ($IsWindowsPlatform) {
-                $CondaPython = Join-Path $CondaEnv "python.exe"
-            } else {
-                $CondaPython = Join-Path $CondaEnv "bin/python"
-            }
-            if (-not (Test-Path -Path $CondaPython -PathType Leaf)) {
-                $CondaPackages = @("python=$($CondaPythonVersion)")
-                if ($FreeThreaded) {
-                    $CondaPackages += "python-freethreading"
-                }
-                mamba create -c conda-forge --yes --prefix $CondaEnv $CondaPackages
-                if (-not $?) { throw "Failed to create Python $($PythonVersion) Conda environment" }
-            } else {
-                echo "Using cached $($CondaEnv)"
-            }
-            conda activate $CondaEnv
-
-            $WheelPaths = @()
-            foreach ($Component in $Components) {
-                if ($Component -eq "adbc_driver_manager") {
-                    $WheelPattern = "$($Component)-*-$($PythonTag)-$($AbiTag)-$($PlatformPattern).whl"
-                } else {
-                    $WheelPattern = "$($Component)-*-py3-none-$($PlatformPattern).whl"
-                }
-                $MatchingWheels = @(Get-ChildItem -Path $BinaryDir -Filter $WheelPattern)
-                if ($MatchingWheels.Count -ne 1) {
-                    throw "Expected exactly one $($Component) wheel matching $($WheelPattern), found $($MatchingWheels.Count)"
-                }
-                $WheelPaths += $MatchingWheels[0].FullName
-            }
-
-            python -m pip install --force-reinstall $WheelPaths
-            if (-not $?) { throw "Failed to install Python $($PythonVersion) wheels" }
-
-            $env:PYTHON_VERSION = $PythonVersion
-            if ($FreeThreaded) {
-                $env:PYTHON_GIL = "0"
-            } else {
-                Remove-Item -Path Env:PYTHON_GIL -ErrorAction SilentlyContinue
-            }
-
-            if ($IsWindowsPlatform) {
-                python -m pip install pytest pyarrow pandas protobuf
-                if (-not $?) { throw "Failed to install Python $($PythonVersion) wheel test dependencies" }
-
-                foreach ($Component in $Components) {
-                    echo "Testing $($Component)"
-                    python -c "import $($Component)"
-                    if (-not $?) { throw "Failed to import $($Component) with Python $($PythonVersion)" }
-                    python -c "import $($Component).dbapi"
-                    if (-not $?) { throw "Failed to import $($Component).dbapi with Python $($PythonVersion)" }
-                    $TestsPath = Join-Path $AdbcSourceDir "python\$($Component)\tests"
-                    python -m pytest -vvx --import-mode=append -k "not duckdb and not sqlite and not polars" $TestsPath
-                    if (-not $?) { throw "Failed to test $($Component) with Python $($PythonVersion)" }
-                }
-            } else {
-                & $(Join-Path $AdbcSourceDir "ci/scripts/python_wheel_unix_test.sh") $AdbcSourceDir
-                if (-not $?) { throw "Failed to test wheels with Python $($PythonVersion)" }
+                Test-PythonWheelsWithInterpreter $PythonVersion
             }
         }
-        Remove-Item -Path Env:PYTHON_GIL -ErrorAction SilentlyContinue
     } else {
         Show-Header "Skipping Python Wheels"
     }

@@ -20,6 +20,7 @@ package org.apache.arrow.adbc.verify;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.io.FileNotFoundException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +36,7 @@ import org.apache.arrow.memory.RootAllocator;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.OS;
 
 /** Briefly test that shipped JARs actually work. */
 class VerifyReleaseCandidateTest {
@@ -82,9 +84,22 @@ class VerifyReleaseCandidateTest {
 
   @Test
   void testDriverJni() {
+    var driver = new JniDriver(allocator);
+    if (OS.WINDOWS.isCurrentOs() && "aarch64".equalsIgnoreCase(System.getProperty("os.arch"))) {
+      // JNI binaries are not available for Windows ARM64.
+      ExceptionInInitializerError exception =
+          assertThrows(
+              ExceptionInInitializerError.class, () -> driver.load().driver("nonexistent").open());
+      assertThat(exception)
+          .hasRootCauseInstanceOf(FileNotFoundException.class)
+          .hasRootCauseMessage(
+              "No JNI library for current platform, missing from JAR: "
+                  + "adbc_driver_jni/aarch_64/adbc_driver_jni.dll");
+      return;
+    }
+
     // smoke test: try to load a driver that does not exist; should fail with a proper error
     // (not something like a linker error, which would imply the JNI shim doesn't work)
-    var driver = new JniDriver(allocator);
     AdbcException exception =
         assertThrows(AdbcException.class, () -> driver.load().driver("nonexistent").open());
     assertThat(exception).hasMessageContaining("Could not load `nonexistent`");
