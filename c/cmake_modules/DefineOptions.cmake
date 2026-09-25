@@ -100,6 +100,8 @@ if("${CMAKE_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
                        "Compiler flags to append when compiling ADBC C++ libraries" "")
   define_option_string(ADBC_GO_BUILD_TAGS
                        "Build tags to append when compiling ADBC Go libraries" "")
+  define_option_string(ADBC_GO_CC
+                       "C compiler to use when compiling ADBC Go libraries" "")
 
   define_option(ADBC_BUILD_STATIC "Build static libraries" "${_STATIC_BUILD_DEFAULT}")
 
