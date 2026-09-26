@@ -49,6 +49,7 @@ import warnings
 import weakref
 from typing import (
     Any,
+    Callable,
     Dict,
     List,
     Literal,
@@ -804,6 +805,7 @@ class Cursor(_Closeable):
 
         self._last_query: Optional[Union[str, bytes]] = None
         self._results: Optional["_RowIterator"] = None
+        self._cancel: Callable[[], None] = self._stmt.cancel
         self._arraysize = 1
         self._rowcount = -1
         self._bind_by_name = False
@@ -815,6 +817,7 @@ class Cursor(_Closeable):
         if self._results is not None:
             self._results.close()
             self._results = None
+        self._cancel = self._stmt.cancel
 
     @property
     def arraysize(self) -> int:
@@ -943,7 +946,7 @@ class Cursor(_Closeable):
         handle, self._rowcount = _blocking_call(
             self._stmt.execute_query, (), {}, self._stmt.cancel
         )
-        self._results = _RowIterator(self._stmt, handle, self._backend)
+        self._results = _RowIterator(self._cancel, handle, self._backend)
         return self
 
     def executemany(self, operation: Union[bytes, str], seq_of_parameters) -> None:
@@ -1082,13 +1085,13 @@ class Cursor(_Closeable):
 
     def adbc_cancel(self) -> None:
         """
-        Cancel any ongoing operations on this statement.
+        Cancel any ongoing operations on this cursor.
 
         Notes
         -----
         This is an extension and not part of the DBAPI standard.
         """
-        self._stmt.cancel()
+        self._cancel()
 
     def adbc_ingest(
         self,
@@ -1307,12 +1310,12 @@ class Cursor(_Closeable):
         """
         _requires_pyarrow()
         self._clear()
-        self._results = None
+        self._cancel = self._conn._conn.cancel
         handle = _blocking_call(
-            self._conn._conn.read_partition, (partition,), {}, self._stmt.cancel
+            self._conn._conn.read_partition, (partition,), {}, self._cancel
         )
         self._rowcount = -1
-        self._results = _RowIterator(self._stmt, handle, self._backend)
+        self._results = _RowIterator(self._cancel, handle, self._backend)
 
     @property
     def adbc_statement(self) -> _lib.AdbcStatement:
@@ -1457,11 +1460,11 @@ class _RowIterator(_Closeable):
 
     def __init__(
         self,
-        stmt: _lib.AdbcStatement,
+        cancel: Callable[[], None],
         handle: _lib.ArrowArrayStreamHandle,
         dbapi_backend: _dbapi_backend.DbapiBackend,
     ) -> None:
-        self._stmt = stmt
+        self._cancel = cancel
         self._handle: Optional[_lib.ArrowArrayStreamHandle] = handle
         self._backend = dbapi_backend
         self._reader: Optional["AdbcRecordBatchReader"] = None
@@ -1512,7 +1515,7 @@ class _RowIterator(_Closeable):
             try:
                 while True:
                     self._current_batch = _blocking_call(
-                        self.reader.read_next_batch, (), {}, self._stmt.cancel
+                        self.reader.read_next_batch, (), {}, self._cancel
                     )
                     if self._current_batch.num_rows > 0:
                         break
@@ -1548,10 +1551,10 @@ class _RowIterator(_Closeable):
         return rows
 
     def fetch_arrow_table(self) -> "pyarrow.Table":
-        return _blocking_call(self.reader.read_all, (), {}, self._stmt.cancel)
+        return _blocking_call(self.reader.read_all, (), {}, self._cancel)
 
     def fetch_df(self) -> "pandas.DataFrame":
-        return _blocking_call(self.reader.read_pandas, (), {}, self._stmt.cancel)
+        return _blocking_call(self.reader.read_pandas, (), {}, self._cancel)
 
     def fetch_polars(self) -> "polars.DataFrame":
         import polars
@@ -1562,7 +1565,7 @@ class _RowIterator(_Closeable):
             ),
             (),
             {},
-            self._stmt.cancel,
+            self._cancel,
         )
 
     def fetch_arrow(self) -> _lib.ArrowArrayStreamHandle:
