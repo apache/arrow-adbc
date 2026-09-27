@@ -50,7 +50,20 @@ namespace Apache.Arrow.Adbc.C
         /// <param name="file">The path to the driver to load</param>
         /// <param name="canUnload">Whether the driver can be safely unloaded</param>
         /// <param name="entryPoint">The name of the entry point. If not provided, the name AdbcDriverInit will be used.</param>
-        public static AdbcDriver Load(string file, bool canUnload, string? entryPoint = null)
+        public static AdbcDriver Load(string file, bool canUnload, string? entryPoint = null) =>
+            Load(file, canUnload, entryPoint, fallbackEntryPoint: null);
+
+        /// <summary>
+        /// Loads a native driver, trying the fallback entry point when the requested symbol is absent.
+        /// </summary>
+        internal static AdbcDriver LoadWithFallback(string file, string entryPoint, string fallbackEntryPoint) =>
+            Load(file, canUnload: false, entryPoint, fallbackEntryPoint);
+
+        private static AdbcDriver Load(
+            string file,
+            bool canUnload,
+            string? entryPoint,
+            string? fallbackEntryPoint)
         {
             if (file == null)
             {
@@ -71,7 +84,15 @@ namespace Apache.Arrow.Adbc.C
             try
             {
                 entryPoint = entryPoint ?? driverInit;
-                IntPtr export = NativeLibrary.GetExport(library, entryPoint);
+                IntPtr export;
+                try
+                {
+                    export = NativeLibrary.GetExport(library, entryPoint);
+                }
+                catch (EntryPointNotFoundException) when (fallbackEntryPoint != null)
+                {
+                    export = NativeLibrary.GetExport(library, fallbackEntryPoint);
+                }
                 if (export == IntPtr.Zero)
                 {
                     if (canUnload) { NativeLibrary.Free(library); }

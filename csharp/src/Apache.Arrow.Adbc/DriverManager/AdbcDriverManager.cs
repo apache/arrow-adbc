@@ -36,6 +36,8 @@ namespace Apache.Arrow.Adbc.DriverManager
     /// </summary>
     public static class AdbcDriverManager
     {
+        private const string DefaultNativeEntrypoint = "AdbcDriverInit";
+
         /// <summary>
         /// The environment variable that specifies additional driver search paths.
         /// </summary>
@@ -132,7 +134,12 @@ namespace Apache.Arrow.Adbc.DriverManager
                 typeName: null,
                 manifestPath: null,
                 loadMethod: loadMethod,
-                () => CAdbcDriverImporter.Load(driverPath, resolvedEntrypoint));
+                () => entrypoint == null
+                    ? CAdbcDriverImporter.LoadWithFallback(
+                        driverPath,
+                        resolvedEntrypoint,
+                        DefaultNativeEntrypoint)
+                    : CAdbcDriverImporter.Load(driverPath, resolvedEntrypoint));
         }
 
         // -----------------------------------------------------------------------
@@ -641,7 +648,7 @@ namespace Apache.Arrow.Adbc.DriverManager
                 baseName = baseName.Substring(adbcPrefix.Length);
 
             if (string.IsNullOrEmpty(baseName))
-                return "AdbcDriverInit";
+                return DefaultNativeEntrypoint;
 
             // Convert snake_case to PascalCase.
             string pascal = ToPascalCase(baseName);

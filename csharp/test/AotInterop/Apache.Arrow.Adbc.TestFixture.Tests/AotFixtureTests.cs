@@ -64,6 +64,26 @@ namespace Apache.Arrow.Adbc.TestFixture.Tests
         }
 
         [SkippableFact]
+        public void DriverManagerFallsBackToStandardEntrypoint()
+        {
+            string fixturePath = ResolveFixturePath()!;
+            string directory = Path.Combine(Path.GetDirectoryName(fixturePath)!, Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(directory);
+            string renamedPath = Path.Combine(directory, "adbc_driver_fixture" + Path.GetExtension(fixturePath));
+            File.Copy(fixturePath, renamedPath);
+
+            try
+            {
+                using AdbcDriver driver = Apache.Arrow.Adbc.DriverManager.AdbcDriverManager.LoadDriver(renamedPath);
+                Assert.Equal(AdbcVersion.Version_1_1_0, driver.DriverVersion);
+            }
+            finally
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+
+        [SkippableFact]
         public async Task ExecuteQueryRoundTripsThroughAotBoundary()
         {
             using AdbcDriver driver = LoadFixture();
