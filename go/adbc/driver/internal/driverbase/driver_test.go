@@ -35,6 +35,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel"
 )
 
 const (
@@ -435,6 +436,19 @@ func TestCustomizedDriver(t *testing.T) {
 		}
 		require.Truef(t, found, "expected message was never logged: %v", expected)
 	}
+}
+
+func TestTracingExporterNoneUsesGlobalTracerProvider(t *testing.T) {
+	info := driverbase.DefaultDriverInfo("MockDriver")
+	drv := driverbase.NewDriverImplBase(info, memory.DefaultAllocator)
+
+	dbBase, err := driverbase.NewDatabaseImplBase(context.Background(), &drv, driverbase.TracingOptions{
+		ExporterName: string(adbc.TelemetryExporterNone),
+	})
+	require.NoError(t, err)
+	require.Same(t, otel.GetTracerProvider(), dbBase.GetTracerProvider())
+	require.NoError(t, dbBase.ForceFlushTracing(context.Background()))
+	require.NoError(t, dbBase.Close())
 }
 
 type driverImpl struct {
