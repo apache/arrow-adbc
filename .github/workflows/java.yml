@@ -176,11 +176,23 @@ jobs:
       # I think static and shared conflict on Windows so build static separately
       - name: Build driver manager (Windows)
         if: matrix.os == 'Windows'
-        # TODO(https://github.com/apache/arrow-adbc/issues/4269): remove cmd.exe usage
-        shell: cmd # zizmor: ignore[misfeature]
+        shell: pwsh
         run: |
-          cmake -G "Visual Studio 18 2026" -A x64 -DADBC_BUILD_SHARED=OFF -DADBC_BUILD_STATIC=ON -DCMAKE_VERBOSE_MAKEFILE=ON -DADBC_DRIVER_MANAGER=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=%cd%\build\${{ matrix.vcpkg_arch }} -B %cd%\buildmanager %cd%\c || exit /B 1
-          cmake --build %cd%\buildmanager --config Debug --target install --verbose -j || exit /B 1
+          $buildDir = Join-Path $PWD.Path 'buildmanager'
+          $installPrefix = Join-Path $PWD.Path 'build/${{ matrix.vcpkg_arch }}'
+          $sourceDir = Join-Path $PWD.Path 'c'
+          cmake -G 'Visual Studio 18 2026' -A x64 `
+            '-DADBC_BUILD_SHARED=OFF' `
+            '-DADBC_BUILD_STATIC=ON' `
+            '-DCMAKE_VERBOSE_MAKEFILE=ON' `
+            '-DADBC_DRIVER_MANAGER=ON' `
+            '-DCMAKE_BUILD_TYPE=RelWithDebInfo' `
+            "-DCMAKE_INSTALL_PREFIX=$installPrefix" `
+            -B $buildDir `
+            $sourceDir
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build $buildDir --config Debug --target install --verbose -j
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Build JNI artifacts
         run: |
