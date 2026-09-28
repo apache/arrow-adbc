@@ -15,10 +15,34 @@
 // specific language governing permissions and limitations
 // under the License.
 
-
 // part: metadata
-
-skip = "COPY Writer not implemented"
 
 [tags]
 field-type-name = "time"
+
+// part: expected_schema
+
+{
+    "format": "+s",
+    "children": [
+        {
+            "name": "idx",
+            "format": "l",
+            "flags": ["nullable"]
+        },
+        {
+            "name": "value",
+            "format": "ttu",
+            "flags": ["nullable"]
+        }
+    ]
+}
+
+// part: expected
+
+{"idx": 0, "value": 0}
+{"idx": 1, "value": 3661000000}
+{"idx": 2, "value": 43200000000}
+{"idx": 3, "value": 49531123000}
+{"idx": 4, "value": 86399999000}
+{"idx": 5, "value": null}
