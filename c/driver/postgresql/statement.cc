@@ -556,7 +556,7 @@ AdbcStatusCode PostgresStatement::ResolveCopyTargetTypes(
       InternalAdbcSetError(error,
                            "[libpq] Column \"%s\" does not exist in target table %s",
                            field_name.c_str(), escaped_table.c_str());
-      return ADBC_STATUS_INVALID_ARGUMENT;
+      return ADBC_STATUS_ALREADY_EXISTS;
     }
 
     PostgresType pg_type;
