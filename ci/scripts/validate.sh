@@ -22,6 +22,7 @@ set -euo pipefail
 
 : ${BUILD_ALL:=1}
 : ${BUILD_DRIVER_POSTGRESQL:=${BUILD_ALL}}
+: ${BUILD_DRIVER_SQLITE:=${BUILD_ALL}}
 
 : ${ADBC_USE_ASAN:=OFF}
 : ${ADBC_USE_UBSAN:=OFF}
@@ -70,6 +71,7 @@ main() {
     shift
 
     test_project "${source_dir}/c/driver/postgresql/validation" "${BUILD_DRIVER_POSTGRESQL}" "$@"
+    test_project "${source_dir}/c/driver/sqlite/validation" "${BUILD_DRIVER_SQLITE}" "$@"
 }
 
 main "$@"
