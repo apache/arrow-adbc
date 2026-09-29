@@ -18,4 +18,26 @@
 // part: metadata
 
 [tags]
-sql-type-name = "timestamptz"
+field-type-name = "timestamptz"
+
+// part: expected_schema
+
+{
+    "format": "+s",
+    "children": [
+        {
+            "name": "res",
+            "format": "tsu:UTC",
+            "flags": ["nullable"]
+        }
+    ]
+}
+
+// part: expected
+
+{"res": 1684158330100000}
+{"res": 946684800200000}
+{"res": -14182939700000}
+{"res": -62135596800000000}
+{"res": 253402300799900000}
+{"res": null}

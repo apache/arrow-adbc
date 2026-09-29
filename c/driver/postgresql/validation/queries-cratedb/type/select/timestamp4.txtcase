@@ -15,7 +15,25 @@
 // specific language governing permissions and limitations
 // under the License.
 
-// part: metadata
+// part: setup_query
 
-[tags]
-sql-type-name = "timestamp"
+CREATE TABLE test_timestamp (
+    idx INTEGER,
+    res TIMESTAMP
+);
+
+INSERT INTO test_timestamp (idx, res) VALUES (1, TIMESTAMP '2023-05-15 13:45:30.1234');
+INSERT INTO test_timestamp (idx, res) VALUES (2, TIMESTAMP '2000-01-01 00:00:00.2345');
+INSERT INTO test_timestamp (idx, res) VALUES (3, TIMESTAMP '1969-07-20 20:17:40.3456');
+INSERT INTO test_timestamp (idx, res) VALUES (4, TIMESTAMP '0001-01-01 00:00:00.0000');
+INSERT INTO test_timestamp (idx, res) VALUES (5, TIMESTAMP '9999-12-31 23:59:59.9999');
+INSERT INTO test_timestamp (idx, res) VALUES (6, NULL);
+
+// part: expected
+
+{"res": 1684158330123000}
+{"res": 946684800234000}
+{"res": -14182939655000}
+{"res": -62135596800000000}
+{"res": 253402300799999000}
+{"res": null}
