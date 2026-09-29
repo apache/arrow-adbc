@@ -42,6 +42,7 @@ class SQLiteQuirks(model.DriverQuirks):
         statement_get_parameter_schema=True,
         statement_prepare=True,
         statement_rows_affected=True,
+        statement_rows_affected_ddl=True,
         current_catalog="main",
         current_schema="",
         secondary_catalog="secondary",

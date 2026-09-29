@@ -624,6 +624,101 @@ TEST_F(SqliteStatementTest, SqlIngestNameEscaping) {
   ASSERT_EQ(3, rows_affected);
 }
 
+TEST_F(SqliteStatementTest, RowsAffectedDdlAndDml) {
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  const std::vector<std::pair<const char*, int64_t>> queries = {
+      {"CREATE TABLE affected_rows (value INTEGER)", 0},
+      {"INSERT INTO affected_rows VALUES (1), (2), (3)", 3},
+      {"CREATE TABLE affected_rows_other (value INTEGER)", 0},
+      {"CREATE INDEX affected_rows_idx ON affected_rows(value)", 0},
+      {"DROP TABLE affected_rows_other", 0},
+      {"UPDATE affected_rows SET value = value + 10 WHERE value = 1", 1},
+      {"UPDATE affected_rows SET value = value + 10 WHERE value = 99", 0},
+      {"DELETE FROM affected_rows WHERE value = 2", 1},
+      {"DELETE FROM affected_rows WHERE value = 99", 0},
+      {"CREATE TABLE affected_rows_audit (value INTEGER)", 0},
+      {"CREATE TRIGGER affected_rows_trigger AFTER INSERT ON affected_rows "
+       "BEGIN INSERT INTO affected_rows_audit VALUES (new.value); END",
+       0},
+      {"INSERT INTO affected_rows VALUES (4), (5), (6)", 3},
+      {"SELECT * FROM affected_rows_audit", 3},
+      {"DELETE FROM affected_rows", 5},
+      {"DROP INDEX affected_rows_idx", 0},
+      {"DROP TABLE affected_rows", 0},
+      {"DROP TABLE affected_rows_audit", 0},
+  };
+  for (const auto& [query, expected_rows] : queries) {
+    SCOPED_TRACE(query);
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query, &error),
+                adbc_validation::IsOkStatus(&error));
+    int64_t rows_affected = -1;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+                adbc_validation::IsOkStatus(&error));
+    ASSERT_EQ(expected_rows, rows_affected);
+  }
+}
+
+TEST_F(SqliteStatementTest, RowsAffectedBoundParameters) {
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement, "CREATE TABLE affected_rows_bound (value INTEGER)", &error),
+              adbc_validation::IsOkStatus(&error));
+  int64_t rows_affected = -1;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_EQ(0, rows_affected);
+
+  auto bind_values = [&](std::vector<std::optional<int64_t>> values) {
+    adbc_validation::Handle<struct ArrowSchema> schema;
+    adbc_validation::Handle<struct ArrowArray> array;
+    struct ArrowError na_error = {};
+    ASSERT_THAT(
+        adbc_validation::MakeSchema(&schema.value, {{"value", NANOARROW_TYPE_INT64}}),
+        adbc_validation::IsOkErrno());
+    ASSERT_THAT(adbc_validation::MakeBatch<int64_t>(&schema.value, &array.value,
+                                                    &na_error, values),
+                adbc_validation::IsOkErrno(&na_error));
+    ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+                adbc_validation::IsOkStatus(&error));
+  };
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement, "INSERT INTO affected_rows_bound VALUES (?)", &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementPrepare(&statement, &error),
+              adbc_validation::IsOkStatus(&error));
+  for (int execution = 0; execution < 2; execution++) {
+    ASSERT_NO_FATAL_FAILURE(bind_values({1, 2, 3}));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+                adbc_validation::IsOkStatus(&error));
+    ASSERT_EQ(3, rows_affected);
+  }
+
+  ASSERT_THAT(
+      AdbcStatementSetSqlQuery(
+          &statement, "UPDATE affected_rows_bound SET value = value + 10 WHERE value = ?",
+          &error),
+      adbc_validation::IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(bind_values({1, 99, 3}));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_EQ(4, rows_affected);
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement, "DELETE FROM affected_rows_bound WHERE value = ?", &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(bind_values({11, 99, 13}));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_EQ(4, rows_affected);
+
+  ASSERT_THAT(quirks()->DropTable(&connection, "affected_rows_bound", &error),
+              adbc_validation::IsOkStatus(&error));
+}
+
 // -- SQLite Specific Tests ------------------------------------------
 
 constexpr size_t kInferRows = 16;
