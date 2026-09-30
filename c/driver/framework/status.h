@@ -81,6 +81,8 @@ class Status {
     }
   }
 
+  std::string message() const { return impl_ ? impl_->message : ""; }
+
   /// \brief Export this status to an AdbcError.
   AdbcStatusCode ToAdbc(AdbcError* adbc_error) const {
     if (impl_ == nullptr) return ADBC_STATUS_OK;
