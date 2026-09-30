@@ -163,6 +163,16 @@ class CrateDBQuirks(PostgreSQLQuirks):
         statement={"adbc.postgresql.use_copy": "false"},
     )
 
+    def query_override(self, context: str, default: str) -> str:
+        if context == "TestStatement.sample_table":
+            # Make this a primary key so changes are immediately visible
+            # https://cratedb.com/docs/crate/reference/en/latest/sql/statements/refresh.html
+            return (
+                f"CREATE TABLE {self.quote_identifier('sample_table')} "
+                "(id INT PRIMARY KEY, value VARCHAR)"
+            )
+        return super().query_override(context, default)
+
     @property
     def queries_paths(self) -> tuple[Path, ...]:
         extra_paths: tuple[Path, ...] = ()
