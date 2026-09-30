@@ -53,6 +53,7 @@ constexpr std::string_view kConnectionOptionLoadExtensionEntrypoint =
 /// The batch size for query results (and for initial type inference)
 constexpr std::string_view kStatementOptionBatchRows = "adbc.sqlite.query.batch_rows";
 constexpr std::string_view kStatementOptionBindByName = "adbc.statement.bind_by_name";
+constexpr std::string_view kOptionTxnState = "adbc.sqlite.txn_state";
 constexpr int kDefaultBatchSize = 1024;
 
 std::string_view GetColumnText(sqlite3_stmt* stmt, int index) {
@@ -739,6 +740,13 @@ class SqliteConnection : public driver::Connection<SqliteConnection> {
     if (key == kStatementOptionBatchRows) {
       return driver::Option(
           static_cast<int64_t>(batch_size_.value_or(kDefaultBatchSize)));
+    } else if (key == kOptionTxnState) {
+#if SQLITE_VERSION_NUMBER < 3034000
+      return status::NotImplemented(
+          "this version of SQLite does not support sqlite3_txn_state");
+#else
+      return driver::Option(static_cast<int64_t>(sqlite3_txn_state(conn_, nullptr)));
+#endif
     }
     return Base::GetOption(key);
   }
@@ -1016,6 +1024,15 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
                                   &stmt, /*pzTail=*/nullptr);
       if (rc != SQLITE_OK) {
         std::ignore = sqlite3_finalize(stmt);
+        InternalAdbcSqliteBinderRelease(&binder_);
+        if (is_autocommit) {
+          auto status = ::adbc::sqlite::SqliteQuery::Execute(conn_, "ROLLBACK");
+          if (!status.ok()) {
+            return status::fmt::Internal(
+                "failed to prepare: {}\nquery was: {}\nfailed to rollback: {}",
+                sqlite3_errmsg(conn_), insert, status.message());
+          }
+        }
         return status::fmt::Internal("failed to prepare: {}\nquery was: {}",
                                      sqlite3_errmsg(conn_), insert);
       }
@@ -1047,6 +1064,7 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
       row_count++;
     }
     std::ignore = sqlite3_finalize(stmt);
+    InternalAdbcSqliteBinderRelease(&binder_);
 
     if (is_autocommit) {
       if (status_code == ADBC_STATUS_OK) {

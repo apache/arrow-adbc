@@ -593,6 +593,62 @@ class SqliteStatementTest : public ::testing::Test,
 };
 ADBCV_TEST_STATEMENT(SqliteStatementTest)
 
+TEST_F(SqliteStatementTest, SqlIngestRollback) {
+  // Regression test for https://github.com/apache/arrow-adbc/issues/4828
+  // A failed ingest shouldn't leave a dangling transaction
+  ASSERT_THAT(quirks()->DropTable(&connection, "test_rollback", &error),
+              adbc_validation::IsOkStatus(&error));
+
+  std::string table = "test_rollback";
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+  ASSERT_THAT(
+      adbc_validation::MakeSchema(&schema.value, {{"index", NANOARROW_TYPE_INT64}}),
+      adbc_validation::IsOkErrno());
+  ASSERT_THAT((adbc_validation::MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
+                                                   {42, -42, std::nullopt})),
+              adbc_validation::IsOkErrno(&na_error));
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  {
+    int64_t txn_state = 0;
+    ASSERT_THAT(AdbcConnectionGetOptionInt(&connection, "adbc.sqlite.txn_state",
+                                           &txn_state, &error),
+                adbc_validation::IsOkStatus(&error));
+    ASSERT_EQ(0, txn_state);
+  }
+
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                     table.c_str(), &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
+                                     ADBC_INGEST_OPTION_MODE_APPEND, &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              adbc_validation::IsStatus(ADBC_STATUS_INTERNAL, &error));
+
+  {
+    // Need to do something nontrivial for txn_state to be meaningful
+    ASSERT_THAT(AdbcStatementSetSqlQuery(
+                    &statement, "CREATE TABLE IF NOT EXISTS foobar (a INT)", &error),
+                adbc_validation::IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+                adbc_validation::IsOkStatus(&error));
+
+    int64_t txn_state = 0;
+    ASSERT_THAT(AdbcConnectionGetOptionInt(&connection, "adbc.sqlite.txn_state",
+                                           &txn_state, &error),
+                adbc_validation::IsOkStatus(&error));
+    ASSERT_EQ(0, txn_state);
+  }
+}
+
 TEST_F(SqliteStatementTest, SqlIngestNameEscaping) {
   ASSERT_THAT(quirks()->DropTable(&connection, "test-table", &error),
               adbc_validation::IsOkStatus(&error));
