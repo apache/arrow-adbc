@@ -33,6 +33,17 @@
 #include "driver/framework/status.h"
 #include "driver/sqlite/statement_reader.h"
 
+#if SQLITE_VERSION_NUMBER < 3037000
+// Polyfill for older versions
+sqlite3_int64 sqlite3_total_changes64(sqlite3* db) {
+  return static_cast<sqlite3_int64>(sqlite3_total_changes(db));
+}
+
+sqlite3_int64 sqlite3_changes64(sqlite3* db) {
+  return static_cast<sqlite3_int64>(sqlite3_changes(db));
+}
+#endif
+
 namespace adbc::sqlite {
 
 using driver::Result;
@@ -1138,12 +1149,16 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
         }
       }
 
+      const sqlite3_int64 total_changes = sqlite3_total_changes64(conn_);
       while (sqlite3_step(stmt_) == SQLITE_ROW) {
         output_rows++;
       }
 
-      if (sqlite3_column_count(stmt_) == 0) {
-        changed_rows += sqlite3_changes(conn_);
+      // NOTE(apache/arrow-adbc#4820): only count sqlite3_total_changes when
+      // it actually changed from before
+      if (sqlite3_column_count(stmt_) == 0 &&
+          sqlite3_total_changes64(conn_) != total_changes) {
+        changed_rows += sqlite3_changes64(conn_);
       }
 
       if (!binder_.schema.release) break;
