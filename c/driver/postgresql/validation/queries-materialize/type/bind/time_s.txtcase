@@ -15,28 +15,9 @@
 // specific language governing permissions and limitations
 // under the License.
 
-// part: metadata
+// part: setup_query
 
-[tags]
-sql-type-name = "time"
-
-// part: expected_schema
-
-{
-    "format": "+s",
-    "children": [
-        {
-            "name": "res",
-            "format": "ttu",
-            "flags": ["nullable"]
-        }
-    ]
-}
-
-// part: expected
-
-{"res": 0}
-{"res": null}
-{"res": 49531000000}
-{"res": 45045000000}
-{"res": 86399000000}
+CREATE TABLE test_time (
+    idx INT,
+    res TIME
+);

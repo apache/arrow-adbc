@@ -473,33 +473,70 @@ TEST_F(PostgresCopyTest, PostgresCopyWriteDate) {
 }
 
 TEST_F(PostgresCopyTest, PostgresCopyWriteTime) {
-  adbc_validation::Handle<struct ArrowSchema> schema;
-  adbc_validation::Handle<struct ArrowArray> array;
-  struct ArrowError na_error;
+  // COPY (SELECT CAST(col AS TIME) FROM (VALUES ('00:00:00'), ('23:59:59'),
+  // (NULL)) AS drvd(col)) TO STDOUT WITH (FORMAT binary);
+  static const uint8_t expected[] = {
+      0x50, 0x47, 0x43, 0x4f, 0x50, 0x59, 0x0a, 0xff, 0x0d, 0x0a, 0x00, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00,
+      0x14, 0x1d, 0xc8, 0x1d, 0xc0, 0x00, 0x01, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+  struct TimeTestParamType {
+    enum ArrowType type;
+    enum ArrowTimeUnit unit;
+    std::vector<std::optional<int64_t>> values;
+    const uint8_t* expected;
+    size_t expected_size;
+  };
+  const TimeTestParamType params[] = {
+      {NANOARROW_TYPE_TIME32,
+       NANOARROW_TIME_UNIT_SECOND,
+       {0, 86399, std::nullopt},
+       expected,
+       sizeof(expected)},
+      {NANOARROW_TYPE_TIME32,
+       NANOARROW_TIME_UNIT_MILLI,
+       {0, 86399000, std::nullopt},
+       expected,
+       sizeof(expected)},
+      {NANOARROW_TYPE_TIME64,
+       NANOARROW_TIME_UNIT_MICRO,
+       {0, 86399000000, 49376123456, std::nullopt},
+       kTestPgCopyTime,
+       sizeof(kTestPgCopyTime)},
+      {NANOARROW_TYPE_TIME64,
+       NANOARROW_TIME_UNIT_NANO,
+       {0, 86399000000000, 49376123456000, std::nullopt},
+       kTestPgCopyTime,
+       sizeof(kTestPgCopyTime)},
+  };
 
-  const enum ArrowTimeUnit unit = NANOARROW_TIME_UNIT_MICRO;
-  const auto values =
-      std::vector<std::optional<int64_t>>{0, 86399000000, 49376123456, std::nullopt};
+  for (const auto& param : params) {
+    SCOPED_TRACE(param.unit);
+    adbc_validation::Handle<struct ArrowSchema> schema;
+    adbc_validation::Handle<struct ArrowArray> array;
+    struct ArrowError na_error;
 
-  ArrowSchemaInit(&schema.value);
-  ArrowSchemaSetTypeStruct(&schema.value, 1);
-  ArrowSchemaSetTypeDateTime(schema->children[0], NANOARROW_TYPE_TIME64, unit, nullptr);
-  ArrowSchemaSetName(schema->children[0], "col");
-  ASSERT_EQ(
-      adbc_validation::MakeBatch<int64_t>(&schema.value, &array.value, &na_error, values),
-      ADBC_STATUS_OK);
+    ArrowSchemaInit(&schema.value);
+    ASSERT_EQ(ArrowSchemaSetTypeStruct(&schema.value, 1), NANOARROW_OK);
+    ASSERT_EQ(
+        ArrowSchemaSetTypeDateTime(schema->children[0], param.type, param.unit, nullptr),
+        NANOARROW_OK);
+    ASSERT_EQ(ArrowSchemaSetName(schema->children[0], "col"), NANOARROW_OK);
+    ASSERT_EQ(adbc_validation::MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
+                                                  param.values),
+              ADBC_STATUS_OK);
 
-  PostgresCopyStreamWriteTester tester;
-  ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
-  ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
+    PostgresCopyStreamWriteTester tester;
+    ASSERT_EQ(tester.Init(&schema.value, &array.value, *type_resolver_), NANOARROW_OK);
+    ASSERT_EQ(tester.WriteAll(nullptr), ENODATA);
 
-  const struct ArrowBuffer buf = tester.WriteBuffer();
-  // The last 2 bytes of a message can be transmitted via PQputCopyData
-  // so no need to test those bytes from the Writer
-  constexpr size_t buf_size = sizeof(kTestPgCopyTime) - 2;
-  ASSERT_EQ(buf.size_bytes, buf_size);
-  for (size_t i = 0; i < buf_size; i++) {
-    ASSERT_EQ(buf.data[i], kTestPgCopyTime[i]);
+    const struct ArrowBuffer buf = tester.WriteBuffer();
+    // The end marker is sent separately by the caller.
+    const size_t buf_size = param.expected_size - 2;
+    ASSERT_EQ(buf.size_bytes, buf_size);
+    for (size_t i = 0; i < buf_size; i++) {
+      ASSERT_EQ(buf.data[i], param.expected[i]);
+    }
   }
 }
 

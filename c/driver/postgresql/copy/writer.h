@@ -926,6 +926,34 @@ class PostgresCopyListFieldWriter : public PostgresCopyFieldWriter {
 };
 
 template <enum ArrowTimeUnit TU>
+class PostgresCopyTimeFieldWriter : public PostgresCopyFieldWriter {
+ public:
+  ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
+    constexpr int32_t field_size_bytes = sizeof(int64_t);
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, field_size_bytes, error));
+
+    // We assume data is valid, so multiply can't overflow
+    int64_t value = ArrowArrayViewGetIntUnsafe(array_view_, index);
+    switch (TU) {
+      case NANOARROW_TIME_UNIT_SECOND:
+        value *= 1000000;
+        break;
+      case NANOARROW_TIME_UNIT_MILLI:
+        value *= 1000;
+        break;
+      case NANOARROW_TIME_UNIT_MICRO:
+        break;
+      case NANOARROW_TIME_UNIT_NANO:
+        // We truncate; at some point we should add an option to control behavior
+        value /= 1000;
+        break;
+    }
+
+    return WriteChecked<int64_t>(buffer, value, error);
+  }
+};
+
+template <enum ArrowTimeUnit TU>
 class PostgresCopyTimestampFieldWriter : public PostgresCopyFieldWriter {
  public:
   ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
@@ -1074,12 +1102,29 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
       *out = T::Create<T>(array_view);
       return NANOARROW_OK;
     }
+    case NANOARROW_TYPE_TIME32:
     case NANOARROW_TYPE_TIME64: {
       switch (schema_view.time_unit) {
-        case NANOARROW_TIME_UNIT_MICRO:
-          using T = PostgresCopyNetworkEndianFieldWriter<int64_t>;
+        case NANOARROW_TIME_UNIT_SECOND: {
+          using T = PostgresCopyTimeFieldWriter<NANOARROW_TIME_UNIT_SECOND>;
           *out = T::Create<T>(array_view);
           return NANOARROW_OK;
+        }
+        case NANOARROW_TIME_UNIT_MILLI: {
+          using T = PostgresCopyTimeFieldWriter<NANOARROW_TIME_UNIT_MILLI>;
+          *out = T::Create<T>(array_view);
+          return NANOARROW_OK;
+        }
+        case NANOARROW_TIME_UNIT_MICRO: {
+          using T = PostgresCopyTimeFieldWriter<NANOARROW_TIME_UNIT_MICRO>;
+          *out = T::Create<T>(array_view);
+          return NANOARROW_OK;
+        }
+        case NANOARROW_TIME_UNIT_NANO: {
+          using T = PostgresCopyTimeFieldWriter<NANOARROW_TIME_UNIT_NANO>;
+          *out = T::Create<T>(array_view);
+          return NANOARROW_OK;
+        }
         default:
           return ADBC_STATUS_NOT_IMPLEMENTED;
       }
