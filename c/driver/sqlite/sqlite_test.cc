@@ -775,6 +775,60 @@ TEST_F(SqliteStatementTest, RowsAffectedBoundParameters) {
               adbc_validation::IsOkStatus(&error));
 }
 
+TEST_F(SqliteStatementTest, ConstraintError) {
+  ASSERT_THAT(quirks()->DropTable(&connection, "constrainttable", &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  for (const auto& stmt : {
+           "CREATE TABLE constrainttable (id INTEGER PRIMARY KEY)",
+           "INSERT INTO constrainttable (id) VALUES (1)",
+       }) {
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, stmt, &error),
+                adbc_validation::IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+                adbc_validation::IsOkStatus(&error));
+  }
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement, "INSERT INTO constrainttable (id) VALUES (1)", &error),
+              adbc_validation::IsOkStatus(&error));
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                        &reader.rows_affected, &error),
+              adbc_validation::IsStatus(ADBC_STATUS_INTEGRITY, &error));
+  EXPECT_THAT(error.message,
+              ::testing::HasSubstr("UNIQUE constraint failed: constrainttable.id"));
+}
+
+TEST_F(SqliteStatementTest, ConstraintErrorNoStream) {
+  ASSERT_THAT(quirks()->DropTable(&connection, "constrainttable", &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  for (const auto& stmt : {
+           "CREATE TABLE constrainttable (id INTEGER PRIMARY KEY)",
+           "INSERT INTO constrainttable (id) VALUES (1)",
+       }) {
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, stmt, &error),
+                adbc_validation::IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+                adbc_validation::IsOkStatus(&error));
+  }
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement, "INSERT INTO constrainttable (id) VALUES (1)", &error),
+              adbc_validation::IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              adbc_validation::IsStatus(ADBC_STATUS_INTEGRITY, &error));
+  EXPECT_THAT(error.message,
+              ::testing::HasSubstr("UNIQUE constraint failed: constrainttable.id"));
+}
+
 // -- SQLite Specific Tests ------------------------------------------
 
 constexpr size_t kInferRows = 16;

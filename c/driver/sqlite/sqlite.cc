@@ -1165,7 +1165,12 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
     }
     InternalAdbcSqliteBinderRelease(&binder_);
 
-    if (sqlite3_reset(stmt_) != SQLITE_OK) {
+    int rc = sqlite3_reset(stmt_);
+    if (rc == SQLITE_CONSTRAINT) {
+      const char* msg = sqlite3_errmsg(conn_);
+      return status::fmt::Integrity("failed to execute query: {}",
+                                    msg ? msg : "(unknown error)");
+    } else if (rc != SQLITE_OK) {
       const char* msg = sqlite3_errmsg(conn_);
       return status::fmt::IO("failed to execute query: {}",
                              msg ? msg : "(unknown error)");
