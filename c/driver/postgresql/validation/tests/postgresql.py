@@ -51,7 +51,7 @@ class PostgreSQLQuirks(model.DriverQuirks):
         statement_bulk_ingest=True,
         statement_bulk_ingest_catalog=False,
         statement_bulk_ingest_schema=False,
-        statement_bulk_ingest_temporary=False,
+        statement_bulk_ingest_temporary=True,
         statement_bind=True,
         statement_execute_schema=True,
         statement_get_parameter_schema=True,
@@ -60,6 +60,7 @@ class PostgreSQLQuirks(model.DriverQuirks):
         statement_rows_affected_ddl=False,
         current_catalog="postgres",
         current_schema="public",
+        secondary_schema="secondary",
         supported_xdbc_fields=["xdbc_type_name"],
     )
     setup = model.DriverSetup(
@@ -92,6 +93,18 @@ class PostgreSQLQuirks(model.DriverQuirks):
             )
             or ("undefined_table" in error_str and table_name.lower() in error_str)
         )
+
+    def qualify_temp_table(
+        self, cursor: adbc_driver_manager.dbapi.Cursor, name: str
+    ) -> list[str]:
+        cursor.execute(
+            "SELECT nspname FROM pg_namespace WHERE oid = pg_my_temp_schema()"
+        )
+        row = cursor.fetchone()
+        if row is None:
+            raise RuntimeError("Could not determine temporary schema")
+        (schema,) = row
+        return [self.features.current_catalog, schema, name]
 
     def quote_one_identifier(self, identifier: str) -> str:
         """Quote an identifier using PostgreSQL's double-quote syntax."""

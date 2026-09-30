@@ -330,7 +330,7 @@ jobs:
           - name: CockroachDB
             service: cockroachdb-test
             vendor: cockroachdb
-            uri: postgresql://root@localhost:5435/postgres?sslmode=disable
+            uri: postgresql://root@localhost:5435/postgres?sslmode=disable&options=-c%20experimental_enable_temp_tables%3Don
             experimental: false
           - name: CrateDB
             service: cratedb-test
