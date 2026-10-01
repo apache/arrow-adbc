@@ -725,7 +725,10 @@ namespace Apache.Arrow.Adbc.DriverManager
             DriverManifest manifest = DriverManifest.LoadFromFile(manifestPath);
 
             // Caller-supplied entrypoint wins over the manifest's. Falls back to
-            // a derived native symbol name only when neither is provided.
+            // a derived native symbol name only when neither is provided. Keep
+            // that provenance so the standard native fallback is not applied to
+            // an explicit caller- or manifest-selected symbol.
+            bool allowNativeFallback = entrypoint == null && manifest.Entrypoint == null;
             string resolvedEntrypoint = entrypoint
                 ?? manifest.Entrypoint
                 ?? DeriveEntrypoint(manifest.LibraryPath);
@@ -733,7 +736,12 @@ namespace Apache.Arrow.Adbc.DriverManager
             string? manifestDir = Path.GetDirectoryName(Path.GetFullPath(manifestPath));
             string resolvedPath = ResolveManifestPath(manifest.LibraryPath, manifestDir);
 
-            return LoadByEntrypointScheme(resolvedPath, resolvedEntrypoint, manifestPath, nameof(LoadFromManifest));
+            return LoadByEntrypointScheme(
+                resolvedPath,
+                resolvedEntrypoint,
+                manifestPath,
+                nameof(LoadFromManifest),
+                allowNativeFallback);
         }
 
         /// <summary>Returns <c>true</c> if <paramref name="entrypoint"/> uses a managed-runtime scheme prefix.</summary>
@@ -770,7 +778,8 @@ namespace Apache.Arrow.Adbc.DriverManager
             string driverPath,
             string entrypoint,
             string? manifestPath,
-            string loadMethod)
+            string loadMethod,
+            bool allowNativeFallback = false)
         {
             if (entrypoint.StartsWith(DotnetEntrypointScheme, StringComparison.Ordinal))
             {
@@ -801,7 +810,12 @@ namespace Apache.Arrow.Adbc.DriverManager
                 typeName: null,
                 manifestPath: manifestPath,
                 loadMethod: loadMethod,
-                () => CAdbcDriverImporter.Load(driverPath, entrypoint));
+                () => allowNativeFallback
+                    ? CAdbcDriverImporter.LoadWithFallback(
+                        driverPath,
+                        entrypoint,
+                        DefaultNativeEntrypoint)
+                    : CAdbcDriverImporter.Load(driverPath, entrypoint));
         }
 
         /// <summary>
