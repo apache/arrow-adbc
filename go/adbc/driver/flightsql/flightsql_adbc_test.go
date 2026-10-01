@@ -340,10 +340,12 @@ func TestADBCFlightSQL(t *testing.T) {
 	suite.Run(t, &DomainSocketTests{db: db})
 }
 
-func TestFlightSQLTracingProducesTraceFiles(t *testing.T) {
+func executeFlightSQLTraceQuery(t *testing.T, tracingOpts map[string]string) {
+	t.Helper()
+
 	// TODO: Reuse example.CreateDB() here after apache/arrow-go#916 isolates
 	// the shared in-memory SQLite database per call.
-	db, err := sql.Open("sqlite", fmt.Sprintf("file:%s-%d?mode=memory&cache=private", strings.ToLower(t.Name()), time.Now().UnixNano()))
+	db, err := sql.Open("sqlite", fmt.Sprintf("file:trace-%d?mode=memory&cache=private", time.Now().UnixNano()))
 	require.NoError(t, err)
 	defer validation.CheckedClose(t, db)
 
@@ -351,49 +353,118 @@ func TestFlightSQLTracingProducesTraceFiles(t *testing.T) {
 	drv := q.SetupDriver(t)
 	defer q.TearDownDriver(t, drv)
 
-	traceDir := t.TempDir()
 	opts := q.DatabaseOptions()
-	opts[adbc.OptionKeyTelemetryTracesExporter] = string(adbc.TelemetryExporterAdbcFile)
-	opts[adbc.OptionKeyTelemetryTracesFolderPath] = traceDir
+	for key, value := range tracingOpts {
+		opts[key] = value
+	}
 
-	func() {
-		adbcDB, err := drv.NewDatabase(opts)
-		require.NoError(t, err)
-		defer validation.CheckedClose(t, adbcDB)
+	adbcDB, err := drv.NewDatabase(opts)
+	require.NoError(t, err)
+	defer validation.CheckedClose(t, adbcDB)
 
-		cnxn, err := adbcDB.Open(context.Background())
-		require.NoError(t, err)
-		defer validation.CheckedClose(t, cnxn)
+	cnxn, err := adbcDB.Open(context.Background())
+	require.NoError(t, err)
+	defer validation.CheckedClose(t, cnxn)
 
-		stmt, err := cnxn.NewStatement()
-		require.NoError(t, err)
-		defer validation.CheckedClose(t, stmt)
+	stmt, err := cnxn.NewStatement()
+	require.NoError(t, err)
+	defer validation.CheckedClose(t, stmt)
 
-		require.NoError(t, stmt.SetSqlQuery("SELECT 1"))
-		reader, _, err := stmt.ExecuteQuery(context.Background())
-		require.NoError(t, err)
-		defer reader.Release()
+	require.NoError(t, stmt.SetSqlQuery("SELECT 1"))
+	reader, _, err := stmt.ExecuteQuery(context.Background())
+	require.NoError(t, err)
+	defer reader.Release()
 
-		for reader.Next() {
-		}
-		require.NoError(t, reader.Err())
-	}()
+	for reader.Next() {
+	}
+	require.NoError(t, reader.Err())
+}
+
+func traceFiles(t *testing.T, traceDir string) []string {
+	t.Helper()
 
 	files, err := filepath.Glob(filepath.Join(traceDir, "*.jsonl"))
 	require.NoError(t, err)
-	require.NotEmpty(t, files)
+	return files
+}
 
-	var traceOutput strings.Builder
-	for _, file := range files {
-		data, err := os.ReadFile(file)
-		require.NoError(t, err)
-		traceOutput.Write(data)
+func setDefaultTracingFolder(t *testing.T) string {
+	t.Helper()
+
+	tempDir := t.TempDir()
+	switch runtime.GOOS {
+	case "windows":
+		localAppDataDir := filepath.Join(tempDir, "AppData", "Local")
+		t.Setenv("LocalAppData", localAppDataDir)
+		return filepath.Join(localAppDataDir, "ADBC", "Traces")
+	case "darwin":
+		t.Setenv("HOME", tempDir)
+		return filepath.Join(tempDir, "Library", "Application Support", "ADBC", "Traces")
+	default:
+		stateDir := filepath.Join(tempDir, ".local", "state")
+		t.Setenv("XDG_STATE_HOME", stateDir)
+		t.Setenv("HOME", tempDir)
+		return filepath.Join(stateDir, "adbc", "traces")
 	}
+}
 
-	output := traceOutput.String()
-	require.Contains(t, output, "FlightSQL.Database.Open")
-	require.Contains(t, output, "FlightSQL.Database.Close")
-	require.Contains(t, output, "FlightSQL.Statement.ExecuteQuery")
+func TestFlightSQLTracingAdbcFileExporterCanBeEnabledAndDisabled(t *testing.T) {
+	t.Run("enabled", func(t *testing.T) {
+		traceDir := t.TempDir()
+		executeFlightSQLTraceQuery(t, map[string]string{
+			adbc.OptionKeyTelemetryTracesExporter:   string(adbc.TelemetryExporterAdbcFile),
+			adbc.OptionKeyTelemetryTracesFolderPath: traceDir,
+		})
+
+		files := traceFiles(t, traceDir)
+		require.NotEmpty(t, files)
+
+		var traceOutput strings.Builder
+		for _, file := range files {
+			data, err := os.ReadFile(file)
+			require.NoError(t, err)
+			traceOutput.Write(data)
+		}
+
+		output := traceOutput.String()
+		require.Contains(t, output, "FlightSQL.Database.Open")
+		require.Contains(t, output, "FlightSQL.Database.Close")
+		require.Contains(t, output, "FlightSQL.Statement.ExecuteQuery")
+	})
+
+	t.Run("disabled", func(t *testing.T) {
+		traceDir := t.TempDir()
+		executeFlightSQLTraceQuery(t, map[string]string{
+			adbc.OptionKeyTelemetryTracesExporter:   string(adbc.TelemetryExporterNone),
+			adbc.OptionKeyTelemetryTracesFolderPath: traceDir,
+		})
+
+		require.Empty(t, traceFiles(t, traceDir))
+	})
+}
+
+func TestFlightSQLTracingAdbcFileExporterUsesDefaultFolder(t *testing.T) {
+	defaultTraceDir := setDefaultTracingFolder(t)
+
+	executeFlightSQLTraceQuery(t, map[string]string{
+		adbc.OptionKeyTelemetryTracesExporter: string(adbc.TelemetryExporterAdbcFile),
+	})
+
+	require.NotEmpty(t, traceFiles(t, defaultTraceDir))
+}
+
+func TestFlightSQLTracingFolderOptionOverridesDefaultFolder(t *testing.T) {
+	defaultTraceDir := setDefaultTracingFolder(t)
+	overrideTraceDir := t.TempDir()
+
+	executeFlightSQLTraceQuery(t, map[string]string{
+		adbc.OptionKeyTelemetryTracesExporter:   string(adbc.TelemetryExporterAdbcFile),
+		adbc.OptionKeyTelemetryTracesFolderPath: overrideTraceDir,
+	})
+
+	require.NotEmpty(t, traceFiles(t, overrideTraceDir))
+	_, err := os.Stat(defaultTraceDir)
+	require.ErrorIs(t, err, os.ErrNotExist)
 }
 
 // TestFlightSQLTracingCleansUpAfterConstructionFailure verifies that failures

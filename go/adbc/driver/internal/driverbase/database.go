@@ -277,8 +277,8 @@ func (base *DatabaseImplBase) InitTracing(
 		exporterName = getExporterName()
 	}
 
-	// Empty exporter
-	if exporterName == "" {
+	// Empty or explicitly disabled exporter
+	if exporterName == "" || exporterName == string(adbc.TelemetryExporterNone) {
 		base.tracerProvider = otel.GetTracerProvider()
 		base.Tracer = otel.Tracer(fullyQualifiedDriverName)
 		return
