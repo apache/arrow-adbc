@@ -165,8 +165,7 @@ class Connection : public ObjectBase {
       }
       return driver::Option();
     }
-    return status::NotImplemented(Derived::kErrorPrefix, " Unknown connection option ",
-                                  key);
+    return status::NotFound(Derived::kErrorPrefix, " Unknown connection option ", key);
   }
 
   /// \internal

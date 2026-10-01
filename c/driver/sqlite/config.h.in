@@ -15,17 +15,4 @@
 // specific language governing permissions and limitations
 // under the License.
 
-// part: metadata
-
-[tags]
-sql-type-name = "TEXT"
-
-// part: input
-
-// Put non-NULL value first to help SQLite type inference
-{"idx": 0, "value": ""}
-{"idx": 1, "value": "hello world"}
-{"idx": 2, "value": "Special chars: !@#$%^&*()_+-=[]{}|;:,.<>?/\"\\"}
-{"idx": 3, "value": "Unicode: こんにちは, 世界!"}
-{"idx": 4, "value": "A very long string that tests the limits of string handling in various systems. This string is intentionally verbose to ensure that databases can properly handle longer text values without truncation or other issues."}
-{"idx": 5, "value": null}
+#define SQLITE_VERSION_STRING "@ADBC_VERSION@"
