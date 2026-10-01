@@ -146,7 +146,7 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
   bool supports_bulk_ingest_temporary() const override { return true; }
   bool supports_concurrent_statements() const override { return true; }
   bool supports_metadata_current_catalog() const override { return true; }
-  bool supports_metadata_current_db_schema() const override { return false; }
+  bool supports_metadata_current_db_schema() const override { return true; }
   bool supports_get_option() const override { return true; }
   std::optional<adbc_validation::SqlInfoValue> supports_get_sql_info(
       uint32_t info_code) const override {
@@ -154,7 +154,7 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
       case ADBC_INFO_DRIVER_NAME:
         return "ADBC SQLite Driver";
       case ADBC_INFO_DRIVER_VERSION:
-        return "(unknown)";
+        return "v1.";
       case ADBC_INFO_VENDOR_NAME:
         return "SQLite";
       case ADBC_INFO_VENDOR_VERSION:
@@ -298,7 +298,8 @@ TEST_F(SqliteConnectionTest, GetInfoMetadata) {
         }
         case ADBC_INFO_DRIVER_VERSION: {
           ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, offset);
-          EXPECT_EQ("(unknown)", std::string(val.data, val.size_bytes));
+          EXPECT_THAT(std::string(val.data, val.size_bytes),
+                      ::testing::MatchesRegex("v[0-9]+\\.[0-9]+\\.[0-9]+(-SNAPSHOT)?"));
           break;
         }
         case ADBC_INFO_VENDOR_NAME: {
