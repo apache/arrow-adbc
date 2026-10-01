@@ -439,7 +439,7 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
       case ADBC_INFO_DRIVER_NAME:
         return "ADBC SQLite Driver";
       case ADBC_INFO_DRIVER_VERSION:
-        return "(unknown)";
+        return "v1.";
       case ADBC_INFO_VENDOR_NAME:
         return "SQLite";
       case ADBC_INFO_VENDOR_VERSION:
@@ -449,6 +449,7 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
     }
   }
   bool supports_metadata_current_catalog() const override { return true; }
+  bool supports_metadata_current_db_schema() const override { return true; }
   std::string catalog() const override { return "main"; }
 };
 
