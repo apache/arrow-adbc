@@ -33,4 +33,5 @@ install_data(
     install_dir: join_paths(data_dir, meson.project_name(), 'example'),
 )
 
+subdir('lua')
 subdir('vala')
