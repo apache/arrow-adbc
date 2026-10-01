@@ -19,6 +19,7 @@
 #include <filesystem>  // NOLINT [build/c++17]
 #include <limits>
 #include <optional>
+#include <regex>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -298,8 +299,9 @@ TEST_F(SqliteConnectionTest, GetInfoMetadata) {
         }
         case ADBC_INFO_DRIVER_VERSION: {
           ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, offset);
-          EXPECT_THAT(std::string(val.data, val.size_bytes),
-                      ::testing::MatchesRegex("v[0-9]+\\.[0-9]+\\.[0-9]+(-SNAPSHOT)?"));
+          EXPECT_TRUE(
+              std::regex_match(std::string(val.data, val.size_bytes),
+                               std::regex("v[0-9]+\\.[0-9]+\\.[0-9]+(-SNAPSHOT)?")));
           break;
         }
         case ADBC_INFO_VENDOR_NAME: {
