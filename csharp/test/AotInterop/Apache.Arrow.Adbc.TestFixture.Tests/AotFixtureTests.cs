@@ -79,7 +79,13 @@ namespace Apache.Arrow.Adbc.TestFixture.Tests
             }
             finally
             {
-                Directory.Delete(directory, recursive: true);
+                // DriverManager keeps native drivers loaded for the process lifetime.
+                // Windows therefore prevents deleting the copied DLL while the test
+                // process is alive; the CI workspace is disposable.
+                if (!OperatingSystem.IsWindows())
+                {
+                    Directory.Delete(directory, recursive: true);
+                }
             }
         }
 
