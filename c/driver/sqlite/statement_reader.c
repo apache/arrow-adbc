@@ -1241,14 +1241,16 @@ AdbcStatusCode InternalAdbcSqliteExportReader(sqlite3* db, sqlite3_stmt* stmt,
           }
         }
         continue;
-      } else if (rc == SQLITE_ERROR) {
+      } else if (rc == SQLITE_CONSTRAINT) {
+        InternalAdbcSetError(error, "%s", sqlite3_errmsg(db));
+        status = ADBC_STATUS_INTEGRITY;
+        (void)sqlite3_reset(stmt);
+        break;
+      } else if (rc != SQLITE_ROW) {
         InternalAdbcSetError(error, "Failed to step query: %s", sqlite3_errmsg(db));
         status = ADBC_STATUS_IO;
         // Reset here so that we don't get an error again in StatementRelease
         (void)sqlite3_reset(stmt);
-        break;
-      } else if (rc != SQLITE_ROW) {
-        status = ADBC_STATUS_INTERNAL;
         break;
       }
 
