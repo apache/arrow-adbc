@@ -73,6 +73,10 @@ The client library package for each language:
      - npm
      - ``@apache-arrow/adbc-driver-manager``
      - :doc:`JavaScript Quickstart <javascript/quickstart>`
+   * - Kotoba
+     - kotoba 0.7.2
+     - in-tree ``kotoba/`` (wasm guest)
+     - :doc:`Kotoba Quickstart <kotoba/quickstart>`
    * - R
      - CRAN / conda
      - ``adbcdrivermanager``
