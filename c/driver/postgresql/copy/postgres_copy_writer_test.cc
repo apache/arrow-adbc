@@ -180,6 +180,27 @@ static void AssertNumericZeroIntegerGroupsRoundTrip(
   }
 }
 
+TEST(PostgresCopyUtilsTest, PostgresCopyWriteNumericNegativeWordCarry) {
+  ArrowDecimal decimal;
+  ArrowDecimalInit(&decimal, 128, 38, 0);
+  ASSERT_EQ(ArrowDecimalSetDigits(&decimal, ArrowCharView("-18446744073709551616")),
+            NANOARROW_OK);
+  nanoarrow::UniqueArrayView array_view;
+  ArrowArrayViewInitFromType(array_view.get(), NANOARROW_TYPE_DECIMAL128);
+  array_view->buffer_views[1].data.as_uint8 =
+      reinterpret_cast<const uint8_t*>(decimal.words);
+  auto writer = PostgresCopyFieldWriter::Create<
+      PostgresCopyNumericFieldWriter<NANOARROW_TYPE_DECIMAL128>>(
+      array_view.get(), 38, 0, /*disable_fast_path=*/true);
+  nanoarrow::UniqueBuffer buffer;
+  ASSERT_EQ(writer->Write(buffer.get(), 0, nullptr), NANOARROW_OK);
+  const std::vector<uint8_t> expected = {0x00, 0x00, 0x00, 0x12, 0x00, 0x05, 0x00, 0x04,
+                                         0x40, 0x00, 0x00, 0x00, 0x07, 0x34, 0x1a, 0x58,
+                                         0x02, 0xe1, 0x03, 0xbb, 0x06, 0x50};
+  EXPECT_EQ(std::vector<uint8_t>(buffer->data, buffer->data + buffer->size_bytes),
+            expected);
+}
+
 TEST_F(PostgresCopyTest, PostgresCopyWriteBoolean) {
   adbc_validation::Handle<struct ArrowSchema> schema;
   adbc_validation::Handle<struct ArrowArray> array;
