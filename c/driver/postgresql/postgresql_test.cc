@@ -396,7 +396,9 @@ TEST_F(PostgresConnectionTest, GetInfoMetadata) {
         }
         case ADBC_INFO_VENDOR_VERSION: {
           ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, offset);
-#ifdef __WIN32
+// Fall back to a simpler version regex. This only really impacts WIN32/MSVC but
+// this is slightly more correct/portable.
+#if GTEST_USES_SIMPLE_RE
           const char* pater = "\\d\\d\\d\\d\\d\\d";
 #else
           const char* pater = "[0-9]{6}";
@@ -2947,49 +2949,49 @@ static std::initializer_list<TypeTestCase> kIntervalTypeCases = {
         "INTERVAL",
         "'P-1Y2M42DT1H1M1S'",
         NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
-        MonthDayNano(-10, 42, (1L * 60 * 60 + 60L + 1L) * 1'000'000'000),
+        MonthDayNano(-10, 42, (1LL * 60 * 60 + 60LL + 1LL) * 1'000'000'000),
     },
     {
         "INTERVAL2",
         "INTERVAL",
         "'P0Y0M0DT0H0M0.1S'",
         NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
-        MonthDayNano(0, 0, 100L * 1'000'000),
+        MonthDayNano(0, 0, 100LL * 1'000'000),
     },
     {
         "INTERVAL3",
         "INTERVAL",
         "'P0Y0M0DT0H0M0.01S'",
         NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
-        MonthDayNano(0, 0, 10L * 1'000'000),
+        MonthDayNano(0, 0, 10LL * 1'000'000),
     },
     {
         "INTERVAL4",
         "INTERVAL",
         "'P0Y0M0DT0H0M0.001S'",
         NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
-        MonthDayNano(0, 0, 1L * 1'000'000),
+        MonthDayNano(0, 0, 1LL * 1'000'000),
     },
     {
         "INTERVAL5",
         "INTERVAL",
         "'P0Y0M0DT0H0M0.0001S'",
         NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
-        MonthDayNano(0, 0, 100'000L),
+        MonthDayNano(0, 0, 100'000LL),
     },
     {
         "INTERVAL6",
         "INTERVAL",
         "'P0Y0M0DT0H0M0.00001S'",
         NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
-        MonthDayNano(0, 0, 10'000L),
+        MonthDayNano(0, 0, 10'000LL),
     },
     {
         "INTERVAL7",
         "INTERVAL",
         "'P0Y0M0DT0H0M0.000001S'",
         NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
-        MonthDayNano(0, 0, 1'000L),
+        MonthDayNano(0, 0, 1'000LL),
     },
     {
         "INTERVAL_YEAR",
@@ -3017,21 +3019,21 @@ static std::initializer_list<TypeTestCase> kIntervalTypeCases = {
         "INTERVAL HOUR",
         "'12H'",
         NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
-        MonthDayNano(0, 0, 12L * 60 * 60 * 1'000'000'000),
+        MonthDayNano(0, 0, 12LL * 60 * 60 * 1'000'000'000),
     },
     {
         "INTERVAL_MINUTE",
         "INTERVAL MINUTE",
         "'P0Y0M0DT0H-5M0S'",
         NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
-        MonthDayNano(0, 0, -5L * 60 * 1'000'000'000),
+        MonthDayNano(0, 0, -5LL * 60 * 1'000'000'000),
     },
     {
         "INTERVAL_SECOND",
         "INTERVAL SECOND",
         "'P0Y0M0DT0H0M42S'",
         NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
-        MonthDayNano(0, 0, 42L * 1'000'000'000),
+        MonthDayNano(0, 0, 42LL * 1'000'000'000),
     },
     {
         "INTERVAL_YEAR_TO_MONTH",
@@ -3045,42 +3047,42 @@ static std::initializer_list<TypeTestCase> kIntervalTypeCases = {
         "INTERVAL DAY TO HOUR",
         "'P0Y0M1DT-2H0M0S'",
         NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
-        MonthDayNano(0, 1, -2L * 60 * 60 * 1'000'000'000),
+        MonthDayNano(0, 1, -2LL * 60 * 60 * 1'000'000'000),
     },
     {
         "INTERVAL_DAY_TO_MINUTE",
         "INTERVAL DAY TO MINUTE",
         "'P0Y0M1DT-2H1M0S'",
         NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
-        MonthDayNano(0, 1, (-2L * 60 + 1L) * 60 * 1'000'000'000),
+        MonthDayNano(0, 1, (-2LL * 60 + 1LL) * 60 * 1'000'000'000),
     },
     {
         "INTERVAL_DAY_TO_SECOND",
         "INTERVAL DAY TO SECOND",
         "'P0Y0M1DT-2H1M-1S'",
         NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
-        MonthDayNano(0, 1, ((-2L * 60 + 1L) * 60 - 1L) * 1'000'000'000),
+        MonthDayNano(0, 1, ((-2LL * 60 + 1LL) * 60 - 1LL) * 1'000'000'000),
     },
     {
         "INTERVAL_HOUR_TO_MINUTE",
         "INTERVAL HOUR TO MINUTE",
         "'P0Y0M0DT-2H1M0S'",
         NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
-        MonthDayNano(0, 0, (-2L * 60 + 1L) * 60 * 1'000'000'000),
+        MonthDayNano(0, 0, (-2LL * 60 + 1LL) * 60 * 1'000'000'000),
     },
     {
         "INTERVAL_HOUR_TO_SECOND",
         "INTERVAL HOUR TO SECOND",
         "'P0Y0M0DT-2H1M-1S'",
         NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
-        MonthDayNano(0, 0, ((-2L * 60 + 1L) * 60 - 1L) * 1'000'000'000),
+        MonthDayNano(0, 0, ((-2LL * 60 + 1LL) * 60 - 1LL) * 1'000'000'000),
     },
     {
         "INTERVAL_MINUTE_TO_SECOND",
         "INTERVAL MINUTE TO SECOND",
         "'P0Y0M0DT0H1M-1S'",
         NANOARROW_TYPE_INTERVAL_MONTH_DAY_NANO,
-        MonthDayNano(0, 0, 59L * 1'000'000'000),
+        MonthDayNano(0, 0, 59LL * 1'000'000'000),
     },
 };
 static std::initializer_list<TypeTestCase> kTimeTypeCases = {
