@@ -11,7 +11,6 @@ c/subprojects/gtest.wrap
 c/subprojects/nanoarrow.wrap
 c/subprojects/sqlite3.wrap
 c/vendor/backward/*
-c/vendor/boost/int128.hpp
 c/vendor/fmt/*
 c/vendor/sqlite3/sqlite3.c
 c/vendor/sqlite3/sqlite3.h

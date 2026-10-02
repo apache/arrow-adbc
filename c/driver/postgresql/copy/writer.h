@@ -33,14 +33,6 @@
 #include "../postgres_util.h"
 #include "copy_common.h"
 
-#if defined(__SIZEOF_INT128__)
-__extension__ using UInt128 = unsigned __int128;
-#else
-#include "vendor/boost/int128.hpp"
-
-using UInt128 = boost::int128::uint128;
-#endif
-
 namespace adbcpq {
 
 // The maximum value in seconds that can be converted into microseconds
@@ -363,6 +355,7 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
     ArrowDecimalInit(&decimal, bitwidth_, precision_, scale_);
     ArrowArrayViewGetDecimalUnsafe(array_view_, index, &decimal);
 
+#if defined(__SIZEOF_INT128__)
     if constexpr (T == NANOARROW_TYPE_DECIMAL128) {
       if (!disable_fast_path_) {
         const ArrowErrorCode fast_res = WriteDecimal128Fast(buffer, &decimal, error);
@@ -371,6 +364,7 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
         }
       }
     }
+#endif
 
     const int16_t sign = ArrowDecimalSign(&decimal) > 0 ? kNumericPos : kNumericNeg;
 
@@ -455,6 +449,9 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
   }
 
  private:
+#if defined(__SIZEOF_INT128__)
+  __extension__ using UInt128 = unsigned __int128;
+
   ArrowErrorCode WriteDecimal128Fast(ArrowBuffer* buffer, struct ArrowDecimal* decimal,
                                      ArrowError* error) const {
     constexpr int kDecDigits = 4;
@@ -575,6 +572,7 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
     }
     return true;
   }
+#endif
 
   // Helper struct for organizing data flow between functions
   struct DecimalParts {
