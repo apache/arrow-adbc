@@ -125,7 +125,9 @@ jobs:
         run: .\ci\scripts\cpp_test.ps1 $pwd\build\${{ matrix.config }} $pwd\local\${{ matrix.config }}
 
       - name: Start PostgreSQL
-        # The ARM64 runner does not include PostgreSQL.
+        # For now, we only test on x64-windows. As of 2026-10-02, windows-latest
+        # ships with PostgreSQL but windows-11-arm does not. The code here is
+        # copied from java.yml just to be uniform.
         if: matrix.arch == 'x64'
         run: |
           "root" | Set-Content "$env:RUNNER_TEMP\postgres_password"
