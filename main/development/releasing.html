@@ -770,6 +770,14 @@ dev/release/post-02-binary.sh<span class="w"> </span>&lt;rc-number&gt;
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3 sd-shadow-md">
 <summary class="sd-summary-title sd-card-header sd-fs-5">
 <span class="sd-summary-text">Update tags for Go modules</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<p class="sd-card-text">The script will walk you through the following steps:</p>
+<ol class="arabic simple">
+<li><p class="sd-card-text">Create the tag <code class="docutils literal notranslate"><span class="pre">go/adbc/vX.Y.Z</span></code></p></li>
+<li><p class="sd-card-text">Push the tag</p></li>
+<li><p class="sd-card-text">Update <code class="docutils literal notranslate"><span class="pre">go/driver/go.mod</span></code> to reference the new tag</p></li>
+<li><p class="sd-card-text">Create the tag <code class="docutils literal notranslate"><span class="pre">go/driver/vX.Y.Z</span></code></p></li>
+<li><p class="sd-card-text">Push the tag</p></li>
+</ol>
 <div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-04-go.sh</span>
 dev/release/post-04-go.sh
 </pre></div>
