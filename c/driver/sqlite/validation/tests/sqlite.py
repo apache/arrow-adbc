@@ -34,7 +34,7 @@ class SQLiteQuirks(model.DriverQuirks):
         get_objects=True,
         get_objects_constraints_foreign=True,
         get_objects_constraints_primary=True,
-        get_objects_constraints_unique=True,
+        get_objects_constraints_unique=False,
         statement_bind=True,
         statement_bulk_ingest=True,
         statement_bulk_ingest_catalog=True,

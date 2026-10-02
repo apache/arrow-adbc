@@ -19,4 +19,12 @@ BOOTSTRAP_SCRIPT <- file.path("..", "tools", "bootstrap-c.R")
 
 if (file.exists(BOOTSTRAP_SCRIPT)) {
   source(BOOTSTRAP_SCRIPT)
+
+  # The R package does not use CMake, so generate its driver version header here.
+  version <- read.dcf("DESCRIPTION")[1, "Version"]
+  config <- readLines("src/c/driver/sqlite/config.h.in")
+  writeLines(
+    gsub("@ADBC_VERSION@", version, config, fixed = TRUE),
+    "src/c/driver/sqlite/config.h"
+  )
 }
