@@ -146,20 +146,12 @@ jobs:
           # Force bundled gtest
           mamba uninstall gtest
 
-      - name: Build Driver Manager
+      - name: Build Drivers
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
           BUILD_DRIVER_MANAGER_USER_CONFIG_TEST: "1"
-        run: .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
-      - name: Build Driver PostgreSQL
-        env:
-          BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
-        run: .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
-      - name: Build Driver SQLite
-        env:
-          BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
         run: .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
       - name: Test Driver Manager
