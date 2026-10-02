@@ -396,7 +396,8 @@ TEST_F(PostgresConnectionTest, GetInfoMetadata) {
         }
         case ADBC_INFO_VENDOR_VERSION: {
           ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, offset);
-#ifdef __WIN32
+// TODO: Comment
+#if GTEST_USES_SIMPLE_RE
           const char* pater = "\\d\\d\\d\\d\\d\\d";
 #else
           const char* pater = "[0-9]{6}";
