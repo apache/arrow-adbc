@@ -19,13 +19,13 @@
 # directory. Technically this copies all go drivers but this is easier
 # than remembering the internal dependency structure of the go sources.
 files_to_vendor <- list.files(
-  "../../go/adbc",
+  "../../go",
   "\\.(go|mod|txt|sum|h|c|sql)$",
   recursive = TRUE
 )
 
-files_to_vendor_src <- file.path("../../go/adbc", files_to_vendor)
-files_to_vendor_dst <- file.path("src/go/adbc", files_to_vendor)
+files_to_vendor_src <- file.path("../../go", files_to_vendor)
+files_to_vendor_dst <- file.path("src/go", files_to_vendor)
 
 # On Windows, file.copy does not handle symlinks. This
 # is not a problem for a user install, where this script
@@ -35,6 +35,7 @@ dir.create("src/arrow-adbc", showWarnings = FALSE)
 file.copy("../../c/include/arrow-adbc/adbc.h", "src/arrow-adbc/adbc.h")
 
 unlink("src/go/adbc", recursive = TRUE)
+unlink("src/go/driver", recursive = TRUE)
 
 cat(
   sprintf(
@@ -56,3 +57,7 @@ for (dst_dir in dst_dirs) {
 
 # Copy the files
 stopifnot(all(file.copy(files_to_vendor_src, files_to_vendor_dst)))
+
+# Force the go/driver packages to build against vendored go/adbc
+go_mod_replace <- "replace github.com/apache/arrow-adbc/go/adbc => ../adbc"
+write(go_mod_replace, file = "src/go/driver/go.mod", append = TRUE)

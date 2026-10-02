@@ -433,7 +433,7 @@ jobs:
           ./ci/scripts/go_test.sh "$(pwd)" "$(pwd)/build" "$HOME/local"
 
   go-conda:
-    name: "Go (CGO) (Conda/${{ matrix.os }})"
+    name: "Go (CGO) (Conda/${{ matrix.os }}, workspace: ${{ matrix.workspace }})"
     runs-on: ${{ matrix.os }}
     needs:
       - drivers-build-conda
@@ -447,6 +447,12 @@ jobs:
             goarch: arm64
           - os: ubuntu-latest
             goarch: x64
+          - os: macos-latest
+            goarch: arm64
+            workspace: true
+          - os: ubuntu-latest
+            goarch: x64
+            workspace: true
     env:
       CGO_ENABLED: "1"
     permissions:
@@ -499,6 +505,14 @@ jobs:
         run: |
           cd
           tar xvf ~/local.tgz
+
+      # Ensure the drivers build against local go/adbc module, too
+      - name: Create go.work
+        if: matrix.workspace
+        run: |
+          go work init
+          go work use ./go/adbc
+          go work use ./go/driver
 
       - name: Go Build
         run: |
@@ -616,10 +630,10 @@ jobs:
         run: |
           export PATH=$RUNNER_TOOL_CACHE/go/${GO_VERSION}/x64/bin:$PATH
           # Can't use Docker on macOS
-          pushd $(pwd)/go/adbc
-          go build -o testserver ./driver/flightsql/cmd/testserver
+          pushd $(pwd)/go/driver/flightsql
+          go build -o testserver ./cmd/testserver
           popd
-          $(pwd)/go/adbc/testserver -host 0.0.0.0 -port 41414 &
+          $(pwd)/go/driver/flightsql/testserver -host 0.0.0.0 -port 41414 &
           while ! curl --http2-prior-knowledge -H "content-type: application/grpc" -v localhost:41414 -XPOST;
           do
               echo "Waiting for test server..."

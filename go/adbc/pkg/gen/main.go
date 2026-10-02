@@ -75,6 +75,7 @@ func (p *pathSpec) IsGoFile() bool { return filepath.Ext(p.out) == ".go" }
 func (p *pathSpec) IsCFile() bool  { return filepath.Ext(p.out) == ".c" || filepath.Ext(p.out) == ".h" }
 
 type tmplData struct {
+	DriverPkg   string
 	Driver      string
 	Prefix      string
 	PrefixUpper string
@@ -127,6 +128,7 @@ func main() {
 	}
 
 	process(tmplData{
+		DriverPkg:   pkg[0].Name,
 		Driver:      pkg[0].Name + "." + *driverCtor,
 		Prefix:      *prefix,
 		PrefixUpper: strings.ToUpper(*prefix),
