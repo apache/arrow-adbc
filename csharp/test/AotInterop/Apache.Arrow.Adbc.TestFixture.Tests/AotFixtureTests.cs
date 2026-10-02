@@ -50,10 +50,15 @@ namespace Apache.Arrow.Adbc.TestFixture.Tests
         private static AdbcDriver LoadFixture()
         {
             string? path = ResolveFixturePath();
+            SkipIfFixtureUnavailable(path);
+            return CAdbcDriverImporter.Load(path!);
+        }
+
+        private static void SkipIfFixtureUnavailable(string? path)
+        {
             Skip.IfNot(
                 path != null,
                 $"Set {FixturePathEnvVar} to the AOT-published Apache.Arrow.Adbc.TestFixture.Native shared library to run this test.");
-            return CAdbcDriverImporter.Load(path!);
         }
 
         [SkippableFact]
@@ -61,6 +66,68 @@ namespace Apache.Arrow.Adbc.TestFixture.Tests
         {
             using AdbcDriver driver = LoadFixture();
             Assert.Equal(AdbcVersion.Version_1_1_0, driver.DriverVersion);
+        }
+
+        [SkippableFact]
+        public void DriverManagerFallsBackToStandardEntrypoint()
+        {
+            string? fixturePath = ResolveFixturePath();
+            SkipIfFixtureUnavailable(fixturePath);
+            string? fixtureParent = Path.GetDirectoryName(fixturePath);
+            Skip.IfNot(!string.IsNullOrEmpty(fixtureParent), "The AOT fixture path must have a parent directory.");
+            string directory = Path.Combine(fixtureParent!, Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(directory);
+            string renamedPath = Path.Combine(directory, "adbc_driver_fixture" + Path.GetExtension(fixturePath));
+            File.Copy(fixturePath!, renamedPath);
+
+            try
+            {
+                using AdbcDriver driver = Apache.Arrow.Adbc.DriverManager.AdbcDriverManager.LoadDriver(renamedPath);
+                Assert.Equal(AdbcVersion.Version_1_1_0, driver.DriverVersion);
+            }
+            finally
+            {
+                // DriverManager keeps native drivers loaded for the process lifetime.
+                // Windows therefore prevents deleting the copied DLL while the test
+                // process is alive; the CI workspace is disposable.
+                if (!OperatingSystem.IsWindows())
+                {
+                    Directory.Delete(directory, recursive: true);
+                }
+            }
+        }
+
+        [SkippableFact]
+        public void FindLoadDriverManifestWithoutEntrypointFallsBackToStandardEntrypoint()
+        {
+            string? fixturePath = ResolveFixturePath();
+            SkipIfFixtureUnavailable(fixturePath);
+            string? fixtureParent = Path.GetDirectoryName(fixturePath);
+            Skip.IfNot(!string.IsNullOrEmpty(fixtureParent), "The AOT fixture path must have a parent directory.");
+            string directory = Path.Combine(fixtureParent!, Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(directory);
+            string renamedName = "adbc_driver_fixture";
+            string renamedPath = Path.Combine(directory, renamedName + Path.GetExtension(fixturePath));
+            File.Copy(fixturePath!, renamedPath);
+            File.WriteAllText(
+                Path.Combine(directory, renamedName + ".toml"),
+                "manifest_version = 1\n[Driver]\nshared = \"" + Path.GetFileName(renamedPath) + "\"\n");
+
+            try
+            {
+                using AdbcDriver driver = Apache.Arrow.Adbc.DriverManager.AdbcDriverManager.FindLoadDriver(
+                    renamedName,
+                    loadOptions: Apache.Arrow.Adbc.DriverManager.AdbcLoadFlags.Default,
+                    additionalSearchPathList: directory);
+                Assert.Equal(AdbcVersion.Version_1_1_0, driver.DriverVersion);
+            }
+            finally
+            {
+                if (!OperatingSystem.IsWindows())
+                {
+                    Directory.Delete(directory, recursive: true);
+                }
+            }
         }
 
         [SkippableFact]
