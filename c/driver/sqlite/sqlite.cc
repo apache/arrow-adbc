@@ -704,7 +704,7 @@ class SqliteConnection : public driver::Connection<SqliteConnection> {
           result.emplace_back(code, "ADBC SQLite Driver");
           break;
         case ADBC_INFO_DRIVER_VERSION:
-          result.emplace_back(code, "v" SQLITE_VERSION_STRING);
+          result.emplace_back(code, "v" SQLITE_DRIVER_VERSION_STRING);
           break;
         case ADBC_INFO_DRIVER_ARROW_VERSION:
           result.emplace_back(code, "v" NANOARROW_VERSION);

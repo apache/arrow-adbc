@@ -15,4 +15,4 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#define SQLITE_VERSION_STRING "@ADBC_VERSION@"
+#define SQLITE_DRIVER_VERSION_STRING "@ADBC_VERSION@"
