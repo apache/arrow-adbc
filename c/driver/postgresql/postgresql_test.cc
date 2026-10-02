@@ -396,7 +396,8 @@ TEST_F(PostgresConnectionTest, GetInfoMetadata) {
         }
         case ADBC_INFO_VENDOR_VERSION: {
           ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, offset);
-// TODO: Comment
+// Fall back to a simpler version regex. This only really impacts WIN32/MSVC but
+// this is slightly more correct/portable.
 #if GTEST_USES_SIMPLE_RE
           const char* pater = "\\d\\d\\d\\d\\d\\d";
 #else
