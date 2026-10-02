@@ -405,10 +405,9 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
     int16_t dscale =
         static_cast<int16_t>((std::max)(0, parts.effective_scale - trailing_zeros));
 
-    // Optimize: remove trailing zero digit groups from fractional part
+    // Optimize: remove trailing zero digit groups
     int n_int_digit_groups = int_digits.size();
-    while (static_cast<int>(all_digits.size()) > n_int_digit_groups &&
-           all_digits.back() == 0) {
+    while (!all_digits.empty() && all_digits.back() == 0) {
       all_digits.pop_back();
     }
 
