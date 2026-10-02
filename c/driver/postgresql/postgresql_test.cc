@@ -3393,7 +3393,7 @@ TEST_P(PostgresDecimalTest, SelectValue) {
   }
 
   auto expected_with_null{expected};
-  expected_with_null.insert(expected_with_null.begin(), std::nullopt);
+  expected_with_null.push_back(std::nullopt);
   values.push_back(std::nullopt);
 
   ArrowSchemaInit(&schema.value);
@@ -3420,7 +3420,7 @@ TEST_P(PostgresDecimalTest, SelectValue) {
 
   ASSERT_THAT(AdbcStatementSetSqlQuery(
                   &statement_,
-                  "SELECT * FROM bulk_ingest ORDER BY \"col\" ASC NULLS FIRST", &error_),
+                  "SELECT * FROM bulk_ingest ORDER BY ctid", &error_),
               IsOkStatus(&error_));
 
   {
