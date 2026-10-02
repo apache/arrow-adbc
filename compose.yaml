@@ -357,7 +357,7 @@ services:
 
   cedardb-test:
     container_name: adbc_cedardb_test
-    image: cedardb/cedardb:v2026-08-13
+    image: cedardb/cedardb:v2026-09-03
     environment:
       CEDAR_PASSWORD: CedarDB2026!
     healthcheck:
