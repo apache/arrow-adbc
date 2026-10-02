@@ -872,7 +872,7 @@ class PostgresCopyListFieldWriter : public PostgresCopyFieldWriter {
     }
 
     constexpr int32_t ndim = 1;
-    constexpr int32_t has_null_flags = 0;
+    int32_t has_null_flags = 0;
 
     // TODO: the LARGE_LIST should use 64 bit indexes
     int32_t start, end;
@@ -899,8 +899,21 @@ class PostgresCopyListFieldWriter : public PostgresCopyFieldWriter {
     // directly to our buffer
     nanoarrow::UniqueBuffer tmp;
     ArrowBufferInit(tmp.get());
+    const auto* child_view = array_view_->children[0];
     for (auto i = start; i < end; ++i) {
-      NANOARROW_RETURN_NOT_OK(child_->Write(tmp.get(), i, error));
+      bool is_null = ArrowArrayViewIsNull(child_view, i);
+      if (!is_null && child_view->dictionary != nullptr) {
+        const int64_t dict_index = ArrowArrayViewGetIntUnsafe(child_view, i);
+        is_null = ArrowArrayViewIsNull(child_view->dictionary, dict_index);
+      }
+      if (is_null) {
+        has_null_flags = 1;
+        constexpr int32_t field_size_bytes = -1;
+        NANOARROW_RETURN_NOT_OK(
+            WriteChecked<int32_t>(tmp.get(), field_size_bytes, error));
+      } else {
+        NANOARROW_RETURN_NOT_OK(child_->Write(tmp.get(), i, error));
+      }
     }
     const int32_t field_size_bytes = sizeof(ndim) + sizeof(has_null_flags) +
                                      sizeof(child_oid_) + sizeof(dim) * ndim +
