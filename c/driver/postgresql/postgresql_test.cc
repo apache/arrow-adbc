@@ -2042,6 +2042,61 @@ TEST_F(PostgresStatementTest, ExecuteSchemaParameterizedQuery) {
   ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
 }
 
+TEST_F(PostgresStatementTest, NumericTypeModifier) {
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  for (const char* use_copy : {"true", "false"}) {
+    SCOPED_TRACE(use_copy);
+    ASSERT_THAT(
+        AdbcStatementSetOption(&statement, "adbc.postgresql.use_copy", use_copy, &error),
+        IsOkStatus(&error));
+    for (const char* predicate : {"true", "false"}) {
+      SCOPED_TRACE(predicate);
+      const std::string query =
+          "SELECT 1.25::numeric(29,9), 1.25::numeric, NULL::numeric(29,9), "
+          "1.25::numeric(29,9) + 1.25::numeric(29,9), 1::integer WHERE "s +
+          predicate;
+      ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query.c_str(), &error),
+                  IsOkStatus(&error));
+      nanoarrow::UniqueSchema described;
+      ASSERT_THAT(AdbcStatementExecuteSchema(&statement, described.get(), &error),
+                  IsOkStatus(&error));
+      adbc_validation::StreamReader reader;
+      ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                            &reader.rows_affected, &error),
+                  IsOkStatus(&error));
+      ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+      for (const ArrowSchema* schema : {described.get(), &reader.schema.value}) {
+        ASSERT_EQ(schema->n_children, 5);
+        for (int i = 0; i < 5; i++) {
+          ArrowStringView value = {nullptr, 0};
+          ASSERT_EQ(ArrowMetadataGetValue(schema->children[i]->metadata,
+                                          ArrowCharView("POSTGRESQL:typmod"), &value),
+                    NANOARROW_OK);
+          if (i == 4) {
+            EXPECT_EQ(value.data, nullptr);
+          } else {
+            EXPECT_STREQ(schema->children[i]->format, "u");
+            EXPECT_EQ(std::string(value.data, value.size_bytes),
+                      (i == 0 || i == 2) ? "1900557" : "-1");
+          }
+        }
+      }
+      ASSERT_NO_FATAL_FAILURE(reader.Next());
+      if (std::string(predicate) == "true") {
+        ASSERT_NE(reader.array->release, nullptr);
+        ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareArray<std::string>(
+            reader.array_view->children[0], {"1.250000000"}));
+        ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareArray<std::string>(
+            reader.array_view->children[1], {"1.25"}));
+        ASSERT_NO_FATAL_FAILURE(adbc_validation::CompareArray<std::string>(
+            reader.array_view->children[2], {std::nullopt}));
+        ASSERT_NO_FATAL_FAILURE(reader.Next());
+      }
+      ASSERT_EQ(reader.array->release, nullptr);
+    }
+  }
+}
+
 TEST_F(PostgresStatementTest, ExecuteParameterizedQueryWithResult) {
   nanoarrow::UniqueSchema schema_bind;
   ArrowSchemaInit(schema_bind.get());
