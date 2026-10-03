@@ -299,28 +299,21 @@ being read or written.
                 overflow/underflow; an error will be returned if this would be
                 the case.
 
-Numeric Result Metadata
-~~~~~~~~~~~~~~~~~~~~~~~
+Result Field Metadata
+~~~~~~~~~~~~~~~~~~~~~
 
-Numeric result fields include ``POSTGRESQL:typmod`` metadata containing the
-signed decimal string returned by libpq's
-`PQfmod <https://www.postgresql.org/docs/18/libpq-exec.html#LIBPQ-PQFMOD>`_.
-This preserves declared precision and scale without changing the Arrow
-string representation or performing decimal conversion. The value is ``-1``
-when PostgreSQL supplies no type modifier; it is not inferred from result
-values.
+The driver attaches the following PostgreSQL metadata to Arrow result fields:
 
-For example, ``NUMERIC(29,9)`` has modifier ``1900557``. After subtracting
-4, the upper 16 bits contain precision and the lower 11 bits contain signed
-scale. Expressions need not retain their operands' modifiers.
-The encoding and signed-scale extraction are defined by PostgreSQL's
-``make_numeric_typmod``, ``numeric_typmod_precision``, and
-``numeric_typmod_scale`` in
-`numeric.c <https://github.com/postgres/postgres/blob/REL_18_0/src/backend/utils/adt/numeric.c#L891-L947>`_.
+``POSTGRESQL:type``
+    The PostgreSQL type name, such as ``int4`` or ``numeric``.
 
-This metadata is available for numeric result columns from both COPY and
-non-COPY execution and from :c:func:`AdbcStatementExecuteSchema`, including empty
-results. It does not add modifiers to parameter schemas or catalog discovery.
+``POSTGRESQL:typmod``
+    The type modifier for a top-level numeric column, returned by
+    `PQfmod <https://www.postgresql.org/docs/18/libpq-exec.html#LIBPQ-PQFMOD>`_,
+    as a signed decimal string.  Encodes precision and scale using
+    PostgreSQL's `numeric typmod encoding
+    <https://github.com/postgres/postgres/blob/REL_18_0/src/backend/utils/adt/numeric.c#L891-L947>`_.
+    Value is ``-1`` if no modifier is available.
 
 Unknown Types
 ~~~~~~~~~~~~~
