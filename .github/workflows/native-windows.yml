@@ -146,20 +146,12 @@ jobs:
           # Force bundled gtest
           mamba uninstall gtest
 
-      - name: Build Driver Manager
+      - name: Build Drivers
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
           BUILD_DRIVER_MANAGER_USER_CONFIG_TEST: "1"
-        run: .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
-      - name: Build Driver PostgreSQL
-        env:
-          BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
-        run: .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
-      - name: Build Driver SQLite
-        env:
-          BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
         run: .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
       - name: Test Driver Manager
@@ -172,6 +164,26 @@ jobs:
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
+        run: .\ci\scripts\cpp_test.ps1 $pwd\build
+      - name: Start PostgreSQL
+        run: |
+          "root" | Set-Content "$env:RUNNER_TEMP\postgres_password"
+          & "$env:PGBIN\initdb.exe" `
+            --pgdata="$env:RUNNER_TEMP\pgdata" `
+            --username postgres `
+            --pwfile="$env:RUNNER_TEMP\postgres_password" `
+            --auth="scram-sha-256" `
+            --encoding="UTF-8" `
+            --locale="en_US.UTF-8" `
+            --no-instructions
+          if (-not $?) { throw "Failed to initialize PostgreSQL" }
+          & "$env:PGBIN\pg_ctl.exe" start --pgdata="$env:RUNNER_TEMP\pgdata"
+          if (-not $?) { throw "Failed to start PostgreSQL" }
+      - name: Test Driver PostgreSQL
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_POSTGRESQL: "1"
+          ADBC_POSTGRESQL_TEST_URI: "postgresql://postgres:root@localhost:5432/postgres"
         run: .\ci\scripts\cpp_test.ps1 $pwd\build
 
   # ------------------------------------------------------------
