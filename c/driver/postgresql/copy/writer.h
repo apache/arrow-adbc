@@ -595,9 +595,10 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
     const int16_t sign = ArrowDecimalSign(decimal) > 0 ? kNumericPos : kNumericNeg;
     const bool is_negative = sign == kNumericNeg ? true : false;
     if (is_negative) {
-      buf[0] = ~buf[0] + 1;
-      for (size_t i = 1; i < nwords; i++) {
-        buf[i] = ~buf[i];
+      uint64_t carry = 1;
+      for (size_t i = 0; i < nwords; i++) {
+        buf[i] = ~buf[i] + carry;
+        carry = carry && buf[i] == 0;
       }
     }
 
