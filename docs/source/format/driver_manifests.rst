@@ -228,8 +228,8 @@ Below is an example of a driver manifest:
    unsupported = [] # list of strings such as 'async'
 
    [Driver]
-   entrypoint = 'AdbcDriverInit' # entrypoint to use if not using defaults of
-                                 # either AdbcDriverFooInit or AdbcDriverInit
+   entrypoint = 'AdbcDriverInit' # Optional. See [1].
+
    # You can provide just a single path
    # shared = '/path/to/libadbc_driver.so'
 
@@ -241,6 +241,8 @@ Below is an example of a driver manifest:
    osx_amd64 = '/path/to/libadbc_driver.dylib'
    windows_amd64 = 'C:\\path\\to\\adbc_driver.dll'
    # ... other platforms as needed
+
+.. [1] See :term:`entrypoint` for more information on entrypoints.
 
 In general, the only *required* key is the ``Driver.shared`` key, which must exist and must either be
 a string (single path) or a table of platform-specific paths.  The ``Driver.shared`` key is the only key
