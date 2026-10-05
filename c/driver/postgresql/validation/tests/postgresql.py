@@ -117,6 +117,7 @@ class PostgreSQLQuirks(model.DriverQuirks):
 
 
 class CedarDBQuirks(PostgreSQLQuirks):
+    name = "cedardb"
     vendor_version = re.compile(r"16[0-9]{4}")
     short_version = "16"
     setup = model.DriverSetup(
@@ -124,6 +125,10 @@ class CedarDBQuirks(PostgreSQLQuirks):
         connection={},
         statement={"adbc.postgresql.use_copy": "false"},
     )
+
+    @property
+    def field_metadata_prefix(self) -> str:
+        return "POSTGRESQL"
 
     @property
     def queries_paths(self) -> tuple[Path, ...]:

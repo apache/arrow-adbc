@@ -21,6 +21,11 @@ import pytest
 from . import postgresql
 
 
+def pytest_generate_tests(metafunc) -> None:
+    vendor = metafunc.config.getoption("vendor")
+    return test_statement.generate_tests([postgresql.get_quirks(vendor)], metafunc)
+
+
 class TestStatement(test_statement.TestStatement):
     def test_rows_affected(self, driver, conn) -> None:
         if isinstance(driver, postgresql.CrateDBQuirks):
@@ -29,8 +34,3 @@ class TestStatement(test_statement.TestStatement):
                 "test provides no REFRESH TABLE hook"
             )
         super().test_rows_affected(driver, conn)
-
-
-def pytest_generate_tests(metafunc) -> None:
-    vendor = metafunc.config.getoption("vendor")
-    return test_statement.generate_tests([postgresql.get_quirks(vendor)], metafunc)
