@@ -141,20 +141,13 @@ Supported Features
 Named Parameters
 ----------------
 
-When binding by name, parameter names may include their ``:``, ``@``, or ``$``
-prefix, or omit it when the remaining name identifies a unique SQL parameter.
-For example, Python's ``cursor.execute("SELECT :a", {"a": 1})`` and
-``cursor.execute("SELECT :a", {":a": 1})`` are both supported.
-Exact prefixed names take precedence. If a query contains both ``:a`` and
-``@a``, an unprefixed ``a`` is ambiguous and must be replaced by the exact
-prefixed names.
-
-These rules differ from Python's standard library ``sqlite3`` module, which
-requires unprefixed dictionary keys, uses the same key for SQL parameters with
-different prefixes (for example, ``:a`` and ``@a``), and ignores extra keys.
-ADBC retains exact prefixed names and requires the number of supplied fields
-to match the number of SQLite parameter slots; each field must resolve to a
-different slot.
+When specifying bind parameters by name, the driver tries to match parameters
+to fields in the schema of the supplied bind parameters. The names may include
+the prefixes (``:``, ``@``, or ``$``), or omit the prefix if unambiguous. For
+example, in Python, both ``cursor.execute("SELECT :a", {"a": 1})`` and
+``cursor.execute("SELECT :a", {":a": 1})`` are acceptable, but
+``cursor.execute("SELECT :a, @a", {"a": 1})`` is not. (Note that this differs
+from Python's standard library sqlite3 module.)
 
 Bulk Ingestion
 --------------

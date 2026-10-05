@@ -1104,6 +1104,33 @@ TEST_F(SqliteReaderTest, BindByNameRejectsAmbiguousUnprefixedName) {
             InternalAdbcSqliteBinderBindNext(&binder, db, stmt, &finished, &error));
 }
 
+class SqliteUnnamedFieldTest : public SqliteReaderTest,
+                               public ::testing::WithParamInterface<int> {};
+
+TEST_P(SqliteUnnamedFieldTest, BindByNameRejectsUnnamedField) {
+  Handle<struct ArrowSchema> schema;
+  Handle<struct ArrowArray> batch;
+  ASSERT_THAT(adbc_validation::MakeSchema(&schema.value, {{"a", NANOARROW_TYPE_INT64},
+                                                          {"b", NANOARROW_TYPE_INT64}}),
+              IsOkErrno());
+  ASSERT_THAT(ArrowSchemaSetName(schema->children[GetParam()], nullptr), IsOkErrno());
+  ASSERT_THAT((adbc_validation::MakeBatch<int64_t, int64_t>(&schema.value, &batch.value,
+                                                            nullptr, {1}, {2})),
+              IsOkErrno());
+  ASSERT_NO_FATAL_FAILURE(Bind(&batch.value, &schema.value, true));
+  ASSERT_EQ(nullptr, binder.schema.children[GetParam()]->name);
+  ASSERT_EQ(SQLITE_OK, sqlite3_prepare_v2(db, "SELECT :a, @b", -1, &stmt, nullptr));
+  char finished = 0;
+  for (int attempt = 0; attempt < 2; attempt++) {
+    ASSERT_EQ(ADBC_STATUS_INVALID_ARGUMENT,
+              InternalAdbcSqliteBinderBindNext(&binder, db, stmt, &finished, &error));
+    ASSERT_THAT(error.message, ::testing::HasSubstr("has no name"));
+    ASSERT_EQ(0, binder.param_indices[0]);
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(FieldPositions, SqliteUnnamedFieldTest, ::testing::Values(0, 1));
+
 TEST_F(SqliteReaderTest, BindByNameKeepsExactPrefixPrecedence) {
   adbc_validation::StreamReader reader;
   Handle<struct ArrowSchema> schema;

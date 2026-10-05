@@ -340,6 +340,11 @@ AdbcStatusCode InternalAdbcSqliteBinderBindNext(struct AdbcSqliteBinder* binder,
   if (binder->param_indices != NULL && binder->param_indices[0] == 0) {
     // Lazy initialize since we have the statement now
     for (int i = 0; i < binder->schema.n_children; i++) {
+      if (binder->schema.children[i]->name == NULL) {
+        binder->param_indices[0] = 0;
+        InternalAdbcSetError(error, "parameter field %d has no name", i);
+        return ADBC_STATUS_INVALID_ARGUMENT;
+      }
       binder->param_indices[i] =
           sqlite3_bind_parameter_index(stmt, binder->schema.children[i]->name);
       if (binder->param_indices[i] == 0) {
