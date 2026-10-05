@@ -2381,10 +2381,14 @@ AdbcStatusCode AdbcStatementExecutePartitions(struct AdbcStatement* statement,
 ///   driver.
 ///
 /// Although drivers may choose any name for this function, it's recommended
-/// that drivers use the name "AdbcDriverInit" for maximum compatibility.
-/// Further, it's recommended to also export an alias for this function using a
-/// name derived from the name of the driver's shared library. This aliasing
-/// makes it easier to statically link multiple drivers into the same program.
+/// that drivers always export a function of this type with the name
+/// "AdbcDriverInit" for maximum compatibility.
+///
+/// Further, it's recommended that drivers also export an aliased or duplicated
+/// entrypoint following a convention based on the filename of the driver shared
+/// libraries. This aliasing makes it easier to statically link multiple drivers
+/// into the same program.
+///
 /// The process for naming this alias is as follows: remove the 'lib' prefix (on
 /// Unix systems) and all file extensions, then PascalCase the driver name,
 /// append Init, and prepend Adbc (if not already there).  For example:
@@ -2392,6 +2396,12 @@ AdbcStatusCode AdbcStatementExecutePartitions(struct AdbcStatement* statement,
 /// - libadbc_driver_sqlite.so.2.0.0 -> AdbcDriverSqliteInit
 /// - adbc_driver_sqlite.dll -> AdbcDriverSqliteInit
 /// - proprietary_driver.dll -> AdbcProprietaryDriverInit
+///
+/// As examples, the SQLite and PostgreSQL drivers export the following
+/// entrypoint functions:
+///
+/// - SQLite: AdbcDriverInit, AdbcDriverSqliteInit
+/// - PostgreSQL: AdbcDriverInit, AdbcDriverPostgresqlInit
 ///
 /// \param[in] version The ADBC revision to attempt to initialize (see
 ///   ADBC_VERSION_1_0_0).
