@@ -141,6 +141,11 @@ except ImportError:
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
+if (baseurl := os.environ.get("ADBC_BASEURL")) is not None:
+    # This causes Sphinx to generate <link rel=canonical> tags for search
+    # engines. We only want this for tagged releases.
+    html_baseurl = baseurl
+
 html_css_files = [
     "css/custom.css",
     "fontawesome/css/all.min.css",
