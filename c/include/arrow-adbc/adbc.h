@@ -2387,7 +2387,7 @@ AdbcStatusCode AdbcStatementExecutePartitions(struct AdbcStatement* statement,
 /// This lets applications statically link multiple drivers without name
 /// collisions.
 ///
-/// Derive the driver-specific name from the shared library filename:
+/// Derive the driver-specific name from the shared library filename as follows:
 /// remove the 'lib' prefix (on Unix systems) and all file extensions,
 /// convert the remaining name to PascalCase, append Init, and prepend Adbc
 /// if the name does not already start with it. For example:
