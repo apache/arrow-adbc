@@ -299,6 +299,22 @@ being read or written.
                 overflow/underflow; an error will be returned if this would be
                 the case.
 
+Result Field Metadata
+~~~~~~~~~~~~~~~~~~~~~
+
+The driver attaches the following PostgreSQL metadata to Arrow result fields:
+
+``POSTGRESQL:type``
+    The PostgreSQL type name, such as ``int4`` or ``numeric``.
+
+``POSTGRESQL:typmod``
+    The type modifier for a top-level numeric column, returned by
+    `PQfmod <https://www.postgresql.org/docs/18/libpq-exec.html#LIBPQ-PQFMOD>`_,
+    as a signed decimal string.  Encodes precision and scale using
+    PostgreSQL's `numeric typmod encoding
+    <https://github.com/postgres/postgres/blob/REL_18_0/src/backend/utils/adt/numeric.c#L891-L947>`_.
+    Value is ``-1`` if no modifier is available.
+
 Unknown Types
 ~~~~~~~~~~~~~
 
