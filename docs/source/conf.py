@@ -148,8 +148,6 @@ html_css_files = [
 html_static_path = ["_static"]
 html_theme = "furo"
 html_theme_options = {
-    "dark_logo": "logo-dark.png",
-    "light_logo": "logo-light.png",
     "source_repository": "https://github.com/apache/arrow-adbc/",
     "source_branch": "main",
     "source_directory": "docs/source/",

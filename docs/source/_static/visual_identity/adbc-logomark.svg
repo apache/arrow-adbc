@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg width="100%" height="100%" viewBox="0 0 100 127.5" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xml:space="preserve" style="fill-rule:evenodd;clip-rule:evenodd;stroke-linejoin:round;stroke-miterlimit:2;">
+    <path d="M0,37.5L50,75L100,37.5L100,45L85,56.25L90,60L85,63.75L80,60L70,67.5L75,71.25L70,75L65,71.25L50,82.5L35,71.25L30,75L25,71.25L30,67.5L20,60L15,63.75L10,60L15,56.25L0,45Z"/>
+    <path d="M0,60L50,97.5L100,60L100,67.5L85,78.75L90,82.5L85,86.25L80,82.5L50,105L20,82.5L15,86.25L10,82.5L15,78.75L0,67.5Z"/>
+    <path d="M0,82.5L50,120L100,82.5L100,90L50,127.5L0,90Z"/>
+    <path d="M10,37.5L50,7.5L90,37.5L85,41.25L50,15L15,41.25Z"/>
+    <path d="M25,48.75L50,30L75,48.75L70,52.5L50,37.5L30,52.5Z"/>
+    <path d="M40,60L50,52.5L60,60L55,63.75L50,60L45,63.75Z"/>
+</svg>
