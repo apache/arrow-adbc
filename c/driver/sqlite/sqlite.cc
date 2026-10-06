@@ -40,30 +40,28 @@
 #endif
 #endif
 
-// Account for old versions of SQLite and macOS annoyances
 #if SQLITE_VERSION_NUMBER < 3037000
-#define POLYFILL_SQLITE_CHANGES
-#elif defined(HAVE_BUILTIN_AVAILABLE)
-#if !__builtin_available(macOS 12.3, *)
-#define POLYFILL_SQLITE_CHANGES
-#endif
-#endif  // SQLITE_VERSION_NUMBER < 3037000
-
-#if SQLITE_VERSION_NUMBER < 3034000
-#define SQLITE_NO_TXN_STATE
-#elif defined(HAVE_BUILTIN_AVAILABLE)
-#if !__builtin_available(macOS 12.0, *)
-#define SQLITE_NO_TXN_STATE
-#endif
-#endif
-
-#if defined(POLYFILL_SQLITE_CHANGES)
 // Polyfill for older versions
 sqlite3_int64 polyfill_total_changes64(sqlite3* db) {
   return static_cast<sqlite3_int64>(sqlite3_total_changes(db));
 }
 
 sqlite3_int64 polyfill_changes64(sqlite3* db) {
+  return static_cast<sqlite3_int64>(sqlite3_changes(db));
+}
+#elif defined(HAVE_BUILTIN_AVAILABLE)
+// Must branch at runtime for macOS
+sqlite3_int64 polyfill_total_changes64(sqlite3* db) {
+  if (__builtin_available(macOS 12.3, *)) {
+    return sqlite3_total_changes64(db);
+  }
+  return static_cast<sqlite3_int64>(sqlite3_total_changes(db));
+}
+
+sqlite3_int64 polyfill_changes64(sqlite3* db) {
+  if (__builtin_available(macOS 12.3, *)) {
+    return sqlite3_changes64(db);
+  }
   return static_cast<sqlite3_int64>(sqlite3_changes(db));
 }
 #else
@@ -782,7 +780,13 @@ class SqliteConnection : public driver::Connection<SqliteConnection> {
       return driver::Option(
           static_cast<int64_t>(batch_size_.value_or(kDefaultBatchSize)));
     } else if (key == kOptionTxnState) {
-#if defined(SQLITE_NO_TXN_STATE)
+#if SQLITE_VERSION_NUMBER < 3034000
+      return status::NotImplemented(
+          "this version of SQLite does not support sqlite3_txn_state");
+#elif defined(HAVE_BUILTIN_AVAILABLE)
+      if (__builtin_available(macOS 12.0, *)) {
+        return driver::Option(static_cast<int64_t>(sqlite3_txn_state(conn_, nullptr)));
+      }
       return status::NotImplemented(
           "this version of SQLite does not support sqlite3_txn_state");
 #else
