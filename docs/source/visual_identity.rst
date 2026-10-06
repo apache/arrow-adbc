@@ -38,9 +38,11 @@ The logomark, on the left, combines two familiar pictures of data:
   <https://arrow.apache.org/visual_identity/>`_.
 
 It is a stack of three square rings seen from above. Through the rings, their
-back walls form three chevrons pointing up; below them, their front walls form
-three chevrons pointing down. Data moves both ways through ADBC: it is fetched
-from databases and ingested into them.
+back walls form chevrons pointing up; below them, their front walls form three
+chevrons pointing down. The top ring's front walls line up exactly with the
+bottom ring's back walls, so in the middle the two directions cross in an X.
+Data moves both ways through ADBC: it is fetched from databases and ingested
+into them.
 
 Variants
 ========
@@ -66,8 +68,8 @@ Variants
          .. raw:: html
             :file: _templates/visual_identity/adbc-logomark-currentcolor.svg
 
-      The mark on its own, in 3:4 dimetric projection. Use it wherever the
-      name appears nearby or isn't needed.
+      The mark on its own, in isometric projection. Use it wherever the name
+      appears nearby or isn't needed.
 
    .. grid-item-card:: Hex badge
 
@@ -76,8 +78,8 @@ Variants
          .. raw:: html
             :file: _templates/visual_identity/adbc-hex-badge-currentcolor.svg
 
-      For hexagonal badges and stickers. The mark is redrawn in isometric
-      projection to fit the hexagon.
+      For hexagonal badges and stickers: the logomark in a hexagon, with
+      "ADBC" and the project's URL cut out of the bottom ring's front walls.
 
    .. grid-item-card:: Sticker
 
@@ -93,28 +95,33 @@ Variants
 Construction
 ============
 
-Every edge lies on a grid derived from the logomark, so each variant can be
+Every variant is built on the logomark's isometric grid, so each can be
 redrawn exactly.
 
 Logomark
 --------
 
-- **Projection:** 3:4 dimetric. Edges rise 3 for every 4 across, a 3-4-5
-  triangle, for a view from arcsin(3/4) ≈ 48.59° above the horizon.
-- **Rings:** each is 10 × 10 cells with an 8 × 8 hole, leaving a rim of 1
-  cell all round.
-- **Layers:** walls are 1 cell tall and gaps 2, so the layers repeat every 3
+- **Projection:** isometric, a view from arcsin(1/√3) ≈ 35.26° above the
+  horizon. Edges run at 30°, parallel to a regular hexagon's sides, and every
+  angle is 60° or 120°.
+- **Grid:** equilateral triangles, with lines in three directions. A cell is
+  two triangles.
+- **Rings:** each is 11 × 11 cells with a 9 × 9 hole, leaving a rim of 1 cell
+  all round.
+- **Layers:** walls are 2 cells tall and gaps 3, so the layers repeat every 5
   cells.
-- **Weight:** rim and wall are both 1 cell, so every band, black or white, is
-  equally thick.
-- **Rhythm:** straight down the middle, rim, wall and space repeat 1:1:1 for
-  17 cells.
-- **Notches:** gaps are twice the rim, so each tab showing through the side
-  notches is exactly 1 cell.
+- **The X:** a ring is 11 cells wide, its rim plus two layer repeats
+  (1 + 5 + 5), so the top layer's front walls fall on the same grid lines as
+  the bottom layer's back walls. Each pair reads as one straight band, and the
+  two bands cross.
+- **Rhythm:** straight down the middle, rim 1, wall 2 and space 2 repeat every
+  5 cells for 23 cells. Every wall, front or back, falls on this beat.
+- **Notches:** each gap is a rim plus a wall (3 = 1 + 2), so each tab showing
+  through the side notches is 2 × 2 cells, the same as the X's crossing.
 
 .. card::
 
-   .. image:: _static/visual_identity/adbc-logomark-dimetric-construction-grid.svg
+   .. image:: _static/visual_identity/adbc-logomark-isometric-construction-grid.svg
       :alt: Construction grid for the logomark
       :width: 100%
 
@@ -122,13 +129,13 @@ Horizontal lockup
 -----------------
 
 - **Grid:** the logomark's cells, with rows counted down from the mark's top
-  corner.
-- **Type:** "ADBC" caps are 6 cells tall and "APACHE ARROW" caps 2, the same
-  3:1 ratio as ARROW to APACHE in the Apache Arrow wordmark.
+  corner. The mark's side corners sit 5½ rows down, so its side walls fall on
+  half rows.
+- **Type:** "ADBC" caps are 10 cells tall and "APACHE ARROW" caps 3⅓, the
+  same 3:1 ratio as ARROW to APACHE in the Apache Arrow wordmark.
 - **Placement:** "APACHE ARROW" sits on the top of the first layer's side
-  wall. One cell below, "ADBC" runs from that wall's bottom to the bottom of
-  the last layer's wall, centred on the mark as ARROW is on the Arrow
-  chevrons.
+  wall. One wall below, "ADBC" runs from that wall's bottom to the bottom of
+  the last layer's side wall.
 - **Width:** at 3:1 both lines come out the same width, so the name is flush
   left and right with normal letter spacing.
 - **Spacing:** the name sits 2 cells from the mark.
@@ -142,17 +149,18 @@ Horizontal lockup
 Hex badge
 ---------
 
-- **Projection:** isometric, a view from arcsin(1/√3) ≈ 35.26° above the
-  horizon. Edges run at 30°, parallel to a regular hexagon's sides, and every
-  angle is 60° or 120°.
-- **Grid:** equilateral triangles, with lines in three directions. The mark
-  keeps the logomark's cell counts.
-- **Hexagon:** centred on the mark, with every side on a grid line: 3 lines
-  clear at the sides and 5 at the top and bottom. Its outline is 1 line thick,
-  like the walls.
-- **Type:** set on the half grid, hanging half a cell below the bottom layer.
-  "ADBC" has caps 1 cell tall and starts at the mark's left edge; the URL has
-  an x-height of half a cell and ends at its right edge.
+- **Grid:** the logomark's own. The mark is the logomark, unchanged except
+  for the type cut out of it.
+- **Hexagon:** regular, and centred on the whole stack, its top face
+  included. It clears the top face and the bottom walls by 3 grid lines, a
+  gap, and the side walls by 3½, so its vertical sides fall on the half grid.
+  Its outline is 2 lines thick, like the walls.
+- **Beat:** the hexagon's lower sides sit where a fourth layer's front walls
+  would be, and its upper sides mirror them, a gap above the top face.
+- **Type:** cut out of the bottom layer's front walls, so the badge stays one
+  color. Each line is centred on its wall and starts half a cell from the
+  wall's end. "ADBC" has caps 1 cell tall, half a wall; the URL has an
+  x-height of half a cell.
 
 .. card::
 
@@ -163,32 +171,15 @@ Hex badge
 Usage
 =====
 
-- Use the dimetric logomark everywhere except the hex badge. The isometric
-  version is approved for the badge only.
-- Don't put the dimetric logomark in a regular hexagon. Its 37° edges can't
-  run parallel to the hexagon's 30° sides, so the gaps between them taper.
+- Use the same isometric logomark in every variant, and don't redraw it at
+  another angle. Its 30° edges are what let it sit evenly in the hex badge's
+  hexagon and inside the sticker's cut.
 - For stickers, use the supplied die-cut file. A sticker maker's automatic
   outline decides the cut's angles and joins for itself; the approved cut runs
-  parallel to the chevrons and places each join deliberately.
+  parallel to the walls and places each join deliberately.
 
 .. grid:: 1 2 2 2
    :gutter: 3
-
-   .. grid-item-card:: Do
-
-      .. image:: _static/visual_identity/adbc-hex-badge-do.png
-         :alt: The approved hex badge, with notes showing that the gaps
-               between the logo and the hexagon stay even
-         :width: 100%
-         :align: center
-
-   .. grid-item-card:: Don't
-
-      .. image:: _static/visual_identity/adbc-hex-badge-dont.png
-         :alt: The dimetric logomark inside a regular hexagon, crossed out,
-               with notes showing that the gaps between them taper
-         :width: 100%
-         :align: center
 
    .. grid-item-card:: Do
 
@@ -233,8 +224,8 @@ surrounding text.
    * - Sticker print file
      - `SVG <_static/visual_identity/adbc-lockup-horizontal-sticker.svg>`__
    * - Logomark construction grid
-     - `SVG <_static/visual_identity/adbc-logomark-dimetric-construction-grid.svg>`__,
-       `PNG <_static/visual_identity/adbc-logomark-dimetric-construction-grid.png>`__
+     - `SVG <_static/visual_identity/adbc-logomark-isometric-construction-grid.svg>`__,
+       `PNG <_static/visual_identity/adbc-logomark-isometric-construction-grid.png>`__
    * - Horizontal lockup construction grid
      - `SVG <_static/visual_identity/adbc-lockup-horizontal-construction-grid.svg>`__,
        `PNG <_static/visual_identity/adbc-lockup-horizontal-construction-grid.png>`__
