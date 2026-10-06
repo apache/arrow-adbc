@@ -93,17 +93,21 @@
 // According to the ADBC specification, objects allow serialized access from
 // multiple threads: one thread may make a call, and once finished, another
 // thread may make a call. They do not allow concurrent access from multiple
-// threads.
+// threads, except that cancellation must be able to overlap ordinary calls.
 //
-// In order to implement these semantics, all mutable FFI objects are wrapped
-// in `Mutex`es. `FFI_Driver` is not wrapped in a `Mutex` because it is
-// an immutable struct of function pointers. Wrapping the driver in a `Mutex`
-// would prevent any parallelism between driver calls, which is not desirable.
+// Databases use a `Mutex`. Connections and statements use `NativeHandle` to
+// serialize ordinary calls while allowing cancellation through raw pointers.
+// Their shared inner objects release the native handles only after all calls
+// (including cancellation) have relinquished their strong references.
+// `FFI_Driver` is not wrapped in a `Mutex` because it is an immutable struct
+// of function pointers. Wrapping the driver in a `Mutex` would prevent any
+// parallelism between driver calls, which is not desirable.
 
 pub mod error;
 pub mod profile;
 pub mod search;
 
+use std::cell::UnsafeCell;
 use std::collections::HashSet;
 use std::ffi::{CString, OsStr};
 use std::ops::DerefMut;
@@ -111,11 +115,11 @@ use std::os::raw::c_char;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::ptr::{null, null_mut};
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, LockResult, Mutex, MutexGuard};
 
 use adbc_ffi::options::{
-    check_status, get_option_bytes, get_option_string, set_option_connection, set_option_database,
-    set_option_statement,
+    check_status, get_option_bytes, get_option_string, set_option_connection,
+    set_option_connection_raw, set_option_database, set_option_statement_raw,
 };
 use arrow_array::ffi::{FFI_ArrowSchema, to_ffi};
 use arrow_array::ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream};
@@ -758,7 +762,7 @@ impl Database for ManagedDatabase {
         // Initialize the connection.
         let connection = self.connection_init(connection)?;
         let inner = ManagedConnectionInner {
-            connection: Mutex::new(connection),
+            connection: NativeHandle::new(connection),
             database: self.inner.clone(),
         };
         Ok(Self::ConnectionType {
@@ -782,7 +786,7 @@ impl Database for ManagedDatabase {
         // Initialize the connection.
         let connection = self.connection_init(connection)?;
         let inner = ManagedConnectionInner {
-            connection: Mutex::new(connection),
+            connection: NativeHandle::new(connection),
             database: self.inner.clone(),
         };
         Ok(Self::ConnectionType {
@@ -791,19 +795,52 @@ impl Database for ManagedDatabase {
     }
 }
 
+// Wrap a native handle with a mutex and an UnsafeCell. We need shared access
+// to the native handle for cancellation, so just a mutex isn't sufficient.
+struct NativeHandle<T> {
+    value: UnsafeCell<T>,
+    mu: Mutex<()>,
+}
+
+// SAFETY: Used only for connection and statement FFI handles. Ordinary access is
+// serialized by operation, and the only overlapping calls are cancellation,
+// which the driver must make thread-safe under the ADBC contract. Raw pointers
+// avoid creating aliased Rust references. The enclosing Arc keeps the handle,
+// its parents, and the driver library alive until all calls finish. Release runs
+// only in the enclosing inner object's Drop, with no concurrent access.
+unsafe impl<T: Send> Sync for NativeHandle<T> {}
+
+impl<T> NativeHandle<T> {
+    fn new(value: T) -> Self {
+        Self {
+            value: UnsafeCell::new(value),
+            mu: Mutex::new(()),
+        }
+    }
+
+    fn lock(&self) -> LockResult<MutexGuard<'_, ()>> {
+        self.mu.lock()
+    }
+
+    fn get(&self) -> *mut T {
+        self.value.get()
+    }
+}
+
 struct ManagedConnectionInner {
-    connection: Mutex<adbc_ffi::FFI_AdbcConnection>,
+    connection: NativeHandle<adbc_ffi::FFI_AdbcConnection>,
     database: Arc<ManagedDatabaseInner>,
 }
 
 impl Drop for ManagedConnectionInner {
     fn drop(&mut self) {
         let driver = &self.database.driver.driver;
-        if let Ok(mut connection) = self.connection.lock() {
+        if !self.connection.mu.is_poisoned() {
+            let connection = self.connection.get();
             let method = driver_method!(driver, ConnectionRelease);
             // TODO(alexandreyc): how should we handle `ConnectionRelease` failing?
             // See: https://github.com/apache/arrow-adbc/pull/1742#discussion_r1574388409
-            unsafe { method(connection.deref_mut(), null_mut()) };
+            unsafe { method(connection, null_mut()) };
         }
         // We could still drop here but if the lock is poisoned, we have no
         // clue what the status is. Since a panic comes from Rust code,
@@ -832,15 +869,17 @@ impl adbc_core::CancelHandle for ConnectionCancelHandle {
                 ));
             }
             let driver = &inner.database.driver.driver;
-            let mut connection = inner.connection.lock().map_err(|e| {
-                Error::with_message_and_status(
-                    format!("[Driver Manager] connection is poisoned: {e:?}"),
-                    Status::Internal,
-                )
-            })?;
+            let Some(method) = driver.ConnectionCancel else {
+                return Err(Error::with_message_and_status(
+                    "[Driver Manager] ConnectionCancel not supported by driver",
+                    Status::NotImplemented,
+                ));
+            };
+            let connection = inner.connection.get();
             let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
-            let method = driver_method!(driver, ConnectionCancel);
-            let status = unsafe { method(connection.deref_mut(), &mut error) };
+            // SAFETY: The upgraded Arc prevents release; ADBC requires cancellation
+            // to be thread-safe, including when an ordinary operation is running.
+            let status = unsafe { method(connection, &mut error) };
             check_status(status, error)
         } else {
             Ok(())
@@ -863,18 +902,19 @@ impl Optionable for ManagedConnection {
 
     fn get_option_bytes(&self, key: Self::Option) -> Result<Vec<u8>> {
         let driver = self.ffi_driver();
-        let mut connection = self.inner.connection.lock().map_err(|e| {
+        let _guard = self.inner.connection.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] connection is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
+        let connection = self.inner.connection.get();
         let method = driver_method!(driver, ConnectionGetOptionBytes);
         let populate = |key: *const c_char,
                         value: *mut u8,
                         length: *mut usize,
                         error: *mut adbc_ffi::FFI_AdbcError| unsafe {
-            method(connection.deref_mut(), key, value, length, error)
+            method(connection, key, value, length, error)
         };
         get_option_bytes(key, populate, driver)
     }
@@ -883,16 +923,16 @@ impl Optionable for ManagedConnection {
         let key = CString::new(key.as_ref())?;
         let mut value: f64 = f64::default();
         let driver = self.ffi_driver();
-        let mut connection = self.inner.connection.lock().map_err(|e| {
+        let _guard = self.inner.connection.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] connection is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
+        let connection = self.inner.connection.get();
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionGetOptionDouble);
-        let status =
-            unsafe { method(connection.deref_mut(), key.as_ptr(), &mut value, &mut error) };
+        let status = unsafe { method(connection, key.as_ptr(), &mut value, &mut error) };
         check_status(status, error)?;
         Ok(value)
     }
@@ -901,53 +941,51 @@ impl Optionable for ManagedConnection {
         let key = CString::new(key.as_ref())?;
         let mut value: i64 = 0;
         let driver = self.ffi_driver();
-        let mut connection = self.inner.connection.lock().map_err(|e| {
+        let _guard = self.inner.connection.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] connection is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
+        let connection = self.inner.connection.get();
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionGetOptionInt);
-        let status =
-            unsafe { method(connection.deref_mut(), key.as_ptr(), &mut value, &mut error) };
+        let status = unsafe { method(connection, key.as_ptr(), &mut value, &mut error) };
         check_status(status, error)?;
         Ok(value)
     }
 
     fn get_option_string(&self, key: Self::Option) -> Result<String> {
         let driver = self.ffi_driver();
-        let mut connection = self.inner.connection.lock().map_err(|e| {
+        let _guard = self.inner.connection.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] connection is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
+        let connection = self.inner.connection.get();
         let method = driver_method!(driver, ConnectionGetOption);
         let populate = |key: *const c_char,
                         value: *mut c_char,
                         length: *mut usize,
                         error: *mut adbc_ffi::FFI_AdbcError| unsafe {
-            method(connection.deref_mut(), key, value, length, error)
+            method(connection, key, value, length, error)
         };
         get_option_string(key, populate, driver)
     }
 
     fn set_option(&mut self, key: Self::Option, value: OptionValue) -> Result<()> {
         let driver = self.ffi_driver();
-        let mut connection = self.inner.connection.lock().map_err(|e| {
+        let _guard = self.inner.connection.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] connection is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
-        set_option_connection(
-            driver,
-            connection.deref_mut(),
-            self.driver_version(),
-            key,
-            value,
-        )
+        let connection = self.inner.connection.get();
+        // SAFETY: The operation guard serializes ordinary calls; the owning Arc
+        // keeps the handle alive. Only driver-supported cancellation can overlap.
+        unsafe { set_option_connection_raw(driver, connection, self.driver_version(), key, value) }
     }
 }
 
@@ -956,20 +994,21 @@ impl Connection for ManagedConnection {
 
     fn new_statement(&mut self) -> Result<Self::StatementType> {
         let driver = self.ffi_driver();
-        let mut connection = self.inner.connection.lock().map_err(|e| {
+        let _guard = self.inner.connection.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] connection is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
+        let connection = self.inner.connection.get();
         let mut statement = adbc_ffi::FFI_AdbcStatement::default();
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementNew);
-        let status = unsafe { method(connection.deref_mut(), &mut statement, &mut error) };
+        let status = unsafe { method(connection, &mut statement, &mut error) };
         check_status(status, error)?;
 
         let inner = Arc::new(ManagedStatementInner {
-            statement: Mutex::new(statement),
+            statement: NativeHandle::new(statement),
             connection: self.inner.clone(),
         });
 
@@ -984,29 +1023,31 @@ impl Connection for ManagedConnection {
 
     fn commit(&mut self) -> Result<()> {
         let driver = self.ffi_driver();
-        let mut connection = self.inner.connection.lock().map_err(|e| {
+        let _guard = self.inner.connection.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] connection is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
+        let connection = self.inner.connection.get();
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionCommit);
-        let status = unsafe { method(connection.deref_mut(), &mut error) };
+        let status = unsafe { method(connection, &mut error) };
         check_status(status, error)
     }
 
     fn rollback(&mut self) -> Result<()> {
         let driver = self.ffi_driver();
-        let mut connection = self.inner.connection.lock().map_err(|e| {
+        let _guard = self.inner.connection.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] connection is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
+        let connection = self.inner.connection.get();
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionRollback);
-        let status = unsafe { method(connection.deref_mut(), &mut error) };
+        let status = unsafe { method(connection, &mut error) };
         check_status(status, error)
     }
 
@@ -1022,23 +1063,16 @@ impl Connection for ManagedConnection {
             .map(|c| (c.as_ptr(), c.len()))
             .unwrap_or((null(), 0));
         let driver = self.ffi_driver();
-        let mut connection = self.inner.connection.lock().map_err(|e| {
+        let _guard = self.inner.connection.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] connection is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
+        let connection = self.inner.connection.get();
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionGetInfo);
-        let status = unsafe {
-            method(
-                connection.deref_mut(),
-                codes_ptr,
-                codes_len,
-                &mut stream,
-                &mut error,
-            )
-        };
+        let status = unsafe { method(connection, codes_ptr, codes_len, &mut stream, &mut error) };
         check_status(status, error)?;
         let reader = ArrowArrayStreamReader::try_new(stream)?;
         Ok(Box::new(reader))
@@ -1083,19 +1117,20 @@ impl Connection for ManagedConnection {
         };
 
         let driver = self.ffi_driver();
-        let mut connection = self.inner.connection.lock().map_err(|e| {
+        let _guard = self.inner.connection.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] connection is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
+        let connection = self.inner.connection.get();
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionGetObjects);
         let mut stream = FFI_ArrowArrayStream::empty();
 
         let status = unsafe {
             method(
-                connection.deref_mut(),
+                connection,
                 depth.into(),
                 catalog_ptr,
                 db_schema_ptr,
@@ -1136,17 +1171,18 @@ impl Connection for ManagedConnection {
 
         let mut stream = FFI_ArrowArrayStream::empty();
         let driver = self.ffi_driver();
-        let mut connection = self.inner.connection.lock().map_err(|e| {
+        let _guard = self.inner.connection.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] connection is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
+        let connection = self.inner.connection.get();
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionGetStatistics);
         let status = unsafe {
             method(
-                connection.deref_mut(),
+                connection,
                 catalog_ptr,
                 db_schema_ptr,
                 table_name_ptr,
@@ -1169,15 +1205,16 @@ impl Connection for ManagedConnection {
         }
         let mut stream = FFI_ArrowArrayStream::empty();
         let driver = self.ffi_driver();
-        let mut connection = self.inner.connection.lock().map_err(|e| {
+        let _guard = self.inner.connection.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] connection is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
+        let connection = self.inner.connection.get();
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionGetStatisticNames);
-        let status = unsafe { method(connection.deref_mut(), &mut stream, &mut error) };
+        let status = unsafe { method(connection, &mut stream, &mut error) };
         check_status(status, error)?;
         let reader = ArrowArrayStreamReader::try_new(stream)?;
         Ok(Box::new(reader))
@@ -1199,17 +1236,18 @@ impl Connection for ManagedConnection {
 
         let mut schema = FFI_ArrowSchema::empty();
         let driver = self.ffi_driver();
-        let mut connection = self.inner.connection.lock().map_err(|e| {
+        let _guard = self.inner.connection.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] connection is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
+        let connection = self.inner.connection.get();
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionGetTableSchema);
         let status = unsafe {
             method(
-                connection.deref_mut(),
+                connection,
                 catalog_ptr,
                 db_schema_ptr,
                 table_name_ptr,
@@ -1224,15 +1262,16 @@ impl Connection for ManagedConnection {
     fn get_table_types(&self) -> Result<Box<dyn RecordBatchReader + Send + 'static>> {
         let mut stream = FFI_ArrowArrayStream::empty();
         let driver = self.ffi_driver();
-        let mut connection = self.inner.connection.lock().map_err(|e| {
+        let _guard = self.inner.connection.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] connection is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
+        let connection = self.inner.connection.get();
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionGetTableTypes);
-        let status = unsafe { method(connection.deref_mut(), &mut stream, &mut error) };
+        let status = unsafe { method(connection, &mut stream, &mut error) };
         check_status(status, error)?;
         let reader = ArrowArrayStreamReader::try_new(stream)?;
         Ok(Box::new(reader))
@@ -1244,18 +1283,19 @@ impl Connection for ManagedConnection {
     ) -> Result<Box<dyn RecordBatchReader + Send + 'static>> {
         let mut stream = FFI_ArrowArrayStream::empty();
         let driver = self.ffi_driver();
-        let mut connection = self.inner.connection.lock().map_err(|e| {
+        let _guard = self.inner.connection.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] connection is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
+        let connection = self.inner.connection.get();
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, ConnectionReadPartition);
         let partition = partition.as_ref();
         let status = unsafe {
             method(
-                connection.deref_mut(),
+                connection,
                 partition.as_ptr(),
                 partition.len(),
                 &mut stream,
@@ -1269,7 +1309,7 @@ impl Connection for ManagedConnection {
 }
 
 struct ManagedStatementInner {
-    statement: Mutex<adbc_ffi::FFI_AdbcStatement>,
+    statement: NativeHandle<adbc_ffi::FFI_AdbcStatement>,
     connection: Arc<ManagedConnectionInner>,
 }
 /// Implementation of [Statement].
@@ -1302,15 +1342,17 @@ impl adbc_core::CancelHandle for StatementCancelHandle {
                 ));
             }
             let driver = &inner.connection.database.driver.driver;
-            let mut statement = inner.statement.lock().map_err(|e| {
-                Error::with_message_and_status(
-                    format!("[Driver Manager] statement is poisoned: {e:?}"),
-                    Status::Internal,
-                )
-            })?;
+            let Some(method) = driver.StatementCancel else {
+                return Err(Error::with_message_and_status(
+                    "[Driver Manager] StatementCancel not supported by driver",
+                    Status::NotImplemented,
+                ));
+            };
+            let statement = inner.statement.get();
             let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
-            let method = driver_method!(driver, StatementCancel);
-            let status = unsafe { method(statement.deref_mut(), &mut error) };
+            // SAFETY: The upgraded Arc prevents release; ADBC requires cancellation
+            // to be thread-safe, including when an ordinary operation is running.
+            let status = unsafe { method(statement, &mut error) };
             check_status(status, error)
         } else {
             Ok(())
@@ -1321,33 +1363,35 @@ impl adbc_core::CancelHandle for StatementCancelHandle {
 impl Statement for ManagedStatement {
     fn bind(&mut self, batch: RecordBatch) -> Result<()> {
         let driver = self.ffi_driver();
-        let mut statement = self.inner.statement.lock().map_err(|e| {
+        let _guard = self.inner.statement.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] statement is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
+        let statement = self.inner.statement.get();
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementBind);
         let batch: StructArray = batch.into();
         let (mut array, mut schema) = to_ffi(&batch.to_data())?;
-        let status = unsafe { method(statement.deref_mut(), &mut array, &mut schema, &mut error) };
+        let status = unsafe { method(statement, &mut array, &mut schema, &mut error) };
         check_status(status, error)?;
         Ok(())
     }
 
     fn bind_stream(&mut self, reader: Box<dyn RecordBatchReader + Send>) -> Result<()> {
         let driver = self.ffi_driver();
-        let mut statement = self.inner.statement.lock().map_err(|e| {
+        let _guard = self.inner.statement.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] statement is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
+        let statement = self.inner.statement.get();
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementBindStream);
         let mut stream = FFI_ArrowArrayStream::new(reader);
-        let status = unsafe { method(statement.deref_mut(), &mut stream, &mut error) };
+        let status = unsafe { method(statement, &mut stream, &mut error) };
         check_status(status, error)?;
         Ok(())
     }
@@ -1360,16 +1404,17 @@ impl Statement for ManagedStatement {
 
     fn execute(&mut self) -> Result<Box<dyn RecordBatchReader + Send + 'static>> {
         let driver = self.ffi_driver();
-        let mut statement = self.inner.statement.lock().map_err(|e| {
+        let _guard = self.inner.statement.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] statement is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
+        let statement = self.inner.statement.get();
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementExecuteQuery);
         let mut stream = FFI_ArrowArrayStream::empty();
-        let status = unsafe { method(statement.deref_mut(), &mut stream, null_mut(), &mut error) };
+        let status = unsafe { method(statement, &mut stream, null_mut(), &mut error) };
         check_status(status, error)?;
         let reader = ArrowArrayStreamReader::try_new(stream)?;
         Ok(Box::new(reader))
@@ -1377,51 +1422,47 @@ impl Statement for ManagedStatement {
 
     fn execute_schema(&mut self) -> Result<arrow_schema::Schema> {
         let driver = self.ffi_driver();
-        let mut statement = self.inner.statement.lock().map_err(|e| {
+        let _guard = self.inner.statement.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] statement is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
+        let statement = self.inner.statement.get();
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementExecuteSchema);
         let mut schema = FFI_ArrowSchema::empty();
-        let status = unsafe { method(statement.deref_mut(), &mut schema, &mut error) };
+        let status = unsafe { method(statement, &mut schema, &mut error) };
         check_status(status, error)?;
         Ok((&schema).try_into()?)
     }
 
     fn execute_update(&mut self) -> Result<Option<i64>> {
         let driver = self.ffi_driver();
-        let mut statement = self.inner.statement.lock().map_err(|e| {
+        let _guard = self.inner.statement.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] statement is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
+        let statement = self.inner.statement.get();
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementExecuteQuery);
         let mut rows_affected: i64 = -1;
-        let status = unsafe {
-            method(
-                statement.deref_mut(),
-                null_mut(),
-                &mut rows_affected,
-                &mut error,
-            )
-        };
+        let status = unsafe { method(statement, null_mut(), &mut rows_affected, &mut error) };
         check_status(status, error)?;
         Ok((rows_affected != -1).then_some(rows_affected))
     }
 
     fn execute_partitions(&mut self) -> Result<PartitionedResult> {
         let driver = self.ffi_driver();
-        let mut statement = self.inner.statement.lock().map_err(|e| {
+        let _guard = self.inner.statement.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] statement is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
+        let statement = self.inner.statement.get();
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementExecutePartitions);
         let mut schema = FFI_ArrowSchema::empty();
@@ -1429,7 +1470,7 @@ impl Statement for ManagedStatement {
         let mut rows_affected: i64 = -1;
         let status = unsafe {
             method(
-                statement.deref_mut(),
+                statement,
                 &mut schema,
                 &mut partitions,
                 &mut rows_affected,
@@ -1449,31 +1490,33 @@ impl Statement for ManagedStatement {
 
     fn get_parameter_schema(&self) -> Result<arrow_schema::Schema> {
         let driver = self.ffi_driver();
-        let mut statement = self.inner.statement.lock().map_err(|e| {
+        let _guard = self.inner.statement.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] statement is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
+        let statement = self.inner.statement.get();
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementGetParameterSchema);
         let mut schema = FFI_ArrowSchema::empty();
-        let status = unsafe { method(statement.deref_mut(), &mut schema, &mut error) };
+        let status = unsafe { method(statement, &mut schema, &mut error) };
         check_status(status, error)?;
         Ok((&schema).try_into()?)
     }
 
     fn prepare(&mut self) -> Result<()> {
         let driver = self.ffi_driver();
-        let mut statement = self.inner.statement.lock().map_err(|e| {
+        let _guard = self.inner.statement.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] statement is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
+        let statement = self.inner.statement.get();
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementPrepare);
-        let status = unsafe { method(statement.deref_mut(), &mut error) };
+        let status = unsafe { method(statement, &mut error) };
         check_status(status, error)?;
         Ok(())
     }
@@ -1481,32 +1524,33 @@ impl Statement for ManagedStatement {
     fn set_sql_query(&mut self, query: impl AsRef<str>) -> Result<()> {
         let query = CString::new(query.as_ref())?;
         let driver = self.ffi_driver();
-        let mut statement = self.inner.statement.lock().map_err(|e| {
+        let _guard = self.inner.statement.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] statement is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
+        let statement = self.inner.statement.get();
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementSetSqlQuery);
-        let status = unsafe { method(statement.deref_mut(), query.as_ptr(), &mut error) };
+        let status = unsafe { method(statement, query.as_ptr(), &mut error) };
         check_status(status, error)?;
         Ok(())
     }
 
     fn set_substrait_plan(&mut self, plan: impl AsRef<[u8]>) -> Result<()> {
         let driver = self.ffi_driver();
-        let mut statement = self.inner.statement.lock().map_err(|e| {
+        let _guard = self.inner.statement.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] statement is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
+        let statement = self.inner.statement.get();
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementSetSubstraitPlan);
         let plan = plan.as_ref();
-        let status =
-            unsafe { method(statement.deref_mut(), plan.as_ptr(), plan.len(), &mut error) };
+        let status = unsafe { method(statement, plan.as_ptr(), plan.len(), &mut error) };
         check_status(status, error)?;
         Ok(())
     }
@@ -1517,18 +1561,19 @@ impl Optionable for ManagedStatement {
 
     fn get_option_bytes(&self, key: Self::Option) -> Result<Vec<u8>> {
         let driver = self.ffi_driver();
-        let mut statement = self.inner.statement.lock().map_err(|e| {
+        let _guard = self.inner.statement.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] statement is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
+        let statement = self.inner.statement.get();
         let method = driver_method!(driver, StatementGetOptionBytes);
         let populate = |key: *const c_char,
                         value: *mut u8,
                         length: *mut usize,
                         error: *mut adbc_ffi::FFI_AdbcError| unsafe {
-            method(statement.deref_mut(), key, value, length, error)
+            method(statement, key, value, length, error)
         };
         get_option_bytes(key, populate, driver)
     }
@@ -1537,15 +1582,16 @@ impl Optionable for ManagedStatement {
         let key = CString::new(key.as_ref())?;
         let mut value: f64 = f64::default();
         let driver = self.ffi_driver();
-        let mut statement = self.inner.statement.lock().map_err(|e| {
+        let _guard = self.inner.statement.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] statement is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
+        let statement = self.inner.statement.get();
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementGetOptionDouble);
-        let status = unsafe { method(statement.deref_mut(), key.as_ptr(), &mut value, &mut error) };
+        let status = unsafe { method(statement, key.as_ptr(), &mut value, &mut error) };
         check_status(status, error)?;
         Ok(value)
     }
@@ -1554,63 +1600,63 @@ impl Optionable for ManagedStatement {
         let key = CString::new(key.as_ref())?;
         let mut value: i64 = 0;
         let driver = self.ffi_driver();
-        let mut statement = self.inner.statement.lock().map_err(|e| {
+        let _guard = self.inner.statement.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] statement is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
+        let statement = self.inner.statement.get();
         let mut error = adbc_ffi::FFI_AdbcError::with_driver(driver);
         let method = driver_method!(driver, StatementGetOptionInt);
-        let status = unsafe { method(statement.deref_mut(), key.as_ptr(), &mut value, &mut error) };
+        let status = unsafe { method(statement, key.as_ptr(), &mut value, &mut error) };
         check_status(status, error)?;
         Ok(value)
     }
 
     fn get_option_string(&self, key: Self::Option) -> Result<String> {
         let driver = self.ffi_driver();
-        let mut statement = self.inner.statement.lock().map_err(|e| {
+        let _guard = self.inner.statement.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] statement is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
+        let statement = self.inner.statement.get();
         let method = driver_method!(driver, StatementGetOption);
         let populate = |key: *const c_char,
                         value: *mut c_char,
                         length: *mut usize,
                         error: *mut adbc_ffi::FFI_AdbcError| unsafe {
-            method(statement.deref_mut(), key, value, length, error)
+            method(statement, key, value, length, error)
         };
         get_option_string(key, populate, driver)
     }
 
     fn set_option(&mut self, key: Self::Option, value: OptionValue) -> Result<()> {
         let driver = self.ffi_driver();
-        let mut statement = self.inner.statement.lock().map_err(|e| {
+        let _guard = self.inner.statement.lock().map_err(|e| {
             Error::with_message_and_status(
                 format!("[Driver Manager] statement is poisoned: {e:?}"),
                 Status::Internal,
             )
         })?;
-        set_option_statement(
-            driver,
-            statement.deref_mut(),
-            self.driver_version(),
-            key,
-            value,
-        )
+        let statement = self.inner.statement.get();
+        // SAFETY: The operation guard serializes ordinary calls; the owning Arc
+        // keeps the handle alive. Only driver-supported cancellation can overlap.
+        unsafe { set_option_statement_raw(driver, statement, self.driver_version(), key, value) }
     }
 }
 
-impl Drop for ManagedStatement {
+impl Drop for ManagedStatementInner {
     fn drop(&mut self) {
-        let driver = self.ffi_driver();
-        if let Ok(mut statement) = self.inner.statement.lock() {
+        let driver = &self.connection.database.driver.driver;
+        if !self.statement.mu.is_poisoned() {
+            let statement = self.statement.get();
             let method = driver_method!(driver, StatementRelease);
             // TODO(alexandreyc): how should we handle `StatementRelease` failing?
             // See: https://github.com/apache/arrow-adbc/pull/1742#discussion_r1574388409
-            unsafe { method(statement.deref_mut(), null_mut()) };
+            unsafe { method(statement, null_mut()) };
         }
         // We could still drop here but if the lock is poisoned, we have no
         // clue what the status is. Since a panic comes from Rust code,

@@ -168,6 +168,25 @@ pub fn set_option_connection(
     key: impl AsRef<str>,
     value: OptionValue,
 ) -> Result<()> {
+    // SAFETY: The exclusive borrow keeps the handle alive and prevents concurrent access.
+    unsafe { set_option_connection_raw(driver, connection, version, key, value) }
+}
+
+/// Set an option through a raw connection handle.
+///
+/// # Safety
+///
+/// The handle must be valid for the driver and remain alive throughout this call.
+/// Ordinary operations on the handle must be serialized. Concurrent cancellation
+/// is permitted only as supported by the driver's ADBC cancellation contract.
+/// No references to the handle may conflict with accesses made by the driver.
+pub unsafe fn set_option_connection_raw(
+    driver: &FFI_AdbcDriver,
+    connection: *mut FFI_AdbcConnection,
+    version: AdbcVersion,
+    key: impl AsRef<str>,
+    value: OptionValue,
+) -> Result<()> {
     let key = CString::new(key.as_ref())?;
     let mut error = FFI_AdbcError::with_driver(driver);
     #[allow(unknown_lints)]
@@ -210,6 +229,25 @@ pub fn set_option_connection(
 pub fn set_option_statement(
     driver: &FFI_AdbcDriver,
     statement: &mut FFI_AdbcStatement,
+    version: AdbcVersion,
+    key: impl AsRef<str>,
+    value: OptionValue,
+) -> Result<()> {
+    // SAFETY: The exclusive borrow keeps the handle alive and prevents concurrent access.
+    unsafe { set_option_statement_raw(driver, statement, version, key, value) }
+}
+
+/// Set an option through a raw statement handle.
+///
+/// # Safety
+///
+/// The handle must be valid for the driver and remain alive throughout this call.
+/// Ordinary operations on the handle must be serialized. Concurrent cancellation
+/// is permitted only as supported by the driver's ADBC cancellation contract.
+/// No references to the handle may conflict with accesses made by the driver.
+pub unsafe fn set_option_statement_raw(
+    driver: &FFI_AdbcDriver,
+    statement: *mut FFI_AdbcStatement,
     version: AdbcVersion,
     key: impl AsRef<str>,
     value: OptionValue,
