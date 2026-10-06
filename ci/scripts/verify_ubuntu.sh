@@ -39,6 +39,12 @@ main() {
     export TZ=Etc/UTC
 
     echo "::group::Install APT dependencies"
+    export PYTHON_DEPENDENCIES="python3 python3-dev python3-pip python3-venv"
+    source /etc/lsb-release
+    if [[ "${DISTRIB_RELEASE}" = "22.04" ]]; then
+        export PYTHON_DEPENDENCIES="python3.11 python3.11-dev python3.11-venv"
+        export PYTHON=python3.11
+    fi
     apt update
     apt install -y \
         apt-transport-https \
@@ -61,10 +67,7 @@ main() {
         ninja-build \
         pkg-config \
         protobuf-compiler \
-        python3 \
-        python3-dev \
-        python3-pip \
-        python3-venv \
+        ${PYTHON_DEPENDENCIES} \
         r-base \
         ruby-full \
         software-properties-common \
