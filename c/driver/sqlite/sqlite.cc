@@ -34,6 +34,12 @@
 #include "driver/sqlite/config.h"
 #include "driver/sqlite/statement_reader.h"
 
+#if defined(__has_builtin)
+#if __has_builtin(__builtin_available)
+#define HAVE_BUILTIN_AVAILABLE
+#endif
+#endif
+
 // Account for old versions of SQLite and macOS annoyances
 #if SQLITE_VERSION_NUMBER < 3037000
 #define POLYFILL_SQLITE_CHANGES
