@@ -272,3 +272,29 @@ jobs:
             echo "Checking package '$dir'"
             cargo msrv verify --manifest-path "$dir" || exit 1
           done
+
+  rust-miri:
+    name: miri
+    runs-on: ubuntu-latest
+    needs:
+      - rust
+    env:
+      CARGO_INCREMENTAL: 0
+      RUSTFLAGS: "-Adead_code" # TODO(alexandreyc): remove this line when implementation is complete
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: use nightly Rust
+        run: |
+          rustup toolchain install nightly --no-self-update --component miri
+          rustup default nightly
+      - name: adbc_ffi (miri)
+        working-directory: rust
+        run: |
+          cargo +nightly miri test -p adbc_ffi
+      - name: adbc_driver_manager (miri)
+        working-directory: rust
+        run: |
+          cargo +nightly miri test -p adbc_driver_manager --test cancellation
