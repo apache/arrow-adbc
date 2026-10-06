@@ -34,15 +34,38 @@
 #include "driver/sqlite/config.h"
 #include "driver/sqlite/statement_reader.h"
 
+// Account for old versions of SQLite and macOS annoyances
 #if SQLITE_VERSION_NUMBER < 3037000
+#define POLYFILL_SQLITE_CHANGES
+#elif defined(HAVE_BUILTIN_AVAILABLE)
+#if !__builtin_available(macOS 12.3, *)
+#define POLYFILL_SQLITE_CHANGES
+#endif
+#endif  // SQLITE_VERSION_NUMBER < 3037000
+
+#if SQLITE_VERSION_NUMBER < 3034000
+#define SQLITE_NO_TXN_STATE
+#elif defined(HAVE_BUILTIN_AVAILABLE)
+#if !__builtin_available(macOS 12.0, *)
+#define SQLITE_NO_TXN_STATE
+#endif
+#endif
+
+#if defined(POLYFILL_SQLITE_CHANGES)
 // Polyfill for older versions
-sqlite3_int64 sqlite3_total_changes64(sqlite3* db) {
+sqlite3_int64 polyfill_total_changes64(sqlite3* db) {
   return static_cast<sqlite3_int64>(sqlite3_total_changes(db));
 }
 
-sqlite3_int64 sqlite3_changes64(sqlite3* db) {
+sqlite3_int64 polyfill_changes64(sqlite3* db) {
   return static_cast<sqlite3_int64>(sqlite3_changes(db));
 }
+#else
+sqlite3_int64 polyfill_total_changes64(sqlite3* db) {
+  return sqlite3_total_changes64(db);
+}
+
+sqlite3_int64 polyfill_changes64(sqlite3* db) { return sqlite3_changes64(db); }
 #endif
 
 namespace adbc::sqlite {
@@ -753,7 +776,7 @@ class SqliteConnection : public driver::Connection<SqliteConnection> {
       return driver::Option(
           static_cast<int64_t>(batch_size_.value_or(kDefaultBatchSize)));
     } else if (key == kOptionTxnState) {
-#if SQLITE_VERSION_NUMBER < 3034000
+#if defined(SQLITE_NO_TXN_STATE)
       return status::NotImplemented(
           "this version of SQLite does not support sqlite3_txn_state");
 #else
@@ -1165,7 +1188,7 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
         }
       }
 
-      const sqlite3_int64 total_changes = sqlite3_total_changes64(conn_);
+      const sqlite3_int64 total_changes = polyfill_total_changes64(conn_);
       while (sqlite3_step(stmt_) == SQLITE_ROW) {
         output_rows++;
       }
@@ -1173,8 +1196,8 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
       // NOTE(apache/arrow-adbc#4820): only count sqlite3_total_changes when
       // it actually changed from before
       if (sqlite3_column_count(stmt_) == 0 &&
-          sqlite3_total_changes64(conn_) != total_changes) {
-        changed_rows += sqlite3_changes64(conn_);
+          polyfill_total_changes64(conn_) != total_changes) {
+        changed_rows += polyfill_changes64(conn_);
       }
 
       if (!binder_.schema.release) break;
