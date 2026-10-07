@@ -1308,13 +1308,23 @@ struct AdbcSerializableHandle {
 /// For example, the connection was lost while waiting for the
 /// database or catalog to acknowledge the commit.
 ///
-/// The caller must not call AdbcStatementAbortIngestPartitions, since
-/// that could delete data that was in fact committed.  Instead, the
-/// caller should call AdbcStatementCompleteIngestPartitions again
-/// with the same handle and receipts.  A driver that reports this
-/// outcome must be able to resolve it on such a repeated call: if
-/// the earlier attempt did take effect, the call must succeed
-/// without promoting the writes a second time.
+/// Unlike ADBC_INGEST_COMPLETE_RETRYABLE, the caller cannot assume
+/// that nothing was promoted.  Until the outcome is established, the
+/// caller must not call AdbcStatementAbortIngestPartitions, since
+/// that could delete data that was in fact committed, and must not
+/// write the same data again in a new ingest, since that could
+/// duplicate it.
+///
+/// The caller may call AdbcStatementCompleteIngestPartitions again
+/// with the same handle and receipts.  Drivers should use such a call
+/// to establish the outcome where they can (for example, by looking
+/// for a record of the earlier attempt in the target), and succeed
+/// if the earlier attempt did take effect.  A driver must never
+/// promote the writes a second time.  Drivers are not required to be
+/// able to establish the outcome, and may report
+/// ADBC_INGEST_COMPLETE_UNKNOWN again; in that case the caller
+/// should stop and report the situation, keeping the handle, so that
+/// the state of the target can be checked by other means.
 ///
 /// \see AdbcStatementCompleteIngestPartitions
 /// \since ADBC API revision 1.2.0
