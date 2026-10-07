@@ -84,7 +84,7 @@ Non-goals
 Design overview
 ===============
 
-Three new operations on ``AdbcConnection``, plus an ``Abort``:
+Three new operations on ``AdbcStatement``, plus an ``Abort``:
 
 ::
 
@@ -106,9 +106,10 @@ API surface
 -----------
 
 The target table, mode, and optional catalog/schema are set via the
-existing ``ADBC_INGEST_OPTION_*`` connection options before calling
-``Begin``.  The same option keys used for single-writer
-statement-level ingest apply here at the connection level.
+existing ``ADBC_INGEST_OPTION_*`` statement options before calling
+``Begin``, exactly as for single-writer bulk ingest.  The handle
+captures them, so they do not need to be set again on the statements
+used for ``Write``, ``Complete``, and ``Abort``.
 
 C declarations (see ``adbc.h`` for full doc comments):
 
@@ -121,19 +122,19 @@ C declarations (see ``adbc.h`` for full doc comments):
      void (*release)(struct AdbcSerializableHandle*);
    };
 
-   AdbcConnectionBeginIngestPartitions(
-       conn, schema, *out_handle, *error);
+   AdbcStatementBeginIngestPartitions(
+       stmt, schema, *out_handle, *error);
 
-   AdbcConnectionWriteIngestPartition(
-       conn, handle_bytes, handle_len, *data_stream,
+   AdbcStatementWriteIngestPartition(
+       stmt, handle_bytes, handle_len, *data_stream,
        *out_receipt, *error);
 
-   AdbcConnectionCompleteIngestPartitions(
-       conn, handle_bytes, handle_len, num_receipts, receipts,
+   AdbcStatementCompleteIngestPartitions(
+       stmt, handle_bytes, handle_len, num_receipts, receipts,
        receipt_lens, *rows_affected, *error);
 
-   AdbcConnectionAbortIngestPartitions(
-       conn, handle_bytes, handle_len, num_receipts, receipts,
+   AdbcStatementAbortIngestPartitions(
+       stmt, handle_bytes, handle_len, num_receipts, receipts,
        receipt_lens, *error);
 
 The asymmetry — outputs are driver-owned structs, inputs are raw
@@ -188,7 +189,8 @@ Cross-process flow
    └──────────────────────────────────────────────────────┘
 
 Workers may use *different* connections than the coordinator — the
-handle is self-contained.
+handle is self-contained.  Each party creates a statement on its own
+connection to make the call.
 
 Key design decisions
 ====================
@@ -276,6 +278,30 @@ behaviors:
 
 The spec does not mandate any of these; it documents the failure
 mode and leaves the policy to drivers.
+
+7. Operations live on ``AdbcStatement``, not ``AdbcConnection``
+---------------------------------------------------------------
+
+None of the four operations executes the statement's query, and
+``Write``/``Complete``/``Abort`` take everything they need from the
+handle, so the connection is the more obvious home (and is where the
+read-side ``AdbcConnectionReadPartition`` lives).  An earlier draft
+did that, first with the target table and mode as function
+parameters and then as connection options.
+
+Both have problems.  Baking the options into the signature
+duplicates the existing ``ADBC_INGEST_OPTION_*`` keys and leaves no
+room for driver-specific ingest options.  Setting them as connection
+options makes them long-lived, shared state on an object that may be
+running unrelated work.  A statement gives the options a natural
+scope — set them, call ``Begin``, release the statement — and keeps
+partitioned ingest consistent with single-writer bulk ingest, which
+is already configured through statement options.
+
+The cost is that the caller must allocate a statement for each step
+and that the statement gains operations unrelated to its query: any
+query, Substrait plan, or bound data on the statement is ignored and
+left unmodified.
 
 Reference implementation
 ========================
