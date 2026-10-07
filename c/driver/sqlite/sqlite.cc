@@ -34,15 +34,42 @@
 #include "driver/sqlite/config.h"
 #include "driver/sqlite/statement_reader.h"
 
+#if defined(__has_builtin)
+#if __has_builtin(__builtin_available)
+#define HAVE_BUILTIN_AVAILABLE
+#endif
+#endif
+
 #if SQLITE_VERSION_NUMBER < 3037000
 // Polyfill for older versions
-sqlite3_int64 sqlite3_total_changes64(sqlite3* db) {
+sqlite3_int64 polyfill_total_changes64(sqlite3* db) {
   return static_cast<sqlite3_int64>(sqlite3_total_changes(db));
 }
 
-sqlite3_int64 sqlite3_changes64(sqlite3* db) {
+sqlite3_int64 polyfill_changes64(sqlite3* db) {
   return static_cast<sqlite3_int64>(sqlite3_changes(db));
 }
+#elif defined(HAVE_BUILTIN_AVAILABLE)
+// Must branch at runtime for macOS
+sqlite3_int64 polyfill_total_changes64(sqlite3* db) {
+  if (__builtin_available(macOS 12.3, *)) {
+    return sqlite3_total_changes64(db);
+  }
+  return static_cast<sqlite3_int64>(sqlite3_total_changes(db));
+}
+
+sqlite3_int64 polyfill_changes64(sqlite3* db) {
+  if (__builtin_available(macOS 12.3, *)) {
+    return sqlite3_changes64(db);
+  }
+  return static_cast<sqlite3_int64>(sqlite3_changes(db));
+}
+#else
+sqlite3_int64 polyfill_total_changes64(sqlite3* db) {
+  return sqlite3_total_changes64(db);
+}
+
+sqlite3_int64 polyfill_changes64(sqlite3* db) { return sqlite3_changes64(db); }
 #endif
 
 namespace adbc::sqlite {
@@ -756,6 +783,12 @@ class SqliteConnection : public driver::Connection<SqliteConnection> {
 #if SQLITE_VERSION_NUMBER < 3034000
       return status::NotImplemented(
           "this version of SQLite does not support sqlite3_txn_state");
+#elif defined(HAVE_BUILTIN_AVAILABLE)
+      if (__builtin_available(macOS 12.0, *)) {
+        return driver::Option(static_cast<int64_t>(sqlite3_txn_state(conn_, nullptr)));
+      }
+      return status::NotImplemented(
+          "this version of SQLite does not support sqlite3_txn_state");
 #else
       return driver::Option(static_cast<int64_t>(sqlite3_txn_state(conn_, nullptr)));
 #endif
@@ -1165,7 +1198,7 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
         }
       }
 
-      const sqlite3_int64 total_changes = sqlite3_total_changes64(conn_);
+      const sqlite3_int64 total_changes = polyfill_total_changes64(conn_);
       while (sqlite3_step(stmt_) == SQLITE_ROW) {
         output_rows++;
       }
@@ -1173,8 +1206,8 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
       // NOTE(apache/arrow-adbc#4820): only count sqlite3_total_changes when
       // it actually changed from before
       if (sqlite3_column_count(stmt_) == 0 &&
-          sqlite3_total_changes64(conn_) != total_changes) {
-        changed_rows += sqlite3_changes64(conn_);
+          polyfill_total_changes64(conn_) != total_changes) {
+        changed_rows += polyfill_changes64(conn_);
       }
 
       if (!binder_.schema.release) break;
