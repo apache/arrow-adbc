@@ -457,6 +457,18 @@ $ ./ci/scripts/python_typecheck.sh $(pwd)
 
 The Ruby libraries are bindings around the GLib libraries.
 
+### Kotoba
+
+The Kotoba binding is an in-language ADBC status/error guest compiled to
+WebAssembly. It cannot FFI ``libadbc``; the host owns drivers. v1 is a mock
+connection fixture with no real database.
+
+Install [Kotoba](https://github.com/kotoba-lang/kotoba) 0.7.2, then:
+
+```shell
+$ ./ci/scripts/kotoba_test.sh $(pwd)
+```
+
 ### Rust
 
 The Rust components are a standard Rust project.
@@ -527,6 +539,7 @@ Please use the following commit types: `build`, `chore`, `ci`, `docs`,
 
 Please use the following scopes:
 
+- `kotoba`: the Kotoba wasm guest binding.
 - `c/driver/postgresql`, `java/driver-manager`, …: for a component and
   all its bindings.  For example, `c/driver-manager` covers the C/C++
   driver manager and its GLib and Python bindings, while
