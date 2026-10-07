@@ -233,6 +233,7 @@ More Resources
    :hidden:
 
    format/specification
+   format/partitioned_bulk_ingest
    format/versioning
    format/comparison
    format/how_manager

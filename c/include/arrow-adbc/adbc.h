@@ -1213,6 +1213,125 @@ struct AdbcPartitions {
 
 /// @}
 
+/// \defgroup adbc-statement-ingest-partition Partitioned Bulk Ingest
+/// Some drivers can accept bulk writes from a distributed writer: a
+/// coordinator configures an ingest, many workers write partitions in
+/// parallel (possibly from different processes or hosts), and the
+/// coordinator completes or aborts the ingest atomically.
+///
+/// This mirrors the read-side partitioned execution model.  The
+/// coordinator calls AdbcStatementBeginIngestPartitions to obtain an
+/// opaque, serializable handle.  The handle is shipped to workers by
+/// the caller (e.g. a Spark driver sending it to executors).  Workers
+/// call AdbcStatementWriteIngestPartition on statements of their own
+/// connections; the connection does not have to be the same one that
+/// created the handle.  Each write returns an opaque receipt.  The
+/// coordinator collects receipts and calls
+/// AdbcStatementCompleteIngestPartitions (or
+/// AdbcStatementAbortIngestPartitions on failure).
+///
+/// Handles and receipts are driver-defined opaque byte strings.  They
+/// are safe to transmit between processes and to use concurrently
+/// from multiple connections.
+///
+/// These functions are defined on AdbcStatement so that options
+/// (ADBC_INGEST_OPTION_* and any driver-specific options) are scoped
+/// to the operation via AdbcStatementSetOption, as with single-writer
+/// bulk ingest.  The statement is not otherwise involved: any query,
+/// Substrait plan, or bound data set on the statement is ignored and
+/// left unmodified.
+///
+/// Drivers are not required to support partitioned ingest.
+///
+/// \since ADBC API revision 1.2.0
+///
+/// @{
+
+/// \brief A driver-owned opaque byte buffer with a release callback.
+///
+/// Used by partitioned bulk ingest for both handles (returned by
+/// AdbcStatementBeginIngestPartitions) and receipts (returned by
+/// AdbcStatementWriteIngestPartition).
+///
+/// The bytes are opaque and serializable: the caller may copy
+/// `bytes[0..length)` and ship that copy across processes or hosts.
+///
+/// The struct itself is owned by the driver.  Call `release` exactly
+/// once to free it.
+///
+/// \since ADBC API revision 1.2.0
+struct AdbcSerializableHandle {
+  /// \brief The length of `bytes`.
+  size_t length;
+
+  /// \brief The serialized bytes (driver-owned).
+  const uint8_t* bytes;
+
+  /// \brief Private driver state.
+  void* private_data;
+
+  /// \brief Release the memory.  Sets `release` to NULL.
+  void (*release)(struct AdbcSerializableHandle* self);
+};
+
+/// \brief The ingest was completed; the handle is consumed.
+///
+/// \see AdbcStatementCompleteIngestPartitions
+/// \since ADBC API revision 1.2.0
+#define ADBC_INGEST_COMPLETE_SUCCEEDED 0
+
+/// \brief The ingest was not completed and cannot be.  Nothing was
+///   promoted into the target table.  The caller should call
+///   AdbcStatementAbortIngestPartitions and start over.
+///
+/// \see AdbcStatementCompleteIngestPartitions
+/// \since ADBC API revision 1.2.0
+#define ADBC_INGEST_COMPLETE_FAILED 1
+
+/// \brief The ingest was not completed, but the failure is transient.
+///   Nothing was promoted into the target table.  The handle and all
+///   receipts remain valid; the caller may call
+///   AdbcStatementCompleteIngestPartitions again with the same handle
+///   and receipts, without rewriting any partitions.
+///
+/// For example, a table-format driver lost an optimistic-concurrency
+/// race for the commit.
+///
+/// \see AdbcStatementCompleteIngestPartitions
+/// \since ADBC API revision 1.2.0
+#define ADBC_INGEST_COMPLETE_RETRYABLE 2
+
+/// \brief The driver could not determine whether the ingest was
+///   completed.  The writes may or may not have been promoted into
+///   the target table.
+///
+/// For example, the connection was lost while waiting for the
+/// database or catalog to acknowledge the commit.
+///
+/// Unlike ADBC_INGEST_COMPLETE_RETRYABLE, the caller cannot assume
+/// that nothing was promoted.  Until the outcome is established, the
+/// caller must not call AdbcStatementAbortIngestPartitions, since
+/// that could delete data that was in fact committed, and must not
+/// write the same data again in a new ingest, since that could
+/// duplicate it.
+///
+/// The caller may call AdbcStatementCompleteIngestPartitions again
+/// with the same handle and receipts.  Drivers should use such a call
+/// to establish the outcome where they can (for example, by looking
+/// for a record of the earlier attempt in the target), and succeed
+/// if the earlier attempt did take effect.  A driver must never
+/// promote the writes a second time.  Drivers are not required to be
+/// able to establish the outcome, and may report
+/// ADBC_INGEST_COMPLETE_UNKNOWN again; in that case the caller
+/// should stop and report the situation, keeping the handle, so that
+/// the state of the target can be checked by other means.
+///
+/// \see AdbcStatementCompleteIngestPartitions
+/// \since ADBC API revision 1.2.0
+#define ADBC_INGEST_COMPLETE_UNKNOWN 3
+
+/// @}
+
 /// \defgroup adbc-statement-multi Multiple Result Set Execution
 /// Some databases support executing a statement that returns multiple
 /// result sets.  This section defines the API for working with such
@@ -1532,6 +1651,22 @@ struct ADBC_EXPORT AdbcDriver {
 
   AdbcStatusCode (*StatementRequestSchema)(struct AdbcStatement*, struct ArrowSchema*,
                                            struct AdbcError*);
+
+  AdbcStatusCode (*StatementBeginIngestPartitions)(struct AdbcStatement*,
+                                                   struct ArrowSchema*,
+                                                   struct AdbcSerializableHandle*,
+                                                   struct AdbcError*);
+  AdbcStatusCode (*StatementWriteIngestPartition)(struct AdbcStatement*, const uint8_t*,
+                                                  size_t, struct ArrowArrayStream*,
+                                                  struct AdbcSerializableHandle*,
+                                                  struct AdbcError*);
+  AdbcStatusCode (*StatementCompleteIngestPartitions)(struct AdbcStatement*,
+                                                      const uint8_t*, size_t, size_t,
+                                                      const uint8_t**, const size_t*,
+                                                      int64_t*, int*, struct AdbcError*);
+  AdbcStatusCode (*StatementAbortIngestPartitions)(struct AdbcStatement*, const uint8_t*,
+                                                   size_t, size_t, const uint8_t**,
+                                                   const size_t*, struct AdbcError*);
 
   /// @}
 };
@@ -2988,6 +3123,166 @@ AdbcStatusCode AdbcStatementExecutePartitions(struct AdbcStatement* statement,
                                               struct AdbcPartitions* partitions,
                                               int64_t* rows_affected,
                                               struct AdbcError* error);
+
+/// @}
+
+/// \addtogroup adbc-statement-ingest-partition
+/// @{
+
+/// \brief Begin a partitioned bulk ingest.
+///
+/// The target table, mode, and optional catalog/schema are configured
+/// via the ADBC_INGEST_OPTION_* statement options before calling
+/// this function, exactly as for single-writer bulk ingest:
+/// ADBC_INGEST_OPTION_TARGET_TABLE (required),
+/// ADBC_INGEST_OPTION_MODE (required),
+/// ADBC_INGEST_OPTION_TARGET_CATALOG (optional),
+/// ADBC_INGEST_OPTION_TARGET_DB_SCHEMA (optional).
+///
+/// For ADBC_INGEST_OPTION_MODE_CREATE,
+/// ADBC_INGEST_OPTION_MODE_CREATE_APPEND, and
+/// ADBC_INGEST_OPTION_MODE_REPLACE, `schema` is required and the
+/// driver creates (or recreates) the target table at this call.  For
+/// ADBC_INGEST_OPTION_MODE_APPEND, `schema` is optional; if provided,
+/// the driver validates it against the target and returns
+/// ADBC_STATUS_ALREADY_EXISTS on mismatch.
+///
+/// The returned handle is opaque, serializable, and usable from a
+/// statement on any connection that can open the same database.  It
+/// captures the ingest options in effect at this call; they do not
+/// need to be set again on the statements used for the remaining
+/// steps.  The caller releases it via `out_handle->release`; the
+/// bytes can be copied and shipped to workers before release.
+///
+/// \since ADBC API revision 1.2.0
+/// \param[in] statement A statement on the coordinator's connection.
+/// \param[in] schema Arrow schema of the data to be written.
+///   Required for create/replace/create_append modes; optional for
+///   append.
+/// \param[out] out_handle Driver-owned handle.  Must be released by
+///   the caller via `out_handle->release`.
+/// \param[out] error Error details, if any.
+/// \return ADBC_STATUS_INVALID_ARGUMENT if mode requires a schema
+///   but none was provided, or if required options are missing.
+/// \return ADBC_STATUS_ALREADY_EXISTS if append mode is requested
+///   and the target schema disagrees with the provided schema.
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the driver does not
+///   support partitioned ingest.
+ADBC_EXPORT
+AdbcStatusCode AdbcStatementBeginIngestPartitions(
+    struct AdbcStatement* statement, struct ArrowSchema* schema,
+    struct AdbcSerializableHandle* out_handle, struct AdbcError* error);
+
+/// \brief Write one partition of a partitioned bulk ingest.
+///
+/// Called by a worker, typically on a statement of a different
+/// connection than the one that created the handle.  The driver
+/// reads the given stream to completion, writes its contents to
+/// driver-specific staging (per-call: a unique staging table, unique
+/// object-store path, etc. — never shared across concurrent writes),
+/// and returns an opaque receipt.
+///
+/// The stream's schema should be compatible with the target table's
+/// schema.  Drivers may validate this at any point during the write;
+/// on mismatch the call fails and produces no receipt.  The exact
+/// validation mechanism is driver-specific (e.g., RDBMS drivers may
+/// rely on the staging table DDL to enforce compatibility).
+///
+/// On error of any kind, `out_receipt` is left with `release ==
+/// NULL` and the caller should retry the whole partition.  Partial
+/// receipts are never produced.  The driver may, however, leave
+/// partial server-side state (for example, a per-call staging
+/// table); the caller must still call
+/// AdbcStatementAbortIngestPartitions for the handle (with no
+/// receipt for this failed write) to release any staging resources,
+/// or rely on driver housekeeping.
+///
+/// This call is safe to invoke concurrently from many connections
+/// using the same handle.  (As with all statement functions, a
+/// single statement must not be used concurrently.)
+///
+/// \since ADBC API revision 1.2.0
+/// \param[in] statement A statement on the worker's connection.
+/// \param[in] handle The handle bytes from Begin.
+/// \param[in] handle_len Length of handle.
+/// \param[in] data Arrow stream of partition data.  The driver
+///   consumes the stream and releases it.
+/// \param[out] out_receipt Driver-owned receipt.  Must be released
+///   by the caller via `out_receipt->release`.
+/// \param[out] error Error details, if any.
+ADBC_EXPORT
+AdbcStatusCode AdbcStatementWriteIngestPartition(
+    struct AdbcStatement* statement, const uint8_t* handle, size_t handle_len,
+    struct ArrowArrayStream* data, struct AdbcSerializableHandle* out_receipt,
+    struct AdbcError* error);
+
+/// \brief Complete a partitioned bulk ingest.
+///
+/// Atomically promotes all writes named by `receipts` into the
+/// target table.  Semantics of "atomic" are driver-specific: RDBMS
+/// drivers typically swap staging into the target in a transaction;
+/// table-format drivers (Iceberg, Delta) write a catalog or
+/// transaction-log entry referencing the data files in the
+/// receipts.
+///
+/// After Complete returns successfully, the handle is consumed and
+/// must not be used again (including with
+/// AdbcStatementAbortIngestPartitions).
+///
+/// If Complete fails, `outcome` tells the caller how to proceed; see
+/// ADBC_INGEST_COMPLETE_FAILED, ADBC_INGEST_COMPLETE_RETRYABLE, and
+/// ADBC_INGEST_COMPLETE_UNKNOWN.  In all three cases the handle is
+/// not consumed.  Drivers must only report
+/// ADBC_INGEST_COMPLETE_FAILED or ADBC_INGEST_COMPLETE_RETRYABLE if
+/// they know that nothing was promoted, and must report
+/// ADBC_INGEST_COMPLETE_UNKNOWN otherwise.
+///
+/// Receipts from failed writes, or writes whose receipts were never
+/// observed by the coordinator, are not included in the commit.
+/// Their staging data is orphaned and is cleaned up as described in
+/// AdbcStatementAbortIngestPartitions.
+///
+/// \since ADBC API revision 1.2.0
+/// \param[in] statement A statement — typically on the coordinator's
+///   connection, but any connection that can open the same database
+///   works.
+/// \param[in] handle The handle from Begin.
+/// \param[in] handle_len Length of handle.
+/// \param[in] num_receipts Number of receipts in the batch.
+/// \param[in] receipts Array of receipt byte-pointers.
+/// \param[in] receipt_lens Array of receipt lengths.
+/// \param[out] rows_affected Number of rows committed, or -1 if
+///   unknown.  Pass NULL if not wanted.
+/// \param[out] outcome One of the ADBC_INGEST_COMPLETE_* values.
+///   Set to ADBC_INGEST_COMPLETE_SUCCEEDED if and only if the call
+///   returns ADBC_STATUS_OK.  Must not be NULL.
+/// \param[out] error Error details, if any.
+ADBC_EXPORT
+AdbcStatusCode AdbcStatementCompleteIngestPartitions(
+    struct AdbcStatement* statement, const uint8_t* handle, size_t handle_len,
+    size_t num_receipts, const uint8_t** receipts, const size_t* receipt_lens,
+    int64_t* rows_affected, int* outcome, struct AdbcError* error);
+
+/// \brief Abort a partitioned bulk ingest.
+///
+/// Best-effort: the driver may clean up any resources associated
+/// with the handle.  The handle is consumed.
+///
+/// \since ADBC API revision 1.2.0
+/// \param[in] statement A statement.
+/// \param[in] handle The handle from Begin.
+/// \param[in] handle_len Length of handle.
+/// \param[in] num_receipts Number of receipts, or 0.
+/// \param[in] receipts Array of receipt byte-pointers, or NULL.
+/// \param[in] receipt_lens Array of receipt lengths, or NULL.
+/// \param[out] error Error details, if any.
+ADBC_EXPORT
+AdbcStatusCode AdbcStatementAbortIngestPartitions(struct AdbcStatement* statement,
+                                                  const uint8_t* handle,
+                                                  size_t handle_len, size_t num_receipts,
+                                                  const uint8_t** receipts,
+                                                  const size_t* receipt_lens,
+                                                  struct AdbcError* error);
 
 /// @}
 
