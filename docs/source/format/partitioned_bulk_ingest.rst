@@ -77,9 +77,11 @@ Non-goals
   receipts between processes.  That is the application's problem;
   the API guarantees only that handles and receipts are opaque,
   serializable byte strings.
-- Idempotency on the coordinator side.  If the coordinator
-  double-commits (calls ``Complete`` twice on the same handle) the
-  second call is undefined.
+- General idempotency of ``Complete``.  If the coordinator
+  double-commits (calls ``Complete`` again on a handle that it knows
+  was completed successfully) the second call is undefined.
+  Repeating a ``Complete`` that *failed* as retryable or with an
+  unknown outcome is well-defined; see "Failed ``Complete``" below.
 
 Design overview
 ===============
@@ -131,7 +133,7 @@ C declarations (see ``adbc.h`` for full doc comments):
 
    AdbcStatementCompleteIngestPartitions(
        stmt, handle_bytes, handle_len, num_receipts, receipts,
-       receipt_lens, *rows_affected, *error);
+       receipt_lens, *rows_affected, *outcome, *error);
 
    AdbcStatementAbortIngestPartitions(
        stmt, handle_bytes, handle_len, num_receipts, receipts,
@@ -162,7 +164,10 @@ Driver-side semantics
   drivers swap staging into target in a transaction; table-format
   drivers write a catalog or transaction-log entry referencing the
   data files in the receipts.  After successful commit the handle is
-  consumed.
+  consumed.  On failure the driver reports through ``outcome``
+  whether the ingest is dead, whether the same call can simply be
+  repeated, or whether it does not know if the commit took effect
+  (see "Failed ``Complete``" below).
 - **Abort** discards all writes scoped to the handle.  The driver
   must clean up *every* write under the handle, not just the ones
   named in the supplied receipts (see "Lost receipts" below).
@@ -302,6 +307,67 @@ The cost is that the caller must allocate a statement for each step
 and that the statement gains operations unrelated to its query: any
 query, Substrait plan, or bound data on the statement is ignored and
 left unmodified.
+
+8. Failed ``Complete``: an outcome code, not a new status code
+--------------------------------------------------------------
+
+A failed ``Complete`` falls into one of three groups that the caller
+must be able to tell apart, because the correct reaction to each is
+different and the wrong one loses or corrupts data:
+
+- **Failed** (``ADBC_INGEST_COMPLETE_FAILED``).  Nothing was
+  promoted and the ingest cannot be completed.  The caller calls
+  ``Abort`` and starts over.  Example: the target's schema was
+  changed concurrently and no longer matches the one fixed at
+  ``Begin``.
+- **Retryable** (``ADBC_INGEST_COMPLETE_RETRYABLE``).  Nothing was
+  promoted and the staged data is intact; repeating the call with
+  the same handle and receipts may succeed.  The motivating case is
+  an Iceberg or Delta Lake commit that loses an
+  optimistic-concurrency race (Iceberg's ``CommitFailedException``,
+  a Delta log version that was already taken).  Rewriting the
+  partitions here would waste the whole job.
+- **Unknown** (``ADBC_INGEST_COMPLETE_UNKNOWN``).  The driver sent
+  the commit but never learned the result — the connection dropped
+  while waiting for the catalog, object store, or database to
+  acknowledge it.  This is Iceberg's ``CommitStateUnknownException``,
+  and the same thing happens to an RDBMS driver that loses its
+  connection during ``COMMIT``.  The caller must *not* ``Abort``: if
+  the commit did land, a handle-scoped sweep would delete data files
+  that the table now references.  The only safe action is to call
+  ``Complete`` again and let the driver find out.
+
+To make the last case resolvable, a driver that reports *unknown*
+must be able to tell, on a repeated ``Complete``, whether the earlier
+attempt took effect, and succeed without promoting the writes twice
+if it did.  The handle is the natural key for this: an Iceberg driver
+can record a handle-derived id in the snapshot summary and look for
+it in the table history, a Delta Lake driver can use the transaction
+identifier (``txn`` action) that the format provides for idempotent
+writers, and an RDBMS driver that drops its staging tables in the
+same transaction as the insert can check whether they still exist.
+Drivers that never report *unknown* need none of this.
+
+Drivers must report *failed* or *retryable* only if they know nothing
+was promoted, and *unknown* otherwise.
+
+No existing status code means "repeat this exact call", let alone
+"don't know".  New status codes (``ADBC_STATUS_CONFLICT``,
+``ADBC_STATUS_RETRY``) were considered and rejected: status codes are
+global, so a new code could in principle be returned from any
+function, and existing callers that do not know it would be affected
+for the sake of a single operation.  Instead ``Complete`` has an
+``int* outcome`` out parameter taking ``ADBC_INGEST_COMPLETE_*``
+values, following the header's convention of an integer plus
+``#define`` constants for small value sets (cf.
+``ADBC_OBJECT_DEPTH_*``).  Language bindings are free to surface it
+idiomatically (a field on the exception, a richer result type)
+rather than as an out parameter.
+
+The parameter is required rather than optional.  A caller that
+ignored it would have to treat every failure as terminal and call
+``Abort``, which is exactly the wrong thing to do for an unknown
+outcome.
 
 Reference implementation
 ========================

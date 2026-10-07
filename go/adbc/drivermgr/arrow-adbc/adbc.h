@@ -1274,6 +1274,52 @@ struct AdbcSerializableHandle {
   void (*release)(struct AdbcSerializableHandle* self);
 };
 
+/// \brief The ingest was completed; the handle is consumed.
+///
+/// \see AdbcStatementCompleteIngestPartitions
+/// \since ADBC API revision 1.2.0
+#define ADBC_INGEST_COMPLETE_SUCCEEDED 0
+
+/// \brief The ingest was not completed and cannot be.  Nothing was
+///   promoted into the target table.  The caller should call
+///   AdbcStatementAbortIngestPartitions and start over.
+///
+/// \see AdbcStatementCompleteIngestPartitions
+/// \since ADBC API revision 1.2.0
+#define ADBC_INGEST_COMPLETE_FAILED 1
+
+/// \brief The ingest was not completed, but the failure is transient.
+///   Nothing was promoted into the target table.  The handle and all
+///   receipts remain valid; the caller may call
+///   AdbcStatementCompleteIngestPartitions again with the same handle
+///   and receipts, without rewriting any partitions.
+///
+/// For example, a table-format driver lost an optimistic-concurrency
+/// race for the commit.
+///
+/// \see AdbcStatementCompleteIngestPartitions
+/// \since ADBC API revision 1.2.0
+#define ADBC_INGEST_COMPLETE_RETRYABLE 2
+
+/// \brief The driver could not determine whether the ingest was
+///   completed.  The writes may or may not have been promoted into
+///   the target table.
+///
+/// For example, the connection was lost while waiting for the
+/// database or catalog to acknowledge the commit.
+///
+/// The caller must not call AdbcStatementAbortIngestPartitions, since
+/// that could delete data that was in fact committed.  Instead, the
+/// caller should call AdbcStatementCompleteIngestPartitions again
+/// with the same handle and receipts.  A driver that reports this
+/// outcome must be able to resolve it on such a repeated call: if
+/// the earlier attempt did take effect, the call must succeed
+/// without promoting the writes a second time.
+///
+/// \see AdbcStatementCompleteIngestPartitions
+/// \since ADBC API revision 1.2.0
+#define ADBC_INGEST_COMPLETE_UNKNOWN 3
+
 /// @}
 
 /// \defgroup adbc-statement-multi Multiple Result Set Execution
@@ -1607,7 +1653,7 @@ struct ADBC_EXPORT AdbcDriver {
   AdbcStatusCode (*StatementCompleteIngestPartitions)(struct AdbcStatement*,
                                                       const uint8_t*, size_t, size_t,
                                                       const uint8_t**, const size_t*,
-                                                      int64_t*, struct AdbcError*);
+                                                      int64_t*, int*, struct AdbcError*);
   AdbcStatusCode (*StatementAbortIngestPartitions)(struct AdbcStatement*, const uint8_t*,
                                                    size_t, size_t, const uint8_t**,
                                                    const size_t*, struct AdbcError*);
@@ -3170,7 +3216,16 @@ AdbcStatusCode AdbcStatementWriteIngestPartition(
 /// receipts.
 ///
 /// After Complete returns successfully, the handle is consumed and
-/// must not be used again.
+/// must not be used again (including with
+/// AdbcStatementAbortIngestPartitions).
+///
+/// If Complete fails, `outcome` tells the caller how to proceed; see
+/// ADBC_INGEST_COMPLETE_FAILED, ADBC_INGEST_COMPLETE_RETRYABLE, and
+/// ADBC_INGEST_COMPLETE_UNKNOWN.  In all three cases the handle is
+/// not consumed.  Drivers must only report
+/// ADBC_INGEST_COMPLETE_FAILED or ADBC_INGEST_COMPLETE_RETRYABLE if
+/// they know that nothing was promoted, and must report
+/// ADBC_INGEST_COMPLETE_UNKNOWN otherwise.
 ///
 /// Receipts from failed writes, or writes whose receipts were never
 /// observed by the coordinator, are not included in the commit.
@@ -3188,12 +3243,15 @@ AdbcStatusCode AdbcStatementWriteIngestPartition(
 /// \param[in] receipt_lens Array of receipt lengths.
 /// \param[out] rows_affected Number of rows committed, or -1 if
 ///   unknown.  Pass NULL if not wanted.
+/// \param[out] outcome One of the ADBC_INGEST_COMPLETE_* values.
+///   Set to ADBC_INGEST_COMPLETE_SUCCEEDED if and only if the call
+///   returns ADBC_STATUS_OK.  Must not be NULL.
 /// \param[out] error Error details, if any.
 ADBC_EXPORT
 AdbcStatusCode AdbcStatementCompleteIngestPartitions(
     struct AdbcStatement* statement, const uint8_t* handle, size_t handle_len,
     size_t num_receipts, const uint8_t** receipts, const size_t* receipt_lens,
-    int64_t* rows_affected, struct AdbcError* error);
+    int64_t* rows_affected, int* outcome, struct AdbcError* error);
 
 /// \brief Abort a partitioned bulk ingest.
 ///
