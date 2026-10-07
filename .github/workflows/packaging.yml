@@ -730,14 +730,6 @@ jobs:
             adbc/python/adbc_driver_postgresql/repaired_wheels/*.whl
             adbc/python/adbc_driver_sqlite/repaired_wheels/*.whl
 
-      - name: Test wheel 3.10
-        env:
-          ARCH: ${{ matrix.arch }}
-          PLATFORM: ${{ matrix.platform }}
-        run: |
-          pushd adbc
-          env PYTHON=3.10 docker compose run python-wheel-manylinux-test
-
       - name: Test wheel 3.11
         env:
           ARCH: ${{ matrix.arch }}
@@ -870,16 +862,6 @@ jobs:
       # N.B. delocate (called above) will install these Python versions for
       # us. You can get the interpreter path by inspecting CI output (search
       # for "Building cp314-macos"...)
-
-      - name: Test wheel 3.10
-        run: |
-          pushd adbc
-
-          /Library/Frameworks/Python.framework/Versions/3.10/bin/python3.10 -m venv test-env-310
-          source test-env-310/bin/activate
-          export PYTHON_VERSION=3.10
-          ./ci/scripts/python_wheel_unix_test.sh $(pwd)
-          deactivate
 
       - name: Test wheel 3.11
         run: |
@@ -1034,16 +1016,6 @@ jobs:
           cache: false  # disable to protect against cache poisoning
           cache-dependency-path: adbc/go/adbc/go.sum
 
-      - name: Install Python 3.10
-        if: matrix.arch == 'amd64'
-        id: python310
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          architecture: ${{ matrix.python_arch }}
-          check-latest: true
-          python-version: "3.10"
-          update-environment: false
-
       - name: Install Python 3.11
         id: python311
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -1107,7 +1079,6 @@ jobs:
       - name: Build driver manager wheels
         shell: pwsh
         env:
-          PYTHON_310: ${{ steps.python310.outputs.python-path }}
           PYTHON_311: ${{ steps.python311.outputs.python-path }}
           PYTHON_312: ${{ steps.python312.outputs.python-path }}
           PYTHON_313: ${{ steps.python313.outputs.python-path }}
@@ -1117,7 +1088,6 @@ jobs:
         run: |
           $OriginalPath = $env:PATH
           $Pythons = @(
-            @{ Version = "3.10"; Path = $env:PYTHON_310 },
             @{ Version = "3.11"; Path = $env:PYTHON_311 },
             @{ Version = "3.12"; Path = $env:PYTHON_312 },
             @{ Version = "3.13"; Path = $env:PYTHON_313 },
@@ -1153,7 +1123,6 @@ jobs:
       - name: Test wheel
         shell: pwsh
         env:
-          PYTHON_310: ${{ steps.python310.outputs.python-path }}
           PYTHON_311: ${{ steps.python311.outputs.python-path }}
           PYTHON_312: ${{ steps.python312.outputs.python-path }}
           PYTHON_313: ${{ steps.python313.outputs.python-path }}
@@ -1163,7 +1132,6 @@ jobs:
           $DriverDir = Join-Path $PWD "adbc/build/bin"
           $OriginalPath = "$DriverDir;$env:PATH"
           $Pythons = @(
-            @{ Version = "3.10"; Path = $env:PYTHON_310 },
             @{ Version = "3.11"; Path = $env:PYTHON_311 },
             @{ Version = "3.12"; Path = $env:PYTHON_312 },
             @{ Version = "3.13"; Path = $env:PYTHON_313 },

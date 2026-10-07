@@ -53,7 +53,7 @@ Usage:
 
 Assumes Mamba is set up and available on the path, except for Windows ARM64
 binary verification. On Windows ARM64, supply Python executable paths using
-PYTHON_310_PATH, etc. (Source verification is not supported on Windows/ARM64.)
+PYTHON_314_PATH, etc. (Source verification is not supported on Windows/ARM64.)
 "@
     exit 1
 }
@@ -443,7 +443,7 @@ if ($TestBinaryArtifacts) {
         }
 
         if ($env:TEST_PYTHON_VERSIONS -eq $null) {
-            $PythonVersions = @("3.10", "3.11", "3.12", "3.13", "3.14", "3.14t")
+            $PythonVersions = @("3.11", "3.12", "3.13", "3.14", "3.14t")
         } else {
             $PythonVersions = @($env:TEST_PYTHON_VERSIONS.Split(" ", [System.StringSplitOptions]::RemoveEmptyEntries))
         }

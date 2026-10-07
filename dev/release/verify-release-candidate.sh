@@ -297,7 +297,7 @@ install_go() {
     return 0
   fi
 
-  local version=1.24.2
+  local version=1.26.8
   show_info "Installing go version ${version}..."
 
   local arch="$(uname -m)"
@@ -462,7 +462,7 @@ maybe_setup_virtualenv() {
     fi
     # Check that python interpreter exists
     if ! command -v "${python}" &> /dev/null; then
-      echo "Couldn't locate python interpreter with version ${pyver}"
+      echo "Couldn't locate python interpreter with version ${pyver} ($python)"
       echo "Call the script with USE_CONDA=1 to test all of the python versions."
       return 1
     else
@@ -821,7 +821,7 @@ test_unix_wheels() {
   local arch="${1}"
   local platform="${2}"
 
-  local python_versions="${TEST_PYTHON_VERSIONS:-3.10 3.11 3.12 3.13 3.14 3.14t}"
+  local python_versions="${TEST_PYTHON_VERSIONS:-3.11 3.12 3.13 3.14 3.14t}"
 
   for python in ${python_versions}; do
     local pyver=${python/t}
