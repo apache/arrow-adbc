@@ -377,6 +377,11 @@ jobs:
             vendor: alloydb-omni
             uri: postgresql://localhost:5440/postgres?user=postgres&password=password
             experimental: false
+          - name: CedarDB
+            service: cedardb-test
+            vendor: cedardb
+            uri: postgresql://localhost:5433/postgres?user=postgres&password=CedarDB2026%21
+            experimental: false
           - name: Citus
             service: citus-test
             vendor: citus
@@ -411,11 +416,6 @@ jobs:
             service: yugabytedb-test
             vendor: yugabytedb
             uri: postgresql://localhost:5439/yugabyte?user=yugabyte&password=yugabyte
-            experimental: false
-          - name: CedarDB
-            service: cedardb-test
-            vendor: cedardb
-            uri: postgresql://localhost:5433/postgres?user=postgres&password=CedarDB2026%21
             experimental: false
     steps:
       - name: Free up disk space
