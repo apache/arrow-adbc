@@ -116,7 +116,12 @@ pub trait FFIDriver {
     fn ffi_driver() -> FFI_AdbcDriver;
 }
 
-impl<DriverType: Driver + Default + 'static> FFIDriver for DriverType {
+impl<DriverType: Driver + Default + 'static> FFIDriver for DriverType
+where
+    DatabaseType<DriverType>: Send,
+    ConnectionType<DriverType>: Send,
+    StatementType<DriverType>: Send,
+{
     fn ffi_driver() -> FFI_AdbcDriver {
         FFI_AdbcDriver {
             private_data: std::ptr::null_mut(),
@@ -194,7 +199,10 @@ impl<DriverType: Driver + Default + 'static> FFIDriver for DriverType {
 ///     - `adbc_driver_sqlite.dll` -> `AdbcDriverSqliteInit`
 ///     - `proprietary_driver.dll` -> `AdbcProprietaryDriverInit`
 /// - `$driver_type` - Driver's type which must implement [Driver] and [Default].
-///   Currently, the Rust driver is exported as an ADBC 1.1.0 C driver.
+///   Database, connection, and statement types must implement [`Send`], since
+///   exported handles may be moved to another thread.
+///
+/// Currently, the Rust driver is exported as an ADBC 1.1.0 C driver.
 #[macro_export]
 macro_rules! export_driver {
     ($func_name:ident, $driver_type:ty) => {
