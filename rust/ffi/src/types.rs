@@ -278,9 +278,13 @@ unsafe extern "C" fn release_ffi_partitions(partitions: *mut FFI_AdbcPartitions)
     match partitions.as_mut() {
         None => (),
         Some(partitions) => {
+            if partitions.release.take().is_none() {
+                return;
+            }
+
             // SAFETY: `partitions.private_data` was necessarily obtained with `Box::into_raw`.
             // Additionally, the boxed data is necessarily `PartitionsPrivateData`.
-            // Finally, C should call the release function only once.
+            // The release callback was cleared above to prevent repeated deallocation.
             let private_data = Box::from_raw(partitions.private_data as *mut PartitionsPrivateData);
 
             #[allow(clippy::needless_range_loop)]
@@ -315,6 +319,10 @@ unsafe extern "C" fn release_ffi_partitions(partitions: *mut FFI_AdbcPartitions)
             drop(partitions_vec);
 
             drop(private_data);
+            partitions.num_partitions = 0;
+            partitions.partitions = null_mut();
+            partitions.partition_lengths = null_mut();
+            partitions.private_data = null_mut();
         }
     }
 }
@@ -708,6 +716,66 @@ mod tests {
         let partitions_ffi: FFI_AdbcPartitions = partitions_expected.clone().into();
         let partitions_actual: Partitions = partitions_ffi.into();
         assert_eq!(partitions_expected, partitions_actual);
+    }
+
+    #[test]
+    fn test_release_ffi_partitions_nulls_fields() {
+        let mut partition = Vec::with_capacity(16);
+        partition.extend_from_slice(b"partition");
+        let inputs: [Partitions; 3] = [
+            vec![],
+            vec![vec![], Vec::with_capacity(8)],
+            vec![b"A".to_vec(), partition],
+        ];
+
+        for input in inputs {
+            let mut partitions: FFI_AdbcPartitions = input.into();
+            assert!(!partitions.partitions.is_null());
+            assert!(!partitions.partition_lengths.is_null());
+            assert!(!partitions.private_data.is_null());
+
+            if let Some(release) = partitions.release {
+                unsafe { release(&mut partitions) };
+            } else {
+                assert!(partitions.release.is_some(), "expected a release callback");
+            }
+
+            assert!(partitions.release.is_none());
+            assert_eq!(partitions.num_partitions, 0);
+            assert!(partitions.partitions.is_null());
+            assert!(partitions.partition_lengths.is_null());
+            assert!(partitions.private_data.is_null());
+            drop(partitions);
+        }
+    }
+
+    #[test]
+    fn test_release_ffi_partitions_idempotent() {
+        let mut partitions: FFI_AdbcPartitions = vec![b"partition".to_vec()].into();
+        if let Some(release) = partitions.release {
+            unsafe {
+                release(&mut partitions);
+                release(&mut partitions);
+            }
+        } else {
+            assert!(partitions.release.is_some(), "expected a release callback");
+        }
+        assert!(partitions.release.is_none());
+        drop(partitions);
+    }
+
+    #[test]
+    fn test_release_ffi_partitions_null_and_default() {
+        let mut partitions = FFI_AdbcPartitions::default();
+        unsafe {
+            release_ffi_partitions(null_mut());
+            release_ffi_partitions(&mut partitions);
+        }
+        assert!(partitions.release.is_none());
+        assert_eq!(partitions.num_partitions, 0);
+        assert!(partitions.partitions.is_null());
+        assert!(partitions.partition_lengths.is_null());
+        assert!(partitions.private_data.is_null());
     }
 
     #[test]
