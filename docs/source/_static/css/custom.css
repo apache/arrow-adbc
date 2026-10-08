@@ -181,6 +181,13 @@ div.vi-logo svg {
     max-width: 100%;
 }
 
+/* The logos' points touch the edges of their SVGs, so when a browser rounds
+   an SVG's box to whole pixels it can clip a point. Draw past the edges. */
+.sidebar-logo-container svg,
+div.vi-logo svg {
+    overflow: visible;
+}
+
 div.vi-logo-top svg {
     width: 360px;
 }
