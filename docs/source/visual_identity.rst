@@ -114,10 +114,13 @@ Logomark
   (1 + 5 + 5), so the top layer's front walls fall on the same grid lines as
   the bottom layer's back walls. Each pair reads as one straight band, and the
   two bands cross.
-- **Rhythm:** straight down the middle, rim 1, wall 2 and space 2 repeat every
-  5 cells for 23 cells. Every wall, front or back, falls on this beat.
+- **Rhythm:** straight down the middle, rim 1, wall 2, and space 2 repeat
+  every 5 cells for 23 cells. Every wall, front or back, falls on this beat.
 - **Notches:** each gap is a rim plus a wall (3 = 1 + 2), so each tab showing
   through the side notches is 2 × 2 cells, the same as the X's crossing.
+- **Frame:** 11 × 23 cells. The top cell is the top ring's top edge. It's
+  white rim, so nothing is drawn there, but it's part of the mark, and every
+  variant leaves room for it.
 
 .. card::
 
@@ -177,6 +180,11 @@ Usage
 - For stickers, use the supplied die-cut file. A sticker maker's automatic
   outline decides the cut's angles and joins for itself; the approved cut runs
   parallel to the walls and places each join deliberately.
+- In a circle, such as an avatar on GitHub, Slack, or social media, use the
+  logomark, not the lockup. Fit it inside the square inscribed in the circle,
+  about 70% of the circle's width, centred on the whole mark, top edge
+  included. Supply a square image with a solid background, and let the
+  platform crop it to the circle.
 
 .. grid:: 1 2 2 2
    :gutter: 3
@@ -194,6 +202,23 @@ Usage
       .. image:: _static/visual_identity/adbc-lockup-horizontal-sticker-dont.png
          :alt: A sticker with an automatically drawn outline, crossed out,
                with notes on its edge angle and its pinches
+         :width: 100%
+         :align: center
+
+   .. grid-item-card:: Do
+
+      .. image:: _static/visual_identity/adbc-logomark-circle-do.png
+         :alt: The logomark in a circle, fitted inside the square inscribed
+               in the circle and centred, with equal space above and below
+         :width: 100%
+         :align: center
+
+   .. grid-item-card:: Don't
+
+      .. image:: _static/visual_identity/adbc-logomark-circle-dont.png
+         :alt: The logomark sized to fill a square image, crossed out, with
+               its corners cut off by the circle and its points touching the
+               edge
          :width: 100%
          :align: center
 

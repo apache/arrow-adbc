@@ -250,7 +250,7 @@
 <text x="906" y="1163.4" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#2b2b2b" text-anchor="start" font-weight="400" style="">dimensions in cells;</text>
 <text x="906" y="1182.4" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#2b2b2b" text-anchor="start" font-weight="400" style="">hexagon in grid lines</text>
 <g transform="translate(874 1197.4035827844912)"><line x1="0" y1="0" x2="22" y2="0" stroke="#ff5c9a" stroke-width="1.4" stroke-dasharray="4 3"/></g>
-<text x="906" y="1201.4" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#2b2b2b" text-anchor="start" font-weight="400" style="">type: caps, x-height</text>
+<text x="906" y="1201.4" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#2b2b2b" text-anchor="start" font-weight="400" style="">type: caps, x-height,</text>
 <text x="906" y="1220.4" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#2b2b2b" text-anchor="start" font-weight="400" style="">and baselines</text>
 <g transform="translate(874 1235.4035827844912)"><line x1="0" y1="0" x2="22" y2="0" stroke="#9aa3b2" stroke-width="1.2" stroke-dasharray="3 3"/></g>
 <text x="906" y="1239.4" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-size="12" fill="#2b2b2b" text-anchor="start" font-weight="400" style="">half-grid line</text>
