@@ -29,7 +29,7 @@ use super::{
     FFI_AdbcConnection, FFI_AdbcDatabase, FFI_AdbcDriver, FFI_AdbcError, FFI_AdbcErrorDetail,
     FFI_AdbcPartitions, FFI_AdbcStatement, options::get_opt_name, types::ErrorPrivateData,
 };
-use adbc_core::constants::ADBC_STATUS_OK;
+use adbc_core::constants::{ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA, ADBC_STATUS_OK};
 use adbc_core::error::{AdbcStatusCode, Error, Result, Status};
 use adbc_core::options::{InfoCode, ObjectDepth, OptionConnection, OptionDatabase, OptionValue};
 use adbc_core::{Connection, Database, Driver, Optionable, Statement};
@@ -1900,6 +1900,10 @@ extern "C" fn statement_get_parameter_schema<DriverType: Driver>(
 // Error
 
 unsafe extern "C" fn error_get_detail_count(error: *const FFI_AdbcError) -> c_int {
+    if error.is_null() || (*error).vendor_code != ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA {
+        return 0;
+    }
+
     match error.as_ref() {
         Some(error) if !error.private_data.is_null() => {
             let private_data = error.private_data as *const ErrorPrivateData;
@@ -1919,7 +1923,7 @@ unsafe extern "C" fn error_get_detail(
 ) -> FFI_AdbcErrorDetail {
     let default = FFI_AdbcErrorDetail::default();
 
-    if index < 0 {
+    if index < 0 || error.is_null() || (*error).vendor_code != ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA {
         return default;
     }
 
@@ -1947,5 +1951,98 @@ unsafe extern "C" fn error_get_detail(
                 value_length,
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::types::FFI_AdbcErrorV100;
+    use std::ptr::{null, null_mut};
+
+    #[test]
+    fn test_error_details_null() {
+        unsafe {
+            assert_eq!(error_get_detail_count(null()), 0);
+            for index in [-1, 0, 1] {
+                let detail = error_get_detail(null(), index);
+                assert!(detail.key.is_null());
+                assert!(detail.value.is_null());
+                assert_eq!(detail.value_length, 0);
+            }
+        }
+    }
+
+    #[test]
+    fn test_error_details_legacy() {
+        for vendor_code in [0, 42, -1] {
+            let error = Box::new(FFI_AdbcErrorV100 {
+                message: null_mut(),
+                vendor_code,
+                sqlstate: [0; 5],
+                release: None,
+            });
+            let error = std::ptr::from_ref(error.as_ref()).cast::<FFI_AdbcError>();
+            unsafe {
+                assert_eq!(error_get_detail_count(error), 0);
+                for index in [-1, 0, 1] {
+                    let detail = error_get_detail(error, index);
+                    assert!(detail.key.is_null());
+                    assert!(detail.value.is_null());
+                    assert_eq!(detail.value_length, 0);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_error_details_uninitialized() {
+        let error = FFI_AdbcError::default();
+        unsafe {
+            assert_eq!(error_get_detail_count(&error), 0);
+            for index in [-1, 0, 1] {
+                let detail = error_get_detail(&error, index);
+                assert!(detail.key.is_null());
+                assert!(detail.value.is_null());
+                assert_eq!(detail.value_length, 0);
+            }
+        }
+    }
+
+    #[test]
+    fn test_error_details_extended() -> std::result::Result<(), std::ffi::NulError> {
+        let value = b"value\0binary";
+        let mut error = FFI_AdbcError::try_from(Error {
+            message: "test error".into(),
+            status: Status::Unknown,
+            vendor_code: 42,
+            sqlstate: [0; 5],
+            details: Some(vec![("key".into(), value.to_vec())]),
+        })?;
+
+        unsafe {
+            assert_eq!(error_get_detail_count(&error), 0);
+            let detail = error_get_detail(&error, 0);
+            assert!(detail.key.is_null());
+            assert!(detail.value.is_null());
+            assert_eq!(detail.value_length, 0);
+
+            error.vendor_code = ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA;
+            assert_eq!(error_get_detail_count(&error), 1);
+            let detail = error_get_detail(&error, 0);
+            assert_eq!(CStr::from_ptr(detail.key).to_bytes(), b"key");
+            assert_eq!(detail.value_length, value.len());
+            assert_eq!(
+                std::slice::from_raw_parts(detail.value, detail.value_length),
+                value
+            );
+            for index in [-1, 1, c_int::MAX] {
+                let detail = error_get_detail(&error, index);
+                assert!(detail.key.is_null());
+                assert!(detail.value.is_null());
+                assert_eq!(detail.value_length, 0);
+            }
+        }
+        Ok(())
     }
 }
