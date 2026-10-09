@@ -43,21 +43,31 @@ type StatementType<DriverType> =
 
 enum ExportedDatabase<DriverType: Driver> {
     /// Pre-init options
-    Options(HashMap<OptionDatabase, OptionValue>),
+    Options(Mutex<HashMap<OptionDatabase, OptionValue>>),
     /// Initialized database
-    Database(DatabaseType<DriverType>),
+    Database(Mutex<DatabaseType<DriverType>>),
 }
 
+type DatabaseTuple<'a, DriverType> = (
+    Option<std::sync::MutexGuard<'a, HashMap<OptionDatabase, OptionValue>>>,
+    Option<std::sync::MutexGuard<'a, DatabaseType<DriverType>>>,
+);
+
 impl<DriverType: Driver> ExportedDatabase<DriverType> {
-    fn tuple(
-        &mut self,
-    ) -> (
-        Option<&mut HashMap<OptionDatabase, OptionValue>>,
-        Option<&mut DatabaseType<DriverType>>,
-    ) {
+    fn tuple(&self) -> Result<DatabaseTuple<'_, DriverType>> {
         match self {
-            Self::Options(options) => (Some(options), None),
-            Self::Database(database) => (None, Some(database)),
+            Self::Options(options) => options
+                .lock()
+                .map_err(|_| {
+                    Error::with_message_and_status("Database mutex poisoned", Status::Internal)
+                })
+                .map(|guard| (Some(guard), None)),
+            Self::Database(database) => database
+                .lock()
+                .map_err(|_| {
+                    Error::with_message_and_status("Database mutex poisoned", Status::Internal)
+                })
+                .map(|guard| (None, Some(guard))),
         }
     }
 }
@@ -575,10 +585,10 @@ fn check_poison() -> Result<()> {
 // Database
 
 unsafe fn database_private_data<'a, DriverType: Driver>(
-    database: &mut FFI_AdbcDatabase,
-) -> Result<&'a mut ExportedDatabase<DriverType>> {
-    let exported = database.private_data as *mut ExportedDatabase<DriverType>;
-    exported.as_mut().ok_or(Error::with_message_and_status(
+    database: *mut FFI_AdbcDatabase,
+) -> Result<&'a ExportedDatabase<DriverType>> {
+    let exported = (*database).private_data as *mut ExportedDatabase<DriverType>;
+    exported.as_ref().ok_or(Error::with_message_and_status(
         "Uninitialized database",
         Status::InvalidState,
     ))
@@ -586,7 +596,7 @@ unsafe fn database_private_data<'a, DriverType: Driver>(
 
 // SAFETY: Will panic if `key` is null.
 unsafe fn database_set_option_impl<DriverType: Driver, Value: Into<OptionValue>>(
-    database: &mut FFI_AdbcDatabase,
+    database: *mut FFI_AdbcDatabase,
     key: *const c_char,
     value: Value,
     error: *mut FFI_AdbcError,
@@ -598,9 +608,21 @@ unsafe fn database_set_option_impl<DriverType: Driver, Value: Into<OptionValue>>
 
     match exported {
         ExportedDatabase::Options(options) => {
+            let mut options = check_err!(
+                options.lock().map_err(|_| {
+                    Error::with_message_and_status("Database mutex poisoned", Status::Internal)
+                }),
+                error
+            );
             options.insert(key.into(), value.into());
         }
         ExportedDatabase::Database(database) => {
+            let mut database = check_err!(
+                database.lock().map_err(|_| {
+                    Error::with_message_and_status("Database mutex poisoned", Status::Internal)
+                }),
+                error
+            );
             check_err!(database.set_option(key.into(), value.into()), error);
         }
     }
@@ -614,7 +636,9 @@ extern "C" fn database_new<DriverType: Driver>(
 ) -> AdbcStatusCode {
     catch_panic(error, || {
         let database = pointer_as_mut!(database, error);
-        let exported = Box::new(ExportedDatabase::<DriverType>::Options(HashMap::new()));
+        let exported = Box::new(ExportedDatabase::<DriverType>::Options(Mutex::new(
+            HashMap::new(),
+        )));
         database.private_data = Box::into_raw(exported) as *mut c_void;
 
         ADBC_STATUS_OK
@@ -628,15 +652,28 @@ extern "C" fn database_init<DriverType: Driver + Default>(
     catch_panic(error, || {
         let database = pointer_as_mut!(database, error);
 
+        // Initialization requires exclusive access to the database handle.
         let exported = check_err!(
-            unsafe { database_private_data::<DriverType>(database) },
+            unsafe {
+                let exported = database.private_data as *mut ExportedDatabase<DriverType>;
+                exported.as_mut().ok_or(Error::with_message_and_status(
+                    "Uninitialized database",
+                    Status::InvalidState,
+                ))
+            },
             error
         );
 
         if let ExportedDatabase::Options(options) = exported {
+            let options = check_err!(
+                options.get_mut().map_err(|_| {
+                    Error::with_message_and_status("Database mutex poisoned", Status::Internal)
+                }),
+                error
+            );
             let mut driver = DriverType::default();
             let database = check_err!(driver.new_database_with_opts(options.clone()), error);
-            *exported = ExportedDatabase::Database(database);
+            *exported = ExportedDatabase::Database(Mutex::new(database));
         } else {
             check_err!(
                 Err(Error::with_message_and_status(
@@ -682,7 +719,7 @@ extern "C" fn database_set_option<DriverType: Driver>(
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
     catch_panic(error, || {
-        let database = pointer_as_mut!(database, error);
+        check_not_null!(database, error);
         check_not_null!(key, error);
         check_not_null!(value, error);
 
@@ -698,7 +735,7 @@ extern "C" fn database_set_option_int<DriverType: Driver>(
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
     catch_panic(error, || {
-        let database = pointer_as_mut!(database, error);
+        check_not_null!(database, error);
         check_not_null!(key, error);
 
         unsafe { database_set_option_impl::<DriverType, i64>(database, key, value, error) }
@@ -712,7 +749,7 @@ extern "C" fn database_set_option_double<DriverType: Driver>(
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
     catch_panic(error, || {
-        let database = pointer_as_mut!(database, error);
+        check_not_null!(database, error);
         check_not_null!(key, error);
 
         unsafe { database_set_option_impl::<DriverType, f64>(database, key, value, error) }
@@ -727,7 +764,7 @@ extern "C" fn database_set_option_bytes<DriverType: Driver>(
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
     catch_panic(error, || {
-        let database = pointer_as_mut!(database, error);
+        check_not_null!(database, error);
         check_not_null!(key, error);
         check_not_null!(value, error);
 
@@ -744,7 +781,7 @@ extern "C" fn database_get_option<DriverType: Driver>(
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
     catch_panic(error, || {
-        let database = pointer_as_mut!(database, error);
+        check_not_null!(database, error);
         check_not_null!(key, error);
         check_not_null!(value, error);
         check_not_null!(length, error);
@@ -753,9 +790,9 @@ extern "C" fn database_get_option<DriverType: Driver>(
             unsafe { database_private_data::<DriverType>(database) },
             error
         );
-        let (options, database) = exported.tuple();
+        let (mut options, mut database) = check_err!(exported.tuple(), error);
 
-        let optvalue = unsafe { get_option(database, options, key) };
+        let optvalue = unsafe { get_option(database.as_deref_mut(), options.as_deref_mut(), key) };
         let optvalue = check_err!(optvalue, error);
         check_err!(unsafe { copy_string(&optvalue, value, length) }, error);
 
@@ -770,7 +807,7 @@ extern "C" fn database_get_option_int<DriverType: Driver>(
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
     catch_panic(error, || {
-        let database = pointer_as_mut!(database, error);
+        check_not_null!(database, error);
         check_not_null!(key, error);
         check_not_null!(value, error);
 
@@ -778,9 +815,12 @@ extern "C" fn database_get_option_int<DriverType: Driver>(
             unsafe { database_private_data::<DriverType>(database) },
             error
         );
-        let (options, database) = exported.tuple();
+        let (mut options, mut database) = check_err!(exported.tuple(), error);
 
-        let optvalue = check_err!(unsafe { get_option_int(database, options, key) }, error);
+        let optvalue = check_err!(
+            unsafe { get_option_int(database.as_deref_mut(), options.as_deref_mut(), key) },
+            error
+        );
         unsafe { std::ptr::write_unaligned(value, optvalue) };
 
         ADBC_STATUS_OK
@@ -794,7 +834,7 @@ extern "C" fn database_get_option_double<DriverType: Driver>(
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
     catch_panic(error, || {
-        let database = pointer_as_mut!(database, error);
+        check_not_null!(database, error);
         check_not_null!(key, error);
         check_not_null!(value, error);
 
@@ -802,9 +842,12 @@ extern "C" fn database_get_option_double<DriverType: Driver>(
             unsafe { database_private_data::<DriverType>(database) },
             error
         );
-        let (options, database) = exported.tuple();
+        let (mut options, mut database) = check_err!(exported.tuple(), error);
 
-        let optvalue = check_err!(unsafe { get_option_double(database, options, key) }, error);
+        let optvalue = check_err!(
+            unsafe { get_option_double(database.as_deref_mut(), options.as_deref_mut(), key) },
+            error
+        );
         unsafe { std::ptr::write_unaligned(value, optvalue) };
 
         ADBC_STATUS_OK
@@ -819,7 +862,7 @@ extern "C" fn database_get_option_bytes<DriverType: Driver>(
     error: *mut FFI_AdbcError,
 ) -> AdbcStatusCode {
     catch_panic(error, || {
-        let database = pointer_as_mut!(database, error);
+        check_not_null!(database, error);
         check_not_null!(key, error);
         check_not_null!(value, error);
         check_not_null!(length, error);
@@ -828,9 +871,10 @@ extern "C" fn database_get_option_bytes<DriverType: Driver>(
             unsafe { database_private_data::<DriverType>(database) },
             error
         );
-        let (options, database) = exported.tuple();
+        let (mut options, mut database) = check_err!(exported.tuple(), error);
 
-        let optvalue = unsafe { get_option_bytes(database, options, key) };
+        let optvalue =
+            unsafe { get_option_bytes(database.as_deref_mut(), options.as_deref_mut(), key) };
         let optvalue = check_err!(optvalue, error);
         unsafe { copy_bytes(&optvalue, value, length) };
 
@@ -917,7 +961,7 @@ extern "C" fn connection_init<DriverType: Driver>(
 ) -> AdbcStatusCode {
     catch_panic(error, || {
         let connection = pointer_as_mut!(connection, error);
-        let database = pointer_as_mut!(database, error);
+        check_not_null!(database, error);
 
         // It's OK to have a &mut here since the caller can't yet get a cancel handle
         let exported_connection = check_err!(
@@ -948,6 +992,15 @@ extern "C" fn connection_init<DriverType: Driver>(
                         error
                     );
 
+                    let database = check_err!(
+                        database.lock().map_err(|_| {
+                            Error::with_message_and_status(
+                                "Database mutex poisoned",
+                                Status::Internal,
+                            )
+                        }),
+                        error
+                    );
                     database.new_connection_with_opts(options.clone())
                 }
                 _ => Err(Error::with_message_and_status(
