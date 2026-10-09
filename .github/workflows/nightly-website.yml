@@ -49,8 +49,13 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Build
+        if: github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/apache-arrow-adbc-')
         run: |
           docker compose run docs
+      - name: Build
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/apache-arrow-adbc')
+        run: |
+          docker compose run -e ADBC_BASEURL="https://arrow.apache.org/adbc/current/" docs
       - name: Archive docs
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
