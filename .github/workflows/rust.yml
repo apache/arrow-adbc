@@ -297,4 +297,4 @@ jobs:
       - name: adbc_driver_manager (miri)
         working-directory: rust
         run: |
-          cargo +nightly miri test -p adbc_driver_manager --test cancellation
+          cargo +nightly miri test -p adbc_driver_manager --test cancellation --test exporter_cancellation

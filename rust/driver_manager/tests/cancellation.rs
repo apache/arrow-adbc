@@ -35,46 +35,16 @@ use adbc_ffi::{
 };
 use arrow_array::ffi_stream::FFI_ArrowArrayStream;
 
+mod common;
+
+use common::AtomicFlag;
+
 const TIMEOUT: Duration = Duration::from_secs(2);
 const CALLBACK_TIMEOUT: Duration = Duration::from_secs(10);
 
 // ------------------------------------------------------------
 // Simulated driver implementation
 // ------------------------------------------------------------
-
-struct AtomicFlag {
-    mu: std::sync::Mutex<bool>,
-    cv: std::sync::Condvar,
-}
-
-impl AtomicFlag {
-    fn new(value: bool) -> Self {
-        Self {
-            mu: std::sync::Mutex::new(value),
-            cv: std::sync::Condvar::new(),
-        }
-    }
-
-    fn clear(&self) {
-        let mut guard = self.mu.lock().unwrap();
-        *guard = false;
-        self.cv.notify_all();
-    }
-
-    fn set(&self) {
-        let mut guard = self.mu.lock().unwrap();
-        *guard = true;
-        self.cv.notify_all();
-    }
-
-    fn wait(&self, timeout: Duration) -> bool {
-        let (guard, _) = self
-            .cv
-            .wait_timeout_while(self.mu.lock().unwrap(), timeout, |flag| !*flag)
-            .unwrap();
-        *guard
-    }
-}
 
 // Track what's been done with the driver so we can verify invariants later.
 struct DriverObjectState {
