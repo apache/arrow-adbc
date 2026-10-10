@@ -35,4 +35,10 @@ public interface FlightSqlConnectionProperties {
   TypedKey<Boolean> WITH_COOKIE_MIDDLEWARE =
       new TypedKey<>("adbc.flight.sql.rpc.with_cookie_middleware", Boolean.class);
   String RPC_CALL_HEADER_PREFIX = "adbc.flight.sql.rpc.call_header.";
+
+  String SESSION_OPTIONS = "adbc.flight.sql.session.options";
+  String SESSION_OPTION_PREFIX = "adbc.flight.sql.session.option.";
+  String SESSION_OPTION_BOOL_PREFIX = "adbc.flight.sql.session.optionbool.";
+  String SESSION_OPTION_STRING_LIST_PREFIX = "adbc.flight.sql.session.optionstringlist.";
+  String SESSION_OPTION_ERASE_PREFIX = "adbc.flight.sql.session.optionerase.";
 }
