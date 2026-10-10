@@ -1027,22 +1027,33 @@ TEST_F(SqliteReaderTest, InferFloatToStringPreservesRoundTripPrecision) {
            "(0.1, 3.141592653589793), "
            "('end', 0.1)"));
 
-  std::vector<std::optional<std::string>> expected_upcast;
-  std::vector<std::optional<std::string>> expected_append;
+  struct ExpectedValue {
+    std::optional<double> number;
+    std::string text;
+  };
+  std::vector<ExpectedValue> expected_upcast;
+  std::vector<ExpectedValue> expected_append;
   sqlite3_stmt* expected_stmt = nullptr;
   ASSERT_EQ(SQLITE_OK, sqlite3_prepare_v2(
                            db,
-                           "SELECT CAST(upcast_col AS TEXT), CAST(append_col AS TEXT) "
-                           "FROM foo",
+                           "SELECT upcast_col, append_col FROM foo",
                            -1, &expected_stmt, nullptr));
   int rc = SQLITE_OK;
   while ((rc = sqlite3_step(expected_stmt)) == SQLITE_ROW) {
-    expected_upcast.emplace_back(
-        std::string(reinterpret_cast<const char*>(sqlite3_column_text(expected_stmt, 0)),
-                    sqlite3_column_bytes(expected_stmt, 0)));
-    expected_append.emplace_back(
-        std::string(reinterpret_cast<const char*>(sqlite3_column_text(expected_stmt, 1)),
-                    sqlite3_column_bytes(expected_stmt, 1)));
+    auto read_expected = [expected_stmt](int column) {
+      ExpectedValue value;
+      const int type = sqlite3_column_type(expected_stmt, column);
+      if (type == SQLITE_INTEGER || type == SQLITE_FLOAT) {
+        value.number = sqlite3_column_double(expected_stmt, column);
+      } else {
+        value.text = std::string(
+            reinterpret_cast<const char*>(sqlite3_column_text(expected_stmt, column)),
+            sqlite3_column_bytes(expected_stmt, column));
+      }
+      return value;
+    };
+    expected_upcast.emplace_back(read_expected(0));
+    expected_append.emplace_back(read_expected(1));
   }
   EXPECT_EQ(SQLITE_DONE, rc);
   sqlite3_finalize(expected_stmt);
@@ -1053,23 +1064,20 @@ TEST_F(SqliteReaderTest, InferFloatToStringPreservesRoundTripPrecision) {
   ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[1].type);
   ASSERT_NO_FATAL_FAILURE(reader.Next());
   auto expect_round_trip = [](ArrowArrayView* actual,
-                              const std::vector<std::optional<std::string>>& expected) {
+                              const std::vector<ExpectedValue>& expected) {
     ASSERT_EQ(actual->length, static_cast<int64_t>(expected.size()));
     for (int64_t i = 0; i < actual->length; i++) {
-      ASSERT_TRUE(expected[i].has_value());
       const ArrowStringView actual_view = ArrowArrayViewGetStringUnsafe(actual, i);
       const std::string actual_value(actual_view.data, actual_view.size_bytes);
 
-      char* expected_end = nullptr;
-      const double expected_number = std::strtod(expected[i]->c_str(), &expected_end);
-      if (expected_end != expected[i]->c_str() && *expected_end == '\0') {
+      if (expected[i].number.has_value()) {
         char* actual_end = nullptr;
         const double actual_number = std::strtod(actual_value.c_str(), &actual_end);
         ASSERT_NE(actual_end, actual_value.c_str());
         ASSERT_EQ(*actual_end, '\0');
-        EXPECT_EQ(actual_number, expected_number);
+        EXPECT_EQ(actual_number, *expected[i].number);
       } else {
-        EXPECT_EQ(actual_value, *expected[i]);
+        EXPECT_EQ(actual_value, expected[i].text);
       }
     }
   };
