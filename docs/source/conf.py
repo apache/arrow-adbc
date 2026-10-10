@@ -29,9 +29,10 @@ sys.path.append(str(Path("./ext").resolve()))
 
 project = "ADBC"
 copyright = f"""2022–{datetime.date.today().year} The Apache Software Foundation.
-Apache Arrow, Arrow, Apache, the Apache logo, and the Apache Arrow project logo are
-either registered trademarks or trademarks of The Apache Software Foundation in the
-United States and other countries."""
+Apache Arrow, Arrow, Apache Arrow ADBC, ADBC, Apache, the Apache logo, the Apache
+Arrow project logo, and the ADBC subproject logo are either registered trademarks or
+trademarks of The Apache Software Foundation in the United States and other
+countries."""
 author = "the Apache Arrow Developers"
 release = "25 (dev)"
 # Needed to generate version switcher
