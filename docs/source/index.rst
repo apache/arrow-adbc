@@ -257,4 +257,5 @@ More Resources
 
    faq
    glossary
+   visual_identity
    genindex
