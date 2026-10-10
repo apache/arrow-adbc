@@ -953,27 +953,30 @@ AdbcStatusCode InternalSqliteStatementReaderAppendDoubleToBinary(
     struct ArrowBuffer* offsets, struct ArrowBuffer* binary, double value,
     int32_t* offset, struct AdbcError* error) {
   static const size_t kReserve = 64;
-  size_t buffer_size = kReserve;
-  CHECK_NA(INTERNAL, ArrowBufferReserve(binary, buffer_size), error);
+  CHECK_NA(INTERNAL, ArrowBufferReserve(binary, kReserve), error);
   char* output = (char*)(binary->data + binary->size_bytes);
-  int written = 0;
-  while (1) {
-    written = snprintf(output, buffer_size, "%e", value);
-    if (written < 0) {
-      InternalAdbcSetError(error, "Encoding error when upcasting double to string");
-      return ADBC_STATUS_INTERNAL;
-    } else if (((size_t)written) >= buffer_size) {
-      // Truncated, resize and try again
-      // Check for overflow - presumably this can never happen...?
-      if (UINT_MAX - buffer_size < buffer_size) {
-        InternalAdbcSetError(error, "Overflow when upcasting double to string");
-        return ADBC_STATUS_INTERNAL;
-      }
-      CHECK_NA(INTERNAL, ArrowBufferReserve(binary, buffer_size), error);
-      buffer_size += buffer_size;
-      continue;
+  // Keep enough significant digits to round-trip the binary64 value. SQLite's
+  // printf precision can be capped by the linked SQLite build, so use libc for
+  // finite values and SQLite's formatter for its non-finite spellings.
+  int written;
+  if (isfinite(value)) {
+    written = snprintf(output, (int)kReserve, "%.17g", value);
+    if (written >= 0 && written < (int)kReserve - 2 && strchr(output, '.') == NULL) {
+      char* exponent = strchr(output, 'e');
+      const size_t insert_at =
+          exponent == NULL ? (size_t)written : (size_t)(exponent - output);
+      memmove(output + insert_at + 2, output + insert_at,
+              (size_t)written - insert_at + 1);
+      output[insert_at] = '.';
+      output[insert_at + 1] = '0';
+      written += 2;
     }
-    break;
+  } else {
+    written = (int)strlen(sqlite3_snprintf((int)kReserve, output, "%!.17g", value));
+  }
+  if (written < 0 || (size_t)written >= kReserve) {
+    InternalAdbcSetError(error, "Encoding error when upcasting double to string");
+    return ADBC_STATUS_INTERNAL;
   }
   *offset += written;
   binary->size_bytes += written;

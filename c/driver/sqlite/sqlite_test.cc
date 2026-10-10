@@ -15,6 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <cstdlib>
 #include <cstring>
 #include <filesystem>  // NOLINT [build/c++17]
 #include <limits>
@@ -1013,9 +1014,77 @@ TEST_F(SqliteReaderTest, IntsFloatsStrs) {
   ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].type);
 
   ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(CompareArray<std::string>(reader.array_view->children[0],
+                                                    {"1.0", "1.0", "", "Inf", "-Inf"}));
+}
+
+TEST_F(SqliteReaderTest, InferFloatToStringPreservesRoundTripPrecision) {
+  ASSERT_NO_FATAL_FAILURE(Exec("CREATE TABLE foo (upcast_col, append_col)"));
   ASSERT_NO_FATAL_FAILURE(
-      CompareArray<std::string>(reader.array_view->children[0],
-                                {"1.000000e+00", "1.000000e+00", "", "inf", "-inf"}));
+      Exec("INSERT INTO foo VALUES "
+           "(123456789.123, 'start'), "
+           "(3.141592653589793, 123456789.123), "
+           "(0.1, 3.141592653589793), "
+           "('end', 0.1)"));
+
+  struct ExpectedValue {
+    std::optional<double> number;
+    std::string text;
+  };
+  std::vector<ExpectedValue> expected_upcast;
+  std::vector<ExpectedValue> expected_append;
+  sqlite3_stmt* expected_stmt = nullptr;
+  ASSERT_EQ(SQLITE_OK, sqlite3_prepare_v2(
+                           db,
+                           "SELECT upcast_col, append_col FROM foo",
+                           -1, &expected_stmt, nullptr));
+  int rc = SQLITE_OK;
+  while ((rc = sqlite3_step(expected_stmt)) == SQLITE_ROW) {
+    auto read_expected = [expected_stmt](int column) {
+      ExpectedValue value;
+      const int type = sqlite3_column_type(expected_stmt, column);
+      if (type == SQLITE_INTEGER || type == SQLITE_FLOAT) {
+        value.number = sqlite3_column_double(expected_stmt, column);
+      } else {
+        value.text = std::string(
+            reinterpret_cast<const char*>(sqlite3_column_text(expected_stmt, column)),
+            sqlite3_column_bytes(expected_stmt, column));
+      }
+      return value;
+    };
+    expected_upcast.emplace_back(read_expected(0));
+    expected_append.emplace_back(read_expected(1));
+  }
+  EXPECT_EQ(SQLITE_DONE, rc);
+  sqlite3_finalize(expected_stmt);
+
+  adbc_validation::StreamReader reader;
+  ASSERT_NO_FATAL_FAILURE(Exec("SELECT * FROM foo", kInferRows, &reader));
+  ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].type);
+  ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[1].type);
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  auto expect_round_trip = [](ArrowArrayView* actual,
+                              const std::vector<ExpectedValue>& expected) {
+    ASSERT_EQ(actual->length, static_cast<int64_t>(expected.size()));
+    for (int64_t i = 0; i < actual->length; i++) {
+      const ArrowStringView actual_view = ArrowArrayViewGetStringUnsafe(actual, i);
+      const std::string actual_value(actual_view.data, actual_view.size_bytes);
+
+      if (expected[i].number.has_value()) {
+        char* actual_end = nullptr;
+        const double actual_number = std::strtod(actual_value.c_str(), &actual_end);
+        ASSERT_NE(actual_end, actual_value.c_str());
+        ASSERT_EQ(*actual_end, '\0');
+        EXPECT_EQ(actual_number, *expected[i].number);
+      } else {
+        EXPECT_EQ(actual_value, expected[i].text);
+      }
+    }
+  };
+  ASSERT_NO_FATAL_FAILURE(
+      expect_round_trip(reader.array_view->children[0], expected_upcast));
+  ASSERT_NO_FATAL_FAILURE(
+      expect_round_trip(reader.array_view->children[1], expected_append));
 }
 
 TEST_F(SqliteReaderTest, InferIntReadInt) {
