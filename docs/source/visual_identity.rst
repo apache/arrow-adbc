@@ -136,9 +136,11 @@ Horizontal lockup
   half rows.
 - **Type:** "ADBC" caps are 10 cells tall and "APACHE ARROW" caps 3⅓, the
   same 3:1 ratio as ARROW to APACHE in the Apache Arrow wordmark.
-- **Placement:** "APACHE ARROW" sits on the top of the first layer's side
-  wall. One wall below, "ADBC" runs from that wall's bottom to the bottom of
-  the last layer's side wall.
+- **Lines:** "APACHE ARROW" sits 1½ cells above "ADBC", under half its own
+  cap height, so the two lines read as one block.
+- **Balance:** the name sits where its centre of weight, the centroid of its
+  ink, is level with the mark's, so neither sits high or low against the
+  other. "ADBC" falls on rows 8⅓–18⅓, close to the middle of the mark.
 - **Width:** at 3:1 both lines come out the same width, so the name is flush
   left and right with normal letter spacing.
 - **Spacing:** the name sits 2 cells from the mark.
@@ -161,9 +163,9 @@ Hex badge
 - **Beat:** the hexagon's lower sides sit where a fourth layer's front walls
   would be, and its upper sides mirror them, a gap above the top face.
 - **Type:** cut out of the bottom layer's front walls, so the badge stays one
-  color. Each line is centred on its wall and starts half a cell from the
-  wall's end. "ADBC" has caps 1 cell tall, half a wall; the URL has an
-  x-height of half a cell.
+  color. Each line is 1 cell tall, half a wall, centred on its wall, and starts
+  half a cell from the wall's end: "ADBC" by its caps, in Barlow Bold, and the
+  URL from ascenders to descenders, in Roboto Condensed Medium.
 
 .. card::
 
@@ -262,4 +264,4 @@ In the logo files, all lettering is converted to shapes, so the fonts don't
 need to be installed to use them. The fonts are
 `Barlow <https://fonts.google.com/specimen/Barlow>`_ Bold,
 `Roboto <https://fonts.google.com/specimen/Roboto>`_ Regular, and Roboto
-Condensed Regular.
+Condensed Medium.
