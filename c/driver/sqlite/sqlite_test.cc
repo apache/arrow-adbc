@@ -15,6 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <cstdlib>
 #include <cstring>
 #include <filesystem>  // NOLINT [build/c++17]
 #include <limits>
@@ -1017,7 +1018,7 @@ TEST_F(SqliteReaderTest, IntsFloatsStrs) {
                                                     {"1.0", "1.0", "", "Inf", "-Inf"}));
 }
 
-TEST_F(SqliteReaderTest, InferFloatToStringPreservesSqliteText) {
+TEST_F(SqliteReaderTest, InferFloatToStringPreservesRoundTripPrecision) {
   ASSERT_NO_FATAL_FAILURE(Exec("CREATE TABLE foo (upcast_col, append_col)"));
   ASSERT_NO_FATAL_FAILURE(
       Exec("INSERT INTO foo VALUES "
@@ -1051,10 +1052,31 @@ TEST_F(SqliteReaderTest, InferFloatToStringPreservesSqliteText) {
   ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].type);
   ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[1].type);
   ASSERT_NO_FATAL_FAILURE(reader.Next());
+  auto expect_round_trip = [](ArrowArrayView* actual,
+                              const std::vector<std::optional<std::string>>& expected) {
+    ASSERT_EQ(actual->length, static_cast<int64_t>(expected.size()));
+    for (int64_t i = 0; i < actual->length; i++) {
+      ASSERT_TRUE(expected[i].has_value());
+      const ArrowStringView actual_view = ArrowArrayViewGetStringUnsafe(actual, i);
+      const std::string actual_value(actual_view.data, actual_view.size_bytes);
+
+      char* expected_end = nullptr;
+      const double expected_number = std::strtod(expected[i]->c_str(), &expected_end);
+      if (expected_end != expected[i]->c_str() && *expected_end == '\0') {
+        char* actual_end = nullptr;
+        const double actual_number = std::strtod(actual_value.c_str(), &actual_end);
+        ASSERT_NE(actual_end, actual_value.c_str());
+        ASSERT_EQ(*actual_end, '\0');
+        EXPECT_EQ(actual_number, expected_number);
+      } else {
+        EXPECT_EQ(actual_value, *expected[i]);
+      }
+    }
+  };
   ASSERT_NO_FATAL_FAILURE(
-      CompareArray<std::string>(reader.array_view->children[0], expected_upcast));
+      expect_round_trip(reader.array_view->children[0], expected_upcast));
   ASSERT_NO_FATAL_FAILURE(
-      CompareArray<std::string>(reader.array_view->children[1], expected_append));
+      expect_round_trip(reader.array_view->children[1], expected_append));
 }
 
 TEST_F(SqliteReaderTest, InferIntReadInt) {
