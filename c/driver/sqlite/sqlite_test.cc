@@ -1013,9 +1013,48 @@ TEST_F(SqliteReaderTest, IntsFloatsStrs) {
   ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].type);
 
   ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(CompareArray<std::string>(reader.array_view->children[0],
+                                                    {"1.0", "1.0", "", "Inf", "-Inf"}));
+}
+
+TEST_F(SqliteReaderTest, InferFloatToStringPreservesSqliteText) {
+  ASSERT_NO_FATAL_FAILURE(Exec("CREATE TABLE foo (upcast_col, append_col)"));
   ASSERT_NO_FATAL_FAILURE(
-      CompareArray<std::string>(reader.array_view->children[0],
-                                {"1.000000e+00", "1.000000e+00", "", "inf", "-inf"}));
+      Exec("INSERT INTO foo VALUES "
+           "(123456789.123, 'start'), "
+           "(3.141592653589793, 123456789.123), "
+           "(0.1, 3.141592653589793), "
+           "('end', 0.1)"));
+
+  std::vector<std::optional<std::string>> expected_upcast;
+  std::vector<std::optional<std::string>> expected_append;
+  sqlite3_stmt* expected_stmt = nullptr;
+  ASSERT_EQ(SQLITE_OK, sqlite3_prepare_v2(
+                           db,
+                           "SELECT CAST(upcast_col AS TEXT), CAST(append_col AS TEXT) "
+                           "FROM foo",
+                           -1, &expected_stmt, nullptr));
+  int rc = SQLITE_OK;
+  while ((rc = sqlite3_step(expected_stmt)) == SQLITE_ROW) {
+    expected_upcast.emplace_back(
+        std::string(reinterpret_cast<const char*>(sqlite3_column_text(expected_stmt, 0)),
+                    sqlite3_column_bytes(expected_stmt, 0)));
+    expected_append.emplace_back(
+        std::string(reinterpret_cast<const char*>(sqlite3_column_text(expected_stmt, 1)),
+                    sqlite3_column_bytes(expected_stmt, 1)));
+  }
+  EXPECT_EQ(SQLITE_DONE, rc);
+  sqlite3_finalize(expected_stmt);
+
+  adbc_validation::StreamReader reader;
+  ASSERT_NO_FATAL_FAILURE(Exec("SELECT * FROM foo", kInferRows, &reader));
+  ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].type);
+  ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[1].type);
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<std::string>(reader.array_view->children[0], expected_upcast));
+  ASSERT_NO_FATAL_FAILURE(
+      CompareArray<std::string>(reader.array_view->children[1], expected_append));
 }
 
 TEST_F(SqliteReaderTest, InferIntReadInt) {

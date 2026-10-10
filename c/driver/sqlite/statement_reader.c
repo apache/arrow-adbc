@@ -953,28 +953,11 @@ AdbcStatusCode InternalSqliteStatementReaderAppendDoubleToBinary(
     struct ArrowBuffer* offsets, struct ArrowBuffer* binary, double value,
     int32_t* offset, struct AdbcError* error) {
   static const size_t kReserve = 64;
-  size_t buffer_size = kReserve;
-  CHECK_NA(INTERNAL, ArrowBufferReserve(binary, buffer_size), error);
+  CHECK_NA(INTERNAL, ArrowBufferReserve(binary, kReserve), error);
   char* output = (char*)(binary->data + binary->size_bytes);
-  int written = 0;
-  while (1) {
-    written = snprintf(output, buffer_size, "%e", value);
-    if (written < 0) {
-      InternalAdbcSetError(error, "Encoding error when upcasting double to string");
-      return ADBC_STATUS_INTERNAL;
-    } else if (((size_t)written) >= buffer_size) {
-      // Truncated, resize and try again
-      // Check for overflow - presumably this can never happen...?
-      if (UINT_MAX - buffer_size < buffer_size) {
-        InternalAdbcSetError(error, "Overflow when upcasting double to string");
-        return ADBC_STATUS_INTERNAL;
-      }
-      CHECK_NA(INTERNAL, ArrowBufferReserve(binary, buffer_size), error);
-      buffer_size += buffer_size;
-      continue;
-    }
-    break;
-  }
+  // Match SQLite's own text conversion and retain enough precision to round-trip a
+  // double.
+  int written = (int)strlen(sqlite3_snprintf((int)kReserve, output, "%!.17g", value));
   *offset += written;
   binary->size_bytes += written;
   ArrowBufferAppendUnsafe(offsets, offset, sizeof(int32_t));
