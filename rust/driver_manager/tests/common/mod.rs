@@ -35,6 +35,42 @@ use arrow_array::{
 use arrow_schema::{ArrowError, DataType, Field, Schema, SchemaRef};
 use arrow_select::concat::concat_batches;
 
+pub mod dummy;
+
+pub struct AtomicFlag {
+    mu: std::sync::Mutex<bool>,
+    cv: std::sync::Condvar,
+}
+
+impl AtomicFlag {
+    pub fn new(value: bool) -> Self {
+        Self {
+            mu: std::sync::Mutex::new(value),
+            cv: std::sync::Condvar::new(),
+        }
+    }
+
+    pub fn clear(&self) {
+        let mut guard = self.mu.lock().unwrap();
+        *guard = false;
+        self.cv.notify_all();
+    }
+
+    pub fn set(&self) {
+        let mut guard = self.mu.lock().unwrap();
+        *guard = true;
+        self.cv.notify_all();
+    }
+
+    pub fn wait(&self, timeout: std::time::Duration) -> bool {
+        let (guard, _) = self
+            .cv
+            .wait_timeout_while(self.mu.lock().unwrap(), timeout, |flag| !*flag)
+            .unwrap();
+        *guard
+    }
+}
+
 pub struct SingleBatchReader {
     batch: Option<RecordBatch>,
     schema: SchemaRef,
