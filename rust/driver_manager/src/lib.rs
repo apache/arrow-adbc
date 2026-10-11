@@ -1480,7 +1480,9 @@ impl Statement for ManagedStatement {
         check_status(status, error)?;
 
         let result = PartitionedResult {
-            partitions: partitions.into(),
+            // SAFETY: The driver must return valid partition allocations and a valid
+            // release callback according to the ADBC FFI contract.
+            partitions: unsafe { adbc_ffi::import_partitions(partitions) }?,
             schema: (&schema).try_into()?,
             rows_affected,
         };
