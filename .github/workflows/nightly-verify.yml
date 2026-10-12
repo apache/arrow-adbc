@@ -181,6 +181,7 @@ jobs:
         if: matrix.os != 'windows-latest'
         env:
           CI: "false"
+          PYTHON_VERSION: "3.14"
           REPOSITORY: ${{ github.repository }}
           TEST_DEFAULT: "0"
           TEST_SOURCE: "1"
