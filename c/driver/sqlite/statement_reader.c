@@ -23,6 +23,7 @@
 
 #include <assert.h>
 #include <inttypes.h>
+#include <locale.h>
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -961,6 +962,21 @@ AdbcStatusCode InternalSqliteStatementReaderAppendDoubleToBinary(
   int written;
   if (isfinite(value)) {
     written = snprintf(output, (int)kReserve, "%.17g", value);
+    if (written > 0 && written < (int)kReserve) {
+      const char* decimal_point = localeconv()->decimal_point;
+      if (decimal_point != NULL && decimal_point[0] != '\0' &&
+          strcmp(decimal_point, ".") != 0) {
+        char* separator = strstr(output, decimal_point);
+        if (separator != NULL) {
+          size_t separator_length = strlen(decimal_point);
+          size_t separator_offset = (size_t)(separator - output);
+          size_t suffix_length = (size_t)written - separator_offset - separator_length;
+          memmove(separator + 1, separator + separator_length, suffix_length + 1);
+          *separator = '.';
+          written -= (int)(separator_length - 1);
+        }
+      }
+    }
     if (written >= 0 && written < (int)kReserve - 2 && strchr(output, '.') == NULL) {
       char* exponent = strchr(output, 'e');
       const size_t insert_at =

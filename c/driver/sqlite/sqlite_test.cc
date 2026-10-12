@@ -15,6 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <clocale>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>  // NOLINT [build/c++17]
@@ -1034,10 +1035,8 @@ TEST_F(SqliteReaderTest, InferFloatToStringPreservesRoundTripPrecision) {
   std::vector<ExpectedValue> expected_upcast;
   std::vector<ExpectedValue> expected_append;
   sqlite3_stmt* expected_stmt = nullptr;
-  ASSERT_EQ(SQLITE_OK, sqlite3_prepare_v2(
-                           db,
-                           "SELECT upcast_col, append_col FROM foo",
-                           -1, &expected_stmt, nullptr));
+  ASSERT_EQ(SQLITE_OK, sqlite3_prepare_v2(db, "SELECT upcast_col, append_col FROM foo",
+                                          -1, &expected_stmt, nullptr));
   int rc = SQLITE_OK;
   while ((rc = sqlite3_step(expected_stmt)) == SQLITE_ROW) {
     auto read_expected = [expected_stmt](int column) {
@@ -1085,6 +1084,40 @@ TEST_F(SqliteReaderTest, InferFloatToStringPreservesRoundTripPrecision) {
       expect_round_trip(reader.array_view->children[0], expected_upcast));
   ASSERT_NO_FATAL_FAILURE(
       expect_round_trip(reader.array_view->children[1], expected_append));
+}
+
+TEST_F(SqliteReaderTest, InferFloatToStringUsesDotDecimalInCommaLocale) {
+  const char* current_locale = std::setlocale(LC_NUMERIC, nullptr);
+  ASSERT_NE(nullptr, current_locale);
+  const std::string original_locale(current_locale);
+
+  const char* comma_locales[] = {"de_DE.UTF-8", "de_DE.utf8", "de_DE",
+                                 "German_Germany.1252"};
+  bool comma_locale_available = false;
+  for (const char* locale : comma_locales) {
+    if (std::setlocale(LC_NUMERIC, locale) != nullptr &&
+        std::strcmp(std::localeconv()->decimal_point, ",") == 0) {
+      comma_locale_available = true;
+      break;
+    }
+  }
+  if (!comma_locale_available) {
+    std::setlocale(LC_NUMERIC, original_locale.c_str());
+    GTEST_SKIP() << "No decimal-comma locale is installed";
+  }
+
+  struct RestoreLocale {
+    std::string name;
+    ~RestoreLocale() { std::setlocale(LC_NUMERIC, name.c_str()); }
+  } restore{original_locale};
+
+  adbc_validation::StreamReader reader;
+  ASSERT_NO_FATAL_FAILURE(ExecSelect("(1.5), ('text')", kInferRows, &reader));
+  ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].type);
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  const ArrowStringView actual =
+      ArrowArrayViewGetStringUnsafe(reader.array_view->children[0], 0);
+  EXPECT_EQ(std::string_view(actual.data, actual.size_bytes), "1.5");
 }
 
 TEST_F(SqliteReaderTest, InferIntReadInt) {
