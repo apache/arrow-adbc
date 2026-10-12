@@ -1087,6 +1087,11 @@ TEST_F(SqliteReaderTest, InferFloatToStringPreservesRoundTripPrecision) {
 }
 
 TEST_F(SqliteReaderTest, InferFloatToStringUsesDotDecimalInCommaLocale) {
+  ASSERT_NO_FATAL_FAILURE(Exec("CREATE TABLE foo (col)"));
+  ASSERT_NO_FATAL_FAILURE(Exec("INSERT INTO foo VALUES (1.5), ('text')"));
+  ASSERT_EQ(SQLITE_OK,
+            sqlite3_prepare_v2(db, "SELECT * FROM foo", -1, &stmt, /*pzTail=*/nullptr));
+
   const char* current_locale = std::setlocale(LC_NUMERIC, nullptr);
   ASSERT_NE(nullptr, current_locale);
   const std::string original_locale(current_locale);
@@ -1112,7 +1117,10 @@ TEST_F(SqliteReaderTest, InferFloatToStringUsesDotDecimalInCommaLocale) {
   } restore{original_locale};
 
   adbc_validation::StreamReader reader;
-  ASSERT_NO_FATAL_FAILURE(ExecSelect("(1.5), ('text')", kInferRows, &reader));
+  ASSERT_THAT(InternalAdbcSqliteExportReader(db, stmt, /*binder=*/nullptr, kInferRows,
+                                             &reader.stream.value, &error),
+              IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
   ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].type);
   ASSERT_NO_FATAL_FAILURE(reader.Next());
   const ArrowStringView actual =
