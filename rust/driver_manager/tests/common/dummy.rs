@@ -15,6 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+use std::collections::HashMap;
+
 use adbc_core::error::{Error, Result, Status};
 use adbc_core::options::{
     InfoCode, ObjectDepth, OptionConnection, OptionDatabase, OptionStatement, OptionValue,
@@ -51,29 +53,69 @@ impl Driver for DummyDriver {
 }
 
 #[derive(Default)]
-pub struct DummyDatabase {}
+pub struct DummyDatabase {
+    options: HashMap<OptionDatabase, OptionValue>,
+}
+
+impl DummyDatabase {
+    fn option(&self, key: OptionDatabase) -> Result<&OptionValue> {
+        // Let concurrent exported getters overlap while their driver borrows are live.
+        std::thread::yield_now();
+        self.options.get(&key).ok_or_else(|| {
+            Error::with_message_and_status(
+                format!("Option key not found: {key:?}"),
+                Status::NotFound,
+            )
+        })
+    }
+}
 
 impl Optionable for DummyDatabase {
     type Option = OptionDatabase;
 
-    fn set_option(&mut self, _key: Self::Option, _value: OptionValue) -> Result<()> {
+    fn set_option(&mut self, key: Self::Option, value: OptionValue) -> Result<()> {
+        self.options.insert(key, value);
         Ok(())
     }
 
-    fn get_option_bytes(&self, _key: Self::Option) -> Result<Vec<u8>> {
-        todo!()
+    fn get_option_bytes(&self, key: Self::Option) -> Result<Vec<u8>> {
+        match self.option(key)? {
+            OptionValue::Bytes(value) => Ok(value.clone()),
+            _ => Err(Error::with_message_and_status(
+                "Expected bytes option",
+                Status::InvalidState,
+            )),
+        }
     }
 
-    fn get_option_double(&self, _key: Self::Option) -> Result<f64> {
-        todo!()
+    fn get_option_double(&self, key: Self::Option) -> Result<f64> {
+        match self.option(key)? {
+            OptionValue::Double(value) => Ok(*value),
+            _ => Err(Error::with_message_and_status(
+                "Expected double option",
+                Status::InvalidState,
+            )),
+        }
     }
 
-    fn get_option_int(&self, _key: Self::Option) -> Result<i64> {
-        todo!()
+    fn get_option_int(&self, key: Self::Option) -> Result<i64> {
+        match self.option(key)? {
+            OptionValue::Int(value) => Ok(*value),
+            _ => Err(Error::with_message_and_status(
+                "Expected integer option",
+                Status::InvalidState,
+            )),
+        }
     }
 
-    fn get_option_string(&self, _key: Self::Option) -> Result<String> {
-        todo!()
+    fn get_option_string(&self, key: Self::Option) -> Result<String> {
+        match self.option(key)? {
+            OptionValue::String(value) => Ok(value.clone()),
+            _ => Err(Error::with_message_and_status(
+                "Expected string option",
+                Status::InvalidState,
+            )),
+        }
     }
 }
 
