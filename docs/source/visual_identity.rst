@@ -179,9 +179,9 @@ Usage
 - Use the same isometric logomark in every variant, and don't redraw it at
   another angle. Its 30° edges are what let it sit evenly in the hex badge's
   hexagon and inside the sticker's cut.
-- For stickers, use the supplied die-cut file. A sticker maker's automatic
-  outline decides the cut's angles and joins for itself; the approved cut runs
-  parallel to the walls and places each join deliberately.
+- For stickers, use the supplied die-cut file. An automatic outline can change
+  the edge angles and create unwanted pinches at joins and between letters.
+  The approved cut runs parallel to the walls and places each join deliberately.
 - In a circle, such as an avatar on GitHub, Slack, or social media, use the
   logomark, not the lockup. Fit it inside the square inscribed in the circle,
   about 70% of the circle's width, centred on the whole mark, top edge
@@ -194,8 +194,8 @@ Usage
    .. grid-item-card:: Do
 
       .. image:: _static/visual_identity/adbc-lockup-horizontal-sticker-do.png
-         :alt: The approved die-cut sticker, with notes on its edge angle and
-               its joins
+         :alt: The approved die-cut sticker, annotated to show its parallel 30°
+               edge, rounded logo/name joins, and straight bottom and right edges
          :width: 100%
          :align: center
 
@@ -203,7 +203,9 @@ Usage
 
       .. image:: _static/visual_identity/adbc-lockup-horizontal-sticker-dont.png
          :alt: A sticker with an automatically drawn outline, crossed out,
-               with notes on its edge angle and its pinches
+               with notes on its mismatched edge angle and unwanted pinches
+               between the logo and name, between letters, and along
+               the right edge
          :width: 100%
          :align: center
 
