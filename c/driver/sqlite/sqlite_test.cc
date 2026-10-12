@@ -1096,6 +1096,11 @@ TEST_F(SqliteReaderTest, InferFloatToStringUsesDotDecimalInCommaLocale) {
   ASSERT_NE(nullptr, current_locale);
   const std::string original_locale(current_locale);
 
+  struct RestoreLocale {
+    std::string name;
+    ~RestoreLocale() { std::setlocale(LC_NUMERIC, name.c_str()); }
+  } restore{original_locale};
+
   const char* comma_locales[] = {"de_DE.UTF-8", "de_DE.utf8", "de_DE",
                                  "German_Germany.1252"};
   bool comma_locale_available = false;
@@ -1107,14 +1112,8 @@ TEST_F(SqliteReaderTest, InferFloatToStringUsesDotDecimalInCommaLocale) {
     }
   }
   if (!comma_locale_available) {
-    std::setlocale(LC_NUMERIC, original_locale.c_str());
     GTEST_SKIP() << "No decimal-comma locale is installed";
   }
-
-  struct RestoreLocale {
-    std::string name;
-    ~RestoreLocale() { std::setlocale(LC_NUMERIC, name.c_str()); }
-  } restore{original_locale};
 
   adbc_validation::StreamReader reader;
   ASSERT_THAT(InternalAdbcSqliteExportReader(db, stmt, /*binder=*/nullptr, kInferRows,
