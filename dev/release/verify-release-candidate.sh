@@ -821,7 +821,7 @@ test_unix_wheels() {
   local arch="${1}"
   local platform="${2}"
 
-  local python_versions="${TEST_PYTHON_VERSIONS:-3.11 3.12 3.13 3.14 3.14t}"
+  local python_versions="${TEST_PYTHON_VERSIONS:-3.11 3.12 3.13 3.14 3.14t 3.15 3.15t}"
 
   for python in ${python_versions}; do
     local pyver=${python/t}

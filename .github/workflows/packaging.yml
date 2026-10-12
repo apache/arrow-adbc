@@ -770,6 +770,22 @@ jobs:
           pushd adbc
           env PYTHON=3.14t docker compose run python-wheel-manylinux-freethreaded-test
 
+      - name: Test wheel 3.15
+        env:
+          ARCH: ${{ matrix.arch }}
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          pushd adbc
+          env PYTHON=3.15 docker compose run python-wheel-manylinux-test
+
+      - name: Test wheel 3.15t
+        env:
+          ARCH: ${{ matrix.arch }}
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          pushd adbc
+          env PYTHON=3.15t docker compose run python-wheel-manylinux-freethreaded-test
+
   python-macos:
     name: "Python ${{ matrix.arch }} macOS"
     runs-on: ${{ matrix.os }}
@@ -911,6 +927,27 @@ jobs:
           source test-env-314t/bin/activate
           export PYTHON_GIL=0
           export PYTHON_VERSION=3.14t
+          ./ci/scripts/python_wheel_unix_test.sh $(pwd)
+          deactivate
+
+      - name: Test wheel 3.15
+        run: |
+          pushd adbc
+
+          /Library/Frameworks/Python.framework/Versions/3.15/bin/python3.15 -m venv test-env-315
+          source test-env-315/bin/activate
+          export PYTHON_VERSION=3.15
+          ./ci/scripts/python_wheel_unix_test.sh $(pwd)
+          deactivate
+
+      - name: Test wheel 3.15t
+        run: |
+          pushd adbc
+
+          /Library/Frameworks/PythonT.framework/Versions/3.15/bin/python3.15t -m venv test-env-315t
+          source test-env-315t/bin/activate
+          export PYTHON_GIL=0
+          export PYTHON_VERSION=3.15t
           ./ci/scripts/python_wheel_unix_test.sh $(pwd)
           deactivate
 
@@ -1061,6 +1098,24 @@ jobs:
           python-version: "3.14t"
           update-environment: false
 
+      - name: Install Python 3.15
+        id: python315
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          architecture: ${{ matrix.python_arch }}
+          check-latest: true
+          python-version: "3.15"
+          update-environment: false
+
+      - name: Install Python 3.15t
+        id: python315t
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          architecture: ${{ matrix.python_arch }}
+          check-latest: true
+          python-version: "3.15t"
+          update-environment: false
+
       - name: Build driver wheels
         shell: pwsh
         env:
@@ -1084,6 +1139,8 @@ jobs:
           PYTHON_313: ${{ steps.python313.outputs.python-path }}
           PYTHON_314: ${{ steps.python314.outputs.python-path }}
           PYTHON_314T: ${{ steps.python314t.outputs.python-path }}
+          PYTHON_315: ${{ steps.python315.outputs.python-path }}
+          PYTHON_315T: ${{ steps.python315t.outputs.python-path }}
           SETUPTOOLS_SCM_PRETEND_VERSION: ${{ env.VERSION }}
         run: |
           $OriginalPath = $env:PATH
@@ -1092,7 +1149,9 @@ jobs:
             @{ Version = "3.12"; Path = $env:PYTHON_312 },
             @{ Version = "3.13"; Path = $env:PYTHON_313 },
             @{ Version = "3.14"; Path = $env:PYTHON_314 },
-            @{ Version = "3.14t"; Path = $env:PYTHON_314T }
+            @{ Version = "3.14t"; Path = $env:PYTHON_314T },
+            @{ Version = "3.15"; Path = $env:PYTHON_315 },
+            @{ Version = "3.15t"; Path = $env:PYTHON_315T }
           )
           Set-Location adbc
           foreach ($Python in $Pythons) {
@@ -1128,6 +1187,8 @@ jobs:
           PYTHON_313: ${{ steps.python313.outputs.python-path }}
           PYTHON_314: ${{ steps.python314.outputs.python-path }}
           PYTHON_314T: ${{ steps.python314t.outputs.python-path }}
+          PYTHON_315: ${{ steps.python315.outputs.python-path }}
+          PYTHON_315T: ${{ steps.python315t.outputs.python-path }}
         run: |
           $DriverDir = Join-Path $PWD "adbc/build/bin"
           $OriginalPath = "$DriverDir;$env:PATH"
@@ -1136,7 +1197,9 @@ jobs:
             @{ Version = "3.12"; Path = $env:PYTHON_312 },
             @{ Version = "3.13"; Path = $env:PYTHON_313 },
             @{ Version = "3.14"; Path = $env:PYTHON_314 },
-            @{ Version = "3.14t"; Path = $env:PYTHON_314T }
+            @{ Version = "3.14t"; Path = $env:PYTHON_314T },
+            @{ Version = "3.15"; Path = $env:PYTHON_315 },
+            @{ Version = "3.15t"; Path = $env:PYTHON_315T }
           )
           Set-Location adbc
           foreach ($Python in $Pythons) {

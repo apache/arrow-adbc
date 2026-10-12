@@ -107,6 +107,24 @@ jobs:
           check-latest: true
           python-version: "3.14t"
           update-environment: false
+      - name: Install Python 3.15
+        if: matrix.os == 'windows-11-arm'
+        id: python315
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          architecture: arm64
+          check-latest: true
+          python-version: "3.15"
+          update-environment: false
+      - name: Install Python 3.15t
+        if: matrix.os == 'windows-11-arm'
+        id: python315t
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          architecture: arm64
+          check-latest: true
+          python-version: "3.15t"
+          update-environment: false
       # No Docker on M1
       - name: Skip Binary Verifiction
         if: matrix.os == 'macos-latest'
@@ -139,6 +157,8 @@ jobs:
           PYTHON_313_PATH: ${{ steps.python313.outputs.python-path }}
           PYTHON_314_PATH: ${{ steps.python314.outputs.python-path }}
           PYTHON_314T_PATH: ${{ steps.python314t.outputs.python-path }}
+          PYTHON_315_PATH: ${{ steps.python315.outputs.python-path }}
+          PYTHON_315T_PATH: ${{ steps.python315t.outputs.python-path }}
           REPOSITORY: ${{ github.repository }}
           TEST_DEFAULT: "0"
           TEST_BINARIES: "1"

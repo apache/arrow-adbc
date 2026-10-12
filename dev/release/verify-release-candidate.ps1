@@ -443,7 +443,7 @@ if ($TestBinaryArtifacts) {
         }
 
         if ($env:TEST_PYTHON_VERSIONS -eq $null) {
-            $PythonVersions = @("3.11", "3.12", "3.13", "3.14", "3.14t")
+            $PythonVersions = @("3.11", "3.12", "3.13", "3.14", "3.14t", "3.15", "3.15t")
         } else {
             $PythonVersions = @($env:TEST_PYTHON_VERSIONS.Split(" ", [System.StringSplitOptions]::RemoveEmptyEntries))
         }
