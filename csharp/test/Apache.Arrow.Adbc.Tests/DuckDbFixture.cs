@@ -50,6 +50,8 @@ namespace Apache.Arrow.Adbc.Tests
             _driver = CAdbcDriverImporter.Load(file, "duckdb_adbc_init");
         }
 
+        public int DriverVersion => _driver.DriverVersion;
+
         public AdbcDatabase OpenDatabase(string name)
         {
             if (_driver == null) throw new ObjectDisposedException("DuckDbFixture");
