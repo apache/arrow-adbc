@@ -384,6 +384,14 @@ namespace Apache.Arrow.Adbc.Tests
             using AdbcStatement stmt = conn.CreateStatement();
             Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => stmt.GetOptionDouble(AdbcOptions.Statement.Progress)).Status);
             Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => stmt.GetOptionBytes("b")).Status);
+
+            // The importer never calls a 1.1 function pointer on a 1.0 driver
+            Assert.Equal(AdbcStatusCode.NotImplemented, Assert.ThrowsAny<AdbcException>(() => db.SetOptionBytes("b", new byte[] { 1 })).Status);
+            Assert.Equal(AdbcStatusCode.NotImplemented, Assert.ThrowsAny<AdbcException>(() => conn.SetOptionBytes("b", new byte[] { 1 })).Status);
+            Assert.Equal(AdbcStatusCode.NotImplemented, Assert.ThrowsAny<AdbcException>(() => stmt.SetOptionBytes("b", new byte[] { 1 })).Status);
+            Assert.Equal(AdbcStatusCode.NotImplemented, Assert.ThrowsAny<AdbcException>(() => conn.GetStatistics(null, null, "t", true)).Status);
+            Assert.Equal(AdbcStatusCode.NotImplemented, Assert.ThrowsAny<AdbcException>(() => conn.GetStatisticsNames()).Status);
+            Assert.Equal(AdbcStatusCode.NotImplemented, Assert.ThrowsAny<AdbcException>(() => stmt.ExecuteSchema()).Status);
         }
 
         [Fact]
