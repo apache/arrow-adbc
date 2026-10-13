@@ -345,6 +345,34 @@ namespace Apache.Arrow.Adbc.Tests
             Assert.Equal(AdbcStatusCode.Success, driver.release(&driver, &error));
         }
 
+        private static unsafe delegate* unmanaged<CAdbcDatabase*, CAdbcError*, AdbcStatusCode> s_realDatabaseRelease;
+
+        [Fact]
+        public unsafe void FailedReleaseDoesNotHideTheOriginalError()
+        {
+            var fixture = new FixtureDriver { ThrowOnOpen = new AdbcException("open failed", AdbcStatusCode.InvalidState) };
+            AdbcDriverInit adapter = (int version, ref CAdbcDriver nativeDriver, ref CAdbcError error) =>
+            {
+                AdbcStatusCode status = CallExporter(version, ref nativeDriver, ref error, fixture);
+                s_realDatabaseRelease = nativeDriver.DatabaseRelease;
+                nativeDriver.DatabaseRelease = &FailingDatabaseRelease;
+                return status;
+            };
+
+            using AdbcDriver imported = CAdbcDriverImporter.Load(adapter);
+
+            AdbcException ex = Assert.ThrowsAny<AdbcException>(() => imported.Open(new Dictionary<string, string>()));
+            Assert.Equal(AdbcStatusCode.InvalidState, ex.Status);
+            Assert.Contains("open failed", ex.Message);
+        }
+
+        [UnmanagedCallersOnly]
+        private static unsafe AdbcStatusCode FailingDatabaseRelease(CAdbcDatabase* database, CAdbcError* error)
+        {
+            s_realDatabaseRelease(database, error);
+            return AdbcStatusCode.IOError;
+        }
+
         [UnmanagedCallersOnly]
         private static unsafe void ReleaseStaleError(CAdbcError* error)
         {

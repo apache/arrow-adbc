@@ -340,9 +340,16 @@ namespace Apache.Arrow.Adbc.C
                 {
                     if (result == null && nativeDatabase.private_data != null)
                     {
-                        using (CallHelper caller = new CallHelper())
+                        // Don't let a failed release hide the error that got us here
+                        try
                         {
-                            caller.Call(Driver.DatabaseRelease, ref nativeDatabase);
+                            using (CallHelper caller = new CallHelper())
+                            {
+                                caller.Call(Driver.DatabaseRelease, ref nativeDatabase);
+                            }
+                        }
+                        catch (AdbcException)
+                        {
                         }
                     }
                 }
@@ -453,9 +460,16 @@ namespace Apache.Arrow.Adbc.C
                 {
                     if (result == null && nativeConnection.private_data != null)
                     {
-                        using (CallHelper caller = new CallHelper())
+                        // Don't let a failed release hide the error that got us here
+                        try
                         {
-                            caller.Call(Driver.ConnectionRelease, ref nativeConnection);
+                            using (CallHelper caller = new CallHelper())
+                            {
+                                caller.Call(Driver.ConnectionRelease, ref nativeConnection);
+                            }
+                        }
+                        catch (AdbcException)
+                        {
                         }
                     }
                 }
@@ -603,9 +617,16 @@ namespace Apache.Arrow.Adbc.C
                 {
                     if (result == null && nativeStatement.private_data != null)
                     {
-                        using (CallHelper caller = new CallHelper())
+                        // Don't let a failed release hide the error that got us here
+                        try
                         {
-                            caller.Call(Driver.StatementRelease, ref nativeStatement);
+                            using (CallHelper caller = new CallHelper())
+                            {
+                                caller.Call(Driver.StatementRelease, ref nativeStatement);
+                            }
+                        }
+                        catch (AdbcException)
+                        {
                         }
                     }
                 }
