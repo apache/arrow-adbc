@@ -23,8 +23,6 @@
 
 #include <assert.h>
 #include <inttypes.h>
-#include <locale.h>
-#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <time.h>
@@ -956,40 +954,11 @@ AdbcStatusCode InternalSqliteStatementReaderAppendDoubleToBinary(
   static const size_t kReserve = 64;
   CHECK_NA(INTERNAL, ArrowBufferReserve(binary, kReserve), error);
   char* output = (char*)(binary->data + binary->size_bytes);
-  // Keep enough significant digits to round-trip the binary64 value. SQLite's
-  // printf precision can be capped by the linked SQLite build, so use libc for
-  // finite values and SQLite's formatter for its non-finite spellings.
-  int written;
-  if (isfinite(value)) {
-    written = snprintf(output, (int)kReserve, "%.17g", value);
-    if (written > 0 && written < (int)kReserve) {
-      const char* decimal_point = localeconv()->decimal_point;
-      if (decimal_point != NULL && decimal_point[0] != '\0' &&
-          strcmp(decimal_point, ".") != 0) {
-        char* separator = strstr(output, decimal_point);
-        if (separator != NULL) {
-          size_t separator_length = strlen(decimal_point);
-          size_t separator_offset = (size_t)(separator - output);
-          size_t suffix_length = (size_t)written - separator_offset - separator_length;
-          memmove(separator + 1, separator + separator_length, suffix_length + 1);
-          *separator = '.';
-          written -= (int)(separator_length - 1);
-        }
-      }
-    }
-    if (written >= 0 && written < (int)kReserve - 2 && strchr(output, '.') == NULL) {
-      char* exponent = strchr(output, 'e');
-      const size_t insert_at =
-          exponent == NULL ? (size_t)written : (size_t)(exponent - output);
-      memmove(output + insert_at + 2, output + insert_at,
-              (size_t)written - insert_at + 1);
-      output[insert_at] = '.';
-      output[insert_at + 1] = '0';
-      written += 2;
-    }
-  } else {
-    written = (int)strlen(sqlite3_snprintf((int)kReserve, output, "%!.17g", value));
-  }
+  // SQLite's alternate-form-2 formatter is locale-independent, keeps enough
+  // significant digits to round-trip binary64, and preserves REAL values as
+  // SQL-compatible text (including a decimal point for integral values).
+  const int written =
+      (int)strlen(sqlite3_snprintf((int)kReserve, output, "%!.17g", value));
   if (written < 0 || (size_t)written >= kReserve) {
     InternalAdbcSetError(error, "Encoding error when upcasting double to string");
     return ADBC_STATUS_INTERNAL;
