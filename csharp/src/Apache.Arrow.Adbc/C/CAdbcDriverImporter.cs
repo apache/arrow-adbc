@@ -1026,6 +1026,9 @@ namespace Apache.Arrow.Adbc.C
                         try
                         {
                             nativePartitions = (CAdbcPartitions*)Marshal.AllocHGlobal(sizeof(CAdbcPartitions));
+                            // AllocHGlobal doesn't zero memory, and a failing driver may not write
+                            // the struct, so release must start out null.
+                            *nativePartitions = default;
                             caller.TranslateCode(
 #if NET5_0_OR_GREATER
                                 Driver.StatementExecutePartitions
@@ -1044,17 +1047,17 @@ namespace Apache.Arrow.Adbc.C
                         }
                         finally
                         {
-                            if (nativePartitions->release != null)
-                            {
-#if NET5_0_OR_GREATER
-                                nativePartitions->release(nativePartitions);
-#else
-                                Marshal.GetDelegateForFunctionPointer<PartitionsRelease>(nativePartitions->release)(nativePartitions);
-#endif
-                            }
-
                             if (nativePartitions != null)
                             {
+                                if (nativePartitions->release != default)
+                                {
+#if NET5_0_OR_GREATER
+                                    nativePartitions->release(nativePartitions);
+#else
+                                    Marshal.GetDelegateForFunctionPointer<PartitionsRelease>(nativePartitions->release)(nativePartitions);
+#endif
+                                }
+
                                 Marshal.FreeHGlobal((IntPtr)nativePartitions);
                             }
                         }

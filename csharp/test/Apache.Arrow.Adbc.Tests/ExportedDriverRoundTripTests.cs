@@ -132,6 +132,44 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         [Fact]
+        public void ExecutePartitionedRoundTrips()
+        {
+            var fixture = new FixtureDriver();
+
+            using AdbcDriver imported = CAdbcDriverImporter.Load(CreateAdapter(fixture));
+            using AdbcDatabase db = imported.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+            stmt.SqlQuery = "PARTITIONS";
+
+            PartitionedResult result = stmt.ExecutePartitioned();
+
+            Assert.Equal(5, result.AffectedRows);
+            Assert.Equal("answer", Assert.Single(result.Schema.FieldsList).Name);
+            Assert.Equal(2, result.PartitionDescriptors.Count);
+            Assert.Equal(new byte[] { 1, 2 }, result.PartitionDescriptors[0].Descriptor.ToArray());
+            Assert.Equal(new byte[] { 3 }, result.PartitionDescriptors[1].Descriptor.ToArray());
+        }
+
+        [Fact]
+        public void ExecutePartitionedFailureDoesNotReleaseGarbage()
+        {
+            var fixture = new FixtureDriver();
+
+            using AdbcDriver imported = CAdbcDriverImporter.Load(CreateAdapter(fixture));
+            using AdbcDatabase db = imported.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+
+            // The producer fails without writing the partitions struct
+            stmt.SqlQuery = "SELECT 1";
+            for (int i = 0; i < 20; i++)
+            {
+                Assert.Equal(AdbcStatusCode.NotImplemented, Assert.ThrowsAny<AdbcException>(() => stmt.ExecutePartitioned()).Status);
+            }
+        }
+
+        [Fact]
         public void StatementSetOptionIsMarshaledToProducer()
         {
             var fixture = new FixtureDriver();
@@ -411,6 +449,20 @@ namespace Apache.Arrow.Adbc.Tests
 
             public override UpdateResult ExecuteUpdate()
                 => _sqlQuery == "UPDATE" ? new UpdateResult(3) : throw AdbcException.NotImplemented("fixture does not support ExecuteUpdate");
+
+            public override PartitionedResult ExecutePartitioned()
+            {
+                if (_sqlQuery != "PARTITIONS")
+                {
+                    return base.ExecutePartitioned();
+                }
+
+                return new PartitionedResult(BuildResultSchema(), 5, new[]
+                {
+                    new PartitionDescriptor(new byte[] { 1, 2 }),
+                    new PartitionDescriptor(new byte[] { 3 }),
+                });
+            }
 
             private static Schema BuildResultSchema() => new Schema.Builder()
                 .Field(f => f.Name("answer").DataType(Int32Type.Default).Nullable(false))

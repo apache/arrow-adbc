@@ -291,6 +291,11 @@ namespace Apache.Arrow.Adbc.C
 #endif
         private unsafe static void ReleasePartitions(CAdbcPartitions* partitions)
         {
+            FreePartitions(partitions);
+        }
+
+        private unsafe static void FreePartitions(CAdbcPartitions* partitions)
+        {
             if (partitions != null)
             {
                 if (partitions->partitions != null)
@@ -766,21 +771,42 @@ namespace Apache.Arrow.Adbc.C
                     *rows = result.AffectedRows;
                 }
 
-                partitions->release = ReleasePartitionsPtr;
-                partitions->num_partitions = result.PartitionDescriptors.Count;
-                partitions->partitions = (byte**)Marshal.AllocHGlobal(IntPtr.Size * result.PartitionDescriptors.Count);
-                partitions->partition_lengths = (nuint*)Marshal.AllocHGlobal(IntPtr.Size * result.PartitionDescriptors.Count);
-                for (int i = 0; i < partitions->num_partitions; i++)
+                // Build the result locally and publish it only once it's complete, so that a
+                // failure partway through never hands the caller a partially filled struct.
+                int count = result.PartitionDescriptors.Count;
+                CAdbcPartitions built = new CAdbcPartitions { num_partitions = count };
+                try
                 {
-                    ReadOnlySpan<byte> partition = result.PartitionDescriptors[i].Descriptor;
-                    partitions->partition_lengths[i] = (nuint)partition.Length;
-                    partitions->partitions[i] = (byte*)Marshal.AllocHGlobal(partition.Length);
-                    fixed (void* descriptor = partition)
+                    built.partitions = (byte**)Marshal.AllocHGlobal(IntPtr.Size * Math.Max(1, count));
+                    for (int i = 0; i < count; i++)
                     {
-                        Buffer.MemoryCopy(descriptor, partitions->partitions[i], partition.Length, partition.Length);
+                        built.partitions[i] = null;
+                    }
+                    built.partition_lengths = (nuint*)Marshal.AllocHGlobal(IntPtr.Size * Math.Max(1, count));
+                    for (int i = 0; i < count; i++)
+                    {
+                        ReadOnlySpan<byte> partition = result.PartitionDescriptors[i].Descriptor;
+                        built.partition_lengths[i] = (nuint)partition.Length;
+                        built.partitions[i] = (byte*)Marshal.AllocHGlobal(Math.Max(1, partition.Length));
+                        fixed (void* descriptor = partition)
+                        {
+                            Buffer.MemoryCopy(descriptor, built.partitions[i], partition.Length, partition.Length);
+                        }
+                    }
+
+                    if (schema != null)
+                    {
+                        CArrowSchemaExporter.ExportSchema(result.Schema, schema);
                     }
                 }
+                catch
+                {
+                    FreePartitions(&built);
+                    throw;
+                }
 
+                built.release = ReleasePartitionsPtr;
+                *partitions = built;
                 return AdbcStatusCode.Success;
             }
             catch (Exception e)
