@@ -24,6 +24,7 @@ namespace Apache.Arrow.Adbc
     /// This provides a common interface for vendor-specific driver
     /// initialization routines.
     /// </summary>
+    [Obsolete("Use AdbcDriver instead. The ADBC 1.1 APIs have been added to AdbcDriver in a backwards-compatible way.")]
     public abstract class AdbcDriver11 : IDisposable
     {
         ~AdbcDriver11() => Dispose(false);

@@ -186,6 +186,134 @@ namespace Apache.Arrow.Adbc
         }
 
         /// <summary>
+        /// Sets an integer-valued option.
+        /// </summary>
+        /// <param name="key">Option name</param>
+        /// <param name="value">Option value</param>
+        /// <remarks>
+        /// Added in ADBC 1.1.0. The default implementation converts the value to
+        /// a string and calls <see cref="SetOption(string, string)"/>.
+        /// </remarks>
+        public virtual void SetOptionInt64(string key, long value)
+        {
+            SetOption(key, AdbcOptionValue.FormatInt64(value));
+        }
+
+        /// <summary>
+        /// Sets a floating-point-valued option.
+        /// </summary>
+        /// <param name="key">Option name</param>
+        /// <param name="value">Option value</param>
+        /// <remarks>
+        /// Added in ADBC 1.1.0. The default implementation converts the value to
+        /// a string and calls <see cref="SetOption(string, string)"/>.
+        /// </remarks>
+        public virtual void SetOptionDouble(string key, double value)
+        {
+            SetOption(key, AdbcOptionValue.FormatDouble(value));
+        }
+
+        /// <summary>
+        /// Sets a binary-valued option.
+        /// </summary>
+        /// <param name="key">Option name</param>
+        /// <param name="value">Option value. Implementations must copy the data if they retain it.</param>
+        /// <remarks>Added in ADBC 1.1.0.</remarks>
+        public virtual void SetOptionBytes(string key, ReadOnlySpan<byte> value)
+        {
+            throw AdbcException.NotImplemented("Connection does not support binary options");
+        }
+
+        /// <summary>
+        /// Gets the value of a string-valued option.
+        /// </summary>
+        /// <param name="key">Option name</param>
+        /// <returns>The option value.</returns>
+        /// <exception cref="AdbcException">
+        /// With <see cref="AdbcStatusCode.NotFound"/> if the option is not recognized or has no value.
+        /// </exception>
+        /// <remarks>
+        /// Added in ADBC 1.1.0. The default implementation answers the standard
+        /// options defined in <see cref="AdbcOptions.Connection"/> from the
+        /// <see cref="AutoCommit"/>, <see cref="ReadOnly"/>, <see cref="IsolationLevel"/>,
+        /// <see cref="CurrentCatalog"/> and <see cref="CurrentDbSchema"/> properties.
+        /// Drivers that override it should call the base implementation for keys they
+        /// don't recognize.
+        /// </remarks>
+        public virtual string GetOption(string key)
+        {
+            switch (key)
+            {
+                case AdbcOptions.Connection.Autocommit:
+                    return AdbcOptions.GetEnabled(AutoCommit);
+                case AdbcOptions.Connection.ReadOnly:
+                    return AdbcOptions.GetEnabled(ReadOnly);
+                case AdbcOptions.Connection.IsolationLevel:
+                    return AdbcOptions.GetIsolationLevel(IsolationLevel);
+                case AdbcOptions.Connection.CurrentCatalog:
+                    return GetPropertyOption(key, () => CurrentCatalog);
+                case AdbcOptions.Connection.CurrentDbSchema:
+                    return GetPropertyOption(key, () => CurrentDbSchema);
+                default:
+                    throw AdbcOptionValue.NotFound(key);
+            }
+        }
+
+        private static string GetPropertyOption(string key, Func<string?> getter)
+        {
+            string? value;
+            try
+            {
+                value = getter();
+            }
+            catch (AdbcException e) when (e.Status == AdbcStatusCode.NotImplemented)
+            {
+                // The driver doesn't override the property. GetOption reports that as NotFound.
+                throw AdbcOptionValue.NotFound(key);
+            }
+            return value ?? throw AdbcOptionValue.NotFound(key);
+        }
+
+        /// <summary>
+        /// Gets the value of an integer-valued option.
+        /// </summary>
+        /// <param name="key">Option name</param>
+        /// <returns>The option value.</returns>
+        /// <remarks>
+        /// Added in ADBC 1.1.0. The default implementation parses the result of
+        /// <see cref="GetOption(string)"/>.
+        /// </remarks>
+        public virtual long GetOptionInt64(string key)
+        {
+            return AdbcOptionValue.ParseInt64(key, GetOption(key));
+        }
+
+        /// <summary>
+        /// Gets the value of a floating-point-valued option.
+        /// </summary>
+        /// <param name="key">Option name</param>
+        /// <returns>The option value.</returns>
+        /// <remarks>
+        /// Added in ADBC 1.1.0. The default implementation parses the result of
+        /// <see cref="GetOption(string)"/>.
+        /// </remarks>
+        public virtual double GetOptionDouble(string key)
+        {
+            return AdbcOptionValue.ParseDouble(key, GetOption(key));
+        }
+
+        /// <summary>
+        /// Gets the value of a binary-valued option.
+        /// </summary>
+        /// <param name="key">Option name</param>
+        /// <returns>The option value.</returns>
+        /// <remarks>Added in ADBC 1.1.0.</remarks>
+        public virtual byte[] GetOptionBytes(string key)
+        {
+            throw AdbcOptionValue.NotFound(key);
+        }
+
+        /// <summary>
         /// Create a result set from a serialized PartitionDescriptor.
         /// </summary>
         /// <param name="partition">
@@ -229,6 +357,32 @@ namespace Apache.Arrow.Adbc
         {
             get => _isolationLevel;
             set => throw AdbcException.NotImplemented("Connection does not support setting isolation level");
+        }
+
+        /// <summary>
+        /// Gets or sets the current catalog.
+        /// </summary>
+        /// <remarks>
+        /// Added in ADBC 1.1.0. The default setter calls <see cref="SetOption(string, string)"/>
+        /// with <see cref="AdbcOptions.Connection.CurrentCatalog"/>.
+        /// </remarks>
+        public virtual string? CurrentCatalog
+        {
+            get => throw AdbcException.NotImplemented("Connection does not support getting the current catalog");
+            set => SetOption(AdbcOptions.Connection.CurrentCatalog, value ?? throw new ArgumentNullException(nameof(value)));
+        }
+
+        /// <summary>
+        /// Gets or sets the current database schema.
+        /// </summary>
+        /// <remarks>
+        /// Added in ADBC 1.1.0. The default setter calls <see cref="SetOption(string, string)"/>
+        /// with <see cref="AdbcOptions.Connection.CurrentDbSchema"/>.
+        /// </remarks>
+        public virtual string? CurrentDbSchema
+        {
+            get => throw AdbcException.NotImplemented("Connection does not support getting the current database schema");
+            set => SetOption(AdbcOptions.Connection.CurrentDbSchema, value ?? throw new ArgumentNullException(nameof(value)));
         }
 
         /// <summary>

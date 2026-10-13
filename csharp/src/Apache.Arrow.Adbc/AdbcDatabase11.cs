@@ -28,6 +28,7 @@ namespace Apache.Arrow.Adbc
     /// For example, in-memory databases can place ownership of the actual
     /// database in this object.
     /// </summary>
+    [Obsolete("Use AdbcDatabase instead. The ADBC 1.1 APIs have been added to AdbcDatabase in a backwards-compatible way.")]
     public abstract class AdbcDatabase11 : IDisposable
     {
         ~AdbcDatabase11() => Dispose(false);

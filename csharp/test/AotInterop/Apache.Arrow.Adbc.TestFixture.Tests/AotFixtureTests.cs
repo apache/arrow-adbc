@@ -230,5 +230,50 @@ namespace Apache.Arrow.Adbc.TestFixture.Tests
                 () => conn.GetObjects(AdbcConnection.GetObjectsDepth.All, null, null, null, null, null));
             Assert.Equal(AdbcStatusCode.NotImplemented, ex.Status);
         }
+
+        [SkippableFact]
+        public void ConnectionOptionsRoundTripThroughAotBoundary()
+        {
+            using AdbcDriver driver = LoadFixture();
+            using AdbcDatabase db = driver.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(new Dictionary<string, string> { { "conn.user", "alice" } });
+
+            Assert.Equal("alice", conn.GetOption("conn.user"));
+            Assert.True(conn.AutoCommit);
+
+            conn.SetOptionInt64("conn.timeout", 42);
+            Assert.Equal(42L, conn.GetOptionInt64("conn.timeout"));
+
+            AdbcException ex = Assert.ThrowsAny<AdbcException>(() => conn.GetOption("conn.missing"));
+            Assert.Equal(AdbcStatusCode.NotFound, ex.Status);
+        }
+
+        [SkippableFact]
+        public void StatementProgressIsReadable()
+        {
+            using AdbcDriver driver = LoadFixture();
+            using AdbcDatabase db = driver.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+
+            Assert.Equal(0.5, stmt.GetOptionDouble(AdbcOptions.Statement.Progress));
+        }
+
+        [SkippableFact]
+        public void ErrorDetailsCrossAotBoundary()
+        {
+            using AdbcDriver driver = LoadFixture();
+            using AdbcDatabase db = driver.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+            stmt.SqlQuery = "FAIL";
+
+            AdbcException ex = Assert.ThrowsAny<AdbcException>(() => stmt.ExecuteQuery());
+            Assert.Equal(AdbcStatusCode.InvalidArgument, ex.Status);
+            Assert.Equal("42000", ex.SqlState);
+            KeyValuePair<string, byte[]> detail = Assert.Single(ex.Details);
+            Assert.Equal("fixture.detail", detail.Key);
+            Assert.Equal(new byte[] { 1, 2, 3 }, detail.Value);
+        }
     }
 }

@@ -26,6 +26,10 @@ namespace Apache.Arrow.Adbc
     /// </summary>
     public abstract class AdbcDriver : IDisposable
     {
+        /// <summary>
+        /// Gets the version of the ADBC specification implemented by this driver,
+        /// as one of the constants defined by <see cref="AdbcVersion"/>.
+        /// </summary>
         public virtual int DriverVersion => AdbcVersion.Version_1_0_0;
 
         /// <summary>
@@ -40,11 +44,48 @@ namespace Apache.Arrow.Adbc
         /// Open a database via this driver.
         /// </summary>
         /// <param name="parameters">
-        /// Driver-specific parameters.
+        /// Driver-specific parameters. Values may be strings, booleans, integers,
+        /// floating-point numbers, byte arrays or <see cref="ReadOnlyMemory{T}"/> of bytes.
         /// </param>
+        /// <remarks>
+        /// The default implementation converts the non-binary values to strings and calls
+        /// <see cref="Open(IReadOnlyDictionary{string, string})"/>, then applies binary values
+        /// to the new database through <see cref="AdbcDatabase.SetOptionBytes"/>. Drivers that
+        /// need binary options while opening should override this method.
+        /// </remarks>
         public virtual AdbcDatabase Open(IReadOnlyDictionary<string, object> parameters)
         {
-            throw AdbcException.NotImplemented("Driver does not support non-string parameters");
+            if (parameters == null) throw new ArgumentNullException(nameof(parameters));
+
+            Dictionary<string, string> stringParameters = new Dictionary<string, string>(parameters.Count);
+            List<KeyValuePair<string, ReadOnlyMemory<byte>>> binaryParameters = new List<KeyValuePair<string, ReadOnlyMemory<byte>>>();
+            foreach (KeyValuePair<string, object> pair in parameters)
+            {
+                if (AdbcOptionValue.TryGetBytes(pair.Value, out ReadOnlyMemory<byte> bytes))
+                {
+                    binaryParameters.Add(new KeyValuePair<string, ReadOnlyMemory<byte>>(pair.Key, bytes));
+                }
+                else
+                {
+                    stringParameters[pair.Key] = AdbcOptionValue.ToOptionString(pair.Key, pair.Value);
+                }
+            }
+
+            AdbcDatabase database = Open(stringParameters);
+            try
+            {
+                foreach (KeyValuePair<string, ReadOnlyMemory<byte>> pair in binaryParameters)
+                {
+                    database.SetOptionBytes(pair.Key, pair.Value.Span);
+                }
+            }
+            catch
+            {
+                database.Dispose();
+                throw;
+            }
+
+            return database;
         }
 
         public virtual void Dispose()
