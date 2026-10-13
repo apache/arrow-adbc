@@ -28,8 +28,11 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="DuckDB.NET.Bindings.Full" GeneratePathProperty="true" />
     <PackageReference Include="Xunit.SkippableFact" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageDownload Include="DuckDB.NET.Bindings.Full" Version="[$(DuckDbVersion)]" />
   </ItemGroup>
 
   <ItemGroup>
@@ -37,10 +40,13 @@
     <ProjectReference Include="..\..\src\Client\Apache.Arrow.Adbc.Client.csproj" />
   </ItemGroup>
 
-  <Target Name="CopyDuckDb" AfterTargets="Build" Condition="'$(PkgDuckDB_NET_Bindings_Full)' != ''">
-    <Copy Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true'" SourceFiles="$(PkgDuckDB_NET_Bindings_Full)\runtimes\win-$(ProcessArchitecture)\native\duckdb.dll" DestinationFolder="$(OutputPath)" />
-    <Copy Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true'" SourceFiles="$(PkgDuckDB_NET_Bindings_Full)\runtimes\linux-$(ProcessArchitecture)\native\libduckdb.so" DestinationFolder="$(OutputPath)" />
-    <Copy Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))' == 'true'" SourceFiles="$(PkgDuckDB_NET_Bindings_Full)\runtimes\osx\native\libduckdb.dylib" DestinationFolder="$(OutputPath)" />
+  <Target Name="CopyDuckDb" AfterTargets="Build">
+    <PropertyGroup>
+      <DuckDbPackagePath>$(NuGetPackageRoot)duckdb.net.bindings.full\$(DuckDbVersion)</DuckDbPackagePath>
+    </PropertyGroup>
+    <Copy Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Windows)))' == 'true'" SourceFiles="$(DuckDbPackagePath)\runtimes\win-$(ProcessArchitecture)\native\duckdb.dll" DestinationFolder="$(OutputPath)" />
+    <Copy Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))' == 'true'" SourceFiles="$(DuckDbPackagePath)\runtimes\linux-$(ProcessArchitecture)\native\libduckdb.so" DestinationFolder="$(OutputPath)" />
+    <Copy Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::OSX)))' == 'true'" SourceFiles="$(DuckDbPackagePath)\runtimes\osx\native\libduckdb.dylib" DestinationFolder="$(OutputPath)" />
   </Target>
 
 </Project>

@@ -279,6 +279,119 @@ namespace Apache.Arrow.Adbc.Tests
             Assert.Empty(found);
         }
 
+        [Fact]
+        public void DriverVersionIs11()
+        {
+            Assert.Equal(AdbcVersion.Version_1_1_0, _duckDb.DriverVersion);
+        }
+
+        [Fact]
+        public void ExecuteSchema()
+        {
+            using var database = _duckDb.OpenDatabase("executeschema.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+
+            statement.SqlQuery = "CREATE TABLE test(foo INTEGER, bar VARCHAR, baz DOUBLE);";
+            statement.ExecuteUpdate();
+
+            statement.SqlQuery = "SELECT foo, bar, baz, foo + 1 AS foo1 FROM test";
+            Schema schema = statement.ExecuteSchema();
+
+            Assert.Equal(4, schema.FieldsList.Count);
+            Assert.Equal("foo", schema.FieldsList[0].Name);
+            Assert.Equal(ArrowTypeId.Int32, schema.FieldsList[0].DataType.TypeId);
+            Assert.Equal("bar", schema.FieldsList[1].Name);
+            Assert.Equal(ArrowTypeId.String, schema.FieldsList[1].DataType.TypeId);
+            Assert.Equal("baz", schema.FieldsList[2].Name);
+            Assert.Equal(ArrowTypeId.Double, schema.FieldsList[2].DataType.TypeId);
+            Assert.Equal("foo1", schema.FieldsList[3].Name);
+            Assert.Equal(ArrowTypeId.Int32, schema.FieldsList[3].DataType.TypeId);
+
+            // The schema should match what's actually returned on execution
+            var results = statement.ExecuteQuery();
+            using var stream = results.Stream;
+            Assert.NotNull(stream);
+            Assert.Equal(schema.FieldsList.Count, stream.Schema.FieldsList.Count);
+            for (int i = 0; i < schema.FieldsList.Count; i++)
+            {
+                Assert.Equal(schema.FieldsList[i].Name, stream.Schema.FieldsList[i].Name);
+                Assert.Equal(schema.FieldsList[i].DataType.TypeId, stream.Schema.FieldsList[i].DataType.TypeId);
+            }
+        }
+
+        [Fact]
+        public void ExecuteSchemaDoesNotExecute()
+        {
+            using var database = _duckDb.OpenDatabase("executeschemanoexec.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+
+            statement.SqlQuery = "CREATE TABLE test(foo INTEGER);";
+            statement.ExecuteUpdate();
+
+            statement.SqlQuery = "INSERT INTO test VALUES (1), (2) RETURNING foo";
+            Schema schema = statement.ExecuteSchema();
+            Assert.Single(schema.FieldsList);
+            Assert.Equal(ArrowTypeId.Int32, schema.FieldsList[0].DataType.TypeId);
+
+            Assert.Equal(0, GetResultCount(statement, "SELECT * FROM test"));
+        }
+
+        [Fact]
+        public void CancelIdle()
+        {
+            using var database = _duckDb.OpenDatabase("cancelidle.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+
+            // Cancelling with nothing in progress is a no-op, and doesn't break later use
+            connection.Cancel();
+            statement.Cancel();
+
+            Assert.Equal(3, GetResultCount(statement, "SELECT * FROM range(3)"));
+        }
+
+        [Fact]
+        public async Task CancelStatement()
+        {
+            using var database = _duckDb.OpenDatabase("cancelstatement.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+
+            statement.SqlQuery = "SELECT count(*) FROM range(1000000000000)";
+            Task<long> query = Task.Run(() => GetResultCount(statement.ExecuteQuery()));
+
+            await Task.Delay(500);
+            statement.Cancel();
+
+            Task completed = await Task.WhenAny(query, Task.Delay(TimeSpan.FromSeconds(30)));
+            Assert.Same(query, completed);
+            AdbcException exception = await Assert.ThrowsAnyAsync<AdbcException>(() => query);
+            // DuckDB reports interruption as InvalidArgument rather than Cancelled
+            Assert.Contains("Interrupted", exception.Message);
+        }
+
+        [Fact]
+        public async Task CancelConnection()
+        {
+            using var database = _duckDb.OpenDatabase("cancelconnection.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+
+            statement.SqlQuery = "SELECT count(*) FROM range(1000000000000)";
+            Task<long> query = Task.Run(() => GetResultCount(statement.ExecuteQuery()));
+
+            await Task.Delay(500);
+            connection.Cancel();
+
+            Task completed = await Task.WhenAny(query, Task.Delay(TimeSpan.FromSeconds(30)));
+            Assert.Same(query, completed);
+            AdbcException exception = await Assert.ThrowsAnyAsync<AdbcException>(() => query);
+            // DuckDB reports interruption as InvalidArgument rather than Cancelled
+            Assert.Contains("Interrupted", exception.Message);
+        }
+
         private static long GetResultCount(AdbcStatement statement, string query)
         {
             statement.SqlQuery = query;
