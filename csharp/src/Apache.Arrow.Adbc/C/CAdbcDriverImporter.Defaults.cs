@@ -37,7 +37,7 @@ namespace Apache.Arrow.Adbc.C
         }
 
 #if !NET5_0_OR_GREATER
-        private static unsafe IntPtr ConnectionCommitDefault = NativeDelegate<ConnectionCommit>.AsNativePointer(ConnectionCommitDefaultImpl);
+        private static unsafe IntPtr ConnectionCommitDefault = NativeDelegate<ConnectionFn>.AsNativePointer(ConnectionCommitDefaultImpl);
 #else
         private static unsafe delegate* unmanaged<CAdbcConnection*, CAdbcError*, AdbcStatusCode> ConnectionCommitDefault => &ConnectionCommitDefaultImpl;
         [UnmanagedCallersOnly]
@@ -103,7 +103,7 @@ namespace Apache.Arrow.Adbc.C
         }
 
 #if !NET5_0_OR_GREATER
-        private static unsafe IntPtr ConnectionRollbackDefault = NativeDelegate<ConnectionRollback>.AsNativePointer(ConnectionRollbackDefaultImpl);
+        private static unsafe IntPtr ConnectionRollbackDefault = NativeDelegate<ConnectionFn>.AsNativePointer(ConnectionRollbackDefaultImpl);
 #else
         private static unsafe delegate* unmanaged<CAdbcConnection*, CAdbcError*, AdbcStatusCode> ConnectionRollbackDefault => &ConnectionRollbackDefaultImpl;
         [UnmanagedCallersOnly]
@@ -327,7 +327,7 @@ namespace Apache.Arrow.Adbc.C
         }
 
 #if !NET5_0_OR_GREATER
-        private static unsafe IntPtr ConnectionCancelDefault = NativeDelegate<ConnectionCancel>.AsNativePointer(ConnectionCancelDefaultImpl);
+        private static unsafe IntPtr ConnectionCancelDefault = NativeDelegate<ConnectionFn>.AsNativePointer(ConnectionCancelDefaultImpl);
 #else
         private static unsafe delegate* unmanaged<CAdbcConnection*, CAdbcError*, AdbcStatusCode> ConnectionCancelDefault => &ConnectionCancelDefaultImpl;
         [UnmanagedCallersOnly]
@@ -437,7 +437,7 @@ namespace Apache.Arrow.Adbc.C
         }
 
 #if !NET5_0_OR_GREATER
-        private static unsafe IntPtr StatementCancelDefault = NativeDelegate<StatementCancel>.AsNativePointer(StatementCancelDefaultImpl);
+        private static unsafe IntPtr StatementCancelDefault = NativeDelegate<StatementFn>.AsNativePointer(StatementCancelDefaultImpl);
 #else
         private static unsafe delegate* unmanaged<CAdbcStatement*, CAdbcError*, AdbcStatusCode> StatementCancelDefault => &StatementCancelDefaultImpl;
         [UnmanagedCallersOnly]

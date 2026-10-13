@@ -170,6 +170,36 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         [Fact]
+        public void MissingFunctionsReportNotImplemented()
+        {
+            // A driver that leaves these entries empty gets the importer's defaults, which
+            // must be callable through the same delegate types as a real implementation.
+            var fixture = new FixtureDriver();
+            AdbcDriverInit adapter = (int version, ref CAdbcDriver nativeDriver, ref CAdbcError error) =>
+            {
+                AdbcStatusCode status = CallExporter(version, ref nativeDriver, ref error, fixture);
+                unsafe
+                {
+                    nativeDriver.ConnectionCommit = default;
+                    nativeDriver.ConnectionRollback = default;
+                    nativeDriver.ConnectionCancel = default;
+                    nativeDriver.StatementCancel = default;
+                }
+                return status;
+            };
+
+            using AdbcDriver imported = CAdbcDriverImporter.Load(adapter);
+            using AdbcDatabase db = imported.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+
+            Assert.Equal(AdbcStatusCode.NotImplemented, Assert.ThrowsAny<AdbcException>(() => conn.Commit()).Status);
+            Assert.Equal(AdbcStatusCode.NotImplemented, Assert.ThrowsAny<AdbcException>(() => conn.Rollback()).Status);
+            Assert.Equal(AdbcStatusCode.NotImplemented, Assert.ThrowsAny<AdbcException>(() => conn.Cancel()).Status);
+            Assert.Equal(AdbcStatusCode.NotImplemented, Assert.ThrowsAny<AdbcException>(() => stmt.Cancel()).Status);
+        }
+
+        [Fact]
         public void StatementSetOptionIsMarshaledToProducer()
         {
             var fixture = new FixtureDriver();
