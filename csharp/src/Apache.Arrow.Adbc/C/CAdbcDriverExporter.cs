@@ -707,6 +707,18 @@ namespace Apache.Arrow.Adbc.C
             {
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeStatement->private_data);
                 AdbcStatement stub = (AdbcStatement)gch.Target!;
+
+                // A null stream means the caller doesn't expect a result set
+                if (stream == null)
+                {
+                    UpdateResult update = stub.ExecuteUpdate();
+                    if (rows != null)
+                    {
+                        *rows = update.AffectedRows;
+                    }
+                    return AdbcStatusCode.Success;
+                }
+
                 var result = stub.ExecuteQuery();
                 if (rows != null)
                 {

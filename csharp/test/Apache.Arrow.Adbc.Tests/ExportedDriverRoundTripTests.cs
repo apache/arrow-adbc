@@ -116,6 +116,22 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         [Fact]
+        public void ExecuteUpdateRoundTripsWithoutAResultStream()
+        {
+            var fixture = new FixtureDriver();
+
+            // The importer's ExecuteUpdate passes a null stream to StatementExecuteQuery
+            using AdbcDriver imported = CAdbcDriverImporter.Load(CreateAdapter(fixture));
+            using AdbcDatabase db = imported.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+            stmt.SqlQuery = "UPDATE";
+
+            Assert.Equal(3, stmt.ExecuteUpdate().AffectedRows);
+            Assert.False(fixture.LastStatement!.WasExecuted);
+        }
+
+        [Fact]
         public void StatementSetOptionIsMarshaledToProducer()
         {
             var fixture = new FixtureDriver();
@@ -394,7 +410,7 @@ namespace Apache.Arrow.Adbc.Tests
             }
 
             public override UpdateResult ExecuteUpdate()
-                => throw AdbcException.NotImplemented("fixture does not support ExecuteUpdate");
+                => _sqlQuery == "UPDATE" ? new UpdateResult(3) : throw AdbcException.NotImplemented("fixture does not support ExecuteUpdate");
 
             private static Schema BuildResultSchema() => new Schema.Builder()
                 .Field(f => f.Name("answer").DataType(Int32Type.Default).Nullable(false))
