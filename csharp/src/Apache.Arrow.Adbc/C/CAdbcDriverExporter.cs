@@ -155,15 +155,62 @@ namespace Apache.Arrow.Adbc.C
 
         internal unsafe static void ReleaseError(CAdbcError* error)
         {
-            if (error != null && ((IntPtr)error->message) != IntPtr.Zero)
+            if (error == null)
+            {
+                return;
+            }
+
+            if (error->message != null)
             {
                 Marshal.FreeCoTaskMem((IntPtr)error->message);
+                error->message = null;
             }
+
+            error->release = default;
         }
 
         private unsafe static AdbcStatusCode SetError(CAdbcError* error, Exception exception)
         {
-            ReleaseError(error);
+            AdbcStatusCode status = exception switch
+            {
+                AdbcException adbcException => adbcException.Status,
+                ArgumentException => AdbcStatusCode.InvalidArgument,
+                _ => AdbcStatusCode.UnknownError,
+            };
+
+            // The error is optional
+            if (error == null)
+            {
+                return status;
+            }
+
+            try
+            {
+                FillError(error, exception);
+            }
+            catch (Exception)
+            {
+                // SetError runs in the catch block of an unmanaged entry point, where an
+                // exception would end the process. Report the status without a message.
+            }
+
+            return status;
+        }
+
+        private unsafe static void FillError(CAdbcError* error, Exception exception)
+        {
+            // The caller may pass an error that still holds a value, possibly from another
+            // driver, so release it through its own callback.
+            if (error->release != default)
+            {
+#if NET5_0_OR_GREATER
+                error->release(error);
+#else
+                Marshal.GetDelegateForFunctionPointer<ErrorRelease>(error->release)(error);
+#endif
+            }
+            error->message = null;
+            error->release = default;
 
             error->message = (byte*)MarshalExtensions.StringToCoTaskMemUTF8(exception.Message);
             error->sqlstate0 = (byte)0;
@@ -174,29 +221,18 @@ namespace Apache.Arrow.Adbc.C
             error->vendor_code = 0;
             error->release = ReleaseErrorPtr;
 
-            if (exception is AdbcException adbcException)
+            if (exception is AdbcException adbcException && adbcException.SqlState != null)
             {
-                if (adbcException.SqlState != null)
+                byte* dest = &error->sqlstate0;
+                fixed (char* sqlState = adbcException.SqlState)
                 {
-                    byte* dest = &error->sqlstate0;
-                    fixed (char* sqlState = adbcException.SqlState)
+                    int len = Math.Min(5, adbcException.SqlState.Length);
+                    for (int i = 0; i < len; i++)
                     {
-                        int len = Math.Min(5, adbcException.SqlState.Length);
-                        for (int i = 0; i < len; i++)
-                        {
-                            dest[i] = unchecked((byte)sqlState[i]);
-                        }
+                        dest[i] = unchecked((byte)sqlState[i]);
                     }
                 }
-                return adbcException.Status;
             }
-
-            if (exception is ArgumentException)
-            {
-                return AdbcStatusCode.InvalidArgument;
-            }
-
-            return AdbcStatusCode.UnknownError;
         }
 
         private static IntPtr FromDisposable(IDisposable d)

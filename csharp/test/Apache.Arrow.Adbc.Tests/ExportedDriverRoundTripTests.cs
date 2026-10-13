@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.C;
@@ -208,6 +209,49 @@ namespace Apache.Arrow.Adbc.Tests
             Assert.Equal(AdbcStatusCode.NotImplemented, ex.Status);
         }
 
+#if NET5_0_OR_GREATER
+        private static int s_staleErrorReleases;
+
+        [Fact]
+        public unsafe void ExporterReleasesAnExistingErrorThroughItsOwnCallback()
+        {
+            var fixture = new FixtureDriver { ThrowOnOpen = new AdbcException("open failed", AdbcStatusCode.InvalidState) };
+
+            CAdbcDriver driver = default;
+            CAdbcError initError = default;
+            Assert.Equal(AdbcStatusCode.Success, CAdbcDriverExporter.AdbcDriverInit(AdbcVersion.Version_1_0_0, &driver, &initError, fixture));
+
+            CAdbcDatabase database = default;
+            CAdbcError error = default;
+            Assert.Equal(AdbcStatusCode.Success, driver.DatabaseNew(&database, &error));
+
+            // An error left over from an earlier call, owned by someone else
+            error.message = (byte*)Marshal.StringToCoTaskMemUTF8("stale");
+            error.release = &ReleaseStaleError;
+            s_staleErrorReleases = 0;
+
+            Assert.Equal(AdbcStatusCode.InvalidState, driver.DatabaseInit(&database, &error));
+            Assert.Equal(1, s_staleErrorReleases);
+            Assert.Equal("open failed", Marshal.PtrToStringUTF8((IntPtr)error.message));
+            error.release(&error);
+
+            // The error is optional
+            Assert.Equal(AdbcStatusCode.InvalidState, driver.DatabaseInit(&database, null));
+
+            Assert.Equal(AdbcStatusCode.Success, driver.DatabaseRelease(&database, &error));
+            Assert.Equal(AdbcStatusCode.Success, driver.release(&driver, &error));
+        }
+
+        [UnmanagedCallersOnly]
+        private static unsafe void ReleaseStaleError(CAdbcError* error)
+        {
+            s_staleErrorReleases++;
+            Marshal.FreeCoTaskMem((IntPtr)error->message);
+            error->message = null;
+            error->release = default;
+        }
+#endif
+
         private static AdbcStatusCode CallExporter(int version, ref CAdbcDriver nativeDriver, ref CAdbcError error, AdbcDriver driver)
         {
             unsafe
@@ -241,9 +285,12 @@ namespace Apache.Arrow.Adbc.Tests
             public FixtureConnection? LastConnection { get; private set; }
             public FixtureStatement? LastStatement { get; private set; }
             public Exception? ThrowOnExecute { get; set; }
+            public Exception? ThrowOnOpen { get; set; }
 
             public override AdbcDatabase Open(IReadOnlyDictionary<string, string> parameters)
             {
+                if (ThrowOnOpen != null) { throw ThrowOnOpen; }
+
                 var db = new FixtureDatabase(this, parameters);
                 LastDatabase = db;
                 return db;
