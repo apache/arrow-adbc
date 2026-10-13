@@ -205,6 +205,7 @@ namespace Apache.Arrow.Adbc
             /// Insert data; create the table if it does not exist, or error if the table exists
             /// but the schema does not match the schema of the data to append
             /// (<see cref="AdbcStatusCode.AlreadyExists"/>).
+            /// Added as part of API version 1.1.0.
             /// </summary>
             public const string CreateAppend = "adbc.ingest.mode.create_append";
         }
@@ -276,6 +277,8 @@ namespace Apache.Arrow.Adbc
             {
                 IngestMode.Create => BulkIngestMode.Create,
                 IngestMode.Append => BulkIngestMode.Append,
+                IngestMode.Replace => BulkIngestMode.Replace,
+                IngestMode.CreateAppend => BulkIngestMode.CreateAppend,
                 _ => throw new NotSupportedException("unknown ingestion mode"),
             };
         }

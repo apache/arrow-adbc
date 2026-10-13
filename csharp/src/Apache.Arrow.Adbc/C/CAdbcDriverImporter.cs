@@ -340,9 +340,16 @@ namespace Apache.Arrow.Adbc.C
                 {
                     if (result == null && nativeDatabase.private_data != null)
                     {
-                        using (CallHelper caller = new CallHelper())
+                        // Don't let a failed release hide the error that got us here
+                        try
                         {
-                            caller.Call(Driver.DatabaseRelease, ref nativeDatabase);
+                            using (CallHelper caller = new CallHelper())
+                            {
+                                caller.Call(Driver.DatabaseRelease, ref nativeDatabase);
+                            }
+                        }
+                        catch (AdbcException)
+                        {
                         }
                     }
                 }
@@ -356,25 +363,48 @@ namespace Apache.Arrow.Adbc.C
                 if (parameters == null) throw new ArgumentNullException(nameof(parameters));
 
                 CAdbcDatabase nativeDatabase = new CAdbcDatabase();
-                using (CallHelper caller = new CallHelper())
+                ImportedAdbcDatabase? result = null;
+                try
                 {
-                    caller.Call(Driver.DatabaseNew, ref nativeDatabase);
-
-                    foreach (KeyValuePair<string, object> pair in parameters)
+                    using (CallHelper caller = new CallHelper())
                     {
-                        switch (pair.Value)
+                        caller.Call(Driver.DatabaseNew, ref nativeDatabase);
+
+                        foreach (KeyValuePair<string, object> pair in parameters)
                         {
-                            case int intValue:
-                            case long longValue:
-                                // TODO!
-                                break;
+                            switch (pair.Value)
+                            {
+                                case int intValue:
+                                case long longValue:
+                                    // TODO!
+                                    break;
+                            }
                         }
+
+                        caller.Call(Driver.DatabaseInit, ref nativeDatabase);
                     }
 
-                    caller.Call(Driver.DatabaseInit, ref nativeDatabase);
+                    result = new ImportedAdbcDatabase(this, nativeDatabase);
+                }
+                finally
+                {
+                    if (result == null && nativeDatabase.private_data != null)
+                    {
+                        // Don't let a failed release hide the error that got us here
+                        try
+                        {
+                            using (CallHelper caller = new CallHelper())
+                            {
+                                caller.Call(Driver.DatabaseRelease, ref nativeDatabase);
+                            }
+                        }
+                        catch (AdbcException)
+                        {
+                        }
+                    }
                 }
 
-                return new ImportedAdbcDatabase(this, nativeDatabase);
+                return result;
             }
 
             public unsafe override void Dispose()
@@ -453,9 +483,16 @@ namespace Apache.Arrow.Adbc.C
                 {
                     if (result == null && nativeConnection.private_data != null)
                     {
-                        using (CallHelper caller = new CallHelper())
+                        // Don't let a failed release hide the error that got us here
+                        try
                         {
-                            caller.Call(Driver.ConnectionRelease, ref nativeConnection);
+                            using (CallHelper caller = new CallHelper())
+                            {
+                                caller.Call(Driver.ConnectionRelease, ref nativeConnection);
+                            }
+                        }
+                        catch (AdbcException)
+                        {
                         }
                     }
                 }
@@ -603,9 +640,16 @@ namespace Apache.Arrow.Adbc.C
                 {
                     if (result == null && nativeStatement.private_data != null)
                     {
-                        using (CallHelper caller = new CallHelper())
+                        // Don't let a failed release hide the error that got us here
+                        try
                         {
-                            caller.Call(Driver.StatementRelease, ref nativeStatement);
+                            using (CallHelper caller = new CallHelper())
+                            {
+                                caller.Call(Driver.StatementRelease, ref nativeStatement);
+                            }
+                        }
+                        catch (AdbcException)
+                        {
                         }
                     }
                 }
@@ -1026,6 +1070,9 @@ namespace Apache.Arrow.Adbc.C
                         try
                         {
                             nativePartitions = (CAdbcPartitions*)Marshal.AllocHGlobal(sizeof(CAdbcPartitions));
+                            // AllocHGlobal doesn't zero memory, and a failing driver may not write
+                            // the struct, so release must start out null.
+                            *nativePartitions = default;
                             caller.TranslateCode(
 #if NET5_0_OR_GREATER
                                 Driver.StatementExecutePartitions
@@ -1044,17 +1091,17 @@ namespace Apache.Arrow.Adbc.C
                         }
                         finally
                         {
-                            if (nativePartitions->release != null)
-                            {
-#if NET5_0_OR_GREATER
-                                nativePartitions->release(nativePartitions);
-#else
-                                Marshal.GetDelegateForFunctionPointer<PartitionsRelease>(nativePartitions->release)(nativePartitions);
-#endif
-                            }
-
                             if (nativePartitions != null)
                             {
+                                if (nativePartitions->release != default)
+                                {
+#if NET5_0_OR_GREATER
+                                    nativePartitions->release(nativePartitions);
+#else
+                                    Marshal.GetDelegateForFunctionPointer<PartitionsRelease>(nativePartitions->release)(nativePartitions);
+#endif
+                                }
+
                                 Marshal.FreeHGlobal((IntPtr)nativePartitions);
                             }
                         }
@@ -1180,6 +1227,11 @@ namespace Apache.Arrow.Adbc.C
                     {
                         _sqlState = Encoding.ASCII.GetString(&fixedError->sqlstate0, 5);
                     }
+                }
+
+                // INT32_MIN marks an ADBC 1.1 error with details rather than a vendor code
+                if (error.vendor_code != int.MinValue)
+                {
                     _nativeError = error.vendor_code;
                 }
             }

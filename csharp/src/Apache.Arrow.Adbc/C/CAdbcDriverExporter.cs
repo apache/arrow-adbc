@@ -155,15 +155,79 @@ namespace Apache.Arrow.Adbc.C
 
         internal unsafe static void ReleaseError(CAdbcError* error)
         {
-            if (error != null && ((IntPtr)error->message) != IntPtr.Zero)
+            if (error == null)
             {
-                Marshal.FreeHGlobal((IntPtr)error->message);
+                return;
             }
+
+            if (error->message != null)
+            {
+                Marshal.FreeCoTaskMem((IntPtr)error->message);
+                error->message = null;
+            }
+
+            error->release = default;
         }
 
         private unsafe static AdbcStatusCode SetError(CAdbcError* error, Exception exception)
         {
-            ReleaseError(error);
+            AdbcStatusCode status = exception switch
+            {
+                AdbcException adbcException => adbcException.Status,
+                ArgumentException => AdbcStatusCode.InvalidArgument,
+                _ => AdbcStatusCode.UnknownError,
+            };
+
+            // The error is optional
+            if (error == null)
+            {
+                return status;
+            }
+
+            try
+            {
+                FillError(error, exception);
+            }
+            catch (Exception)
+            {
+                // SetError runs in the catch block of an unmanaged entry point, where an
+                // exception would end the process. Report the status without a message.
+            }
+
+            return status;
+        }
+
+        /// <summary>
+        /// Exports a stream produced by the managed driver. The exported stream takes
+        /// ownership on success; if exporting fails, nobody else will dispose it.
+        /// </summary>
+        private unsafe static void ExportStream(IArrowArrayStream? stream, CArrowArrayStream* cStream)
+        {
+            try
+            {
+                CArrowArrayStreamExporter.ExportArrayStream(stream!, cStream);
+            }
+            catch
+            {
+                stream?.Dispose();
+                throw;
+            }
+        }
+
+        private unsafe static void FillError(CAdbcError* error, Exception exception)
+        {
+            // The caller may pass an error that still holds a value, possibly from another
+            // driver, so release it through its own callback.
+            if (error->release != default)
+            {
+#if NET5_0_OR_GREATER
+                error->release(error);
+#else
+                Marshal.GetDelegateForFunctionPointer<ErrorRelease>(error->release)(error);
+#endif
+            }
+            error->message = null;
+            error->release = default;
 
             error->message = (byte*)MarshalExtensions.StringToCoTaskMemUTF8(exception.Message);
             error->sqlstate0 = (byte)0;
@@ -188,15 +252,14 @@ namespace Apache.Arrow.Adbc.C
                         }
                     }
                 }
-                return adbcException.Status;
-            }
 
-            if (exception is ArgumentException)
-            {
-                return AdbcStatusCode.InvalidArgument;
+                // INT32_MIN would tell an ADBC 1.1 caller that private_data holds error
+                // details, which this exporter doesn't provide
+                if (adbcException.NativeError != int.MinValue)
+                {
+                    error->vendor_code = adbcException.NativeError;
+                }
             }
-
-            return AdbcStatusCode.UnknownError;
         }
 
         private static IntPtr FromDisposable(IDisposable d)
@@ -237,6 +300,11 @@ namespace Apache.Arrow.Adbc.C
         [UnmanagedCallersOnly]
 #endif
         private unsafe static void ReleasePartitions(CAdbcPartitions* partitions)
+        {
+            FreePartitions(partitions);
+        }
+
+        private unsafe static void FreePartitions(CAdbcPartitions* partitions)
         {
             if (partitions != null)
             {
@@ -671,13 +739,25 @@ namespace Apache.Arrow.Adbc.C
             {
                 GCHandle gch = GCHandle.FromIntPtr((IntPtr)nativeStatement->private_data);
                 AdbcStatement stub = (AdbcStatement)gch.Target!;
+
+                // A null stream means the caller doesn't expect a result set
+                if (stream == null)
+                {
+                    UpdateResult update = stub.ExecuteUpdate();
+                    if (rows != null)
+                    {
+                        *rows = update.AffectedRows;
+                    }
+                    return AdbcStatusCode.Success;
+                }
+
                 var result = stub.ExecuteQuery();
                 if (rows != null)
                 {
                     *rows = result.RowCount;
                 }
 
-                CArrowArrayStreamExporter.ExportArrayStream(result.Stream, stream);
+                ExportStream(result.Stream, stream);
                 return AdbcStatusCode.Success;
             }
             catch (Exception e)
@@ -701,21 +781,42 @@ namespace Apache.Arrow.Adbc.C
                     *rows = result.AffectedRows;
                 }
 
-                partitions->release = ReleasePartitionsPtr;
-                partitions->num_partitions = result.PartitionDescriptors.Count;
-                partitions->partitions = (byte**)Marshal.AllocHGlobal(IntPtr.Size * result.PartitionDescriptors.Count);
-                partitions->partition_lengths = (nuint*)Marshal.AllocHGlobal(IntPtr.Size * result.PartitionDescriptors.Count);
-                for (int i = 0; i < partitions->num_partitions; i++)
+                // Build the result locally and publish it only once it's complete, so that a
+                // failure partway through never hands the caller a partially filled struct.
+                int count = result.PartitionDescriptors.Count;
+                CAdbcPartitions built = new CAdbcPartitions { num_partitions = count };
+                try
                 {
-                    ReadOnlySpan<byte> partition = result.PartitionDescriptors[i].Descriptor;
-                    partitions->partition_lengths[i] = (nuint)partition.Length;
-                    partitions->partitions[i] = (byte*)Marshal.AllocHGlobal(partition.Length);
-                    fixed (void* descriptor = partition)
+                    built.partitions = (byte**)Marshal.AllocHGlobal(IntPtr.Size * Math.Max(1, count));
+                    for (int i = 0; i < count; i++)
                     {
-                        Buffer.MemoryCopy(descriptor, partitions->partitions[i], partition.Length, partition.Length);
+                        built.partitions[i] = null;
+                    }
+                    built.partition_lengths = (nuint*)Marshal.AllocHGlobal(IntPtr.Size * Math.Max(1, count));
+                    for (int i = 0; i < count; i++)
+                    {
+                        ReadOnlySpan<byte> partition = result.PartitionDescriptors[i].Descriptor;
+                        built.partition_lengths[i] = (nuint)partition.Length;
+                        built.partitions[i] = (byte*)Marshal.AllocHGlobal(Math.Max(1, partition.Length));
+                        fixed (void* descriptor = partition)
+                        {
+                            Buffer.MemoryCopy(descriptor, built.partitions[i], partition.Length, partition.Length);
+                        }
+                    }
+
+                    if (schema != null)
+                    {
+                        CArrowSchemaExporter.ExportSchema(result.Schema, schema);
                     }
                 }
+                catch
+                {
+                    FreePartitions(&built);
+                    throw;
+                }
 
+                built.release = ReleasePartitionsPtr;
+                *partitions = built;
                 return AdbcStatusCode.Success;
             }
             catch (Exception e)
@@ -992,7 +1093,7 @@ namespace Apache.Arrow.Adbc.C
 
                 IArrowArrayStream stream = Connection.GetObjects(goDepth, catalogPattern, dbSchemaPattern, tableNamePattern, tableTypes, columnNamePattern);
 
-                CArrowArrayStreamExporter.ExportArrayStream(stream, cstream);
+                ExportStream(stream, cstream);
             }
 
             public unsafe void GetTableSchema(byte* catalog, byte* db_schema, byte* table_name, CArrowSchema* cschema)
@@ -1008,7 +1109,7 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe void GetTableTypes(CArrowArrayStream* cArrayStream)
             {
-                CArrowArrayStreamExporter.ExportArrayStream(Connection.GetTableTypes(), cArrayStream);
+                ExportStream(Connection.GetTableTypes(), cArrayStream);
             }
 
             public unsafe void ReadPartition(byte* serializedPartition, int serialized_length, CArrowArrayStream* stream)
@@ -1019,7 +1120,7 @@ namespace Apache.Arrow.Adbc.C
                     Buffer.MemoryCopy(serializedPartition, partitionPtr, serialized_length, serialized_length);
                 }
 
-                CArrowArrayStreamExporter.ExportArrayStream(Connection.ReadPartition(new PartitionDescriptor(partition)), stream);
+                ExportStream(Connection.ReadPartition(new PartitionDescriptor(partition)), stream);
             }
 
             public unsafe void GetInfo(int* info_codes, int info_codes_length, CArrowArrayStream* stream)
@@ -1031,7 +1132,7 @@ namespace Apache.Arrow.Adbc.C
                     Buffer.MemoryCopy(info_codes, infoCodesPtr, length, length);
                 }
 
-                CArrowArrayStreamExporter.ExportArrayStream(Connection.GetInfo(infoCodes.ToList()), stream);
+                ExportStream(Connection.GetInfo(infoCodes.ToList()), stream);
             }
 
             public unsafe void InitConnection(ref CAdbcDatabase nativeDatabase)

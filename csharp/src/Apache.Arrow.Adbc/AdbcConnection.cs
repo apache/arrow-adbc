@@ -75,7 +75,8 @@ namespace Apache.Arrow.Adbc
         /// Get metadata about the driver/database.
         /// </summary>
         /// <param name="codes">
-        /// The metadata items to fetch.
+        /// The metadata items to fetch. An empty list requests all of the items the
+        /// driver supports; this is what a NULL list means in the C API.
         /// </param>
         /// <returns>
         /// Metadata about the driver and/or database
