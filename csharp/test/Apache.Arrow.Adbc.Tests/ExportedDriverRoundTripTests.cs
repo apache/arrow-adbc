@@ -199,6 +199,25 @@ namespace Apache.Arrow.Adbc.Tests
             Assert.Equal(AdbcStatusCode.NotImplemented, Assert.ThrowsAny<AdbcException>(() => stmt.Cancel()).Status);
         }
 
+        [Theory]
+        [InlineData(null)]
+        [InlineData("42000")]
+        public void VendorCodePropagates(string? sqlState)
+        {
+            var fixture = new FixtureDriver { ThrowOnExecute = new VendorException(sqlState, 1234) };
+
+            using AdbcDriver imported = CAdbcDriverImporter.Load(CreateAdapter(fixture));
+            using AdbcDatabase db = imported.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+            stmt.SqlQuery = "SELECT 1";
+
+            AdbcException ex = Assert.ThrowsAny<AdbcException>(() => stmt.ExecuteQuery());
+            Assert.Equal(AdbcStatusCode.IOError, ex.Status);
+            Assert.Equal(1234, ex.NativeError);
+            Assert.Equal(sqlState, ex.SqlState);
+        }
+
         [Fact]
         public void StatementSetOptionIsMarshaledToProducer()
         {
@@ -497,6 +516,22 @@ namespace Apache.Arrow.Adbc.Tests
             private static Schema BuildResultSchema() => new Schema.Builder()
                 .Field(f => f.Name("answer").DataType(Int32Type.Default).Nullable(false))
                 .Build();
+        }
+
+        private sealed class VendorException : AdbcException
+        {
+            private readonly string? _sqlState;
+            private readonly int _nativeError;
+
+            public VendorException(string? sqlState, int nativeError)
+                : base("vendor failure", AdbcStatusCode.IOError)
+            {
+                _sqlState = sqlState;
+                _nativeError = nativeError;
+            }
+
+            public override string? SqlState => _sqlState;
+            public override int NativeError => _nativeError;
         }
 
         private sealed class SingleBatchStream : IArrowArrayStream

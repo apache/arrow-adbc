@@ -1183,6 +1183,11 @@ namespace Apache.Arrow.Adbc.C
                     {
                         _sqlState = Encoding.ASCII.GetString(&fixedError->sqlstate0, 5);
                     }
+                }
+
+                // INT32_MIN marks an ADBC 1.1 error with details rather than a vendor code
+                if (error.vendor_code != int.MinValue)
+                {
                     _nativeError = error.vendor_code;
                 }
             }

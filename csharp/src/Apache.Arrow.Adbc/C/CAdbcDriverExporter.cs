@@ -238,16 +238,26 @@ namespace Apache.Arrow.Adbc.C
             error->vendor_code = 0;
             error->release = ReleaseErrorPtr;
 
-            if (exception is AdbcException adbcException && adbcException.SqlState != null)
+            if (exception is AdbcException adbcException)
             {
-                byte* dest = &error->sqlstate0;
-                fixed (char* sqlState = adbcException.SqlState)
+                if (adbcException.SqlState != null)
                 {
-                    int len = Math.Min(5, adbcException.SqlState.Length);
-                    for (int i = 0; i < len; i++)
+                    byte* dest = &error->sqlstate0;
+                    fixed (char* sqlState = adbcException.SqlState)
                     {
-                        dest[i] = unchecked((byte)sqlState[i]);
+                        int len = Math.Min(5, adbcException.SqlState.Length);
+                        for (int i = 0; i < len; i++)
+                        {
+                            dest[i] = unchecked((byte)sqlState[i]);
+                        }
                     }
+                }
+
+                // INT32_MIN would tell an ADBC 1.1 caller that private_data holds error
+                // details, which this exporter doesn't provide
+                if (adbcException.NativeError != int.MinValue)
+                {
+                    error->vendor_code = adbcException.NativeError;
                 }
             }
         }
