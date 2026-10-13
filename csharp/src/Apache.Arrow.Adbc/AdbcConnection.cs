@@ -245,11 +245,11 @@ namespace Apache.Arrow.Adbc
             switch (key)
             {
                 case AdbcOptions.Connection.Autocommit:
-                    return AdbcOptions.GetEnabled(AutoCommit);
+                    return GetPropertyOption(key, () => AdbcOptions.GetEnabled(AutoCommit));
                 case AdbcOptions.Connection.ReadOnly:
-                    return AdbcOptions.GetEnabled(ReadOnly);
+                    return GetPropertyOption(key, () => AdbcOptions.GetEnabled(ReadOnly));
                 case AdbcOptions.Connection.IsolationLevel:
-                    return AdbcOptions.GetIsolationLevel(IsolationLevel);
+                    return GetPropertyOption(key, () => AdbcOptions.GetIsolationLevel(IsolationLevel));
                 case AdbcOptions.Connection.CurrentCatalog:
                     return GetPropertyOption(key, () => CurrentCatalog);
                 case AdbcOptions.Connection.CurrentDbSchema:
@@ -268,7 +268,8 @@ namespace Apache.Arrow.Adbc
             }
             catch (AdbcException e) when (e.Status == AdbcStatusCode.NotImplemented)
             {
-                // The driver doesn't override the property. GetOption reports that as NotFound.
+                // The driver doesn't override the property, or has no value for it.
+                // GetOption reports that as NotFound.
                 throw AdbcOptionValue.NotFound(key);
             }
             return value ?? throw AdbcOptionValue.NotFound(key);

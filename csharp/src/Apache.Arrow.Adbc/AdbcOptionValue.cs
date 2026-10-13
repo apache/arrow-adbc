@@ -16,7 +16,6 @@
  */
 
 using System;
-using System.Collections.Generic;
 using System.Globalization;
 
 namespace Apache.Arrow.Adbc
@@ -53,19 +52,6 @@ namespace Apache.Arrow.Adbc
                         $"Value of type {value.GetType().Name} for option '{key}' cannot be converted to a string",
                         AdbcStatusCode.InvalidArgument);
             }
-        }
-
-        /// <summary>
-        /// Converts a dictionary of <c>object</c>-typed options into string options.
-        /// </summary>
-        public static IReadOnlyDictionary<string, string> ToOptionStrings(IReadOnlyDictionary<string, object> options)
-        {
-            Dictionary<string, string> result = new Dictionary<string, string>(options.Count);
-            foreach (KeyValuePair<string, object> pair in options)
-            {
-                result[pair.Key] = ToOptionString(pair.Key, pair.Value);
-            }
-            return result;
         }
 
         /// <summary>

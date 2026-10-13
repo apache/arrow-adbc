@@ -30,10 +30,11 @@ namespace Apache.Arrow.Adbc.C
     /// Exposes a managed <see cref="AdbcDriver"/> through the ADBC C API.
     /// </summary>
     /// <remarks>
-    /// When a caller requests ADBC 1.1.0, every 1.1.0 entry point is populated.
-    /// Functionality that the managed driver doesn't override surfaces as
-    /// <see cref="AdbcStatusCode.NotImplemented"/>, which is the same status a
-    /// driver manager reports for a missing entry point.
+    /// When a caller requests ADBC 1.1.0, every 1.1.0 entry point is populated
+    /// except <c>ErrorFromArrayStream</c>; exported streams report errors through
+    /// <c>get_last_error</c> instead. Functionality that the managed driver doesn't
+    /// override surfaces as <see cref="AdbcStatusCode.NotImplemented"/>, which is
+    /// the same status a driver manager reports for a missing entry point.
     /// </remarks>
     public class CAdbcDriverExporter
     {

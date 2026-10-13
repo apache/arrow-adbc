@@ -373,8 +373,38 @@ namespace Apache.Arrow.Adbc.Tests
             conn.SetOptionInt64("timeout", 5);
             Assert.Equal("5", fixture.LastConnection!.Options["timeout"]);
 
-            Assert.Equal(AdbcStatusCode.NotImplemented, Assert.ThrowsAny<AdbcException>(() => conn.GetOption("timeout")).Status);
+            // A 1.0 driver can't report option values, so the getters fall back to the
+            // base class defaults, as the C driver manager does
+            Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => conn.GetOption("timeout")).Status);
+            Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => conn.GetOptionInt64("timeout")).Status);
+            Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => conn.GetOption(AdbcOptions.Connection.Autocommit)).Status);
+            Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => db.GetOption("n")).Status);
             Assert.Null(conn.CurrentCatalog);
+
+            using AdbcStatement stmt = conn.CreateStatement();
+            Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => stmt.GetOptionDouble(AdbcOptions.Statement.Progress)).Status);
+            Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => stmt.GetOptionBytes("b")).Status);
+        }
+
+        [Fact]
+        public void Version1_0DriverRejectsBinaryOpenParameters()
+        {
+            var fixture = new Driver11();
+            AdbcDriverInit adapter = (int version, ref CAdbcDriver nativeDriver, ref CAdbcError error) =>
+            {
+                if (version != AdbcVersion.Version_1_0_0) { return AdbcStatusCode.NotImplemented; }
+                return CallExporter(version, ref nativeDriver, ref error, fixture);
+            };
+
+            using AdbcDriver imported = CAdbcDriverImporter.Load(adapter);
+
+            AdbcException ex = Assert.ThrowsAny<AdbcException>(() => imported.Open(new Dictionary<string, object>
+            {
+                { "n", 7L },
+                { "b", new byte[] { 1 } },
+            }));
+            Assert.Equal(AdbcStatusCode.NotImplemented, ex.Status);
+            Assert.True(fixture.LastDatabase!.Disposed);
         }
 
         private static AdbcDriver Load(AdbcDriver driver)
@@ -449,6 +479,9 @@ namespace Apache.Arrow.Adbc.Tests
             public override void SetOptionInt64(string key, long value) => Options[key] = value;
             public override void SetOptionDouble(string key, double value) => Options[key] = value;
             public override void SetOptionBytes(string key, ReadOnlySpan<byte> value) => Options[key] = value.ToArray();
+
+            public bool Disposed { get; private set; }
+            public override void Dispose() => Disposed = true;
 
             public override string GetOption(string key) =>
                 _driver.DatabaseTracksOptions && Options.TryGetValue(key, out object? v) ? (string)v : base.GetOption(key);

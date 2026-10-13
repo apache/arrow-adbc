@@ -155,6 +155,31 @@ namespace Apache.Arrow.Adbc.Tests
             Assert.Equal("false", driver.Parameters["b"]);
         }
 
+        [Fact]
+        public void DriverOpenWithObjectsAppliesBinaryValuesAfterOpening()
+        {
+            var driver = new StringOnlyDriver();
+
+            AdbcDatabase db = driver.Open(new Dictionary<string, object> { { "s", "x" }, { "bytes", new byte[] { 9 } } });
+
+            Assert.Equal("x", driver.Parameters!["s"]);
+            Assert.False(driver.Parameters.ContainsKey("bytes"));
+            Assert.Equal(new byte[] { 9 }, ((RecordingDatabase)db).Options["bytes"]);
+        }
+
+        [Fact]
+        public void DriverOpenWithObjectsDisposesTheDatabaseIfABinaryValueFails()
+        {
+            var driver = new StringOnlyDriver();
+
+            AdbcException ex = Assert.Throws<AdbcException>(() => driver.Open(new Dictionary<string, object>
+            {
+                { RecordingDatabase.RejectedKey, new byte[] { 1 } },
+            }));
+            Assert.Equal(AdbcStatusCode.InvalidArgument, ex.Status);
+            Assert.True(driver.LastDatabase!.Disposed);
+        }
+
         private sealed class OptionsStatement : AdbcStatement
         {
             public Dictionary<string, string> Options { get; } = new Dictionary<string, string>();
@@ -215,12 +240,25 @@ namespace Apache.Arrow.Adbc.Tests
 
         private sealed class RecordingDatabase : AdbcDatabase
         {
+            public const string RejectedKey = "test.rejected";
+
             public Dictionary<string, object> Options { get; } = new Dictionary<string, object>();
+            public bool Disposed { get; private set; }
 
             public override void SetOption(string key, string value) => Options[key] = value;
             public override void SetOptionInt64(string key, long value) => Options[key] = value;
             public override void SetOptionDouble(string key, double value) => Options[key] = value;
-            public override void SetOptionBytes(string key, ReadOnlySpan<byte> value) => Options[key] = value.ToArray();
+
+            public override void SetOptionBytes(string key, ReadOnlySpan<byte> value)
+            {
+                if (key == RejectedKey)
+                {
+                    throw new AdbcException("rejected", AdbcStatusCode.InvalidArgument);
+                }
+                Options[key] = value.ToArray();
+            }
+
+            public override void Dispose() => Disposed = true;
 
             public override AdbcConnection Connect(IReadOnlyDictionary<string, string>? options) => throw new NotImplementedException();
         }
@@ -228,11 +266,12 @@ namespace Apache.Arrow.Adbc.Tests
         private sealed class StringOnlyDriver : AdbcDriver
         {
             public IReadOnlyDictionary<string, string>? Parameters { get; private set; }
+            public RecordingDatabase? LastDatabase { get; private set; }
 
             public override AdbcDatabase Open(IReadOnlyDictionary<string, string> parameters)
             {
                 Parameters = parameters;
-                return new RecordingDatabase();
+                return LastDatabase = new RecordingDatabase();
             }
         }
     }

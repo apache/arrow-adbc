@@ -372,7 +372,7 @@ namespace Apache.Arrow.Adbc.C
 
                 if (_version < AdbcVersion.Version_1_1_0)
                 {
-                    return Open(AdbcOptionValue.ToOptionStrings(parameters));
+                    return base.Open(parameters);
                 }
 
                 CAdbcDatabase nativeDatabase = new CAdbcDatabase();
@@ -625,6 +625,8 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override string GetOption(string key)
             {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0) { return base.GetOption(key); }
+
                 fixed (CAdbcDatabase* database = &_nativeDatabase)
                 {
                     return GetOptionString(_driver, Options.GetOption, database, key);
@@ -633,6 +635,8 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override long GetOptionInt64(string key)
             {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0) { return base.GetOptionInt64(key); }
+
                 fixed (CAdbcDatabase* database = &_nativeDatabase)
                 {
                     return CAdbcDriverImporter.GetOptionInt64(_driver, Options.GetOptionInt, database, key);
@@ -641,6 +645,8 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override double GetOptionDouble(string key)
             {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0) { return base.GetOptionDouble(key); }
+
                 fixed (CAdbcDatabase* database = &_nativeDatabase)
                 {
                     return CAdbcDriverImporter.GetOptionDouble(_driver, Options.GetOptionDouble, database, key);
@@ -649,6 +655,8 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override byte[] GetOptionBytes(string key)
             {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0) { return base.GetOptionBytes(key); }
+
                 fixed (CAdbcDatabase* database = &_nativeDatabase)
                 {
                     return GetOptionBuffer(_driver, Options.GetOptionBytes, database, key);
@@ -819,6 +827,13 @@ namespace Apache.Arrow.Adbc.C
 
             private string? GetOptionOrNull(string key)
             {
+                // A 1.0 driver can't report the value. Don't call GetOption, whose 1.0
+                // fallback reads these properties.
+                if (!IsVersion1_1)
+                {
+                    return null;
+                }
+
                 try
                 {
                     return GetOption(key);
@@ -866,6 +881,8 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override string GetOption(string key)
             {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0) { return base.GetOption(key); }
+
                 fixed (CAdbcConnection* connection = &_nativeConnection)
                 {
                     return GetOptionString(_driver, Options.GetOption, connection, key);
@@ -874,6 +891,8 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override long GetOptionInt64(string key)
             {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0) { return base.GetOptionInt64(key); }
+
                 fixed (CAdbcConnection* connection = &_nativeConnection)
                 {
                     return CAdbcDriverImporter.GetOptionInt64(_driver, Options.GetOptionInt, connection, key);
@@ -882,6 +901,8 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override double GetOptionDouble(string key)
             {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0) { return base.GetOptionDouble(key); }
+
                 fixed (CAdbcConnection* connection = &_nativeConnection)
                 {
                     return CAdbcDriverImporter.GetOptionDouble(_driver, Options.GetOptionDouble, connection, key);
@@ -890,6 +911,8 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override byte[] GetOptionBytes(string key)
             {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0) { return base.GetOptionBytes(key); }
+
                 fixed (CAdbcConnection* connection = &_nativeConnection)
                 {
                     return GetOptionBuffer(_driver, Options.GetOptionBytes, connection, key);
@@ -1510,6 +1533,8 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override string GetOption(string key)
             {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0) { return base.GetOption(key); }
+
                 fixed (CAdbcStatement* statement = &_nativeStatement)
                 {
                     return GetOptionString(_driver, Options.GetOption, statement, key);
@@ -1518,6 +1543,8 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override long GetOptionInt64(string key)
             {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0) { return base.GetOptionInt64(key); }
+
                 fixed (CAdbcStatement* statement = &_nativeStatement)
                 {
                     return CAdbcDriverImporter.GetOptionInt64(_driver, Options.GetOptionInt, statement, key);
@@ -1526,6 +1553,8 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override double GetOptionDouble(string key)
             {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0) { return base.GetOptionDouble(key); }
+
                 fixed (CAdbcStatement* statement = &_nativeStatement)
                 {
                     return CAdbcDriverImporter.GetOptionDouble(_driver, Options.GetOptionDouble, statement, key);
@@ -1534,6 +1563,8 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override byte[] GetOptionBytes(string key)
             {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0) { return base.GetOptionBytes(key); }
+
                 fixed (CAdbcStatement* statement = &_nativeStatement)
                 {
                     return GetOptionBuffer(_driver, Options.GetOptionBytes, statement, key);
