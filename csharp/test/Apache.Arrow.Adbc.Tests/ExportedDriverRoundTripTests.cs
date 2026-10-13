@@ -346,9 +346,12 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         private static unsafe delegate* unmanaged<CAdbcDatabase*, CAdbcError*, AdbcStatusCode> s_realDatabaseRelease;
+        private static int s_databaseReleases;
 
-        [Fact]
-        public unsafe void FailedReleaseDoesNotHideTheOriginalError()
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public unsafe void FailedOpenReleasesTheDatabaseWithoutHidingTheError(bool objectParameters)
         {
             var fixture = new FixtureDriver { ThrowOnOpen = new AdbcException("open failed", AdbcStatusCode.InvalidState) };
             AdbcDriverInit adapter = (int version, ref CAdbcDriver nativeDriver, ref CAdbcError error) =>
@@ -360,15 +363,20 @@ namespace Apache.Arrow.Adbc.Tests
             };
 
             using AdbcDriver imported = CAdbcDriverImporter.Load(adapter);
+            s_databaseReleases = 0;
 
-            AdbcException ex = Assert.ThrowsAny<AdbcException>(() => imported.Open(new Dictionary<string, string>()));
+            AdbcException ex = Assert.ThrowsAny<AdbcException>(() => objectParameters
+                ? imported.Open(new Dictionary<string, object>())
+                : imported.Open(new Dictionary<string, string>()));
             Assert.Equal(AdbcStatusCode.InvalidState, ex.Status);
             Assert.Contains("open failed", ex.Message);
+            Assert.Equal(1, s_databaseReleases);
         }
 
         [UnmanagedCallersOnly]
         private static unsafe AdbcStatusCode FailingDatabaseRelease(CAdbcDatabase* database, CAdbcError* error)
         {
+            s_databaseReleases++;
             s_realDatabaseRelease(database, error);
             return AdbcStatusCode.IOError;
         }

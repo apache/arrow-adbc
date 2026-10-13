@@ -363,25 +363,48 @@ namespace Apache.Arrow.Adbc.C
                 if (parameters == null) throw new ArgumentNullException(nameof(parameters));
 
                 CAdbcDatabase nativeDatabase = new CAdbcDatabase();
-                using (CallHelper caller = new CallHelper())
+                ImportedAdbcDatabase? result = null;
+                try
                 {
-                    caller.Call(Driver.DatabaseNew, ref nativeDatabase);
-
-                    foreach (KeyValuePair<string, object> pair in parameters)
+                    using (CallHelper caller = new CallHelper())
                     {
-                        switch (pair.Value)
+                        caller.Call(Driver.DatabaseNew, ref nativeDatabase);
+
+                        foreach (KeyValuePair<string, object> pair in parameters)
                         {
-                            case int intValue:
-                            case long longValue:
-                                // TODO!
-                                break;
+                            switch (pair.Value)
+                            {
+                                case int intValue:
+                                case long longValue:
+                                    // TODO!
+                                    break;
+                            }
                         }
+
+                        caller.Call(Driver.DatabaseInit, ref nativeDatabase);
                     }
 
-                    caller.Call(Driver.DatabaseInit, ref nativeDatabase);
+                    result = new ImportedAdbcDatabase(this, nativeDatabase);
+                }
+                finally
+                {
+                    if (result == null && nativeDatabase.private_data != null)
+                    {
+                        // Don't let a failed release hide the error that got us here
+                        try
+                        {
+                            using (CallHelper caller = new CallHelper())
+                            {
+                                caller.Call(Driver.DatabaseRelease, ref nativeDatabase);
+                            }
+                        }
+                        catch (AdbcException)
+                        {
+                        }
+                    }
                 }
 
-                return new ImportedAdbcDatabase(this, nativeDatabase);
+                return result;
             }
 
             public unsafe override void Dispose()
