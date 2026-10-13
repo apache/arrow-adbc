@@ -197,6 +197,23 @@ namespace Apache.Arrow.Adbc.C
             return status;
         }
 
+        /// <summary>
+        /// Exports a stream produced by the managed driver. The exported stream takes
+        /// ownership on success; if exporting fails, nobody else will dispose it.
+        /// </summary>
+        private unsafe static void ExportStream(IArrowArrayStream? stream, CArrowArrayStream* cStream)
+        {
+            try
+            {
+                CArrowArrayStreamExporter.ExportArrayStream(stream!, cStream);
+            }
+            catch
+            {
+                stream?.Dispose();
+                throw;
+            }
+        }
+
         private unsafe static void FillError(CAdbcError* error, Exception exception)
         {
             // The caller may pass an error that still holds a value, possibly from another
@@ -725,7 +742,7 @@ namespace Apache.Arrow.Adbc.C
                     *rows = result.RowCount;
                 }
 
-                CArrowArrayStreamExporter.ExportArrayStream(result.Stream, stream);
+                ExportStream(result.Stream, stream);
                 return AdbcStatusCode.Success;
             }
             catch (Exception e)
@@ -1040,7 +1057,7 @@ namespace Apache.Arrow.Adbc.C
 
                 IArrowArrayStream stream = Connection.GetObjects(goDepth, catalogPattern, dbSchemaPattern, tableNamePattern, tableTypes, columnNamePattern);
 
-                CArrowArrayStreamExporter.ExportArrayStream(stream, cstream);
+                ExportStream(stream, cstream);
             }
 
             public unsafe void GetTableSchema(byte* catalog, byte* db_schema, byte* table_name, CArrowSchema* cschema)
@@ -1056,7 +1073,7 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe void GetTableTypes(CArrowArrayStream* cArrayStream)
             {
-                CArrowArrayStreamExporter.ExportArrayStream(Connection.GetTableTypes(), cArrayStream);
+                ExportStream(Connection.GetTableTypes(), cArrayStream);
             }
 
             public unsafe void ReadPartition(byte* serializedPartition, int serialized_length, CArrowArrayStream* stream)
@@ -1067,7 +1084,7 @@ namespace Apache.Arrow.Adbc.C
                     Buffer.MemoryCopy(serializedPartition, partitionPtr, serialized_length, serialized_length);
                 }
 
-                CArrowArrayStreamExporter.ExportArrayStream(Connection.ReadPartition(new PartitionDescriptor(partition)), stream);
+                ExportStream(Connection.ReadPartition(new PartitionDescriptor(partition)), stream);
             }
 
             public unsafe void GetInfo(int* info_codes, int info_codes_length, CArrowArrayStream* stream)
@@ -1079,7 +1096,7 @@ namespace Apache.Arrow.Adbc.C
                     Buffer.MemoryCopy(info_codes, infoCodesPtr, length, length);
                 }
 
-                CArrowArrayStreamExporter.ExportArrayStream(Connection.GetInfo(infoCodes.ToList()), stream);
+                ExportStream(Connection.GetInfo(infoCodes.ToList()), stream);
             }
 
             public unsafe void InitConnection(ref CAdbcDatabase nativeDatabase)
