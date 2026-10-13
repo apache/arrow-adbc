@@ -157,7 +157,7 @@ namespace Apache.Arrow.Adbc.C
         {
             if (error != null && ((IntPtr)error->message) != IntPtr.Zero)
             {
-                Marshal.FreeHGlobal((IntPtr)error->message);
+                Marshal.FreeCoTaskMem((IntPtr)error->message);
             }
         }
 
