@@ -94,7 +94,7 @@ if(ADBC_INTEGRATION_DUCKDB)
 endif()
 
 if(ADBC_BUILD_PYTHON)
-  find_package(Python3 REQUIRED COMPONENTS Interpreter)
+  find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
 
   if(NOT ADBC_BUILD_SHARED)
     message(FATAL_ERROR "Building Python requires ADBC_BUILD_SHARED=ON")

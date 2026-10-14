@@ -415,14 +415,14 @@ maybe_setup_conda() {
       conda deactivate || :
     fi
     # Ensure that conda is installed
-    install_conda || return 1
+    install_conda
     # Create environment
     if ! conda env list | cut -d" " -f 1 | grep $env; then
-      mamba create -y -n $env python=${pyver} ${pymarker} || return 1
+      mamba create -y -n $env python=${pyver} ${pymarker}
     fi
     # Install dependencies
     if [ $# -gt 0 ]; then
-      mamba install -y -n $env $@ || return 1
+      mamba install -y -n $env $@
     fi
     # Activate the environment
     conda activate $env

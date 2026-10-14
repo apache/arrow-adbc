@@ -1207,7 +1207,6 @@ jobs:
               continue
             }
             Write-Host "::group::Testing wheels with Python $($Python.Version)"
-            Remove-Item -Path Env:PYTHON_GIL -ErrorAction SilentlyContinue
             $env:PYTHON_VERSION = $Python.Version
             $PythonDir = Split-Path $Python.Path
             $env:PATH = "$PythonDir;$OriginalPath"
