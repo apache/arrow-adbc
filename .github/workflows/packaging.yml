@@ -771,12 +771,20 @@ jobs:
           env PYTHON=3.14t docker compose run python-wheel-manylinux-freethreaded-test
 
       - name: Test wheel 3.15
+        env:
+          ARCH: ${{ matrix.arch }}
+          PLATFORM: ${{ matrix.platform }}
         run: |
-          test -f adbc/python/adbc_driver_manager/repaired_wheels/*-cp315-cp315-manylinux*.whl
+          pushd adbc
+          env PYTHON=3.15 docker compose run python-wheel-manylinux-test
 
       - name: Test wheel 3.15t
+        env:
+          ARCH: ${{ matrix.arch }}
+          PLATFORM: ${{ matrix.platform }}
         run: |
-          test -f adbc/python/adbc_driver_manager/repaired_wheels/*-cp315-cp315t-manylinux*.whl
+          pushd adbc
+          env PYTHON=3.15t docker compose run python-wheel-manylinux-freethreaded-test
 
   python-macos:
     name: "Python ${{ matrix.arch }} macOS"
@@ -924,11 +932,24 @@ jobs:
 
       - name: Test wheel 3.15
         run: |
-          test -f adbc/python/adbc_driver_manager/repaired_wheels/*-cp315-cp315-macosx*.whl
+          pushd adbc
+
+          /Library/Frameworks/Python.framework/Versions/3.15/bin/python3.15 -m venv test-env-315
+          source test-env-315/bin/activate
+          export PYTHON_VERSION=3.15
+          ./ci/scripts/python_wheel_unix_test.sh $(pwd)
+          deactivate
 
       - name: Test wheel 3.15t
         run: |
-          test -f adbc/python/adbc_driver_manager/repaired_wheels/*-cp315-cp315t-macosx*.whl
+          pushd adbc
+
+          /Library/Frameworks/PythonT.framework/Versions/3.15/bin/python3.15t -m venv test-env-315t
+          source test-env-315t/bin/activate
+          export PYTHON_GIL=0
+          export PYTHON_VERSION=3.15t
+          ./ci/scripts/python_wheel_unix_test.sh $(pwd)
+          deactivate
 
       - name: Assemble logs
         if: failure()
@@ -1166,6 +1187,8 @@ jobs:
           PYTHON_313: ${{ steps.python313.outputs.python-path }}
           PYTHON_314: ${{ steps.python314.outputs.python-path }}
           PYTHON_314T: ${{ steps.python314t.outputs.python-path }}
+          PYTHON_315: ${{ steps.python315.outputs.python-path }}
+          PYTHON_315T: ${{ steps.python315t.outputs.python-path }}
         run: |
           $DriverDir = Join-Path $PWD "adbc/build/bin"
           $OriginalPath = "$DriverDir;$env:PATH"
@@ -1174,7 +1197,9 @@ jobs:
             @{ Version = "3.12"; Path = $env:PYTHON_312 },
             @{ Version = "3.13"; Path = $env:PYTHON_313 },
             @{ Version = "3.14"; Path = $env:PYTHON_314 },
-            @{ Version = "3.14t"; Path = $env:PYTHON_314T }
+            @{ Version = "3.14t"; Path = $env:PYTHON_314T },
+            @{ Version = "3.15"; Path = $env:PYTHON_315 },
+            @{ Version = "3.15t"; Path = $env:PYTHON_315T }
           )
           Set-Location adbc
           foreach ($Python in $Pythons) {
@@ -1196,20 +1221,6 @@ jobs:
             if (-not $?) { throw "Failed to test the Python $($Python.Version) wheels" }
             Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $VenvDir
             Write-Host "::endgroup::"
-          }
-
-      - name: Test wheel 3.15
-        shell: pwsh
-        run: |
-          if (-not (Test-Path -Path "adbc/python/adbc_driver_manager/repaired_wheels/*-cp315-cp315-win_*.whl" -PathType Leaf)) {
-            throw "Python 3.15 driver manager wheel is missing"
-          }
-
-      - name: Test wheel 3.15t
-        shell: pwsh
-        run: |
-          if (-not (Test-Path -Path "adbc/python/adbc_driver_manager/repaired_wheels/*-cp315-cp315t-win_*.whl" -PathType Leaf)) {
-            throw "Python 3.15t driver manager wheel is missing"
           }
 
   python-sdist:
