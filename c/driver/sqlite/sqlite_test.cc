@@ -1028,43 +1028,27 @@ TEST_F(SqliteReaderTest, InferFloatToStringPreservesRoundTripPrecision) {
            "(0.1, 3.141592653589793), "
            "('end', 0.1)"));
 
-  std::vector<std::string> expected_upcast;
-  std::vector<std::string> expected_append;
-  sqlite3_stmt* expected_stmt = nullptr;
-  ASSERT_EQ(SQLITE_OK, sqlite3_prepare_v2(db, "SELECT upcast_col, append_col FROM foo",
-                                          -1, &expected_stmt, nullptr));
-  int rc = SQLITE_OK;
-  while ((rc = sqlite3_step(expected_stmt)) == SQLITE_ROW) {
-    auto read_expected = [expected_stmt](int column) {
-      const auto* text = sqlite3_column_text(expected_stmt, column);
-      return std::string(reinterpret_cast<const char*>(text),
-                         sqlite3_column_bytes(expected_stmt, column));
-    };
-    expected_upcast.emplace_back(read_expected(0));
-    expected_append.emplace_back(read_expected(1));
-  }
-  EXPECT_EQ(SQLITE_DONE, rc);
-  sqlite3_finalize(expected_stmt);
+  const std::vector<std::string> expected_upcast = {"123456789.123", "3.1415926535897931",
+                                                    "0.1", "end"};
+  const std::vector<std::string> expected_append = {"start", "123456789.123",
+                                                    "3.1415926535897931", "0.1"};
 
   adbc_validation::StreamReader reader;
   ASSERT_NO_FATAL_FAILURE(Exec("SELECT * FROM foo", kInferRows, &reader));
   ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].type);
   ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[1].type);
   ASSERT_NO_FATAL_FAILURE(reader.Next());
-  auto expect_sqlite_text = [](ArrowArrayView* actual,
-                               const std::vector<std::string>& expected) {
+  auto expect_string = [](ArrowArrayView* actual,
+                          const std::vector<std::string>& expected) {
     ASSERT_EQ(actual->length, static_cast<int64_t>(expected.size()));
     for (int64_t i = 0; i < actual->length; i++) {
       const ArrowStringView actual_view = ArrowArrayViewGetStringUnsafe(actual, i);
       const std::string actual_value(actual_view.data, actual_view.size_bytes);
-
       EXPECT_EQ(actual_value, expected[i]);
     }
   };
-  ASSERT_NO_FATAL_FAILURE(
-      expect_sqlite_text(reader.array_view->children[0], expected_upcast));
-  ASSERT_NO_FATAL_FAILURE(
-      expect_sqlite_text(reader.array_view->children[1], expected_append));
+  ASSERT_NO_FATAL_FAILURE(expect_string(reader.array_view->children[0], expected_upcast));
+  ASSERT_NO_FATAL_FAILURE(expect_string(reader.array_view->children[1], expected_append));
 }
 
 TEST_F(SqliteReaderTest, InferFloatToStringUsesDotDecimalInCommaLocale) {
