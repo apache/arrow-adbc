@@ -415,14 +415,14 @@ maybe_setup_conda() {
       conda deactivate || :
     fi
     # Ensure that conda is installed
-    install_conda
+    install_conda || return 1
     # Create environment
     if ! conda env list | cut -d" " -f 1 | grep $env; then
-      mamba create -y -n $env python=${pyver} ${pymarker}
+      mamba create -y -n $env python=${pyver} ${pymarker} || return 1
     fi
     # Install dependencies
     if [ $# -gt 0 ]; then
-      mamba install -y -n $env $@
+      mamba install -y -n $env $@ || return 1
     fi
     # Activate the environment
     conda activate $env
@@ -821,7 +821,7 @@ test_unix_wheels() {
   local arch="${1}"
   local platform="${2}"
 
-  local python_versions="${TEST_PYTHON_VERSIONS:-3.11 3.12 3.13 3.14 3.14t}"
+  local python_versions="${TEST_PYTHON_VERSIONS:-3.11 3.12 3.13 3.14 3.14t 3.15 3.15t}"
 
   for python in ${python_versions}; do
     local pyver=${python/t}

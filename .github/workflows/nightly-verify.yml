@@ -182,6 +182,8 @@ jobs:
         env:
           CI: "false"
           REPOSITORY: ${{ github.repository }}
+          # TODO(lidavidm): 3.14 -> 3.15 once conda packages are available
+          PYTHON_VERSION: "3.14"
           TEST_DEFAULT: "0"
           TEST_SOURCE: "1"
           USE_CONDA: "1"
