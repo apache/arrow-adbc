@@ -132,16 +132,17 @@ table.driver-table th .th-hint {
     opacity: 0.75;
 }
 
-/* Shrink the sidebar logo slightly */
+/* Retrofitted for the ADBC logo introduced in apache/arrow-adbc#4870: the
+   sidebar logo is the horizontal lockup. Shrink it slightly, and make the
+   documentation title under it quieter than the logo's bold "ADBC". */
 .sidebar-logo {
-    max-width: 95%;
     margin-left: 0;
     margin-right: auto;
+    max-width: 95%;
 }
 
-/* Emphasize and align the documentation title in the sidebar */
 .sidebar-brand-text {
-    font-weight: 700;
-    margin-left: 12px;
-    font-size: 1.6rem;
+    font-weight: 400;
+    margin-left: 0;
+    font-size: 1.15rem;
 }

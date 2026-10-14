@@ -24,3 +24,18 @@ p.admonition-title {
     display: block;
     margin: 0 auto;
 }
+
+/* Retrofitted for the ADBC logo introduced in apache/arrow-adbc#4870: the
+   sidebar logo is the horizontal lockup. Shrink it slightly, and make the
+   documentation title under it quieter than the logo's bold "ADBC". */
+.sidebar-logo {
+    margin-left: 0;
+    margin-right: auto;
+    max-width: 95%;
+}
+
+.sidebar-brand-text {
+    font-weight: 400;
+    margin-left: 0;
+    font-size: 1.15rem;
+}
