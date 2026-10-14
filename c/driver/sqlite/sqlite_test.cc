@@ -1061,8 +1061,10 @@ TEST_F(SqliteReaderTest, InferFloatToStringPreservesRoundTripPrecision) {
       EXPECT_EQ(actual_value, expected[i]);
     }
   };
-  ASSERT_NO_FATAL_FAILURE(expect_sqlite_text(reader.array_view->children[0], expected_upcast));
-  ASSERT_NO_FATAL_FAILURE(expect_sqlite_text(reader.array_view->children[1], expected_append));
+  ASSERT_NO_FATAL_FAILURE(
+      expect_sqlite_text(reader.array_view->children[0], expected_upcast));
+  ASSERT_NO_FATAL_FAILURE(
+      expect_sqlite_text(reader.array_view->children[1], expected_append));
 }
 
 TEST_F(SqliteReaderTest, InferFloatToStringUsesDotDecimalInCommaLocale) {
