@@ -19,7 +19,7 @@ module github.com/apache/arrow-adbc/go/driver
 
 go 1.26.0
 
-toolchain go1.26.8
+toolchain go1.26.9
 
 require (
 	github.com/apache/arrow-adbc/go/adbc v1.12.0

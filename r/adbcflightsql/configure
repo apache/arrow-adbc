@@ -117,7 +117,7 @@ fi
 PKG_LIBS="$PKG_LIBS $SYMBOL_ARGS"
 
 sed \
-  -e "s|@gobin@|$GO_BIN|" \
+  -e "s|@gobin@|$GO_BIN|g" \
   -e "s|@libs@|$PKG_LIBS|" \
   -e "s|@cc@|$CC|" \
   -e "s|@cxx@|$CXX|" \
