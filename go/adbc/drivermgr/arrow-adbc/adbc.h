@@ -1508,8 +1508,8 @@ struct ADBC_EXPORT AdbcDriver {
 
   int (*ErrorGetVendorCode)(const struct AdbcError*);
 
-  AdbcStatusCode (*DriverGetOptionsList)(uint32_t, struct ArrowArrayStream*,
-                                         struct AdbcError*);
+  AdbcStatusCode (*DriverGetOptionsList)(struct AdbcDriver*, uint32_t,
+                                         struct ArrowArrayStream*, struct AdbcError*);
 
   AdbcStatusCode (*MultiResultSetNext)(struct AdbcMultiResultSet*,
                                        struct ArrowArrayStream*, int64_t*,
@@ -1598,6 +1598,10 @@ struct ADBC_EXPORT AdbcDriver {
 
 /// \brief Get a list of the options supported by the driver.
 ///
+/// Callers pass in an initialized AdbcDriver so that the driver manager
+/// can route the call and so that a library which exports multiple drivers
+/// through shared code can find the right one (e.g. through private_data).
+///
 /// The result is an Arrow dataset with the following schema:
 ///
 /// | Field Name               | Field Type              | Comments |
@@ -1622,12 +1626,14 @@ struct ADBC_EXPORT AdbcDriver {
 /// | value                    | utf8 not null           |
 /// | documentation            | utf8                    |
 ///
+/// \param[in] driver The (initialized) driver to query.
 /// \param[in] level Which ADBC type the option applies to.
 /// \param[out] out The result set.
 /// \param[out] error Error details, if an error occurs.
 /// \since ADBC API revision 1.2.0
 ADBC_EXPORT
-AdbcStatusCode AdbcDriverGetOptionsList(uint32_t level, struct ArrowArrayStream* out,
+AdbcStatusCode AdbcDriverGetOptionsList(struct AdbcDriver* driver, uint32_t level,
+                                        struct ArrowArrayStream* out,
                                         struct AdbcError* error);
 
 /// @}
