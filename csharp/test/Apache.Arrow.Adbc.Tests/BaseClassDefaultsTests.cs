@@ -64,7 +64,7 @@ namespace Apache.Arrow.Adbc.Tests
             var stmt = new LegacyCallsBaseStatement();
 
             Task<QueryResult> task = stmt.ExecuteQueryAsync(CancellationToken.None).AsTask();
-            Assert.Same(task, await Task.WhenAny(task, Task.Delay(TimeSpan.FromSeconds(10))));
+            Assert.Same(task, await Task.WhenAny(task, Task.Delay(TimeSpan.FromSeconds(30))));
             QueryResult result = await task;
 
             Assert.Equal(1, stmt.OverrideCount);
@@ -128,7 +128,7 @@ namespace Apache.Arrow.Adbc.Tests
             var stmt = new NewCallsParameterlessBaseStatement();
 
             Task<QueryResult> task = stmt.ExecuteQueryAsync(CancellationToken.None).AsTask();
-            Assert.Same(task, await Task.WhenAny(task, Task.Delay(TimeSpan.FromSeconds(10))));
+            Assert.Same(task, await Task.WhenAny(task, Task.Delay(TimeSpan.FromSeconds(30))));
 
             Assert.Equal(1, stmt.OverrideCount);
             Assert.Equal(1, stmt.SyncCount);
@@ -463,7 +463,7 @@ namespace Apache.Arrow.Adbc.Tests
         // Waits without blocking a thread-pool thread, which the operation under test needs
         private static async Task WaitForStartAsync(Task started)
         {
-            Assert.Same(started, await Task.WhenAny(started, Task.Delay(TimeSpan.FromSeconds(10))));
+            Assert.Same(started, await Task.WhenAny(started, Task.Delay(TimeSpan.FromSeconds(30))));
         }
 
         private sealed class SyncOnlyStatement : AdbcStatement

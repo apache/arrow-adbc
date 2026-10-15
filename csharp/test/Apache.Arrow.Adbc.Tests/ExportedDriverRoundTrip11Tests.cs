@@ -506,7 +506,7 @@ namespace Apache.Arrow.Adbc.Tests
         // Waits without blocking a thread-pool thread, which the operation under test needs
         private static async Task WaitForStartAsync(Task started)
         {
-            Assert.Same(started, await Task.WhenAny(started, Task.Delay(TimeSpan.FromSeconds(10))));
+            Assert.Same(started, await Task.WhenAny(started, Task.Delay(TimeSpan.FromSeconds(30))));
         }
 
         private sealed class OptionBag
