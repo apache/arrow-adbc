@@ -72,7 +72,9 @@ Before creating a Release Candidate
 
 1. Regenerate the LICENSE.txt (see CONTRIBUTING.md and ci/licenses/README.md) and create a pull request if any changes were needed. Generally, only the license for Go-based drivers will need to be regenerated.
 
-2. Set up your shell environment:
+2. Update the list of ADBC drivers in the documentation (:ref:`driver-table`), ensuring drivers from third parties are represented (e.g. from the ADBC Driver Foundry).
+
+3. Set up your shell environment:
 
    .. code-block::
 
@@ -82,13 +84,13 @@ Before creating a Release Candidate
       # Activate conda environment
       mamba activate adbc
 
-3. Ensure merged pull requests and closed issues have their milestone set appropriately:
+4. Ensure merged pull requests and closed issues have their milestone set appropriately:
 
    .. code-block::
 
       ./dev/release/assign-milestone.sh
 
-4. Create a fresh clone of the latest apache/arrow repo, which is used by several steps below.
+5. Create a fresh clone of the latest apache/arrow repo, which is used by several steps below.
 
    .. warning:: Make sure an up-to-date clone is used, so that the Linux packaging scripts in particular are in sync, else there is the possibility of corrupting the shared Linux package repositories.
 
