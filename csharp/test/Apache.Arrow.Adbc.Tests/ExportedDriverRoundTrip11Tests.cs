@@ -217,6 +217,22 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         [Fact]
+        public async Task ConnectionOptionsAsyncRoundTrip()
+        {
+            var fixture = new Driver11();
+            using AdbcDriver imported = Load(fixture);
+            using AdbcDatabase db = imported.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+
+            await conn.SetOptionAsync(AdbcOptions.Connection.CurrentCatalog, "main");
+            Assert.Equal("main", fixture.LastConnection!.CurrentCatalog);
+            Assert.Equal("main", await conn.GetOptionAsync(AdbcOptions.Connection.CurrentCatalog));
+
+            AdbcException e = await Assert.ThrowsAnyAsync<AdbcException>(() => conn.GetOptionAsync("unknown"));
+            Assert.Equal(AdbcStatusCode.NotFound, e.Status);
+        }
+
+        [Fact]
         public void StatisticsAreMarshaled()
         {
             var fixture = new Driver11();
@@ -354,6 +370,26 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         [Fact]
+        public async Task CancellationTokenCancelsImportedStatement()
+        {
+            var fixture = new Driver11();
+            using AdbcDriver imported = Load(fixture);
+            using AdbcDatabase db = imported.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+            stmt.SqlQuery = "BLOCK";
+
+            using CancellationTokenSource cts = new CancellationTokenSource();
+            ValueTask<QueryResult> pending = stmt.ExecuteQueryAsync(cts.Token);
+            Assert.True(fixture.LastStatement!.Started.Wait(TimeSpan.FromSeconds(10)));
+            cts.Cancel();
+
+            OperationCanceledException ex = await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await pending);
+            AdbcException inner = Assert.IsAssignableFrom<AdbcException>(ex.InnerException);
+            Assert.Equal(AdbcStatusCode.Cancelled, inner.Status);
+        }
+
+        [Fact]
         public void Version1_0DriverFallsBackForTypedSetters()
         {
             var fixture = new Driver11();
@@ -413,6 +449,35 @@ namespace Apache.Arrow.Adbc.Tests
             }));
             Assert.Equal(AdbcStatusCode.NotImplemented, ex.Status);
             Assert.True(fixture.LastDatabase!.Disposed);
+        }
+
+        [Fact]
+        public async Task Version1_0DriverAsyncCallsMatchSyncFallbacks()
+        {
+            var fixture = new Driver11();
+            AdbcDriverInit adapter = (int version, ref CAdbcDriver nativeDriver, ref CAdbcError error) =>
+            {
+                if (version != AdbcVersion.Version_1_0_0) { return AdbcStatusCode.NotImplemented; }
+                return CallExporter(version, ref nativeDriver, ref error, fixture);
+            };
+
+            using AdbcDriver imported = CAdbcDriverImporter.Load(adapter);
+            using AdbcDatabase db = imported.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = await db.ConnectWithTypedOptionsAsync(new Dictionary<string, object> { { "timeout", 5L } });
+            Assert.Equal("5", fixture.LastConnection!.Options["timeout"]);
+
+            await conn.SetOptionAsync("other", "x");
+            Assert.Equal("x", fixture.LastConnection.Options["other"]);
+
+            AdbcException ex = await Assert.ThrowsAnyAsync<AdbcException>(() => conn.GetOptionAsync("timeout"));
+            Assert.Equal(AdbcStatusCode.NotFound, ex.Status);
+
+            ex = await Assert.ThrowsAnyAsync<AdbcException>(() => conn.GetStatisticsNamesAsync());
+            Assert.Equal(AdbcStatusCode.NotImplemented, ex.Status);
+
+            using AdbcStatement stmt = conn.CreateStatement();
+            ex = await Assert.ThrowsAnyAsync<AdbcException>(() => stmt.ExecuteSchemaAsync());
+            Assert.Equal(AdbcStatusCode.NotImplemented, ex.Status);
         }
 
         private static AdbcDriver Load(AdbcDriver driver)

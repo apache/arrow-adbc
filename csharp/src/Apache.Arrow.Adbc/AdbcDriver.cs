@@ -17,6 +17,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Apache.Arrow.Adbc
 {
@@ -86,6 +88,21 @@ namespace Apache.Arrow.Adbc
             }
 
             return database;
+        }
+
+        /// <summary>
+        /// Asynchronously open a database via this driver.
+        /// </summary>
+        /// <param name="parameters">
+        /// Driver-specific parameters.
+        /// </param>
+        /// <param name="cancellationToken">
+        /// A token used to cancel the operation before it starts. Once started, the operation
+        /// runs to completion, because databases and drivers have no way to interrupt it.
+        /// </param>
+        public virtual Task<AdbcDatabase> OpenAsync(IReadOnlyDictionary<string, string> parameters, CancellationToken cancellationToken = default)
+        {
+            return AdbcAsync.Run(() => Open(parameters), null, cancellationToken);
         }
 
         public virtual void Dispose()
