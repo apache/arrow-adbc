@@ -78,7 +78,18 @@ namespace Apache.Arrow.Adbc.TestFixture.Native
 
         public FixtureConnection(Dictionary<string, string> options) { _options = options; }
 
+        private readonly Dictionary<string, long> _intOptions = new Dictionary<string, long>();
+
         public override void SetOption(string key, string value) => _options[key] = value;
+
+        // ADBC 1.1.0 typed and readable options
+        public override void SetOptionInt64(string key, long value) => _intOptions[key] = value;
+
+        public override long GetOptionInt64(string key) =>
+            _intOptions.TryGetValue(key, out long value) ? value : base.GetOptionInt64(key);
+
+        public override string GetOption(string key) =>
+            _options.TryGetValue(key, out string? value) ? value : base.GetOption(key);
 
         public override void Cancel() => _cancelled = true;
 
@@ -130,6 +141,10 @@ namespace Apache.Arrow.Adbc.TestFixture.Native
 
         public override void SetOption(string key, string value) => _statementOptions[key] = value;
 
+        // Reports a fixed progress value so the consumer can exercise StatementGetOptionDouble.
+        public override double GetOptionDouble(string key) =>
+            key == AdbcOptions.Statement.Progress ? 0.5 : base.GetOptionDouble(key);
+
         public override void Cancel() => _cancelled = true;
 
         // Returns a fixed schema independent of the query. ExecuteSchema must NOT
@@ -138,6 +153,11 @@ namespace Apache.Arrow.Adbc.TestFixture.Native
 
         public override QueryResult ExecuteQuery()
         {
+            if (_sqlQuery == "FAIL")
+            {
+                throw new DetailedException();
+            }
+
             _executed = true;
 
             // The result encodes the inputs the C ABI carried into this method so the
@@ -192,6 +212,21 @@ namespace Apache.Arrow.Adbc.TestFixture.Native
 
         internal bool WasCancelled => _cancelled;
         internal bool WasExecuted => _executed;
+    }
+
+    /// <summary>
+    /// An error carrying ADBC 1.1.0 error details across the C ABI.
+    /// </summary>
+    internal sealed class DetailedException : AdbcException
+    {
+        public DetailedException() : base("fixture failure", AdbcStatusCode.InvalidArgument) { }
+
+        public override string? SqlState => "42000";
+
+        public override IReadOnlyList<KeyValuePair<string, byte[]>> Details => new[]
+        {
+            new KeyValuePair<string, byte[]>("fixture.detail", new byte[] { 1, 2, 3 }),
+        };
     }
 
     /// <summary>

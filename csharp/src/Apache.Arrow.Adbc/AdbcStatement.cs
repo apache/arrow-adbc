@@ -151,6 +151,100 @@ namespace Apache.Arrow.Adbc
             throw AdbcException.NotImplemented("Statement does not support setting options");
         }
 
+        /// <summary>
+        /// Sets an integer-valued option.
+        /// </summary>
+        /// <param name="key">Option name</param>
+        /// <param name="value">Option value</param>
+        /// <remarks>
+        /// Added in ADBC 1.1.0. The default implementation converts the value to
+        /// a string and calls <see cref="SetOption(string, string)"/>.
+        /// </remarks>
+        public virtual void SetOptionInt64(string key, long value)
+        {
+            SetOption(key, AdbcOptionValue.FormatInt64(value));
+        }
+
+        /// <summary>
+        /// Sets a floating-point-valued option.
+        /// </summary>
+        /// <param name="key">Option name</param>
+        /// <param name="value">Option value</param>
+        /// <remarks>
+        /// Added in ADBC 1.1.0. The default implementation converts the value to
+        /// a string and calls <see cref="SetOption(string, string)"/>.
+        /// </remarks>
+        public virtual void SetOptionDouble(string key, double value)
+        {
+            SetOption(key, AdbcOptionValue.FormatDouble(value));
+        }
+
+        /// <summary>
+        /// Sets a binary-valued option.
+        /// </summary>
+        /// <param name="key">Option name</param>
+        /// <param name="value">Option value. Implementations must copy the data if they retain it.</param>
+        /// <remarks>Added in ADBC 1.1.0.</remarks>
+        public virtual void SetOptionBytes(string key, ReadOnlySpan<byte> value)
+        {
+            throw AdbcException.NotImplemented("Statement does not support binary options");
+        }
+
+        /// <summary>
+        /// Gets the value of a string-valued option.
+        /// </summary>
+        /// <param name="key">Option name</param>
+        /// <returns>The option value.</returns>
+        /// <exception cref="AdbcException">
+        /// With <see cref="AdbcStatusCode.NotFound"/> if the option is not recognized or has no value.
+        /// </exception>
+        /// <remarks>Added in ADBC 1.1.0.</remarks>
+        public virtual string GetOption(string key)
+        {
+            throw AdbcOptionValue.NotFound(key);
+        }
+
+        /// <summary>
+        /// Gets the value of an integer-valued option.
+        /// </summary>
+        /// <param name="key">Option name</param>
+        /// <returns>The option value.</returns>
+        /// <remarks>
+        /// Added in ADBC 1.1.0. The default implementation parses the result of
+        /// <see cref="GetOption(string)"/>.
+        /// </remarks>
+        public virtual long GetOptionInt64(string key)
+        {
+            return AdbcOptionValue.ParseInt64(key, GetOption(key));
+        }
+
+        /// <summary>
+        /// Gets the value of a floating-point-valued option.
+        /// </summary>
+        /// <param name="key">Option name</param>
+        /// <returns>The option value.</returns>
+        /// <remarks>
+        /// Added in ADBC 1.1.0. The default implementation parses the result of
+        /// <see cref="GetOption(string)"/>. Drivers use this to report
+        /// <see cref="AdbcOptions.Statement.Progress"/> and
+        /// <see cref="AdbcOptions.Statement.MaxProgress"/>.
+        /// </remarks>
+        public virtual double GetOptionDouble(string key)
+        {
+            return AdbcOptionValue.ParseDouble(key, GetOption(key));
+        }
+
+        /// <summary>
+        /// Gets the value of a binary-valued option.
+        /// </summary>
+        /// <param name="key">Option name</param>
+        /// <returns>The option value.</returns>
+        /// <remarks>Added in ADBC 1.1.0.</remarks>
+        public virtual byte[] GetOptionBytes(string key)
+        {
+            throw AdbcOptionValue.NotFound(key);
+        }
+
         public virtual void Dispose()
         {
         }

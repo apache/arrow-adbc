@@ -27,6 +27,7 @@ namespace Apache.Arrow.Adbc
     /// may be used multiple times and can be reconfigured (e.g. they can
     /// be reused to execute multiple different queries).
     /// </summary>
+    [Obsolete("Use AdbcStatement instead. The ADBC 1.1 APIs have been added to AdbcStatement in a backwards-compatible way.")]
     public abstract class AdbcStatement11 : IDisposable
 #if NET5_0_OR_GREATER
         , IAsyncDisposable

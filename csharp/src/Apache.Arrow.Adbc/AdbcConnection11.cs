@@ -27,6 +27,7 @@ namespace Apache.Arrow.Adbc
     /// Provides methods for query execution, managing prepared statements,
     /// using transactions, and so on.
     /// </summary>
+    [Obsolete("Use AdbcConnection instead. The ADBC 1.1 APIs have been added to AdbcConnection in a backwards-compatible way.")]
     public abstract class AdbcConnection11 : IDisposable
 #if NET5_0_OR_GREATER
         , IAsyncDisposable
