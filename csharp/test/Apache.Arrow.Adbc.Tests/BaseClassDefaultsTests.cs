@@ -212,11 +212,12 @@ namespace Apache.Arrow.Adbc.Tests
         [Fact]
         public async Task CancellationIsBestEffortWhenCancelIsNotImplemented()
         {
-            // SyncOnlyStatement doesn't override Cancel, so the operation runs to completion
+            // SyncOnlyStatement doesn't override Cancel, so once started the operation runs to completion
             var stmt = new SyncOnlyStatement { Delay = TimeSpan.FromMilliseconds(200) };
             using var cts = new CancellationTokenSource();
 
             ValueTask<QueryResult> pending = stmt.ExecuteQueryAsync(cts.Token);
+            await WaitForStartAsync(stmt.Started.Task);
             cts.Cancel();
             QueryResult result = await pending;
 
@@ -427,6 +428,66 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         [Fact]
+        public async Task CancelThatCompletesALegacyTaskInlineIsReportedAsCancellation()
+        {
+            // Cancel faults the legacy task synchronously, which used to resume the
+            // cancellation helper inline before Cancel had returned
+            var stmt = new InlineFaultingLegacyStatement();
+            using var cts = new CancellationTokenSource();
+
+            ValueTask<QueryResult> pending = stmt.ExecuteQueryAsync(cts.Token);
+            // Cancel from a thread without a SynchronizationContext, where the legacy task's
+            // continuations may run inline (xUnit's own context would prevent that)
+            await Task.Run(() => cts.Cancel());
+
+            OperationCanceledException ex = await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await pending);
+            Assert.IsType<TimeoutException>(ex.InnerException);
+        }
+
+        [Fact]
+        public async Task SynchronouslyBlockingLegacyQueryOverrideCanBeCancelled()
+        {
+            var stmt = new SynchronousLegacyStatement();
+            using var cts = new CancellationTokenSource();
+
+            // The override blocks before returning its task, so the call has to run elsewhere
+            Task<QueryResult> pending = Task.Run(() => stmt.ExecuteQueryAsync(cts.Token).AsTask());
+            await WaitForStartAsync(stmt.Started.Task);
+            cts.Cancel();
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending);
+            Assert.True(stmt.CancelCalled);
+        }
+
+        [Fact]
+        public async Task SynchronouslyBlockingLegacyUpdateOverrideCanBeCancelled()
+        {
+            var stmt = new SynchronousLegacyStatement();
+            using var cts = new CancellationTokenSource();
+
+            Task<UpdateResult> pending = Task.Run(() => stmt.ExecuteUpdateAsync(cts.Token));
+            await WaitForStartAsync(stmt.Started.Task);
+            cts.Cancel();
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending);
+            Assert.True(stmt.CancelCalled);
+        }
+
+        [Fact]
+        public async Task QueryCancelledBeforeTheDefaultWorkStartsDoesNotRun()
+        {
+            using var queryCts = new CancellationTokenSource();
+            var queryStmt = new CancelThenCallBaseStatement(queryCts);
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await queryStmt.ExecuteQueryAsync(queryCts.Token));
+            Assert.Equal(0, queryStmt.QueryCount);
+
+            using var updateCts = new CancellationTokenSource();
+            var updateStmt = new CancelThenCallBaseStatement(updateCts);
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => updateStmt.ExecuteUpdateAsync(updateCts.Token));
+            Assert.Equal(0, updateStmt.UpdateCount);
+        }
+
+        [Fact]
         public async Task DisposeAsyncCallsDispose()
         {
             var stmt = new SyncOnlyStatement();
@@ -472,6 +533,7 @@ namespace Apache.Arrow.Adbc.Tests
             public int UpdateCount;
             public bool Disposed;
             public TimeSpan Delay;
+            public TaskCompletionSource<bool> Started { get; } = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             public Dictionary<string, string> Options { get; } = new Dictionary<string, string>();
 
             public override void SetOption(string key, string value) => Options[key] = value;
@@ -479,6 +541,7 @@ namespace Apache.Arrow.Adbc.Tests
 
             public override QueryResult ExecuteQuery()
             {
+                Started.TrySetResult(true);
                 Thread.Sleep(Delay);
                 Interlocked.Increment(ref QueryCount);
                 return new QueryResult(0, null!);
@@ -633,6 +696,94 @@ namespace Apache.Arrow.Adbc.Tests
             }
 
             public override UpdateResult ExecuteUpdate() => new UpdateResult(0);
+        }
+
+        /// <summary>
+        /// A legacy driver whose Cancel faults its pending task synchronously, so any
+        /// continuation that isn't forced onto another thread runs inside Cancel.
+        /// </summary>
+        private sealed class InlineFaultingLegacyStatement : AdbcStatement
+        {
+            private readonly TaskCompletionSource<QueryResult> _result = new TaskCompletionSource<QueryResult>();
+
+            public override void Cancel() => _result.TrySetException(new TimeoutException("interrupted"));
+
+            public override ValueTask<QueryResult> ExecuteQueryAsync() => new ValueTask<QueryResult>(_result.Task);
+
+            public override QueryResult ExecuteQuery() => throw new NotSupportedException();
+            public override UpdateResult ExecuteUpdate() => throw new NotSupportedException();
+        }
+
+        /// <summary>
+        /// A legacy driver whose async overrides run the blocking operation before
+        /// returning a task.
+        /// </summary>
+        private sealed class SynchronousLegacyStatement : AdbcStatement
+        {
+            private readonly ManualResetEventSlim _cancel = new ManualResetEventSlim();
+            public TaskCompletionSource<bool> Started { get; } = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            public bool CancelCalled => _cancel.IsSet;
+
+            public override void Cancel() => _cancel.Set();
+
+            public override ValueTask<QueryResult> ExecuteQueryAsync() => new ValueTask<QueryResult>(ExecuteQuery());
+            public override Task<UpdateResult> ExecuteUpdateAsync() => Task.FromResult(ExecuteUpdate());
+
+            public override QueryResult ExecuteQuery()
+            {
+                Block();
+                return new QueryResult(0, null!);
+            }
+
+            public override UpdateResult ExecuteUpdate()
+            {
+                Block();
+                return new UpdateResult(0);
+            }
+
+            private void Block()
+            {
+                Started.TrySetResult(true);
+                _cancel.Wait(TimeSpan.FromSeconds(30));
+                throw new AdbcException("cancelled", AdbcStatusCode.Cancelled);
+            }
+        }
+
+        /// <summary>
+        /// A legacy override that calls the base implementation after the token has been
+        /// cancelled, standing in for cancellation that arrives while the work is queued.
+        /// </summary>
+        private sealed class CancelThenCallBaseStatement : AdbcStatement
+        {
+            private readonly CancellationTokenSource _cts;
+            public int QueryCount;
+            public int UpdateCount;
+
+            public CancelThenCallBaseStatement(CancellationTokenSource cts) { _cts = cts; }
+
+            public override ValueTask<QueryResult> ExecuteQueryAsync()
+            {
+                _cts.Cancel();
+                return base.ExecuteQueryAsync();
+            }
+
+            public override Task<UpdateResult> ExecuteUpdateAsync()
+            {
+                _cts.Cancel();
+                return base.ExecuteUpdateAsync();
+            }
+
+            public override QueryResult ExecuteQuery()
+            {
+                Interlocked.Increment(ref QueryCount);
+                return new QueryResult(0, null!);
+            }
+
+            public override UpdateResult ExecuteUpdate()
+            {
+                Interlocked.Increment(ref UpdateCount);
+                return new UpdateResult(0);
+            }
         }
 
         private sealed class BlockingStatement : AdbcStatement

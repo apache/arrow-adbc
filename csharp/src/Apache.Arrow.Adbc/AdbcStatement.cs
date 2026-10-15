@@ -100,7 +100,8 @@ namespace Apache.Arrow.Adbc
         /// </remarks>
         public virtual ValueTask<QueryResult> ExecuteQueryAsync()
         {
-            return new ValueTask<QueryResult>(AdbcAsync.Run(ExecuteQuery, Cancel, CancellationToken.None));
+            // When called from ExecuteQueryAsync(CancellationToken), that overload registers Cancel
+            return new ValueTask<QueryResult>(AdbcAsync.Run(ExecuteQuery, null, TakeForwardedToken()));
         }
 
         /// <summary>
@@ -126,12 +127,14 @@ namespace Apache.Arrow.Adbc
                 return new ValueTask<QueryResult>(Task.FromCanceled<QueryResult>(cancellationToken));
             }
 
-            ValueTask<QueryResult> result = ExecuteQueryAsync();
             if (!cancellationToken.CanBeCanceled)
             {
-                return result;
+                return ExecuteQueryAsync();
             }
-            return new ValueTask<QueryResult>(AdbcAsync.WithCancellation(result.AsTask(), Cancel, cancellationToken));
+            return new ValueTask<QueryResult>(AdbcAsync.WithCancellation(
+                () => Forward(cancellationToken, () => ExecuteQueryAsync()).AsTask(),
+                Cancel,
+                cancellationToken));
         }
 
         /// <summary>
@@ -177,7 +180,8 @@ namespace Apache.Arrow.Adbc
         /// </remarks>
         public virtual Task<UpdateResult> ExecuteUpdateAsync()
         {
-            return AdbcAsync.Run(ExecuteUpdate, Cancel, CancellationToken.None);
+            // When called from ExecuteUpdateAsync(CancellationToken), that overload registers Cancel
+            return AdbcAsync.Run(ExecuteUpdate, null, TakeForwardedToken());
         }
 
         /// <summary>
@@ -199,12 +203,50 @@ namespace Apache.Arrow.Adbc
                 return Task.FromCanceled<UpdateResult>(cancellationToken);
             }
 
-            Task<UpdateResult> result = ExecuteUpdateAsync();
             if (!cancellationToken.CanBeCanceled)
             {
-                return result;
+                return ExecuteUpdateAsync();
             }
-            return AdbcAsync.WithCancellation(result, Cancel, cancellationToken);
+            return AdbcAsync.WithCancellation(
+                () => Forward(cancellationToken, () => ExecuteUpdateAsync()),
+                Cancel,
+                cancellationToken);
+        }
+
+        // The token overloads forward to the parameterless ones so that legacy overrides of those
+        // still run. When the parameterless overload isn't overridden, its default implementation
+        // picks up the token here, on the same thread, so that queued work which is cancelled
+        // before it starts never runs. The token can't be passed as an argument without changing
+        // the parameterless overload's signature.
+        [ThreadStatic] private static AdbcStatement? t_forwardingStatement;
+        [ThreadStatic] private static CancellationToken t_forwardedToken;
+
+        private T Forward<T>(CancellationToken cancellationToken, Func<T> call)
+        {
+            t_forwardingStatement = this;
+            t_forwardedToken = cancellationToken;
+            try
+            {
+                return call();
+            }
+            finally
+            {
+                t_forwardingStatement = null;
+                t_forwardedToken = default;
+            }
+        }
+
+        private CancellationToken TakeForwardedToken()
+        {
+            if (!ReferenceEquals(t_forwardingStatement, this))
+            {
+                return CancellationToken.None;
+            }
+
+            CancellationToken token = t_forwardedToken;
+            t_forwardingStatement = null;
+            t_forwardedToken = default;
+            return token;
         }
 
         /// <summary>

@@ -67,9 +67,11 @@ namespace Apache.Arrow.Adbc
 
         /// <summary>
         /// Attaches cancellation to a task produced by a driver override that
-        /// doesn't itself accept a <see cref="CancellationToken"/>.
+        /// doesn't itself accept a <see cref="CancellationToken"/>. The token is
+        /// registered before <paramref name="start"/> is called, so an override
+        /// that blocks before returning its task can still be cancelled.
         /// </summary>
-        public static async Task<T> WithCancellation<T>(Task<T> task, Action? cancel, CancellationToken cancellationToken)
+        public static async Task<T> WithCancellation<T>(Func<Task<T>> start, Action? cancel, CancellationToken cancellationToken)
         {
             CancelState state = new CancelState(cancel);
             Exception failure;
@@ -77,6 +79,16 @@ namespace Apache.Arrow.Adbc
             {
                 try
                 {
+                    Task<T> task = start();
+                    if (!task.IsCompleted)
+                    {
+                        // Cancel may complete the task, which would otherwise resume this method
+                        // inline on the cancelling thread. Disposing the registration from inside
+                        // its own callback doesn't wait for Cancel to return, so Translate could
+                        // misjudge whether Cancel succeeded. Resuming on the thread pool instead
+                        // makes the disposal wait for the callback to finish.
+                        await task.ContinueWith(_ => { }, CancellationToken.None, TaskContinuationOptions.None, TaskScheduler.Default).ConfigureAwait(false);
+                    }
                     return await task.ConfigureAwait(false);
                 }
                 catch (Exception e) when (!(e is OperationCanceledException))
