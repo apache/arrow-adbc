@@ -65,7 +65,7 @@ The client library package for each language:
      - go
      - ``github.com/apache/arrow-adbc/go/adbc``
      - `Go Documentation ↗ <https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc>`__
-   * - Java
+   * - Java / Kotlin / Scala
      - Maven
      - ``org.apache.arrow.adbc``: ``adbc-core``, ``adbc-driver-manager``, ``adbc-driver-jni``
      - :doc:`Java Quickstart <java/quickstart>`
