@@ -955,8 +955,7 @@ AdbcStatusCode InternalSqliteStatementReaderAppendDoubleToBinary(
   CHECK_NA(INTERNAL, ArrowBufferReserve(binary, kReserve), error);
   char* output = (char*)(binary->data + binary->size_bytes);
   // SQLite's alternate-form-2 formatter is locale-independent, keeps enough
-  // significant digits to round-trip binary64, and preserves REAL values as
-  // SQL-compatible text (including a decimal point for integral values).
+  // significant digits to round-trip binary64.
   const int written =
       (int)strlen(sqlite3_snprintf((int)kReserve, output, "%!.17g", value));
   if (written < 0 || (size_t)written >= kReserve) {
