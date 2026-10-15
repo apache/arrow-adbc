@@ -141,7 +141,7 @@ namespace Apache.Arrow.Adbc.Tests
             using var cts = new CancellationTokenSource();
 
             ValueTask<QueryResult> pending = stmt.ExecuteQueryAsync(cts.Token);
-            Assert.True(stmt.Started.Wait(TimeSpan.FromSeconds(10)));
+            await WaitForStartAsync(stmt.Started.Task);
             cts.Cancel();
 
             OperationCanceledException ex = await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await pending);
@@ -157,7 +157,7 @@ namespace Apache.Arrow.Adbc.Tests
             using var cts = new CancellationTokenSource();
 
             Task<UpdateResult> pending = stmt.ExecuteUpdateAsync(cts.Token);
-            Assert.True(stmt.Started.Wait(TimeSpan.FromSeconds(10)));
+            await WaitForStartAsync(stmt.Started.Task);
             cts.Cancel();
 
             OperationCanceledException ex = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending);
@@ -173,7 +173,7 @@ namespace Apache.Arrow.Adbc.Tests
 
             // The token overload forwards to the legacy override and calls Cancel on cancellation
             ValueTask<QueryResult> pending = stmt.ExecuteQueryAsync(cts.Token);
-            Assert.True(stmt.Started.Wait(TimeSpan.FromSeconds(10)));
+            await WaitForStartAsync(stmt.Started.Task);
             cts.Cancel();
 
             OperationCanceledException ex = await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await pending);
@@ -202,7 +202,7 @@ namespace Apache.Arrow.Adbc.Tests
             using var cts = new CancellationTokenSource();
 
             Task<IArrowArrayStream> pending = conn.GetTableTypesAsync(cts.Token);
-            Assert.True(conn.Started.Wait(TimeSpan.FromSeconds(10)));
+            await WaitForStartAsync(conn.Started.Task);
             cts.Cancel();
 
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending);
@@ -233,7 +233,7 @@ namespace Apache.Arrow.Adbc.Tests
             using var cts = new CancellationTokenSource();
 
             ValueTask<QueryResult> pending = stmt.ExecuteQueryAsync(cts.Token);
-            Assert.True(stmt.Started.Wait(TimeSpan.FromSeconds(10)));
+            await WaitForStartAsync(stmt.Started.Task);
             cts.Cancel();
             stmt.Fail.Set();
 
@@ -315,7 +315,7 @@ namespace Apache.Arrow.Adbc.Tests
             using var cts = new CancellationTokenSource();
 
             Task pending = conn.SetOptionAsync(BlockingConnection.BlockingKey, "value", cts.Token);
-            Assert.True(conn.Started.Wait(TimeSpan.FromSeconds(10)));
+            await WaitForStartAsync(conn.Started.Task);
             cts.Cancel();
 
             await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending);
@@ -460,6 +460,12 @@ namespace Apache.Arrow.Adbc.Tests
             Assert.True(driver.LastDatabase!.Disposed);
         }
 
+        // Waits without blocking a thread-pool thread, which the operation under test needs
+        private static async Task WaitForStartAsync(Task started)
+        {
+            Assert.Same(started, await Task.WhenAny(started, Task.Delay(TimeSpan.FromSeconds(10))));
+        }
+
         private sealed class SyncOnlyStatement : AdbcStatement
         {
             public int QueryCount;
@@ -491,12 +497,12 @@ namespace Apache.Arrow.Adbc.Tests
 
         private sealed class FailingStatement : AdbcStatement
         {
-            public ManualResetEventSlim Started { get; } = new ManualResetEventSlim();
+            public TaskCompletionSource<bool> Started { get; } = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             public ManualResetEventSlim Fail { get; } = new ManualResetEventSlim();
 
             public override QueryResult ExecuteQuery()
             {
-                Started.Set();
+                Started.TrySetResult(true);
                 Fail.Wait(TimeSpan.FromSeconds(30));
                 throw new AdbcException("bad query", AdbcStatusCode.InvalidArgument);
             }
@@ -632,21 +638,21 @@ namespace Apache.Arrow.Adbc.Tests
         private sealed class BlockingStatement : AdbcStatement
         {
             private readonly ManualResetEventSlim _cancel = new ManualResetEventSlim();
-            public ManualResetEventSlim Started { get; } = new ManualResetEventSlim();
+            public TaskCompletionSource<bool> Started { get; } = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             public bool CancelCalled => _cancel.IsSet;
 
             public override void Cancel() => _cancel.Set();
 
             public override QueryResult ExecuteQuery()
             {
-                Started.Set();
+                Started.TrySetResult(true);
                 _cancel.Wait(TimeSpan.FromSeconds(30));
                 throw new AdbcException("cancelled", AdbcStatusCode.Cancelled);
             }
 
             public override UpdateResult ExecuteUpdate()
             {
-                Started.Set();
+                Started.TrySetResult(true);
                 _cancel.Wait(TimeSpan.FromSeconds(30));
                 throw new AdbcException("cancelled", AdbcStatusCode.Cancelled);
             }
@@ -659,14 +665,14 @@ namespace Apache.Arrow.Adbc.Tests
         private sealed class LegacyBlockingStatement : AdbcStatement
         {
             private readonly TaskCompletionSource<bool> _cancel = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-            public ManualResetEventSlim Started { get; } = new ManualResetEventSlim();
+            public TaskCompletionSource<bool> Started { get; } = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             public bool CancelCalled => _cancel.Task.IsCompleted;
 
             public override void Cancel() => _cancel.TrySetResult(true);
 
             public override async ValueTask<QueryResult> ExecuteQueryAsync()
             {
-                Started.Set();
+                Started.TrySetResult(true);
                 await _cancel.Task.ConfigureAwait(false);
                 throw new AdbcException("cancelled", AdbcStatusCode.Cancelled);
             }
@@ -678,7 +684,7 @@ namespace Apache.Arrow.Adbc.Tests
         private sealed class BlockingConnection : AdbcConnection
         {
             private readonly ManualResetEventSlim _cancel = new ManualResetEventSlim();
-            public ManualResetEventSlim Started { get; } = new ManualResetEventSlim();
+            public TaskCompletionSource<bool> Started { get; } = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             public bool CancelCalled => _cancel.IsSet;
             public Dictionary<string, string> Options { get; } = new Dictionary<string, string>();
 
@@ -718,7 +724,7 @@ namespace Apache.Arrow.Adbc.Tests
 
             private void Block()
             {
-                Started.Set();
+                Started.TrySetResult(true);
                 _cancel.Wait(TimeSpan.FromSeconds(30));
                 throw new AdbcException("cancelled", AdbcStatusCode.Cancelled);
             }

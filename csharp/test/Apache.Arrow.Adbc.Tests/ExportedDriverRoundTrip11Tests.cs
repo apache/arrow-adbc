@@ -362,7 +362,7 @@ namespace Apache.Arrow.Adbc.Tests
             stmt.SqlQuery = "BLOCK";
 
             Task<QueryResult> pending = Task.Run(() => stmt.ExecuteQuery());
-            Assert.True(fixture.LastStatement!.Started.Wait(TimeSpan.FromSeconds(10)));
+            await WaitForStartAsync(fixture.LastStatement!.Started.Task);
             stmt.Cancel();
 
             AdbcException ex = await Assert.ThrowsAnyAsync<AdbcException>(() => pending);
@@ -381,7 +381,7 @@ namespace Apache.Arrow.Adbc.Tests
 
             using CancellationTokenSource cts = new CancellationTokenSource();
             ValueTask<QueryResult> pending = stmt.ExecuteQueryAsync(cts.Token);
-            Assert.True(fixture.LastStatement!.Started.Wait(TimeSpan.FromSeconds(10)));
+            await WaitForStartAsync(fixture.LastStatement!.Started.Task);
             cts.Cancel();
 
             OperationCanceledException ex = await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await pending);
@@ -503,6 +503,12 @@ namespace Apache.Arrow.Adbc.Tests
         /// <summary>
         /// Stores options with their types so tests can see which typed setter was used.
         /// </summary>
+        // Waits without blocking a thread-pool thread, which the operation under test needs
+        private static async Task WaitForStartAsync(Task started)
+        {
+            Assert.Same(started, await Task.WhenAny(started, Task.Delay(TimeSpan.FromSeconds(10))));
+        }
+
         private sealed class OptionBag
         {
             public Dictionary<string, object> Values { get; } = new Dictionary<string, object>();
@@ -658,7 +664,7 @@ namespace Apache.Arrow.Adbc.Tests
             private readonly OptionBag _options = new OptionBag();
             private readonly ManualResetEventSlim _cancelled = new ManualResetEventSlim();
 
-            public ManualResetEventSlim Started { get; } = new ManualResetEventSlim();
+            public TaskCompletionSource<bool> Started { get; } = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             public override void SetOption(string key, string value) => _options.Values[key] = value;
             public override void SetOptionBytes(string key, ReadOnlySpan<byte> value) => _options.Values[key] = value.ToArray();
@@ -678,7 +684,7 @@ namespace Apache.Arrow.Adbc.Tests
                     case "FAIL_CANCELED":
                         throw new OperationCanceledException();
                     case "BLOCK":
-                        Started.Set();
+                        Started.TrySetResult(true);
                         if (_cancelled.Wait(TimeSpan.FromSeconds(30)))
                         {
                             throw new AdbcException("cancelled", AdbcStatusCode.Cancelled);

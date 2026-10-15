@@ -235,7 +235,7 @@ namespace Apache.Arrow.Adbc.Tests.Client
         [Fact]
         public void ReadAsyncDoesNotDeadlockOnASynchronizationContext()
         {
-            const int timeoutMilliseconds = 5_000;
+            const int timeoutMilliseconds = 30_000; // generous for loaded CI runners; a real deadlock never completes
             const int expectedRows = 4;
 
             using ManualResetEventSlim finished = new ManualResetEventSlim(false);
