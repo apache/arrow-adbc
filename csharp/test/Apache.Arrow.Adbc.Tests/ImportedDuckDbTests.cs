@@ -362,11 +362,7 @@ namespace Apache.Arrow.Adbc.Tests
             statement.SqlQuery = "SELECT count(*) FROM range(1000000000000)";
             Task<long> query = Task.Run(() => GetResultCount(statement.ExecuteQuery()));
 
-            await Task.Delay(500);
-            statement.Cancel();
-
-            Task completed = await Task.WhenAny(query, Task.Delay(TimeSpan.FromSeconds(30)));
-            Assert.Same(query, completed);
+            await CancelUntilCompleteAsync(statement.Cancel, query);
             AdbcException exception = await Assert.ThrowsAnyAsync<AdbcException>(() => query);
             // DuckDB reports interruption as InvalidArgument rather than Cancelled
             Assert.Contains("Interrupted", exception.Message);
@@ -382,14 +378,26 @@ namespace Apache.Arrow.Adbc.Tests
             statement.SqlQuery = "SELECT count(*) FROM range(1000000000000)";
             Task<long> query = Task.Run(() => GetResultCount(statement.ExecuteQuery()));
 
-            await Task.Delay(500);
-            connection.Cancel();
-
-            Task completed = await Task.WhenAny(query, Task.Delay(TimeSpan.FromSeconds(30)));
-            Assert.Same(query, completed);
+            await CancelUntilCompleteAsync(connection.Cancel, query);
             AdbcException exception = await Assert.ThrowsAnyAsync<AdbcException>(() => query);
             // DuckDB reports interruption as InvalidArgument rather than Cancelled
             Assert.Contains("Interrupted", exception.Message);
+        }
+
+        /// <summary>
+        /// Calls <paramref name="cancel"/> until <paramref name="query"/> finishes. DuckDB clears
+        /// an interrupt when a query begins, so a single Cancel that arrives before the query
+        /// has started (as it can on a busy CI runner) would leave the query running indefinitely.
+        /// </summary>
+        private static async Task CancelUntilCompleteAsync(Action cancel, Task query)
+        {
+            DateTime deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+            while (!query.IsCompleted && DateTime.UtcNow < deadline)
+            {
+                cancel();
+                await Task.WhenAny(query, Task.Delay(250));
+            }
+            Assert.True(query.IsCompleted, "The query was not cancelled");
         }
 
         private static long GetResultCount(AdbcStatement statement, string query)
