@@ -388,19 +388,25 @@ jobs:
 
   linux:
     name: Linux ${{ matrix.target }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
     needs:
       - source
     strategy:
       fail-fast: false
       matrix:
-        target:
-          - almalinux-8
-          - almalinux-9
-          - almalinux-10
-          - debian-trixie
-          - ubuntu-jammy
-          - ubuntu-noble
+        include:
+          - { target: almalinux-8,          runner: ubuntu-latest }
+          - { target: almalinux-8-aarch64,  runner: ubuntu-24.04-arm }
+          - { target: almalinux-9,          runner: ubuntu-latest }
+          - { target: almalinux-9-aarch64,  runner: ubuntu-24.04-arm }
+          - { target: almalinux-10,         runner: ubuntu-latest }
+          - { target: almalinux-10-aarch64, runner: ubuntu-24.04-arm }
+          - { target: debian-trixie,        runner: ubuntu-latest }
+          - { target: debian-trixie-arm64,  runner: ubuntu-24.04-arm }
+          - { target: ubuntu-jammy,         runner: ubuntu-latest }
+          - { target: ubuntu-jammy-arm64,   runner: ubuntu-24.04-arm }
+          - { target: ubuntu-noble,         runner: ubuntu-latest }
+          - { target: ubuntu-noble-arm64,   runner: ubuntu-24.04-arm }
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
