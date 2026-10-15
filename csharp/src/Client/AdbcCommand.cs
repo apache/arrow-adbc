@@ -182,6 +182,15 @@ namespace Apache.Arrow.Adbc.Client
             return Convert.ToInt32(AdbcStatement.ExecuteUpdate().AffectedRows);
         }
 
+        public override async Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            BindParameters();
+            UpdateResult result = await AdbcStatement.ExecuteUpdateAsync(cancellationToken).ConfigureAwait(false);
+            return Convert.ToInt32(result.AffectedRows);
+        }
+
         /// <summary>
         /// Similar to <see cref="ExecuteNonQuery"/> but returns Int64
         /// instead of Int32.
@@ -217,7 +226,7 @@ namespace Apache.Arrow.Adbc.Client
             cancellationToken.ThrowIfCancellationRequested();
 
             BindParameters();
-            QueryResult result = await AdbcStatement.ExecuteQueryAsync().ConfigureAwait(false);
+            QueryResult result = await AdbcStatement.ExecuteQueryAsync(cancellationToken).ConfigureAwait(false);
 
             return new AdbcDataReader(this, result, this.DecimalBehavior, this.StructBehavior, closeConnection);
         }
@@ -561,6 +570,25 @@ namespace Apache.Arrow.Adbc.Client
         }
 #endif
 
+        /// <summary>
+        /// Attempts to cancel the execution of this command.
+        /// </summary>
+        /// <remarks>
+        /// As <see cref="DbCommand.Cancel"/> requires, nothing happens if there is nothing
+        /// to cancel, and no exception is thrown if the attempt to cancel fails, for
+        /// example because the driver doesn't support cancellation.
+        /// </remarks>
+        public override void Cancel()
+        {
+            try
+            {
+                _adbcStatement.Cancel();
+            }
+            catch (Exception)
+            {
+            }
+        }
+
         #region NOT_IMPLEMENTED
 
         public override bool DesignTimeVisible { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
@@ -568,11 +596,6 @@ namespace Apache.Arrow.Adbc.Client
         public override UpdateRowSource UpdatedRowSource { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
 
         protected override DbTransaction? DbTransaction { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-
-        public override void Cancel()
-        {
-            throw new NotImplementedException();
-        }
 
         public override object ExecuteScalar()
         {
