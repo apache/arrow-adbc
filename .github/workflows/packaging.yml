@@ -387,26 +387,32 @@ jobs:
             dist/*.pom
 
   linux:
-    name: Linux ${{ matrix.target }}
-    runs-on: ${{ matrix.runner }}
+    name: Linux ${{ matrix.distribution }} ${{ matrix.platform.arch }}
+    runs-on: ${{ matrix.platform.runs_on }}
     needs:
       - source
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - { target: almalinux-8,          runner: ubuntu-latest }
-          - { target: almalinux-8-aarch64,  runner: ubuntu-24.04-arm }
-          - { target: almalinux-9,          runner: ubuntu-latest }
-          - { target: almalinux-9-aarch64,  runner: ubuntu-24.04-arm }
-          - { target: almalinux-10,         runner: ubuntu-latest }
-          - { target: almalinux-10-aarch64, runner: ubuntu-24.04-arm }
-          - { target: debian-trixie,        runner: ubuntu-latest }
-          - { target: debian-trixie-arm64,  runner: ubuntu-24.04-arm }
-          - { target: ubuntu-jammy,         runner: ubuntu-latest }
-          - { target: ubuntu-jammy-arm64,   runner: ubuntu-24.04-arm }
-          - { target: ubuntu-noble,         runner: ubuntu-latest }
-          - { target: ubuntu-noble-arm64,   runner: ubuntu-24.04-arm }
+        distribution:
+          - almalinux-8
+          - almalinux-9
+          - almalinux-10
+          - debian-trixie
+          - ubuntu-jammy
+          - ubuntu-noble
+        platform:
+          - { arch: amd64, runs_on: ubuntu-latest }
+          - { arch: arm64, runs_on: ubuntu-24.04-arm }
+    env:
+      # amd64: almalinux-10, debian-trixie, ...
+      # arm64: almalinux-10-aarch64, debian-trixie-arm64, ...
+      TARGET: >-
+        ${{ matrix.distribution }}${{
+          matrix.platform.arch == 'arm64' &&
+            (startsWith(matrix.distribution, 'almalinux-') && '-aarch64' || '-arm64') ||
+            ''
+        }}
     steps:
       - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
@@ -421,17 +427,17 @@ jobs:
       - name: Set output variables
         run: |
           echo "ARROW_SOURCE=$(pwd)/arrow" >> $GITHUB_ENV
-          case ${{ matrix.target }} in
+          case ${{ env.TARGET }} in
             almalinux-*)
               echo "TASK_NAMESPACE=yum" >> $GITHUB_ENV
-              echo "YUM_TARGETS=${{ matrix.target }}" >> $GITHUB_ENV
+              echo "YUM_TARGETS=${{ env.TARGET }}" >> $GITHUB_ENV
               ;;
             debian-*|ubuntu-*)
               echo "TASK_NAMESPACE=apt" >> $GITHUB_ENV
-              echo "APT_TARGETS=${{ matrix.target }}" >> $GITHUB_ENV
+              echo "APT_TARGETS=${{ env.TARGET }}" >> $GITHUB_ENV
               ;;
           esac
-          distribution=$(echo ${{ matrix.target }} | cut -d- -f1)
+          distribution=$(echo ${{ env.TARGET }} | cut -d- -f1)
           echo "DISTRIBUTION=${distribution}" >> $GITHUB_ENV
 
           source_archive=$(echo apache-arrow-adbc-*.tar.gz)
@@ -456,9 +462,9 @@ jobs:
       - name: Cache ccache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: adbc/ci/linux-packages/${{ env.TASK_NAMESPACE }}/build/${{ matrix.target }}/ccache
-          key: linux-${{ env.TASK_NAMESPACE }}-ccache-${{ matrix.target }}-{{ "${{ hashFiles('adbc.h', 'c/**', 'glib/**') }}" }}
-          restore-keys: linux-${{ env.TASK_NAMESPACE }}-ccache-${{ matrix.target }}-
+          path: adbc/ci/linux-packages/${{ env.TASK_NAMESPACE }}/build/${{ env.TARGET }}/ccache
+          key: linux-${{ env.TASK_NAMESPACE }}-ccache-${{ env.TARGET }}-{{ "${{ hashFiles('adbc.h', 'c/**', 'glib/**') }}" }}
+          restore-keys: linux-${{ env.TASK_NAMESPACE }}-ccache-${{ env.TARGET }}-
           lookup-only: true
 
       - name: Login to GitHub Container registry
@@ -483,15 +489,15 @@ jobs:
           cp -a \
             adbc/ci/linux-packages/${TASK_NAMESPACE}/repositories/${DISTRIBUTION} \
             ./
-          tar czf ${{ matrix.target }}.tar.gz ${DISTRIBUTION}
+          tar czf ${{ env.TARGET }}.tar.gz ${DISTRIBUTION}
 
       - name: Upload artifacts
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: ${{ matrix.target }}
+          name: ${{ env.TARGET }}
           retention-days: 7
           path: |
-            ${{ matrix.target }}.tar.gz
+            ${{ env.TARGET }}.tar.gz
 
       - name: Push Docker image
         run: |
