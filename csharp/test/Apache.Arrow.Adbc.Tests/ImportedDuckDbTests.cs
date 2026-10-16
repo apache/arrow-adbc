@@ -643,10 +643,15 @@ namespace Apache.Arrow.Adbc.Tests
             await connection.RollbackAsync();
             Assert.Equal(0, GetResultCount(statement, "SELECT * FROM test"));
 
+            // The inserting connection can see its own uncommitted row, so check from another one
+            using var observer = database.Connect(null);
+            using var observerStatement = observer.CreateStatement();
+
             statement.SqlQuery = "INSERT INTO test VALUES (2)";
             statement.ExecuteUpdate();
+            Assert.Equal(0, GetResultCount(observerStatement, "SELECT * FROM test"));
             await connection.CommitAsync();
-            Assert.Equal(1, GetResultCount(statement, "SELECT * FROM test"));
+            Assert.Equal(1, GetResultCount(observerStatement, "SELECT * FROM test"));
         }
 
         /// <summary>
