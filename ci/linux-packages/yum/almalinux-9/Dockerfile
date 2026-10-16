@@ -47,7 +47,16 @@ RUN \
 
 
 ARG GO_VERSION
-RUN wget --no-verbose https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz && \
-    tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz && \
-    rm go${GO_VERSION}.linux-amd64.tar.gz
+RUN ARCH=$(arch) && \
+    if [[ ${ARCH} == "x86_64" ]]; then \
+        GO_ARCH="amd64"; \
+    elif [[ ${ARCH} == "aarch64" ]]; then \
+        GO_ARCH="arm64"; \
+    else \
+        echo "Unsupported platform: ${ARCH}"; \
+        exit 1; \
+    fi && \
+    wget --no-verbose https://go.dev/dl/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz && \
+    tar -C /usr/local -xzf go${GO_VERSION}.linux-${GO_ARCH}.tar.gz && \
+    rm go${GO_VERSION}.linux-${GO_ARCH}.tar.gz
 ENV PATH="/usr/local/go/bin:${PATH}"
