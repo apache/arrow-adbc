@@ -17,6 +17,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Apache.Arrow.Adbc
 {
@@ -27,7 +29,7 @@ namespace Apache.Arrow.Adbc
     /// For example, in-memory databases can place ownership of the actual
     /// database in this object.
     /// </summary>
-    public abstract class AdbcDatabase : IDisposable
+    public abstract class AdbcDatabase : IDisposable, IAsyncDisposable
     {
         /// <summary>
         /// Options are generally set before opening a database.  Some drivers may
@@ -227,6 +229,55 @@ namespace Apache.Arrow.Adbc
             return connection;
         }
 
+        /// <summary>
+        /// Asynchronously create a new connection to the database using options that
+        /// aren't all strings.
+        /// </summary>
+        /// <param name="options">
+        /// Additional options to use when connecting. See
+        /// <see cref="ConnectWithTypedOptions(IReadOnlyDictionary{string, object})"/>.
+        /// </param>
+        /// <param name="cancellationToken">
+        /// A token used to cancel the operation before it starts. Once started, the operation
+        /// runs to completion, because databases and drivers have no way to interrupt it.
+        /// </param>
+        /// <remarks>
+        /// Added in ADBC 1.1.0. The default implementation runs
+        /// <see cref="ConnectWithTypedOptions(IReadOnlyDictionary{string, object})"/>
+        /// on the thread pool.
+        /// </remarks>
+        public virtual Task<AdbcConnection> ConnectWithTypedOptionsAsync(IReadOnlyDictionary<string, object>? options, CancellationToken cancellationToken = default)
+        {
+            return AdbcAsync.Run(() => ConnectWithTypedOptions(options), null, cancellationToken);
+        }
+
+        /// <summary>
+        /// Asynchronously create a new connection to the database.
+        /// </summary>
+        /// <param name="options">
+        /// Additional options to use when connecting.
+        /// </param>
+        /// <param name="cancellationToken">
+        /// A token used to cancel the operation before it starts. Once started, the operation
+        /// runs to completion, because databases and drivers have no way to interrupt it.
+        /// </param>
+        public virtual Task<AdbcConnection> ConnectAsync(IReadOnlyDictionary<string, string>? options, CancellationToken cancellationToken = default)
+        {
+            return AdbcAsync.Run(() => Connect(options), null, cancellationToken);
+        }
+
         public virtual void Dispose() { }
+
+        /// <summary>
+        /// Asynchronously releases the resources used by the database.
+        /// </summary>
+        /// <remarks>
+        /// The default implementation calls <see cref="Dispose"/>.
+        /// </remarks>
+        public virtual ValueTask DisposeAsync()
+        {
+            Dispose();
+            return default;
+        }
     }
 }

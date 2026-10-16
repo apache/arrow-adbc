@@ -217,6 +217,22 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         [Fact]
+        public async Task ConnectionOptionsAsyncRoundTrip()
+        {
+            var fixture = new Driver11();
+            using AdbcDriver imported = Load(fixture);
+            using AdbcDatabase db = imported.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+
+            await conn.SetOptionAsync(AdbcOptions.Connection.CurrentCatalog, "main");
+            Assert.Equal("main", fixture.LastConnection!.CurrentCatalog);
+            Assert.Equal("main", await conn.GetOptionAsync(AdbcOptions.Connection.CurrentCatalog));
+
+            AdbcException e = await Assert.ThrowsAnyAsync<AdbcException>(() => conn.GetOptionAsync("unknown"));
+            Assert.Equal(AdbcStatusCode.NotFound, e.Status);
+        }
+
+        [Fact]
         public void StatisticsAreMarshaled()
         {
             var fixture = new Driver11();
@@ -346,11 +362,31 @@ namespace Apache.Arrow.Adbc.Tests
             stmt.SqlQuery = "BLOCK";
 
             Task<QueryResult> pending = Task.Run(() => stmt.ExecuteQuery());
-            Assert.True(fixture.LastStatement!.Started.Wait(TimeSpan.FromSeconds(10)));
+            await WaitForStartAsync(fixture.LastStatement!.Started.Task);
             stmt.Cancel();
 
             AdbcException ex = await Assert.ThrowsAnyAsync<AdbcException>(() => pending);
             Assert.Equal(AdbcStatusCode.Cancelled, ex.Status);
+        }
+
+        [Fact]
+        public async Task CancellationTokenCancelsImportedStatement()
+        {
+            var fixture = new Driver11();
+            using AdbcDriver imported = Load(fixture);
+            using AdbcDatabase db = imported.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+            stmt.SqlQuery = "BLOCK";
+
+            using CancellationTokenSource cts = new CancellationTokenSource();
+            ValueTask<QueryResult> pending = stmt.ExecuteQueryAsync(cts.Token);
+            await WaitForStartAsync(fixture.LastStatement!.Started.Task);
+            cts.Cancel();
+
+            OperationCanceledException ex = await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await pending);
+            AdbcException inner = Assert.IsAssignableFrom<AdbcException>(ex.InnerException);
+            Assert.Equal(AdbcStatusCode.Cancelled, inner.Status);
         }
 
         [Fact]
@@ -415,6 +451,35 @@ namespace Apache.Arrow.Adbc.Tests
             Assert.True(fixture.LastDatabase!.Disposed);
         }
 
+        [Fact]
+        public async Task Version1_0DriverAsyncCallsMatchSyncFallbacks()
+        {
+            var fixture = new Driver11();
+            AdbcDriverInit adapter = (int version, ref CAdbcDriver nativeDriver, ref CAdbcError error) =>
+            {
+                if (version != AdbcVersion.Version_1_0_0) { return AdbcStatusCode.NotImplemented; }
+                return CallExporter(version, ref nativeDriver, ref error, fixture);
+            };
+
+            using AdbcDriver imported = CAdbcDriverImporter.Load(adapter);
+            using AdbcDatabase db = imported.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = await db.ConnectWithTypedOptionsAsync(new Dictionary<string, object> { { "timeout", 5L } });
+            Assert.Equal("5", fixture.LastConnection!.Options["timeout"]);
+
+            await conn.SetOptionAsync("other", "x");
+            Assert.Equal("x", fixture.LastConnection.Options["other"]);
+
+            AdbcException ex = await Assert.ThrowsAnyAsync<AdbcException>(() => conn.GetOptionAsync("timeout"));
+            Assert.Equal(AdbcStatusCode.NotFound, ex.Status);
+
+            ex = await Assert.ThrowsAnyAsync<AdbcException>(() => conn.GetStatisticsNamesAsync());
+            Assert.Equal(AdbcStatusCode.NotImplemented, ex.Status);
+
+            using AdbcStatement stmt = conn.CreateStatement();
+            ex = await Assert.ThrowsAnyAsync<AdbcException>(() => stmt.ExecuteSchemaAsync());
+            Assert.Equal(AdbcStatusCode.NotImplemented, ex.Status);
+        }
+
         private static AdbcDriver Load(AdbcDriver driver)
         {
             AdbcDriver imported = CAdbcDriverImporter.Load(
@@ -438,6 +503,12 @@ namespace Apache.Arrow.Adbc.Tests
         /// <summary>
         /// Stores options with their types so tests can see which typed setter was used.
         /// </summary>
+        // Waits without blocking a thread-pool thread, which the operation under test needs
+        private static async Task WaitForStartAsync(Task started)
+        {
+            Assert.Same(started, await Task.WhenAny(started, Task.Delay(TimeSpan.FromSeconds(30))));
+        }
+
         private sealed class OptionBag
         {
             public Dictionary<string, object> Values { get; } = new Dictionary<string, object>();
@@ -593,7 +664,7 @@ namespace Apache.Arrow.Adbc.Tests
             private readonly OptionBag _options = new OptionBag();
             private readonly ManualResetEventSlim _cancelled = new ManualResetEventSlim();
 
-            public ManualResetEventSlim Started { get; } = new ManualResetEventSlim();
+            public TaskCompletionSource<bool> Started { get; } = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             public override void SetOption(string key, string value) => _options.Values[key] = value;
             public override void SetOptionBytes(string key, ReadOnlySpan<byte> value) => _options.Values[key] = value.ToArray();
@@ -613,7 +684,7 @@ namespace Apache.Arrow.Adbc.Tests
                     case "FAIL_CANCELED":
                         throw new OperationCanceledException();
                     case "BLOCK":
-                        Started.Set();
+                        Started.TrySetResult(true);
                         if (_cancelled.Wait(TimeSpan.FromSeconds(30)))
                         {
                             throw new AdbcException("cancelled", AdbcStatusCode.Cancelled);

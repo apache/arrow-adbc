@@ -275,5 +275,20 @@ namespace Apache.Arrow.Adbc.TestFixture.Tests
             Assert.Equal("fixture.detail", detail.Key);
             Assert.Equal(new byte[] { 1, 2, 3 }, detail.Value);
         }
+
+        [SkippableFact]
+        public async Task ExecuteQueryAsyncWithTokenRoundTrips()
+        {
+            using AdbcDriver driver = LoadFixture();
+            using AdbcDatabase db = driver.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = await db.ConnectAsync(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+            stmt.SqlQuery = "SELECT 1";
+
+            using var cts = new System.Threading.CancellationTokenSource();
+            QueryResult result = await stmt.ExecuteQueryAsync(cts.Token);
+            using IArrowArrayStream stream = result.Stream!;
+            Assert.Equal("key", stream.Schema.FieldsList[0].Name);
+        }
     }
 }

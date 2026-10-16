@@ -19,6 +19,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading;
+using System.Threading.Tasks;
 using Apache.Arrow.Adbc.C;
 using DbClient = Apache.Arrow.Adbc.Client;
 
@@ -57,6 +59,29 @@ namespace Apache.Arrow.Adbc.Tests
             if (_driver == null) throw new ObjectDisposedException("DuckDbFixture");
 
             return _driver.Open(new Dictionary<string, string> { { "path", Path.Combine(_dataDirectory, name) } });
+        }
+
+        /// <summary>
+        /// Opens a database through the <c>object</c>-valued overload so that typed
+        /// options reach DuckDB through the ADBC 1.1 typed setters.
+        /// </summary>
+        public AdbcDatabase OpenDatabase(string name, IReadOnlyDictionary<string, object> options)
+        {
+            if (_driver == null) throw new ObjectDisposedException("DuckDbFixture");
+
+            var parameters = new Dictionary<string, object>(options.Count + 1) { { "path", Path.Combine(_dataDirectory, name) } };
+            foreach (KeyValuePair<string, object> pair in options)
+            {
+                parameters[pair.Key] = pair.Value;
+            }
+            return _driver.Open(parameters);
+        }
+
+        public Task<AdbcDatabase> OpenDatabaseAsync(string name, CancellationToken cancellationToken = default)
+        {
+            if (_driver == null) throw new ObjectDisposedException("DuckDbFixture");
+
+            return _driver.OpenAsync(new Dictionary<string, string> { { "path", Path.Combine(_dataDirectory, name) } }, cancellationToken);
         }
 
         public DbClient.AdbcConnection CreateConnection(string name, IReadOnlyDictionary<string, string>? connectionOptions)

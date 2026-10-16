@@ -20,7 +20,7 @@ module github.com/apache/arrow-adbc/go/adbc
 go 1.26.0
 
 // Require the latest Go 1.26 to build to pick up CVE fixes in Go itself.
-toolchain go1.26.8
+toolchain go1.26.9
 
 require (
 	github.com/apache/arrow-go/v18 v18.8.0
@@ -43,6 +43,6 @@ require (
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/exp v0.0.0-20260908205506-85c1c2202aba // indirect
 	golang.org/x/mod v0.41.0 // indirect
-	golang.org/x/sync v0.23.0 // indirect
+	golang.org/x/sync v0.24.0 // indirect
 	golang.org/x/sys v0.48.0 // indirect
 )

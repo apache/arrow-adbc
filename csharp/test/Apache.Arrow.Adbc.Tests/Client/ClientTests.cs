@@ -235,7 +235,7 @@ namespace Apache.Arrow.Adbc.Tests.Client
         [Fact]
         public void ReadAsyncDoesNotDeadlockOnASynchronizationContext()
         {
-            const int timeoutMilliseconds = 5_000;
+            const int timeoutMilliseconds = 30_000; // generous for loaded CI runners; a real deadlock never completes
             const int expectedRows = 4;
 
             using ManualResetEventSlim finished = new ManualResetEventSlim(false);
@@ -294,8 +294,83 @@ namespace Apache.Arrow.Adbc.Tests.Client
             {
             }
 
-            fixture.Statement.Verify(x => x.ExecuteQueryAsync(), Times.Once);
+            fixture.Statement.Verify(x => x.ExecuteQueryAsync(It.IsAny<CancellationToken>()), Times.Once);
             fixture.Statement.Verify(x => x.ExecuteQuery(), Times.Never);
+        }
+
+        [Fact]
+        public async Task ExecuteReaderAsyncPassesTheCancellationTokenToTheStatement()
+        {
+            AsyncReaderFixture fixture = AsyncReaderFixture.Create(batchCount: 1, rowsPerBatch: 1);
+
+            using CancellationTokenSource cts = new CancellationTokenSource();
+            using (DbDataReader reader = await fixture.Command.ExecuteReaderAsync(cts.Token))
+            {
+            }
+
+            fixture.Statement.Verify(x => x.ExecuteQueryAsync(cts.Token), Times.Once);
+        }
+
+        [Fact]
+        public async Task ExecuteNonQueryAsyncUsesTheAsyncStatementPath()
+        {
+            Mock<AdbcStatement> mockStatement = new Mock<AdbcStatement>();
+            mockStatement
+                .Setup(x => x.ExecuteUpdateAsync(It.IsAny<CancellationToken>()))
+                .Returns(Task.FromResult(new UpdateResult(7)));
+
+            AdbcCommand command = new AdbcCommand(mockStatement.Object, new AdbcClient.AdbcConnection());
+
+            using CancellationTokenSource cts = new CancellationTokenSource();
+            Assert.Equal(7, await command.ExecuteNonQueryAsync(cts.Token));
+
+            mockStatement.Verify(x => x.ExecuteUpdateAsync(cts.Token), Times.Once);
+            mockStatement.Verify(x => x.ExecuteUpdate(), Times.Never);
+        }
+
+        [Fact]
+        public async Task ExecuteNonQueryAsyncFallsBackToSyncExecuteUpdate()
+        {
+            Mock<AdbcStatement> mockStatement = new Mock<AdbcStatement>() { CallBase = true };
+            mockStatement.Setup(x => x.ExecuteUpdate()).Returns(new UpdateResult(3));
+
+            AdbcCommand command = new AdbcCommand(mockStatement.Object, new AdbcClient.AdbcConnection());
+
+            Assert.Equal(3, await command.ExecuteNonQueryAsync());
+        }
+
+        [Fact]
+        public void CancelForwardsToTheStatement()
+        {
+            Mock<AdbcStatement> mockStatement = new Mock<AdbcStatement>();
+            AdbcCommand command = new AdbcCommand(mockStatement.Object, new AdbcClient.AdbcConnection());
+
+            command.Cancel();
+
+            mockStatement.Verify(x => x.Cancel(), Times.Once);
+        }
+
+        [Fact]
+        public void CancelDoesNotThrowWhenTheDriverCannotCancel()
+        {
+            // The base AdbcStatement.Cancel throws NotImplemented
+            Mock<AdbcStatement> mockStatement = new Mock<AdbcStatement>() { CallBase = true };
+            AdbcCommand command = new AdbcCommand(mockStatement.Object, new AdbcClient.AdbcConnection());
+
+            command.Cancel();
+        }
+
+        [Fact]
+        public async Task ExecuteNonQueryAsyncHonorsAPreCancelledToken()
+        {
+            Mock<AdbcStatement> mockStatement = new Mock<AdbcStatement>();
+            AdbcCommand command = new AdbcCommand(mockStatement.Object, new AdbcClient.AdbcConnection());
+
+            using CancellationTokenSource cts = new CancellationTokenSource();
+            cts.Cancel();
+
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => command.ExecuteNonQueryAsync(cts.Token));
+            mockStatement.Verify(x => x.ExecuteUpdateAsync(It.IsAny<CancellationToken>()), Times.Never);
         }
 
         [Fact]
@@ -568,7 +643,7 @@ namespace Apache.Arrow.Adbc.Tests.Client
 
         /// <param name="syncOnlyDriver">
         /// Stub <see cref="AdbcStatement.ExecuteQuery"/> only, leaving the base
-        /// <see cref="AdbcStatement.ExecuteQueryAsync"/> to supply the result.
+        /// <see cref="AdbcStatement.ExecuteQueryAsync(CancellationToken)"/> to supply the result.
         /// </param>
         public static AsyncReaderFixture Create(
             int batchCount,
@@ -606,7 +681,7 @@ namespace Apache.Arrow.Adbc.Tests.Client
             }
             else
             {
-                mockStatement.Setup(x => x.ExecuteQueryAsync()).Returns(new ValueTask<QueryResult>(queryResult));
+                mockStatement.Setup(x => x.ExecuteQueryAsync(It.IsAny<CancellationToken>())).Returns(new ValueTask<QueryResult>(queryResult));
             }
 
             AdbcClient.AdbcConnection connection = new AdbcClient.AdbcConnection();
