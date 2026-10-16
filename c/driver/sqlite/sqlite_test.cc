@@ -15,6 +15,9 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <charconv>
+#include <clocale>
+#include <cstdlib>
 #include <cstring>
 #include <filesystem>  // NOLINT [build/c++17]
 #include <limits>
@@ -1013,9 +1016,98 @@ TEST_F(SqliteReaderTest, IntsFloatsStrs) {
   ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].type);
 
   ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(CompareArray<std::string>(reader.array_view->children[0],
+                                                    {"1.0", "1.0", "", "Inf", "-Inf"}));
+}
+
+TEST_F(SqliteReaderTest, InferFloatToStringPreservesRoundTripPrecision) {
+  ASSERT_NO_FATAL_FAILURE(Exec("CREATE TABLE foo (upcast_col, append_col)"));
   ASSERT_NO_FATAL_FAILURE(
-      CompareArray<std::string>(reader.array_view->children[0],
-                                {"1.000000e+00", "1.000000e+00", "", "inf", "-inf"}));
+      Exec("INSERT INTO foo VALUES "
+           "(123456789.123, 'start'), "
+           "(3.141592653589793, 123456789.123), "
+           "(0.1, 3.141592653589793), "
+           "('end', 0.1)"));
+
+  const std::vector<std::optional<double>> expected_upcast = {
+      123456789.123, 3.141592653589793, 0.1, std::nullopt};
+  const std::vector<std::optional<double>> expected_append = {std::nullopt, 123456789.123,
+                                                              3.141592653589793, 0.1};
+  const std::vector<std::string> expected_text_upcast = {"", "", "", "end"};
+  const std::vector<std::string> expected_text_append = {"start", "", "", ""};
+
+  adbc_validation::StreamReader reader;
+  ASSERT_NO_FATAL_FAILURE(Exec("SELECT * FROM foo", kInferRows, &reader));
+  ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].type);
+  ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[1].type);
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  auto expect_round_trip = [](ArrowArrayView* actual,
+                              const std::vector<std::optional<double>>& expected_values,
+                              const std::vector<std::string>& expected_text) {
+    ASSERT_EQ(actual->length, static_cast<int64_t>(expected_values.size()));
+    ASSERT_EQ(expected_values.size(), expected_text.size());
+    for (int64_t i = 0; i < actual->length; i++) {
+      const ArrowStringView actual_view = ArrowArrayViewGetStringUnsafe(actual, i);
+      const std::string actual_value(actual_view.data, actual_view.size_bytes);
+      if (expected_values[i].has_value()) {
+        double parsed = 0.0;
+        const char* begin = actual_value.data();
+        const char* end = begin + actual_value.size();
+        const auto result =
+            std::from_chars(begin, end, parsed, std::chars_format::general);
+        ASSERT_EQ(result.ec, std::errc{});
+        ASSERT_EQ(result.ptr, end);
+        EXPECT_EQ(parsed, expected_values[i].value());
+      } else {
+        EXPECT_EQ(actual_value, expected_text[i]);
+      }
+    }
+  };
+  ASSERT_NO_FATAL_FAILURE(expect_round_trip(reader.array_view->children[0],
+                                            expected_upcast, expected_text_upcast));
+  ASSERT_NO_FATAL_FAILURE(expect_round_trip(reader.array_view->children[1],
+                                            expected_append, expected_text_append));
+}
+
+TEST_F(SqliteReaderTest, InferFloatToStringUsesDotDecimalInCommaLocale) {
+  ASSERT_NO_FATAL_FAILURE(Exec("CREATE TABLE foo (col)"));
+  ASSERT_NO_FATAL_FAILURE(Exec("INSERT INTO foo VALUES (1.5), ('text')"));
+  ASSERT_EQ(SQLITE_OK,
+            sqlite3_prepare_v2(db, "SELECT * FROM foo", -1, &stmt, /*pzTail=*/nullptr));
+
+  const char* current_locale = std::setlocale(LC_NUMERIC, nullptr);
+  ASSERT_NE(nullptr, current_locale);
+  const std::string original_locale(current_locale);
+
+  struct RestoreLocale {
+    std::string name;
+    ~RestoreLocale() { std::setlocale(LC_NUMERIC, name.c_str()); }
+  } restore{original_locale};
+
+  const char* comma_locales[] = {"de_DE.UTF-8", "de_DE.utf8", "de_DE",
+                                 "German_Germany.1252"};
+  bool comma_locale_available = false;
+  for (const char* locale : comma_locales) {
+    if (std::setlocale(LC_NUMERIC, locale) != nullptr &&
+        std::strcmp(std::localeconv()->decimal_point, ",") == 0) {
+      comma_locale_available = true;
+      break;
+    }
+  }
+  if (!comma_locale_available) {
+    GTEST_SKIP() << "No decimal-comma locale is installed";
+  }
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(InternalAdbcSqliteExportReader(db, stmt, /*binder=*/nullptr, kInferRows,
+                                             &reader.stream.value, &error),
+              IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+  ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].type);
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  const ArrowStringView actual =
+      ArrowArrayViewGetStringUnsafe(reader.array_view->children[0], 0);
+  EXPECT_EQ(std::string_view(actual.data, actual.size_bytes), "1.5");
 }
 
 TEST_F(SqliteReaderTest, InferIntReadInt) {
