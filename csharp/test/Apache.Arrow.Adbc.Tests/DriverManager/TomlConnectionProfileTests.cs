@@ -1232,5 +1232,173 @@ bool_key = false
             IReadOnlyDictionary<string, string> parameters = (IReadOnlyDictionary<string, string>)paramsProp!.GetValue(db)!;
             Assert.Equal("value", parameters["key"]);
         }
+
+        // -----------------------------------------------------------------------
+        // Positive: typed profile options
+        // -----------------------------------------------------------------------
+
+        [Fact]
+        public void BuildTypedOptions_PreservesOptionTypes()
+        {
+            const string toml = @"
+version = 1
+driver = ""d""
+
+[options]
+str_key = ""hello""
+int_key = 42
+dbl_key = 1.5
+bool_key = true
+";
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
+            IReadOnlyDictionary<string, object> opts = AdbcDriverManager.BuildTypedOptions(profile);
+
+            Assert.Equal("hello", Assert.IsType<string>(opts["str_key"]));
+            Assert.Equal(42L, Assert.IsType<long>(opts["int_key"]));
+            Assert.Equal(1.5, Assert.IsType<double>(opts["dbl_key"]));
+            Assert.Equal("true", Assert.IsType<string>(opts["bool_key"]));
+        }
+
+        [Fact]
+        public void BuildTypedOptions_ExplicitOptionsOverrideAllProfileTypes()
+        {
+            const string toml = @"
+version = 1
+driver = ""d""
+
+[options]
+int_key = 42
+dbl_key = 1.5
+str_key = ""hello""
+";
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
+            Dictionary<string, object> explicitOptions = new Dictionary<string, object>
+            {
+                { "int_key", "forty-two" },
+                { "dbl_key", 7L },
+                { "str_key", 2.5 },
+            };
+
+            IReadOnlyDictionary<string, object> merged = AdbcDriverManager.BuildTypedOptions(profile, explicitOptions);
+
+            Assert.Equal("forty-two", merged["int_key"]);
+            Assert.Equal(7L, merged["dbl_key"]);
+            Assert.Equal(2.5, merged["str_key"]);
+        }
+
+        [Fact]
+        public void BuildTypedOptions_NullProfile_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() => AdbcDriverManager.BuildTypedOptions(null!));
+        }
+
+        private static string TypedDriverProfile(string options)
+        {
+            string assemblyPath = typeof(FakeTypedAdbcDriver).Assembly.Location;
+            string typeName = typeof(FakeTypedAdbcDriver).FullName!;
+
+            string escapedPath = assemblyPath.Replace("\\", "\\\\");
+            return "profile_version = 1\n"
+                + "driver = \"" + escapedPath + "\"\n"
+                + "\n[Options]\n"
+                + "entrypoint = \"" + ManagedScheme + typeName + "\"\n"
+                + options;
+        }
+
+        private static IReadOnlyDictionary<string, object> GetTypedParameters(AdbcDatabase db)
+        {
+            Assert.Equal("Apache.Arrow.Adbc.Tests.DriverManager.FakeTypedAdbcDatabase", db.GetType().FullName);
+            System.Reflection.PropertyInfo? paramsProp = db.GetType().GetProperty("Parameters");
+            Assert.NotNull(paramsProp);
+            return (IReadOnlyDictionary<string, object>)paramsProp!.GetValue(db)!;
+        }
+
+        [Fact]
+        public void OpenDatabaseFromProfileWithTypedOptions_TypedDriver_ReceivesTypedOptions()
+        {
+            string toml = TypedDriverProfile(
+                "str_key = \"hello\"\n"
+                + "int_key = 42\n"
+                + "dbl_key = 1.5\n");
+
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
+            AdbcDatabase db = AdbcDriverManager.OpenDatabaseFromProfileWithTypedOptions(profile, null);
+
+            IReadOnlyDictionary<string, object> parameters = GetTypedParameters(db);
+            Assert.Equal("hello", Assert.IsType<string>(parameters["str_key"]));
+            Assert.Equal(42L, Assert.IsType<long>(parameters["int_key"]));
+            Assert.Equal(1.5, Assert.IsType<double>(parameters["dbl_key"]));
+            Assert.False(parameters.ContainsKey("entrypoint"));
+        }
+
+        [Fact]
+        public void OpenDatabaseFromProfileWithTypedOptions_MergesExplicitTypedOptions()
+        {
+            string toml = TypedDriverProfile(
+                "int_key = 42\n"
+                + "shared_key = 1\n");
+
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
+            Dictionary<string, object> explicitOptions = new Dictionary<string, object>
+            {
+                { "explicit_key", 2.5 },
+                { "shared_key", 7L },
+                { "bytes_key", new byte[] { 1, 2, 3 } },
+            };
+
+            AdbcDatabase db = AdbcDriverManager.OpenDatabaseFromProfileWithTypedOptions(profile, explicitOptions);
+
+            IReadOnlyDictionary<string, object> parameters = GetTypedParameters(db);
+            Assert.Equal(42L, parameters["int_key"]);
+            Assert.Equal(2.5, parameters["explicit_key"]);
+            Assert.Equal(7L, parameters["shared_key"]);
+            Assert.Equal(new byte[] { 1, 2, 3 }, Assert.IsType<byte[]>(parameters["bytes_key"]));
+        }
+
+        [Fact]
+        public void OpenDatabaseFromProfile_StringOnlyDriver_ReceivesFormattedOptions()
+        {
+            string assemblyPath = typeof(FakeAdbcDriver).Assembly.Location;
+            string typeName = typeof(FakeAdbcDriver).FullName!;
+
+            string escapedPath = assemblyPath.Replace("\\", "\\\\");
+            string toml = "profile_version = 1\n"
+                + "driver = \"" + escapedPath + "\"\n"
+                + "\n[Options]\n"
+                + "entrypoint = \"" + ManagedScheme + typeName + "\"\n"
+                + "int_key = 42\n"
+                + "dbl_key = 1.5\n";
+
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
+            AdbcDatabase db = AdbcDriverManager.OpenDatabaseFromProfile(profile);
+
+            System.Reflection.PropertyInfo? paramsProp = db.GetType().GetProperty("Parameters");
+            Assert.NotNull(paramsProp);
+            IReadOnlyDictionary<string, string> parameters = (IReadOnlyDictionary<string, string>)paramsProp!.GetValue(db)!;
+            Assert.Equal("42", parameters["int_key"]);
+            Assert.Equal("1.5", parameters["dbl_key"]);
+        }
+
+        [Fact]
+        public void OpenDatabaseFromProfileWithTypedOptions_NonStringEntrypoint_Throws()
+        {
+            string toml = TypedDriverProfile("key = \"value\"\n");
+            ConnectionProfile profile = FilesystemProfileProvider.LoadFromContent(toml);
+            Dictionary<string, object> explicitOptions = new Dictionary<string, object>
+            {
+                { "entrypoint", 42L },
+            };
+
+            AdbcException ex = Assert.Throws<AdbcException>(
+                () => AdbcDriverManager.OpenDatabaseFromProfileWithTypedOptions(profile, explicitOptions));
+            Assert.Equal(AdbcStatusCode.InvalidArgument, ex.Status);
+        }
+
+        [Fact]
+        public void OpenDatabaseFromProfileWithTypedOptions_NullProfile_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(
+                () => AdbcDriverManager.OpenDatabaseFromProfileWithTypedOptions(null!, null));
+        }
     }
 }

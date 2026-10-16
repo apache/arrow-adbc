@@ -461,6 +461,8 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// <c>string → string</c> dictionary.  Integer and double values are formatted
         /// using <see cref="CultureInfo.InvariantCulture"/>. The merged dictionary is
         /// passed to <see cref="AdbcDriver.Open(IReadOnlyDictionary{string,string})"/>.
+        /// Use <see cref="OpenDatabaseFromProfileWithTypedOptions"/> to preserve the
+        /// types of integer and double options.
         /// The <c>entrypoint</c> option (if any) is consumed by the driver manager
         /// and is not forwarded to the driver.
         /// </para>
@@ -513,6 +515,8 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// </list>
         /// The merged dictionary, minus any <c>entrypoint</c> entry, is passed to
         /// <see cref="AdbcDriver.Open(IReadOnlyDictionary{string,string})"/>.
+        /// Use <see cref="OpenDatabaseFromProfileWithTypedOptions"/> to preserve the
+        /// types of integer and double options.
         /// </para>
         /// </remarks>
         /// <param name="profile">The connection profile specifying the driver and options.</param>
@@ -546,6 +550,71 @@ namespace Apache.Arrow.Adbc.DriverManager
             if (mergedOptions.TryGetValue(EntrypointOptionKey, out string? entrypointValue))
             {
                 entrypoint = entrypointValue;
+                mergedOptions.Remove(EntrypointOptionKey);
+            }
+
+            AdbcDriver driver = LoadDriverFromProfile(profile, entrypoint, loadOptions, additionalSearchPathList);
+            return driver.Open(mergedOptions);
+        }
+
+        /// <summary>
+        /// Loads the driver specified by <paramref name="profile"/> and opens a database,
+        /// merging profile options with explicitly provided typed options.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This behaves like
+        /// <see cref="OpenDatabaseFromProfile(ConnectionProfile, IReadOnlyDictionary{string, string}, AdbcLoadFlags, string)"/>
+        /// except that the profile's integer and double options keep their types, and
+        /// <paramref name="explicitOptions"/> may carry strings, integers,
+        /// floating-point numbers or byte arrays. Options are merged as described by
+        /// <see cref="BuildTypedOptions"/> and passed to
+        /// <see cref="AdbcDriver.Open(IReadOnlyDictionary{string,object})"/>, so drivers
+        /// implementing ADBC 1.1 or later receive integer and double values through
+        /// their typed option setters.
+        /// </para>
+        /// <para>
+        /// Some drivers only accept a given option through the string setter and reject
+        /// it when it arrives as an integer or double. Use this method only when the
+        /// driver is known to accept typed values for the options being set.
+        /// </para>
+        /// <para>
+        /// If present, the <c>entrypoint</c> option must be a string.
+        /// </para>
+        /// </remarks>
+        /// <param name="profile">The connection profile specifying the driver and options.</param>
+        /// <param name="explicitOptions">
+        /// Additional options to merge with profile options. Explicit options override profile
+        /// options for the same key. May be <c>null</c> or empty.
+        /// </param>
+        /// <param name="loadOptions">Flags controlling directory search for native drivers.</param>
+        /// <param name="additionalSearchPathList">
+        /// An optional extra search path list for native driver discovery.
+        /// </param>
+        /// <returns>An open <see cref="AdbcDatabase"/>.</returns>
+        public static AdbcDatabase OpenDatabaseFromProfileWithTypedOptions(
+            ConnectionProfile profile,
+            IReadOnlyDictionary<string, object>? explicitOptions,
+            AdbcLoadFlags loadOptions = AdbcLoadFlags.Default,
+            string? additionalSearchPathList = null)
+        {
+            if (profile == null) throw new ArgumentNullException(nameof(profile));
+
+            Dictionary<string, object> mergedOptions = new Dictionary<string, object>(StringComparer.Ordinal);
+            foreach (KeyValuePair<string, object> kv in BuildTypedOptions(profile, explicitOptions))
+            {
+                mergedOptions[kv.Key] = kv.Value;
+            }
+
+            // entrypoint is a driver-manager option, not a driver option: pull it out
+            // of the bag before opening the database. When set, it overrides any
+            // entrypoint declared by a driver manifest found via FindLoadDriver.
+            string? entrypoint = null;
+            if (mergedOptions.TryGetValue(EntrypointOptionKey, out object? entrypointValue))
+            {
+                entrypoint = entrypointValue as string ?? throw new AdbcException(
+                    $"The '{EntrypointOptionKey}' option must be a string.",
+                    AdbcStatusCode.InvalidArgument);
                 mergedOptions.Remove(EntrypointOptionKey);
             }
 
@@ -603,6 +672,61 @@ namespace Apache.Arrow.Adbc.DriverManager
 
             foreach (var kv in profile.DoubleOptions)
                 merged[kv.Key] = kv.Value.ToString(CultureInfo.InvariantCulture);
+
+            foreach (var kv in profile.StringOptions)
+                merged[kv.Key] = kv.Value;
+
+            // Explicit options last – they override profile options
+            if (explicitOptions != null)
+            {
+                foreach (var kv in explicitOptions)
+                    merged[kv.Key] = kv.Value;
+            }
+
+            return merged;
+        }
+
+        /// <summary>
+        /// Merges options from a profile with explicitly provided options into a flat
+        /// <c>string → object</c> dictionary suitable for passing to
+        /// <see cref="AdbcDriver.Open(IReadOnlyDictionary{string,object})"/>.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Unlike <see cref="BuildStringOptions(ConnectionProfile, IReadOnlyDictionary{string, string})"/>,
+        /// integer options are kept as <see cref="long"/> and double options as
+        /// <see cref="double"/>, so that drivers implementing ADBC 1.1 or later receive
+        /// them through their typed option setters.
+        /// </para>
+        /// <para>
+        /// Options are merged in the following order (later values override earlier ones):
+        /// <list type="number">
+        ///   <item>Profile integer options</item>
+        ///   <item>Profile double options</item>
+        ///   <item>Profile string options</item>
+        ///   <item>Explicit options from <paramref name="explicitOptions"/></item>
+        /// </list>
+        /// </para>
+        /// </remarks>
+        /// <param name="profile">The connection profile containing base options.</param>
+        /// <param name="explicitOptions">
+        /// Additional options that override profile options. May be <c>null</c> or empty.
+        /// </param>
+        /// <returns>A merged dictionary of all options.</returns>
+        public static IReadOnlyDictionary<string, object> BuildTypedOptions(
+            ConnectionProfile profile,
+            IReadOnlyDictionary<string, object>? explicitOptions = null)
+        {
+            if (profile == null) throw new ArgumentNullException(nameof(profile));
+
+            var merged = new Dictionary<string, object>(StringComparer.Ordinal);
+
+            // Profile options first (in order: int, double, string)
+            foreach (var kv in profile.IntOptions)
+                merged[kv.Key] = kv.Value;
+
+            foreach (var kv in profile.DoubleOptions)
+                merged[kv.Key] = kv.Value;
 
             foreach (var kv in profile.StringOptions)
                 merged[kv.Key] = kv.Value;
