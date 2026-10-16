@@ -496,6 +496,13 @@ namespace Apache.Arrow.Adbc.Tests
             using var connection = database.Connect(null);
             using var statement = connection.CreateStatement();
 
+            Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => database.GetOptionInt64("unknown")).Status);
+            Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => database.GetOptionDouble("unknown")).Status);
+            Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => database.GetOptionBytes("unknown")).Status);
+            Assert.Equal(AdbcStatusCode.NotImplemented, Assert.ThrowsAny<AdbcException>(() => database.SetOptionBytes("unknown", new byte[] { 1 })).Status);
+            // DuckDB 1.5.6 accepts unknown string, integer and double options on an open
+            // database without reporting an error, so those setters aren't checked here.
+
             Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => connection.GetOption("unknown")).Status);
             Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => connection.GetOptionInt64("unknown")).Status);
             Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => connection.GetOptionDouble("unknown")).Status);
@@ -505,11 +512,18 @@ namespace Apache.Arrow.Adbc.Tests
             Assert.Equal(AdbcStatusCode.NotImplemented, Assert.ThrowsAny<AdbcException>(() => connection.SetOptionBytes("unknown", new byte[] { 1 })).Status);
 
             Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => statement.GetOption("unknown")).Status);
+            Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => statement.GetOptionInt64("unknown")).Status);
+            Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => statement.GetOptionDouble("unknown")).Status);
+            Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => statement.GetOptionBytes("unknown")).Status);
+            Assert.Equal(AdbcStatusCode.NotImplemented, Assert.ThrowsAny<AdbcException>(() => statement.SetOptionDouble("unknown", 1.5)).Status);
+            Assert.Equal(AdbcStatusCode.NotImplemented, Assert.ThrowsAny<AdbcException>(() => statement.SetOptionBytes("unknown", new byte[] { 1 })).Status);
 
             // The spec says NotImplemented, but DuckDB 1.5.6 returns InvalidArgument for
-            // unknown statement options. Accept either so a DuckDB fix doesn't break this.
-            AdbcStatusCode status = Assert.ThrowsAny<AdbcException>(() => statement.SetOptionInt64("unknown", 1)).Status;
-            Assert.Contains(status, new[] { AdbcStatusCode.NotImplemented, AdbcStatusCode.InvalidArgument });
+            // unknown string and integer statement options. Accept either so a DuckDB fix
+            // doesn't break this.
+            AdbcStatusCode[] unknownStatementOption = { AdbcStatusCode.NotImplemented, AdbcStatusCode.InvalidArgument };
+            Assert.Contains(Assert.ThrowsAny<AdbcException>(() => statement.SetOption("unknown", "x")).Status, unknownStatementOption);
+            Assert.Contains(Assert.ThrowsAny<AdbcException>(() => statement.SetOptionInt64("unknown", 1)).Status, unknownStatementOption);
         }
 
         [Fact]
