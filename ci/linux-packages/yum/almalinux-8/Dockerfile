@@ -46,16 +46,16 @@ RUN \
   yum clean ${quiet} all
 
 ARG GO_VERSION
-ARG TARGETPLATFORM
-RUN if [[ ${TARGETPLATFORM} == "linux/amd64" ]]; then \
-        ARCH="amd64"; \
-    elif [[ ${TARGETPLATFORM} == "linux/arm64" ]]; then \
-        ARCH="arm64"; \
+RUN ARCH=$(arch) && \
+    if [[ ${ARCH} == "x86_64" ]]; then \
+        GO_ARCH="amd64"; \
+    elif [[ ${ARCH} == "aarch64" ]]; then \
+        GO_ARCH="arm64"; \
     else \
-        echo "Unsupported platform: ${TARGETPLATFORM}"; \
+        echo "Unsupported platform: ${ARCH}"; \
         exit 1; \
     fi && \
-    wget --no-verbose https://go.dev/dl/go${GO_VERSION}.linux-${ARCH}.tar.gz && \
-    tar -C /usr/local -xzf go${GO_VERSION}.linux-${ARCH}.tar.gz && \
-    rm go${GO_VERSION}.linux-${ARCH}.tar.gz
+    wget --no-verbose https://go.dev/dl/go${GO_VERSION}.linux-${GO_ARCH}.tar.gz && \
+    tar -C /usr/local -xzf go${GO_VERSION}.linux-${GO_ARCH}.tar.gz && \
+    rm go${GO_VERSION}.linux-${GO_ARCH}.tar.gz
 ENV PATH="/usr/local/go/bin:${PATH}"
