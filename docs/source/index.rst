@@ -62,7 +62,7 @@ Getting Started
       :link: client_libraries
       :link-type: doc
 
-      Use ADBC from C/C++, C#, Go, Java, JavaScript, Python, R, Ruby, and Rust.
+      Use ADBC from C/C++, C#, Go, Java, JavaScript, Kotoba, Python, R, Ruby, and Rust.
 
    .. grid-item-card:: :octicon:`tools` Writing Drivers
       :link: driver/authoring
@@ -106,7 +106,7 @@ Why ADBC?
       :link: client_libraries
       :link-type: doc
 
-      Work in C/C++, C#, Go, Java, JavaScript / TypeScript, Python, R, Ruby,
+      Work in C/C++, C#, Go, Java, JavaScript / TypeScript, Kotoba, Python, R, Ruby,
       Rust, and more. Use idiomatic APIs like DBAPI in Python,
       ``database/sql`` in Go, and DBI in R.
 
@@ -221,6 +221,7 @@ More Resources
    Go <https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc>
    Java <java/index>
    JavaScript <javascript/index>
+   Kotoba <kotoba/index>
    Python <python/index>
    R <r/index>
    Ruby <ruby/index>
