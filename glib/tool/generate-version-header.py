@@ -45,8 +45,10 @@ def main():
     # don't let Ruff change this to the nicer syntax with parens (we still
     # build with Python 3.6 on almalinux-8)
     # fmt: off
+    # newline="\n" keeps the generated header LF-only; CRLF line endings
+    # break g-ir-scanner's GTK-Doc comment parsing.
     with open(args.input, "r", encoding="utf-8") as input_file, open(
-        args.output, "w", encoding="utf-8"
+        args.output, "w", encoding="utf-8", newline="\n"
     ) as output_file:
         write_header(input_file, output_file, args.library, args.version)
     # fmt: on
