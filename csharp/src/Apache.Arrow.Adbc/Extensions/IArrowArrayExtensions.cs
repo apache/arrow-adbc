@@ -349,7 +349,7 @@ namespace Apache.Arrow.Adbc.Extensions
             if (listArray.IsNull(index))
                 return null;
 
-            // GetSlicedValues returns null when the values are an ExtensionArray.
+            // GetSlicedValues returns null when the values are an ExtensionArray (apache/arrow-dotnet#468).
             return listArray.GetSlicedValues(index) ??
                 ArrowArrayFactory.Slice(listArray.Values, listArray.ValueOffsets[index], listArray.GetValueLength(index));
         }
