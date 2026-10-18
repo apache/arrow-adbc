@@ -586,6 +586,9 @@ void ConnectionTest::TestMetadataGetObjectsTables() {
 
   std::vector<std::pair<const char*, bool>> test_cases = {
       {nullptr, true}, {"bulk_%", true}, {"asdf%", false}};
+  // A table matching the negative filter may exist outside the test namespace.
+  const std::string catalog = quirks()->catalog();
+  const std::string db_schema = quirks()->db_schema();
   for (const auto& expected : test_cases) {
     std::string scope = "Filter: ";
     scope += expected.first ? expected.first : "(no filter)";
@@ -594,8 +597,10 @@ void ConnectionTest::TestMetadataGetObjectsTables() {
     SCOPED_TRACE(scope);
 
     StreamReader reader;
-    ASSERT_THAT(AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_TABLES, nullptr,
-                                         nullptr, expected.first, nullptr, nullptr,
+    ASSERT_THAT(AdbcConnectionGetObjects(&connection, ADBC_OBJECT_DEPTH_TABLES,
+                                         catalog.empty() ? nullptr : catalog.c_str(),
+                                         db_schema.empty() ? nullptr : db_schema.c_str(),
+                                         expected.first, nullptr, nullptr,
                                          &reader.stream.value, &error),
                 IsOkStatus(&error));
     ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
