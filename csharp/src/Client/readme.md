@@ -97,4 +97,13 @@ Drivers loaded through the C API return extension types as field metadata on the
 `AdbcDataReader.GetArrowArray` returns the corresponding extension array. Additional extension types can be recognized by
 registering their definitions with `ExtensionTypeRegistry.Default`. Values of any other extension type are returned as their storage values.
 
+Reading a shredded variant requires the shredding support in the `Apache.Arrow.Operations` package, which the client doesn't reference.
+Applications that expect shredded results can reference that package and enable it once at startup:
+
+```csharp
+Apache.Arrow.Adbc.Extensions.ShreddedVariants.Reader = (array, index) => array.GetLogicalVariantValue(index);
+```
+
+Without this, reading a shredded variant throws `NotSupportedException`.
+
 Parameters with `DbType.DateTimeOffset` are bound as UTC timestamps, so the original offset is not sent to the driver.

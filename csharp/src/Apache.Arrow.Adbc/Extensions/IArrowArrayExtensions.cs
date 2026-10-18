@@ -363,12 +363,18 @@ namespace Apache.Arrow.Adbc.Extensions
         /// </summary>
         private static string SerializeToJson(StructArray structArray, int index)
         {
-            Dictionary<string, object?>? obj = ParseStructArray(structArray, index);
+            return SerializeToJson(ParseStructArray(structArray, index));
+        }
 
+        /// <summary>
+        /// Converts a value produced for a struct field to a JSON string.
+        /// </summary>
+        internal static string SerializeToJson(object? value)
+        {
             using MemoryStream ms = new();
             using (Utf8JsonWriter writer = new(ms))
             {
-                WriteJsonValue(writer, obj);
+                WriteJsonValue(writer, value);
             }
             return System.Text.Encoding.UTF8.GetString(ms.ToArray());
         }

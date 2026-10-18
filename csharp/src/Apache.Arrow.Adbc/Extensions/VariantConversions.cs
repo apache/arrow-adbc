@@ -17,8 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using Apache.Arrow.Operations.Shredding;
-using Apache.Arrow.Operations.VariantJson;
 using Apache.Arrow.Scalars.Variant;
 
 namespace Apache.Arrow.Adbc.Extensions
@@ -36,8 +34,9 @@ namespace Apache.Arrow.Adbc.Extensions
             if (array.IsNull(index))
                 return null;
 
-            VariantValue value = array.IsShredded ? array.GetLogicalVariantValue(index) : array.GetVariantValue(index);
-            return resultType == StructResultType.JsonString ? VariantJsonWriter.ToJson(value) : ToObject(value);
+            VariantValue value = array.IsShredded ? ShreddedVariants.Read(array, index) : array.GetVariantValue(index);
+            object? result = ToObject(value);
+            return resultType == StructResultType.JsonString ? IArrowArrayExtensions.SerializeToJson(result) : result;
         }
 
         /// <summary>

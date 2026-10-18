@@ -20,6 +20,8 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using Apache.Arrow.Adbc.Client;
+using Apache.Arrow.Adbc.Extensions;
+using Apache.Arrow.Operations.Shredding;
 using Apache.Arrow.Scalars.Variant;
 using Apache.Arrow.Types;
 using Moq;
@@ -258,6 +260,52 @@ namespace Apache.Arrow.Adbc.Tests.Client
             Assert.Equal(DBNull.Value, reader.GetValue(0));
             Assert.True(reader.Read());
             Assert.Equal(DBNull.Value, reader.GetValue(0));
+        }
+
+        /// <summary>
+        /// Shredded variants can only be read once the application opts in through
+        /// <see cref="ShreddedVariants.Reader"/>. This is a single test because the setting is global.
+        /// </summary>
+        [Fact]
+        public void ShreddedVariant()
+        {
+            // Each reader disposes its batch, so each one gets a new array.
+            static AdbcDataReader GetShreddedReader(StructBehavior structBehavior)
+            {
+                ShredSchema shredSchema = ShredSchema.Primitive(ShredType.Int8);
+                var (metadata, rows) = VariantShredder.Shred(new[] { VariantValue.FromInt8(42), VariantValue.FromString("residual") }, shredSchema);
+                VariantArray array = ShreddedVariantArrayBuilder.Build(shredSchema, metadata, rows);
+                Assert.True(array.IsShredded);
+                return GetReader(VariantField(array, fromStorage: true), array.Storage, structBehavior);
+            }
+
+            Assert.Null(ShreddedVariants.Reader);
+            using (AdbcDataReader reader = GetShreddedReader(StructBehavior.Strict))
+            {
+                Assert.True(reader.Read());
+                NotSupportedException e = Assert.Throws<NotSupportedException>(() => reader.GetValue(0));
+                Assert.Contains("ShreddedVariants.Reader", e.Message);
+            }
+
+            ShreddedVariants.Reader = (variants, index) => variants.GetLogicalVariantValue(index);
+            try
+            {
+                using AdbcDataReader reader = GetShreddedReader(StructBehavior.Strict);
+                Assert.True(reader.Read());
+                Assert.Equal((sbyte)42, reader.GetValue(0));
+                Assert.True(reader.Read());
+                Assert.Equal("residual", reader.GetValue(0));
+
+                using AdbcDataReader jsonReader = GetShreddedReader(StructBehavior.JsonString);
+                Assert.True(jsonReader.Read());
+                Assert.Equal("42", jsonReader.GetString(0));
+                Assert.True(jsonReader.Read());
+                Assert.Equal("\"residual\"", jsonReader.GetString(0));
+            }
+            finally
+            {
+                ShreddedVariants.Reader = null;
+            }
         }
 
         [Fact]
