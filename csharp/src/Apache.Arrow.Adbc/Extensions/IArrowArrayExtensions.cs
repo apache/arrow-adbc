@@ -21,6 +21,7 @@ using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.IO;
 using System.Text.Json;
+using Apache.Arrow.Arrays;
 using Apache.Arrow.Types;
 
 namespace Apache.Arrow.Adbc.Extensions
@@ -156,16 +157,37 @@ namespace Apache.Arrow.Adbc.Extensions
                     }
                 case ArrowTypeId.Binary:
                     return ((BinaryArray)arrowArray).GetBytes(index).ToArray();
+                case ArrowTypeId.FixedSizedBinary:
+                    return ((FixedSizeBinaryArray)arrowArray).GetBytes(index).ToArray();
                 case ArrowTypeId.List:
-                    return ((ListArray)arrowArray).GetSlicedValues(index);
+                    return GetListValues((ListArray)arrowArray, index);
+                case ArrowTypeId.LargeList:
+                    return GetListValues((LargeListArray)arrowArray, index);
+                case ArrowTypeId.FixedSizeList:
+                    return GetListValues((FixedSizeListArray)arrowArray, index);
                 case ArrowTypeId.Struct:
                     StructArray structArray = (StructArray)arrowArray;
                     return resultType == StructResultType.JsonString ? SerializeToJson(structArray, index) : ParseStructArray(structArray, index);
+                case ArrowTypeId.Extension:
+                    switch (arrowArray)
+                    {
+                        case GuidArray guidArray:
+                            return guidArray.GetGuid(index);
+                        case Bool8Array bool8Array:
+                            return bool8Array.GetValue(index);
+                        case TimestampWithOffsetArray timestampWithOffsetArray:
+                            return timestampWithOffsetArray.GetValue(index);
+                        case VariantArray variantArray:
+                            return VariantConversions.GetValue(variantArray, index, resultType);
+                        case ExtensionArray extensionArray:
+                            // Unrecognized extension types are surfaced as their storage values.
+                            return ValueAt(extensionArray.Storage, index, resultType);
+                    }
+                    break;
 
                     // not covered:
                     // -- map array
                     // -- dictionary array
-                    // -- fixed size binary
                     // -- union array
             }
 
@@ -293,17 +315,38 @@ namespace Apache.Arrow.Adbc.Extensions
                     }
                 case ArrowTypeId.Binary:
                     return (array, index) => array.IsNull(index) ? null : ((BinaryArray)array).GetBytes(index).ToArray();
+                case ArrowTypeId.FixedSizedBinary:
+                    return (array, index) => array.IsNull(index) ? null : ((FixedSizeBinaryArray)array).GetBytes(index).ToArray();
                 case ArrowTypeId.List:
-                    return (array, index) => ((ListArray)array).GetSlicedValues(index);
+                    return (array, index) => GetListValues((ListArray)array, index);
+                case ArrowTypeId.LargeList:
+                    return (array, index) => GetListValues((LargeListArray)array, index);
+                case ArrowTypeId.FixedSizeList:
+                    return (array, index) => GetListValues((FixedSizeListArray)array, index);
                 case ArrowTypeId.Struct:
                     return resultType == StructResultType.JsonString ?
                         (array, index) => SerializeToJson((StructArray)array, index) :
                         (array, index) => ParseStructArray((StructArray)array, index);
+                case ArrowTypeId.Extension:
+                    switch (arrayType)
+                    {
+                        case GuidType:
+                            return (array, index) => ((GuidArray)array).GetGuid(index);
+                        case Bool8Type:
+                            return (array, index) => ((Bool8Array)array).GetValue(index);
+                        case TimestampWithOffsetType:
+                            return (array, index) => ((TimestampWithOffsetArray)array).GetValue(index);
+                        case VariantType:
+                            return (array, index) => VariantConversions.GetValue((VariantArray)array, index, resultType);
+                        default:
+                            // Unrecognized extension types are surfaced as their storage values.
+                            Func<IArrowArray, int, object?> storageConverter = GetValueConverter(((ExtensionType)arrayType).StorageType, resultType);
+                            return (array, index) => storageConverter(((ExtensionArray)array).Storage, index);
+                    }
 
                     // not covered:
                     // -- map array
                     // -- dictionary array
-                    // -- fixed size binary
                     // -- union array
             }
 
@@ -311,16 +354,54 @@ namespace Apache.Arrow.Adbc.Extensions
         }
 
         /// <summary>
+        /// Gets the values of the list at the index position.
+        /// </summary>
+        private static IArrowArray? GetListValues(ListArray listArray, int index)
+        {
+            if (listArray.IsNull(index))
+                return null;
+
+            // GetSlicedValues returns null when the values are an ExtensionArray (apache/arrow-dotnet#468).
+            return listArray.GetSlicedValues(index) ??
+                ArrowArrayFactory.Slice(listArray.Values, listArray.ValueOffsets[index], listArray.GetValueLength(index));
+        }
+
+        private static IArrowArray? GetListValues(LargeListArray listArray, int index)
+        {
+            if (listArray.IsNull(index))
+                return null;
+
+            return listArray.GetSlicedValues(index) ??
+                ArrowArrayFactory.Slice(listArray.Values, checked((int)listArray.ValueOffsets[index]), listArray.GetValueLength(index));
+        }
+
+        private static IArrowArray? GetListValues(FixedSizeListArray listArray, int index)
+        {
+            if (listArray.IsNull(index))
+                return null;
+
+            int listSize = ((FixedSizeListType)listArray.Data.DataType).ListSize;
+            return listArray.GetSlicedValues(index) ??
+                ArrowArrayFactory.Slice(listArray.Values, (listArray.Data.Offset + index) * listSize, listSize);
+        }
+
+        /// <summary>
         /// Converts a StructArray to a JSON string.
         /// </summary>
         private static string SerializeToJson(StructArray structArray, int index)
         {
-            Dictionary<string, object?>? obj = ParseStructArray(structArray, index);
+            return SerializeToJson(ParseStructArray(structArray, index));
+        }
 
+        /// <summary>
+        /// Converts a value produced for a struct field to a JSON string.
+        /// </summary>
+        internal static string SerializeToJson(object? value)
+        {
             using MemoryStream ms = new();
             using (Utf8JsonWriter writer = new(ms))
             {
-                WriteJsonValue(writer, obj);
+                WriteJsonValue(writer, value);
             }
             return System.Text.Encoding.UTF8.GetString(ms.ToArray());
         }
@@ -574,11 +655,21 @@ namespace Apache.Arrow.Adbc.Extensions
 
                 case BinaryArray binaryArray:
                     return new List<byte>();
+                case FixedSizeBinaryArray fixedSizeBinaryArray:
+                    return new List<byte[]?>();
+                case GuidArray guidArray:
+                    return new List<Guid?>();
+                case Bool8Array bool8Array:
+                    return new List<bool?>();
+                case TimestampWithOffsetArray timestampWithOffsetArray:
+                    return new List<DateTimeOffset?>();
+                case ExtensionArray extensionArray:
+                    // Variants and unrecognized extension types
+                    return new List<object?>();
 
                     // not covered:
                     // -- struct array
                     // -- dictionary array
-                    // -- fixed size binary
                     // -- list array
                     // -- union array
             }

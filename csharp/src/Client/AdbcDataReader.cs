@@ -52,6 +52,9 @@ namespace Apache.Arrow.Adbc.Client
         private RecordBatch? recordBatch;
         private int currentRowInRecordBatch;
         private readonly Schema schema;
+        private readonly Field[] fields;
+        private readonly IArrowType?[] resolvedTypes;
+        private readonly IArrowArray?[] columns;
         private readonly Func<IArrowArray, int, object?>[] converters;
         private bool isClosed;
         private int recordsAffected = -1;
@@ -90,10 +93,22 @@ namespace Apache.Arrow.Adbc.Client
 
             StructResultType structResultType = this.StructBehavior == StructBehavior.JsonString ? StructResultType.JsonString : StructResultType.Object;
 
-            this.converters = new Func<IArrowArray, int, object?>[this.schema.FieldsList.Count];
-            for (int i = 0; i < this.converters.Length; i++)
+            int fieldCount = this.schema.FieldsList.Count;
+            this.fields = new Field[fieldCount];
+            this.resolvedTypes = new IArrowType?[fieldCount];
+            this.columns = new IArrowArray?[fieldCount];
+            this.converters = new Func<IArrowArray, int, object?>[fieldCount];
+            for (int i = 0; i < fieldCount; i++)
             {
-                this.converters[i] = this.schema.FieldsList[i].DataType.GetValueConverter(structResultType);
+                Field field = this.schema.FieldsList[i];
+                Field resolved = ExtensionTypes.Resolve(field);
+                if (!ReferenceEquals(field, resolved))
+                {
+                    // The column arrives as storage; it gets rebuilt with the extension types when read.
+                    this.resolvedTypes[i] = resolved.DataType;
+                }
+                this.fields[i] = resolved;
+                this.converters[i] = resolved.DataType.GetValueConverter(structResultType);
             }
         }
 
@@ -244,6 +259,29 @@ namespace Apache.Arrow.Adbc.Client
             return this.schema.GetFieldByIndex(ordinal)?.Name ?? string.Empty;
         }
 
+        /// <summary>
+        /// Gets the Arrow array for a column in the current record batch. Columns with
+        /// extension types known only from field metadata are returned as extension arrays.
+        /// </summary>
+        /// <param name="ordinal">The zero-based column ordinal.</param>
+        public IArrowArray GetArrowArray(int ordinal)
+        {
+            // Always check the batch so that a closed reader throws instead of returning a cached column.
+            RecordBatch recordBatch = this.RecordBatch;
+            IArrowArray? column = this.columns[ordinal];
+            if (column == null)
+            {
+                column = recordBatch.Column(ordinal);
+                IArrowType? resolvedType = this.resolvedTypes[ordinal];
+                if (resolvedType != null)
+                {
+                    column = ExtensionTypes.Wrap(column, resolvedType);
+                }
+                this.columns[ordinal] = column;
+            }
+            return column;
+        }
+
         public override int GetOrdinal(string name)
         {
             if (this.columnNameToIndex == null)
@@ -264,7 +302,7 @@ namespace Apache.Arrow.Adbc.Client
 
         public override object GetValue(int ordinal)
         {
-            IArrowArray arrowArray = this.RecordBatch.Column(ordinal);
+            IArrowArray arrowArray = GetArrowArray(ordinal);
 
             // if the OnGetValue event is set, call it
             object? value = OnGetValue?.Invoke(arrowArray, this.currentRowInRecordBatch);
@@ -316,6 +354,7 @@ namespace Apache.Arrow.Adbc.Client
                     this.adbcCommand?.Connection?.Close();
                 }
 
+                System.Array.Clear(this.columns, 0, this.columns.Length);
                 this.recordBatch?.Dispose();
                 this.recordBatch = null;
                 this.adbcQueryResult.Stream?.Dispose();
@@ -368,7 +407,7 @@ namespace Apache.Arrow.Adbc.Client
 
         public override DataTable? GetSchemaTable()
         {
-            return SchemaConverter.ConvertArrowSchema(this.schema, this.adbcCommand.AdbcStatement, this.DecimalBehavior, this.StructBehavior);
+            return SchemaConverter.ConvertArrowSchema(this.fields, this.adbcCommand.AdbcStatement, this.DecimalBehavior, this.StructBehavior);
         }
 
 #if NET5_0_OR_GREATER
@@ -386,7 +425,7 @@ namespace Apache.Arrow.Adbc.Client
         {
             List<AdbcColumn> dbColumns = new List<AdbcColumn>();
 
-            foreach (Field f in this.schema.FieldsList)
+            foreach (Field f in this.fields)
             {
                 Type t = SchemaConverter.ConvertArrowType(f, this.DecimalBehavior, this.StructBehavior);
 
@@ -417,6 +456,7 @@ namespace Apache.Arrow.Adbc.Client
         private async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
         {
             this.currentRowInRecordBatch = 0;
+            System.Array.Clear(this.columns, 0, this.columns.Length);
 
             RecordBatch? recordBatch = this.adbcQueryResult.Stream is not null
                 ? await this.adbcQueryResult.Stream.ReadNextRecordBatchAsync(cancellationToken).ConfigureAwait(false)
