@@ -161,6 +161,10 @@ namespace Apache.Arrow.Adbc.Extensions
                     return ((FixedSizeBinaryArray)arrowArray).GetBytes(index).ToArray();
                 case ArrowTypeId.List:
                     return GetListValues((ListArray)arrowArray, index);
+                case ArrowTypeId.LargeList:
+                    return GetListValues((LargeListArray)arrowArray, index);
+                case ArrowTypeId.FixedSizeList:
+                    return GetListValues((FixedSizeListArray)arrowArray, index);
                 case ArrowTypeId.Struct:
                     StructArray structArray = (StructArray)arrowArray;
                     return resultType == StructResultType.JsonString ? SerializeToJson(structArray, index) : ParseStructArray(structArray, index);
@@ -315,6 +319,10 @@ namespace Apache.Arrow.Adbc.Extensions
                     return (array, index) => array.IsNull(index) ? null : ((FixedSizeBinaryArray)array).GetBytes(index).ToArray();
                 case ArrowTypeId.List:
                     return (array, index) => GetListValues((ListArray)array, index);
+                case ArrowTypeId.LargeList:
+                    return (array, index) => GetListValues((LargeListArray)array, index);
+                case ArrowTypeId.FixedSizeList:
+                    return (array, index) => GetListValues((FixedSizeListArray)array, index);
                 case ArrowTypeId.Struct:
                     return resultType == StructResultType.JsonString ?
                         (array, index) => SerializeToJson((StructArray)array, index) :
@@ -356,6 +364,25 @@ namespace Apache.Arrow.Adbc.Extensions
             // GetSlicedValues returns null when the values are an ExtensionArray (apache/arrow-dotnet#468).
             return listArray.GetSlicedValues(index) ??
                 ArrowArrayFactory.Slice(listArray.Values, listArray.ValueOffsets[index], listArray.GetValueLength(index));
+        }
+
+        private static IArrowArray? GetListValues(LargeListArray listArray, int index)
+        {
+            if (listArray.IsNull(index))
+                return null;
+
+            return listArray.GetSlicedValues(index) ??
+                ArrowArrayFactory.Slice(listArray.Values, checked((int)listArray.ValueOffsets[index]), listArray.GetValueLength(index));
+        }
+
+        private static IArrowArray? GetListValues(FixedSizeListArray listArray, int index)
+        {
+            if (listArray.IsNull(index))
+                return null;
+
+            int listSize = ((FixedSizeListType)listArray.Data.DataType).ListSize;
+            return listArray.GetSlicedValues(index) ??
+                ArrowArrayFactory.Slice(listArray.Values, (listArray.Data.Offset + index) * listSize, listSize);
         }
 
         /// <summary>

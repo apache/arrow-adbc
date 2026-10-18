@@ -128,8 +128,9 @@ namespace Apache.Arrow.Adbc.Client
             switch (f.DataType.TypeId)
             {
                 case ArrowTypeId.List:
-                    ListType list = (ListType)f.DataType;
-                    IArrowType valueType = list.ValueDataType;
+                case ArrowTypeId.LargeList:
+                case ArrowTypeId.FixedSizeList:
+                    IArrowType valueType = ((NestedType)f.DataType).Fields[0].DataType;
                     return GetArrowArrayType(valueType);
                 default:
                     return GetArrowType(f, decimalBehavior, structBehavior);
@@ -285,6 +286,10 @@ namespace Apache.Arrow.Adbc.Client
                     return typeof(NullArray);
                 case ArrowTypeId.List:
                     return typeof(ListArray);
+                case ArrowTypeId.LargeList:
+                    return typeof(LargeListArray);
+                case ArrowTypeId.FixedSizeList:
+                    return typeof(FixedSizeListArray);
                 case ArrowTypeId.FixedSizedBinary:
                     return typeof(FixedSizeBinaryArray);
                 case ArrowTypeId.Extension:

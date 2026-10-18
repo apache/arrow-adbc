@@ -91,13 +91,15 @@ namespace Apache.Arrow.Adbc.Tests.Client
         [Fact]
         public void FixedSizeBinary()
         {
-            GuidArray array = new GuidArray.Builder().Append(s_guid).Build();
+            GuidArray array = new GuidArray.Builder().Append(s_guid).AppendNull().Build();
 
             using AdbcDataReader reader = GetReader(new Field("bytes", new FixedSizeBinaryType(16), true), array.Storage);
 
             Assert.Equal(typeof(byte[]), reader.GetFieldType(0));
             Assert.True(reader.Read());
             Assert.Equal(GuidArray.GuidToBytes(s_guid), reader.GetValue(0));
+            Assert.True(reader.Read());
+            Assert.Equal(DBNull.Value, reader.GetValue(0));
         }
 
         [Theory]
@@ -114,14 +116,30 @@ namespace Apache.Arrow.Adbc.Tests.Client
             ListArray listArray = new ListArray(
                 listType, 1, new ArrowBuffer.Builder<int>().Append(0).Append(1).Build(), guids.Storage, ArrowBuffer.Empty);
 
+            LargeListType largeListType = new LargeListType(child);
+            LargeListArray largeListArray = new LargeListArray(
+                largeListType, 1, new ArrowBuffer.Builder<long>().Append(0).Append(1).Build(), guids.Storage, ArrowBuffer.Empty);
+
+            FixedSizeListType fixedSizeListType = new FixedSizeListType(child, 1);
+            FixedSizeListArray fixedSizeListArray = new FixedSizeListArray(fixedSizeListType, 1, guids.Storage, ArrowBuffer.Empty);
+
             using AdbcDataReader reader = GetReader(
-                new[] { new Field("s", structType, true), new Field("l", listType, true) },
-                new IArrowArray[] { structArray, listArray },
+                new[]
+                {
+                    new Field("s", structType, true),
+                    new Field("l", listType, true),
+                    new Field("ll", largeListType, true),
+                    new Field("fl", fixedSizeListType, true),
+                },
+                new IArrowArray[] { structArray, listArray, largeListArray, fixedSizeListArray },
                 structBehavior);
 
-            Assert.Equal(typeof(GuidArray), reader.GetFieldType(1));
-            Assert.Equal(typeof(GuidArray), reader.GetColumnSchema()[1].DataType);
-            Assert.Equal(typeof(GuidArray), reader.GetSchemaTable()!.Rows[1][SchemaTableColumn.DataType]);
+            for (int i = 1; i <= 3; i++)
+            {
+                Assert.Equal(typeof(GuidArray), reader.GetFieldType(i));
+                Assert.Equal(typeof(GuidArray), reader.GetColumnSchema()[i].DataType);
+                Assert.Equal(typeof(GuidArray), reader.GetSchemaTable()!.Rows[i][SchemaTableColumn.DataType]);
+            }
 
             Assert.True(reader.Read());
             if (structBehavior == StructBehavior.Strict)
@@ -134,8 +152,11 @@ namespace Apache.Arrow.Adbc.Tests.Client
                 Assert.Equal($"{{\"id\":\"{s_guid}\"}}", reader.GetString(0));
             }
 
-            GuidArray values = Assert.IsType<GuidArray>(reader.GetValue(1));
-            Assert.Equal(s_guid, values.GetGuid(0));
+            for (int i = 1; i <= 3; i++)
+            {
+                GuidArray values = Assert.IsType<GuidArray>(reader.GetValue(i));
+                Assert.Equal(s_guid, Assert.Single(values));
+            }
         }
 
         [Theory]
