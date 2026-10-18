@@ -230,6 +230,12 @@ namespace Apache.Arrow.Adbc.C
                 return AdbcStatusCode.NotImplemented;
             }
 
+            // Under NativeAOT on Linux, a thread that runs UTF8Encoding's static constructor and
+            // contends on another type's constructor lock re-enters it while initializing Lock,
+            // finds the encoding still null, and fails fast. A newly started thread does this
+            // when it sets its name, so run it here, before the exporter starts any threads.
+            _ = Encoding.UTF8;
+
             DriverStub stub = new DriverStub(driver);
             GCHandle handle = GCHandle.Alloc(stub);
             nativeDriver->private_data = (void*)GCHandle.ToIntPtr(handle);
