@@ -298,58 +298,59 @@ namespace Apache.Arrow.Adbc.Client
                 for (int i = 0; i < fields.Length; i++)
                 {
                     AdbcParameter param = (AdbcParameter)_dbParameterCollection[i];
+                    object? value = param.Value is DBNull ? null : param.Value;
                     switch (param.DbType)
                     {
                         case DbType.Binary:
                             var binaryBuilder = new BinaryArray.Builder();
-                            switch (param.Value)
+                            switch (value)
                             {
                                 case null: binaryBuilder.AppendNull(); break;
                                 case byte[] array: binaryBuilder.Append(array.AsSpan()); break;
-                                default: throw new NotSupportedException($"Values of type {param.Value.GetType().Name} cannot be bound as binary");
+                                default: throw new NotSupportedException($"Values of type {value.GetType().Name} cannot be bound as binary");
                             }
                             parameters[i] = binaryBuilder.Build();
                             break;
                         case DbType.Boolean:
                             var boolBuilder = new BooleanArray.Builder();
-                            switch (param.Value)
+                            switch (value)
                             {
                                 case null: boolBuilder.AppendNull(); break;
                                 case bool boolValue: boolBuilder.Append(boolValue); break;
-                                default: boolBuilder.Append(ConvertValue(param.Value, Convert.ToBoolean, DbType.Boolean)); break;
+                                default: boolBuilder.Append(ConvertValue(value, Convert.ToBoolean, DbType.Boolean)); break;
                             }
                             parameters[i] = boolBuilder.Build();
                             break;
                         case DbType.Byte:
                             var uint8Builder = new UInt8Array.Builder();
-                            switch (param.Value)
+                            switch (value)
                             {
                                 case null: uint8Builder.AppendNull(); break;
                                 case byte byteValue: uint8Builder.Append(byteValue); break;
-                                default: uint8Builder.Append(ConvertValue(param.Value, Convert.ToByte, DbType.Byte)); break;
+                                default: uint8Builder.Append(ConvertValue(value, Convert.ToByte, DbType.Byte)); break;
                             }
                             parameters[i] = uint8Builder.Build();
                             break;
                         case DbType.Date:
                             var dateBuilder = new Date32Array.Builder();
-                            switch (param.Value)
+                            switch (value)
                             {
                                 case null: dateBuilder.AppendNull(); break;
                                 case DateTime datetime: dateBuilder.Append(datetime); break;
 #if NET5_0_OR_GREATER
                                 case DateOnly dateonly: dateBuilder.Append(dateonly); break;
 #endif
-                                default: dateBuilder.Append(ConvertValue(param.Value, Convert.ToDateTime, DbType.Date)); break;
+                                default: dateBuilder.Append(ConvertValue(value, Convert.ToDateTime, DbType.Date)); break;
                             }
                             parameters[i] = dateBuilder.Build();
                             break;
                         case DbType.DateTime:
                             var timestampBuilder = new TimestampArray.Builder();
-                            switch (param.Value)
+                            switch (value)
                             {
                                 case null: timestampBuilder.AppendNull(); break;
                                 case DateTime datetime: timestampBuilder.Append(datetime); break;
-                                default: timestampBuilder.Append(ConvertValue(param.Value, Convert.ToDateTime, DbType.DateTime)); break;
+                                default: timestampBuilder.Append(ConvertValue(value, Convert.ToDateTime, DbType.DateTime)); break;
                             }
                             parameters[i] = timestampBuilder.Build();
                             break;
@@ -357,118 +358,118 @@ namespace Apache.Arrow.Adbc.Client
                             // Bound as a UTC timestamp, which every driver understands; the
                             // original offset is not preserved.
                             var timestampOffsetBuilder = new TimestampArray.Builder(TimeUnit.Microsecond, "UTC");
-                            switch (param.Value)
+                            switch (value)
                             {
                                 case null: timestampOffsetBuilder.AppendNull(); break;
                                 case DateTimeOffset dateTimeOffset: timestampOffsetBuilder.Append(dateTimeOffset); break;
                                 case DateTime datetime: timestampOffsetBuilder.Append(new DateTimeOffset(datetime)); break;
-                                default: timestampOffsetBuilder.Append(ConvertValue(param.Value, v => DateTimeOffset.Parse(Convert.ToString(v, CultureInfo.InvariantCulture)!, CultureInfo.InvariantCulture), DbType.DateTimeOffset)); break;
+                                default: timestampOffsetBuilder.Append(ConvertValue(value, v => DateTimeOffset.Parse(Convert.ToString(v, CultureInfo.InvariantCulture)!, CultureInfo.InvariantCulture), DbType.DateTimeOffset)); break;
                             }
                             parameters[i] = timestampOffsetBuilder.Build();
                             break;
                         case DbType.Decimal:
-                            var value = param.Value switch
+                            var decimalValue = value switch
                             {
                                 null => (SqlDecimal?)null,
                                 SqlDecimal sqlDecimal => sqlDecimal,
                                 decimal d => new SqlDecimal(d),
-                                _ => new SqlDecimal(ConvertValue(param.Value, Convert.ToDecimal, DbType.Decimal)),
+                                _ => new SqlDecimal(ConvertValue(value, Convert.ToDecimal, DbType.Decimal)),
                             };
-                            var decimalBuilder = new Decimal128Array.Builder(new Decimal128Type(value?.Precision ?? 10, value?.Scale ?? 0));
-                            if (value is null)
+                            var decimalBuilder = new Decimal128Array.Builder(new Decimal128Type(decimalValue?.Precision ?? 10, decimalValue?.Scale ?? 0));
+                            if (decimalValue is null)
                             {
                                 decimalBuilder.AppendNull();
                             }
                             else
                             {
-                                decimalBuilder.Append(value.Value);
+                                decimalBuilder.Append(decimalValue.Value);
                             }
                             parameters[i] = decimalBuilder.Build();
                             break;
                         case DbType.Double:
                             var doubleBuilder = new DoubleArray.Builder();
-                            switch (param.Value)
+                            switch (value)
                             {
                                 case null: doubleBuilder.AppendNull(); break;
                                 case double dbl: doubleBuilder.Append(dbl); break;
-                                default: doubleBuilder.Append(ConvertValue(param.Value, Convert.ToDouble, DbType.Double)); break;
+                                default: doubleBuilder.Append(ConvertValue(value, Convert.ToDouble, DbType.Double)); break;
                             }
                             parameters[i] = doubleBuilder.Build();
                             break;
                         case DbType.Guid:
                             var guidBuilder = new GuidArray.Builder();
-                            switch (param.Value)
+                            switch (value)
                             {
                                 case null: guidBuilder.AppendNull(); break;
                                 case Guid guid: guidBuilder.Append(guid); break;
                                 case byte[] bytes when bytes.Length == 16: guidBuilder.Append(new Guid(bytes)); break;
-                                default: guidBuilder.Append(ConvertValue(param.Value, v => Guid.Parse(Convert.ToString(v, CultureInfo.InvariantCulture)!), DbType.Guid)); break;
+                                default: guidBuilder.Append(ConvertValue(value, v => Guid.Parse(Convert.ToString(v, CultureInfo.InvariantCulture)!), DbType.Guid)); break;
                             }
                             parameters[i] = guidBuilder.Build();
                             break;
                         case DbType.Int16:
                             var int16Builder = new Int16Array.Builder();
-                            switch (param.Value)
+                            switch (value)
                             {
                                 case null: int16Builder.AppendNull(); break;
                                 case short shortValue: int16Builder.Append(shortValue); break;
-                                default: int16Builder.Append(ConvertValue(param.Value, Convert.ToInt16, DbType.Int16)); break;
+                                default: int16Builder.Append(ConvertValue(value, Convert.ToInt16, DbType.Int16)); break;
                             }
                             parameters[i] = int16Builder.Build();
                             break;
                         case DbType.Int32:
                             var int32Builder = new Int32Array.Builder();
-                            switch (param.Value)
+                            switch (value)
                             {
                                 case null: int32Builder.AppendNull(); break;
                                 case int intValue: int32Builder.Append(intValue); break;
-                                default: int32Builder.Append(ConvertValue(param.Value, Convert.ToInt32, DbType.Int32)); break;
+                                default: int32Builder.Append(ConvertValue(value, Convert.ToInt32, DbType.Int32)); break;
                             }
                             parameters[i] = int32Builder.Build();
                             break;
                         case DbType.Int64:
                             var int64Builder = new Int64Array.Builder();
-                            switch (param.Value)
+                            switch (value)
                             {
                                 case null: int64Builder.AppendNull(); break;
                                 case long longValue: int64Builder.Append(longValue); break;
-                                default: int64Builder.Append(ConvertValue(param.Value, Convert.ToInt64, DbType.Int64)); break;
+                                default: int64Builder.Append(ConvertValue(value, Convert.ToInt64, DbType.Int64)); break;
                             }
                             parameters[i] = int64Builder.Build();
                             break;
                         case DbType.SByte:
                             var int8Builder = new Int8Array.Builder();
-                            switch (param.Value)
+                            switch (value)
                             {
                                 case null: int8Builder.AppendNull(); break;
                                 case sbyte sbyteValue: int8Builder.Append(sbyteValue); break;
-                                default: int8Builder.Append(ConvertValue(param.Value, Convert.ToSByte, DbType.SByte)); break;
+                                default: int8Builder.Append(ConvertValue(value, Convert.ToSByte, DbType.SByte)); break;
                             }
                             parameters[i] = int8Builder.Build();
                             break;
                         case DbType.Single:
                             var floatBuilder = new FloatArray.Builder();
-                            switch (param.Value)
+                            switch (value)
                             {
                                 case null: floatBuilder.AppendNull(); break;
                                 case float floatValue: floatBuilder.Append(floatValue); break;
-                                default: floatBuilder.Append(ConvertValue(param.Value, Convert.ToSingle, DbType.Single)); break;
+                                default: floatBuilder.Append(ConvertValue(value, Convert.ToSingle, DbType.Single)); break;
                             }
                             parameters[i] = floatBuilder.Build();
                             break;
                         case DbType.String:
                             var stringBuilder = new StringArray.Builder();
-                            switch (param.Value)
+                            switch (value)
                             {
                                 case null: stringBuilder.AppendNull(); break;
                                 case string stringValue: stringBuilder.Append(stringValue); break;
-                                default: stringBuilder.Append(ConvertValue(param.Value, Convert.ToString, DbType.String)); break;
+                                default: stringBuilder.Append(ConvertValue(value, Convert.ToString, DbType.String)); break;
                             }
                             parameters[i] = stringBuilder.Build();
                             break;
                         case DbType.Time:
                             var timeBuilder = new Time32Array.Builder();
-                            switch (param.Value)
+                            switch (value)
                             {
                                 case null: timeBuilder.AppendNull(); break;
                                 case DateTime datetime: timeBuilder.Append((int)(datetime.TimeOfDay.Ticks / TimeSpan.TicksPerMillisecond)); break;
@@ -476,7 +477,7 @@ namespace Apache.Arrow.Adbc.Client
                                 case TimeOnly timeonly: timeBuilder.Append(timeonly); break;
 #endif
                                 default:
-                                    DateTime convertedDateTime = ConvertValue(param.Value, Convert.ToDateTime, DbType.Time);
+                                    DateTime convertedDateTime = ConvertValue(value, Convert.ToDateTime, DbType.Time);
                                     timeBuilder.Append((int)(convertedDateTime.TimeOfDay.Ticks / TimeSpan.TicksPerMillisecond));
                                     break;
                             }
@@ -484,31 +485,31 @@ namespace Apache.Arrow.Adbc.Client
                             break;
                         case DbType.UInt16:
                             var uint16Builder = new UInt16Array.Builder();
-                            switch (param.Value)
+                            switch (value)
                             {
                                 case null: uint16Builder.AppendNull(); break;
                                 case ushort ushortValue: uint16Builder.Append(ushortValue); break;
-                                default: uint16Builder.Append(ConvertValue(param.Value, Convert.ToUInt16, DbType.UInt16)); break;
+                                default: uint16Builder.Append(ConvertValue(value, Convert.ToUInt16, DbType.UInt16)); break;
                             }
                             parameters[i] = uint16Builder.Build();
                             break;
                         case DbType.UInt32:
                             var uint32Builder = new UInt32Array.Builder();
-                            switch (param.Value)
+                            switch (value)
                             {
                                 case null: uint32Builder.AppendNull(); break;
                                 case uint uintValue: uint32Builder.Append(uintValue); break;
-                                default: uint32Builder.Append(ConvertValue(param.Value, Convert.ToUInt32, DbType.UInt32)); break;
+                                default: uint32Builder.Append(ConvertValue(value, Convert.ToUInt32, DbType.UInt32)); break;
                             }
                             parameters[i] = uint32Builder.Build();
                             break;
                         case DbType.UInt64:
                             var uint64Builder = new UInt64Array.Builder();
-                            switch (param.Value)
+                            switch (value)
                             {
                                 case null: uint64Builder.AppendNull(); break;
                                 case ulong ulongValue: uint64Builder.Append(ulongValue); break;
-                                default: uint64Builder.Append(ConvertValue(param.Value, Convert.ToUInt64, DbType.UInt64)); break;
+                                default: uint64Builder.Append(ConvertValue(value, Convert.ToUInt64, DbType.UInt64)); break;
                             }
                             parameters[i] = uint64Builder.Build();
                             break;
@@ -521,7 +522,7 @@ namespace Apache.Arrow.Adbc.Client
                     fields[i] = new Field(
                         string.IsNullOrWhiteSpace(param.ParameterName) ? Guid.NewGuid().ToString() : param.ParameterName,
                         parameters[i].Data.DataType,
-                        param.IsNullable || param.Value == null);
+                        param.IsNullable || value == null);
                 }
 
                 Schema schema = new Schema(fields, null);

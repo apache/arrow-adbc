@@ -53,7 +53,7 @@ namespace Apache.Arrow.Adbc.Client
         private int currentRowInRecordBatch;
         private readonly Schema schema;
         private readonly Field[] fields;
-        private readonly ExtensionType?[] storageExtensionTypes;
+        private readonly IArrowType?[] resolvedTypes;
         private readonly IArrowArray?[] columns;
         private readonly Func<IArrowArray, int, object?>[] converters;
         private bool isClosed;
@@ -93,7 +93,7 @@ namespace Apache.Arrow.Adbc.Client
 
             int fieldCount = this.schema.FieldsList.Count;
             this.fields = new Field[fieldCount];
-            this.storageExtensionTypes = new ExtensionType?[fieldCount];
+            this.resolvedTypes = new IArrowType?[fieldCount];
             this.columns = new IArrowArray?[fieldCount];
             this.converters = new Func<IArrowArray, int, object?>[fieldCount];
             for (int i = 0; i < fieldCount; i++)
@@ -102,8 +102,8 @@ namespace Apache.Arrow.Adbc.Client
                 Field resolved = ExtensionTypes.Resolve(field);
                 if (!ReferenceEquals(field, resolved))
                 {
-                    // The column arrives as storage; it gets wrapped in the extension array when read.
-                    this.storageExtensionTypes[i] = (ExtensionType)resolved.DataType;
+                    // The column arrives as storage; it gets rebuilt with the extension types when read.
+                    this.resolvedTypes[i] = resolved.DataType;
                 }
                 this.fields[i] = resolved;
                 this.converters[i] = ExtensionTypes.GetValueConverter(resolved.DataType, this.StructBehavior);
@@ -258,20 +258,22 @@ namespace Apache.Arrow.Adbc.Client
         }
 
         /// <summary>
-        /// Gets the Arrow array for a column in the current record batch. Columns with an
-        /// extension type known only from field metadata are wrapped in the extension array.
+        /// Gets the Arrow array for a column in the current record batch. Columns with
+        /// extension types known only from field metadata are returned as extension arrays.
         /// </summary>
         /// <param name="ordinal">The zero-based column ordinal.</param>
         public IArrowArray GetArrowArray(int ordinal)
         {
+            // Always check the batch so that a closed reader throws instead of returning a cached column.
+            RecordBatch recordBatch = this.RecordBatch;
             IArrowArray? column = this.columns[ordinal];
             if (column == null)
             {
-                column = this.RecordBatch.Column(ordinal);
-                ExtensionType? extensionType = this.storageExtensionTypes[ordinal];
-                if (extensionType != null)
+                column = recordBatch.Column(ordinal);
+                IArrowType? resolvedType = this.resolvedTypes[ordinal];
+                if (resolvedType != null)
                 {
-                    column = extensionType.CreateArray(column);
+                    column = ExtensionTypes.Wrap(column, resolvedType);
                 }
                 this.columns[ordinal] = column;
             }
@@ -350,6 +352,7 @@ namespace Apache.Arrow.Adbc.Client
                     this.adbcCommand?.Connection?.Close();
                 }
 
+                System.Array.Clear(this.columns, 0, this.columns.Length);
                 this.recordBatch?.Dispose();
                 this.recordBatch = null;
                 this.adbcQueryResult.Stream?.Dispose();

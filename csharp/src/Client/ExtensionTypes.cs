@@ -34,6 +34,7 @@ namespace Apache.Arrow.Adbc.Client
         internal const string ExtensionMetadataKey = "ARROW:extension:metadata";
 
         private static readonly DateTimeOffset s_unixEpoch = new DateTimeOffset(1970, 1, 1, 0, 0, 0, TimeSpan.Zero);
+        private static readonly DateTime s_unixEpochUnspecified = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Unspecified);
 
         /// <summary>
         /// The extension types the client understands without any registration by the caller.
@@ -54,13 +55,24 @@ namespace Apache.Arrow.Adbc.Client
         /// Arrays imported through the C Data Interface carry extension types only as field
         /// metadata over their storage type. Returns a field whose type is the corresponding
         /// <see cref="ExtensionType"/> when the extension is known, or the original field otherwise.
+        /// Fields nested in struct and list types are resolved too.
         /// Definitions registered with <see cref="ExtensionTypeRegistry.Default"/> take precedence
         /// over the built-in ones.
         /// </summary>
         public static Field Resolve(Field field)
         {
-            if (field.DataType is ExtensionType ||
-                !field.HasMetadata ||
+            if (field.DataType is ExtensionType)
+            {
+                return field;
+            }
+
+            IArrowType resolvedType = ResolveChildren(field.DataType);
+            if (!ReferenceEquals(resolvedType, field.DataType))
+            {
+                field = new Field(field.Name, resolvedType, field.IsNullable, field.Metadata);
+            }
+
+            if (!field.HasMetadata ||
                 !field.Metadata.TryGetValue(ExtensionNameKey, out string? name))
             {
                 return field;
@@ -79,6 +91,67 @@ namespace Apache.Arrow.Adbc.Client
             }
 
             return new Field(field.Name, extensionType, field.IsNullable, field.Metadata);
+        }
+
+        private static IArrowType ResolveChildren(IArrowType type)
+        {
+            if (type is not NestedType nestedType)
+            {
+                return type;
+            }
+
+            Field[] fields = new Field[nestedType.Fields.Count];
+            bool changed = false;
+            for (int i = 0; i < fields.Length; i++)
+            {
+                fields[i] = Resolve(nestedType.Fields[i]);
+                changed |= !ReferenceEquals(fields[i], nestedType.Fields[i]);
+            }
+
+            if (!changed)
+            {
+                return type;
+            }
+
+            switch (type)
+            {
+                case StructType:
+                    return new StructType(fields);
+                case ListType:
+                    return new ListType(fields[0]);
+                case LargeListType:
+                    return new LargeListType(fields[0]);
+                case FixedSizeListType fixedSizeListType:
+                    return new FixedSizeListType(fields[0], fixedSizeListType.ListSize);
+                default:
+                    return type;
+            }
+        }
+
+        /// <summary>
+        /// Rebuilds an array whose type is the storage form of <paramref name="resolvedType"/>
+        /// so that it has the resolved type, including extension arrays at any nesting level.
+        /// The new array shares the original's buffers.
+        /// </summary>
+        public static IArrowArray Wrap(IArrowArray array, IArrowType resolvedType)
+        {
+            return ArrowArrayFactory.BuildArray(Retype(array.Data, resolvedType));
+        }
+
+        private static ArrayData Retype(ArrayData data, IArrowType type)
+        {
+            IArrowType storageType = type is ExtensionType extensionType ? extensionType.StorageType : type;
+            ArrayData[] children = data.Children;
+            if (storageType is NestedType nestedType && children != null && children.Length == nestedType.Fields.Count)
+            {
+                children = new ArrayData[children.Length];
+                for (int i = 0; i < children.Length; i++)
+                {
+                    children[i] = Retype(data.Children[i], nestedType.Fields[i].DataType);
+                }
+            }
+
+            return new ArrayData(type, data.Length, data.NullCount, data.Offset, data.Buffers, children, data.Dictionary);
         }
 
         /// <summary>
@@ -165,7 +238,7 @@ namespace Apache.Arrow.Adbc.Client
                 case VariantPrimitiveType.TimestampTzNanos:
                     return s_unixEpoch.AddTicks(value.AsTimestampTzNanos() / 100);
                 case VariantPrimitiveType.TimestampNtzNanos:
-                    return s_unixEpoch.UtcDateTime.AddTicks(value.AsTimestampNtzNanos() / 100);
+                    return s_unixEpochUnspecified.AddTicks(value.AsTimestampNtzNanos() / 100);
                 case VariantPrimitiveType.TimeNtz:
 #if NET6_0_OR_GREATER
                     return new TimeOnly(value.AsTimeNtzMicros() * 10);

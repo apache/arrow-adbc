@@ -98,6 +98,55 @@ namespace Apache.Arrow.Adbc.Tests.Client
             Assert.Equal(GuidArray.GuidToBytes(s_guid), reader.GetValue(0));
         }
 
+        [Theory]
+        [InlineData(StructBehavior.Strict)]
+        [InlineData(StructBehavior.JsonString)]
+        public void NestedGuidFromStorageWithExtensionMetadata(StructBehavior structBehavior)
+        {
+            GuidArray guids = new GuidArray.Builder().Append(s_guid).Build();
+            Field child = new Field("id", new FixedSizeBinaryType(16), true, ExtensionMetadata("arrow.uuid"));
+            StructType structType = new StructType(new[] { child });
+            StructArray structArray = new StructArray(structType, 1, new[] { guids.Storage }, ArrowBuffer.Empty);
+
+            ListType listType = new ListType(child);
+            ListArray listArray = new ListArray(
+                listType, 1, new ArrowBuffer.Builder<int>().Append(0).Append(1).Build(), guids.Storage, ArrowBuffer.Empty);
+
+            using AdbcDataReader reader = GetReader(
+                new[] { new Field("s", structType, true), new Field("l", listType, true) },
+                new IArrowArray[] { structArray, listArray },
+                structBehavior);
+
+            Assert.True(reader.Read());
+            if (structBehavior == StructBehavior.Strict)
+            {
+                Dictionary<string, object?> obj = Assert.IsType<Dictionary<string, object?>>(reader.GetValue(0));
+                Assert.Equal(s_guid, obj["id"]);
+            }
+            else
+            {
+                Assert.Equal($"{{\"id\":\"{s_guid}\"}}", reader.GetString(0));
+            }
+
+            GuidArray values = Assert.IsType<GuidArray>(reader.GetValue(1));
+            Assert.Equal(s_guid, values.GetGuid(0));
+        }
+
+        [Fact]
+        public void ClosedReaderDoesNotReturnCachedColumns()
+        {
+            GuidArray array = new GuidArray.Builder().Append(s_guid).Build();
+            Field field = new Field("id", new FixedSizeBinaryType(16), true, ExtensionMetadata("arrow.uuid"));
+
+            AdbcDataReader reader = GetReader(field, array.Storage);
+            Assert.True(reader.Read());
+            Assert.Equal(s_guid, reader.GetValue(0));
+
+            reader.Close();
+            Assert.Throws<InvalidOperationException>(() => reader.GetValue(0));
+            Assert.Throws<InvalidOperationException>(() => reader.GetArrowArray(0));
+        }
+
         [Fact]
         public void Bool8()
         {
@@ -182,6 +231,21 @@ namespace Apache.Arrow.Adbc.Tests.Client
         }
 
         [Fact]
+        public void VariantTimestampNtzIsUnspecified()
+        {
+            VariantArray array = new VariantArray.Builder()
+                .Append(VariantValue.FromTimestampNtzNanos(1_000_000_000L))
+                .Build();
+
+            using AdbcDataReader reader = GetReader(VariantField(array, fromStorage: false), array, StructBehavior.Strict);
+
+            Assert.True(reader.Read());
+            DateTime value = Assert.IsType<DateTime>(reader.GetValue(0));
+            Assert.Equal(DateTimeKind.Unspecified, value.Kind);
+            Assert.Equal(new DateTime(1970, 1, 1, 0, 0, 1), value);
+        }
+
+        [Fact]
         public void UnknownExtensionTypeUsesStorage()
         {
             StringArray storage = new StringArray.Builder().Append("{\"a\":1}").Build();
@@ -236,6 +300,27 @@ namespace Apache.Arrow.Adbc.Tests.Client
             Assert.Equal(value, ((TimestampArray)bound.Column(2)).GetTimestamp(0));
         }
 
+        [Theory]
+        [InlineData(DbType.Guid)]
+        [InlineData(DbType.DateTimeOffset)]
+        [InlineData(DbType.Int32)]
+        [InlineData(DbType.String)]
+        public void BindDBNullParameter(DbType dbType)
+        {
+            RecordBatch? bound = null;
+            Mock<AdbcStatement> mockStatement = new Mock<AdbcStatement>();
+            mockStatement.Setup(x => x.Bind(It.IsAny<RecordBatch>(), It.IsAny<Schema>())).Callback<RecordBatch, Schema>((b, s) => bound = b);
+            mockStatement.Setup(x => x.ExecuteUpdate()).Returns(new UpdateResult(1));
+
+            using AdbcCommand cmd = new AdbcCommand(mockStatement.Object, new Adbc.Client.AdbcConnection());
+            cmd.Parameters.Add(new AdbcParameter { ParameterName = "p", DbType = dbType, Value = DBNull.Value });
+            cmd.ExecuteNonQuery();
+
+            Assert.NotNull(bound);
+            Assert.True(bound!.Schema.GetFieldByIndex(0).IsNullable);
+            Assert.True(bound.Column(0).IsNull(0));
+        }
+
         [Fact]
         public void PrepareMapsExtensionTypes()
         {
@@ -286,9 +371,14 @@ namespace Apache.Arrow.Adbc.Tests.Client
 
         private static AdbcDataReader GetReader(Field field, IArrowArray array, StructBehavior structBehavior = StructBehavior.JsonString)
         {
-            Schema schema = new Schema(new[] { field }, null);
-            RecordBatch batch = new RecordBatch(schema, new[] { array }, array.Length);
-            QueryResult queryResult = new QueryResult(array.Length, new MockArrayStream(schema, new List<RecordBatch> { batch }));
+            return GetReader(new[] { field }, new[] { array }, structBehavior);
+        }
+
+        private static AdbcDataReader GetReader(Field[] fields, IArrowArray[] arrays, StructBehavior structBehavior)
+        {
+            Schema schema = new Schema(fields, null);
+            RecordBatch batch = new RecordBatch(schema, arrays, arrays[0].Length);
+            QueryResult queryResult = new QueryResult(arrays[0].Length, new MockArrayStream(schema, new List<RecordBatch> { batch }));
 
             Mock<AdbcStatement> mockStatement = new Mock<AdbcStatement>();
             mockStatement.Setup(x => x.ExecuteQuery()).Returns(queryResult);

@@ -160,7 +160,7 @@ namespace Apache.Arrow.Adbc.Extensions
                 case ArrowTypeId.FixedSizedBinary:
                     return ((FixedSizeBinaryArray)arrowArray).GetBytes(index).ToArray();
                 case ArrowTypeId.List:
-                    return ((ListArray)arrowArray).GetSlicedValues(index);
+                    return GetListValues((ListArray)arrowArray, index);
                 case ArrowTypeId.Struct:
                     StructArray structArray = (StructArray)arrowArray;
                     return resultType == StructResultType.JsonString ? SerializeToJson(structArray, index) : ParseStructArray(structArray, index);
@@ -312,7 +312,7 @@ namespace Apache.Arrow.Adbc.Extensions
                 case ArrowTypeId.FixedSizedBinary:
                     return (array, index) => array.IsNull(index) ? null : ((FixedSizeBinaryArray)array).GetBytes(index).ToArray();
                 case ArrowTypeId.List:
-                    return (array, index) => ((ListArray)array).GetSlicedValues(index);
+                    return (array, index) => GetListValues((ListArray)array, index);
                 case ArrowTypeId.Struct:
                     return resultType == StructResultType.JsonString ?
                         (array, index) => SerializeToJson((StructArray)array, index) :
@@ -339,6 +339,19 @@ namespace Apache.Arrow.Adbc.Extensions
             }
 
             throw new NotSupportedException($"Unsupported ArrowTypeId: {arrayType.TypeId}");
+        }
+
+        /// <summary>
+        /// Gets the values of the list at the index position.
+        /// </summary>
+        private static IArrowArray? GetListValues(ListArray listArray, int index)
+        {
+            if (listArray.IsNull(index))
+                return null;
+
+            // GetSlicedValues returns null when the values are an ExtensionArray.
+            return listArray.GetSlicedValues(index) ??
+                ArrowArrayFactory.Slice(listArray.Values, listArray.ValueOffsets[index], listArray.GetValueLength(index));
         }
 
         /// <summary>
