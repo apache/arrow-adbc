@@ -260,6 +260,46 @@ namespace Apache.Arrow.Adbc.Tests.Client
             Assert.Equal(DBNull.Value, reader.GetValue(0));
         }
 
+        /// <summary>
+        /// JSON numbers can't represent NaN or infinity, so they're written as strings,
+        /// the same as in struct JSON. The .NET values keep the actual numbers.
+        /// </summary>
+        [Theory]
+        [InlineData(StructBehavior.JsonString)]
+        [InlineData(StructBehavior.Strict)]
+        public void VariantNonFiniteValues(StructBehavior structBehavior)
+        {
+            VariantValue obj = VariantValue.FromObject(new Dictionary<string, VariantValue>
+            {
+                { "d", VariantValue.FromDouble(double.NaN) },
+                { "f", VariantValue.FromFloat(float.PositiveInfinity) },
+                { "values", VariantValue.FromArray(VariantValue.FromDouble(double.NegativeInfinity)) },
+            });
+            VariantArray array = new VariantArray.Builder()
+                .Append(obj)
+                .Append(VariantValue.FromDouble(double.NaN))
+                .Build();
+
+            using AdbcDataReader reader = GetReader(VariantField(array, fromStorage: true), array.Storage, structBehavior);
+
+            Assert.True(reader.Read());
+            if (structBehavior == StructBehavior.JsonString)
+            {
+                Assert.Equal("{\"d\":\"NaN\",\"f\":\"Infinity\",\"values\":[\"-Infinity\"]}", reader.GetString(0));
+                Assert.True(reader.Read());
+                Assert.Equal("\"NaN\"", reader.GetString(0));
+            }
+            else
+            {
+                Dictionary<string, object?> value = Assert.IsType<Dictionary<string, object?>>(reader.GetValue(0));
+                Assert.True(double.IsNaN(Assert.IsType<double>(value["d"])));
+                Assert.Equal(float.PositiveInfinity, value["f"]);
+                Assert.Equal(new List<object?> { double.NegativeInfinity }, value["values"]);
+                Assert.True(reader.Read());
+                Assert.True(double.IsNaN(Assert.IsType<double>(reader.GetValue(0))));
+            }
+        }
+
         [Fact]
         public void VariantAsObject()
         {
