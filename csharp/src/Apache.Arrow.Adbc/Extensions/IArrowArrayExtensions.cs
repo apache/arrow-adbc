@@ -363,10 +363,16 @@ namespace Apache.Arrow.Adbc.Extensions
                     writer.WriteNumberValue(us);
                     return;
                 case float f:
-                    writer.WriteNumberValue(f);
+                    if (float.IsNaN(f) || float.IsInfinity(f))
+                        WriteNonFiniteValue(writer, f);
+                    else
+                        writer.WriteNumberValue(f);
                     return;
                 case double d:
-                    writer.WriteNumberValue(d);
+                    if (double.IsNaN(d) || double.IsInfinity(d))
+                        WriteNonFiniteValue(writer, d);
+                    else
+                        writer.WriteNumberValue(d);
                     return;
                 case decimal dec:
                     writer.WriteNumberValue(dec);
@@ -432,6 +438,16 @@ namespace Apache.Arrow.Adbc.Extensions
                     writer.WriteStringValue(value.ToString());
                     return;
             }
+        }
+
+        /// <summary>
+        /// JSON numbers can't represent NaN or infinity, so these are written as the strings
+        /// "NaN", "Infinity" and "-Infinity", which is how System.Text.Json writes them when
+        /// <see cref="System.Text.Json.Serialization.JsonNumberHandling.AllowNamedFloatingPointLiterals"/> is set.
+        /// </summary>
+        private static void WriteNonFiniteValue(Utf8JsonWriter writer, double value)
+        {
+            writer.WriteStringValue(double.IsNaN(value) ? "NaN" : value > 0 ? "Infinity" : "-Infinity");
         }
 
         /// <summary>
