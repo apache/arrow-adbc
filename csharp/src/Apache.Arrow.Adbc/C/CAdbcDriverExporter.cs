@@ -60,6 +60,8 @@ namespace Apache.Arrow.Adbc.C
         /// <para>The default is one second when the driver is compiled with NativeAOT, and
         /// <c>null</c> otherwise, because a JIT-compiled driver shares its heap with the host.</para>
         /// </remarks>
+        /// <exception cref="ArgumentOutOfRangeException">The value is negative or longer than
+        /// <see cref="int.MaxValue"/> milliseconds.</exception>
         public static TimeSpan? IdleCollectionDelay
         {
             get => s_idleCollector.Delay;

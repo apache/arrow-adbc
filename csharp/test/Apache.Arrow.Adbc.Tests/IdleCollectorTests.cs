@@ -71,11 +71,37 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         [Fact]
+        public async Task CollectsAgainWhenDriverIsReleasedAfterDatabaseCollection()
+        {
+            IdleCollector collector = Create(ShortDelay);
+            collector.DatabaseOpened();
+            collector.DatabaseReleased();
+            await WaitForCollections(1);
+
+            collector.DriverReleased();
+            await WaitForCollections(2);
+        }
+
+        [Fact]
         public async Task CollectsWhenDriverIsReleasedWithoutDatabases()
         {
             IdleCollector collector = Create(ShortDelay);
             collector.DriverReleased();
             await WaitForCollections(1);
+
+            collector.DriverReleased();
+            await WaitForCollections(2);
+        }
+
+        [Fact]
+        public async Task DisablingCancelsPendingCollection()
+        {
+            IdleCollector collector = Create(TimeSpan.FromMilliseconds(200));
+            collector.DatabaseOpened();
+            collector.DatabaseReleased();
+            collector.Delay = null;
+            await Task.Delay(Settle);
+            Assert.Equal(0, Volatile.Read(ref _collections));
         }
 
         [Fact]
@@ -117,11 +143,22 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         [Fact]
-        public void NegativeDelayIsRejected()
+        public void OutOfRangeDelayIsRejected()
         {
+            TimeSpan tooLong = IdleCollector.MaxDelay + TimeSpan.FromMilliseconds(1);
             Assert.Throws<ArgumentOutOfRangeException>(() => Create(TimeSpan.FromMilliseconds(-1)));
+            Assert.Throws<ArgumentOutOfRangeException>(() => Create(tooLong));
+            Assert.Throws<ArgumentOutOfRangeException>(() => Create(TimeSpan.MaxValue));
+
             IdleCollector collector = Create(null);
             Assert.Throws<ArgumentOutOfRangeException>(() => collector.Delay = TimeSpan.FromMilliseconds(-1));
+            Assert.Throws<ArgumentOutOfRangeException>(() => collector.Delay = tooLong);
+            Assert.Null(collector.Delay);
+
+            collector.Delay = TimeSpan.Zero;
+            Assert.Equal(TimeSpan.Zero, collector.Delay);
+            collector.Delay = IdleCollector.MaxDelay;
+            Assert.Equal(IdleCollector.MaxDelay, collector.Delay);
         }
 
         [Fact]
