@@ -44,6 +44,51 @@ namespace Apache.Arrow.Adbc.C
         /// </summary>
         internal const int ErrorVendorCodePrivateData = int.MinValue;
 
+        private static readonly IdleCollector s_idleCollector = new IdleCollector(CollectGarbage, DefaultIdleCollectionDelay());
+
+        /// <summary>
+        /// Gets or sets how long the exporter waits, after the last database has been released,
+        /// before it forces a full, compacting garbage collection; or <c>null</c> to never force one.
+        /// </summary>
+        /// <remarks>
+        /// <para>A driver published with NativeAOT has a garbage-collected heap of its own, and
+        /// the runtime only collects it in response to allocations. Once a caller has released
+        /// all of its databases, the driver stops allocating and the memory it last used stays
+        /// committed for the life of the process. Forcing a collection once the driver is idle
+        /// returns that memory to the operating system. The collection runs on a thread-pool
+        /// thread, and only if no database has been opened in the meantime.</para>
+        /// <para>The default is one second when the driver is compiled with NativeAOT, and
+        /// <c>null</c> otherwise, because a JIT-compiled driver shares its heap with the host.</para>
+        /// </remarks>
+        public static TimeSpan? IdleCollectionDelay
+        {
+            get => s_idleCollector.Delay;
+            set => s_idleCollector.Delay = value;
+        }
+
+        private static TimeSpan? DefaultIdleCollectionDelay()
+        {
+#if NET7_0_OR_GREATER
+            return System.Runtime.CompilerServices.RuntimeFeature.IsDynamicCodeSupported ? null : TimeSpan.FromSeconds(1);
+#else
+            return null;
+#endif
+        }
+
+        private static void CollectGarbage()
+        {
+            // Exported Arrow buffers are currently freed by their finalizers rather than when the
+            // consumer releases them (apache/arrow-dotnet#464), so run those before compacting.
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+#if NET7_0_OR_GREATER
+            GC.Collect(GC.MaxGeneration, GCCollectionMode.Aggressive, blocking: true, compacting: true);
+#else
+            System.Runtime.GCSettings.LargeObjectHeapCompactionMode = System.Runtime.GCLargeObjectHeapCompactionMode.CompactOnce;
+            GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: true);
+#endif
+        }
+
         private static unsafe readonly NativeDelegate<ErrorRelease> s_releaseError = new NativeDelegate<ErrorRelease>(ReleaseError);
 
 #if NET5_0_OR_GREATER
@@ -424,6 +469,7 @@ namespace Apache.Arrow.Adbc.C
                 stub.Dispose();
                 gch.Free();
                 nativeDriver->private_data = null;
+                s_idleCollector.DriverReleased();
                 return AdbcStatusCode.Success;
             }
             catch (Exception e)
@@ -537,6 +583,7 @@ namespace Apache.Arrow.Adbc.C
                 stub.Dispose();
                 gch.Free();
                 nativeDatabase->private_data = null;
+                s_idleCollector.DatabaseReleased();
                 return AdbcStatusCode.Success;
             }
             catch (Exception e)
@@ -1673,6 +1720,7 @@ namespace Apache.Arrow.Adbc.C
                     DatabaseStub stub = new DatabaseStub(_driver);
                     GCHandle handle = GCHandle.Alloc(stub);
                     nativeDatabase->private_data = (void*)GCHandle.ToIntPtr(handle);
+                    s_idleCollector.DatabaseOpened();
                     return AdbcStatusCode.Success;
                 }
                 catch (Exception e)
