@@ -234,6 +234,7 @@ namespace Apache.Arrow.Adbc.C
             // contends on another type's constructor lock re-enters it while initializing Lock,
             // finds the encoding still null, and fails fast. A newly started thread does this
             // when it sets its name, so run it here, before the exporter starts any threads.
+            // See https://github.com/dotnet/runtime/issues/136031.
             _ = Encoding.UTF8;
 
             DriverStub stub = new DriverStub(driver);
