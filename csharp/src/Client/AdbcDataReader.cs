@@ -299,7 +299,7 @@ namespace Apache.Arrow.Adbc.Client
 
         public override bool IsDBNull(int ordinal)
         {
-            return GetValue(ordinal) == null;
+            return GetValue(ordinal) is DBNull;
         }
 
         public override bool NextResult()
