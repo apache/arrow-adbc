@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Data.SqlTypes;
+using Apache.Arrow.Arrays;
 using Apache.Arrow.Scalars;
 using Apache.Arrow.Types;
 
@@ -284,6 +285,22 @@ namespace Apache.Arrow.Adbc.Client
                     return typeof(NullArray);
                 case ArrowTypeId.List:
                     return typeof(ListArray);
+                case ArrowTypeId.FixedSizedBinary:
+                    return typeof(FixedSizeBinaryArray);
+                case ArrowTypeId.Extension:
+                    switch (dataType)
+                    {
+                        case GuidType:
+                            return typeof(GuidArray);
+                        case Bool8Type:
+                            return typeof(Bool8Array);
+                        case TimestampWithOffsetType:
+                            return typeof(TimestampWithOffsetArray);
+                        case VariantType:
+                            return typeof(VariantArray);
+                        default:
+                            return typeof(ExtensionArray);
+                    }
             }
 
             throw new InvalidCastException($"Cannot determine the array type for {dataType.Name}");

@@ -173,6 +173,8 @@ namespace Apache.Arrow.Adbc.Extensions
                             return bool8Array.GetValue(index);
                         case TimestampWithOffsetArray timestampWithOffsetArray:
                             return timestampWithOffsetArray.GetValue(index);
+                        case VariantArray variantArray:
+                            return VariantConversions.GetValue(variantArray, index, resultType);
                         case ExtensionArray extensionArray:
                             // Unrecognized extension types are surfaced as their storage values.
                             return ValueAt(extensionArray.Storage, index, resultType);
@@ -326,6 +328,8 @@ namespace Apache.Arrow.Adbc.Extensions
                             return (array, index) => ((Bool8Array)array).GetValue(index);
                         case TimestampWithOffsetType:
                             return (array, index) => ((TimestampWithOffsetArray)array).GetValue(index);
+                        case VariantType:
+                            return (array, index) => VariantConversions.GetValue((VariantArray)array, index, resultType);
                         default:
                             // Unrecognized extension types are surfaced as their storage values.
                             Func<IArrowArray, int, object?> storageConverter = GetValueConverter(((ExtensionType)arrayType).StorageType, resultType);
@@ -610,6 +614,9 @@ namespace Apache.Arrow.Adbc.Extensions
                     return new List<bool?>();
                 case TimestampWithOffsetArray timestampWithOffsetArray:
                     return new List<DateTimeOffset?>();
+                case ExtensionArray extensionArray:
+                    // Variants and unrecognized extension types
+                    return new List<object?>();
 
                     // not covered:
                     // -- struct array

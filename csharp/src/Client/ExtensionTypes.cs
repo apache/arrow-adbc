@@ -15,12 +15,6 @@
 * limitations under the License.
 */
 
-using System;
-using System.Collections.Generic;
-using Apache.Arrow.Adbc.Extensions;
-using Apache.Arrow.Operations.Shredding;
-using Apache.Arrow.Operations.VariantJson;
-using Apache.Arrow.Scalars.Variant;
 using Apache.Arrow.Types;
 
 namespace Apache.Arrow.Adbc.Client
@@ -32,9 +26,6 @@ namespace Apache.Arrow.Adbc.Client
     {
         internal const string ExtensionNameKey = "ARROW:extension:name";
         internal const string ExtensionMetadataKey = "ARROW:extension:metadata";
-
-        private static readonly DateTimeOffset s_unixEpoch = new DateTimeOffset(1970, 1, 1, 0, 0, 0, TimeSpan.Zero);
-        private static readonly DateTime s_unixEpochUnspecified = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Unspecified);
 
         /// <summary>
         /// The extension types the client understands without any registration by the caller.
@@ -152,108 +143,6 @@ namespace Apache.Arrow.Adbc.Client
             }
 
             return new ArrayData(type, data.Length, data.NullCount, data.Offset, data.Buffers, children, data.Dictionary);
-        }
-
-        /// <summary>
-        /// Gets a value converter for the given type, adding the client's handling of
-        /// variants to the conversions supplied by <see cref="IArrowArrayExtensions"/>.
-        /// </summary>
-        public static Func<IArrowArray, int, object?> GetValueConverter(IArrowType type, StructBehavior structBehavior)
-        {
-            if (type is VariantType)
-            {
-                if (structBehavior == StructBehavior.JsonString)
-                {
-                    return (array, index) => array.IsNull(index) ? null : VariantJsonWriter.ToJson(GetVariantValue((VariantArray)array, index));
-                }
-                return (array, index) => array.IsNull(index) ? null : ToObject(GetVariantValue((VariantArray)array, index));
-            }
-
-            StructResultType structResultType = structBehavior == StructBehavior.JsonString ? StructResultType.JsonString : StructResultType.Object;
-            return type.GetValueConverter(structResultType);
-        }
-
-        private static VariantValue GetVariantValue(VariantArray array, int index)
-        {
-            return array.IsShredded ? array.GetLogicalVariantValue(index) : array.GetVariantValue(index);
-        }
-
-        /// <summary>
-        /// Converts a variant value to the equivalent .NET value. Objects become
-        /// <see cref="Dictionary{TKey, TValue}"/> and arrays become <see cref="List{T}"/>.
-        /// </summary>
-        internal static object? ToObject(VariantValue value)
-        {
-            if (value.IsObject)
-            {
-                Dictionary<string, object?> result = new Dictionary<string, object?>();
-                foreach (KeyValuePair<string, VariantValue> field in value.AsObject())
-                {
-                    result.Add(field.Key, ToObject(field.Value));
-                }
-                return result;
-            }
-
-            if (value.IsArray)
-            {
-                IReadOnlyList<VariantValue> elements = value.AsArray();
-                List<object?> result = new List<object?>(elements.Count);
-                foreach (VariantValue element in elements)
-                {
-                    result.Add(ToObject(element));
-                }
-                return result;
-            }
-
-            switch (value.PrimitiveType)
-            {
-                case VariantPrimitiveType.NullType:
-                    return null;
-                case VariantPrimitiveType.BooleanTrue:
-                case VariantPrimitiveType.BooleanFalse:
-                    return value.AsBoolean();
-                case VariantPrimitiveType.Int8:
-                    return value.AsInt8();
-                case VariantPrimitiveType.Int16:
-                    return value.AsInt16();
-                case VariantPrimitiveType.Int32:
-                    return value.AsInt32();
-                case VariantPrimitiveType.Int64:
-                    return value.AsInt64();
-                case VariantPrimitiveType.Float:
-                    return value.AsFloat();
-                case VariantPrimitiveType.Double:
-                    return value.AsDouble();
-                case VariantPrimitiveType.Decimal4:
-                case VariantPrimitiveType.Decimal8:
-                    return value.AsDecimal();
-                case VariantPrimitiveType.Decimal16:
-                    return value.AsSqlDecimal();
-                case VariantPrimitiveType.Date:
-                    return value.AsDate();
-                case VariantPrimitiveType.Timestamp:
-                    return value.AsTimestamp();
-                case VariantPrimitiveType.TimestampNtz:
-                    return value.AsTimestampNtz();
-                case VariantPrimitiveType.TimestampTzNanos:
-                    return s_unixEpoch.AddTicks(value.AsTimestampTzNanos() / 100);
-                case VariantPrimitiveType.TimestampNtzNanos:
-                    return s_unixEpochUnspecified.AddTicks(value.AsTimestampNtzNanos() / 100);
-                case VariantPrimitiveType.TimeNtz:
-#if NET6_0_OR_GREATER
-                    return new TimeOnly(value.AsTimeNtzMicros() * 10);
-#else
-                    return TimeSpan.FromTicks(value.AsTimeNtzMicros() * 10);
-#endif
-                case VariantPrimitiveType.String:
-                    return value.AsString();
-                case VariantPrimitiveType.Binary:
-                    return value.AsBinary();
-                case VariantPrimitiveType.Uuid:
-                    return value.AsUuid();
-                default:
-                    throw new NotSupportedException($"Unsupported variant type: {value.PrimitiveType}");
-            }
         }
     }
 }

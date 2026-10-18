@@ -117,6 +117,10 @@ namespace Apache.Arrow.Adbc.Tests.Client
                 new IArrowArray[] { structArray, listArray },
                 structBehavior);
 
+            Assert.Equal(typeof(GuidArray), reader.GetFieldType(1));
+            Assert.Equal(typeof(GuidArray), reader.GetColumnSchema()[1].DataType);
+            Assert.Equal(typeof(GuidArray), reader.GetSchemaTable()!.Rows[1][SchemaTableColumn.DataType]);
+
             Assert.True(reader.Read());
             if (structBehavior == StructBehavior.Strict)
             {
@@ -130,6 +134,32 @@ namespace Apache.Arrow.Adbc.Tests.Client
 
             GuidArray values = Assert.IsType<GuidArray>(reader.GetValue(1));
             Assert.Equal(s_guid, values.GetGuid(0));
+        }
+
+        [Theory]
+        [InlineData(StructBehavior.Strict)]
+        [InlineData(StructBehavior.JsonString)]
+        public void NestedVariant(StructBehavior structBehavior)
+        {
+            VariantArray variants = BuildVariantArray();
+            Field child = VariantField(variants, fromStorage: true);
+            StructType structType = new StructType(new[] { child });
+            StructArray structArray = new StructArray(structType, variants.Length, new[] { variants.Storage }, ArrowBuffer.Empty);
+
+            using AdbcDataReader reader = GetReader(new Field("s", structType, true), structArray, structBehavior);
+
+            Assert.True(reader.Read());
+            if (structBehavior == StructBehavior.Strict)
+            {
+                Dictionary<string, object?> obj = Assert.IsType<Dictionary<string, object?>>(reader.GetValue(0));
+                Dictionary<string, object?> v = Assert.IsType<Dictionary<string, object?>>(obj["v"]);
+                Assert.Equal("widget", v["name"]);
+                Assert.Equal(new List<object?> { (sbyte)1, (sbyte)2 }, v["sizes"]);
+            }
+            else
+            {
+                Assert.Equal("{\"v\":{\"name\":\"widget\",\"sizes\":[1,2]}}", reader.GetString(0));
+            }
         }
 
         [Fact]
@@ -287,6 +317,7 @@ namespace Apache.Arrow.Adbc.Tests.Client
             using AdbcCommand cmd = new AdbcCommand(mockStatement.Object, new Adbc.Client.AdbcConnection());
             cmd.Parameters.Add(new AdbcParameter { ParameterName = "id", DbType = DbType.Guid, Value = s_guid });
             cmd.Parameters.Add(new AdbcParameter { ParameterName = "idString", DbType = DbType.Guid, Value = s_guid.ToString() });
+            cmd.Parameters.Add(new AdbcParameter { ParameterName = "idBytes", DbType = DbType.Guid, Value = GuidArray.GuidToBytes(s_guid) });
             cmd.Parameters.Add(new AdbcParameter { ParameterName = "ts", DbType = DbType.DateTimeOffset, Value = value });
             cmd.ExecuteNonQuery();
 
@@ -294,10 +325,11 @@ namespace Apache.Arrow.Adbc.Tests.Client
             Assert.IsType<GuidType>(bound!.Schema.GetFieldByIndex(0).DataType);
             Assert.Equal(s_guid, ((GuidArray)bound.Column(0)).GetGuid(0));
             Assert.Equal(s_guid, ((GuidArray)bound.Column(1)).GetGuid(0));
+            Assert.Equal(s_guid, ((GuidArray)bound.Column(2)).GetGuid(0));
 
-            TimestampType timestampType = Assert.IsType<TimestampType>(bound.Schema.GetFieldByIndex(2).DataType);
+            TimestampType timestampType = Assert.IsType<TimestampType>(bound.Schema.GetFieldByIndex(3).DataType);
             Assert.Equal("UTC", timestampType.Timezone);
-            Assert.Equal(value, ((TimestampArray)bound.Column(2)).GetTimestamp(0));
+            Assert.Equal(value, ((TimestampArray)bound.Column(3)).GetTimestamp(0));
         }
 
         [Theory]

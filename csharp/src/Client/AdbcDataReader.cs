@@ -91,6 +91,8 @@ namespace Apache.Arrow.Adbc.Client
             this.DecimalBehavior = decimalBehavior;
             this.StructBehavior = structBehavior;
 
+            StructResultType structResultType = this.StructBehavior == StructBehavior.JsonString ? StructResultType.JsonString : StructResultType.Object;
+
             int fieldCount = this.schema.FieldsList.Count;
             this.fields = new Field[fieldCount];
             this.resolvedTypes = new IArrowType?[fieldCount];
@@ -106,7 +108,7 @@ namespace Apache.Arrow.Adbc.Client
                     this.resolvedTypes[i] = resolved.DataType;
                 }
                 this.fields[i] = resolved;
-                this.converters[i] = ExtensionTypes.GetValueConverter(resolved.DataType, this.StructBehavior);
+                this.converters[i] = resolved.DataType.GetValueConverter(structResultType);
             }
         }
 

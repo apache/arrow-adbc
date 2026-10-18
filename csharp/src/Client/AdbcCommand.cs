@@ -402,7 +402,7 @@ namespace Apache.Arrow.Adbc.Client
                             {
                                 case null: guidBuilder.AppendNull(); break;
                                 case Guid guid: guidBuilder.Append(guid); break;
-                                case byte[] bytes when bytes.Length == 16: guidBuilder.Append(new Guid(bytes)); break;
+                                case byte[] bytes when bytes.Length == 16: guidBuilder.Append(GuidArray.RFC4122ToGuid(bytes)); break;
                                 default: guidBuilder.Append(ConvertValue(value, v => Guid.Parse(Convert.ToString(v, CultureInfo.InvariantCulture)!), DbType.Guid)); break;
                             }
                             parameters[i] = guidBuilder.Build();
