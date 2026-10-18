@@ -59,6 +59,10 @@ namespace Apache.Arrow.Adbc.C
         /// thread, and only if no database has been opened in the meantime.</para>
         /// <para>The default is one second when the driver is compiled with NativeAOT, and
         /// <c>null</c> otherwise, because a JIT-compiled driver shares its heap with the host.</para>
+        /// <para>A collection that is still pending when the driver is released runs after
+        /// the release returns. A driver that expects its host to unload it after releasing it
+        /// should set this to <c>null</c>, although unloading a NativeAOT library isn't
+        /// supported in any case.</para>
         /// </remarks>
         /// <exception cref="ArgumentOutOfRangeException">The value is negative or longer than
         /// <see cref="int.MaxValue"/> milliseconds.</exception>

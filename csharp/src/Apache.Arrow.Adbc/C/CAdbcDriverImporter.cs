@@ -48,7 +48,8 @@ namespace Apache.Arrow.Adbc.C
         /// Loads an <see cref="AdbcDriver"/> from the file system.
         /// </summary>
         /// <param name="file">The path to the driver to load</param>
-        /// <param name="canUnload">Whether the driver can be safely unloaded</param>
+        /// <param name="canUnload">Whether the driver can be safely unloaded. A driver compiled with
+        /// NativeAOT can't be, because its runtime's threads keep running code in the library.</param>
         /// <param name="entryPoint">The name of the entry point. If not provided, the name AdbcDriverInit will be used.</param>
         public static AdbcDriver Load(string file, bool canUnload, string? entryPoint = null) =>
             Load(file, canUnload, entryPoint, fallbackEntryPoint: null);
