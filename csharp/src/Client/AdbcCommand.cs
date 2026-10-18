@@ -353,6 +353,19 @@ namespace Apache.Arrow.Adbc.Client
                             }
                             parameters[i] = timestampBuilder.Build();
                             break;
+                        case DbType.DateTimeOffset:
+                            // Bound as a UTC timestamp, which every driver understands; the
+                            // original offset is not preserved.
+                            var timestampOffsetBuilder = new TimestampArray.Builder(TimeUnit.Microsecond, "UTC");
+                            switch (param.Value)
+                            {
+                                case null: timestampOffsetBuilder.AppendNull(); break;
+                                case DateTimeOffset dateTimeOffset: timestampOffsetBuilder.Append(dateTimeOffset); break;
+                                case DateTime datetime: timestampOffsetBuilder.Append(new DateTimeOffset(datetime)); break;
+                                default: timestampOffsetBuilder.Append(ConvertValue(param.Value, v => DateTimeOffset.Parse(Convert.ToString(v, CultureInfo.InvariantCulture)!, CultureInfo.InvariantCulture), DbType.DateTimeOffset)); break;
+                            }
+                            parameters[i] = timestampOffsetBuilder.Build();
+                            break;
                         case DbType.Decimal:
                             var value = param.Value switch
                             {
@@ -381,6 +394,17 @@ namespace Apache.Arrow.Adbc.Client
                                 default: doubleBuilder.Append(ConvertValue(param.Value, Convert.ToDouble, DbType.Double)); break;
                             }
                             parameters[i] = doubleBuilder.Build();
+                            break;
+                        case DbType.Guid:
+                            var guidBuilder = new GuidArray.Builder();
+                            switch (param.Value)
+                            {
+                                case null: guidBuilder.AppendNull(); break;
+                                case Guid guid: guidBuilder.Append(guid); break;
+                                case byte[] bytes when bytes.Length == 16: guidBuilder.Append(new Guid(bytes)); break;
+                                default: guidBuilder.Append(ConvertValue(param.Value, v => Guid.Parse(Convert.ToString(v, CultureInfo.InvariantCulture)!), DbType.Guid)); break;
+                            }
+                            parameters[i] = guidBuilder.Build();
                             break;
                         case DbType.Int16:
                             var int16Builder = new Int16Array.Builder();
@@ -492,6 +516,8 @@ namespace Apache.Arrow.Adbc.Client
                             throw new NotSupportedException($"Parameters of type {param.DbType} are not supported");
                     }
 
+                    // For extension arrays, Data.DataType is the extension type, so that the
+                    // extension name is exported along with the storage type.
                     fields[i] = new Field(
                         string.IsNullOrWhiteSpace(param.ParameterName) ? Guid.NewGuid().ToString() : param.ParameterName,
                         parameters[i].Data.DataType,
@@ -522,40 +548,51 @@ namespace Apache.Arrow.Adbc.Client
 
             DbParameterCollection.Clear();
 
-            foreach (Field field in schema.FieldsList)
+            foreach (Field field in schema.FieldsList.Select(ExtensionTypes.Resolve))
             {
                 AdbcParameter parameter = new AdbcParameter
                 {
                     ParameterName = field.Name,
                     IsNullable = field.IsNullable,
-                    DbType = field.DataType.TypeId switch
+                    DbType = field.DataType switch
                     {
-                        ArrowTypeId.UInt8 => DbType.Byte,
-                        ArrowTypeId.UInt16 => DbType.UInt16,
-                        ArrowTypeId.UInt32 => DbType.UInt32,
-                        ArrowTypeId.UInt64 => DbType.UInt64,
-                        ArrowTypeId.Int8 => DbType.SByte,
-                        ArrowTypeId.Int16 => DbType.Int16,
-                        ArrowTypeId.Int32 => DbType.Int32,
-                        ArrowTypeId.Int64 => DbType.Int64,
-                        ArrowTypeId.Float => DbType.Single,
-                        ArrowTypeId.Double => DbType.Double,
-                        ArrowTypeId.Boolean => DbType.Boolean,
-                        ArrowTypeId.String => DbType.String,
-                        ArrowTypeId.Date32 => DbType.Date,
-                        ArrowTypeId.Date64 => DbType.DateTime,
-                        ArrowTypeId.Time32 => DbType.Time,
-                        ArrowTypeId.Time64 => DbType.Time,
-                        ArrowTypeId.Timestamp => DbType.DateTime,
-                        ArrowTypeId.Decimal32 or
-                        ArrowTypeId.Decimal64 or
-                        ArrowTypeId.Decimal128 or
-                        ArrowTypeId.Decimal256 => DbType.Decimal,
-                        _ => DbType.Object,
+                        GuidType => DbType.Guid,
+                        Bool8Type => DbType.Boolean,
+                        TimestampWithOffsetType => DbType.DateTimeOffset,
+                        _ => GetDbType(field.DataType.TypeId),
                     },
                 };
                 DbParameterCollection.Add(parameter);
             }
+        }
+
+        private static DbType GetDbType(ArrowTypeId typeId)
+        {
+            return typeId switch
+            {
+                ArrowTypeId.UInt8 => DbType.Byte,
+                ArrowTypeId.UInt16 => DbType.UInt16,
+                ArrowTypeId.UInt32 => DbType.UInt32,
+                ArrowTypeId.UInt64 => DbType.UInt64,
+                ArrowTypeId.Int8 => DbType.SByte,
+                ArrowTypeId.Int16 => DbType.Int16,
+                ArrowTypeId.Int32 => DbType.Int32,
+                ArrowTypeId.Int64 => DbType.Int64,
+                ArrowTypeId.Float => DbType.Single,
+                ArrowTypeId.Double => DbType.Double,
+                ArrowTypeId.Boolean => DbType.Boolean,
+                ArrowTypeId.String => DbType.String,
+                ArrowTypeId.Date32 => DbType.Date,
+                ArrowTypeId.Date64 => DbType.DateTime,
+                ArrowTypeId.Time32 => DbType.Time,
+                ArrowTypeId.Time64 => DbType.Time,
+                ArrowTypeId.Timestamp => DbType.DateTime,
+                ArrowTypeId.Decimal32 or
+                ArrowTypeId.Decimal64 or
+                ArrowTypeId.Decimal128 or
+                ArrowTypeId.Decimal256 => DbType.Decimal,
+                _ => DbType.Object,
+            };
         }
 
         protected override DbParameter CreateDbParameter()

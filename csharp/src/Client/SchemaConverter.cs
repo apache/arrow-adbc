@@ -31,13 +31,13 @@ namespace Apache.Arrow.Adbc.Client
         /// Converts an Arrow <see cref="Schema"/> to a
         /// <see cref="DataTable"/> schema.
         /// </summary>
-        /// <param name="schema">The Arrow schema</param>
+        /// <param name="fields">The fields of the Arrow schema</param>
         /// <param name="adbcStatement">The AdbcStatement to use</param>
         /// <exception cref="ArgumentNullException"></exception>
-        public static DataTable ConvertArrowSchema(Schema schema, AdbcStatement adbcStatement, DecimalBehavior decimalBehavior, StructBehavior structBehavior)
+        public static DataTable ConvertArrowSchema(IReadOnlyList<Field> fields, AdbcStatement adbcStatement, DecimalBehavior decimalBehavior, StructBehavior structBehavior)
         {
-            if (schema == null)
-                throw new ArgumentNullException(nameof(schema));
+            if (fields == null)
+                throw new ArgumentNullException(nameof(fields));
 
             if (adbcStatement == null)
                 throw new ArgumentNullException(nameof(adbcStatement));
@@ -54,7 +54,7 @@ namespace Apache.Arrow.Adbc.Client
 
             int columnOrdinal = 0;
 
-            foreach (Field f in schema.FieldsList)
+            foreach (Field f in fields)
             {
                 DataRow row = table.NewRow();
 
@@ -140,6 +140,7 @@ namespace Apache.Arrow.Adbc.Client
             switch (f.DataType.TypeId)
             {
                 case ArrowTypeId.Binary:
+                case ArrowTypeId.FixedSizedBinary:
                     return typeof(byte[]);
 
                 case ArrowTypeId.Boolean:
@@ -214,6 +215,23 @@ namespace Apache.Arrow.Adbc.Client
                     }
                     goto default;
 
+                case ArrowTypeId.Extension:
+                    switch (f.DataType)
+                    {
+                        case GuidType:
+                            return typeof(Guid);
+                        case Bool8Type:
+                            return typeof(bool);
+                        case TimestampWithOffsetType:
+                            return typeof(DateTimeOffset);
+                        case VariantType:
+                            return structBehavior == StructBehavior.JsonString ? typeof(string) : typeof(object);
+                        default:
+                            // Unrecognized extension types are surfaced as their storage values.
+                            ExtensionType extensionType = (ExtensionType)f.DataType;
+                            return ConvertArrowType(new Field(f.Name, extensionType.StorageType, f.IsNullable), decimalBehavior, structBehavior);
+                    }
+
                 default:
                     return f.DataType.GetType();
             }
@@ -273,15 +291,16 @@ namespace Apache.Arrow.Adbc.Client
 
         /// <summary>
         /// Get the IArrowType based on the input IArrowType and the desired <see cref="StructBehavior"/>.
-        /// If it's a StructType and the desired behavior is a JsonString then this returns StringType.
+        /// If it's a StructType or VariantType and the desired behavior is a JsonString then this returns StringType.
         /// Otherwise, it returns the input IArrowType.
         /// </summary>
         /// <param name="defaultType">The default IArrowType to return.</param>
-        /// <param name="structBehavior">Desired behavior if the IArrowType is a StructType.</param>
+        /// <param name="structBehavior">Desired behavior if the IArrowType is a StructType or VariantType.</param>
         /// <returns></returns>
         public static IArrowType GetArrowTypeBasedOnRequestedBehavior(IArrowType defaultType, StructBehavior structBehavior)
         {
-            return defaultType.TypeId == ArrowTypeId.Struct && structBehavior == StructBehavior.JsonString ? StringType.Default : defaultType;
+            bool isJsonType = defaultType.TypeId == ArrowTypeId.Struct || defaultType is VariantType;
+            return isJsonType && structBehavior == StructBehavior.JsonString ? StringType.Default : defaultType;
         }
     }
 }

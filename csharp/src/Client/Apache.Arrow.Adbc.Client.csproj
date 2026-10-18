@@ -4,6 +4,9 @@
     <PackageReadmeFile>readme.md</PackageReadmeFile>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="Apache.Arrow.Operations" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\Apache.Arrow.Adbc\Apache.Arrow.Adbc.csproj" />
   </ItemGroup>
   <ItemGroup>

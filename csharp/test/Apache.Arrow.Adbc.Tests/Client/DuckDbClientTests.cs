@@ -15,6 +15,7 @@
 * limitations under the License.
 */
 
+using System;
 using System.Data;
 using System.Runtime.InteropServices;
 using Apache.Arrow.Adbc.Client;
@@ -149,6 +150,36 @@ namespace Apache.Arrow.Adbc.Tests.Client
                 Assert.Equal(1, count);
             }
             Assert.True(connection.State == ConnectionState.Closed);
+        }
+
+        [Fact]
+        public void ExtensionTypes()
+        {
+            Guid guid = new Guid("0f8fad5b-d9cb-469f-a165-70867728950e");
+
+            using var connection = _duckDb.CreateConnection("extensiontypes.db", null);
+            connection.Open();
+            var command = connection.CreateCommand();
+
+            // Have DuckDB return UUID and BOOLEAN as the arrow.uuid and arrow.bool8 extension types
+            command.CommandText = "SET arrow_lossless_conversion = true";
+            command.ExecuteNonQuery();
+
+            command.CommandText = "SELECT ?::UUID AS id, ? = id AS same, NULL::UUID AS empty";
+            command.Parameters.Add(new AdbcParameter { DbType = DbType.Guid, Value = guid });
+            command.Parameters.Add(new AdbcParameter { DbType = DbType.Guid, Value = guid.ToString() });
+            using var reader = command.ExecuteReader();
+
+            Assert.Equal(typeof(Guid), reader.GetFieldType(0));
+            Assert.IsType<GuidType>(reader.GetFieldArrowType(0));
+            Assert.Equal(typeof(bool), reader.GetFieldType(1));
+            Assert.IsType<Bool8Type>(reader.GetFieldArrowType(1));
+
+            Assert.True(reader.Read());
+            Assert.Equal(guid, reader.GetGuid(0));
+            Assert.True(reader.GetBoolean(1));
+            Assert.Equal(DBNull.Value, reader.GetValue(2));
+            Assert.False(reader.Read());
         }
 
         private static long GetResultCount(AdbcCommand command, string query)
