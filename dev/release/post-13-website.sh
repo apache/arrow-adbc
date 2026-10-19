@@ -78,7 +78,7 @@ version ${spec_version}.
 The subcomponents are versioned independently:
 
 - C/C++/GLib/Go/Python/Ruby: ${VERSION_NATIVE}
-- C#: ${VERSION_CSHARP}
+- C#: ${VERSION_CSHARP_CORE} (core), ${VERSION_CSHARP} (drivers)
 - Java: ${VERSION_JAVA}
 - JavaScript: ${VERSION_JS}
 - R: ${VERSION_R}

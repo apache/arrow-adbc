@@ -28,7 +28,7 @@
   <ItemGroup>
     <PackageVersion Include="Apache.Arrow" Version="23.0.0" />
     <PackageVersion Include="Apache.Arrow.Operations" Version="23.0.0" />
-    <PackageVersion Include="Apache.Arrow.Adbc.Client" Version="[$(Version)]" />
+    <PackageVersion Include="Apache.Arrow.Adbc.Client" Version="[$(AdbcCoreVersion)]" />
     <PackageVersion Include="Apache.Arrow.Adbc.Drivers.BigQuery" Version="[$(Version)]" />
     <PackageVersion Include="Apache.Arrow.Adbc.Drivers.Interop.FlightSql" Version="[$(Version)]" />
     <PackageVersion Include="Apache.Arrow.Flight" Version="22.1.0" />

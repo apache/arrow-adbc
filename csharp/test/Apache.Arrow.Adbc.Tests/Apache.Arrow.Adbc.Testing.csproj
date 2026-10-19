@@ -3,6 +3,7 @@
   <PropertyGroup>
     <TargetFrameworks>net8.0;net10.0;net472</TargetFrameworks>
     <IsPackable>true</IsPackable>
+    <VersionPrefix>$(AdbcCoreVersionPrefix)</VersionPrefix>
     <IsTestProject>true</IsTestProject>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ProcessArchitecture>$([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture.ToString().ToLowerInvariant())</ProcessArchitecture>
