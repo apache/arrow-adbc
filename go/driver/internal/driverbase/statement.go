@@ -19,6 +19,7 @@ package driverbase
 
 import (
 	"context"
+	"strconv"
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -69,6 +70,26 @@ func NewStatement(impl StatementImpl) Statement {
 	return &statement{
 		StatementImpl: impl,
 	}
+}
+
+// SetOptionInt sets an integer option, falling back to SetOption with the
+// formatted value when the driver does not handle key as an integer.
+func (st *statement) SetOptionInt(key string, value int64) error {
+	err := st.StatementImpl.SetOptionInt(key, value)
+	if isNotImplemented(err) {
+		return st.SetOption(key, strconv.FormatInt(value, 10))
+	}
+	return err
+}
+
+// SetOptionDouble sets a double option, falling back to SetOption with the
+// formatted value when the driver does not handle key as a double.
+func (st *statement) SetOptionDouble(key string, value float64) error {
+	err := st.StatementImpl.SetOptionDouble(key, value)
+	if isNotImplemented(err) {
+		return st.SetOption(key, strconv.FormatFloat(value, 'g', -1, 64))
+	}
+	return err
 }
 
 func (st *StatementImplBase) SetOption(key, value string) error {
