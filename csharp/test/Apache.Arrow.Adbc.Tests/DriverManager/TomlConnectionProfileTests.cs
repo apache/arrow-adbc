@@ -424,8 +424,16 @@ literal = ""env_var(NOT_A_PLACEHOLDER)""
         [InlineData("libadbc_driver_snowflake.dll", "AdbcDriverSnowflakeInit")]
         [InlineData("libadbc_driver_flightsql.dylib", "AdbcDriverFlightsqlInit")]
         [InlineData("adbc_driver_sqlite.dll", "AdbcDriverSqliteInit")]
-        [InlineData("mydriver.dll", "AdbcDriverMydriverInit")]
-        [InlineData("unknown", "AdbcDriverUnknownInit")]
+        [InlineData("libadbc_driver_sqlite.so.2.0.0", "AdbcDriverSqliteInit")]
+        [InlineData("/usr/lib/libadbc_driver_sqlite.so.2", "AdbcDriverSqliteInit")]
+        [InlineData(@"C:\drivers\adbc_driver_sqlite.dll", "AdbcDriverSqliteInit")]
+        [InlineData("proprietary_driver.dll", "AdbcProprietaryDriverInit")]
+        [InlineData("adbc_clickhouse.dll", "AdbcClickhouseInit")]
+        [InlineData("my-driver.so", "AdbcMyDriverInit")]
+        [InlineData("adbc_driver_BigQuery.dll", "AdbcDriverBigQueryInit")]
+        [InlineData("mydriver.dll", "AdbcMydriverInit")]
+        [InlineData("unknown", "AdbcUnknownInit")]
+        [InlineData("lib.so", "AdbcDriverInit")]
         public void DeriveEntrypoint_ReturnsExpectedSymbol(string driverPath, string expected)
         {
             string actual = AdbcDriverManager.DeriveEntrypoint(driverPath);

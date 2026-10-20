@@ -749,34 +749,48 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// Derives a candidate entrypoint symbol name from a driver file path.
         /// </summary>
         /// <remarks>
-        /// The convention used by the Go-based ADBC drivers is to strip leading
-        /// <c>lib</c> and any extension, then append <c>Init</c>. For example,
-        /// <c>libadbc_driver_postgresql.so</c> yields <c>AdbcDriverPostgresqlInit</c>.
+        /// This matches the default entrypoint derivation used by the other ADBC
+        /// driver managers: strip any directory and all extensions, strip a leading
+        /// <c>lib</c>, split the remainder on underscores and hyphens, capitalize the
+        /// first letter of each part and join them, prefix <c>Adbc</c> if the result
+        /// doesn't already start with it, then append <c>Init</c>. For example:
+        /// <list type="bullet">
+        /// <item><c>libadbc_driver_sqlite.so.2.0.0</c> yields <c>AdbcDriverSqliteInit</c></item>
+        /// <item><c>adbc_driver_sqlite.dll</c> yields <c>AdbcDriverSqliteInit</c></item>
+        /// <item><c>proprietary_driver.dll</c> yields <c>AdbcProprietaryDriverInit</c></item>
+        /// </list>
         /// Falls back to <c>AdbcDriverInit</c> when no better candidate can be formed.
         /// </remarks>
         public static string DeriveEntrypoint(string driverPath)
         {
-            string baseName = Path.GetFileNameWithoutExtension(driverPath);
+            // Treat both '/' and '\' as directory separators on all platforms.
+            string baseName = driverPath.Substring(driverPath.LastIndexOfAny(new[] { '/', '\\' }) + 1);
+
+            // Remove all extensions (e.g. ".so.2.0.0").
+            int dot = baseName.IndexOf('.');
+            if (dot >= 0)
+                baseName = baseName.Substring(0, dot);
 
             // Strip leading "lib" prefix common on POSIX platforms.
-            if (baseName.StartsWith("lib", StringComparison.OrdinalIgnoreCase))
+            if (baseName.StartsWith("lib", StringComparison.Ordinal))
                 baseName = baseName.Substring(3);
 
-            // Strip "adbc_driver_" or "adbc_" prefix to get a shorter stem.
-            const string adbcDriverPrefix = "adbc_driver_";
-            const string adbcPrefix = "adbc_";
+            var sb = new System.Text.StringBuilder();
+            foreach (string part in baseName.Split('_', '-'))
+            {
+                if (part.Length == 0)
+                    continue;
+                sb.Append(char.ToUpperInvariant(part[0]));
+                sb.Append(part, 1, part.Length - 1);
+            }
 
-            if (baseName.StartsWith(adbcDriverPrefix, StringComparison.OrdinalIgnoreCase))
-                baseName = baseName.Substring(adbcDriverPrefix.Length);
-            else if (baseName.StartsWith(adbcPrefix, StringComparison.OrdinalIgnoreCase))
-                baseName = baseName.Substring(adbcPrefix.Length);
-
-            if (string.IsNullOrEmpty(baseName))
+            if (sb.Length == 0)
                 return DefaultNativeEntrypoint;
 
-            // Convert snake_case to PascalCase.
-            string pascal = ToPascalCase(baseName);
-            return $"AdbcDriver{pascal}Init";
+            string entrypoint = sb.ToString();
+            if (!entrypoint.StartsWith("Adbc", StringComparison.Ordinal))
+                entrypoint = "Adbc" + entrypoint;
+            return entrypoint + "Init";
         }
 
         private static AdbcDriver LoadFromAbsolutePath(string path, string? entrypoint)
@@ -1186,29 +1200,6 @@ namespace Apache.Arrow.Adbc.DriverManager
                     $"Driver name must not contain null characters.",
                     nameof(driverName));
             }
-        }
-
-        private static string ToPascalCase(string snake)
-        {
-            var sb = new System.Text.StringBuilder();
-            bool upperNext = true;
-            foreach (char c in snake)
-            {
-                if (c == '_')
-                {
-                    upperNext = true;
-                }
-                else if (upperNext)
-                {
-                    sb.Append(char.ToUpperInvariant(c));
-                    upperNext = false;
-                }
-                else
-                {
-                    sb.Append(char.ToLowerInvariant(c));
-                }
-            }
-            return sb.ToString();
         }
     }
 }
