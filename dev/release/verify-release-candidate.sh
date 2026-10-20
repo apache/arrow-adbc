@@ -725,7 +725,7 @@ ensure_source_directory() {
   source "${ADBC_SOURCE_DIR}/dev/release/versions.env"
   echo "Versions:"
   echo "Release: ${RELEASE} (requested: ${VERSION})"
-  echo "C#: ${VERSION_CSHARP}"
+  echo "C#: ${VERSION_CSHARP_CORE} (core), ${VERSION_CSHARP} (drivers)"
   echo "Java: ${VERSION_JAVA}"
   echo "C/C++/GLib/Go/Python/Ruby: ${VERSION_NATIVE}"
   echo "R: ${VERSION_R}"

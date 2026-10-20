@@ -23,6 +23,7 @@ update_versions() {
 
   local conda_version="${VERSION_NATIVE}"
   local csharp_version="${VERSION_CSHARP}"
+  local csharp_core_version="${VERSION_CSHARP_CORE}"
   local js_version="${VERSION_JS}"
   local linux_version="${RELEASE}"
   local rust_version="${VERSION_CSHARP}"
@@ -63,7 +64,8 @@ update_versions() {
   header "Updating versions for release ${RELEASE}"
   echo "C: ${c_version}"
   echo "Conda: ${conda_version}"
-  echo "C#: ${csharp_version}"
+  echo "C# (core): ${csharp_core_version}"
+  echo "C# (drivers): ${csharp_version}"
   echo "Docs: ${docs_version}"
   echo "GLib/Ruby: ${glib_version}"
   echo "Java: ${java_version}"
@@ -92,6 +94,10 @@ update_versions() {
 
   sed -i.bak \
     -E "s|<VersionPrefix>.+</VersionPrefix>|<VersionPrefix>${csharp_version}</VersionPrefix>|" \
+    "${ADBC_DIR}/csharp/Directory.Build.props"
+  rm "${ADBC_DIR}/csharp/Directory.Build.props.bak"
+  sed -i.bak \
+    -E "s|<AdbcCoreVersionPrefix>.+</AdbcCoreVersionPrefix>|<AdbcCoreVersionPrefix>${csharp_core_version}</AdbcCoreVersionPrefix>|" \
     "${ADBC_DIR}/csharp/Directory.Build.props"
   rm "${ADBC_DIR}/csharp/Directory.Build.props.bak"
   sed -i.bak \
