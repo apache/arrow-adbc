@@ -914,11 +914,19 @@ print(version.text)
   show_info "ADBC Java version: ${java_version}"
 
   local -r maven_repository="${ARROW_TMPDIR}/maven-repository"
-  local -r maven_repository_argument="-Dmaven.repo.local=${maven_repository}"
+  local -r maven_arguments=(
+    -B
+    -e
+    "-Dmaven.repo.local=${maven_repository}"
+    # Retry transient download failures in Maven's native HTTP transport.
+    -Dmaven.resolver.transport=native
+    -Daether.connector.http.retryHandler.count=5
+    -Daether.connector.http.retryHandler.interval=5000
+    -Daether.connector.http.retryHandler.serviceUnavailable=429,500,502,503,504
+  )
   mkdir -p "${maven_repository}"
 
-  mvn -B install:install-file \
-      "${maven_repository_argument}" \
+  mvn "${maven_arguments[@]}" install:install-file \
       "-Dfile=${root_pom}" \
       "-DpomFile=${root_pom}" \
       -Dpackaging=pom
@@ -945,8 +953,7 @@ print(version.text)
       fi
     done
 
-    mvn -B install:install-file \
-        "${maven_repository_argument}" \
+    mvn "${maven_arguments[@]}" install:install-file \
         "-Dfile=${jar_path}" \
         "-DpomFile=${pom_path}" \
         "-Dsources=${sources_path}" \
@@ -959,9 +966,8 @@ print(version.text)
     test_arguments+=('-Dtest=!VerifyReleaseCandidateTest#testDriverJni')
   fi
 
-  mvn -B test \
+  mvn "${maven_arguments[@]}" test \
       "${test_arguments[@]}" \
-      "${maven_repository_argument}" \
       "-Dadbc.version=${java_version}" \
       -f "${SOURCE_DIR}/verify/java/pom.xml"
 }
