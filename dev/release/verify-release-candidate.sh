@@ -888,7 +888,7 @@ test_wheels() {
 
 test_jars() {
   show_header "Testing Java jars"
-  maybe_setup_conda maven python || exit 1
+  maybe_setup_conda maven openjdk=17 python || exit 1
 
   local root_poms=()
   shopt -s nullglob
@@ -917,12 +917,18 @@ print(version.text)
   local -r maven_arguments=(
     -B
     -e
+    # Recheck missing artifacts instead of reusing cached resolution failures.
+    -U
     "-Dmaven.repo.local=${maven_repository}"
     # Retry transient download failures in Maven's native HTTP transport.
     -Dmaven.resolver.transport=native
     -Daether.connector.http.retryHandler.count=5
     -Daether.connector.http.retryHandler.interval=5000
     -Daether.connector.http.retryHandler.serviceUnavailable=429,500,502,503,504
+    # Maven 3.10+ uses Resolver 2, which renamed the HTTP transport properties.
+    -Daether.transport.http.retryHandler.count=5
+    -Daether.transport.http.retryHandler.interval=5000
+    -Daether.transport.http.retryHandler.serviceUnavailable=429,500,502,503,504
   )
   mkdir -p "${maven_repository}"
 
