@@ -15,7 +15,6 @@
 // specific language governing permissions and limitations
 // under the License.
 
-#include <charconv>
 #include <clocale>
 #include <cstdlib>
 #include <cstring>
@@ -1029,44 +1028,29 @@ TEST_F(SqliteReaderTest, InferFloatToStringPreservesRoundTripPrecision) {
            "(0.1, 3.141592653589793), "
            "('end', 0.1)"));
 
-  const std::vector<std::optional<double>> expected_upcast = {
-      123456789.123, 3.141592653589793, 0.1, std::nullopt};
-  const std::vector<std::optional<double>> expected_append = {std::nullopt, 123456789.123,
-                                                              3.141592653589793, 0.1};
-  const std::vector<std::string> expected_text_upcast = {"", "", "", "end"};
-  const std::vector<std::string> expected_text_append = {"start", "", "", ""};
+  const std::vector<std::string> expected_upcast = {"123456789.123", "3.1415926535897931",
+                                                    "0.1", "end"};
+  const std::vector<std::string> expected_append = {"start", "123456789.123",
+                                                    "3.1415926535897931", "0.1"};
 
   adbc_validation::StreamReader reader;
   ASSERT_NO_FATAL_FAILURE(Exec("SELECT * FROM foo", kInferRows, &reader));
   ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].type);
   ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[1].type);
   ASSERT_NO_FATAL_FAILURE(reader.Next());
-  auto expect_round_trip = [](ArrowArrayView* actual,
-                              const std::vector<std::optional<double>>& expected_values,
-                              const std::vector<std::string>& expected_text) {
+  auto expect_strings = [](ArrowArrayView* actual,
+                           const std::vector<std::string>& expected_values) {
     ASSERT_EQ(actual->length, static_cast<int64_t>(expected_values.size()));
-    ASSERT_EQ(expected_values.size(), expected_text.size());
     for (int64_t i = 0; i < actual->length; i++) {
       const ArrowStringView actual_view = ArrowArrayViewGetStringUnsafe(actual, i);
       const std::string actual_value(actual_view.data, actual_view.size_bytes);
-      if (expected_values[i].has_value()) {
-        double parsed = 0.0;
-        const char* begin = actual_value.data();
-        const char* end = begin + actual_value.size();
-        const auto result =
-            std::from_chars(begin, end, parsed, std::chars_format::general);
-        ASSERT_EQ(result.ec, std::errc{});
-        ASSERT_EQ(result.ptr, end);
-        EXPECT_EQ(parsed, expected_values[i].value());
-      } else {
-        EXPECT_EQ(actual_value, expected_text[i]);
-      }
+      EXPECT_EQ(actual_value, expected_values[i]);
     }
   };
-  ASSERT_NO_FATAL_FAILURE(expect_round_trip(reader.array_view->children[0],
-                                            expected_upcast, expected_text_upcast));
-  ASSERT_NO_FATAL_FAILURE(expect_round_trip(reader.array_view->children[1],
-                                            expected_append, expected_text_append));
+  ASSERT_NO_FATAL_FAILURE(
+      expect_strings(reader.array_view->children[0], expected_upcast));
+  ASSERT_NO_FATAL_FAILURE(
+      expect_strings(reader.array_view->children[1], expected_append));
 }
 
 TEST_F(SqliteReaderTest, InferFloatToStringUsesDotDecimalInCommaLocale) {
