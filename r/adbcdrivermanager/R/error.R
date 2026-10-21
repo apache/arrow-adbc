@@ -75,6 +75,16 @@ stop_for_error <- function(status, error) {
     # Store the listified error information
     cnd$error <- error
 
+    # R truncates printed error messages to getOption("warning.length")
+    # characters (1000 by default), which cuts off long driver manager
+    # messages such as the list of paths searched for a driver manifest.
+    # Raise the limit to its maximum while the error is signalled so the
+    # full message is shown; the option is restored when stop() unwinds.
+    if (nchar(msg, type = "bytes") > getOption("warning.length", 1000L)) {
+      old_options <- options(warning.length = 8170L)
+      on.exit(options(old_options), add = TRUE)
+    }
+
     stop(cnd)
   }
 }
