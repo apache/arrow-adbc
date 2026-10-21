@@ -15,6 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <charconv>
 #include <clocale>
 #include <cstdlib>
 #include <cstring>
@@ -1026,25 +1027,38 @@ TEST_F(SqliteReaderTest, InferFloatToStringPreservesRoundTripPrecision) {
            "(123456789.123, 'start'), "
            "(3.141592653589793, 123456789.123), "
            "(0.1, 3.141592653589793), "
-           "('end', 0.1)"));
+           "('end', 0.1), "
+           "(42, NULL), "
+           "(NULL, 7), "
+           "('original text', '')"));
 
   auto read_strings = [](ArrowArrayView* actual) {
-    std::vector<std::string> values;
+    std::vector<std::optional<std::string>> values;
     for (int64_t i = 0; i < actual->length; i++) {
+      if (ArrowArrayViewIsNull(actual, i)) {
+        values.emplace_back(std::nullopt);
+        continue;
+      }
       const ArrowStringView actual_view = ArrowArrayViewGetStringUnsafe(actual, i);
-      values.emplace_back(actual_view.data, actual_view.size_bytes);
+      values.emplace_back(std::string(actual_view.data, actual_view.size_bytes));
     }
     return values;
   };
 
-  // Use SQLite's own text conversion as the reference so the test does not
-  // depend on a particular SQLite release's floating-point spelling.
-  std::vector<std::string> expected_upcast;
-  std::vector<std::string> expected_append;
+  // Use SQLite's 17-digit formatter for REAL values. Preserve other SQLite
+  // types in the reference query so TEXT, INTEGER, and NULL values are not
+  // routed through the double formatter.
+  std::vector<std::optional<std::string>> expected_upcast;
+  std::vector<std::optional<std::string>> expected_append;
   {
     adbc_validation::StreamReader expected;
     ASSERT_NO_FATAL_FAILURE(
-        Exec("SELECT CAST(upcast_col AS TEXT), CAST(append_col AS TEXT) FROM foo",
+        Exec("SELECT "
+             "CASE typeof(upcast_col) WHEN 'real' THEN printf('%!.17g', upcast_col) "
+             "WHEN 'integer' THEN CAST(upcast_col AS TEXT) ELSE upcast_col END, "
+             "CASE typeof(append_col) WHEN 'real' THEN printf('%!.17g', append_col) "
+             "WHEN 'integer' THEN CAST(append_col AS TEXT) ELSE append_col END "
+             "FROM foo",
              kInferRows, &expected));
     ASSERT_NO_FATAL_FAILURE(expected.Next());
     expected_upcast = read_strings(expected.array_view->children[0]);
@@ -1058,8 +1072,30 @@ TEST_F(SqliteReaderTest, InferFloatToStringPreservesRoundTripPrecision) {
   ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].type);
   ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[1].type);
   ASSERT_NO_FATAL_FAILURE(reader.Next());
-  EXPECT_EQ(read_strings(reader.array_view->children[0]), expected_upcast);
-  EXPECT_EQ(read_strings(reader.array_view->children[1]), expected_append);
+  const auto actual_upcast = read_strings(reader.array_view->children[0]);
+  const auto actual_append = read_strings(reader.array_view->children[1]);
+  EXPECT_EQ(actual_upcast, expected_upcast);
+  EXPECT_EQ(actual_append, expected_append);
+
+  // Parsing independently against the inserted binary64 values ensures the
+  // reference comparison alone does not mask a loss of round-trip precision.
+  auto expect_round_trip = [](const std::vector<std::optional<std::string>>& values,
+                              const std::vector<std::pair<size_t, double>>& expected) {
+    for (const auto& [index, expected_value] : expected) {
+      ASSERT_TRUE(values[index].has_value());
+      const std::string& value = *values[index];
+      double parsed = 0.0;
+      const auto result = std::from_chars(value.data(), value.data() + value.size(),
+                                          parsed, std::chars_format::general);
+      ASSERT_EQ(std::errc{}, result.ec);
+      ASSERT_EQ(value.data() + value.size(), result.ptr);
+      EXPECT_EQ(expected_value, parsed);
+    }
+  };
+  ASSERT_NO_FATAL_FAILURE(expect_round_trip(
+      actual_upcast, {{0, 123456789.123}, {1, 3.141592653589793}, {2, 0.1}}));
+  ASSERT_NO_FATAL_FAILURE(expect_round_trip(
+      actual_append, {{1, 123456789.123}, {2, 3.141592653589793}, {3, 0.1}}));
 }
 
 TEST_F(SqliteReaderTest, InferFloatToStringUsesDotDecimalInCommaLocale) {
