@@ -838,6 +838,7 @@ test_unix_wheels() {
         adbc_*-cp${pyver/.}-cp${python/.}-${platform}*${arch}*.whl \
         adbc_*-py3-none-${platform}*${arch}*.whl
     ${ADBC_DIR}/ci/scripts/python_wheel_unix_test.sh ${ADBC_DIR}
+    unset PYTHON_GIL
   done
 }
 
