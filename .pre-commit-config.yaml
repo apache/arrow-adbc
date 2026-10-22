@@ -45,11 +45,6 @@ repos:
     hooks:
       - id: clang-format
         types_or: [c, c++]
-  - repo: https://github.com/cheshirekow/cmake-format-precommit
-    rev: e2c2116d86a80e72e7146a06e68b7c228afc6319  # v0.6.13
-    hooks:
-    - id: cmake-format
-      args: [--in-place]
   - repo: https://github.com/cpplint/cpplint
     rev: 350702a4d39395571bd118c9a3cff0a573488d61  # 2.0.2
     hooks:
