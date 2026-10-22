@@ -72,7 +72,7 @@ repos:
       entry: bash -c 'cd go/driver && golangci-lint run --fix --timeout 5m'
       types_or: [go, go-mod]
   - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
-    rev: a6273196190bb0f68caf1dc68073cf62c719f725  # v2.14.0
+    rev: 4380fbb73a154b5f5624794c1c78d9719ccc860f  # frozen: v2.16.0
     hooks:
     - id: pretty-format-golang
       args: [--autofix]
