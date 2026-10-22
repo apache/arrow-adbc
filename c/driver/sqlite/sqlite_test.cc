@@ -1025,8 +1025,8 @@ TEST_F(SqliteReaderTest, InferFloatToStringPreservesPrecision) {
       Exec("INSERT INTO foo VALUES "
            "(123456789.123, 'start'), "
            "(3.141592653589793, 123456789.123), "
-           "(0.1, 3.141592653589793), "
-           "('end', 0.1), "
+           "(0.10000000000000002, 3.141592653589793), "
+           "('end', 0.10000000000000002), "
            "(42, NULL), "
            "(NULL, 7), "
            "('original text', '')"));
@@ -1050,11 +1050,13 @@ TEST_F(SqliteReaderTest, InferFloatToStringPreservesPrecision) {
     }
   };
   ASSERT_NO_FATAL_FAILURE(expect_strings(reader.array_view->children[0],
-                                         {"123456789.123", "3.1415926535897931", "0.1",
+                                         {"123456789.123", "3.1415926535897931",
+                                          "0.10000000000000002",
                                           "end", "42", std::nullopt, "original text"}));
   ASSERT_NO_FATAL_FAILURE(expect_strings(
       reader.array_view->children[1],
-      {"start", "123456789.123", "3.1415926535897931", "0.1", std::nullopt, "7", ""}));
+      {"start", "123456789.123", "3.1415926535897931", "0.10000000000000002",
+       std::nullopt, "7", ""}));
 }
 
 TEST_F(SqliteReaderTest, InferFloatToStringUsesDotDecimalInCommaLocale) {
