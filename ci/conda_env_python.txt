@@ -16,6 +16,7 @@
 # under the License.
 
 cython
+libpython
 # nodejs is required by pyright
 nodejs >=13.0.0
 pandas

@@ -838,6 +838,7 @@ test_unix_wheels() {
         adbc_*-cp${pyver/.}-cp${python/.}-${platform}*${arch}*.whl \
         adbc_*-py3-none-${platform}*${arch}*.whl
     ${ADBC_DIR}/ci/scripts/python_wheel_unix_test.sh ${ADBC_DIR}
+    unset PYTHON_GIL
   done
 }
 
@@ -887,7 +888,7 @@ test_wheels() {
 
 test_jars() {
   show_header "Testing Java jars"
-  maybe_setup_conda maven python || exit 1
+  maybe_setup_conda maven openjdk=17 python || exit 1
 
   local root_poms=()
   shopt -s nullglob
@@ -913,11 +914,25 @@ print(version.text)
   show_info "ADBC Java version: ${java_version}"
 
   local -r maven_repository="${ARROW_TMPDIR}/maven-repository"
-  local -r maven_repository_argument="-Dmaven.repo.local=${maven_repository}"
+  local -r maven_arguments=(
+    -B
+    -e
+    # Recheck missing artifacts instead of reusing cached resolution failures.
+    -U
+    "-Dmaven.repo.local=${maven_repository}"
+    # Retry transient download failures in Maven's native HTTP transport.
+    -Dmaven.resolver.transport=native
+    -Daether.connector.http.retryHandler.count=5
+    -Daether.connector.http.retryHandler.interval=5000
+    -Daether.connector.http.retryHandler.serviceUnavailable=429,500,502,503,504
+    # Maven 3.10+ uses Resolver 2, which renamed the HTTP transport properties.
+    -Daether.transport.http.retryHandler.count=5
+    -Daether.transport.http.retryHandler.interval=5000
+    -Daether.transport.http.retryHandler.serviceUnavailable=429,500,502,503,504
+  )
   mkdir -p "${maven_repository}"
 
-  mvn -B install:install-file \
-      "${maven_repository_argument}" \
+  mvn "${maven_arguments[@]}" install:install-file \
       "-Dfile=${root_pom}" \
       "-DpomFile=${root_pom}" \
       -Dpackaging=pom
@@ -944,16 +959,21 @@ print(version.text)
       fi
     done
 
-    mvn -B install:install-file \
-        "${maven_repository_argument}" \
+    mvn "${maven_arguments[@]}" install:install-file \
         "-Dfile=${jar_path}" \
         "-DpomFile=${pom_path}" \
         "-Dsources=${sources_path}" \
         "-Djavadoc=${javadoc_path}"
   done
 
-  mvn -B test \
-      "${maven_repository_argument}" \
+  local test_arguments=()
+  if [[ "$(uname)" == "Darwin" && "$(uname -m)" == "x86_64" ]]; then
+    show_info "Skipping testDriverJni: JNI binaries are not available for macOS/x86_64"
+    test_arguments+=('-Dtest=!VerifyReleaseCandidateTest#testDriverJni')
+  fi
+
+  mvn "${maven_arguments[@]}" test \
+      "${test_arguments[@]}" \
       "-Dadbc.version=${java_version}" \
       -f "${SOURCE_DIR}/verify/java/pom.xml"
 }
