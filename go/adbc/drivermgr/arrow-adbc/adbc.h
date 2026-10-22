@@ -380,6 +380,34 @@ struct ADBC_EXPORT AdbcErrorDetail {
   size_t value_length;
 };
 
+/// \brief The metadata component of structured error details.
+///
+/// Drivers may expose strongly-typed error details as a Parquet Variant using
+/// the existing AdbcErrorGetDetailCount and AdbcErrorGetDetail APIs.  The
+/// ADBC_ERROR_DETAILS_METADATA and ADBC_ERROR_DETAILS_VALUE keys must occur
+/// together, at most once each.  Their binary values contain, respectively,
+/// the metadata and value components of an unshredded Variant, as specified
+/// by https://github.com/apache/parquet-format/blob/master/VariantEncoding.md.
+/// The Variant must contain an object whose field names are the detail keys.
+/// Field names and their meanings are driver-defined unless standardized by
+/// ADBC.  Clients must ignore unrecognized fields.
+///
+/// The components have the same ownership and lifetime as other
+/// AdbcErrorDetail values.  Clients must not interpret a missing component or
+/// an invalid encoding as an empty object.  Drivers may also expose legacy
+/// detail keys; where information is duplicated, the values should agree.
+///
+/// This convention does not change the error detail API or deprecate other
+/// detail keys, and can be used with ADBC API revision 1.1.0.
+///
+/// \since ADBC API revision 1.2.0
+#define ADBC_ERROR_DETAILS_METADATA "adbc.error_details.metadata"
+
+/// \brief The value component of structured error details.
+/// \see ADBC_ERROR_DETAILS_METADATA
+/// \since ADBC API revision 1.2.0
+#define ADBC_ERROR_DETAILS_VALUE "adbc.error_details.value"
+
 /// \brief Get the vendor code for an error (since the vendor code field was
 ///   repurposed), or 0 if not available/not set.
 ///
@@ -1342,6 +1370,61 @@ AdbcStatusCode AdbcMultiResultSetNextPartitions(struct AdbcMultiResultSet* resul
 /// \param[in] user_data The user_data pointer.
 typedef void (*AdbcWarningHandler)(const struct AdbcError* warning, void* user_data);
 
+/// \brief Supply updated credentials after an authentication failure.
+///
+/// The driver may invoke this handler when an operation, including fetching
+/// an existing result stream, fails because credentials may have expired.
+/// The source error and its details are borrowed, read-only inputs, valid
+/// only for the duration of the call.  The handler must not release them.
+/// The driver must provide enough detail to identify the credential being
+/// requested and the accepted response fields and types.  This may include
+/// an audience, resource, or scope.  Drivers should use
+/// ADBC_ERROR_DETAILS_METADATA and ADBC_ERROR_DETAILS_VALUE for typed details
+/// and must document their request and response conventions.
+///
+/// The driver initializes schema and credentials to zero and error with
+/// ADBC_ERROR_INIT before calling the handler.  On success, the handler must
+/// populate schema and credentials with a valid Arrow C Data Interface
+/// record batch containing exactly one row.  Field names identify credential
+/// parameters; their types and nullability follow the driver's documented
+/// response convention.  Both outputs must have non-NULL release callbacks.
+/// The driver must validate the response before applying it, and must apply
+/// all returned credential parameters together.
+///
+/// Ownership of all populated outputs transfers to the driver on return,
+/// regardless of the status.  The driver must release each populated output
+/// exactly once, including on failure.  Outputs must remain valid independently
+/// of source_error and of the callback's stack frame.
+///
+/// The handler may block to acquire credentials.  It may be called from any
+/// thread, but the driver must serialize invocations for a given connection.
+/// Calls for different connections may occur concurrently.  The driver must
+/// not hold locks needed by the handler to inspect source_error.  The handler
+/// must not call other ADBC functions except to inspect source_error and its
+/// details; in particular, it must not set options on the connection or change
+/// the registered handler.  Exceptions must not escape across the C ABI.
+///
+/// \param[in] source_error The authentication failure and credential context.
+///   Must not be NULL.
+/// \param[out] schema The schema of the updated credential parameters.
+/// \param[out] credentials The updated credential parameters.
+/// \param[in] user_data The pointer supplied when registering the handler.
+/// \param[out] error Optional details of a credential acquisition failure.
+///   The pointer is non-NULL; populating it is optional.
+/// \return ADBC_STATUS_OK if credentials were acquired.  schema and credentials
+///   must be populated, and error must remain unset.
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if the handler declines the request.
+///   All outputs must remain unset; the driver reports the original failure.
+/// \return Any other error status if credential acquisition failed.  The driver
+///   must stop retrying and report this status, using error if populated or the
+///   original error otherwise.  ADBC_STATUS_CANCELLED means acquisition was
+///   cancelled, not that the handler declined the request.
+/// \since ADBC API revision 1.2.0
+typedef AdbcStatusCode (*AdbcCredentialHandler)(const struct AdbcError* source_error,
+                                               struct ArrowSchema* schema,
+                                               struct ArrowArray* credentials,
+                                               void* user_data, struct AdbcError* error);
+
 /// \defgroup adbc-driver Driver Initialization
 ///
 /// These functions are intended to help support integration between a
@@ -1532,6 +1615,10 @@ struct ADBC_EXPORT AdbcDriver {
 
   AdbcStatusCode (*StatementRequestSchema)(struct AdbcStatement*, struct ArrowSchema*,
                                            struct AdbcError*);
+
+  AdbcStatusCode (*ConnectionSetCredentialHandler)(struct AdbcConnection*,
+                                                   AdbcCredentialHandler, void*,
+                                                   struct AdbcError*);
 
   /// @}
 };
@@ -1974,6 +2061,43 @@ ADBC_EXPORT
 AdbcStatusCode AdbcConnectionSetWarningHandler(struct AdbcConnection* connection,
                                                AdbcWarningHandler handler,
                                                void* user_data, struct AdbcError* error);
+
+/// \brief Set a handler for acquiring updated credentials.
+///
+/// May be set before or after AdbcConnectionInit.  This is optional support
+/// for application-managed credentials; drivers may also refresh credentials
+/// themselves.  No handler is registered by default.
+///
+/// After a successful callback, the driver may retry the failed request only
+/// when doing so is safe.  It must not replay a potentially executed statement
+/// or duplicate or omit rows in a result stream.  It must not repeatedly invoke
+/// the handler if the replacement credentials are rejected: at most one
+/// callback and retry are permitted for a single failed request.  A later
+/// request may independently require another credential refresh.
+///
+/// Invalid callback output must fail the operation with
+/// ADBC_STATUS_INVALID_DATA rather than retrying with partial credentials.
+/// Without a handler, or when it declines, the original failure is reported.
+///
+/// Registration, replacement, and removal follow the normal connection
+/// concurrency rules.  On successful replacement or removal, no invocations
+/// of the previous handler remain in progress or may subsequently begin.
+/// Releasing the connection must also wait for all handler invocations to
+/// complete.  Failed registration leaves the previous handler unchanged.
+///
+/// \param[in] connection The connection.
+/// \param[in] handler The credential handler; NULL removes the handler.
+/// \param[in] user_data A pointer passed to the handler.  Must remain valid
+///   until the handler is successfully replaced or removed, or the connection
+///   is released.
+/// \param[out] error An optional location to return an error message.
+/// \return ADBC_STATUS_NOT_IMPLEMENTED if credential handlers are not supported.
+/// \since ADBC API revision 1.2.0
+ADBC_EXPORT
+AdbcStatusCode AdbcConnectionSetCredentialHandler(struct AdbcConnection* connection,
+                                                  AdbcCredentialHandler handler,
+                                                  void* user_data,
+                                                  struct AdbcError* error);
 
 /// \brief Cancel the in-progress operation on a connection.
 ///
