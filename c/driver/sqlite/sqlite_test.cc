@@ -1049,14 +1049,13 @@ TEST_F(SqliteReaderTest, InferFloatToStringPreservesPrecision) {
       EXPECT_EQ(std::string(value.data, value.size_bytes), expected[i].value());
     }
   };
-  ASSERT_NO_FATAL_FAILURE(expect_strings(reader.array_view->children[0],
-                                         {"123456789.123", "3.1415926535897931",
-                                          "0.10000000000000002",
-                                          "end", "42", std::nullopt, "original text"}));
-  ASSERT_NO_FATAL_FAILURE(expect_strings(
-      reader.array_view->children[1],
-      {"start", "123456789.123", "3.1415926535897931", "0.10000000000000002",
-       std::nullopt, "7", ""}));
+  ASSERT_NO_FATAL_FAILURE(
+      expect_strings(reader.array_view->children[0],
+                     {"123456789.123", "3.1415926535897931", "0.10000000000000002", "end",
+                      "42", std::nullopt, "original text"}));
+  ASSERT_NO_FATAL_FAILURE(expect_strings(reader.array_view->children[1],
+                                         {"start", "123456789.123", "3.1415926535897931",
+                                          "0.10000000000000002", std::nullopt, "7", ""}));
 }
 
 TEST_F(SqliteReaderTest, InferFloatToStringUsesDotDecimalInCommaLocale) {
