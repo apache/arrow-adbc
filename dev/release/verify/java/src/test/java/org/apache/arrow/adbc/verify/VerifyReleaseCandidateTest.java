@@ -85,6 +85,17 @@ class VerifyReleaseCandidateTest {
   @Test
   void testDriverJni() {
     var driver = new JniDriver(allocator);
+    if (OS.MAC.isCurrentOs() && "x86_64".equalsIgnoreCase(System.getProperty("os.arch"))) {
+      // JNI binaries are not available for macOS x86_64.
+      ExceptionInInitializerError exception =
+          assertThrows(
+              ExceptionInInitializerError.class, () -> driver.load().driver("nonexistent").open());
+      assertThat(exception)
+          .hasRootCauseInstanceOf(RuntimeException.class)
+          .hasRootCauseMessage("ADBC JNI driver not supported on architecture x86_64");
+      return;
+    }
+
     if (OS.WINDOWS.isCurrentOs() && "aarch64".equalsIgnoreCase(System.getProperty("os.arch"))) {
       // JNI binaries are not available for Windows ARM64.
       ExceptionInInitializerError exception =

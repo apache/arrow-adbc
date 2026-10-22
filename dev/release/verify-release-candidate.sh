@@ -966,14 +966,7 @@ print(version.text)
         "-Djavadoc=${javadoc_path}"
   done
 
-  local test_arguments=()
-  if [[ "$(uname)" == "Darwin" && "$(uname -m)" == "x86_64" ]]; then
-    show_info "Skipping testDriverJni: JNI binaries are not available for macOS/x86_64"
-    test_arguments+=('-Dtest=!VerifyReleaseCandidateTest#testDriverJni')
-  fi
-
   mvn "${maven_arguments[@]}" test \
-      "${test_arguments[@]}" \
       "-Dadbc.version=${java_version}" \
       -f "${SOURCE_DIR}/verify/java/pom.xml"
 }
