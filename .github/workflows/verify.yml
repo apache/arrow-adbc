@@ -134,6 +134,9 @@ jobs:
       - name: Verify
         if: runner.os != 'Windows'
         env:
+          # /tmp is too small on Ubuntu 26.04-based runners
+          # (https://github.com/actions/runner-images/issues/14777)
+          ARROW_TMPDIR: ${{ runner.temp }}/adbc-verify
           CI: "false"
           REPOSITORY: ${{ github.repository }}
           TEST_DEFAULT: "0"
@@ -214,6 +217,8 @@ jobs:
       - name: Verify
         if: matrix.os != 'windows-latest'
         env:
+          # /tmp is too small on Ubuntu 26.04-based runners (https://github.com/actions/runner-images/issues/14777)
+          ARROW_TMPDIR: ${{ runner.temp }}/adbc-verify
           CI: "false"
           REPOSITORY: ${{ github.repository }}
           TEST_DEFAULT: "0"

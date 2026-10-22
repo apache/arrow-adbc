@@ -180,6 +180,9 @@ jobs:
       - name: Verify
         if: matrix.os != 'windows-latest'
         env:
+          # /tmp is too small on Ubuntu 26.04-based runners
+          # (https://github.com/actions/runner-images/issues/14777)
+          ARROW_TMPDIR: ${{ runner.temp }}/adbc-verify
           CI: "false"
           REPOSITORY: ${{ github.repository }}
           # TODO(lidavidm): 3.14 -> 3.15 once conda packages are available
