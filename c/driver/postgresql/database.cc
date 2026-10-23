@@ -120,7 +120,7 @@ AdbcStatusCode PostgresDatabase::Init(struct AdbcError* error) {
 }
 
 AdbcStatusCode PostgresDatabase::Release(struct AdbcError* error) {
-  const int32_t open_connections = open_connections_.load(std::memory_order_relaxed);
+  const int32_t open_connections = open_connections_;
   if (open_connections != 0) {
     InternalAdbcSetError(error, "%s%" PRId32 "%s", "[libpq] Database released with ",
                          open_connections, " open connections");
@@ -195,14 +195,14 @@ AdbcStatusCode PostgresDatabase::Connect(PGconn** conn, struct AdbcError* error)
     *conn = nullptr;
     return ADBC_STATUS_IO;
   }
-  open_connections_.fetch_add(1, std::memory_order_relaxed);
+  open_connections_++;
   return ADBC_STATUS_OK;
 }
 
 AdbcStatusCode PostgresDatabase::Disconnect(PGconn** conn, struct AdbcError* error) {
   PQfinish(*conn);
   *conn = nullptr;
-  if (open_connections_.fetch_sub(1, std::memory_order_relaxed) <= 0) {
+  if (--open_connections_ < 0) {
     InternalAdbcSetError(error, "%s", "[libpq] Open connection count underflowed");
     return ADBC_STATUS_INTERNAL;
   }
