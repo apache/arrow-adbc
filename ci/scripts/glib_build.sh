@@ -63,6 +63,19 @@ build_subproject() {
     if [[ "${enable_vapi}" = "true" ]]; then
         "${build_dir}/glib/example/vala/sqlite"
     fi
+    if type luajit > /dev/null 2>&1; then
+        local gi_typelib_path="${build_dir}/glib/adbc-glib"
+        gi_typelib_path="${gi_typelib_path}:${build_dir}/glib/adbc-arrow-glib"
+        gi_typelib_path="${gi_typelib_path}:${install_dir}/lib/girepository-1.0"
+        if [[ -n "${CONDA_PREFIX}" ]]; then
+            gi_typelib_path="${gi_typelib_path}:${CONDA_PREFIX}/lib/girepository-1.0"
+        fi
+        if [[ -n "${GI_TYPELIB_PATH}" ]]; then
+            gi_typelib_path="${gi_typelib_path}:${GI_TYPELIB_PATH}"
+        fi
+        GI_TYPELIB_PATH="${gi_typelib_path}" \
+            luajit "${source_dir}/glib/example/lua/sqlite.lua"
+    fi
 }
 
 main() {

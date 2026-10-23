@@ -24,6 +24,7 @@ There are example codes in this directory.
 C example codes exist in this directory. Language bindings example
 codes exists in sub directories:
 
+  * `lua/`: Lua examples
   * `vala/`: Vala examples
 
 ## C example codes
