@@ -5,7 +5,6 @@ GEM
 
 PLATFORMS
   ruby
-  x86_64-linux-gnu
 
 DEPENDENCIES
   apt-dists-merge
