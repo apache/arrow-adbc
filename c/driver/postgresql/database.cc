@@ -120,9 +120,10 @@ AdbcStatusCode PostgresDatabase::Init(struct AdbcError* error) {
 }
 
 AdbcStatusCode PostgresDatabase::Release(struct AdbcError* error) {
-  if (open_connections_ != 0) {
+  const int32_t open_connections = open_connections_;
+  if (open_connections != 0) {
     InternalAdbcSetError(error, "%s%" PRId32 "%s", "[libpq] Database released with ",
-                         open_connections_, " open connections");
+                         open_connections, " open connections");
     return ADBC_STATUS_INVALID_STATE;
   }
   return ADBC_STATUS_OK;
