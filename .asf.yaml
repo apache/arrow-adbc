@@ -39,7 +39,6 @@ github:
     creation_cap:
       enabled: true
       max_open_pull_requests: 2
-      include_drafts: true
 
 notifications:
   commits:      commits@arrow.apache.org
