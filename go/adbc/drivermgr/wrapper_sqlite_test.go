@@ -399,6 +399,83 @@ func (dm *DriverMgrSuite) TestCommit() {
 	dm.ErrorContains(err, "No active transaction, cannot commit")
 }
 
+func (dm *DriverMgrSuite) TestGetSetOptions() {
+	opts := dm.conn.(adbc.GetSetOptions)
+	value, err := opts.GetOption(adbc.OptionKeyAutoCommit)
+	dm.Require().NoError(err)
+	dm.Equal(adbc.OptionValueEnabled, value)
+
+	dm.Require().NoError(opts.SetOption(adbc.OptionKeyAutoCommit, adbc.OptionValueDisabled))
+	value, err = opts.GetOption(adbc.OptionKeyAutoCommit)
+	dm.Require().NoError(err)
+	dm.Equal(adbc.OptionValueDisabled, value)
+
+	_, err = opts.GetOption("unknown.option")
+	var adbcErr adbc.Error
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusNotFound, adbcErr.Code)
+
+	_, err = opts.GetOptionBytes("unknown.option")
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusNotFound, adbcErr.Code)
+	_, err = opts.GetOptionInt("unknown.option")
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusNotFound, adbcErr.Code)
+
+	_, err = opts.GetOptionDouble("unknown.option")
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusNotFound, adbcErr.Code)
+
+	err = opts.SetOptionBytes("unknown.option", []byte{1, 2})
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusNotImplemented, adbcErr.Code)
+
+	err = opts.SetOptionDouble("unknown.option", 1.5)
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusNotImplemented, adbcErr.Code)
+
+	stmt, err := dm.conn.NewStatement()
+	dm.Require().NoError(err)
+	defer validation.CheckedClose(dm.T(), stmt)
+	stmtOpts := stmt.(adbc.GetSetOptions)
+	dm.Require().NoError(stmtOpts.SetOptionInt("adbc.sqlite.query.batch_rows", 42))
+	count, err := stmtOpts.GetOptionInt("adbc.sqlite.query.batch_rows")
+	dm.Require().NoError(err)
+	dm.Equal(int64(42), count)
+}
+
+func TestGetOptionLongValue(t *testing.T) {
+	uri := "file:" + strings.Repeat("a", 150) + "?mode=memory"
+	db, err := (drivermgr.Driver{}).NewDatabase(map[string]string{
+		"driver": "adbc_driver_sqlite",
+		"uri":    uri,
+	})
+	require.NoError(t, err)
+	defer validation.CheckedClose(t, db)
+
+	value, err := db.(adbc.GetSetOptions).GetOption("uri")
+	require.NoError(t, err)
+	assert.Equal(t, uri, value)
+	count, err := db.(adbc.GetSetOptions).GetOptionInt("adbc.sqlite.query.batch_rows")
+	require.NoError(t, err)
+	assert.Equal(t, int64(1024), count)
+}
+
+func TestDatabaseOptionsBeforeInitialization(t *testing.T) {
+	db := &drivermgr.Database{}
+	require.NoError(t, db.SetOptions(map[string]string{"example": "value"}))
+	defer validation.CheckedClose(t, db)
+
+	got, err := db.GetOption("example")
+	require.NoError(t, err)
+	assert.Equal(t, "value", got)
+
+	_, err = db.GetOption("missing")
+	var adbcErr adbc.Error
+	require.ErrorAs(t, err, &adbcErr)
+	assert.Equal(t, adbc.StatusNotFound, adbcErr.Code)
+}
+
 func (dm *DriverMgrSuite) TestCommitAutocommitDisabled() {
 	cnxnopt, ok := dm.conn.(adbc.PostInitOptions)
 	dm.True(ok)

@@ -19,4 +19,8 @@
 //
 // This provides an implementation of the ADBC interfaces which
 // uses CGO to wrap a shared object implementation of adbc.h
+//
+// Databases, connections, and statements implement adbc.GetSetOptions.
+// Option getters delegate to the loaded driver through the C driver manager;
+// unsupported options return the driver's ADBC status.
 package drivermgr
