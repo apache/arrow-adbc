@@ -168,6 +168,7 @@ update_versions() {
     package.json
   rm package.json.bak
   npx --yes napi version
+  npm run fix # napi doesn't add trailing newlines, so reformat now
   sed -i.bak -E "s/^version = \".+\"/version = \"${js_version}\"/" Cargo.toml
   rm Cargo.toml.bak
   npm i --package-lock-only
