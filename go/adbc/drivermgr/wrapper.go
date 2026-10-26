@@ -53,6 +53,7 @@ import (
 	"context"
 	"strconv"
 	"sync"
+	"sync/atomic"
 	"unsafe"
 
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -193,6 +194,17 @@ func toAdbcError(code adbc.Status, e *C.struct_AdbcError) error {
 	}
 	C.releaseErr(e)
 	return err
+}
+
+func contextAdbcError(ctx context.Context) error {
+	switch ctx.Err() {
+	case context.Canceled:
+		return adbc.Error{Code: adbc.StatusCancelled, Msg: context.Canceled.Error()}
+	case context.DeadlineExceeded:
+		return adbc.Error{Code: adbc.StatusTimeout, Msg: context.DeadlineExceeded.Error()}
+	default:
+		return nil
+	}
 }
 
 func (d *Database) SetOptions(options map[string]string) error {
@@ -453,14 +465,109 @@ func (c *cnxn) SetOption(key, value string) error {
 
 type stmt struct {
 	st *C.struct_AdbcStatement
+
+	mu     sync.Mutex // serializes cancellation and release
+	closed bool
+}
+
+var _ adbc.StatementExecuteSchema = (*stmt)(nil)
+
+// cancelStatement is a variable so tests can observe the real C cancellation call.
+var cancelStatement = func(s *stmt) {
+	var err C.struct_AdbcError
+	C.AdbcStatementCancel(s.st, &err)
+	C.releaseErr(&err) // Cancellation is best-effort, including NOT_IMPLEMENTED.
+}
+
+func (s *stmt) watchCancellation(ctx context.Context) func() {
+	if ctx.Done() == nil {
+		return nil
+	}
+
+	done := make(chan struct{})
+	stop := context.AfterFunc(ctx, func() {
+		s.mu.Lock()
+		if !s.closed {
+			cancelStatement(s)
+		}
+		s.mu.Unlock()
+		close(done)
+	})
+	return func() {
+		// AfterFunc's stop does not wait for an already-started callback.
+		if !stop() {
+			<-done
+		}
+	}
 }
 
 func (s *stmt) Close() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed {
+		return nil
+	}
+
 	var err C.struct_AdbcError
+	s.closed = true // The driver manager invalidates the statement even if release fails.
 	if code := adbc.Status(C.AdbcStatementRelease(s.st, &err)); code != adbc.StatusOK {
 		return toAdbcError(code, &err)
 	}
 	return nil
+}
+
+type cancellationReader struct {
+	array.RecordReader
+	ctx      context.Context
+	stop     func()
+	stopOnce sync.Once
+	refs     atomic.Int64
+	err      error
+}
+
+func (r *cancellationReader) stopWatching() {
+	r.stopOnce.Do(r.stop)
+}
+
+func (r *cancellationReader) Retain() {
+	r.RecordReader.Retain()
+	r.refs.Add(1)
+}
+
+func (r *cancellationReader) Release() {
+	if r.refs.Add(-1) == 0 {
+		r.stopWatching()
+	}
+	r.RecordReader.Release()
+}
+
+func (r *cancellationReader) Next() bool {
+	if err := contextAdbcError(r.ctx); err != nil {
+		r.err = err
+		// Leave the watcher armed until Release: it must still cancel the
+		// statement if the callback has not started yet.
+		return false
+	}
+
+	ok := r.RecordReader.Next()
+	if err := contextAdbcError(r.ctx); err != nil {
+		r.err = err
+		if !ok {
+			r.stopWatching()
+		}
+		return false
+	}
+	if !ok {
+		r.stopWatching()
+	}
+	return ok
+}
+
+func (r *cancellationReader) Err() error {
+	if r.err != nil {
+		return r.err
+	}
+	return r.RecordReader.Err()
 }
 
 func (s *stmt) SetOption(key, val string) error {
@@ -486,33 +593,135 @@ func (s *stmt) SetSqlQuery(query string) error {
 	return nil
 }
 
-func (s *stmt) ExecuteQuery(context.Context) (array.RecordReader, int64, error) {
+// ExecuteQuery keeps the execution context active until the reader is released
+// or exhausted, since drivers may block while fetching from the result stream.
+func (s *stmt) ExecuteQuery(ctx context.Context) (array.RecordReader, int64, error) {
+	if err := contextAdbcError(ctx); err != nil {
+		return nil, 0, err
+	}
+
 	var (
 		out      C.struct_ArrowArrayStream
 		affected C.int64_t
 		err      C.struct_AdbcError
 	)
+	stop := s.watchCancellation(ctx)
+	if ctxErr := contextAdbcError(ctx); ctxErr != nil {
+		if stop != nil {
+			stop()
+		}
+		return nil, 0, ctxErr
+	}
 	code := adbc.Status(C.AdbcStatementExecuteQuery(s.st, &out, &affected, &err))
 	if code != adbc.StatusOK {
-		return nil, 0, toAdbcError(code, &err)
+		if stop != nil {
+			stop()
+		}
+		if out.release != nil {
+			cdata.ReleaseCArrowArrayStream((*cdata.CArrowArrayStream)(unsafe.Pointer(&out)))
+		}
+		callErr := toAdbcError(code, &err)
+		if ctxErr := contextAdbcError(ctx); ctxErr != nil {
+			return nil, 0, ctxErr
+		}
+		return nil, 0, callErr
 	}
 
 	rdr, goerr := getRdr(&out)
 	if goerr != nil {
+		if stop != nil {
+			stop()
+		}
+		if ctxErr := contextAdbcError(ctx); ctxErr != nil {
+			return nil, 0, ctxErr
+		}
 		return nil, int64(affected), goerr
 	}
-	return rdr, int64(affected), nil
+	if ctxErr := contextAdbcError(ctx); ctxErr != nil {
+		if stop != nil {
+			stop()
+		}
+		rdr.Release()
+		return nil, 0, ctxErr
+	}
+	if stop == nil {
+		return rdr, int64(affected), nil
+	}
+	wrapped := &cancellationReader{RecordReader: rdr, ctx: ctx, stop: stop}
+	wrapped.refs.Store(1)
+	return wrapped, int64(affected), nil
 }
 
-func (s *stmt) ExecuteUpdate(context.Context) (int64, error) {
+func (s *stmt) ExecuteUpdate(ctx context.Context) (int64, error) {
+	if err := contextAdbcError(ctx); err != nil {
+		return -1, err
+	}
+
 	var (
 		nrows C.int64_t
 		err   C.struct_AdbcError
 	)
-	if code := adbc.Status(C.AdbcStatementExecuteQuery(s.st, nil, &nrows, &err)); code != adbc.StatusOK {
-		return -1, toAdbcError(code, &err)
+	stop := s.watchCancellation(ctx)
+	if ctxErr := contextAdbcError(ctx); ctxErr != nil {
+		if stop != nil {
+			stop()
+		}
+		return -1, ctxErr
+	}
+	code := adbc.Status(C.AdbcStatementExecuteQuery(s.st, nil, &nrows, &err))
+	if stop != nil {
+		stop()
+	}
+	if code != adbc.StatusOK {
+		callErr := toAdbcError(code, &err)
+		if ctxErr := contextAdbcError(ctx); ctxErr != nil {
+			return -1, ctxErr
+		}
+		return -1, callErr
+	}
+	if err := contextAdbcError(ctx); err != nil {
+		return -1, err
 	}
 	return int64(nrows), nil
+}
+
+func (s *stmt) ExecuteSchema(ctx context.Context) (*arrow.Schema, error) {
+	if err := contextAdbcError(ctx); err != nil {
+		return nil, err
+	}
+
+	var (
+		schema C.struct_ArrowSchema
+		err    C.struct_AdbcError
+	)
+	stop := s.watchCancellation(ctx)
+	if ctxErr := contextAdbcError(ctx); ctxErr != nil {
+		if stop != nil {
+			stop()
+		}
+		return nil, ctxErr
+	}
+	code := adbc.Status(C.AdbcStatementExecuteSchema(s.st, &schema, &err))
+	if stop != nil {
+		stop()
+	}
+	if code != adbc.StatusOK {
+		if schema.release != nil {
+			cdata.ReleaseCArrowSchema((*cdata.CArrowSchema)(unsafe.Pointer(&schema)))
+		}
+		callErr := toAdbcError(code, &err)
+		if ctxErr := contextAdbcError(ctx); ctxErr != nil {
+			return nil, ctxErr
+		}
+		return nil, callErr
+	}
+	if ctxErr := contextAdbcError(ctx); ctxErr != nil {
+		if schema.release != nil {
+			cdata.ReleaseCArrowSchema((*cdata.CArrowSchema)(unsafe.Pointer(&schema)))
+		}
+		return nil, ctxErr
+	}
+	return getSchema(&schema)
 }
 
 func (s *stmt) Prepare(context.Context) error {

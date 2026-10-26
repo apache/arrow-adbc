@@ -24,6 +24,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
 	"github.com/apache/arrow-adbc/go/adbc/drivermgr"
@@ -441,6 +442,75 @@ func (dm *DriverMgrSuite) TestSqlExecute() {
 	dm.True(rdr.Next())
 	dm.Truef(array.RecordEqual(expRec, rdr.RecordBatch()), "expected: %s\ngot: %s", expRec, rdr.RecordBatch())
 	dm.False(rdr.Next())
+}
+
+func (dm *DriverMgrSuite) TestSqlExecuteSchemaNotImplemented() {
+	st, err := dm.conn.NewStatement()
+	dm.Require().NoError(err)
+	defer validation.CheckedClose(dm.T(), st)
+	dm.Require().NoError(st.SetSqlQuery("SELECT 1"))
+
+	executor, ok := st.(adbc.StatementExecuteSchema)
+	dm.Require().True(ok)
+	schema, err := executor.ExecuteSchema(dm.ctx)
+	dm.Nil(schema)
+	var adbcErr adbc.Error
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusNotImplemented, adbcErr.Code)
+}
+
+func (dm *DriverMgrSuite) TestSqlExecutePrecancelled() {
+	st, err := dm.conn.NewStatement()
+	dm.Require().NoError(err)
+	defer validation.CheckedClose(dm.T(), st)
+	dm.Require().NoError(st.SetSqlQuery("SELECT 1"))
+
+	ctx, cancel := context.WithCancel(dm.ctx)
+	cancel()
+
+	rdr, _, err := st.ExecuteQuery(ctx)
+	dm.Nil(rdr)
+	var adbcErr adbc.Error
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusCancelled, adbcErr.Code)
+
+	_, err = st.ExecuteUpdate(ctx)
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusCancelled, adbcErr.Code)
+
+	executor, ok := st.(adbc.StatementExecuteSchema)
+	dm.Require().True(ok)
+	schema, err := executor.ExecuteSchema(ctx)
+	dm.Nil(schema)
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusCancelled, adbcErr.Code)
+}
+
+func (dm *DriverMgrSuite) TestSqlExecuteExpiredDeadline() {
+	st, err := dm.conn.NewStatement()
+	dm.Require().NoError(err)
+	defer validation.CheckedClose(dm.T(), st)
+	dm.Require().NoError(st.SetSqlQuery("SELECT 1"))
+
+	ctx, cancel := context.WithDeadline(dm.ctx, time.Now().Add(-time.Second))
+	defer cancel()
+
+	rdr, _, err := st.ExecuteQuery(ctx)
+	dm.Nil(rdr)
+	var adbcErr adbc.Error
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusTimeout, adbcErr.Code)
+
+	_, err = st.ExecuteUpdate(ctx)
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusTimeout, adbcErr.Code)
+
+	executor, ok := st.(adbc.StatementExecuteSchema)
+	dm.Require().True(ok)
+	schema, err := executor.ExecuteSchema(ctx)
+	dm.Nil(schema)
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusTimeout, adbcErr.Code)
 }
 
 func (dm *DriverMgrSuite) TestSqlExecuteInvalid() {

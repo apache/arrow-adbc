@@ -19,4 +19,9 @@
 //
 // This provides an implementation of the ADBC interfaces which
 // uses CGO to wrap a shared object implementation of adbc.h
+//
+// A query's execution context remains active while its result reader is
+// consumed; release or exhaust the reader to stop watching for cancellation.
+// Cancellation is best-effort and depends on support in the loaded driver.
+// Release a reader before closing the statement that produced it.
 package drivermgr
