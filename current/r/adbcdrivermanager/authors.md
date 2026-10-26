@@ -15,10 +15,13 @@ Source:
 [`DESCRIPTION`](https://github.com/apache/arrow-adbc/blob/main/r/adbcdrivermanager/DESCRIPTION)
 
 Dunnington D, Apache Arrow (2026). *adbcdrivermanager: 'Arrow' Database
-Connectivity ('ADBC') Driver Manager*. R package version 0.24.0,
+Connectivity ('ADBC') Driver Manager*. R package version 0.25.0,
 <https://arrow.apache.org/adbc/current/r/adbcdrivermanager/>.
 
-@Manual{, title = {adbcdrivermanager: 'Arrow' Database Connectivity
-('ADBC') Driver Manager}, author = {Dewey Dunnington and {Apache
-Arrow}}, year = {2026}, note = {R package version 0.24.0}, url =
-{https://arrow.apache.org/adbc/current/r/adbcdrivermanager/}, }
+@Manual{,\
+  title = {adbcdrivermanager: 'Arrow' Database Connectivity ('ADBC') Driver Manager},\
+  author = {Dewey Dunnington and {Apache Arrow}},\
+  year = {2026},\
+  note = {R package version 0.25.0},\
+  url = {https://arrow.apache.org/adbc/current/r/adbcdrivermanager/},\
+}

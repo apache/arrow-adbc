@@ -23,10 +23,18 @@ Nightly builds of some binary packages are available.
 
 .. warning:: These packages are not official releases. These packages
              are not intended for normal usage, only for project
-             developers.
+             developers. **Use at your own risk!**
 
 .. warning:: Artifacts are regularly deleted and there is no guarantee that
-             any specific build will remain accessible.
+             any specific build or artifact will remain accessible.
+
+.. warning:: Nightly artifacts are provided on a best-effort basis. They are
+             NOT official releases, and are not synced with releases in any
+             way. Release artifacts are NEVER provided through Gemfury. If
+             there is a problem with the availability of nightly artifacts,
+             please feel free to `file an issue
+             <https://github.com/apache/arrow-adbc/issues>`_, but we cannot
+             guarantee any timely response.
 
 C/C++
 =====

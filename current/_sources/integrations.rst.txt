@@ -23,6 +23,28 @@ ADBC works alongside many popular data tools and frameworks. This page describes
 
 ----
 
+adbcBridge
+==========
+
+`adbcBridge <https://adbcbridge.org>`_ is an ADBC driver, written in C, that loads an ODBC driver and exposes it through the ADBC API. It provides an ADBC path to databases that have an ODBC driver but no native ADBC one. It reads with ODBC block cursors and converts column-wise into Arrow record batches, and supports bulk ingest, partitioned reads, and catalog metadata.
+
+.. code-block:: python
+
+   import adbc_driver_manager.dbapi as dbapi
+
+   # adbcBridge must be installed first (its install.sh registers the driver
+   # manifest); "SQLite3" here is any ODBC driver registered on the system.
+   with dbapi.connect(
+       driver="odbc",
+       db_kwargs={"uri": "Driver=SQLite3;Database=my.db;"},
+   ) as conn, conn.cursor() as cur:
+       cur.execute("SELECT 42 AS answer")
+       print(cur.fetch_arrow_table())
+
+See the `adbcBridge documentation <https://adbcbridge.org>`_ for the tested databases and usage details.
+
+----
+
 Apache DataFusion
 =================
 
@@ -59,7 +81,7 @@ DuckDB
 `DuckDB <https://duckdb.org>`_ integrates with ADBC in two ways:
 
 1. **DuckDB itself is an ADBC driver** — DuckDB (technically libduckdb) exposes an ADBC interface so you can connect to a DuckDB database from any ADBC client library. See :doc:`driver/duckdb` for details on using DuckDB as an ADBC driver.
-2. **DuckDB extensions** — Two DuckDB community extensions, `adbc <https://duckdb.org/community_extensions/extensions/adbc.html>`_ and `adbc_scanner <https://duckdb.org/community_extensions/extensions/adbc_scanner>`_, let you query *other* databases from DuckDB using ADBC drivers.
+2. **DuckDB extensions** — Two DuckDB community extensions, `adbc <https://duckdb.org/community_extensions/extensions/adbc.html>`_ and `adbc_scanner <https://query.farm/products/extensions/adbc_scanner/>`_, let you query *other* databases from DuckDB using ADBC drivers.
 
 ----
 
@@ -197,4 +219,4 @@ See the `activerecord-adbc-adapter documentation <https://www.rubydoc.info/gems/
 Add Your Own Here
 =================
 
-Know of an integratoin or tool not listed here? Contributions to this page are welcome via pull requests on `GitHub <https://github.com/apache/arrow-adbc>`_.
+Know of an integration or tool not listed here? Contributions to this page are welcome via pull requests on `GitHub <https://github.com/apache/arrow-adbc>`_.

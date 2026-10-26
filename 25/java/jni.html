@@ -1,0 +1,567 @@
+
+
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../">
+  <head><meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta property="og:title" content="JNI Driver Manager" />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://arrow.apache.org/adbc/25/java/jni.html" />
+<meta property="og:site_name" content="ADBC" />
+<meta property="og:description" content="The JNI driver manager wraps the C/C++ driver manager, making it possible to use drivers written in C/C++, Go, Rust, and more from Java. As the name implies, this requires JNI. Installation: To inc..." />
+<meta property="og:image" content="https://arrow.apache.org/adbc/25/_static/banner.png" />
+<meta property="og:image:alt" content="ADBC" />
+<meta name="description" content="The JNI driver manager wraps the C/C++ driver manager, making it possible to use drivers written in C/C++, Go, Rust, and more from Java. As the name implies, this requires JNI. Installation: To inc..." />
+<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Java API Reference" href="api/index.html"><link rel="prev" title="Driver Manager" href="driver_manager.html">
+
+    <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
+        <title>JNI Driver Manager - ADBC 25 Documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=9e8d8061" />
+    <link rel="stylesheet" type="text/css" href="../_static/fontawesome/css/all.min.css?v=3bd1cf1d" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f2f2f2;
+  --color-code-foreground: #1e1e1e;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style><link rel="icon" href="../_static/favicon.ico" sizes="32x32">
+<link rel="icon" href="../_static/favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="../_static/apple-touch-icon.png">
+<script>
+  const currentVersion = "25";
+  const versionsRoot = "../..";
+</script>
+<style>
+  #version-switcher {
+    background: var(--color-background-primary);
+    bottom: 2em;
+    box-shadow: 0 .1rem .25rem var(--sd-color-shadow),0 0 .0625rem rgba(0,0,0,.1);
+    position: fixed;
+    right: 2em;
+    z-index: 9999;
+  }
+
+  #version-switcher button {
+    background-color: var(--sd-color-card-header);
+    border: 0;
+    color: var(--sd-color-card-text);
+    cursor: pointer;
+    font-family: var(--font-stack);
+    padding: 0.5em;
+    width: 100%;
+  }
+
+  #version-switcher button::after {
+    content: "▼";
+  }
+
+  #version-switcher.open button::after {
+    content: "▲";
+  }
+
+  #version-switcher div.versions {
+    height: 0;
+    overflow-y: hidden;
+    padding: 0 0.5em;
+    transition: all 0.2s ease-in;
+  }
+
+  #version-switcher.open div.versions {
+    height: 8em;
+    overflow-y: scroll;
+  }
+
+  #version-switcher .active {
+    font-weight: bold;
+  }
+</style>
+
+<!-- Matomo -->
+<script>
+  var _paq = window._paq = window._paq || [];
+  /* tracker methods like "setCustomDimension" should be called before "trackPageView" */
+  /* We explicitly disable cookie tracking to avoid privacy issues */
+  _paq.push(['disableCookies']);
+  _paq.push(['trackPageView']);
+  _paq.push(['enableLinkTracking']);
+  (function() {
+    var u="https://analytics.apache.org/";
+    _paq.push(['setTrackerUrl', u+'matomo.php']);
+    _paq.push(['setSiteId', '20']);
+    var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
+    g.async=true; g.src=u+'matomo.js'; s.parentNode.insertBefore(g,s);
+  })();
+</script>
+<!-- End Matomo Code -->
+</head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+<nav id="version-switcher">
+  <button type="button" onclick="document.getElementById('version-switcher').classList.toggle('open')">Version: 25</button>
+  <div class="versions">
+    <ul></ul>
+  </div>
+</nav>
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
+<label class="overlay sidebar-overlay" for="__navigation"></label>
+<label class="overlay toc-overlay" for="__toc"></label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../index.html"><div class="brand">ADBC 25 Documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
+  <div class="sidebar-logo-container">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 332.152 132.791" fill="currentColor" fill-rule="evenodd" role="img" aria-label="ADBC logo: three square rings stacked one above another, beside the words APACHE ARROW above ADBC">
+  <path d="M10,31.754L20,37.528L55,17.321L90,37.528L100,31.754L55,5.774Z"/>
+  <path d="M20,66.395L30,60.622L45,69.282L35,75.056L45,80.829L55,75.056L65,80.829L75,75.056L65,69.282L80,60.622L90,66.395L100,60.622L90,54.848L110,43.301L110,31.754L55,63.509L0,31.754L0,43.301L20,54.848L10,60.622Z"/>
+  <path d="M45,51.962L55,46.188L65,51.962L75,46.188L55,34.641L35,46.188Z"/>
+  <path d="M90,95.263L100,89.489L90,83.716L110,72.169L110,60.622L55,92.376L0,60.622L0,72.169L20,83.716L10,89.489L20,95.263L30,89.489L55,103.923L80,89.489Z"/>
+  <path d="M55,121.244L0,89.489L0,101.036L55,132.791L110,101.036L110,89.489Z"/>
+  <path d="M306.602 34.324Q306.06 36.042 305.042 37.245Q304.025 38.448 302.604 39.082Q301.183 39.717 299.425 39.717Q297.72 39.717 296.299 39.082Q294.878 38.448 293.84 37.245Q292.803 36.042 292.234 34.324Q291.666 32.605 291.666 30.438V29.222Q291.666 27.054 292.228 25.342Q292.79 23.631 293.82 22.421Q294.851 21.212 296.272 20.577Q297.693 19.943 299.398 19.943Q301.156 19.943 302.577 20.577Q303.998 21.212 305.023 22.421Q306.047 23.631 306.595 25.342Q307.144 27.054 307.144 29.222V30.438Q307.144 32.605 306.602 34.324ZM282.017 20.207Q284.185 20.207 285.685 20.868Q287.185 21.529 287.972 22.818Q288.758 24.106 288.758 25.983Q288.758 27.305 288.223 28.396Q287.687 29.486 286.69 30.246Q285.989 30.78 285.096 31.121L289.617 39.294V39.452H286.894L282.712 31.654H278.197V39.452H275.646V20.207H282.017ZM265.336 20.207Q267.504 20.207 269.004 20.868Q270.504 21.529 271.291 22.818Q272.077 24.106 272.077 25.983Q272.077 27.305 271.542 28.396Q271.007 29.486 270.009 30.246Q269.308 30.78 268.416 31.121L272.936 39.294V39.452H270.214L266.031 31.654H261.516V39.452H258.965V20.207H265.336ZM152.06 31.905V39.452H149.509V20.207H156.607Q158.788 20.207 160.295 20.961Q161.802 21.714 162.582 23.042Q163.362 24.371 163.362 26.076Q163.362 27.926 162.582 29.235Q161.802 30.544 160.295 31.224Q158.788 31.905 156.607 31.905H152.06ZM315.101 33.372 315.483 35.921 316.013 33.636 319.833 20.207H321.961L325.675 33.636L326.218 35.978L326.627 33.359L329.601 20.207H332.152L327.499 39.452H325.186L321.221 25.428L320.915 23.955L320.613 25.428L316.502 39.452H314.189L309.523 20.207H312.061L315.101 33.372ZM248.47 20.207H249.026L256.388 39.452H253.771L251.938 34.416H243.889L242.06 39.452H239.456L246.792 20.207H248.47ZM139.014 20.207H139.57L146.932 39.452H144.315L142.482 34.416H134.433L132.604 39.452H130L137.336 20.207H139.014ZM171.927 20.207H172.482L179.844 39.452H177.227L175.394 34.416H167.345L165.516 39.452H162.912L170.248 20.207H171.927ZM304.619 29.195Q304.619 27.477 304.269 26.155Q303.919 24.833 303.245 23.935Q302.571 23.036 301.599 22.573Q300.628 22.111 299.398 22.111Q298.209 22.111 297.25 22.573Q296.292 23.036 295.611 23.935Q294.931 24.833 294.561 26.155Q294.191 27.477 294.191 29.195V30.438Q294.191 32.169 294.561 33.498Q294.931 34.826 295.625 35.731Q296.319 36.637 297.277 37.1Q298.235 37.562 299.425 37.562Q300.667 37.562 301.632 37.1Q302.597 36.637 303.265 35.731Q303.932 34.826 304.276 33.498Q304.619 32.169 304.619 30.438V29.195ZM202.446 28.482H212.148V20.207H214.686V39.452H212.148V30.557H202.446V39.452H199.895V20.207H202.446V28.482ZM221.757 20.207H231.301V22.296H221.757V28.482H230.085V30.557H221.757V37.377H231.433V39.452H219.206V20.207H221.757ZM196.432 33.332Q196.234 35.157 195.388 36.597Q194.542 38.038 192.996 38.877Q191.449 39.717 189.136 39.717Q187.444 39.717 186.063 39.082Q184.682 38.448 183.69 37.278Q182.699 36.108 182.164 34.463Q181.628 32.817 181.628 30.795V28.878Q181.628 26.856 182.164 25.21Q182.699 23.565 183.71 22.388Q184.721 21.212 186.149 20.577Q187.576 19.943 189.361 19.943Q191.542 19.943 193.049 20.762Q194.555 21.582 195.395 23.029Q196.234 24.477 196.432 26.38H193.894Q193.709 25.032 193.207 24.06Q192.705 23.089 191.78 22.56Q190.854 22.031 189.361 22.031Q188.079 22.031 187.107 22.52Q186.136 23.009 185.481 23.908Q184.827 24.807 184.497 26.063Q184.166 27.318 184.166 28.852V30.795Q184.166 32.209 184.464 33.451Q184.761 34.694 185.369 35.632Q185.977 36.571 186.916 37.106Q187.854 37.641 189.136 37.641Q190.762 37.641 191.727 37.126Q192.692 36.61 193.187 35.646Q193.683 34.681 193.894 33.332H196.432ZM152.06 29.83H156.607Q158.101 29.83 159.026 29.354Q159.951 28.878 160.381 28.032Q160.811 27.186 160.811 26.102Q160.811 25.111 160.381 24.239Q159.951 23.366 159.026 22.831Q158.101 22.296 156.607 22.296H152.06V29.83ZM278.197 29.579H282.096Q283.471 29.579 284.383 29.096Q285.295 28.614 285.758 27.794Q286.22 26.975 286.22 25.983Q286.22 24.873 285.784 24.04Q285.348 23.208 284.416 22.752Q283.484 22.296 282.017 22.296H278.197V29.579ZM261.516 29.579H265.416Q266.79 29.579 267.702 29.096Q268.614 28.614 269.077 27.794Q269.54 26.975 269.54 25.983Q269.54 24.873 269.103 24.04Q268.667 23.208 267.735 22.752Q266.803 22.296 265.336 22.296H261.516V29.579ZM135.192 32.328H141.722L138.453 23.348L135.192 32.328ZM168.104 32.328H174.634L171.365 23.348L168.104 32.328ZM244.648 32.328H251.178L247.909 23.348L244.648 32.328Z"/>
+  <path d="M188.131 49.102Q188.131 48.69 188.42 48.401Q188.708 48.113 189.121 48.113H209.74Q215.926 48.113 220.586 50.298Q225.246 52.484 227.803 56.443Q230.36 60.402 230.36 65.598V88.362Q230.36 93.558 227.803 97.517Q225.246 101.476 220.586 103.662Q215.926 105.848 209.74 105.848H189.121Q188.708 105.848 188.42 105.559Q188.131 105.27 188.131 104.858V49.102ZM281.167 89.682Q281.167 97.682 275.723 101.765Q270.28 105.848 261.454 105.848H240.092Q239.68 105.848 239.391 105.559Q239.103 105.27 239.103 104.858V49.102Q239.103 48.69 239.391 48.401Q239.68 48.113 240.092 48.113H260.795Q280.342 48.113 280.342 63.948Q280.342 72.196 273.331 75.743Q273.084 75.867 273.084 75.99Q273.084 76.114 273.331 76.238Q281.167 80.279 281.167 89.682ZM165.944 96.94Q165.779 96.61 165.532 96.61H145.242Q144.995 96.61 144.83 96.94L142.438 105.023Q142.19 105.848 141.366 105.848H130.891Q130.396 105.848 130.148 105.559Q129.901 105.27 130.066 104.693L147.881 48.937Q148.129 48.113 148.954 48.113H161.903Q162.728 48.113 162.975 48.937L180.79 104.693Q180.873 104.858 180.873 105.105Q180.873 105.848 179.966 105.848H169.491Q168.666 105.848 168.419 105.023L165.944 96.94ZM289.002 67.413Q289.002 61.474 291.642 56.938Q294.281 52.401 299.147 49.927Q304.013 47.453 310.447 47.453Q316.798 47.453 321.623 49.803Q326.448 52.154 329.128 56.484Q331.809 60.814 331.809 66.505Q331.809 67.248 330.819 67.413L321.169 67.99H321.004Q320.179 67.99 320.179 67.083Q320.179 62.711 317.499 60.072Q314.818 57.433 310.447 57.433Q305.993 57.433 303.312 60.072Q300.632 62.711 300.632 67.083V86.96Q300.632 91.249 303.312 93.888Q305.993 96.527 310.447 96.527Q314.818 96.527 317.499 93.888Q320.179 91.249 320.179 86.96Q320.179 86.053 321.169 86.053L330.819 86.465Q331.231 86.465 331.52 86.713Q331.809 86.96 331.809 87.29Q331.809 92.981 329.128 97.352Q326.448 101.724 321.623 104.115Q316.798 106.507 310.447 106.507Q304.013 106.507 299.147 103.992Q294.281 101.476 291.642 96.94Q289.002 92.404 289.002 86.465V67.413ZM210.153 95.868Q213.947 95.868 216.297 93.311Q218.648 90.754 218.73 86.465V67.495Q218.73 63.206 216.38 60.649Q214.029 58.092 210.07 58.092H200.173Q199.76 58.092 199.76 58.505V95.455Q199.76 95.868 200.173 95.868H210.153ZM267.393 83.207Q265.248 81.269 261.372 81.269H251.145Q250.732 81.269 250.732 81.681V95.373Q250.732 95.785 251.145 95.785H261.454Q265.248 95.785 267.393 93.847Q269.537 91.909 269.537 88.527Q269.537 85.145 267.393 83.207ZM250.732 71.371Q250.732 71.784 251.145 71.784H260.795Q264.671 71.784 266.816 69.969Q268.96 68.155 268.96 65.021Q268.96 61.804 266.816 59.948Q264.671 58.092 260.795 58.092H251.145Q250.732 58.092 250.732 58.505V71.371ZM162.645 87.62Q162.883 87.62 162.968 87.506Q163.061 87.382 162.975 87.125L155.552 62.629Q155.469 62.299 155.304 62.34Q155.139 62.381 155.057 62.629L147.799 87.125Q147.751 87.414 147.871 87.534Q147.957 87.62 148.129 87.62H162.645Z"/>
+</svg>
+  </div>
+  
+  <span class="sidebar-brand-text">ADBC 25 Documentation</span>
+
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Connect</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../client_libraries.html">Client Libraries</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../driver/index.html">Drivers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../integrations.html">Tools &amp; Integrations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../connection_profiles.html">Connection Profiles</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Build</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../driver/authoring.html">Writing New Drivers</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Supported Environments</span></p>
+<ul class="current">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../cpp/index.html">C/C++</a><input aria-label="Toggle navigation of C/C++" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../cpp/quickstart.html">Quickstart</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cpp/driver_manager.html">Driver Manager</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cpp/concurrency.html">Concurrency and Thread Safety</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cpp/driver_example.html">Driver Example</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cpp/static_linking.html">Static Linking</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../cpp/api/index.html">C/C++ API Reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../csharp/index.html">C#/.NET</a></li>
+<li class="toctree-l1"><a class="reference external" href="https://pkg.go.dev/github.com/apache/arrow-adbc/go/adbc">Go</a></li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="index.html">Java</a><input aria-label="Toggle navigation of Java" checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="quickstart.html">Quickstart</a></li>
+<li class="toctree-l2"><a class="reference internal" href="driver_manager.html">Driver Manager</a></li>
+<li class="toctree-l2 current current-page"><a class="current reference internal" href="#">JNI Driver Manager</a></li>
+<li class="toctree-l2"><a class="reference internal" href="api/index.html">Java API Reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../javascript/index.html">JavaScript</a><input aria-label="Toggle navigation of JavaScript" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../javascript/quickstart.html">Quickstart</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../javascript/driver_manager.html">Driver Manager</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../javascript/api/index.html">JavaScript API Reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../python/index.html">Python</a><input aria-label="Toggle navigation of Python" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../python/quickstart.html">Quickstart</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../python/driver_manager.html">Driver Manager</a></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../python/api/index.html">Python API Reference</a><input aria-label="Toggle navigation of Python API Reference" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../python/api/adbc_driver_manager.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_manager</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../python/api/adbc_driver_flightsql.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_flightsql</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../python/api/adbc_driver_postgresql.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_postgresql</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../python/api/adbc_driver_sqlite.html"><code class="docutils literal notranslate"><span class="pre">adbc_driver_sqlite</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../python/recipe/index.html">Python Cookbook</a><input aria-label="Toggle navigation of Python Cookbook" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../python/recipe/driver_manager.html">DBAPI/Driver Manager Recipes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../python/recipe/flight_sql.html">Flight SQL Recipes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../python/recipe/postgresql.html">PostgreSQL Recipes</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../python/recipe/sqlite.html">SQLite Recipes</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../r/index.html">R</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../ruby/index.html">Ruby</a></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../rust/index.html">Rust</a><input aria-label="Toggle navigation of Rust" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../rust/quickstart.html">Quickstart</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rust/driver_manager.html">Driver Manager</a></li>
+<li class="toctree-l2"><a class="reference external" href="https://docs.rs/adbc_core/latest/adbc_core/">Rust API Reference</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../installation.html">Installation</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Specification</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../format/specification.html">ADBC API Standard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../format/versioning.html">Versioning and Compatibility</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../format/comparison.html">Comparison with Other APIs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../format/how_manager.html">How Drivers and the Driver Manager Work Together</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../format/driver_manifests.html">ADBC Driver Manager and Manifests</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../format/connection_profiles.html">ADBC Driver Manager and Connection Profiles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../format/related_work.html">Related Work</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Contribute</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../development/contributing.html">Contributing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/nightly.html">Nightly Packages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/versioning.html">Versioning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../development/releasing.html">Release Management Guide</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Resources</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../faq.html">Frequently Asked Questions (FAQ)</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../visual_identity.html">Visual Identity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../genindex.html">Index</a></li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/java/jni.rst?plain=true" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div><div class="edit-this-page">
+  <a class="muted-link" href="https://github.com/apache/arrow-adbc/edit/main/docs/source/java/jni.rst" rel="edit" title="Edit this page">
+    <svg><use href="#svg-pencil"></use></svg>
+    <span class="visually-hidden">Edit this page</span>
+  </a>
+</div><div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="jni-driver-manager">
+<h1>JNI Driver Manager<a class="headerlink" href="#jni-driver-manager" title="Link to this heading">¶</a></h1>
+<p>The JNI driver manager wraps the <a class="reference internal" href="../cpp/driver_manager.html"><span class="doc">C/C++ driver manager</span></a>, making it possible to use drivers written in C/C++,
+Go, Rust, and more from Java. As the name implies, this requires JNI.</p>
+<section id="installation">
+<h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h2>
+<p>To include the JNI driver manager in your Maven project, add the following dependency:</p>
+<div class="highlight-xml notranslate"><div class="highlight"><pre><span></span><span class="nt">&lt;dependency&gt;</span>
+<span class="w">   </span><span class="nt">&lt;groupId&gt;</span>org.apache.arrow.adbc<span class="nt">&lt;/groupId&gt;</span>
+<span class="w">   </span><span class="nt">&lt;artifactId&gt;</span>adbc-driver-jni<span class="nt">&lt;/artifactId&gt;</span>
+<span class="w">   </span><span class="nt">&lt;version&gt;</span>${adbc.version}<span class="nt">&lt;/version&gt;</span>
+<span class="nt">&lt;/dependency&gt;</span>
+</pre></div>
+</div>
+</section>
+<section id="usage">
+<h2>Usage<a class="headerlink" href="#usage" title="Link to this heading">¶</a></h2>
+<p>The JNI driver manager is implemented as a “driver”; parameters for opening an
+<a class="reference external" href="https://arrow.apache.org/adbc/25/java/api/org/apache/arrow/adbc/core/AdbcDatabase.html" title="(in ADBC Java vversion)"><code class="xref std std-jtype docutils literal notranslate"><span class="pre">AdbcDatabase</span></code></a> are passed to the C/C++ driver
+manager, and the “real” driver is loaded. Once loaded, the Java ADBC APIs are
+forwarded to the equivalent C APIs, so there is no difference from other
+drivers in Java, and the resulting object can be used the same way as drivers
+written in Java or another JVM language.</p>
+<p>Drivers can be directly loaded via the
+<a class="reference external" href="https://arrow.apache.org/adbc/25/java/api/org/apache/arrow/adbc/driver/jni/JniDriver.html#PARAM_DRIVER" title="(in ADBC Java vversion)"><code class="xref std std-jmember docutils literal notranslate"><span class="pre">PARAM_DRIVER</span></code></a> option. This takes
+a path to a driver, a <a class="reference internal" href="../format/driver_manifests.html"><span class="doc">driver manifest</span></a>, or
+a name that will be passed to <code class="docutils literal notranslate"><span class="pre">dlopen</span></code> (or equivalent):</p>
+<div class="highlight-java notranslate"><div class="highlight"><pre><span></span><span class="n">JniDriver</span><span class="w"> </span><span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JniDriver</span><span class="p">(</span><span class="n">allocator</span><span class="p">);</span>
+<span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="p">,</span><span class="w"> </span><span class="n">Object</span><span class="o">&gt;</span><span class="w"> </span><span class="n">parameters</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HashMap</span><span class="o">&lt;&gt;</span><span class="p">();</span>
+<span class="c1">// path to driver:</span>
+<span class="n">JniDriver</span><span class="p">.</span><span class="na">PARAM_DRIVER</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span><span class="w"> </span><span class="s">"/path/to/libadbc_driver_sqlite.so"</span><span class="p">);</span>
+
+<span class="c1">// manifest:</span>
+<span class="n">JniDriver</span><span class="p">.</span><span class="na">PARAM_DRIVER</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span><span class="w"> </span><span class="s">"sqlite"</span><span class="p">);</span>
+
+<span class="c1">// library name:</span>
+<span class="n">JniDriver</span><span class="p">.</span><span class="na">PARAM_DRIVER</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span><span class="w"> </span><span class="s">"adbc_driver_sqlite"</span><span class="p">);</span>
+
+<span class="n">AdbcDatabase</span><span class="w"> </span><span class="n">db</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">driver</span><span class="p">.</span><span class="na">open</span><span class="p">(</span><span class="n">parameters</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>Another option is to pass only a URI, in which case the URI scheme will be
+used to find and load the driver or driver manifest:</p>
+<div class="highlight-java notranslate"><div class="highlight"><pre><span></span><span class="n">JniDriver</span><span class="w"> </span><span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JniDriver</span><span class="p">(</span><span class="n">allocator</span><span class="p">);</span>
+<span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="p">,</span><span class="w"> </span><span class="n">Object</span><span class="o">&gt;</span><span class="w"> </span><span class="n">parameters</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HashMap</span><span class="o">&lt;&gt;</span><span class="p">();</span>
+<span class="c1">// Expects a profile named "postgresql" to exist (or libpostgresql.so, etc.)</span>
+<span class="n">AdbcDriver</span><span class="p">.</span><span class="na">PARAM_URI</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span><span class="w"> </span><span class="s">"postgresql://localhost:5432/dev"</span><span class="p">);</span>
+<span class="n">AdbcDatabase</span><span class="w"> </span><span class="n">db</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">driver</span><span class="p">.</span><span class="na">open</span><span class="p">(</span><span class="n">parameters</span><span class="p">);</span>
+</pre></div>
+</div>
+<p>To use <a class="reference internal" href="../format/connection_profiles.html"><span class="doc">connection profiles</span></a>, pass the
+<a class="reference external" href="https://arrow.apache.org/adbc/25/java/api/org/apache/arrow/adbc/driver/jni/JniDriver.html#PARAM_PROFILE" title="(in ADBC Java vversion)"><code class="xref std std-jmember docutils literal notranslate"><span class="pre">PARAM_PROFILE</span></code></a> option:</p>
+<div class="highlight-java notranslate"><div class="highlight"><pre><span></span><span class="n">JniDriver</span><span class="w"> </span><span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">JniDriver</span><span class="p">(</span><span class="n">allocator</span><span class="p">);</span>
+<span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="p">,</span><span class="w"> </span><span class="n">Object</span><span class="o">&gt;</span><span class="w"> </span><span class="n">parameters</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HashMap</span><span class="o">&lt;&gt;</span><span class="p">();</span>
+<span class="n">JniDriver</span><span class="p">.</span><span class="na">PARAM_PROFILE</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="n">parameters</span><span class="p">,</span><span class="w"> </span><span class="s">"staging_aws"</span><span class="p">);</span>
+<span class="n">AdbcDatabase</span><span class="w"> </span><span class="n">db</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">driver</span><span class="p">.</span><span class="na">open</span><span class="p">(</span><span class="n">parameters</span><span class="p">);</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="api/index.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Java API Reference</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="driver_manager.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Driver Manager</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2022–2026 The Apache Software Foundation.
+Apache Arrow, Arrow, Apache Arrow ADBC, ADBC, Apache, the Apache logo, the Apache
+Arrow project logo, and the ADBC subproject logo are either registered trademarks or
+trademarks of The Apache Software Foundation in the United States and other
+countries.
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">JNI Driver Manager</a><ul>
+<li><a class="reference internal" href="#installation">Installation</a></li>
+<li><a class="reference internal" href="#usage">Usage</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="../_static/documentation_options.js?v=b74db32e"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    
+<script async defer src="../../version.js"></script></body>
+</html>

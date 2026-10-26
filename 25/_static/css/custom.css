@@ -1,0 +1,220 @@
+/* Licensed to the Apache Software Foundation (ASF) under one */
+/* or more contributor license agreements.  See the NOTICE file */
+/* distributed with this work for additional information */
+/* regarding copyright ownership.  The ASF licenses this file */
+/* to you under the Apache License, Version 2.0 (the */
+/* "License"); you may not use this file except in compliance */
+/* with the License.  You may obtain a copy of the License at */
+
+/*   http://www.apache.org/licenses/LICENSE-2.0 */
+
+/* Unless required by applicable law or agreed to in writing, */
+/* software distributed under the License is distributed on an */
+/* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY */
+/* KIND, either express or implied.  See the License for the */
+/* specific language governing permissions and limitations */
+/* under the License. */
+
+p.admonition-title {
+    font-weight: bold;
+}
+
+/* Center Mermaid diagrams */
+.mermaid svg {
+    display: block;
+    margin: 0 auto;
+}
+
+figcaption {
+    font-style: italic;
+    margin: 0 auto;
+    text-wrap: balance;
+    width: 90%;
+}
+
+h1, h2, h3, h4 {
+    text-wrap: balance;
+}
+
+/* Two-part package badges (shields.io style) */
+.package-badge-link {
+    text-decoration: none;
+    display: inline-block;
+    vertical-align: middle;
+    margin-right: 0.25rem;
+    margin-bottom: 0.25rem;
+    max-width: 100%;
+}
+
+.package-badge-container {
+    display: inline-flex;
+    border-radius: 0.25rem;
+    overflow: hidden;
+    font-size: 0.75rem;
+    line-height: 1;
+    white-space: nowrap;
+    max-width: 100%;
+}
+
+.package-badge-left {
+    background-color: #555;
+    color: white;
+    padding: 0.25em 0.4em;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.package-badge-right {
+    background-color: #007ec6;
+    color: white;
+    padding: 0.25em 0.4em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+/* Compact driver cards only */
+.driver-cards .sd-card-body {
+    padding: 0.75rem 0.5rem !important;
+}
+
+.driver-cards .sd-card-body p {
+    margin-bottom: 0.15rem;
+}
+
+.driver-cards .sd-card-body p:last-child {
+    margin-bottom: 0;
+}
+
+/* Add spacing between the icon and the text in card titles */
+.sd-card-title .sd-octicon {
+    margin-right: 0.5rem;
+}
+
+/* Icon-only links (e.g. GitHub source links in the driver table) */
+a.icon-link {
+    color: var(--color-foreground-muted);
+    font-size: 1.15rem;
+    text-decoration: none;
+}
+
+a.icon-link:hover {
+    color: var(--color-brand-content);
+}
+
+/* Unified driver table: keep it compact and scannable */
+table.driver-table {
+    width: 100%;
+}
+
+table.driver-table td,
+table.driver-table th {
+    vertical-align: middle;
+}
+
+/* Install column reads as a command, not prose */
+table.driver-table td code,
+table.driver-table td .docutils.literal {
+    white-space: nowrap;
+}
+
+/* Center the icon in the Repo column (last column) of the main driver table */
+table.driver-table-main td:last-child,
+table.driver-table-main th:last-child {
+    text-align: center;
+}
+
+/* Secondary hint text in a table header (e.g. "(click for docs)") */
+table.driver-table th .th-hint {
+    font-weight: normal;
+    font-size: 0.8em;
+    opacity: 0.75;
+}
+
+/* The sidebar logo is the horizontal lockup, inlined as an SVG (see
+   _templates/sidebar/brand.html). Shrink it slightly. */
+.sidebar-logo-container svg {
+    display: block;
+    height: auto;
+    margin-left: 0;
+    margin-right: auto;
+    width: 95%;
+}
+
+/* The documentation title in the sidebar: quieter than the logo's bold
+   "ADBC" above it, and aligned with the logo's left edge */
+.sidebar-brand-text {
+    font-weight: 400;
+    margin-left: 0;
+    font-size: 1.15rem;
+}
+
+/* Logos inlined as SVGs filled with currentColor (the sidebar logo and those
+   on the visual identity page) are pure black, or pure white in dark mode. */
+.sidebar-logo-container,
+div.vi-logo {
+    color: #000000;
+}
+
+body[data-theme="dark"] .sidebar-logo-container,
+body[data-theme="dark"] div.vi-logo {
+    color: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+    body:not([data-theme="light"]) .sidebar-logo-container,
+    body:not([data-theme="light"]) div.vi-logo {
+        color: #ffffff;
+    }
+}
+
+/* Visual identity page: room between a logo and the text under it. */
+img.vi-logo {
+    margin-bottom: 1.5rem;
+}
+
+div.vi-logo svg {
+    display: block;
+    height: auto;
+    margin: 0 auto 1.5rem;
+    max-width: 100%;
+}
+
+/* The logos' points touch the edges of their SVGs, so when a browser rounds
+   an SVG's box to whole pixels it can clip a point. Draw past the edges. */
+.sidebar-logo-container svg,
+div.vi-logo svg {
+    overflow: visible;
+}
+
+div.vi-logo-top svg {
+    width: 360px;
+}
+
+div.vi-logo-lockup svg {
+    width: 260px;
+}
+
+div.vi-logo-mark svg {
+    width: 110px;
+}
+
+div.vi-logo-badge svg {
+    width: 140px;
+}
+
+/* The white sticker needs a shadow to stand out on the light page. */
+img.vi-sticker {
+    filter: drop-shadow(0 3px 7px rgba(0, 0, 0, 0.6));
+}
+
+body[data-theme="dark"] img.vi-sticker {
+    filter: none;
+}
+
+@media (prefers-color-scheme: dark) {
+    body:not([data-theme="light"]) img.vi-sticker {
+        filter: none;
+    }
+}
