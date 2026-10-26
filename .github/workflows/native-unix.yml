@@ -99,7 +99,7 @@ jobs:
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
       - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb  # v4.1.0
         with:
-          miniforge-version: latest
+          miniforge-version: 26.7.2-1
           use-only-tar-bz2: false
           use-mamba: true
       - name: Install Dependencies
@@ -177,7 +177,7 @@ jobs:
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
       - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb  # v4.1.0
         with:
-          miniforge-version: latest
+          miniforge-version: 26.7.2-1
           use-only-tar-bz2: false
           use-mamba: true
       - name: Install Dependencies
@@ -298,7 +298,7 @@ jobs:
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
       - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb  # v4.1.0
         with:
-          miniforge-version: latest
+          miniforge-version: 26.7.2-1
           use-only-tar-bz2: false
           use-mamba: true
       - name: Install Dependencies
@@ -348,7 +348,7 @@ jobs:
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
       - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb  # v4.1.0
         with:
-          miniforge-version: latest
+          miniforge-version: 26.7.2-1
           use-only-tar-bz2: false
           use-mamba: true
       - name: Install Dependencies
@@ -477,7 +477,7 @@ jobs:
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
       - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb  # v4.1.0
         with:
-          miniforge-version: latest
+          miniforge-version: 26.7.2-1
           use-only-tar-bz2: false
           use-mamba: true
       - name: Work around ASAN issue (GH-1617)
@@ -560,7 +560,7 @@ jobs:
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
       - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb  # v4.1.0
         with:
-          miniforge-version: latest
+          miniforge-version: 26.7.2-1
           use-only-tar-bz2: false
           use-mamba: true
       - name: Install Dependencies
@@ -687,7 +687,7 @@ jobs:
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
       - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb  # v4.1.0
         with:
-          miniforge-version: latest
+          miniforge-version: 26.7.2-1
           use-only-tar-bz2: false
           use-mamba: true
       - name: Install Dependencies
