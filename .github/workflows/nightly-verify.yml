@@ -26,8 +26,10 @@ on:
       - "ci/docker/cpp-clang-latest.dockerfile"
       - "ci/docker/cpp-gcc-latest.dockerfile"
       - "ci/docker/cpp-musl.alpine.dockerfile"
+      - "dev/release/verify-apt.sh"
       - "dev/release/verify-release-candidate.sh"
-      - "dev/release/verify-release-candidate.ps1"
+      - "dev/release/verify-yum.ps1"
+      - "dev/release/verify/**"
   schedule:
     - cron: "0 0 * * *"
   workflow_dispatch: {}
