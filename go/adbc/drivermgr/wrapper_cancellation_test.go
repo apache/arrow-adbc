@@ -48,6 +48,70 @@ func newSQLiteStatement(t *testing.T) adbc.Statement {
 	return st
 }
 
+// cancelOnThirdCheck simulates cancellation just after native execution.
+// The first two Err checks occur before C is called; an old post-call check
+// discarded successful results, while the current code returns them.
+type cancelOnThirdCheck struct {
+	context.Context
+	cancel context.CancelFunc
+	checks atomic.Int32
+}
+
+func (c *cancelOnThirdCheck) Err() error {
+	if c.checks.Add(1) == 3 {
+		c.cancel()
+	}
+	return c.Context.Err()
+}
+
+func TestSQLiteUpdateSuccessDespiteLateCancellation(t *testing.T) {
+	st := newSQLiteStatement(t)
+	require.NoError(t, st.SetSqlQuery("CREATE TEMP TABLE update_probe (id INTEGER)"))
+	_, err := st.ExecuteUpdate(context.Background())
+	require.NoError(t, err)
+	require.NoError(t, st.SetSqlQuery("INSERT INTO update_probe (id) VALUES (1)"))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	late := &cancelOnThirdCheck{Context: ctx, cancel: cancel}
+	affected, err := st.ExecuteUpdate(late)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), affected)
+	require.ErrorIs(t, late.Err(), context.Canceled)
+}
+
+func TestSQLiteQuerySuccessDespiteLateCancellation(t *testing.T) {
+	st := newSQLiteStatement(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	late := &cancelOnThirdCheck{Context: ctx, cancel: cancel}
+
+	rdr, _, err := st.ExecuteQuery(late)
+	require.NoError(t, err)
+	require.NotNil(t, rdr)
+	defer rdr.Release()
+	require.ErrorIs(t, late.Err(), context.Canceled)
+	require.False(t, rdr.Next())
+	var adbcErr adbc.Error
+	require.ErrorAs(t, rdr.Err(), &adbcErr)
+	require.Equal(t, adbc.StatusCancelled, adbcErr.Code)
+}
+
+func TestContextDriverErrorKeepsDriverDetail(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	driverErr := adbc.Error{Code: adbc.StatusInvalidArgument, Msg: "driver detail", VendorCode: 42}
+	var result adbc.Error
+	require.ErrorAs(t, contextDriverError(ctx, driverErr), &result)
+	require.Equal(t, adbc.StatusCancelled, result.Code)
+	require.Contains(t, result.Msg, driverErr.Msg)
+	require.Equal(t, driverErr.VendorCode, result.VendorCode)
+
+	driverErr.Code = adbc.StatusCancelled
+	require.Equal(t, driverErr, contextDriverError(ctx, driverErr))
+}
+
 func TestSQLiteStatementCancelReaderLifetime(t *testing.T) {
 	// This test swaps a package-level function; it must never run in parallel.
 	original := cancelStatement

@@ -51,6 +51,7 @@ package drivermgr
 import "C"
 import (
 	"context"
+	"errors"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -205,6 +206,28 @@ func contextAdbcError(ctx context.Context) error {
 	default:
 		return nil
 	}
+}
+
+func contextDriverError(ctx context.Context, driverErr error) error {
+	ctxErr := ctx.Err()
+	if ctxErr == nil {
+		return driverErr
+	}
+
+	status := adbc.StatusCancelled
+	if ctxErr == context.DeadlineExceeded {
+		status = adbc.StatusTimeout
+	}
+	var adbcErr adbc.Error
+	if errors.As(driverErr, &adbcErr) {
+		if adbcErr.Code == adbc.StatusCancelled || adbcErr.Code == status {
+			return driverErr
+		}
+		adbcErr.Code = status
+		adbcErr.Msg = ctxErr.Error() + ": " + adbcErr.Msg
+		return adbcErr
+	}
+	return adbc.Error{Code: status, Msg: ctxErr.Error() + ": " + driverErr.Error()}
 }
 
 func (d *Database) SetOptions(options map[string]string) error {
@@ -620,11 +643,7 @@ func (s *stmt) ExecuteQuery(ctx context.Context) (array.RecordReader, int64, err
 		if out.release != nil {
 			cdata.ReleaseCArrowArrayStream((*cdata.CArrowArrayStream)(unsafe.Pointer(&out)))
 		}
-		callErr := toAdbcError(code, &err)
-		if ctxErr := contextAdbcError(ctx); ctxErr != nil {
-			return nil, 0, ctxErr
-		}
-		return nil, 0, callErr
+		return nil, 0, contextDriverError(ctx, toAdbcError(code, &err))
 	}
 
 	rdr, goerr := getRdr(&out)
@@ -632,17 +651,7 @@ func (s *stmt) ExecuteQuery(ctx context.Context) (array.RecordReader, int64, err
 		if stop != nil {
 			stop()
 		}
-		if ctxErr := contextAdbcError(ctx); ctxErr != nil {
-			return nil, 0, ctxErr
-		}
 		return nil, int64(affected), goerr
-	}
-	if ctxErr := contextAdbcError(ctx); ctxErr != nil {
-		if stop != nil {
-			stop()
-		}
-		rdr.Release()
-		return nil, 0, ctxErr
 	}
 	if stop == nil {
 		return rdr, int64(affected), nil
@@ -673,14 +682,7 @@ func (s *stmt) ExecuteUpdate(ctx context.Context) (int64, error) {
 		stop()
 	}
 	if code != adbc.StatusOK {
-		callErr := toAdbcError(code, &err)
-		if ctxErr := contextAdbcError(ctx); ctxErr != nil {
-			return -1, ctxErr
-		}
-		return -1, callErr
-	}
-	if err := contextAdbcError(ctx); err != nil {
-		return -1, err
+		return -1, contextDriverError(ctx, toAdbcError(code, &err))
 	}
 	return int64(nrows), nil
 }
@@ -709,17 +711,7 @@ func (s *stmt) ExecuteSchema(ctx context.Context) (*arrow.Schema, error) {
 		if schema.release != nil {
 			cdata.ReleaseCArrowSchema((*cdata.CArrowSchema)(unsafe.Pointer(&schema)))
 		}
-		callErr := toAdbcError(code, &err)
-		if ctxErr := contextAdbcError(ctx); ctxErr != nil {
-			return nil, ctxErr
-		}
-		return nil, callErr
-	}
-	if ctxErr := contextAdbcError(ctx); ctxErr != nil {
-		if schema.release != nil {
-			cdata.ReleaseCArrowSchema((*cdata.CArrowSchema)(unsafe.Pointer(&schema)))
-		}
-		return nil, ctxErr
+		return nil, contextDriverError(ctx, toAdbcError(code, &err))
 	}
 	return getSchema(&schema)
 }
