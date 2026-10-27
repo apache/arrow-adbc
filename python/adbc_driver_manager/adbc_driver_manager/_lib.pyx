@@ -1540,7 +1540,7 @@ cdef class AdbcStatement(_AdbcHandle):
         check_error(status, &c_error)
 
     def cancel(self) -> None:
-        """Attempt to cancel any ongoing operations on the connection."""
+        """Attempt to cancel any ongoing operations on the statement."""
         cdef CAdbcError c_error = empty_error()
         cdef CAdbcStatusCode status
         with nogil:
