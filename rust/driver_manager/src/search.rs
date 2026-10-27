@@ -522,15 +522,9 @@ impl<'a> DriverLibrary<'a> {
         }
 
         let driver_name = driver_path.as_os_str().to_string_lossy().into_owned();
-        match DriverLibrary::load_library_from_name(driver_name) {
-            Ok(library) => return Ok(SearchHit::new(driver_path.to_path_buf(), library, None)),
-            Err(err) => trace.push(err),
-        }
-
-        Err(Error::with_message_and_status(
-            format!("Driver not found: {}", driver_path.display()),
-            Status::NotFound,
-        ))
+        let library = DriverLibrary::load_library_from_name(driver_name)?;
+        Ok(SearchHit::new(driver_path.to_path_buf(), library, None))
+        // XXX: should we return NotFound like the non-Windows version?
     }
 
     #[cfg(not(windows))]
@@ -1593,100 +1587,6 @@ mod tests {
         }
     }
 
-    /// Loading a driver that is not installed anywhere should return
-    /// NotFound on every platform.
-    ///
-    /// DEBUG: this test intentionally prints a lot of diagnostic output so we
-    /// can verify in CI what each platform actually returns.
-    #[test]
-    fn test_load_missing_driver_returns_not_found() {
-        let driver_name = "adbc_nonexistent_driver_for_not_found_test";
-
-        eprintln!("=== DEBUG test_load_missing_driver_returns_not_found ===");
-        eprintln!("DEBUG target_os = {}", env::consts::OS);
-        eprintln!("DEBUG target_arch = {}", env::consts::ARCH);
-        eprintln!("DEBUG driver_name = {driver_name:?}");
-        eprintln!(
-            "DEBUG ADBC_DRIVER_PATH = {:?}",
-            env::var_os("ADBC_DRIVER_PATH")
-        );
-        eprintln!("DEBUG CONDA_PREFIX = {:?}", env::var_os("CONDA_PREFIX"));
-        eprintln!(
-            "DEBUG search paths (ENV) = {:?}",
-            get_search_paths(adbc_core::LOAD_FLAG_SEARCH_ENV)
-        );
-        eprintln!(
-            "DEBUG search paths (USER) = {:?}",
-            get_search_paths(adbc_core::LOAD_FLAG_SEARCH_USER)
-        );
-        eprintln!(
-            "DEBUG search paths (SYSTEM) = {:?}",
-            get_search_paths(adbc_core::LOAD_FLAG_SEARCH_SYSTEM)
-        );
-
-        let result = ManagedDriver::load_from_name(
-            driver_name,
-            None,
-            AdbcVersion::V110,
-            adbc_core::LOAD_FLAG_DEFAULT,
-            None,
-        );
-        let err = match result {
-            Ok(_) => panic!("DEBUG unexpectedly loaded driver {driver_name:?}"),
-            Err(err) => err,
-        };
-
-        eprintln!("DEBUG err.status = {:?}", err.status);
-        eprintln!("DEBUG err.message = {:?}", err.message);
-        eprintln!("DEBUG err.vendor_code = {}", err.vendor_code);
-        eprintln!("DEBUG err.sqlstate = {:?}", err.sqlstate);
-        eprintln!("DEBUG err (Display) = {err}");
-        match &err.details {
-            None => eprintln!("DEBUG err.details = None"),
-            Some(details) => {
-                eprintln!("DEBUG err.details has {} entries", details.len());
-                for (key, value) in details {
-                    eprintln!("DEBUG detail key = {key:?}");
-                    for line in String::from_utf8_lossy(value).lines() {
-                        eprintln!("DEBUG   | {line}");
-                    }
-                }
-            }
-        }
-        eprintln!("=== END DEBUG ===");
-
-        assert_eq!(
-            err.status,
-            Status::NotFound,
-            "expected NotFound for a missing driver on {}, got {:?}: {}",
-            env::consts::OS,
-            err.status,
-            err.message
-        );
-        assert!(
-            err.message.contains("Driver not found"),
-            "unexpected message: {}",
-            err.message
-        );
-
-        // The underlying dynamic library load error must be preserved in the
-        // load trace rather than discarded.
-        let trace = err
-            .details
-            .as_ref()
-            .and_then(|details| {
-                details
-                    .iter()
-                    .find(|(key, _)| key == ERR_DETAIL_DRIVER_LOAD_TRACE)
-            })
-            .map(|(_, value)| String::from_utf8_lossy(value).into_owned())
-            .expect("expected a driver load trace in error details");
-        assert!(
-            trace.contains("Error with dynamic library"),
-            "expected the dynamic library load error in the trace, got:\n{trace}"
-        );
-    }
-
     #[test]
     fn test_parse_driver_uri() {
         let cases = vec![
@@ -1751,7 +1651,7 @@ mod tests {
     }
 
     #[test]
-    fn test_load_from_name_includes_search_trace_in_error_details() {
+    fn test_load_from_name_missing_driver() {
         let err = ManagedDriver::load_from_name(
             "adbc_test_driver_manager_missing_driver_7c8f5482",
             None,
@@ -1761,6 +1661,13 @@ mod tests {
         )
         .unwrap_err();
 
+        assert_eq!(err.status, Status::NotFound, "{}", err.message);
+        assert!(
+            err.message.contains("Driver not found"),
+            "Unexpected error message: {}",
+            err.message
+        );
+
         let details = err
             .details
             .expect("Expected load-from-name errors to include details");
@@ -1768,9 +1675,11 @@ mod tests {
             .iter()
             .find(|(key, _)| key == "adbc.drivermanager.driver_load_trace")
             .expect("Expected driver load trace in error details");
+        // The underlying dynamic library error must be kept in the trace
+        let trace = String::from_utf8_lossy(&trace.1);
         assert!(
-            !trace.1.is_empty(),
-            "Expected driver load trace detail to be non-empty"
+            trace.contains("Error with dynamic library"),
+            "Expected dynamic library load error in driver load trace, got:\n{trace}"
         );
     }
 
