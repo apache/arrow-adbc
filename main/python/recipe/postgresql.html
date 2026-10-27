@@ -842,33 +842,31 @@ If we reconnect, the table won’t exist; we’ll see only the ‘normal’ tabl
 <section id="execute-a-statement-with-bind-parameters">
 <h2>Execute a statement with bind parameters<a class="headerlink" href="#execute-a-statement-with-bind-parameters" title="Link to this heading">¶</a></h2>
 <p id="index-5">Recipe source: <a class="reference external" href="https://github.com/apache/arrow-adbc/blob/main/docs/source/python/recipe/postgresql_execute_bind.py">postgresql_execute_bind.py</a></p>
-<p>ADBC allows using Python and Arrow values as bind parameters.
-Right now, the PostgreSQL driver only supports bind parameters
-for queries that don’t generate result sets.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">26</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<p>ADBC allows using Python and Arrow values as bind parameters.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">24</span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="linenos">25</span>
+<span class="linenos">26</span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span>
 <span class="linenos">27</span>
-<span class="linenos">28</span><span class="kn">import</span><span class="w"> </span><span class="nn">pyarrow</span>
+<span class="linenos">28</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">dbapi</span>
 <span class="linenos">29</span>
-<span class="linenos">30</span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">dbapi</span>
-<span class="linenos">31</span>
-<span class="linenos">32</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"ADBC_POSTGRESQL_TEST_URI"</span><span class="p">]</span>
-<span class="linenos">33</span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">"postgresql"</span><span class="p">,</span> <span class="n">uri</span><span class="p">)</span>
+<span class="linenos">30</span><span class="n">uri</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">"ADBC_POSTGRESQL_TEST_URI"</span><span class="p">]</span>
+<span class="linenos">31</span><span class="n">conn</span> <span class="o">=</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="s2">"postgresql"</span><span class="p">,</span> <span class="n">uri</span><span class="p">)</span>
 </pre></div>
 </div>
 <p>We’ll create an example table to test.</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">36</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
-<span class="linenos">37</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"DROP TABLE IF EXISTS example"</span><span class="p">)</span>
-<span class="linenos">38</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"CREATE TABLE example (ints INT, bigints BIGINT)"</span><span class="p">)</span>
-<span class="linenos">39</span>
-<span class="linenos">40</span><span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">34</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">35</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"DROP TABLE IF EXISTS example"</span><span class="p">)</span>
+<span class="linenos">36</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"CREATE TABLE example (ints INT, bigints BIGINT)"</span><span class="p">)</span>
+<span class="linenos">37</span>
+<span class="linenos">38</span><span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
 </pre></div>
 </div>
-<p>We can bind Python values:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">43</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
-<span class="linenos">44</span>    <span class="n">cur</span><span class="o">.</span><span class="n">executemany</span><span class="p">(</span><span class="s2">"INSERT INTO example VALUES ($1, $2)"</span><span class="p">,</span> <span class="p">[(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">)])</span>
-<span class="linenos">45</span>
-<span class="linenos">46</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"SELECT SUM(ints) FROM example"</span><span class="p">)</span>
-<span class="linenos">47</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">4</span><span class="p">,)</span>
+<p>We can bind Python values to <code class="docutils literal notranslate"><span class="pre">INSERT</span></code> statements:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">41</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">42</span>    <span class="n">cur</span><span class="o">.</span><span class="n">executemany</span><span class="p">(</span><span class="s2">"INSERT INTO example VALUES ($1, $2)"</span><span class="p">,</span> <span class="p">[(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">)])</span>
+<span class="linenos">43</span>
+<span class="linenos">44</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"SELECT SUM(ints) FROM example"</span><span class="p">)</span>
+<span class="linenos">45</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">4</span><span class="p">,)</span>
 </pre></div>
 </div>
 <div class="admonition note">
@@ -877,21 +875,37 @@ for queries that don’t generate result sets.</p>
 libraries like psycopg use for bind parameters, note that this
 is not supported—only the PostgreSQL-native <code class="docutils literal notranslate"><span class="pre">$1</span></code> syntax.</p>
 </div>
-<p>We can also bind Arrow values:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">54</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
-<span class="linenos">55</span>    <span class="n">data</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">record_batch</span><span class="p">(</span>
-<span class="linenos">56</span>        <span class="p">[</span>
-<span class="linenos">57</span>            <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">],</span>
-<span class="linenos">58</span>            <span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">],</span>
-<span class="linenos">59</span>        <span class="p">],</span>
-<span class="linenos">60</span>        <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s2">"$1"</span><span class="p">,</span> <span class="s2">"$2"</span><span class="p">],</span>
-<span class="linenos">61</span>    <span class="p">)</span>
-<span class="linenos">62</span>    <span class="n">cur</span><span class="o">.</span><span class="n">executemany</span><span class="p">(</span><span class="s2">"INSERT INTO example VALUES ($1, $2)"</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
-<span class="linenos">63</span>
-<span class="linenos">64</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"SELECT SUM(ints) FROM example"</span><span class="p">)</span>
-<span class="linenos">65</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">15</span><span class="p">,)</span>
-<span class="linenos">66</span>
-<span class="linenos">67</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+<p>We can also bind Python values to <code class="docutils literal notranslate"><span class="pre">SELECT</span></code> queries:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">52</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">53</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"SELECT ints, bigints FROM example WHERE ints &gt; $1 ORDER BY ints"</span><span class="p">,</span> <span class="p">(</span><span class="mi">1</span><span class="p">,))</span>
+<span class="linenos">54</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span> <span class="o">==</span> <span class="p">[(</span><span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">)]</span>
+</pre></div>
+</div>
+<p>We can also bind Arrow values instead of Python values.  <code class="docutils literal notranslate"><span class="pre">executemany()</span></code>
+executes an <code class="docutils literal notranslate"><span class="pre">INSERT</span></code> for each record in the <code class="docutils literal notranslate"><span class="pre">RecordBatch</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">58</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">59</span>    <span class="n">data</span> <span class="o">=</span> <span class="n">pyarrow</span><span class="o">.</span><span class="n">record_batch</span><span class="p">(</span>
+<span class="linenos">60</span>        <span class="p">[</span>
+<span class="linenos">61</span>            <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">],</span>
+<span class="linenos">62</span>            <span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">],</span>
+<span class="linenos">63</span>        <span class="p">],</span>
+<span class="linenos">64</span>        <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s2">"$1"</span><span class="p">,</span> <span class="s2">"$2"</span><span class="p">],</span>
+<span class="linenos">65</span>    <span class="p">)</span>
+<span class="linenos">66</span>    <span class="n">cur</span><span class="o">.</span><span class="n">executemany</span><span class="p">(</span><span class="s2">"INSERT INTO example VALUES ($1, $2)"</span><span class="p">,</span> <span class="n">data</span><span class="p">)</span>
+<span class="linenos">67</span>
+<span class="linenos">68</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="s2">"SELECT SUM(ints) FROM example"</span><span class="p">)</span>
+<span class="linenos">69</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchone</span><span class="p">()</span> <span class="o">==</span> <span class="p">(</span><span class="mi">15</span><span class="p">,)</span>
+</pre></div>
+</div>
+<p>Use <code class="docutils literal notranslate"><span class="pre">execute()</span></code> to bind the same batch to a <code class="docutils literal notranslate"><span class="pre">SELECT</span></code> query and collect
+the results.  <code class="docutils literal notranslate"><span class="pre">executemany()</span></code> does not return a result set.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="linenos">73</span><span class="k">with</span> <span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span> <span class="k">as</span> <span class="n">cur</span><span class="p">:</span>
+<span class="linenos">74</span>    <span class="n">cur</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span>
+<span class="linenos">75</span>        <span class="s2">"SELECT ints, bigints FROM example WHERE ints = $1 AND bigints = $2"</span><span class="p">,</span> <span class="n">data</span>
+<span class="linenos">76</span>    <span class="p">)</span>
+<span class="linenos">77</span>    <span class="k">assert</span> <span class="n">cur</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span> <span class="o">==</span> <span class="p">[(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">7</span><span class="p">),</span> <span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">8</span><span class="p">)]</span>
+<span class="linenos">78</span>
+<span class="linenos">79</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
 </pre></div>
 </div>
 </section>
