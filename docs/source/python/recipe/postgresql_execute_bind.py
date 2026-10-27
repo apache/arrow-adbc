@@ -20,8 +20,6 @@
 # RECIPE STARTS HERE
 
 #: ADBC allows using Python and Arrow values as bind parameters.
-#: Right now, the PostgreSQL driver only supports bind parameters
-#: for queries that don't generate result sets.
 
 import os
 
@@ -39,7 +37,7 @@ with conn.cursor() as cur:
 
 conn.commit()
 
-#: We can bind Python values:
+#: We can bind Python values to ``INSERT`` statements:
 with conn.cursor() as cur:
     cur.executemany("INSERT INTO example VALUES ($1, $2)", [(1, 2), (3, 4)])
 
@@ -50,7 +48,13 @@ with conn.cursor() as cur:
 #:           libraries like psycopg use for bind parameters, note that this
 #:           is not supported—only the PostgreSQL-native ``$1`` syntax.
 
-#: We can also bind Arrow values:
+#: We can also bind Python values to ``SELECT`` queries:
+with conn.cursor() as cur:
+    cur.execute("SELECT ints, bigints FROM example WHERE ints > $1 ORDER BY ints", (1,))
+    assert cur.fetchall() == [(3, 4)]
+
+#: We can also bind Arrow values instead of Python values.  ``executemany()``
+#: executes an ``INSERT`` for each record in the ``RecordBatch``:
 with conn.cursor() as cur:
     data = pyarrow.record_batch(
         [
@@ -63,5 +67,13 @@ with conn.cursor() as cur:
 
     cur.execute("SELECT SUM(ints) FROM example")
     assert cur.fetchone() == (15,)
+
+#: Use ``execute()`` to bind the same batch to a ``SELECT`` query and collect
+#: the results.  ``executemany()`` does not return a result set.
+with conn.cursor() as cur:
+    cur.execute(
+        "SELECT ints, bigints FROM example WHERE ints = $1 AND bigints = $2", data
+    )
+    assert cur.fetchall() == [(5, 7), (6, 8)]
 
 conn.close()
