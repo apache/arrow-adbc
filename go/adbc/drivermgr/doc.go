@@ -19,4 +19,7 @@
 //
 // This provides an implementation of the ADBC interfaces which
 // uses CGO to wrap a shared object implementation of adbc.h
+//
+// The optional adbc.ConnectionGetStatistics interface forwards statistics
+// requests to the loaded driver; unsupported drivers return StatusNotImplemented.
 package drivermgr
