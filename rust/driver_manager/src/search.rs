@@ -522,9 +522,15 @@ impl<'a> DriverLibrary<'a> {
         }
 
         let driver_name = driver_path.as_os_str().to_string_lossy().into_owned();
-        let library = DriverLibrary::load_library_from_name(driver_name)?;
-        Ok(SearchHit::new(driver_path.to_path_buf(), library, None))
-        // XXX: should we return NotFound like the non-Windows version?
+        match DriverLibrary::load_library_from_name(driver_name) {
+            Ok(library) => return Ok(SearchHit::new(driver_path.to_path_buf(), library, None)),
+            Err(err) => trace.push(err),
+        }
+
+        Err(Error::with_message_and_status(
+            format!("Driver not found: {}", driver_path.display()),
+            Status::NotFound,
+        ))
     }
 
     #[cfg(not(windows))]
