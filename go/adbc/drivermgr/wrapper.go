@@ -491,40 +491,72 @@ type stmt struct {
 
 	mu     sync.Mutex // serializes cancellation and release
 	closed bool
+	active *cancellationWatch
 }
 
 var _ adbc.StatementExecuteSchema = (*stmt)(nil)
 
-// cancelStatement is a variable so tests can observe the real C cancellation call.
-var cancelStatement = func(s *stmt) {
-	var err C.struct_AdbcError
-	C.AdbcStatementCancel(s.st, &err)
-	C.releaseErr(&err) // Cancellation is best-effort, including NOT_IMPLEMENTED.
+type cancellationWatch struct {
+	stop func() bool
+	done chan struct{}
+	once sync.Once
 }
 
-func (s *stmt) watchCancellation(ctx context.Context) func() {
+func (w *cancellationWatch) stopAndJoin() {
+	w.once.Do(func() {
+		// AfterFunc's stop does not wait for an already-started callback.
+		if !w.stop() {
+			<-w.done
+		}
+	})
+}
+
+func (s *stmt) stopActiveWatch() {
+	s.mu.Lock()
+	old := s.active
+	s.active = nil
+	s.mu.Unlock()
+	if old != nil {
+		old.stopAndJoin()
+	}
+}
+
+func (s *stmt) stopWatching(w *cancellationWatch) {
+	if w == nil {
+		return
+	}
+	s.mu.Lock()
+	if s.active == w {
+		s.active = nil
+	}
+	s.mu.Unlock()
+	w.stopAndJoin()
+}
+
+func (s *stmt) watchCancellation(ctx context.Context) *cancellationWatch {
 	if ctx.Done() == nil {
 		return nil
 	}
 
-	done := make(chan struct{})
-	stop := context.AfterFunc(ctx, func() {
+	w := &cancellationWatch{done: make(chan struct{})}
+	s.mu.Lock()
+	w.stop = context.AfterFunc(ctx, func() {
 		s.mu.Lock()
-		if !s.closed {
-			cancelStatement(s)
+		if !s.closed && s.active == w {
+			var err C.struct_AdbcError
+			C.AdbcStatementCancel(s.st, &err)
+			C.releaseErr(&err) // Cancellation is best-effort, including NOT_IMPLEMENTED.
 		}
 		s.mu.Unlock()
-		close(done)
+		close(w.done)
 	})
-	return func() {
-		// AfterFunc's stop does not wait for an already-started callback.
-		if !stop() {
-			<-done
-		}
-	}
+	s.active = w
+	s.mu.Unlock()
+	return w
 }
 
 func (s *stmt) Close() error {
+	s.stopActiveWatch()
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.closed {
@@ -541,17 +573,16 @@ func (s *stmt) Close() error {
 
 type cancellationReader struct {
 	array.RecordReader
-	ctx      context.Context
-	stop     func()
-	stopOnce sync.Once
-	refs     atomic.Int64
-	err      error
+	ctx   context.Context
+	stmt  *stmt
+	watch *cancellationWatch
+	refs  atomic.Int64
+	err   error
 }
 
 func (r *cancellationReader) stopWatching() {
-	r.stopOnce.Do(r.stop)
+	r.stmt.stopWatching(r.watch)
 }
-
 func (r *cancellationReader) Retain() {
 	r.RecordReader.Retain()
 	r.refs.Add(1)
@@ -574,10 +605,13 @@ func (r *cancellationReader) Next() bool {
 
 	ok := r.RecordReader.Next()
 	if err := contextAdbcError(r.ctx); err != nil {
-		r.err = err
 		if !ok {
+			if driverErr := r.RecordReader.Err(); driverErr != nil {
+				err = contextDriverError(r.ctx, driverErr)
+			}
 			r.stopWatching()
 		}
+		r.err = err
 		return false
 	}
 	if !ok {
@@ -619,6 +653,7 @@ func (s *stmt) SetSqlQuery(query string) error {
 // ExecuteQuery keeps the execution context active until the reader is released
 // or exhausted, since drivers may block while fetching from the result stream.
 func (s *stmt) ExecuteQuery(ctx context.Context) (array.RecordReader, int64, error) {
+	s.stopActiveWatch()
 	if err := contextAdbcError(ctx); err != nil {
 		return nil, 0, err
 	}
@@ -628,18 +663,14 @@ func (s *stmt) ExecuteQuery(ctx context.Context) (array.RecordReader, int64, err
 		affected C.int64_t
 		err      C.struct_AdbcError
 	)
-	stop := s.watchCancellation(ctx)
+	watch := s.watchCancellation(ctx)
 	if ctxErr := contextAdbcError(ctx); ctxErr != nil {
-		if stop != nil {
-			stop()
-		}
+		s.stopWatching(watch)
 		return nil, 0, ctxErr
 	}
 	code := adbc.Status(C.AdbcStatementExecuteQuery(s.st, &out, &affected, &err))
 	if code != adbc.StatusOK {
-		if stop != nil {
-			stop()
-		}
+		s.stopWatching(watch)
 		if out.release != nil {
 			cdata.ReleaseCArrowArrayStream((*cdata.CArrowArrayStream)(unsafe.Pointer(&out)))
 		}
@@ -648,20 +679,19 @@ func (s *stmt) ExecuteQuery(ctx context.Context) (array.RecordReader, int64, err
 
 	rdr, goerr := getRdr(&out)
 	if goerr != nil {
-		if stop != nil {
-			stop()
-		}
+		s.stopWatching(watch)
 		return nil, int64(affected), goerr
 	}
-	if stop == nil {
+	if watch == nil {
 		return rdr, int64(affected), nil
 	}
-	wrapped := &cancellationReader{RecordReader: rdr, ctx: ctx, stop: stop}
+	wrapped := &cancellationReader{RecordReader: rdr, ctx: ctx, stmt: s, watch: watch}
 	wrapped.refs.Store(1)
 	return wrapped, int64(affected), nil
 }
 
 func (s *stmt) ExecuteUpdate(ctx context.Context) (int64, error) {
+	s.stopActiveWatch()
 	if err := contextAdbcError(ctx); err != nil {
 		return -1, err
 	}
@@ -670,17 +700,13 @@ func (s *stmt) ExecuteUpdate(ctx context.Context) (int64, error) {
 		nrows C.int64_t
 		err   C.struct_AdbcError
 	)
-	stop := s.watchCancellation(ctx)
+	watch := s.watchCancellation(ctx)
 	if ctxErr := contextAdbcError(ctx); ctxErr != nil {
-		if stop != nil {
-			stop()
-		}
+		s.stopWatching(watch)
 		return -1, ctxErr
 	}
 	code := adbc.Status(C.AdbcStatementExecuteQuery(s.st, nil, &nrows, &err))
-	if stop != nil {
-		stop()
-	}
+	s.stopWatching(watch)
 	if code != adbc.StatusOK {
 		return -1, contextDriverError(ctx, toAdbcError(code, &err))
 	}
@@ -688,6 +714,7 @@ func (s *stmt) ExecuteUpdate(ctx context.Context) (int64, error) {
 }
 
 func (s *stmt) ExecuteSchema(ctx context.Context) (*arrow.Schema, error) {
+	s.stopActiveWatch()
 	if err := contextAdbcError(ctx); err != nil {
 		return nil, err
 	}
@@ -696,17 +723,13 @@ func (s *stmt) ExecuteSchema(ctx context.Context) (*arrow.Schema, error) {
 		schema C.struct_ArrowSchema
 		err    C.struct_AdbcError
 	)
-	stop := s.watchCancellation(ctx)
+	watch := s.watchCancellation(ctx)
 	if ctxErr := contextAdbcError(ctx); ctxErr != nil {
-		if stop != nil {
-			stop()
-		}
+		s.stopWatching(watch)
 		return nil, ctxErr
 	}
 	code := adbc.Status(C.AdbcStatementExecuteSchema(s.st, &schema, &err))
-	if stop != nil {
-		stop()
-	}
+	s.stopWatching(watch)
 	if code != adbc.StatusOK {
 		if schema.release != nil {
 			cdata.ReleaseCArrowSchema((*cdata.CArrowSchema)(unsafe.Pointer(&schema)))

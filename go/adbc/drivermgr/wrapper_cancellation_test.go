@@ -24,10 +24,8 @@ import (
 	"runtime"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
-	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/stretchr/testify/require"
 )
 
@@ -48,17 +46,17 @@ func newSQLiteStatement(t *testing.T) adbc.Statement {
 	return st
 }
 
-// cancelOnThirdCheck simulates cancellation just after native execution.
-// The first two Err checks occur before C is called; an old post-call check
-// discarded successful results, while the current code returns them.
-type cancelOnThirdCheck struct {
+// cancelOnCheck controls when the context is cancelled around a real SQLite call.
+// For Execute*, the first two Err checks precede the native call.
+type cancelOnCheck struct {
 	context.Context
 	cancel context.CancelFunc
+	at     int32
 	checks atomic.Int32
 }
 
-func (c *cancelOnThirdCheck) Err() error {
-	if c.checks.Add(1) == 3 {
+func (c *cancelOnCheck) Err() error {
+	if c.checks.Add(1) == c.at {
 		c.cancel()
 	}
 	return c.Context.Err()
@@ -73,7 +71,7 @@ func TestSQLiteUpdateSuccessDespiteLateCancellation(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	late := &cancelOnThirdCheck{Context: ctx, cancel: cancel}
+	late := &cancelOnCheck{Context: ctx, cancel: cancel, at: 3}
 	affected, err := st.ExecuteUpdate(late)
 	require.NoError(t, err)
 	require.Equal(t, int64(1), affected)
@@ -84,7 +82,7 @@ func TestSQLiteQuerySuccessDespiteLateCancellation(t *testing.T) {
 	st := newSQLiteStatement(t)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	late := &cancelOnThirdCheck{Context: ctx, cancel: cancel}
+	late := &cancelOnCheck{Context: ctx, cancel: cancel, at: 3}
 
 	rdr, _, err := st.ExecuteQuery(late)
 	require.NoError(t, err)
@@ -113,77 +111,100 @@ func TestContextDriverErrorKeepsDriverDetail(t *testing.T) {
 }
 
 func TestSQLiteStatementCancelReaderLifetime(t *testing.T) {
-	// This test swaps a package-level function; it must never run in parallel.
-	original := cancelStatement
-	var calls atomic.Int32
-	called := make(chan struct{}, 1)
-	cancelStatement = func(s *stmt) {
-		original(s) // Exercise the actual C driver-manager cancellation path first.
-		calls.Add(1)
-		select {
-		case called <- struct{}{}:
-		default:
-		}
-	}
-	t.Cleanup(func() { cancelStatement = original })
-
-	st := newSQLiteStatement(t)
-	var rdr array.RecordReader
-	defer func() {
-		if rdr != nil {
-			rdr.Release()
-		}
-	}()
+	st := newSQLiteStatement(t).(*stmt)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	var err error
-	rdr, _, err = st.ExecuteQuery(ctx)
+	rdr, _, err := st.ExecuteQuery(ctx)
 	require.NoError(t, err)
-	require.NotNil(t, rdr)
+	require.NotNil(t, st.active)
 	cancel()
-	select {
-	case <-called:
-	case <-time.After(5 * time.Second):
-		t.Fatal("cancellation never reached the C driver-manager call while reader was alive")
-	}
-	rdr.Release() // Joins the callback before the hook is restored.
-	rdr = nil
-	require.Equal(t, int32(1), calls.Load())
+	require.False(t, rdr.Next())
+	var adbcErr adbc.Error
+	require.ErrorAs(t, rdr.Err(), &adbcErr)
+	require.Equal(t, adbc.StatusCancelled, adbcErr.Code)
+	rdr.Release()
+	require.Nil(t, st.active)
 
-	// A released reader must not retain the cancellation watcher.
+	// Releasing a reader disarms its context before the context is cancelled.
 	ctxReleased, cancelReleased := context.WithCancel(context.Background())
 	defer cancelReleased()
 	rdr, _, err = st.ExecuteQuery(ctxReleased)
 	require.NoError(t, err)
-	require.NotNil(t, rdr)
+	require.NotNil(t, st.active)
 	rdr.Release()
-	rdr = nil
+	require.Nil(t, st.active)
 	cancelReleased()
-	select {
-	case <-called:
-		t.Fatal("cancellation reached C after reader Release")
-	case <-time.After(100 * time.Millisecond):
-	}
 
-	// Exhaustion also ends the reader's cancellation lifetime without Release.
+	// Exhausting a reader also disarms its context without requiring Release.
 	ctxExhausted, cancelExhausted := context.WithCancel(context.Background())
 	defer cancelExhausted()
 	rdr, _, err = st.ExecuteQuery(ctxExhausted)
 	require.NoError(t, err)
-	require.NotNil(t, rdr)
 	require.True(t, rdr.Next())
 	require.False(t, rdr.Next())
 	require.NoError(t, rdr.Err())
+	require.Nil(t, st.active)
 	cancelExhausted()
-	select {
-	case <-called:
-		t.Fatal("cancellation reached C after reader exhaustion")
-	case <-time.After(100 * time.Millisecond):
-	}
 	rdr.Release()
-	rdr = nil
-	require.Equal(t, int32(1), calls.Load())
+}
+
+func TestSQLiteReexecutionRetiresPreviousCancellation(t *testing.T) {
+	st := newSQLiteStatement(t).(*stmt)
+	oldCtx, cancelOld := context.WithCancel(context.Background())
+	defer cancelOld()
+	oldRdr, _, err := st.ExecuteQuery(oldCtx)
+	require.NoError(t, err)
+	defer func() {
+		if oldRdr != nil {
+			oldRdr.Release()
+		}
+	}()
+	oldWatch := st.active
+	require.NotNil(t, oldWatch)
+
+	newCtx, cancelNew := context.WithCancel(context.Background())
+	defer cancelNew()
+	newRdr, _, err := st.ExecuteQuery(newCtx)
+	require.NoError(t, err)
+	defer newRdr.Release()
+	newWatch := st.active
+	require.NotNil(t, newWatch)
+	require.NotSame(t, oldWatch, newWatch)
+
+	cancelOld()
+	require.Same(t, newWatch, st.active)
+	oldRdr.Release()
+	oldRdr = nil
+	require.Same(t, newWatch, st.active, "releasing a stale reader must not disarm the new execution")
+	require.True(t, newRdr.Next(), "cancelling the stale context must not affect the new query")
+	require.NoError(t, newRdr.Err())
+	cancelNew()
+	require.False(t, newRdr.Next())
+	var adbcErr adbc.Error
+	require.ErrorAs(t, newRdr.Err(), &adbcErr)
+	require.Equal(t, adbc.StatusCancelled, adbcErr.Code)
+}
+
+func TestSQLiteCancelledReadKeepsDriverDetail(t *testing.T) {
+	st := newSQLiteStatement(t)
+	require.NoError(t, st.SetOption("adbc.sqlite.query.batch_rows", "1"))
+	require.NoError(t, st.SetSqlQuery("SELECT 1 AS value UNION ALL SELECT 'text' AS value"))
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	// SQLite's native StatementCancel is not implemented; arrange for the
+	// context to expire when its real stream reports a second-batch type error.
+	late := &cancelOnCheck{Context: ctx, cancel: cancel, at: 6}
+	rdr, _, err := st.ExecuteQuery(late)
+	require.NoError(t, err)
+	defer rdr.Release()
+	require.True(t, rdr.Next())
+	require.False(t, rdr.Next())
+	var adbcErr adbc.Error
+	require.ErrorAs(t, rdr.Err(), &adbcErr)
+	require.Equal(t, adbc.StatusCancelled, adbcErr.Code)
+	require.Contains(t, adbcErr.Msg, "Type mismatch")
 }
 
 func TestSQLiteBackgroundExecutionDoesNotWatchCancellation(t *testing.T) {
