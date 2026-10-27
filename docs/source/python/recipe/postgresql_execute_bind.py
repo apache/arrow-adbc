@@ -20,8 +20,6 @@
 # RECIPE STARTS HERE
 
 #: ADBC allows using Python and Arrow values as bind parameters.
-#: Right now, the PostgreSQL driver only supports bind parameters
-#: for queries that don't generate result sets.
 
 import os
 
