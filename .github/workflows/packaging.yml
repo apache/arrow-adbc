@@ -25,6 +25,7 @@ on:
       - ".env"
       - "c/**"
       - "ci/**"
+      - "!ci/rust-nightly/**"
       - "dev/release/verify-apt.sh"
       - "dev/release/verify-yum.sh"
       - "glib/**"
@@ -101,6 +102,7 @@ jobs:
       - source
 
     strategy:
+      max-parallel: 2
       matrix:
         os: ["ubuntu-latest", "windows-latest", "macos-15-intel"]
 
@@ -260,6 +262,7 @@ jobs:
       - source
     runs-on: ${{ matrix.runner }}
     strategy:
+      max-parallel: 2
       matrix:
         include:
           - { os: Linux, arch: amd64, runner: ubuntu-latest }
@@ -392,6 +395,7 @@ jobs:
     needs:
       - source
     strategy:
+      max-parallel: 2
       fail-fast: false
       matrix:
         target:
@@ -666,6 +670,7 @@ jobs:
     needs:
       - source
     strategy:
+      max-parallel: 2
       fail-fast: false
       matrix:
         arch: ["amd64", "arm64v8"]
@@ -792,6 +797,7 @@ jobs:
     needs:
       - source
     strategy:
+      max-parallel: 1
       fail-fast: false
       matrix:
         os: ["macos-15-intel", "macos-latest"]
@@ -976,6 +982,7 @@ jobs:
     needs:
       - source
     strategy:
+      max-parallel: 1
       fail-fast: false
       matrix:
         include:
@@ -1285,6 +1292,7 @@ jobs:
     needs:
       - source
     strategy:
+      max-parallel: 2
       fail-fast: false
       matrix:
         settings:
@@ -1588,4 +1596,5 @@ jobs:
         env:
           GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }} # zizmor: ignore[secrets-outside-env]
           NPM_REGISTRY: https://npm.fury.io/arrow-adbc-nightlies/
+          NPM_TAG: nightly
           NPM_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }} # zizmor: ignore[secrets-outside-env]

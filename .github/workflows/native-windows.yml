@@ -24,6 +24,7 @@ on:
     paths:
       - "c/**"
       - "ci/**"
+      - "!ci/rust-nightly/**"
       - "glib/**"
       - "go/**"
       - "python/**"
@@ -35,6 +36,7 @@ on:
     paths:
       - "c/**"
       - "ci/**"
+      - "!ci/rust-nightly/**"
       - "glib/**"
       - "go/**"
       - "python/**"

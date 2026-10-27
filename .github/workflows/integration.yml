@@ -24,6 +24,7 @@ on:
     paths:
       - "c/**"
       - "ci/**"
+      - "!ci/rust-nightly/**"
       - "go/**"
       - "python/**"
       - "compose.yaml"
@@ -34,6 +35,7 @@ on:
     paths:
       - "c/**"
       - "ci/**"
+      - "!ci/rust-nightly/**"
       - "go/**"
       - "python/**"
       - "compose.yaml"
