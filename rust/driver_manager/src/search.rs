@@ -522,9 +522,15 @@ impl<'a> DriverLibrary<'a> {
         }
 
         let driver_name = driver_path.as_os_str().to_string_lossy().into_owned();
-        let library = DriverLibrary::load_library_from_name(driver_name)?;
-        Ok(SearchHit::new(driver_path.to_path_buf(), library, None))
-        // XXX: should we return NotFound like the non-Windows version?
+        match DriverLibrary::load_library_from_name(driver_name) {
+            Ok(library) => return Ok(SearchHit::new(driver_path.to_path_buf(), library, None)),
+            Err(err) => trace.push(err),
+        }
+
+        Err(Error::with_message_and_status(
+            format!("Driver not found: {}", driver_path.display()),
+            Status::NotFound,
+        ))
     }
 
     #[cfg(not(windows))]
@@ -1661,6 +1667,23 @@ mod tests {
             err.message.contains("Driver not found"),
             "unexpected message: {}",
             err.message
+        );
+
+        // The underlying dynamic library load error must be preserved in the
+        // load trace rather than discarded.
+        let trace = err
+            .details
+            .as_ref()
+            .and_then(|details| {
+                details
+                    .iter()
+                    .find(|(key, _)| key == ERR_DETAIL_DRIVER_LOAD_TRACE)
+            })
+            .map(|(_, value)| String::from_utf8_lossy(value).into_owned())
+            .expect("expected a driver load trace in error details");
+        assert!(
+            trace.contains("Error with dynamic library"),
+            "expected the dynamic library load error in the trace, got:\n{trace}"
         );
     }
 
