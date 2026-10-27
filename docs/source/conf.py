@@ -34,13 +34,13 @@ Arrow project logo, and the ADBC subproject logo are either registered trademark
 trademarks of The Apache Software Foundation in the United States and other
 countries."""
 author = "the Apache Arrow Developers"
-release = "25 (dev)"
+release = "26 (dev)"
 # Needed to generate version switcher
 version = release
 # Override Sphinx's default title to capitalize "Documentation"
 html_title = f"{project} {release} Documentation"
 # For linking to latest downloads
-latest_release = "24"
+latest_release = "25"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration

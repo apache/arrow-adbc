@@ -29,7 +29,7 @@
     <Product>Apache Arrow ADBC library</Product>
     <Copyright>Copyright 2022-2025 The Apache Software Foundation</Copyright>
     <Company>The Apache Software Foundation</Company>
-    <VersionPrefix>0.25.0</VersionPrefix>
+    <VersionPrefix>0.26.0</VersionPrefix>
     <VersionSuffix>SNAPSHOT</VersionSuffix>
   </PropertyGroup>
 
@@ -40,7 +40,7 @@
     Those projects opt in by setting VersionPrefix to $(AdbcCoreVersionPrefix).
   -->
   <PropertyGroup>
-    <AdbcCoreVersionPrefix>1.0.0</AdbcCoreVersionPrefix>
+    <AdbcCoreVersionPrefix>1.1.0</AdbcCoreVersionPrefix>
     <AdbcCoreVersion>$(AdbcCoreVersionPrefix)</AdbcCoreVersion>
     <AdbcCoreVersion Condition="'$(VersionSuffix)' != ''">$(AdbcCoreVersionPrefix)-$(VersionSuffix)</AdbcCoreVersion>
   </PropertyGroup>
