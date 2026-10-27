@@ -710,15 +710,15 @@ class DriverManifest : public ::testing::Test {
         {"publisher", "arrow-adbc"},
         {"version", "X.Y.Z"},
         {"ADBC",
-         toml::table{
-             {"version", "1.1.0"},
+         toml::table {
+           {"version", "1.1.0"},
          }},
         {"Driver",
-         toml::table{
-             {"shared",
-              toml::table{
-                  {InternalAdbcCurrentArch(), driver_path.string()},
-              }},
+         toml::table {
+           {"shared",
+            toml::table {
+              {InternalAdbcCurrentArch(), driver_path.string()},
+            }},
          }},
     };
 
