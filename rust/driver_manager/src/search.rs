@@ -1587,6 +1587,83 @@ mod tests {
         }
     }
 
+    /// Loading a driver that is not installed anywhere should return
+    /// NotFound on every platform.
+    ///
+    /// DEBUG: this test intentionally prints a lot of diagnostic output so we
+    /// can verify in CI what each platform actually returns.
+    #[test]
+    fn test_load_missing_driver_returns_not_found() {
+        let driver_name = "adbc_nonexistent_driver_for_not_found_test";
+
+        eprintln!("=== DEBUG test_load_missing_driver_returns_not_found ===");
+        eprintln!("DEBUG target_os = {}", env::consts::OS);
+        eprintln!("DEBUG target_arch = {}", env::consts::ARCH);
+        eprintln!("DEBUG driver_name = {driver_name:?}");
+        eprintln!(
+            "DEBUG ADBC_DRIVER_PATH = {:?}",
+            env::var_os("ADBC_DRIVER_PATH")
+        );
+        eprintln!("DEBUG CONDA_PREFIX = {:?}", env::var_os("CONDA_PREFIX"));
+        eprintln!(
+            "DEBUG search paths (ENV) = {:?}",
+            get_search_paths(adbc_core::LOAD_FLAG_SEARCH_ENV)
+        );
+        eprintln!(
+            "DEBUG search paths (USER) = {:?}",
+            get_search_paths(adbc_core::LOAD_FLAG_SEARCH_USER)
+        );
+        eprintln!(
+            "DEBUG search paths (SYSTEM) = {:?}",
+            get_search_paths(adbc_core::LOAD_FLAG_SEARCH_SYSTEM)
+        );
+
+        let result = ManagedDriver::load_from_name(
+            driver_name,
+            None,
+            AdbcVersion::V110,
+            adbc_core::LOAD_FLAG_DEFAULT,
+            None,
+        );
+        let err = match result {
+            Ok(_) => panic!("DEBUG unexpectedly loaded driver {driver_name:?}"),
+            Err(err) => err,
+        };
+
+        eprintln!("DEBUG err.status = {:?}", err.status);
+        eprintln!("DEBUG err.message = {:?}", err.message);
+        eprintln!("DEBUG err.vendor_code = {}", err.vendor_code);
+        eprintln!("DEBUG err.sqlstate = {:?}", err.sqlstate);
+        eprintln!("DEBUG err (Display) = {err}");
+        match &err.details {
+            None => eprintln!("DEBUG err.details = None"),
+            Some(details) => {
+                eprintln!("DEBUG err.details has {} entries", details.len());
+                for (key, value) in details {
+                    eprintln!("DEBUG detail key = {key:?}");
+                    for line in String::from_utf8_lossy(value).lines() {
+                        eprintln!("DEBUG   | {line}");
+                    }
+                }
+            }
+        }
+        eprintln!("=== END DEBUG ===");
+
+        assert_eq!(
+            err.status,
+            Status::NotFound,
+            "expected NotFound for a missing driver on {}, got {:?}: {}",
+            env::consts::OS,
+            err.status,
+            err.message
+        );
+        assert!(
+            err.message.contains("Driver not found"),
+            "unexpected message: {}",
+            err.message
+        );
+    }
+
     #[test]
     fn test_parse_driver_uri() {
         let cases = vec![
