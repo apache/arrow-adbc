@@ -21,6 +21,7 @@ package drivermgr_test
 
 import (
 	"context"
+	"os"
 	"runtime"
 	"strings"
 	"testing"
@@ -601,6 +602,29 @@ func (dm *DriverMgrSuite) TestSqlExecuteSchemaNotImplemented() {
 	dm.Equal(adbc.StatusNotImplemented, adbcErr.Code)
 }
 
+func (dm *DriverMgrSuite) TestSqlExecutePartitionsUnsupported() {
+	st, err := dm.conn.NewStatement()
+	dm.Require().NoError(err)
+	defer validation.CheckedClose(dm.T(), st)
+	dm.Require().NoError(st.SetSqlQuery("SELECT 1"))
+
+	schema, partitions, affected, err := st.ExecutePartitions(dm.ctx)
+	var adbcErr adbc.Error
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusNotImplemented, adbcErr.Code)
+	dm.Nil(schema)
+	dm.Equal(adbc.Partitions{}, partitions)
+	dm.Zero(affected)
+}
+
+func (dm *DriverMgrSuite) TestReadPartitionUnsupported() {
+	rdr, err := dm.conn.ReadPartition(dm.ctx, []byte("partition"))
+	var adbcErr adbc.Error
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusNotImplemented, adbcErr.Code)
+	dm.Nil(rdr)
+}
+
 func (dm *DriverMgrSuite) TestSqlExecuteInvalid() {
 	query := "INVALID"
 	st, err := dm.conn.NewStatement()
@@ -744,6 +768,64 @@ func (dm *DriverMgrSuite) TestBindStream() {
 	defer tableOut.Release()
 
 	dm.Truef(array.TableEqual(tableIn, tableOut), "expected: %s\ngot: %s", tableIn, tableOut)
+}
+
+// Run with ADBC_SQLITE_FLIGHTSQL_URI and the bundled Flight SQL driver installed.
+func TestDriverMgrFlightSQLPartitions(t *testing.T) {
+	uri := os.Getenv("ADBC_SQLITE_FLIGHTSQL_URI")
+	if uri == "" {
+		t.Skip("ADBC_SQLITE_FLIGHTSQL_URI is not set")
+	}
+
+	ctx := context.Background()
+	drv := drivermgr.Driver{}
+	db, err := drv.NewDatabase(map[string]string{
+		"driver":          "adbc_driver_flightsql",
+		adbc.OptionKeyURI: uri,
+	})
+	require.NoError(t, err)
+	defer validation.CheckedClose(t, db)
+
+	conn, err := db.Open(ctx)
+	require.NoError(t, err)
+	defer validation.CheckedClose(t, conn)
+
+	st, err := conn.NewStatement()
+	require.NoError(t, err)
+	defer validation.CheckedClose(t, st)
+	require.NoError(t, st.SetSqlQuery("SELECT 42"))
+
+	schema, partitions, affected, err := st.ExecutePartitions(ctx)
+	require.NoError(t, err)
+	require.EqualValues(t, 1, partitions.NumPartitions)
+	require.Len(t, partitions.PartitionIDs, 1)
+	require.NotEmpty(t, partitions.PartitionIDs[0])
+	require.True(t, affected == -1 || affected == 1, "rows affected: %d", affected)
+
+	readConn, err := db.Open(ctx)
+	require.NoError(t, err)
+	defer validation.CheckedClose(t, readConn)
+
+	rdr, err := readConn.ReadPartition(ctx, partitions.PartitionIDs[0])
+	require.NoError(t, err)
+	defer rdr.Release()
+	if schema != nil {
+		require.True(t, schema.Equal(rdr.Schema()))
+	}
+	require.True(t, rdr.Next())
+	rec := rdr.RecordBatch()
+	require.EqualValues(t, 1, rec.NumCols())
+	require.EqualValues(t, 1, rec.NumRows())
+	switch values := rec.Column(0).(type) {
+	case *array.Int32:
+		require.EqualValues(t, 42, values.Value(0))
+	case *array.Int64:
+		require.EqualValues(t, 42, values.Value(0))
+	default:
+		t.Fatalf("unexpected partition column type: %T", values)
+	}
+	require.False(t, rdr.Next())
+	require.NoError(t, rdr.Err())
 }
 
 func TestDriverMgr(t *testing.T) {

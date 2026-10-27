@@ -54,6 +54,11 @@ package drivermgr
 //         err->release = NULL;
 //     }
 // }
+// static void releaseAdbcPartitions(struct AdbcPartitions* partitions) {
+//     if (partitions->release != NULL) {
+//         partitions->release(partitions);
+//     }
+// }
 // struct ArrowArray* allocArr() {
 //     struct ArrowArray* array = (struct ArrowArray*)malloc(sizeof(struct ArrowArray));
 //     memset(array, 0, sizeof(struct ArrowArray));
@@ -68,6 +73,7 @@ package drivermgr
 //
 import "C"
 import (
+	"bytes"
 	"context"
 	"strconv"
 	"sync"
@@ -685,7 +691,19 @@ func (c *cnxn) Close() error {
 }
 
 func (c *cnxn) ReadPartition(_ context.Context, serializedPartition []byte) (array.RecordReader, error) {
-	return nil, &adbc.Error{Code: adbc.StatusNotImplemented}
+	var (
+		out C.struct_ArrowArrayStream
+		err C.struct_AdbcError
+		ptr *C.uint8_t
+	)
+	if len(serializedPartition) > 0 {
+		ptr = (*C.uint8_t)(unsafe.Pointer(&serializedPartition[0]))
+	}
+
+	if code := adbc.Status(C.AdbcConnectionReadPartition(c.conn, ptr, C.size_t(len(serializedPartition)), &out, &err)); code != adbc.StatusOK {
+		return nil, toAdbcError(code, &err)
+	}
+	return getRdr(&out)
 }
 
 func (c *cnxn) SetOption(key, value string) error {
@@ -883,5 +901,33 @@ func (s *stmt) GetParameterSchema() (*arrow.Schema, error) {
 }
 
 func (s *stmt) ExecutePartitions(context.Context) (*arrow.Schema, adbc.Partitions, int64, error) {
-	return nil, adbc.Partitions{}, 0, &adbc.Error{Code: adbc.StatusNotImplemented}
+	var (
+		schema     C.struct_ArrowSchema
+		partitions C.struct_AdbcPartitions
+		affected   C.int64_t
+		err        C.struct_AdbcError
+	)
+	defer cdata.ReleaseCArrowSchema((*cdata.CArrowSchema)(unsafe.Pointer(&schema)))
+	defer C.releaseAdbcPartitions(&partitions)
+
+	if code := adbc.Status(C.AdbcStatementExecutePartitions(s.st, &schema, &partitions, &affected, &err)); code != adbc.StatusOK {
+		return nil, adbc.Partitions{}, 0, toAdbcError(code, &err)
+	}
+
+	sc, goerr := getSchema(&schema)
+	if goerr != nil {
+		return nil, adbc.Partitions{}, int64(affected), goerr
+	}
+
+	result := adbc.Partitions{
+		NumPartitions: uint64(partitions.num_partitions),
+		PartitionIDs:  make([][]byte, int(partitions.num_partitions)),
+	}
+	ids := unsafe.Slice(partitions.partitions, partitions.num_partitions)
+	lengths := unsafe.Slice(partitions.partition_lengths, partitions.num_partitions)
+	for i, ptr := range ids {
+		result.PartitionIDs[i] = bytes.Clone(unsafe.Slice((*byte)(unsafe.Pointer(ptr)), lengths[i]))
+	}
+
+	return sc, result, int64(affected), nil
 }
