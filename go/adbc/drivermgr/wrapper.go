@@ -455,6 +455,8 @@ type stmt struct {
 	st *C.struct_AdbcStatement
 }
 
+var _ adbc.StatementExecuteSchema = (*stmt)(nil)
+
 func (s *stmt) Close() error {
 	var err C.struct_AdbcError
 	if code := adbc.Status(C.AdbcStatementRelease(s.st, &err)); code != adbc.StatusOK {
@@ -513,6 +515,20 @@ func (s *stmt) ExecuteUpdate(context.Context) (int64, error) {
 		return -1, toAdbcError(code, &err)
 	}
 	return int64(nrows), nil
+}
+
+func (s *stmt) ExecuteSchema(_ context.Context) (*arrow.Schema, error) {
+	var (
+		schema C.struct_ArrowSchema
+		err    C.struct_AdbcError
+	)
+	if code := adbc.Status(C.AdbcStatementExecuteSchema(s.st, &schema, &err)); code != adbc.StatusOK {
+		if schema.release != nil {
+			cdata.ReleaseCArrowSchema((*cdata.CArrowSchema)(unsafe.Pointer(&schema)))
+		}
+		return nil, toAdbcError(code, &err)
+	}
+	return getSchema(&schema)
 }
 
 func (s *stmt) Prepare(context.Context) error {

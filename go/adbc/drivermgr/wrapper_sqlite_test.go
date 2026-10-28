@@ -443,6 +443,21 @@ func (dm *DriverMgrSuite) TestSqlExecute() {
 	dm.False(rdr.Next())
 }
 
+func (dm *DriverMgrSuite) TestSqlExecuteSchemaNotImplemented() {
+	st, err := dm.conn.NewStatement()
+	dm.Require().NoError(err)
+	defer validation.CheckedClose(dm.T(), st)
+	dm.Require().NoError(st.SetSqlQuery("SELECT 1"))
+
+	executor, ok := st.(adbc.StatementExecuteSchema)
+	dm.Require().True(ok)
+	schema, err := executor.ExecuteSchema(dm.ctx)
+	dm.Nil(schema)
+	var adbcErr adbc.Error
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusNotImplemented, adbcErr.Code)
+}
+
 func (dm *DriverMgrSuite) TestSqlExecuteInvalid() {
 	query := "INVALID"
 	st, err := dm.conn.NewStatement()
