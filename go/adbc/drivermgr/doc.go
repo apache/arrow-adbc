@@ -19,7 +19,4 @@
 //
 // This provides an implementation of the ADBC interfaces which
 // uses CGO to wrap a shared object implementation of adbc.h
-//
-// Partitioned execution is available when the loaded driver supports
-// AdbcStatementExecutePartitions and AdbcConnectionReadPartition.
 package drivermgr
