@@ -134,12 +134,42 @@ namespace Apache.Arrow.Adbc.DriverManager
                 typeName: null,
                 manifestPath: null,
                 loadMethod: loadMethod,
-                () => entrypoint == null
-                    ? CAdbcDriverImporter.LoadWithFallback(
-                        driverPath,
-                        resolvedEntrypoint,
-                        DefaultNativeEntrypoint)
-                    : CAdbcDriverImporter.Load(driverPath, resolvedEntrypoint));
+                () => ImportNativeDriver(
+                    driverPath,
+                    () => entrypoint == null
+                        ? CAdbcDriverImporter.LoadWithFallback(
+                            driverPath,
+                            resolvedEntrypoint,
+                            DefaultNativeEntrypoint)
+                        : CAdbcDriverImporter.Load(driverPath, resolvedEntrypoint)));
+        }
+
+        /// <summary>
+        /// Runs a native driver import, reporting a library that is missing or
+        /// cannot be loaded as <see cref="AdbcStatusCode.NotFound"/> to match the
+        /// C/C++ and Rust driver managers. The underlying load error is kept as
+        /// the inner exception.
+        /// </summary>
+        private static AdbcDriver ImportNativeDriver(string driverPath, Func<AdbcDriver> import)
+        {
+            if (!File.Exists(driverPath))
+            {
+                throw new AdbcException(
+                    $"Driver library file not found: '{driverPath}'.",
+                    AdbcStatusCode.NotFound);
+            }
+
+            try
+            {
+                return import();
+            }
+            catch (Exception ex) when (ex is DllNotFoundException || ex is BadImageFormatException)
+            {
+                throw new AdbcException(
+                    $"Could not load driver library '{driverPath}': {ex.Message}",
+                    AdbcStatusCode.NotFound,
+                    ex);
+            }
         }
 
         // -----------------------------------------------------------------------
@@ -853,11 +883,13 @@ namespace Apache.Arrow.Adbc.DriverManager
 
         private static AdbcDriver LoadFromManifest(string manifestPath, string? entrypoint)
         {
+            // A manifest that can't be read is an invalid argument, as in the
+            // C/C++ and Rust driver managers
             if (!File.Exists(manifestPath))
             {
                 throw new AdbcException(
-                    $"Driver manifest file not found.",
-                    AdbcStatusCode.NotFound);
+                    $"Driver manifest file not found: '{manifestPath}'.",
+                    AdbcStatusCode.InvalidArgument);
             }
 
             DriverManifest manifest = DriverManifest.LoadFromFile(manifestPath);
@@ -948,12 +980,14 @@ namespace Apache.Arrow.Adbc.DriverManager
                 typeName: null,
                 manifestPath: manifestPath,
                 loadMethod: loadMethod,
-                () => allowNativeFallback
-                    ? CAdbcDriverImporter.LoadWithFallback(
-                        driverPath,
-                        entrypoint,
-                        DefaultNativeEntrypoint)
-                    : CAdbcDriverImporter.Load(driverPath, entrypoint));
+                () => ImportNativeDriver(
+                    driverPath,
+                    () => allowNativeFallback
+                        ? CAdbcDriverImporter.LoadWithFallback(
+                            driverPath,
+                            entrypoint,
+                            DefaultNativeEntrypoint)
+                        : CAdbcDriverImporter.Load(driverPath, entrypoint)));
         }
 
         /// <summary>
@@ -997,8 +1031,9 @@ namespace Apache.Arrow.Adbc.DriverManager
 
             // 2. Try native library extensions. If a matching file exists but fails
             // to load (e.g., corrupt binary, wrong architecture, missing entrypoint),
-            // surface that concrete error rather than silently degrading to a generic
-            // NotFound -- the file is clearly the user's intended driver.
+            // stop here rather than trying other directories -- the file is clearly
+            // the user's intended driver. A library that cannot be loaded is reported
+            // as NotFound with the concrete error attached (see ImportNativeDriver).
             foreach (string nativeExt in GetPlatformExtensions())
             {
                 string libPath = Path.Combine(dir, driverName + nativeExt);

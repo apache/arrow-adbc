@@ -79,7 +79,9 @@ namespace Apache.Arrow.Adbc.C
             IntPtr library = NativeLibrary.Load(file);
             if (library == IntPtr.Zero)
             {
-                throw new ArgumentException("unable to load library", nameof(file));
+                // Only reachable with the netstandard2.0 NativeLibrary shim; the
+                // runtime's NativeLibrary.Load throws DllNotFoundException itself.
+                throw new DllNotFoundException($"Unable to load shared library '{file}'.");
             }
 
             try

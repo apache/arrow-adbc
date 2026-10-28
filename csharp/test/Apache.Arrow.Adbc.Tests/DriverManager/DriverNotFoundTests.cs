@@ -28,11 +28,25 @@ namespace Apache.Arrow.Adbc.Tests.DriverManager
     /// A driver that does not exist should be reported as an
     /// <see cref="AdbcException"/> with <see cref="AdbcStatusCode.NotFound"/>
     /// no matter how it was specified or which search locations are enabled.
+    /// A library file that exists but cannot be loaded is also reported as
+    /// <see cref="AdbcStatusCode.NotFound"/>, with the load error attached,
+    /// matching the C/C++ driver manager. A manifest file that doesn't exist
+    /// is reported as <see cref="AdbcStatusCode.InvalidArgument"/>.
     /// </summary>
     [Collection(DriverManagerSecurityCollection.Name)]
-    public class DriverNotFoundTests
+    public class DriverNotFoundTests : IDisposable
     {
         private const string MissingDriverName = "adbc_test_driver_manager_missing_driver_7c8f5482";
+
+        private readonly List<string> _tempDirs = new List<string>();
+
+        public void Dispose()
+        {
+            foreach (string d in _tempDirs)
+            {
+                try { if (Directory.Exists(d)) Directory.Delete(d, true); } catch { }
+            }
+        }
 
         public static IEnumerable<object[]> AllLoadFlags()
         {
@@ -72,7 +86,9 @@ namespace Apache.Arrow.Adbc.Tests.DriverManager
         [InlineData(AdbcLoadFlags.None)]
         public void AbsolutePathWithLibraryExtension_ThrowsNotFound(AdbcLoadFlags flags)
         {
-            AssertNotFound(Path.Combine(MissingDriverDir(), PlatformLibraryName(MissingDriverName)), flags);
+            string path = Path.Combine(MissingDriverDir(), PlatformLibraryName(MissingDriverName));
+            AdbcException ex = AssertNotFound(path, flags);
+            Assert.Contains(path, ex.Message);
         }
 
         [Fact]
@@ -81,21 +97,82 @@ namespace Apache.Arrow.Adbc.Tests.DriverManager
             AssertNotFound(PlatformLibraryName(MissingDriverName), AdbcLoadFlags.Compatible);
         }
 
+        // A manifest file that doesn't exist is InvalidArgument rather than
+        // NotFound, as in the C/C++ and Rust driver managers
         [Theory]
         [InlineData(AdbcLoadFlags.Default)]
         [InlineData(AdbcLoadFlags.None)]
-        public void AbsoluteManifestPath_ThrowsNotFound(AdbcLoadFlags flags)
+        public void AbsoluteManifestPath_ThrowsInvalidArgument(AdbcLoadFlags flags)
         {
-            AssertNotFound(Path.Combine(MissingDriverDir(), MissingDriverName + ".toml"), flags);
+            string path = Path.Combine(MissingDriverDir(), MissingDriverName + ".toml");
+            AdbcException ex = Assert.Throws<AdbcException>(
+                () => AdbcDriverManager.FindLoadDriver(path, loadOptions: flags));
+            Assert.Equal(AdbcStatusCode.InvalidArgument, ex.Status);
+            Assert.Contains(path, ex.Message);
         }
 
         [Fact]
-        public void RelativeManifestPath_ThrowsNotFound()
+        public void RelativeManifestPath_ThrowsInvalidArgument()
         {
-            AssertNotFound(MissingDriverName + ".toml", AdbcLoadFlags.Compatible);
+            string name = MissingDriverName + ".toml";
+            AdbcException ex = Assert.Throws<AdbcException>(
+                () => AdbcDriverManager.FindLoadDriver(name, loadOptions: AdbcLoadFlags.Compatible));
+            Assert.Equal(AdbcStatusCode.InvalidArgument, ex.Status);
+            Assert.Contains(name, ex.Message);
         }
 
-        private static void AssertNotFound(string driverName, AdbcLoadFlags flags, string? additionalSearchPathList = null)
+        [Fact]
+        public void ManifestWithMissingLibrary_ThrowsNotFound()
+        {
+            string dir = CreateTempDir();
+            string libraryPath = Path.Combine(dir, PlatformLibraryName(MissingDriverName));
+            string manifestPath = WriteManifest(dir, libraryPath);
+
+            AdbcException ex = AssertNotFound(manifestPath, AdbcLoadFlags.Default);
+            Assert.Contains(libraryPath, ex.Message);
+        }
+
+        // -----------------------------------------------------------------------
+        // A library file that exists but is not a loadable shared library
+        // -----------------------------------------------------------------------
+
+        [Fact]
+        public void InvalidLibrary_AbsolutePath_ThrowsNotFound()
+        {
+            string libraryPath = WriteInvalidLibrary(CreateTempDir(), PlatformLibraryName(MissingDriverName));
+
+            AdbcException ex = AssertNotFound(libraryPath, AdbcLoadFlags.Default);
+            Assert.Contains(libraryPath, ex.Message);
+            Assert.NotNull(ex.InnerException);
+        }
+
+        [Fact]
+        public void InvalidLibrary_BareNameInSearchPath_ThrowsNotFound()
+        {
+            string dir = CreateTempDir();
+            string extension = RuntimeInformation.IsOSPlatform(OSPlatform.Windows) ? ".dll"
+                : RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? ".dylib"
+                : ".so";
+            string libraryPath = WriteInvalidLibrary(dir, MissingDriverName + extension);
+
+            AdbcException ex = AssertNotFound(MissingDriverName, AdbcLoadFlags.None, dir);
+            Assert.Contains(libraryPath, ex.Message);
+            Assert.NotNull(ex.InnerException);
+        }
+
+        [Fact]
+        public void ManifestWithInvalidLibrary_ThrowsNotFound()
+        {
+            string dir = CreateTempDir();
+            string libraryPath = WriteInvalidLibrary(dir, PlatformLibraryName(MissingDriverName));
+            string manifestPath = WriteManifest(dir, libraryPath);
+
+            AdbcException ex = AssertNotFound(manifestPath, AdbcLoadFlags.Default);
+            Assert.Contains(libraryPath, ex.Message);
+            Assert.NotNull(ex.InnerException);
+        }
+
+        private static AdbcException AssertNotFound(string driverName, AdbcLoadFlags flags, string? additionalSearchPathList = null)
         {
             Exception? ex = Record.Exception(
                 () => AdbcDriverManager.FindLoadDriver(
@@ -106,7 +183,35 @@ namespace Apache.Arrow.Adbc.Tests.DriverManager
             Assert.True(
                 ex is AdbcException,
                 $"Expected AdbcException(NotFound), got {ex?.GetType().FullName ?? "no exception"}: {ex?.Message}");
-            Assert.Equal(AdbcStatusCode.NotFound, ((AdbcException)ex!).Status);
+            AdbcException adbcEx = (AdbcException)ex!;
+            Assert.Equal(AdbcStatusCode.NotFound, adbcEx.Status);
+            return adbcEx;
+        }
+
+        private string CreateTempDir()
+        {
+            string dir = Path.Combine(Path.GetTempPath(), "adbc_driver_not_found_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(dir);
+            _tempDirs.Add(dir);
+            return dir;
+        }
+
+        private static string WriteInvalidLibrary(string dir, string fileName)
+        {
+            string path = Path.Combine(dir, fileName);
+            File.WriteAllText(path, "this is not a shared library");
+            return path;
+        }
+
+        private static string WriteManifest(string dir, string libraryPath)
+        {
+            string path = Path.Combine(dir, MissingDriverName + ".toml");
+            File.WriteAllText(path,
+                "manifest_version = 1\n" +
+                "name = \"Missing\"\n" +
+                "\n[Driver]\n" +
+                "shared = '" + libraryPath + "'\n");
+            return path;
         }
 
         private static string MissingDriverDir() =>
