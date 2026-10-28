@@ -522,9 +522,15 @@ impl<'a> DriverLibrary<'a> {
         }
 
         let driver_name = driver_path.as_os_str().to_string_lossy().into_owned();
-        let library = DriverLibrary::load_library_from_name(driver_name)?;
-        Ok(SearchHit::new(driver_path.to_path_buf(), library, None))
-        // XXX: should we return NotFound like the non-Windows version?
+        match DriverLibrary::load_library_from_name(driver_name) {
+            Ok(library) => return Ok(SearchHit::new(driver_path.to_path_buf(), library, None)),
+            Err(err) => trace.push(err),
+        }
+
+        Err(Error::with_message_and_status(
+            format!("Driver not found: {}", driver_path.display()),
+            Status::NotFound,
+        ))
     }
 
     #[cfg(not(windows))]
@@ -1652,7 +1658,7 @@ mod tests {
     }
 
     #[test]
-    fn test_load_from_name_includes_search_trace_in_error_details() {
+    fn test_load_from_name_missing_driver() {
         let err = ManagedDriver::load_from_name(
             "adbc_test_driver_manager_missing_driver_7c8f5482",
             None,
@@ -1662,6 +1668,13 @@ mod tests {
         )
         .unwrap_err();
 
+        assert_eq!(err.status, Status::NotFound, "{}", err.message);
+        assert!(
+            err.message.contains("Driver not found"),
+            "Unexpected error message: {}",
+            err.message
+        );
+
         let details = err
             .details
             .expect("Expected load-from-name errors to include details");
@@ -1669,9 +1682,11 @@ mod tests {
             .iter()
             .find(|(key, _)| key == "adbc.drivermanager.driver_load_trace")
             .expect("Expected driver load trace in error details");
+        // The underlying dynamic library error must be kept in the trace
+        let trace = String::from_utf8_lossy(&trace.1);
         assert!(
-            !trace.1.is_empty(),
-            "Expected driver load trace detail to be non-empty"
+            trace.contains("Error with dynamic library"),
+            "Expected dynamic library load error in driver load trace, got:\n{trace}"
         );
     }
 
