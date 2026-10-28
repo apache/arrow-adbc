@@ -344,6 +344,40 @@ func (dm *DriverMgrSuite) TestGetObjectsTableType() {
 	dm.False(rdr.Next())
 }
 
+func (dm *DriverMgrSuite) TestGetStatisticsNotImplemented() {
+	stats, ok := dm.conn.(adbc.ConnectionGetStatistics)
+	dm.Require().True(ok)
+
+	catalog, dbSchema, tableName := "", "main", "test_table"
+	for _, tc := range []struct {
+		name                   string
+		catalog, schema, table *string
+		approximate            bool
+	}{
+		{"unfiltered approximate", nil, nil, nil, true},
+		{"filtered exact", &catalog, &dbSchema, &tableName, false},
+	} {
+		dm.Run(tc.name, func() {
+			rdr, err := stats.GetStatistics(dm.ctx, tc.catalog, tc.schema, tc.table, tc.approximate)
+			dm.Nil(rdr)
+			var adbcErr adbc.Error
+			dm.Require().ErrorAs(err, &adbcErr)
+			dm.Equal(adbc.StatusNotImplemented, adbcErr.Code)
+		})
+	}
+}
+
+func (dm *DriverMgrSuite) TestGetStatisticNamesNotImplemented() {
+	stats, ok := dm.conn.(adbc.ConnectionGetStatistics)
+	dm.Require().True(ok)
+
+	rdr, err := stats.GetStatisticNames(dm.ctx)
+	dm.Nil(rdr)
+	var adbcErr adbc.Error
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusNotImplemented, adbcErr.Code)
+}
+
 func (dm *DriverMgrSuite) TestGetTableSchema() {
 	schema, err := dm.conn.GetTableSchema(dm.ctx, nil, nil, "test_table")
 	dm.NoError(err)

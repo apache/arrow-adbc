@@ -288,6 +288,8 @@ type cnxn struct {
 	conn *C.struct_AdbcConnection
 }
 
+var _ adbc.ConnectionGetStatistics = (*cnxn)(nil)
+
 func (c *cnxn) GetInfo(_ context.Context, infoCodes []adbc.InfoCode) (array.RecordReader, error) {
 	var (
 		out   C.struct_ArrowArrayStream
@@ -347,6 +349,50 @@ func (c *cnxn) GetObjects(_ context.Context, depth adbc.ObjectDepth, catalog, db
 	}
 
 	if code := adbc.Status(C.AdbcConnectionGetObjects(c.conn, C.int(depth), catalog_, dbSchema_, tableName_, tableType_, columnName_, &out, &err)); code != adbc.StatusOK {
+		return nil, toAdbcError(code, &err)
+	}
+	return getRdr(&out)
+}
+
+func (c *cnxn) GetStatistics(_ context.Context, catalog, dbSchema, tableName *string, approximate bool) (array.RecordReader, error) {
+	var (
+		out          C.struct_ArrowArrayStream
+		err          C.struct_AdbcError
+		catalog_     *C.char
+		dbSchema_    *C.char
+		tableName_   *C.char
+		approximate_ C.char
+	)
+
+	if catalog != nil {
+		catalog_ = C.CString(*catalog)
+		defer C.free(unsafe.Pointer(catalog_))
+	}
+	if dbSchema != nil {
+		dbSchema_ = C.CString(*dbSchema)
+		defer C.free(unsafe.Pointer(dbSchema_))
+	}
+	if tableName != nil {
+		tableName_ = C.CString(*tableName)
+		defer C.free(unsafe.Pointer(tableName_))
+	}
+	if approximate {
+		approximate_ = 1
+	}
+
+	if code := adbc.Status(C.AdbcConnectionGetStatistics(c.conn, catalog_, dbSchema_, tableName_, approximate_, &out, &err)); code != adbc.StatusOK {
+		return nil, toAdbcError(code, &err)
+	}
+	return getRdr(&out)
+}
+
+func (c *cnxn) GetStatisticNames(_ context.Context) (array.RecordReader, error) {
+	var (
+		out C.struct_ArrowArrayStream
+		err C.struct_AdbcError
+	)
+
+	if code := adbc.Status(C.AdbcConnectionGetStatisticNames(c.conn, &out, &err)); code != adbc.StatusOK {
 		return nil, toAdbcError(code, &err)
 	}
 	return getRdr(&out)
