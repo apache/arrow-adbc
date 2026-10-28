@@ -22,7 +22,7 @@ go 1.26.0
 toolchain go1.26.10
 
 require (
-	github.com/apache/arrow-adbc/go/adbc v1.12.0
+	github.com/apache/arrow-adbc/go/adbc v1.13.0
 	github.com/apache/arrow-go/v18 v18.8.0
 	github.com/bluele/gcache v0.0.2
 	github.com/golang/protobuf v1.5.4
