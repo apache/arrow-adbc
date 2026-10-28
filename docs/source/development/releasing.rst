@@ -587,7 +587,7 @@ Be sure to go through on the following checklist:
 
    Notify the maintainers of the ``dbc`` CDN (https://dbc-cdn.columnar.tech/)
    that the drivers have been updated, either on `GitHub
-   <https://github.com/columnar-tech/dbc/discussions>`_ or email (hello @
-   columnar-dot-tech).
+   <https://github.com/columnar-tech/dbc/discussions>`_ or via `email
+   <mailto:hello@columnar.tech>`.
 
 .. _nightly-website.yml: https://github.com/apache/arrow-adbc/actions/workflows/nightly-website.yml
