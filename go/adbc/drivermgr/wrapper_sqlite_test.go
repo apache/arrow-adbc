@@ -444,21 +444,6 @@ func (dm *DriverMgrSuite) TestSqlExecute() {
 	dm.False(rdr.Next())
 }
 
-func (dm *DriverMgrSuite) TestSqlExecuteSchemaNotImplemented() {
-	st, err := dm.conn.NewStatement()
-	dm.Require().NoError(err)
-	defer validation.CheckedClose(dm.T(), st)
-	dm.Require().NoError(st.SetSqlQuery("SELECT 1"))
-
-	executor, ok := st.(adbc.StatementExecuteSchema)
-	dm.Require().True(ok)
-	schema, err := executor.ExecuteSchema(dm.ctx)
-	dm.Nil(schema)
-	var adbcErr adbc.Error
-	dm.Require().ErrorAs(err, &adbcErr)
-	dm.Equal(adbc.StatusNotImplemented, adbcErr.Code)
-}
-
 func (dm *DriverMgrSuite) TestSqlExecutePrecancelled() {
 	st, err := dm.conn.NewStatement()
 	dm.Require().NoError(err)
@@ -475,13 +460,6 @@ func (dm *DriverMgrSuite) TestSqlExecutePrecancelled() {
 	dm.Equal(adbc.StatusCancelled, adbcErr.Code)
 
 	_, err = st.ExecuteUpdate(ctx)
-	dm.Require().ErrorAs(err, &adbcErr)
-	dm.Equal(adbc.StatusCancelled, adbcErr.Code)
-
-	executor, ok := st.(adbc.StatementExecuteSchema)
-	dm.Require().True(ok)
-	schema, err := executor.ExecuteSchema(ctx)
-	dm.Nil(schema)
 	dm.Require().ErrorAs(err, &adbcErr)
 	dm.Equal(adbc.StatusCancelled, adbcErr.Code)
 }
@@ -502,13 +480,6 @@ func (dm *DriverMgrSuite) TestSqlExecuteExpiredDeadline() {
 	dm.Equal(adbc.StatusTimeout, adbcErr.Code)
 
 	_, err = st.ExecuteUpdate(ctx)
-	dm.Require().ErrorAs(err, &adbcErr)
-	dm.Equal(adbc.StatusTimeout, adbcErr.Code)
-
-	executor, ok := st.(adbc.StatementExecuteSchema)
-	dm.Require().True(ok)
-	schema, err := executor.ExecuteSchema(ctx)
-	dm.Nil(schema)
 	dm.Require().ErrorAs(err, &adbcErr)
 	dm.Equal(adbc.StatusTimeout, adbcErr.Code)
 }

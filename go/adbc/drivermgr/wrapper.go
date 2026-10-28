@@ -494,8 +494,6 @@ type stmt struct {
 	active *cancellationWatch
 }
 
-var _ adbc.StatementExecuteSchema = (*stmt)(nil)
-
 type cancellationWatch struct {
 	stop func() bool
 	done chan struct{}
@@ -711,32 +709,6 @@ func (s *stmt) ExecuteUpdate(ctx context.Context) (int64, error) {
 		return -1, contextDriverError(ctx, toAdbcError(code, &err))
 	}
 	return int64(nrows), nil
-}
-
-func (s *stmt) ExecuteSchema(ctx context.Context) (*arrow.Schema, error) {
-	s.stopActiveWatch()
-	if err := contextAdbcError(ctx); err != nil {
-		return nil, err
-	}
-
-	var (
-		schema C.struct_ArrowSchema
-		err    C.struct_AdbcError
-	)
-	watch := s.watchCancellation(ctx)
-	if ctxErr := contextAdbcError(ctx); ctxErr != nil {
-		s.stopWatching(watch)
-		return nil, ctxErr
-	}
-	code := adbc.Status(C.AdbcStatementExecuteSchema(s.st, &schema, &err))
-	s.stopWatching(watch)
-	if code != adbc.StatusOK {
-		if schema.release != nil {
-			cdata.ReleaseCArrowSchema((*cdata.CArrowSchema)(unsafe.Pointer(&schema)))
-		}
-		return nil, contextDriverError(ctx, toAdbcError(code, &err))
-	}
-	return getSchema(&schema)
 }
 
 func (s *stmt) Prepare(context.Context) error {
