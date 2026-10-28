@@ -710,15 +710,15 @@ class DriverManifest : public ::testing::Test {
         {"publisher", "arrow-adbc"},
         {"version", "X.Y.Z"},
         {"ADBC",
-         toml::table{
-             {"version", "1.1.0"},
+         toml::table {
+           {"version", "1.1.0"},
          }},
         {"Driver",
-         toml::table{
-             {"shared",
-              toml::table{
-                  {InternalAdbcCurrentArch(), driver_path.string()},
-              }},
+         toml::table {
+           {"shared",
+            toml::table {
+              {InternalAdbcCurrentArch(), driver_path.string()},
+            }},
          }},
     };
 
@@ -1362,6 +1362,82 @@ TEST_F(DriverManifest, CondaPrefix) {
     ASSERT_THAT(error.message,
                 ::testing::HasSubstr("not enabled at build time: Conda prefix"));
   }
+}
+
+// A driver that does not exist should be reported as NOT_FOUND no matter how
+// it was specified or which search locations are enabled.
+namespace {
+constexpr const char* kMissingDriverName =
+    "adbc_test_driver_manager_missing_driver_7c8f5482";
+
+void ExpectMissingDriverNotFound(const std::string& driver_name,
+                                 AdbcLoadFlags load_options,
+                                 const char* additional_search_path_list = nullptr) {
+  SCOPED_TRACE("driver=" + driver_name + " load_options=" + std::to_string(load_options));
+  struct AdbcDriver driver = {};
+  struct AdbcError error = {};
+  EXPECT_THAT(
+      AdbcFindLoadDriver(driver_name.c_str(), nullptr, ADBC_VERSION_1_1_0, load_options,
+                         additional_search_path_list, &driver, &error),
+      IsStatus(ADBC_STATUS_NOT_FOUND, &error));
+  if (error.release) {
+    error.release(&error);
+  }
+  if (driver.release) {
+    driver.release(&driver, nullptr);
+  }
+}
+
+std::string MissingDriverDir() {
+  return (std::filesystem::temp_directory_path() / "adbc_missing_driver_dir_7c8f5482")
+      .string();
+}
+
+std::string PlatformLibraryName(const std::string& name) {
+#if defined(_WIN32)
+  return name + ".dll";
+#elif defined(__APPLE__)
+  return "lib" + name + ".dylib";
+#else
+  return "lib" + name + ".so";
+#endif
+}
+}  // namespace
+
+TEST(DriverManagerNotFound, BareNameAllLoadFlags) {
+  constexpr AdbcLoadFlags kAllFlags =
+      ADBC_LOAD_FLAG_SEARCH_ENV | ADBC_LOAD_FLAG_SEARCH_USER |
+      ADBC_LOAD_FLAG_SEARCH_SYSTEM | ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS;
+  for (AdbcLoadFlags flags = 0; flags <= kAllFlags; ++flags) {
+    ExpectMissingDriverNotFound(kMissingDriverName, flags);
+  }
+}
+
+TEST(DriverManagerNotFound, BareNameAdditionalSearchPath) {
+  std::string search_path = MissingDriverDir();
+  ExpectMissingDriverNotFound(kMissingDriverName, ADBC_LOAD_FLAG_DEFAULT,
+                              search_path.c_str());
+  ExpectMissingDriverNotFound(kMissingDriverName, 0, search_path.c_str());
+}
+
+TEST(DriverManagerNotFound, AbsolutePathWithoutExtension) {
+  std::string path =
+      (std::filesystem::path(MissingDriverDir()) / kMissingDriverName).string();
+  ExpectMissingDriverNotFound(path, ADBC_LOAD_FLAG_DEFAULT);
+  ExpectMissingDriverNotFound(path, 0);
+}
+
+TEST(DriverManagerNotFound, AbsolutePathWithLibraryExtension) {
+  std::string path = (std::filesystem::path(MissingDriverDir()) /
+                      PlatformLibraryName(kMissingDriverName))
+                         .string();
+  ExpectMissingDriverNotFound(path, ADBC_LOAD_FLAG_DEFAULT);
+  ExpectMissingDriverNotFound(path, 0);
+}
+
+TEST(DriverManagerNotFound, RelativePathWithLibraryExtension) {
+  ExpectMissingDriverNotFound(PlatformLibraryName(kMissingDriverName),
+                              ADBC_LOAD_FLAG_DEFAULT);
 }
 
 TEST_F(DriverManifest, ImplicitUri) {
