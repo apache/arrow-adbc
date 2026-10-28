@@ -318,3 +318,25 @@ func TestAsStatementContext_Nil(t *testing.T) {
 	stmtCtx := adbc.AsStatementContext(nil)
 	assert.Nil(t, stmtCtx)
 }
+
+func TestContextAdaptersWithoutGetSetOptions(t *testing.T) {
+	ctx := context.Background()
+	for name, opts := range map[string]adbc.GetSetOptionsWithContext{
+		"database":   adbc.AsDatabaseContext(&mockDatabase{}).(adbc.GetSetOptionsWithContext),
+		"connection": adbc.AsConnectionContext(&mockConnection{}).(adbc.GetSetOptionsWithContext),
+		"statement":  adbc.AsStatementContext(&mockStatement{}).(adbc.GetSetOptionsWithContext),
+	} {
+		t.Run(name, func(t *testing.T) {
+			var adbcErr adbc.Error
+			_, err := opts.GetOption(ctx, "key")
+			assert.ErrorAs(t, err, &adbcErr)
+			assert.Equal(t, adbc.StatusNotFound, adbcErr.Code)
+			_, err = opts.GetOptionInt(ctx, "key")
+			assert.ErrorAs(t, err, &adbcErr)
+			assert.Equal(t, adbc.StatusNotFound, adbcErr.Code)
+			err = opts.SetOptionDouble(ctx, "key", 1.5)
+			assert.ErrorAs(t, err, &adbcErr)
+			assert.Equal(t, adbc.StatusNotImplemented, adbcErr.Code)
+		})
+	}
+}

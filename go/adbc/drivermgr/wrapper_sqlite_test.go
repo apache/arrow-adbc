@@ -444,6 +444,38 @@ func (dm *DriverMgrSuite) TestGetSetOptions() {
 	dm.Equal(int64(42), count)
 }
 
+func (dm *DriverMgrSuite) TestGetSetOptionsWithContext() {
+	dbOpts := adbc.AsDatabaseContext(dm.db).(adbc.GetSetOptionsWithContext)
+	count, err := dbOpts.GetOptionInt(dm.ctx, "adbc.sqlite.query.batch_rows")
+	dm.Require().NoError(err)
+	dm.Equal(int64(1024), count)
+
+	cnxn, err := dm.db.Open(dm.ctx)
+	dm.Require().NoError(err)
+	defer validation.CheckedClose(dm.T(), cnxn)
+
+	connCtx := adbc.AsConnectionContext(cnxn)
+	connOpts := connCtx.(adbc.GetSetOptionsWithContext)
+	dm.Require().NoError(connOpts.SetOption(dm.ctx, adbc.OptionKeyAutoCommit, adbc.OptionValueDisabled))
+	value, err := connOpts.GetOption(dm.ctx, adbc.OptionKeyAutoCommit)
+	dm.Require().NoError(err)
+	dm.Equal(adbc.OptionValueDisabled, value)
+
+	_, err = connOpts.GetOption(dm.ctx, "unknown.option")
+	var adbcErr adbc.Error
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusNotFound, adbcErr.Code)
+
+	stmt, err := connCtx.NewStatement(dm.ctx)
+	dm.Require().NoError(err)
+	defer func() { dm.NoError(stmt.Close(dm.ctx)) }()
+	stmtOpts := stmt.(adbc.GetSetOptionsWithContext)
+	dm.Require().NoError(stmtOpts.SetOptionInt(dm.ctx, "adbc.sqlite.query.batch_rows", 7))
+	count, err = stmtOpts.GetOptionInt(dm.ctx, "adbc.sqlite.query.batch_rows")
+	dm.Require().NoError(err)
+	dm.Equal(int64(7), count)
+}
+
 func TestGetOptionLongValue(t *testing.T) {
 	uri := "file:" + strings.Repeat("a", 150) + "?mode=memory"
 	db, err := (drivermgr.Driver{}).NewDatabase(map[string]string{
