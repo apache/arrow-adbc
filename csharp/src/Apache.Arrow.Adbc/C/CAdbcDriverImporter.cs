@@ -96,7 +96,6 @@ namespace Apache.Arrow.Adbc.C
                 }
                 if (export == IntPtr.Zero)
                 {
-                    if (canUnload) { NativeLibrary.Free(library); }
                     throw new ArgumentException($"Unable to find {entryPoint} export", nameof(file));
                 }
 
