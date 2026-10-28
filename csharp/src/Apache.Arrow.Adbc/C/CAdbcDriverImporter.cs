@@ -94,6 +94,12 @@ namespace Apache.Arrow.Adbc.C
                 }
                 catch (EntryPointNotFoundException) when (fallbackEntryPoint != null)
                 {
+                    export = IntPtr.Zero;
+                }
+                // The runtime's NativeLibrary.GetExport throws for a missing export,
+                // but the netstandard2.0 NativeLibrary shim returns IntPtr.Zero
+                if (export == IntPtr.Zero && fallbackEntryPoint != null)
+                {
                     export = NativeLibrary.GetExport(library, fallbackEntryPoint);
                 }
                 if (export == IntPtr.Zero)
