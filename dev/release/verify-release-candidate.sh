@@ -393,6 +393,7 @@ install_conda() {
 
   # Creating a separate conda environment
   . $prefix/etc/profile.d/conda.sh
+  conda init
   conda activate base
 }
 
