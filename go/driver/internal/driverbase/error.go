@@ -40,6 +40,6 @@ func (helper *ErrorHelper) Errorf(code adbc.Status, message string, format ...in
 // isNotImplemented reports whether err is an ADBC error with status
 // NotImplemented, which is how the *ImplBase types reject unknown options.
 func isNotImplemented(err error) bool {
-	var adbcErr adbc.Error
-	return errors.As(err, &adbcErr) && adbcErr.Code == adbc.StatusNotImplemented
+	adbcErr, ok := errors.AsType[adbc.Error](err)
+	return ok && adbcErr.Code == adbc.StatusNotImplemented
 }
