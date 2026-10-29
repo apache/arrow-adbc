@@ -79,7 +79,9 @@ namespace Apache.Arrow.Adbc.C
             IntPtr library = NativeLibrary.Load(file);
             if (library == IntPtr.Zero)
             {
-                throw new ArgumentException("unable to load library", nameof(file));
+                // Only reachable with the netstandard2.0 NativeLibrary shim; the
+                // runtime's NativeLibrary.Load throws DllNotFoundException itself.
+                throw new DllNotFoundException($"Unable to load shared library '{file}'.");
             }
 
             try
@@ -92,11 +94,16 @@ namespace Apache.Arrow.Adbc.C
                 }
                 catch (EntryPointNotFoundException) when (fallbackEntryPoint != null)
                 {
+                    export = IntPtr.Zero;
+                }
+                // The runtime's NativeLibrary.GetExport throws for a missing export,
+                // but the netstandard2.0 NativeLibrary shim returns IntPtr.Zero
+                if (export == IntPtr.Zero && fallbackEntryPoint != null)
+                {
                     export = NativeLibrary.GetExport(library, fallbackEntryPoint);
                 }
                 if (export == IntPtr.Zero)
                 {
-                    if (canUnload) { NativeLibrary.Free(library); }
                     throw new ArgumentException($"Unable to find {entryPoint} export", nameof(file));
                 }
 

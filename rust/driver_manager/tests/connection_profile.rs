@@ -674,7 +674,7 @@ shared = "{driver_path}"
 "#
     );
 
-    let manifest_path = manifest_dir.path().join("sqlite.toml");
+    let manifest_path = manifest_dir.path().join("test_sqlite.toml");
     std::fs::write(&manifest_path, &manifest_contents).unwrap();
 
     let manifest_path = profile_dir.path().join("sqlitemani.toml");
@@ -682,7 +682,7 @@ shared = "{driver_path}"
 
     let profile_contents = r#"
 profile_version = 1
-driver = "sqlite"
+driver = "test_sqlite"
 [Options]
 uri = ":memory:"
 "#;

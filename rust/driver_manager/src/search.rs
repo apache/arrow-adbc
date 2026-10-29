@@ -522,9 +522,15 @@ impl<'a> DriverLibrary<'a> {
         }
 
         let driver_name = driver_path.as_os_str().to_string_lossy().into_owned();
-        let library = DriverLibrary::load_library_from_name(driver_name)?;
-        Ok(SearchHit::new(driver_path.to_path_buf(), library, None))
-        // XXX: should we return NotFound like the non-Windows version?
+        match DriverLibrary::load_library_from_name(driver_name) {
+            Ok(library) => return Ok(SearchHit::new(driver_path.to_path_buf(), library, None)),
+            Err(err) => trace.push(err),
+        }
+
+        Err(Error::with_message_and_status(
+            format!("Driver not found: {}", driver_path.display()),
+            Status::NotFound,
+        ))
     }
 
     #[cfg(not(windows))]
@@ -1208,15 +1214,16 @@ mod tests {
     #[test]
     #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
     fn test_load_relative_path() {
-        std::fs::write(PathBuf::from("sqlite.toml"), simple_manifest())
+        std::fs::write(PathBuf::from("test_sqlite.toml"), simple_manifest())
             .expect("Failed to write driver manager manifest to file");
 
-        let err = ManagedDriver::load_from_name("sqlite.toml", None, AdbcVersion::V100, 0, None)
-            .unwrap_err();
+        let err =
+            ManagedDriver::load_from_name("test_sqlite.toml", None, AdbcVersion::V100, 0, None)
+                .unwrap_err();
         assert_eq!(err.status, Status::InvalidArguments);
 
         ManagedDriver::load_from_name(
-            "sqlite.toml",
+            "test_sqlite.toml",
             None,
             AdbcVersion::V100,
             LOAD_FLAG_ALLOW_RELATIVE_PATHS,
@@ -1224,7 +1231,7 @@ mod tests {
         )
         .unwrap();
 
-        std::fs::remove_file("sqlite.toml")
+        std::fs::remove_file("test_sqlite.toml")
             .expect("Failed to remove temporary driver manifest file");
     }
 
@@ -1232,7 +1239,7 @@ mod tests {
     #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
     fn test_manifest_missing_driver() {
         let (tmp_dir, manifest_path) = write_manifest_to_tempfile(
-            PathBuf::from("sqlite.toml"),
+            PathBuf::from("test_sqlite.toml"),
             manifest_without_driver().to_string(),
         );
 
@@ -1256,7 +1263,7 @@ mod tests {
     fn test_manifest_bad_version() {
         let manifest = "manifest_version = 2\n".to_owned() + &simple_manifest().to_owned();
         let (tmp_dir, manifest_path) =
-            write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), manifest);
+            write_manifest_to_tempfile(PathBuf::from("test_sqlite.toml"), manifest);
 
         let err = ManagedDriver::load_from_name(
             manifest_path,
@@ -1288,7 +1295,7 @@ mod tests {
         );
 
         let (tmp_dir, manifest_path) =
-            write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), manifest_wrong_arch);
+            write_manifest_to_tempfile(PathBuf::from("test_sqlite.toml"), manifest_wrong_arch);
 
         let err = ManagedDriver::load_from_name(
             manifest_path,
@@ -1309,7 +1316,7 @@ mod tests {
     #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
     fn test_load_absolute_path() {
         let (tmp_dir, manifest_path) =
-            write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
+            write_manifest_to_tempfile(PathBuf::from("test_sqlite.toml"), simple_manifest());
 
         ManagedDriver::load_from_name(
             manifest_path,
@@ -1329,7 +1336,7 @@ mod tests {
     #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
     fn test_load_absolute_path_no_ext() {
         let (tmp_dir, mut manifest_path) =
-            write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
+            write_manifest_to_tempfile(PathBuf::from("test_sqlite.toml"), simple_manifest());
 
         manifest_path.set_extension("");
         ManagedDriver::load_from_name(
@@ -1353,7 +1360,7 @@ mod tests {
         // ensure that we fail without the env var set
         with_var_unset("ADBC_DRIVER_PATH", || {
             let err = ManagedDriver::load_from_name(
-                "sqlite",
+                "test_sqlite",
                 None,
                 AdbcVersion::V100,
                 adbc_core::LOAD_FLAG_SEARCH_ENV,
@@ -1364,14 +1371,14 @@ mod tests {
         });
 
         let (tmp_dir, manifest_path) =
-            write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
+            write_manifest_to_tempfile(PathBuf::from("test_sqlite.toml"), simple_manifest());
 
         with_var(
             "ADBC_DRIVER_PATH",
             Some(manifest_path.parent().unwrap().as_os_str()),
             || {
                 ManagedDriver::load_from_name(
-                    "sqlite",
+                    "test_sqlite",
                     None,
                     AdbcVersion::V100,
                     adbc_core::LOAD_FLAG_SEARCH_ENV,
@@ -1390,7 +1397,7 @@ mod tests {
     #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
     fn test_load_driver_env_multiple_paths() {
         let (tmp_dir, manifest_path) =
-            write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
+            write_manifest_to_tempfile(PathBuf::from("test_sqlite.toml"), simple_manifest());
 
         let path_os_string = env::join_paths([
             Path::new("/home"),
@@ -1401,7 +1408,7 @@ mod tests {
 
         with_var("ADBC_DRIVER_PATH", Some(&path_os_string), || {
             ManagedDriver::load_from_name(
-                "sqlite",
+                "test_sqlite",
                 None,
                 AdbcVersion::V100,
                 adbc_core::LOAD_FLAG_SEARCH_ENV,
@@ -1418,11 +1425,11 @@ mod tests {
     #[test]
     #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
     fn test_load_additional_path() {
-        let p = PathBuf::from("majestik møøse/sqlite.toml");
+        let p = PathBuf::from("majestik møøse/test_sqlite.toml");
         let (tmp_dir, manifest_path) = write_manifest_to_tempfile(p, simple_manifest());
 
         ManagedDriver::load_from_name(
-            "sqlite",
+            "test_sqlite",
             None,
             AdbcVersion::V100,
             adbc_core::LOAD_FLAG_SEARCH_ENV,
@@ -1459,7 +1466,7 @@ mod tests {
     #[test]
     #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
     fn test_load_non_ascii_path() {
-        let p = PathBuf::from("majestik møøse/sqlite.toml");
+        let p = PathBuf::from("majestik møøse/test_sqlite.toml");
         let (tmp_dir, manifest_path) = write_manifest_to_tempfile(p, simple_manifest());
 
         with_var(
@@ -1467,7 +1474,7 @@ mod tests {
             Some(manifest_path.parent().unwrap().as_os_str()),
             || {
                 ManagedDriver::load_from_name(
-                    "sqlite",
+                    "test_sqlite",
                     None,
                     AdbcVersion::V100,
                     adbc_core::LOAD_FLAG_SEARCH_ENV,
@@ -1487,7 +1494,7 @@ mod tests {
     #[cfg_attr(target_os = "windows", ignore)] // TODO: remove this line after fixing
     fn test_disallow_env_config() {
         let (tmp_dir, manifest_path) =
-            write_manifest_to_tempfile(PathBuf::from("sqlite.toml"), simple_manifest());
+            write_manifest_to_tempfile(PathBuf::from("test_sqlite.toml"), simple_manifest());
 
         with_var(
             "ADBC_DRIVER_PATH",
@@ -1495,7 +1502,7 @@ mod tests {
             || {
                 let load_flags = adbc_core::LOAD_FLAG_DEFAULT & !adbc_core::LOAD_FLAG_SEARCH_ENV;
                 let err = ManagedDriver::load_from_name(
-                    "sqlite",
+                    "test_sqlite",
                     None,
                     AdbcVersion::V100,
                     load_flags,
@@ -1651,7 +1658,7 @@ mod tests {
     }
 
     #[test]
-    fn test_load_from_name_includes_search_trace_in_error_details() {
+    fn test_load_from_name_missing_driver() {
         let err = ManagedDriver::load_from_name(
             "adbc_test_driver_manager_missing_driver_7c8f5482",
             None,
@@ -1661,6 +1668,13 @@ mod tests {
         )
         .unwrap_err();
 
+        assert_eq!(err.status, Status::NotFound, "{}", err.message);
+        assert!(
+            err.message.contains("Driver not found"),
+            "Unexpected error message: {}",
+            err.message
+        );
+
         let details = err
             .details
             .expect("Expected load-from-name errors to include details");
@@ -1668,9 +1682,11 @@ mod tests {
             .iter()
             .find(|(key, _)| key == "adbc.drivermanager.driver_load_trace")
             .expect("Expected driver load trace in error details");
+        // The underlying dynamic library error must be kept in the trace
+        let trace = String::from_utf8_lossy(&trace.1);
         assert!(
-            !trace.1.is_empty(),
-            "Expected driver load trace detail to be non-empty"
+            trace.contains("Error with dynamic library"),
+            "Expected dynamic library load error in driver load trace, got:\n{trace}"
         );
     }
 

@@ -667,7 +667,7 @@ oops = ""{{ env_var() }}""
             string fakePath = Path.Combine(Path.GetTempPath(), "fake_manifest_notexist.toml");
             AdbcException ex = Assert.Throws<AdbcException>(
                 () => AdbcDriverManager.FindLoadDriver(fakePath));
-            Assert.Equal(AdbcStatusCode.NotFound, ex.Status);
+            Assert.Equal(AdbcStatusCode.InvalidArgument, ex.Status);
         }
 
         [Fact]

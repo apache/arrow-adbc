@@ -345,6 +345,40 @@ func (dm *DriverMgrSuite) TestGetObjectsTableType() {
 	dm.False(rdr.Next())
 }
 
+func (dm *DriverMgrSuite) TestGetStatisticsNotImplemented() {
+	stats, ok := dm.conn.(adbc.ConnectionGetStatistics)
+	dm.Require().True(ok)
+
+	catalog, dbSchema, tableName := "", "main", "test_table"
+	for _, tc := range []struct {
+		name                   string
+		catalog, schema, table *string
+		approximate            bool
+	}{
+		{"unfiltered approximate", nil, nil, nil, true},
+		{"filtered exact", &catalog, &dbSchema, &tableName, false},
+	} {
+		dm.Run(tc.name, func() {
+			rdr, err := stats.GetStatistics(dm.ctx, tc.catalog, tc.schema, tc.table, tc.approximate)
+			dm.Nil(rdr)
+			var adbcErr adbc.Error
+			dm.Require().ErrorAs(err, &adbcErr)
+			dm.Equal(adbc.StatusNotImplemented, adbcErr.Code)
+		})
+	}
+}
+
+func (dm *DriverMgrSuite) TestGetStatisticNamesNotImplemented() {
+	stats, ok := dm.conn.(adbc.ConnectionGetStatistics)
+	dm.Require().True(ok)
+
+	rdr, err := stats.GetStatisticNames(dm.ctx)
+	dm.Nil(rdr)
+	var adbcErr adbc.Error
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusNotImplemented, adbcErr.Code)
+}
+
 func (dm *DriverMgrSuite) TestGetTableSchema() {
 	schema, err := dm.conn.GetTableSchema(dm.ctx, nil, nil, "test_table")
 	dm.NoError(err)
@@ -398,6 +432,115 @@ func (dm *DriverMgrSuite) TestCommit() {
 	err := dm.conn.Commit(dm.ctx)
 	dm.Error(err)
 	dm.ErrorContains(err, "No active transaction, cannot commit")
+}
+
+func (dm *DriverMgrSuite) TestGetSetOptions() {
+	opts := dm.conn.(adbc.GetSetOptions)
+	value, err := opts.GetOption(adbc.OptionKeyAutoCommit)
+	dm.Require().NoError(err)
+	dm.Equal(adbc.OptionValueEnabled, value)
+
+	dm.Require().NoError(opts.SetOption(adbc.OptionKeyAutoCommit, adbc.OptionValueDisabled))
+	value, err = opts.GetOption(adbc.OptionKeyAutoCommit)
+	dm.Require().NoError(err)
+	dm.Equal(adbc.OptionValueDisabled, value)
+
+	_, err = opts.GetOption("unknown.option")
+	var adbcErr adbc.Error
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusNotFound, adbcErr.Code)
+
+	_, err = opts.GetOptionBytes("unknown.option")
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusNotFound, adbcErr.Code)
+	_, err = opts.GetOptionInt("unknown.option")
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusNotFound, adbcErr.Code)
+
+	_, err = opts.GetOptionDouble("unknown.option")
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusNotFound, adbcErr.Code)
+
+	err = opts.SetOptionBytes("unknown.option", []byte{1, 2})
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusNotImplemented, adbcErr.Code)
+
+	err = opts.SetOptionDouble("unknown.option", 1.5)
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusNotImplemented, adbcErr.Code)
+
+	stmt, err := dm.conn.NewStatement()
+	dm.Require().NoError(err)
+	defer validation.CheckedClose(dm.T(), stmt)
+	stmtOpts := stmt.(adbc.GetSetOptions)
+	dm.Require().NoError(stmtOpts.SetOptionInt("adbc.sqlite.query.batch_rows", 42))
+	count, err := stmtOpts.GetOptionInt("adbc.sqlite.query.batch_rows")
+	dm.Require().NoError(err)
+	dm.Equal(int64(42), count)
+}
+
+func (dm *DriverMgrSuite) TestGetSetOptionsWithContext() {
+	dbOpts := adbc.AsDatabaseContext(dm.db).(adbc.GetSetOptionsWithContext)
+	count, err := dbOpts.GetOptionInt(dm.ctx, "adbc.sqlite.query.batch_rows")
+	dm.Require().NoError(err)
+	dm.Equal(int64(1024), count)
+
+	cnxn, err := dm.db.Open(dm.ctx)
+	dm.Require().NoError(err)
+	defer validation.CheckedClose(dm.T(), cnxn)
+
+	connCtx := adbc.AsConnectionContext(cnxn)
+	connOpts := connCtx.(adbc.GetSetOptionsWithContext)
+	dm.Require().NoError(connOpts.SetOption(dm.ctx, adbc.OptionKeyAutoCommit, adbc.OptionValueDisabled))
+	value, err := connOpts.GetOption(dm.ctx, adbc.OptionKeyAutoCommit)
+	dm.Require().NoError(err)
+	dm.Equal(adbc.OptionValueDisabled, value)
+
+	_, err = connOpts.GetOption(dm.ctx, "unknown.option")
+	var adbcErr adbc.Error
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusNotFound, adbcErr.Code)
+
+	stmt, err := connCtx.NewStatement(dm.ctx)
+	dm.Require().NoError(err)
+	defer func() { dm.NoError(stmt.Close(dm.ctx)) }()
+	stmtOpts := stmt.(adbc.GetSetOptionsWithContext)
+	dm.Require().NoError(stmtOpts.SetOptionInt(dm.ctx, "adbc.sqlite.query.batch_rows", 7))
+	count, err = stmtOpts.GetOptionInt(dm.ctx, "adbc.sqlite.query.batch_rows")
+	dm.Require().NoError(err)
+	dm.Equal(int64(7), count)
+}
+
+func TestGetOptionLongValue(t *testing.T) {
+	uri := "file:" + strings.Repeat("a", 150) + "?mode=memory"
+	db, err := (drivermgr.Driver{}).NewDatabase(map[string]string{
+		"driver": "adbc_driver_sqlite",
+		"uri":    uri,
+	})
+	require.NoError(t, err)
+	defer validation.CheckedClose(t, db)
+
+	value, err := db.(adbc.GetSetOptions).GetOption("uri")
+	require.NoError(t, err)
+	assert.Equal(t, uri, value)
+	count, err := db.(adbc.GetSetOptions).GetOptionInt("adbc.sqlite.query.batch_rows")
+	require.NoError(t, err)
+	assert.Equal(t, int64(1024), count)
+}
+
+func TestDatabaseOptionsBeforeInitialization(t *testing.T) {
+	db := &drivermgr.Database{}
+	require.NoError(t, db.SetOptions(map[string]string{"example": "value"}))
+	defer validation.CheckedClose(t, db)
+
+	got, err := db.GetOption("example")
+	require.NoError(t, err)
+	assert.Equal(t, "value", got)
+
+	_, err = db.GetOption("missing")
+	var adbcErr adbc.Error
+	require.ErrorAs(t, err, &adbcErr)
+	assert.Equal(t, adbc.StatusNotFound, adbcErr.Code)
 }
 
 func (dm *DriverMgrSuite) TestCommitAutocommitDisabled() {
@@ -462,6 +605,11 @@ func (dm *DriverMgrSuite) TestSqlExecutePrecancelled() {
 	_, err = st.ExecuteUpdate(ctx)
 	dm.Require().ErrorAs(err, &adbcErr)
 	dm.Equal(adbc.StatusCancelled, adbcErr.Code)
+
+	schema, err := st.(adbc.StatementExecuteSchema).ExecuteSchema(ctx)
+	dm.Nil(schema)
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusCancelled, adbcErr.Code)
 }
 
 func (dm *DriverMgrSuite) TestSqlExecuteExpiredDeadline() {
@@ -482,6 +630,26 @@ func (dm *DriverMgrSuite) TestSqlExecuteExpiredDeadline() {
 	_, err = st.ExecuteUpdate(ctx)
 	dm.Require().ErrorAs(err, &adbcErr)
 	dm.Equal(adbc.StatusTimeout, adbcErr.Code)
+
+	schema, err := st.(adbc.StatementExecuteSchema).ExecuteSchema(ctx)
+	dm.Nil(schema)
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusTimeout, adbcErr.Code)
+}
+
+func (dm *DriverMgrSuite) TestSqlExecuteSchemaNotImplemented() {
+	st, err := dm.conn.NewStatement()
+	dm.Require().NoError(err)
+	defer validation.CheckedClose(dm.T(), st)
+	dm.Require().NoError(st.SetSqlQuery("SELECT 1"))
+
+	executor, ok := st.(adbc.StatementExecuteSchema)
+	dm.Require().True(ok)
+	schema, err := executor.ExecuteSchema(dm.ctx)
+	dm.Nil(schema)
+	var adbcErr adbc.Error
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusNotImplemented, adbcErr.Code)
 }
 
 func (dm *DriverMgrSuite) TestSqlExecuteInvalid() {
