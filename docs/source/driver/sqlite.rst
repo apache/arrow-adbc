@@ -138,6 +138,17 @@ shared across all connections.
 Supported Features
 ==================
 
+Named Parameters
+----------------
+
+When specifying bind parameters by name, the driver tries to match parameters
+to fields in the schema of the supplied bind parameters. The names may include
+the prefixes (``:``, ``@``, or ``$``), or omit the prefix if unambiguous. For
+example, in Python, both ``cursor.execute("SELECT :a", {"a": 1})`` and
+``cursor.execute("SELECT :a", {":a": 1})`` are acceptable, but
+``cursor.execute("SELECT :a, @a", {"a": 1})`` is not. (Note that this differs
+from Python's standard library sqlite3 module.)
+
 Bulk Ingestion
 --------------
 
