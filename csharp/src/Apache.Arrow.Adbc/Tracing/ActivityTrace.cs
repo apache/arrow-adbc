@@ -63,6 +63,8 @@ namespace Apache.Arrow.Adbc.Tracing
         /// </summary>
         public string ActivitySourceName => ActivitySource.Name;
 
+        #region Obsolete methods
+
         /// <summary>
         /// Invokes the delegate within the context of a new started <see cref="Activity"/>.
         /// </summary>
@@ -76,6 +78,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// status is set to <see cref="ActivityStatusCode.Error"/> and an Activity <see cref="ActivityEvent"/> is added to the activity
         /// and finally the exception is rethrown.
         /// </remarks>
+        // TODO: [Obsolete("This method is deprecated. Please use TraceActivity overloads that take ActivityWithPii instead of Activity to avoid accidentally logging PII data.")]
         public void TraceActivity(Action<Activity?> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
         {
             using Activity? activity = StartActivityInternal(activityName, ActivitySource, traceParent ?? TraceParent);
@@ -105,6 +108,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
         /// and an Event <see cref="ActivityEvent"/> is added to the activity and finally the exception is rethrown.
         /// </remarks>
+        // TODO: [Obsolete("This method is deprecated. Please use TraceActivity overloads that take ActivityWithPii instead of Activity to avoid accidentally logging PII data.")]
         public T TraceActivity<T>(Func<Activity?, T> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
         {
             using Activity? activity = StartActivityInternal(activityName, ActivitySource, traceParent ?? TraceParent);
@@ -134,6 +138,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
         /// and an Event <see cref="ActivityEvent"/> is added to the activity and finally the exception is rethrown.
         /// </remarks>
+        // TODO: [Obsolete("This method is deprecated. Please use TraceActivity overloads that take ActivityWithPii instead of Activity to avoid accidentally logging PII data.")]
         public async Task TraceActivityAsync(Func<Activity?, Task> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
         {
             using Activity? activity = StartActivityInternal(activityName, ActivitySource, traceParent ?? TraceParent);
@@ -163,6 +168,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
         /// and an Event <see cref="ActivityEvent"/> is added to the activity and finally the exception is rethrown.
         /// </remarks>
+        // TODO: [Obsolete("This method is deprecated. Please use TraceActivity overloads that take ActivityWithPii instead of Activity to avoid accidentally logging PII data.")]
         public async Task<T> TraceActivityAsync<T>(Func<Activity?, Task<T>> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
         {
             using Activity? activity = StartActivityInternal(activityName, ActivitySource, traceParent ?? TraceParent);
@@ -193,6 +199,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
         /// and an Event <see cref="ActivityEvent"/> is added to the activity and finally the exception is rethrown.
         /// </remarks>
+        // TODO: [Obsolete("This method is deprecated. Please use TraceActivity overloads that take ActivityWithPii instead of Activity to avoid accidentally logging PII data.")]
         public static async Task TraceActivityAsync(ActivitySource activitySource, Func<Activity?, Task> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
         {
             using Activity? activity = StartActivityInternal(activityName, activitySource, traceParent);
@@ -223,6 +230,7 @@ namespace Apache.Arrow.Adbc.Tracing
         /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
         /// and an Event <see cref="ActivityEvent"/> is added to the activity and finally the exception is rethrown.
         /// </remarks>
+        // TODO: [Obsolete("This method is deprecated. Please use TraceActivity overloads that take ActivityWithPii instead of Activity to avoid accidentally logging PII data.")]
         public static async Task<T> TraceActivityAsync<T>(ActivitySource activitySource, Func<Activity?, Task<T>> call, [CallerMemberName] string? activityName = default, string? traceParent = default)
         {
             using Activity? activity = StartActivityInternal(activityName, activitySource, traceParent);
@@ -235,6 +243,197 @@ namespace Apache.Arrow.Adbc.Tracing
             catch (Exception ex)
             {
                 TraceException(ex, activity);
+                throw;
+            }
+        }
+
+        #endregion
+
+        /// <summary>
+        /// Invokes the delegate within the context of a new started <see cref="Activity"/>.
+        /// </summary>
+        /// <param name="activityName">The name of the activity to start.</param>
+        /// <param name="call">The delegate to call within the context of a newly started <see cref="ActivityWithPii"/></param>
+        /// <param name="methodName">The name of the method for the activity.</param>
+        /// <param name="traceParent">The trace parent context, which is used to link the activity to a distributed trace.</param>
+        /// <param name="exceptionHasPii">An indicator that should be set to true if the exception contains PII data and should be treated accordingly when added to the activity.</param>
+        /// <returns>Returns a new <see cref="ActivityWithPii"/> object if there is any listener to the Activity, returns null otherwise</returns>
+        /// <remarks>
+        /// Creates and starts a new <see cref="ActivityWithPii"/> object if there is any listener for the ActivitySource.
+        /// Passes the Activity to the delegate and invokes the delegate. If there are no exceptions thrown by the delegate the
+        /// Activity status is set to <see cref="ActivityStatusCode.Ok"/>. If an exception is thrown by the delegate, the Activity
+        /// status is set to <see cref="ActivityStatusCode.Error"/> and an Activity <see cref="ActivityEvent"/> is added to the activity
+        /// and finally the exception is rethrown.
+        /// </remarks>
+        public void TraceActivity(string activityName, Action<ActivityWithPii?> call, string? traceParent = default, bool exceptionHasPii = true)
+        {
+            using ActivityWithPii? activity = StartActivityWithPiiInternal(activityName, ActivitySource, traceParent ?? TraceParent);
+            try
+            {
+                call(activity);
+                if (activity?.Status == ActivityStatusCode.Unset) activity?.SetStatus(ActivityStatusCode.Ok);
+            }
+            catch (Exception ex)
+            {
+                TraceExceptionWithPii(ex, activity, exceptionHasPii);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Invokes the delegate within the context of a new started <see cref="Activity"/>.
+        /// </summary>
+        /// <typeparam name="T">The return type for the delegate.</typeparam>
+        /// <param name="activityName">The name of the activity to start.</param>
+        /// <param name="call">The delegate to call within the context of a newly started <see cref="Activity"/></param>
+        /// <param name="traceParent">The trace parent context, which is used to link the activity to a distributed trace.</param>
+        /// <param name="exceptionHasPii">An indicator that should be set to true if the exception contains PII data and should be treated accordingly when added to the activity.</param>
+        /// <returns>The result of the call to the delegate.</returns>
+        /// <remarks>
+        /// Creates and starts a new <see cref="Activity"/> object if there is any listener for the ActivitySource.
+        /// Passes the Activity to the delegate and invokes the delegate. If there are no exceptions thrown by the delegate the
+        /// Activity status is set to <see cref="ActivityStatusCode.Ok"/> and the result is returned.
+        /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
+        /// and an Event <see cref="ActivityEvent"/> is added to the activity and finally the exception is rethrown.
+        /// </remarks>
+        public T TraceActivity<T>(string activityName, Func<ActivityWithPii?, T> call, string? traceParent = default, bool exceptionHasPii = true)
+        {
+            using ActivityWithPii? activity = StartActivityWithPiiInternal(activityName, ActivitySource, traceParent ?? TraceParent);
+            try
+            {
+                T? result = call(activity);
+                if (activity?.Status == ActivityStatusCode.Unset) activity?.SetStatus(ActivityStatusCode.Ok);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                TraceExceptionWithPii(ex, activity, exceptionHasPii);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Invokes the delegate within the context of a new started <see cref="Activity"/>.
+        /// </summary>
+        /// <param name="activityName">The name of the activity to start.</param>
+        /// <param name="call">The delegate to call within the context of a newly started <see cref="Activity"/></param>
+        /// <param name="traceParent">The trace parent context, which is used to link the activity to a distributed trace.</param>
+        /// <param name="exceptionHasPii">An indicator that should be set to true if the exception contains PII data and should be treated accordingly when added to the activity.</param>
+        /// <returns></returns>
+        /// <remarks>
+        /// Creates and starts a new <see cref="Activity"/> object if there is any listener for the ActivitySource.
+        /// Passes the Activity to the delegate and invokes the delegate. If there are no exceptions thrown by the delegate the
+        /// Activity status is set to <see cref="ActivityStatusCode.Ok"/> and the result is returned.
+        /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
+        /// and an Event <see cref="ActivityEvent"/> is added to the activity and finally the exception is rethrown.
+        /// </remarks>
+        public async Task TraceActivityAsync(string activityName, Func<ActivityWithPii?, Task> call, string? traceParent = default, bool exceptionHasPii = false)
+        {
+            using ActivityWithPii? activity = StartActivityWithPiiInternal(activityName, ActivitySource, traceParent ?? TraceParent);
+            try
+            {
+                await call(activity);
+                if (activity?.Status == ActivityStatusCode.Unset) activity?.SetStatus(ActivityStatusCode.Ok);
+            }
+            catch (Exception ex)
+            {
+                TraceExceptionWithPii(ex, activity, exceptionHasPii);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Invokes the delegate within the context of a new started <see cref="Activity"/>.
+        /// </summary>
+        /// <typeparam name="T">The return type for the delegate.</typeparam>
+        /// <param name="activityName">The name of the activity to start.</param>
+        /// <param name="call">The delegate to call within the context of a newly started <see cref="Activity"/></param>
+        /// <param name="traceParent">The trace parent context, which is used to link the activity to a distributed trace.</param>
+        /// <param name="exceptionHasPii">An indicator that should be set to true if the exception contains PII data and should be treated accordingly when added to the activity.</param>
+        /// <returns>The result of the call to the delegate.</returns>
+        /// <remarks>
+        /// Creates and starts a new <see cref="Activity"/> object if there is any listener for the ActivitySource.
+        /// Passes the Activity to the delegate and invokes the delegate. If there are no exceptions thrown by the delegate the
+        /// Activity status is set to <see cref="ActivityStatusCode.Ok"/> and the result is returned.
+        /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
+        /// and an Event <see cref="ActivityEvent"/> is added to the activity and finally the exception is rethrown.
+        /// </remarks>
+        public async Task<T> TraceActivityAsync<T>(string activityName, Func<ActivityWithPii?, Task<T>> call, string? traceParent = default, bool exceptionHasPii = true)
+        {
+            using ActivityWithPii? activity = StartActivityWithPiiInternal(activityName, ActivitySource, traceParent ?? TraceParent);
+            try
+            {
+                T? result = await call(activity);
+                if (activity?.Status == ActivityStatusCode.Unset) activity?.SetStatus(ActivityStatusCode.Ok);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                TraceExceptionWithPii(ex, activity, exceptionHasPii);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Invokes the delegate within the context of a new started <see cref="Activity"/>.
+        /// </summary>
+        /// <param name="activitySource">The <see cref="ActivitySource"/> to start the <see cref="Activity"/> on.</param>
+        /// <param name="activityName">The name of the activity to start.</param>
+        /// <param name="call">The delegate to call within the context of a newly started <see cref="Activity"/></param>
+        /// <param name="traceParent">The trace parent context, which is used to link the activity to a distributed trace.</param>
+        /// <param name="exceptionHasPii">An indicator that should be set to true if the exception contains PII data and should be treated accordingly when added to the activity.</param>
+        /// <returns></returns>
+        /// <remarks>
+        /// Creates and starts a new <see cref="Activity"/> object if there is any listener for the ActivitySource.
+        /// Passes the Activity to the delegate and invokes the delegate. If there are no exceptions thrown by the delegate the
+        /// Activity status is set to <see cref="ActivityStatusCode.Ok"/> and the result is returned.
+        /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
+        /// and an Event <see cref="ActivityEvent"/> is added to the activity and finally the exception is rethrown.
+        /// </remarks>
+        public static async Task TraceActivityAsync(ActivitySource activitySource, string activityName, Func<ActivityWithPii?, Task> call, string? traceParent = default, bool exceptionHasPii = true)
+        {
+            using ActivityWithPii? activity = StartActivityWithPiiInternal(activityName, activitySource, traceParent);
+            try
+            {
+                await call(activity);
+                if (activity?.Status == ActivityStatusCode.Unset) activity?.SetStatus(ActivityStatusCode.Ok);
+            }
+            catch (Exception ex)
+            {
+                TraceExceptionWithPii(ex, activity, exceptionHasPii);
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Invokes the delegate within the context of a new started <see cref="Activity"/>.
+        /// </summary>
+        /// <typeparam name="T">The return type for the delegate.</typeparam>
+        /// <param name="activitySource">The <see cref="ActivitySource"/> to start the <see cref="Activity"/> on.</param>
+        /// <param name="activityName">The name of the activity to start.</param>
+        /// <param name="call">The delegate to call within the context of a newly started <see cref="Activity"/></param>
+        /// <param name="traceParent">The trace parent context, which is used to link the activity to a distributed trace.</param>
+        /// <param name="exceptionHasPii">An indicator that should be set to true if the exception contains PII data and should be treated accordingly when added to the activity.</param>
+        /// <returns>The result of the call to the delegate.</returns>
+        /// <remarks>
+        /// Creates and starts a new <see cref="Activity"/> object if there is any listener for the ActivitySource.
+        /// Passes the Activity to the delegate and invokes the delegate. If there are no exceptions thrown by the delegate the
+        /// Activity status is set to <see cref="ActivityStatusCode.Ok"/> and the result is returned.
+        /// If an exception is thrown by the delegate, the Activity status is set to <see cref="ActivityStatusCode.Error"/>
+        /// and an Event <see cref="ActivityEvent"/> is added to the activity and finally the exception is rethrown.
+        /// </remarks>
+        public static async Task<T> TraceActivityAsync<T>(ActivitySource activitySource, string activityName, Func<ActivityWithPii?, Task<T>> call, string? traceParent = default, bool exceptionHasPii = true)
+        {
+            using ActivityWithPii? activity = StartActivityWithPiiInternal(activityName, activitySource, traceParent);
+            try
+            {
+                T? result = await call(activity);
+                if (activity?.Status == ActivityStatusCode.Unset) activity?.SetStatus(ActivityStatusCode.Ok);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                TraceExceptionWithPii(ex, activity, exceptionHasPii);
                 throw;
             }
         }
@@ -257,6 +456,20 @@ namespace Apache.Arrow.Adbc.Tracing
         /// </param>
         private static void TraceException(Exception exception, Activity? activity) =>
             WriteTraceException(exception, activity);
+
+        /// <summary>
+        /// Writes the exception to the trace by adding an exception event to the current activity (span).
+        /// </summary>
+        /// <param name="exception">The exception to trace.</param>
+        /// <param name="activity">The current activity where the exception is caught.</param>
+        /// <param name="escaped">
+        /// An indicator that should be set to true if the exception event is recorded
+        /// at a point where it is known that the exception is escaping the scope of the span/activity.
+        /// For example, <c>escaped</c> should be <c>true</c> if the exception is caught and re-thrown.
+        /// However, <c>escaped</c> should be set to <c>false</c> if execution continues in the current scope.
+        /// </param>
+        private static void TraceExceptionWithPii(Exception exception, ActivityWithPii? activity, bool exceptionHasPii) =>
+            WriteTraceExceptionWithPii(exception, activity, exceptionHasPii);
 
         /// <inheritdoc />
         public void Dispose()
@@ -292,10 +505,22 @@ namespace Apache.Arrow.Adbc.Tracing
             activity?.SetStatus(ActivityStatusCode.Error);
         }
 
+        private static void WriteTraceExceptionWithPii(Exception exception, ActivityWithPii? activity, bool exceptionHasPii)
+        {
+            activity?.AddException(exception, exceptionHasPii: exceptionHasPii);
+            activity?.SetStatus(ActivityStatusCode.Error);
+        }
+
         private static Activity? StartActivityInternal(string? activityName, ActivitySource activitySource, string? traceParent = default)
         {
             string fullActivityName = GetActivityName(activityName);
             return StartActivity(activitySource, fullActivityName, traceParent);
+        }
+
+        private static ActivityWithPii? StartActivityWithPiiInternal(string? activityName, ActivitySource activitySource, string? traceParent = default)
+        {
+            string fullActivityName = GetActivityName(activityName);
+            return StartActivityWithPii(activitySource, fullActivityName, traceParent);
         }
 
         private static string GetActivityName(string? activityName)
@@ -318,6 +543,20 @@ namespace Apache.Arrow.Adbc.Tracing
             return traceParent != null && ActivityContext.TryParse(traceParent, null, isRemote: true, out ActivityContext parentContext)
                 ? (activitySource.StartActivity(activityName, ActivityKind.Client, parentContext))
                 : (activitySource.StartActivity(activityName, ActivityKind.Client));
+        }
+
+        /// <summary>
+        /// Creates and starts a new <see cref="Activity"/> object if there is any listener to the Activity, returns null otherwise.
+        /// </summary>
+        /// <param name="activitySource">The <see cref="ActivitySource"/> from which to start the activity.</param>
+        /// <param name="activityName">The name of the method for the activity</param>
+        /// <returns>Returns a new <see cref="Activity"/> object if there is any listener to the Activity, returns null otherwise</returns>
+        private static ActivityWithPii? StartActivityWithPii(ActivitySource activitySource, string activityName, string? traceParent = default)
+        {
+            Activity? activity = traceParent != null && ActivityContext.TryParse(traceParent, null, isRemote: true, out ActivityContext parentContext)
+                ? (activitySource.StartActivity(activityName, ActivityKind.Client, parentContext))
+                : (activitySource.StartActivity(activityName, ActivityKind.Client));
+            return ActivityWithPii.New(activity);
         }
     }
 }
