@@ -601,6 +601,29 @@ func (dm *DriverMgrSuite) TestSqlExecuteSchemaNotImplemented() {
 	dm.Equal(adbc.StatusNotImplemented, adbcErr.Code)
 }
 
+func (dm *DriverMgrSuite) TestSqlExecutePartitionsUnsupported() {
+	st, err := dm.conn.NewStatement()
+	dm.Require().NoError(err)
+	defer validation.CheckedClose(dm.T(), st)
+	dm.Require().NoError(st.SetSqlQuery("SELECT 1"))
+
+	schema, partitions, affected, err := st.ExecutePartitions(dm.ctx)
+	var adbcErr adbc.Error
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusNotImplemented, adbcErr.Code)
+	dm.Nil(schema)
+	dm.Equal(adbc.Partitions{}, partitions)
+	dm.Zero(affected)
+}
+
+func (dm *DriverMgrSuite) TestReadPartitionUnsupported() {
+	rdr, err := dm.conn.ReadPartition(dm.ctx, []byte("partition"))
+	var adbcErr adbc.Error
+	dm.Require().ErrorAs(err, &adbcErr)
+	dm.Equal(adbc.StatusNotImplemented, adbcErr.Code)
+	dm.Nil(rdr)
+}
+
 func (dm *DriverMgrSuite) TestSqlExecuteInvalid() {
 	query := "INVALID"
 	st, err := dm.conn.NewStatement()
