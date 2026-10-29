@@ -30,6 +30,24 @@ package drivermgr
 // #include <stdlib.h>
 // #include <string.h>
 //
+// /* Dispatch typed option calls without duplicating buffer management for each handle.
+//    0 = database, 1 = connection, 2 = statement. */
+// #define OPTION_ARGS(...) __VA_ARGS__
+// #define OPTION_DISPATCH(name, suffix, signature, ...) \
+// static AdbcStatusCode option_##name(int kind, void* handle, OPTION_ARGS signature) { \
+//     switch (kind) { \
+//     case 0: return AdbcDatabase##suffix((struct AdbcDatabase*)handle, __VA_ARGS__); \
+//     case 1: return AdbcConnection##suffix((struct AdbcConnection*)handle, __VA_ARGS__); \
+//     default: return AdbcStatement##suffix((struct AdbcStatement*)handle, __VA_ARGS__); \
+//     } \
+// }
+// OPTION_DISPATCH(get_string, GetOption, (const char* key, char* value, size_t* length, struct AdbcError* error), key, value, length, error)
+// OPTION_DISPATCH(get_bytes, GetOptionBytes, (const char* key, uint8_t* value, size_t* length, struct AdbcError* error), key, value, length, error)
+// OPTION_DISPATCH(get_int, GetOptionInt, (const char* key, int64_t* value, struct AdbcError* error), key, value, error)
+// OPTION_DISPATCH(get_double, GetOptionDouble, (const char* key, double* value, struct AdbcError* error), key, value, error)
+// OPTION_DISPATCH(set_bytes, SetOptionBytes, (const char* key, const uint8_t* value, size_t length, struct AdbcError* error), key, value, length, error)
+// OPTION_DISPATCH(set_int, SetOptionInt, (const char* key, int64_t value, struct AdbcError* error), key, value, error)
+// OPTION_DISPATCH(set_double, SetOptionDouble, (const char* key, double value, struct AdbcError* error), key, value, error)
 // void releaseErr(struct AdbcError* err) {
 //     if (err->release != NULL) {
 //         err->release(err);
@@ -59,6 +77,12 @@ import (
 	"github.com/apache/arrow-go/v18/arrow"
 	"github.com/apache/arrow-go/v18/arrow/array"
 	"github.com/apache/arrow-go/v18/arrow/cdata"
+)
+
+var (
+	_ adbc.GetSetOptions = (*Database)(nil)
+	_ adbc.GetSetOptions = (*cnxn)(nil)
+	_ adbc.GetSetOptions = (*stmt)(nil)
 )
 
 const (
@@ -195,6 +219,126 @@ func toAdbcError(code adbc.Status, e *C.struct_AdbcError) error {
 	return err
 }
 
+// getBufferOption uses the ADBC 1.1 length protocol: the first call writes
+// nothing if the buffer is too short and reports the required length.
+func getBufferOption(kind C.int, handle unsafe.Pointer, key string, bytes bool) ([]byte, error) {
+	ckey := C.CString(key)
+	defer C.free(unsafe.Pointer(ckey))
+
+	value := make([]byte, 128)
+	for attempt := 0; attempt < 2; attempt++ {
+		length := C.size_t(len(value))
+		var err C.struct_AdbcError
+		var code adbc.Status
+		if bytes {
+			code = adbc.Status(C.option_get_bytes(kind, handle, ckey, (*C.uint8_t)(unsafe.Pointer(&value[0])), &length, &err))
+		} else {
+			code = adbc.Status(C.option_get_string(kind, handle, ckey, (*C.char)(unsafe.Pointer(&value[0])), &length, &err))
+		}
+		if code != adbc.StatusOK {
+			return nil, toAdbcError(code, &err)
+		}
+		if length <= C.size_t(len(value)) {
+			return value[:int(length)], nil
+		}
+		if attempt == 0 {
+			value = make([]byte, int(length))
+		}
+	}
+	return nil, adbc.Error{Code: adbc.StatusInvalidState, Msg: "option length changed while reading"}
+}
+
+func getStringOption(kind C.int, handle unsafe.Pointer, key string) (string, error) {
+	value, err := getBufferOption(kind, handle, key, false)
+	if err != nil {
+		return "", err
+	}
+	if len(value) == 0 || value[len(value)-1] != 0 {
+		return "", adbc.Error{Code: adbc.StatusInvalidData, Msg: "option string is not NUL-terminated"}
+	}
+	return string(value[:len(value)-1]), nil
+}
+
+func getBytesOption(kind C.int, handle unsafe.Pointer, key string) ([]byte, error) {
+	return getBufferOption(kind, handle, key, true)
+}
+
+func getIntOption(kind C.int, handle unsafe.Pointer, key string) (int64, error) {
+	ckey := C.CString(key)
+	defer C.free(unsafe.Pointer(ckey))
+	var value C.int64_t
+	var err C.struct_AdbcError
+	if code := adbc.Status(C.option_get_int(kind, handle, ckey, &value, &err)); code != adbc.StatusOK {
+		return 0, toAdbcError(code, &err)
+	}
+	return int64(value), nil
+}
+
+func getDoubleOption(kind C.int, handle unsafe.Pointer, key string) (float64, error) {
+	ckey := C.CString(key)
+	defer C.free(unsafe.Pointer(ckey))
+	var value C.double
+	var err C.struct_AdbcError
+	if code := adbc.Status(C.option_get_double(kind, handle, ckey, &value, &err)); code != adbc.StatusOK {
+		return 0, toAdbcError(code, &err)
+	}
+	return float64(value), nil
+}
+
+func setStringOption(kind C.int, handle unsafe.Pointer, key, value string) error {
+	ckey, cvalue := C.CString(key), C.CString(value)
+	defer C.free(unsafe.Pointer(ckey))
+	defer C.free(unsafe.Pointer(cvalue))
+	var err C.struct_AdbcError
+	var code adbc.Status
+	switch kind {
+	case 0:
+		code = adbc.Status(C.AdbcDatabaseSetOption((*C.struct_AdbcDatabase)(handle), ckey, cvalue, &err))
+	case 1:
+		code = adbc.Status(C.AdbcConnectionSetOption((*C.struct_AdbcConnection)(handle), ckey, cvalue, &err))
+	default:
+		code = adbc.Status(C.AdbcStatementSetOption((*C.struct_AdbcStatement)(handle), ckey, cvalue, &err))
+	}
+	if code != adbc.StatusOK {
+		return toAdbcError(code, &err)
+	}
+	return nil
+}
+
+func setBytesOption(kind C.int, handle unsafe.Pointer, key string, value []byte) error {
+	ckey := C.CString(key)
+	defer C.free(unsafe.Pointer(ckey))
+	var ptr *C.uint8_t
+	if len(value) > 0 {
+		ptr = (*C.uint8_t)(unsafe.Pointer(&value[0]))
+	}
+	var err C.struct_AdbcError
+	if code := adbc.Status(C.option_set_bytes(kind, handle, ckey, ptr, C.size_t(len(value)), &err)); code != adbc.StatusOK {
+		return toAdbcError(code, &err)
+	}
+	return nil
+}
+
+func setIntOption(kind C.int, handle unsafe.Pointer, key string, value int64) error {
+	ckey := C.CString(key)
+	defer C.free(unsafe.Pointer(ckey))
+	var err C.struct_AdbcError
+	if code := adbc.Status(C.option_set_int(kind, handle, ckey, C.int64_t(value), &err)); code != adbc.StatusOK {
+		return toAdbcError(code, &err)
+	}
+	return nil
+}
+
+func setDoubleOption(kind C.int, handle unsafe.Pointer, key string, value float64) error {
+	ckey := C.CString(key)
+	defer C.free(unsafe.Pointer(ckey))
+	var err C.struct_AdbcError
+	if code := adbc.Status(C.option_set_double(kind, handle, ckey, C.double(value), &err)); code != adbc.StatusOK {
+		return toAdbcError(code, &err)
+	}
+	return nil
+}
+
 func (d *Database) SetOptions(options map[string]string) error {
 	if d.options == nil {
 		d.options = make(map[string]option)
@@ -214,6 +358,65 @@ func (d *Database) SetOptions(options map[string]string) error {
 		d.options[k] = o
 	}
 	return nil
+}
+
+func (d *Database) SetOption(key, value string) error {
+	if d.db == nil {
+		return d.SetOptions(map[string]string{key: value})
+	}
+	return setStringOption(0, unsafe.Pointer(d.db), key, value)
+}
+
+func (d *Database) SetOptionBytes(key string, value []byte) error {
+	if d.db == nil {
+		return adbc.Error{Code: adbc.StatusInvalidState, Msg: "database not initialized"}
+	}
+	return setBytesOption(0, unsafe.Pointer(d.db), key, value)
+}
+
+func (d *Database) SetOptionInt(key string, value int64) error {
+	if d.db == nil {
+		return d.SetOption(key, strconv.FormatInt(value, 10))
+	}
+	return setIntOption(0, unsafe.Pointer(d.db), key, value)
+}
+
+func (d *Database) SetOptionDouble(key string, value float64) error {
+	if d.db == nil {
+		return d.SetOption(key, strconv.FormatFloat(value, 'g', -1, 64))
+	}
+	return setDoubleOption(0, unsafe.Pointer(d.db), key, value)
+}
+
+func (d *Database) GetOption(key string) (string, error) {
+	if d.db == nil {
+		if option, ok := d.options[key]; ok {
+			return C.GoString(option.val), nil
+		}
+		return "", adbc.Error{Code: adbc.StatusNotFound, Msg: "option not found: " + key}
+	}
+	return getStringOption(0, unsafe.Pointer(d.db), key)
+}
+
+func (d *Database) GetOptionBytes(key string) ([]byte, error) {
+	if d.db == nil {
+		return nil, adbc.Error{Code: adbc.StatusInvalidState, Msg: "database not initialized"}
+	}
+	return getBytesOption(0, unsafe.Pointer(d.db), key)
+}
+
+func (d *Database) GetOptionInt(key string) (int64, error) {
+	if d.db == nil {
+		return 0, adbc.Error{Code: adbc.StatusInvalidState, Msg: "database not initialized"}
+	}
+	return getIntOption(0, unsafe.Pointer(d.db), key)
+}
+
+func (d *Database) GetOptionDouble(key string) (float64, error) {
+	if d.db == nil {
+		return 0, adbc.Error{Code: adbc.StatusInvalidState, Msg: "database not initialized"}
+	}
+	return getDoubleOption(0, unsafe.Pointer(d.db), key)
 }
 
 func (d *Database) Open(context.Context) (adbc.Connection, error) {
@@ -486,15 +689,35 @@ func (c *cnxn) ReadPartition(_ context.Context, serializedPartition []byte) (arr
 }
 
 func (c *cnxn) SetOption(key, value string) error {
-	ckey, cvalue := C.CString(key), C.CString(value)
-	defer C.free(unsafe.Pointer(ckey))
-	defer C.free(unsafe.Pointer(cvalue))
+	return setStringOption(1, unsafe.Pointer(c.conn), key, value)
+}
 
-	var err C.struct_AdbcError
-	if code := adbc.Status(C.AdbcConnectionSetOption(c.conn, ckey, cvalue, &err)); code != adbc.StatusOK {
-		return toAdbcError(code, &err)
-	}
-	return nil
+func (c *cnxn) SetOptionBytes(key string, value []byte) error {
+	return setBytesOption(1, unsafe.Pointer(c.conn), key, value)
+}
+
+func (c *cnxn) SetOptionInt(key string, value int64) error {
+	return setIntOption(1, unsafe.Pointer(c.conn), key, value)
+}
+
+func (c *cnxn) SetOptionDouble(key string, value float64) error {
+	return setDoubleOption(1, unsafe.Pointer(c.conn), key, value)
+}
+
+func (c *cnxn) GetOption(key string) (string, error) {
+	return getStringOption(1, unsafe.Pointer(c.conn), key)
+}
+
+func (c *cnxn) GetOptionBytes(key string) ([]byte, error) {
+	return getBytesOption(1, unsafe.Pointer(c.conn), key)
+}
+
+func (c *cnxn) GetOptionInt(key string) (int64, error) {
+	return getIntOption(1, unsafe.Pointer(c.conn), key)
+}
+
+func (c *cnxn) GetOptionDouble(key string) (float64, error) {
+	return getDoubleOption(1, unsafe.Pointer(c.conn), key)
 }
 
 type stmt struct {
@@ -511,16 +734,36 @@ func (s *stmt) Close() error {
 	return nil
 }
 
-func (s *stmt) SetOption(key, val string) error {
-	ckey, cvalue := C.CString(key), C.CString(val)
-	defer C.free(unsafe.Pointer(ckey))
-	defer C.free(unsafe.Pointer(cvalue))
+func (s *stmt) SetOption(key, value string) error {
+	return setStringOption(2, unsafe.Pointer(s.st), key, value)
+}
 
-	var err C.struct_AdbcError
-	if code := adbc.Status(C.AdbcStatementSetOption(s.st, ckey, cvalue, &err)); code != adbc.StatusOK {
-		return toAdbcError(code, &err)
-	}
-	return nil
+func (s *stmt) SetOptionBytes(key string, value []byte) error {
+	return setBytesOption(2, unsafe.Pointer(s.st), key, value)
+}
+
+func (s *stmt) SetOptionInt(key string, value int64) error {
+	return setIntOption(2, unsafe.Pointer(s.st), key, value)
+}
+
+func (s *stmt) SetOptionDouble(key string, value float64) error {
+	return setDoubleOption(2, unsafe.Pointer(s.st), key, value)
+}
+
+func (s *stmt) GetOption(key string) (string, error) {
+	return getStringOption(2, unsafe.Pointer(s.st), key)
+}
+
+func (s *stmt) GetOptionBytes(key string) ([]byte, error) {
+	return getBytesOption(2, unsafe.Pointer(s.st), key)
+}
+
+func (s *stmt) GetOptionInt(key string) (int64, error) {
+	return getIntOption(2, unsafe.Pointer(s.st), key)
+}
+
+func (s *stmt) GetOptionDouble(key string) (float64, error) {
+	return getDoubleOption(2, unsafe.Pointer(s.st), key)
 }
 
 func (s *stmt) SetSqlQuery(query string) error {
