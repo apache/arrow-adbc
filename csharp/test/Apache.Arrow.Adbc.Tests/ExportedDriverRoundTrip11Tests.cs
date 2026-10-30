@@ -466,6 +466,112 @@ namespace Apache.Arrow.Adbc.Tests
 #endif
 
         [Fact]
+        public async Task ArrowImporterReadsExportedStream()
+        {
+            IArrowArrayStream imported;
+            unsafe
+            {
+                CArrowArrayStream* cStream = CArrowArrayStream.Create();
+                try
+                {
+                    CAdbcDriverExporter.ExportStream(new FailingStream(new AdbcException("read cancelled", AdbcStatusCode.Cancelled)), cStream);
+                    imported = CArrowArrayStreamImporter.ImportArrayStream(cStream);
+                }
+                finally
+                {
+                    CArrowArrayStream.Free(cStream);
+                }
+            }
+
+            using (imported)
+            {
+                Assert.Equal("x", Assert.Single(imported.Schema.FieldsList).Name);
+                using (RecordBatch? batch = await imported.ReadNextRecordBatchAsync())
+                {
+                    Assert.Equal(2, batch!.Length);
+                }
+                Exception ex = await Assert.ThrowsAnyAsync<Exception>(async () => await imported.ReadNextRecordBatchAsync());
+                Assert.Equal("read cancelled", ex.Message);
+            }
+        }
+
+        [Fact]
+        public void ExportedStreamDoesNotBlockSynchronizationContext()
+        {
+            int rows = -1;
+            Exception? failure = null;
+            Thread thread = new Thread(() =>
+            {
+                SynchronizationContext.SetSynchronizationContext(new BlockedContext());
+                try
+                {
+                    unsafe
+                    {
+                        CArrowArrayStream* cStream = CArrowArrayStream.Create();
+                        try
+                        {
+                            CAdbcDriverExporter.ExportStream(new ContextResumingStream(), cStream);
+                            using IArrowArrayStream imported = CArrowArrayStreamImporter.ImportArrayStream(cStream);
+                            using RecordBatch? batch = imported.ReadNextRecordBatchAsync().AsTask().GetAwaiter().GetResult();
+                            rows = batch!.Length;
+                        }
+                        finally
+                        {
+                            CArrowArrayStream.Free(cStream);
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    failure = e;
+                }
+            });
+            thread.IsBackground = true;
+            thread.Start();
+
+            Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "reading the exported stream deadlocked");
+            Assert.Null(failure);
+            Assert.Equal(2, rows);
+        }
+
+        [Fact]
+        public void RejectedBindStreamIsReleased()
+        {
+            AdbcDriverInit adapter = (int version, ref CAdbcDriver nativeDriver, ref CAdbcError error) =>
+            {
+                AdbcStatusCode status = CallExporter(version, ref nativeDriver, ref error, new Driver11());
+                unsafe
+                {
+#if NET5_0_OR_GREATER
+                    nativeDriver.StatementBindStream =
+                        (delegate* unmanaged<CAdbcStatement*, CArrowArrayStream*, CAdbcError*, AdbcStatusCode>)Marshal.GetFunctionPointerForDelegate(s_rejectBindStream);
+#else
+                    nativeDriver.StatementBindStream = Marshal.GetFunctionPointerForDelegate(s_rejectBindStream);
+#endif
+                }
+                return status;
+            };
+
+            using AdbcDriver imported = CAdbcDriverImporter.Load(adapter);
+            using AdbcDatabase db = imported.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+
+            // The driver fails without taking the stream, so the importer releases it
+            var stream = new FailingStream(new InvalidOperationException());
+            AdbcException ex = Assert.ThrowsAny<AdbcException>(() => stmt.BindStream(stream));
+            Assert.Equal(AdbcStatusCode.InvalidState, ex.Status);
+            Assert.True(stream.Disposed);
+        }
+
+#if NET5_0_OR_GREATER
+        private unsafe delegate AdbcStatusCode StatementBindStream(CAdbcStatement* statement, CArrowArrayStream* stream, CAdbcError* error);
+#endif
+
+        // On .NET Framework, the importer can only call a managed callback through the library's own delegate type
+        private static readonly unsafe StatementBindStream s_rejectBindStream = (statement, stream, error) => AdbcStatusCode.InvalidState;
+
+        [Fact]
         public void StatusesMapToErrno()
         {
             Assert.Equal(CAdbcDriverExporter.Errno.ECANCELED, CAdbcDriverExporter.Errno.FromStatus(AdbcStatusCode.Cancelled));
@@ -940,6 +1046,8 @@ namespace Apache.Arrow.Adbc.Tests
 
             public Schema Schema => _failSchema ? throw _exception : s_schema;
 
+            public bool Disposed { get; private set; }
+
             public ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
             {
                 if (_returnedBatch)
@@ -948,11 +1056,47 @@ namespace Apache.Arrow.Adbc.Tests
                 }
 
                 _returnedBatch = true;
+                return new ValueTask<RecordBatch?>(Batch());
+            }
+
+            public static RecordBatch Batch()
+            {
                 Int32Array values = new Int32Array.Builder().Append(1).Append(2).Build();
-                return new ValueTask<RecordBatch?>(new RecordBatch(s_schema, new IArrowArray[] { values }, 2));
+                return new RecordBatch(s_schema, new IArrowArray[] { values }, 2);
+            }
+
+            public void Dispose() => Disposed = true;
+        }
+
+        /// <summary>
+        /// Returns one batch after resuming on the caller's synchronization context.
+        /// </summary>
+        private sealed class ContextResumingStream : IArrowArrayStream
+        {
+            private bool _returnedBatch;
+
+            public Schema Schema => FailingStream.Batch().Schema;
+
+            public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+            {
+                await Task.Delay(1);
+                if (_returnedBatch)
+                {
+                    return null;
+                }
+                _returnedBatch = true;
+                return FailingStream.Batch();
             }
 
             public void Dispose() { }
+        }
+
+        /// <summary>
+        /// A synchronization context whose thread is always busy, like a blocked UI thread.
+        /// </summary>
+        private sealed class BlockedContext : SynchronizationContext
+        {
+            public override void Post(SendOrPostCallback d, object? state) { }
         }
     }
 }

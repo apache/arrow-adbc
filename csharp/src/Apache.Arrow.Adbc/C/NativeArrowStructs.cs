@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using Apache.Arrow.C;
 
@@ -64,4 +65,51 @@ namespace Apache.Arrow.Adbc.C
 
         public static NativeArray* From(CArrowArray* array) => (NativeArray*)array;
     }
+
+#if !NET5_0_OR_GREATER
+    /// <summary>
+    /// Creates and calls <see cref="CArrowArrayStream"/> callbacks on .NET Framework.
+    /// </summary>
+    /// <remarks>
+    /// On .NET Framework, a function pointer created from a managed delegate can only be called
+    /// through a delegate of the same type. Apache.Arrow exports and calls stream callbacks
+    /// through its own internal delegate types, so ADBC uses those types too, to stay compatible
+    /// with streams that Apache.Arrow exports and with consumers that import streams through it.
+    /// If they can't be found, ADBC falls back to its own types.
+    /// </remarks>
+    internal static class ArrayStreamCallbacks
+    {
+        public static readonly Type? GetSchemaType = ArrowDelegateType("GetSchemaArrayStream");
+        public static readonly Type? GetNextType = ArrowDelegateType("GetNextArrayStream");
+        public static readonly Type? GetLastErrorType = ArrowDelegateType("GetLastErrorArrayStream");
+        public static readonly Type? ReleaseType = ArrowDelegateType("ReleaseArrayStream");
+
+        /// <summary>
+        /// Returns a function pointer for the static method behind <paramref name="callback"/>.
+        /// </summary>
+        public static IntPtr Export<T>(T callback, Type? arrowType) where T : Delegate
+        {
+            Delegate exported = arrowType == null ? callback : Delegate.CreateDelegate(arrowType, callback.Method);
+            return NativeDelegate<Delegate>.AsNativePointer(exported);
+        }
+
+        /// <summary>
+        /// Returns a delegate that calls <paramref name="pointer"/>.
+        /// </summary>
+        public static T Import<T>(IntPtr pointer, Type? arrowType) where T : Delegate
+        {
+            if (arrowType == null)
+            {
+                return Marshal.GetDelegateForFunctionPointer<T>(pointer);
+            }
+
+            // For a pointer created from a managed delegate, this returns that delegate
+            Delegate imported = Marshal.GetDelegateForFunctionPointer(pointer, arrowType);
+            return imported as T ?? (T)Delegate.CreateDelegate(typeof(T), imported, "Invoke");
+        }
+
+        private static Type? ArrowDelegateType(string name) =>
+            typeof(CArrowArrayStreamExporter).GetNestedType(name, BindingFlags.NonPublic);
+    }
+#endif
 }

@@ -140,10 +140,9 @@ namespace Apache.Arrow.Adbc.C
             /// Releases and frees a stream allocated with <see cref="CArrowArrayStream.Create"/>.
             /// </summary>
             /// <remarks>
-            /// Unlike <see cref="CArrowArrayStream.Free"/>, this can release a stream that
-            /// <see cref="CAdbcDriverExporter"/> exported in the same process on .NET Framework,
-            /// where a callback created from a managed delegate can only be called through a
-            /// delegate of the same type.
+            /// On .NET Framework, this releases the stream through the same callback types as
+            /// the rest of this class (see <c>ArrayStreamCallbacks</c>), so it can release streams
+            /// exported in the same process by either Apache.Arrow or <see cref="CAdbcDriverExporter"/>.
             /// </remarks>
             public static void FreeStream(CArrowArrayStream* cStream)
             {
@@ -153,7 +152,7 @@ namespace Apache.Arrow.Adbc.C
 #if NET5_0_OR_GREATER
                     nativeStream->release(cStream);
 #else
-                    Marshal.GetDelegateForFunctionPointer<ArrayStreamRelease>(nativeStream->release)(cStream);
+                    ArrayStreamCallbacks.Import<ArrayStreamRelease>(nativeStream->release, ArrayStreamCallbacks.ReleaseType)(cStream);
 #endif
                     nativeStream->release = default;
                 }
@@ -193,7 +192,7 @@ namespace Apache.Arrow.Adbc.C
 #if NET5_0_OR_GREATER
                 byte* message = nativeStream->get_last_error(cStream);
 #else
-                byte* message = Marshal.GetDelegateForFunctionPointer<ArrayStreamGetLastError>(nativeStream->get_last_error)(cStream);
+                byte* message = ArrayStreamCallbacks.Import<ArrayStreamGetLastError>(nativeStream->get_last_error, ArrayStreamCallbacks.GetLastErrorType)(cStream);
 #endif
                 return new Exception(message == null
                     ? $"Array stream operation failed with no message. Error code: {errno}"
@@ -206,7 +205,7 @@ namespace Apache.Arrow.Adbc.C
 #if NET5_0_OR_GREATER
                 return nativeStream->get_schema(cStream, cSchema);
 #else
-                return Marshal.GetDelegateForFunctionPointer<ArrayStreamGetSchema>(nativeStream->get_schema)(cStream, cSchema);
+                return ArrayStreamCallbacks.Import<ArrayStreamGetSchema>(nativeStream->get_schema, ArrayStreamCallbacks.GetSchemaType)(cStream, cSchema);
 #endif
             }
 
@@ -216,7 +215,7 @@ namespace Apache.Arrow.Adbc.C
 #if NET5_0_OR_GREATER
                 return nativeStream->get_next(cStream, cArray);
 #else
-                return Marshal.GetDelegateForFunctionPointer<ArrayStreamGetNext>(nativeStream->get_next)(cStream, cArray);
+                return ArrayStreamCallbacks.Import<ArrayStreamGetNext>(nativeStream->get_next, ArrayStreamCallbacks.GetNextType)(cStream, cArray);
 #endif
             }
         }

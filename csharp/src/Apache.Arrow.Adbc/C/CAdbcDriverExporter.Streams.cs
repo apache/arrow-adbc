@@ -17,6 +17,7 @@
 
 using System;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.C;
 using Apache.Arrow.Ipc;
@@ -32,10 +33,10 @@ namespace Apache.Arrow.Adbc.C
         private static unsafe delegate* unmanaged<CArrowArrayStream*, void> StreamReleasePtr => &ReleaseStream;
         private static unsafe delegate* unmanaged<CArrowArrayStream*, AdbcStatusCode*, CAdbcError*> ErrorFromArrayStreamPtr => &GetErrorFromArrayStream;
 #else
-        private static unsafe IntPtr StreamGetSchemaPtr = NativeDelegate<ArrayStreamGetSchema>.AsNativePointer(GetStreamSchema);
-        private static unsafe IntPtr StreamGetNextPtr = NativeDelegate<ArrayStreamGetNext>.AsNativePointer(GetStreamNext);
-        private static unsafe IntPtr StreamGetLastErrorPtr = NativeDelegate<ArrayStreamGetLastError>.AsNativePointer(GetStreamLastError);
-        private static unsafe IntPtr StreamReleasePtr = NativeDelegate<ArrayStreamRelease>.AsNativePointer(ReleaseStream);
+        private static unsafe IntPtr StreamGetSchemaPtr = ArrayStreamCallbacks.Export<ArrayStreamGetSchema>(GetStreamSchema, ArrayStreamCallbacks.GetSchemaType);
+        private static unsafe IntPtr StreamGetNextPtr = ArrayStreamCallbacks.Export<ArrayStreamGetNext>(GetStreamNext, ArrayStreamCallbacks.GetNextType);
+        private static unsafe IntPtr StreamGetLastErrorPtr = ArrayStreamCallbacks.Export<ArrayStreamGetLastError>(GetStreamLastError, ArrayStreamCallbacks.GetLastErrorType);
+        private static unsafe IntPtr StreamReleasePtr = ArrayStreamCallbacks.Export<ArrayStreamRelease>(ReleaseStream, ArrayStreamCallbacks.ReleaseType);
         private static unsafe IntPtr ErrorFromArrayStreamPtr = NativeDelegate<ErrorFromArrayStream>.AsNativePointer(GetErrorFromArrayStream);
 #endif
 
@@ -48,7 +49,7 @@ namespace Apache.Arrow.Adbc.C
         /// <c>AdbcErrorFromArrayStream</c> can report its status, SQLSTATE, vendor code and
         /// details, and returns an errno that corresponds to the status.
         /// </remarks>
-        private unsafe static void ExportStream(IArrowArrayStream? stream, CArrowArrayStream* cStream)
+        internal unsafe static void ExportStream(IArrowArrayStream? stream, CArrowArrayStream* cStream)
         {
             try
             {
@@ -118,8 +119,7 @@ namespace Apache.Arrow.Adbc.C
                 stream = GetExportedStream(cStream) ?? throw new ArgumentException("not a stream exported by this driver", nameof(cStream));
                 stream.ClearError();
 
-                ValueTask<RecordBatch?> pending = stream.Stream.ReadNextRecordBatchAsync();
-                RecordBatch? batch = pending.IsCompletedSuccessfully ? pending.Result : pending.AsTask().GetAwaiter().GetResult();
+                RecordBatch? batch = ReadNextBatch(stream.Stream);
                 if (batch != null)
                 {
                     CArrowArrayExporter.ExportRecordBatch(batch, cArray);
@@ -130,6 +130,20 @@ namespace Apache.Arrow.Adbc.C
             {
                 return stream?.SetError(e) ?? Errno.EINVAL;
             }
+        }
+
+        private static RecordBatch? ReadNextBatch(IArrowArrayStream stream)
+        {
+            // A managed caller in the same process may call get_next on a thread with a
+            // synchronization context. Blocking that thread deadlocks a read that resumes on
+            // the context, so start the read without it. A native caller has no context.
+            if (SynchronizationContext.Current != null || TaskScheduler.Current != TaskScheduler.Default)
+            {
+                return Task.Run(() => stream.ReadNextRecordBatchAsync().AsTask()).GetAwaiter().GetResult();
+            }
+
+            ValueTask<RecordBatch?> pending = stream.ReadNextRecordBatchAsync();
+            return pending.IsCompletedSuccessfully ? pending.Result : pending.AsTask().GetAwaiter().GetResult();
         }
 
 #if NET5_0_OR_GREATER
