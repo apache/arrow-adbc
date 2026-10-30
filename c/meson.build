@@ -30,12 +30,21 @@ project(
     ],
 )
 
+compiler_cc = meson.get_compiler('c')
 add_project_arguments(
     '-Wno-int-conversion',
     '-Wno-unused-parameter',
     language: 'c',
 )
 add_project_arguments('-Wno-unused-parameter', '-Wno-reorder', language: 'cpp')
+
+# On Windows the ADBC headers mark the public symbols as dllimport unless
+# ADBC_EXPORTING is defined; the libraries themselves must export them.
+if host_machine.system() == 'windows'
+    adbc_export_args = ['-DADBC_EXPORTING']
+else
+    adbc_export_args = []
+endif
 
 c_dir = include_directories('.')
 vendor_dir = include_directories('vendor')
