@@ -20,3 +20,18 @@
 # Apache Arrow ADBC
 
 An implementation of Arrow ADBC targeting .NET Standard 2.0 and .NET 6 or later.
+
+## Telemetry dependencies
+
+The core and trace-listener packages retain a minimum dependency on
+`System.Diagnostics.DiagnosticSource` 9.0.6. The OpenTelemetry-based Testing
+helper and trace exporters use OpenTelemetry 1.15.3 or later and require
+DiagnosticSource 10.0.0 or later. This avoids OpenTelemetry.Api versions affected
+by [CVE-2026-40894](https://github.com/advisories/GHSA-g94r-2vxg-569j) without
+raising the core driver's shared-contract minimum.
+
+Hosts that load managed drivers into the default assembly load context must
+provide a single DiagnosticSource assembly satisfying all loaded components.
+Consumers of `Apache.Arrow.Adbc.Testing` must update to a release containing
+these dependency requirements; updating the core driver alone does not update
+the Testing helper.
