@@ -23,6 +23,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -250,6 +251,29 @@ func NewDatabase(impl DatabaseImpl) Database {
 	return &database{
 		DatabaseImpl: impl,
 	}
+}
+
+// SetOptionInt sets an integer option. If the driver does not handle key as
+// an integer, the value is formatted and passed to SetOption instead, since
+// the typed setters are a convenience over the string representation.
+// Drivers that only override SetOption and parse numbers themselves then
+// accept integer options too (e.g. typed values from connection profiles).
+func (db *database) SetOptionInt(key string, val int64) error {
+	err := db.DatabaseImpl.SetOptionInt(key, val)
+	if isNotImplemented(err) {
+		return db.SetOption(key, strconv.FormatInt(val, 10))
+	}
+	return err
+}
+
+// SetOptionDouble sets a double option, falling back to SetOption like
+// SetOptionInt when the driver does not handle key as a double.
+func (db *database) SetOptionDouble(key string, val float64) error {
+	err := db.DatabaseImpl.SetOptionDouble(key, val)
+	if isNotImplemented(err) {
+		return db.SetOption(key, strconv.FormatFloat(val, 'g', -1, 64))
+	}
+	return err
 }
 
 func (db *database) SetLogger(logger *slog.Logger) {

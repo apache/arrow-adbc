@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -560,6 +561,26 @@ func (cnxn *connection) SetOption(key string, val string) error {
 		}
 	}
 	return cnxn.ConnectionImpl.SetOption(key, val)
+}
+
+// SetOptionInt sets an integer option, falling back to SetOption with the
+// formatted value when the driver does not handle key as an integer.
+func (cnxn *connection) SetOptionInt(key string, val int64) error {
+	err := cnxn.ConnectionImpl.SetOptionInt(key, val)
+	if isNotImplemented(err) {
+		return cnxn.SetOption(key, strconv.FormatInt(val, 10))
+	}
+	return err
+}
+
+// SetOptionDouble sets a double option, falling back to SetOption with the
+// formatted value when the driver does not handle key as a double.
+func (cnxn *connection) SetOptionDouble(key string, val float64) error {
+	err := cnxn.ConnectionImpl.SetOptionDouble(key, val)
+	if isNotImplemented(err) {
+		return cnxn.SetOption(key, strconv.FormatFloat(val, 'g', -1, 64))
+	}
+	return err
 }
 
 func (cnxn *connection) GetInfo(ctx context.Context, infoCodes []adbc.InfoCode) (array.RecordReader, error) {
