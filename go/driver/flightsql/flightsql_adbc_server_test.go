@@ -2953,8 +2953,8 @@ func (suite *BulkIngestTests) TestBulkIngestWithCatalogAndSchema() {
 	// Set up for bulk ingest with catalog and schema
 	suite.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetTable, "qualified_table"))
 	suite.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestMode, adbc.OptionValueIngestModeCreate))
-	suite.Require().NoError(stmt.SetOption(adbc.OptionValueIngestTargetCatalog, "my_catalog"))
-	suite.Require().NoError(stmt.SetOption(adbc.OptionValueIngestTargetDBSchema, "my_schema"))
+	suite.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetCatalog, "my_catalog"))
+	suite.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetDBSchema, "my_schema"))
 
 	// Create sample data
 	schema := arrow.NewSchema([]arrow.Field{
@@ -2991,7 +2991,7 @@ func (suite *BulkIngestTests) TestBulkIngestTemporary() {
 	// Set up for temporary table ingest
 	suite.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetTable, "temp_table"))
 	suite.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestMode, adbc.OptionValueIngestModeCreate))
-	suite.Require().NoError(stmt.SetOption(adbc.OptionValueIngestTemporary, adbc.OptionValueEnabled))
+	suite.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTemporary, adbc.OptionValueEnabled))
 
 	// Create sample data
 	schema := arrow.NewSchema([]arrow.Field{

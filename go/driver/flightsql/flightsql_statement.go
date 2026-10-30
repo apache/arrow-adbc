@@ -409,19 +409,19 @@ func (s *statement) SetOption(key string, val string) error {
 				Code: adbc.StatusInvalidArgument,
 			}
 		}
-	case adbc.OptionValueIngestTargetCatalog:
+	case adbc.OptionKeyIngestTargetCatalog:
 		if val == "" {
 			s.catalog = nil
 		} else {
 			s.catalog = &val
 		}
-	case adbc.OptionValueIngestTargetDBSchema:
+	case adbc.OptionKeyIngestTargetDBSchema:
 		if val == "" {
 			s.dbSchema = nil
 		} else {
 			s.dbSchema = &val
 		}
-	case adbc.OptionValueIngestTemporary:
+	case adbc.OptionKeyIngestTemporary:
 		switch val {
 		case adbc.OptionValueEnabled:
 			s.temporary = true
