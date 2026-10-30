@@ -140,9 +140,8 @@ namespace Apache.Arrow.Adbc.C
             /// Releases and frees a stream allocated with <see cref="CArrowArrayStream.Create"/>.
             /// </summary>
             /// <remarks>
-            /// On .NET Framework, this releases the stream through the same callback types as
-            /// the rest of this class (see <c>ArrayStreamCallbacks</c>), so it can release streams
-            /// exported in the same process by either Apache.Arrow or <see cref="CAdbcDriverExporter"/>.
+            /// On .NET Framework, this releases the stream through <c>ArrayStreamCallbacks</c>, so
+            /// it can release a stream exported in the same process with any delegate type.
             /// </remarks>
             public static void FreeStream(CArrowArrayStream* cStream)
             {
@@ -152,7 +151,7 @@ namespace Apache.Arrow.Adbc.C
 #if NET5_0_OR_GREATER
                     nativeStream->release(cStream);
 #else
-                    ArrayStreamCallbacks.Import<ArrayStreamRelease>(nativeStream->release, ArrayStreamCallbacks.ReleaseType)(cStream);
+                    ArrayStreamCallbacks.Import<ArrayStreamRelease>(nativeStream->release)(cStream);
 #endif
                     nativeStream->release = default;
                 }
@@ -192,7 +191,7 @@ namespace Apache.Arrow.Adbc.C
 #if NET5_0_OR_GREATER
                 byte* message = nativeStream->get_last_error(cStream);
 #else
-                byte* message = ArrayStreamCallbacks.Import<ArrayStreamGetLastError>(nativeStream->get_last_error, ArrayStreamCallbacks.GetLastErrorType)(cStream);
+                byte* message = ArrayStreamCallbacks.Import<ArrayStreamGetLastError>(nativeStream->get_last_error)(cStream);
 #endif
                 return new Exception(message == null
                     ? $"Array stream operation failed with no message. Error code: {errno}"
@@ -205,7 +204,7 @@ namespace Apache.Arrow.Adbc.C
 #if NET5_0_OR_GREATER
                 return nativeStream->get_schema(cStream, cSchema);
 #else
-                return ArrayStreamCallbacks.Import<ArrayStreamGetSchema>(nativeStream->get_schema, ArrayStreamCallbacks.GetSchemaType)(cStream, cSchema);
+                return ArrayStreamCallbacks.Import<ArrayStreamGetSchema>(nativeStream->get_schema)(cStream, cSchema);
 #endif
             }
 
@@ -215,7 +214,7 @@ namespace Apache.Arrow.Adbc.C
 #if NET5_0_OR_GREATER
                 return nativeStream->get_next(cStream, cArray);
 #else
-                return ArrayStreamCallbacks.Import<ArrayStreamGetNext>(nativeStream->get_next, ArrayStreamCallbacks.GetNextType)(cStream, cArray);
+                return ArrayStreamCallbacks.Import<ArrayStreamGetNext>(nativeStream->get_next)(cStream, cArray);
 #endif
             }
         }

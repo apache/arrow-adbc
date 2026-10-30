@@ -71,11 +71,13 @@ namespace Apache.Arrow.Adbc.C
     /// Creates and calls <see cref="CArrowArrayStream"/> callbacks on .NET Framework.
     /// </summary>
     /// <remarks>
-    /// On .NET Framework, a function pointer created from a managed delegate can only be called
-    /// through a delegate of the same type. Apache.Arrow exports and calls stream callbacks
-    /// through its own internal delegate types, so ADBC uses those types too, to stay compatible
-    /// with streams that Apache.Arrow exports and with consumers that import streams through it.
-    /// If they can't be found, ADBC falls back to its own types.
+    /// On .NET Framework, <see cref="Marshal.GetDelegateForFunctionPointer{TDelegate}(IntPtr)"/>
+    /// returns the original delegate for a function pointer created from a managed delegate, and
+    /// fails if that delegate has a different type. ADBC calls callbacks through
+    /// <see cref="Import{T}"/>, which accepts a delegate of any type. Apache.Arrow calls them
+    /// through its own internal delegate types, so ADBC exports its callbacks with those types,
+    /// found by reflection, to stay compatible with consumers that import streams through
+    /// Apache.Arrow. If they can't be found, ADBC exports its own types.
     /// </remarks>
     internal static class ArrayStreamCallbacks
     {
@@ -94,17 +96,13 @@ namespace Apache.Arrow.Adbc.C
         }
 
         /// <summary>
-        /// Returns a delegate that calls <paramref name="pointer"/>.
+        /// Returns a delegate that calls <paramref name="pointer"/>, whichever delegate type
+        /// it was created from.
         /// </summary>
-        public static T Import<T>(IntPtr pointer, Type? arrowType) where T : Delegate
+        public static T Import<T>(IntPtr pointer) where T : Delegate
         {
-            if (arrowType == null)
-            {
-                return Marshal.GetDelegateForFunctionPointer<T>(pointer);
-            }
-
-            // For a pointer created from a managed delegate, this returns that delegate
-            Delegate imported = Marshal.GetDelegateForFunctionPointer(pointer, arrowType);
+            // Unlike the generic overload, this doesn't cast the delegate it returns to T
+            Delegate imported = Marshal.GetDelegateForFunctionPointer(pointer, typeof(T));
             return imported as T ?? (T)Delegate.CreateDelegate(typeof(T), imported, "Invoke");
         }
 
