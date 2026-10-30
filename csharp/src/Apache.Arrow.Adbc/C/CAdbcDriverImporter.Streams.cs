@@ -42,7 +42,8 @@ namespace Apache.Arrow.Adbc.C
             /// <summary>
             /// Imports <paramref name="cStream"/>, which must have been allocated with
             /// <see cref="CArrowArrayStream.Create"/>. On success, the imported stream owns
-            /// it; on failure, the caller still does.
+            /// it and holds a reference to <paramref name="driver"/>, whose callbacks it calls
+            /// until it's disposed; on failure, the caller still owns the stream.
             /// </summary>
             public ImportedArrayStream(ImportedAdbcDriver? driver, CArrowArrayStream* cStream)
             {
@@ -68,6 +69,7 @@ namespace Apache.Arrow.Adbc.C
                     CArrowSchema.Free(cSchema);
                 }
 
+                _driver?.AddReference();
                 _cStream = cStream;
             }
 
@@ -131,7 +133,14 @@ namespace Apache.Arrow.Adbc.C
                 if (cStream != null)
                 {
                     _cStream = null;
-                    FreeStream(cStream);
+                    try
+                    {
+                        FreeStream(cStream);
+                    }
+                    finally
+                    {
+                        _driver?.RemoveReference();
+                    }
                 }
                 GC.SuppressFinalize(this);
             }

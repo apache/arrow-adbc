@@ -372,6 +372,33 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         [Fact]
+        public async Task StreamKeepsDriverLoaded()
+        {
+            var fixture = new Driver11();
+            IArrowArrayStream stream;
+            using (AdbcDriver imported = Load(fixture))
+            using (AdbcDatabase db = imported.Open(new Dictionary<string, string>()))
+            using (AdbcConnection conn = db.Connect(null))
+            using (AdbcStatement stmt = conn.CreateStatement())
+            {
+                stmt.SqlQuery = "STREAM_FAIL_CANCELLED";
+                stream = stmt.ExecuteQuery().Stream!;
+            }
+
+            using (stream)
+            {
+                Assert.False(fixture.Disposed);
+                (await stream.ReadNextRecordBatchAsync())?.Dispose();
+
+                AdbcException ex = await Assert.ThrowsAnyAsync<AdbcException>(async () => await stream.ReadNextRecordBatchAsync());
+                Assert.Equal(AdbcStatusCode.Cancelled, ex.Status);
+                Assert.False(fixture.Disposed);
+            }
+
+            Assert.True(fixture.Disposed);
+        }
+
+        [Fact]
         public void StreamSchemaErrorKeepsStatus()
         {
             using AdbcDriver imported = Load(new Driver11());
@@ -784,6 +811,10 @@ namespace Apache.Arrow.Adbc.Tests
             public Statement11? LastStatement { get; set; }
 
             public override int DriverVersion => AdbcVersion.Version_1_1_0;
+
+            public bool Disposed { get; private set; }
+
+            public override void Dispose() => Disposed = true;
 
             public override AdbcDatabase Open(IReadOnlyDictionary<string, string> parameters)
             {
