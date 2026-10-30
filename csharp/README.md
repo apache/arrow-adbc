@@ -24,9 +24,9 @@ An implementation of Arrow ADBC targeting .NET Standard 2.0 and .NET 6 or later.
 ## Telemetry dependencies
 
 The core and trace-listener packages retain a minimum dependency on
-`System.Diagnostics.DiagnosticSource` 9.0.6. The OpenTelemetry-based Testing
-helper and trace exporters use OpenTelemetry 1.15.3 or later and require
-DiagnosticSource 10.0.0 or later. This avoids OpenTelemetry.Api versions affected
+`System.Diagnostics.DiagnosticSource` 9.0.6. The published Testing helper uses
+OpenTelemetry 1.15.3 or later and overrides its DiagnosticSource minimum to
+10.0.0. This avoids OpenTelemetry.Api versions affected
 by [CVE-2026-40894](https://github.com/advisories/GHSA-g94r-2vxg-569j) without
 raising the core driver's shared-contract minimum.
 
