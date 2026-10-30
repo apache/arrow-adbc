@@ -77,7 +77,8 @@ namespace Apache.Arrow.Adbc.C
     /// <see cref="Import{T}"/>, which accepts a delegate of any type. Apache.Arrow calls them
     /// through its own internal delegate types, so ADBC exports its callbacks with those types,
     /// found by reflection, to stay compatible with consumers that import streams through
-    /// Apache.Arrow. If they can't be found, ADBC exports its own types.
+    /// Apache.Arrow. If they can't be found, ADBC exports its own types. Once Apache.Arrow
+    /// accepts callbacks of any delegate type (apache/arrow-dotnet#491), the reflection can go.
     /// </remarks>
     internal static class ArrayStreamCallbacks
     {
