@@ -36,15 +36,6 @@ approach.
 
 **NOTE:** this project is not affiliated with PostgreSQL in any way.
 
-## Thread safety
-
-The PostgreSQL driver supports concurrent `AdbcConnectionInit` and
-`AdbcConnectionRelease` calls on distinct connections that share the same initialized
-`AdbcDatabase`, including overlapping initialization and release. This allows connections to
-be created and released in parallel. It does not make concurrent calls on the same connection,
-or concurrent changes to or release of the database, safe; serialise those operations as
-described by the general ADBC thread-safety guidance.
-
 [libpq]: https://www.postgresql.org/docs/current/libpq.html
 [pgeon]: https://github.com/0x0L/pgeon
 
