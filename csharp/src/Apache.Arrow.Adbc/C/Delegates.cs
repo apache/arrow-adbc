@@ -31,6 +31,11 @@ namespace Apache.Arrow.Adbc.C
     internal unsafe delegate CAdbcErrorDetail ErrorGetDetail(CAdbcError* error, int index);
     internal unsafe delegate CAdbcError* ErrorFromArrayStream(CArrowArrayStream* stream, AdbcStatusCode* status);
 
+    internal unsafe delegate int ArrayStreamGetSchema(CArrowArrayStream* stream, CArrowSchema* schema);
+    internal unsafe delegate int ArrayStreamGetNext(CArrowArrayStream* stream, CArrowArray* array);
+    internal unsafe delegate byte* ArrayStreamGetLastError(CArrowArrayStream* stream);
+    internal unsafe delegate void ArrayStreamRelease(CArrowArrayStream* stream);
+
     internal unsafe delegate AdbcStatusCode DatabaseGetOption(CAdbcDatabase* database, byte* name, byte* value, nint* length, CAdbcError* error);
     internal unsafe delegate AdbcStatusCode DatabaseGetOptionBytes(CAdbcDatabase* database, byte* name, byte* value, nint* length, CAdbcError* error);
     internal unsafe delegate AdbcStatusCode DatabaseGetOptionDouble(CAdbcDatabase* database, byte* name, double* value, CAdbcError* error);
