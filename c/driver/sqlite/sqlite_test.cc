@@ -15,6 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
+#include <clocale>
+#include <cstdlib>
 #include <cstring>
 #include <filesystem>  // NOLINT [build/c++17]
 #include <limits>
@@ -1013,9 +1015,88 @@ TEST_F(SqliteReaderTest, IntsFloatsStrs) {
   ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].type);
 
   ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NO_FATAL_FAILURE(CompareArray<std::string>(reader.array_view->children[0],
+                                                    {"1.0", "1.0", "", "Inf", "-Inf"}));
+}
+
+TEST_F(SqliteReaderTest, InferFloatToStringPreservesPrecision) {
+  ASSERT_NO_FATAL_FAILURE(Exec("CREATE TABLE foo (upcast_col, append_col)"));
   ASSERT_NO_FATAL_FAILURE(
-      CompareArray<std::string>(reader.array_view->children[0],
-                                {"1.000000e+00", "1.000000e+00", "", "inf", "-inf"}));
+      Exec("INSERT INTO foo VALUES "
+           "(123456789.123, 'start'), "
+           "(3.141592653589793, 123456789.123), "
+           "(0.10000000000000002, 3.141592653589793), "
+           "('end', 0.10000000000000002), "
+           "(42, NULL), "
+           "(NULL, 7), "
+           "('original text', '')"));
+
+  adbc_validation::StreamReader reader;
+  ASSERT_NO_FATAL_FAILURE(Exec("SELECT * FROM foo", kInferRows, &reader));
+  ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].type);
+  ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[1].type);
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  auto expect_strings = [](ArrowArrayView* actual,
+                           const std::vector<std::optional<std::string>>& expected) {
+    ASSERT_EQ(actual->length, static_cast<int64_t>(expected.size()));
+    for (int64_t i = 0; i < actual->length; i++) {
+      if (!expected[i].has_value()) {
+        EXPECT_TRUE(ArrowArrayViewIsNull(actual, i));
+        continue;
+      }
+      ASSERT_FALSE(ArrowArrayViewIsNull(actual, i));
+      const ArrowStringView value = ArrowArrayViewGetStringUnsafe(actual, i);
+      EXPECT_EQ(std::string(value.data, value.size_bytes), expected[i].value());
+    }
+  };
+  ASSERT_NO_FATAL_FAILURE(
+      expect_strings(reader.array_view->children[0],
+                     {"123456789.123", "3.1415926535897931", "0.10000000000000002", "end",
+                      "42", std::nullopt, "original text"}));
+  ASSERT_NO_FATAL_FAILURE(expect_strings(reader.array_view->children[1],
+                                         {"start", "123456789.123", "3.1415926535897931",
+                                          "0.10000000000000002", std::nullopt, "7", ""}));
+}
+
+TEST_F(SqliteReaderTest, InferFloatToStringUsesDotDecimalInCommaLocale) {
+  ASSERT_NO_FATAL_FAILURE(Exec("CREATE TABLE foo (col)"));
+  ASSERT_NO_FATAL_FAILURE(Exec("INSERT INTO foo VALUES (1.5), ('text')"));
+  ASSERT_EQ(SQLITE_OK,
+            sqlite3_prepare_v2(db, "SELECT * FROM foo", -1, &stmt, /*pzTail=*/nullptr));
+
+  const char* current_locale = std::setlocale(LC_NUMERIC, nullptr);
+  ASSERT_NE(nullptr, current_locale);
+  const std::string original_locale(current_locale);
+
+  struct RestoreLocale {
+    std::string name;
+    ~RestoreLocale() { std::setlocale(LC_NUMERIC, name.c_str()); }
+  } restore{original_locale};
+
+  const char* comma_locales[] = {"de_DE.UTF-8", "de_DE.utf8", "de_DE",
+                                 "German_Germany.1252"};
+  bool comma_locale_available = false;
+  for (const char* locale : comma_locales) {
+    if (std::setlocale(LC_NUMERIC, locale) != nullptr &&
+        std::strcmp(std::localeconv()->decimal_point, ",") == 0) {
+      comma_locale_available = true;
+      break;
+    }
+  }
+  if (!comma_locale_available) {
+    GTEST_SKIP() << "No decimal-comma locale is installed";
+  }
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(InternalAdbcSqliteExportReader(db, stmt, /*binder=*/nullptr, kInferRows,
+                                             &reader.stream.value, &error),
+              IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+  ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].type);
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  const ArrowStringView actual =
+      ArrowArrayViewGetStringUnsafe(reader.array_view->children[0], 0);
+  EXPECT_EQ(std::string_view(actual.data, actual.size_bytes), "1.5");
 }
 
 TEST_F(SqliteReaderTest, InferIntReadInt) {
