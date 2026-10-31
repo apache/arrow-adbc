@@ -30,13 +30,12 @@ namespace Apache.Arrow.Adbc.C
     /// Exposes a managed <see cref="AdbcDriver"/> through the ADBC C API.
     /// </summary>
     /// <remarks>
-    /// When a caller requests ADBC 1.1.0, every 1.1.0 entry point is populated
-    /// except <c>ErrorFromArrayStream</c>; exported streams report errors through
-    /// <c>get_last_error</c> instead. Functionality that the managed driver doesn't
-    /// override surfaces as <see cref="AdbcStatusCode.NotImplemented"/>, which is
-    /// the same status a driver manager reports for a missing entry point.
+    /// When a caller requests ADBC 1.1.0, every 1.1.0 entry point is populated.
+    /// Functionality that the managed driver doesn't override surfaces as
+    /// <see cref="AdbcStatusCode.NotImplemented"/>, which is the same status a driver
+    /// manager reports for a missing entry point.
     /// </remarks>
-    public class CAdbcDriverExporter
+    public partial class CAdbcDriverExporter
     {
         /// <summary>
         /// The value of <c>ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA</c>. A caller sets an error's
@@ -279,8 +278,7 @@ namespace Apache.Arrow.Adbc.C
             {
                 nativeDriver->ErrorGetDetailCount = ErrorGetDetailCountPtr;
                 nativeDriver->ErrorGetDetail = ErrorGetDetailPtr;
-                // ErrorFromArrayStream is left null: exported streams report errors
-                // through ArrowArrayStream.get_last_error only.
+                nativeDriver->ErrorFromArrayStream = ErrorFromArrayStreamPtr;
 
                 nativeDriver->DatabaseGetOption = DatabaseGetOptionPtr;
                 nativeDriver->DatabaseGetOptionBytes = DatabaseGetOptionBytesPtr;
@@ -427,23 +425,6 @@ namespace Apache.Arrow.Adbc.C
                     // the struct may not even have room for private_data.
                     error->vendor_code = adbc.NativeError == ErrorVendorCodePrivateData ? 0 : adbc.NativeError;
                 }
-            }
-        }
-
-        /// <summary>
-        /// Exports a stream produced by the managed driver. The exported stream takes
-        /// ownership on success; if exporting fails, nobody else will dispose it.
-        /// </summary>
-        private unsafe static void ExportStream(IArrowArrayStream? stream, CArrowArrayStream* cStream)
-        {
-            try
-            {
-                CArrowArrayStreamExporter.ExportArrayStream(stream!, cStream);
-            }
-            catch
-            {
-                stream?.Dispose();
-                throw;
             }
         }
 

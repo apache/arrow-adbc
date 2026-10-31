@@ -1776,7 +1776,7 @@ namespace Apache.Arrow.Adbc.C
             public IArrowArrayStream ImportStream()
             {
                 Debug.Assert(_arrayStream != null);
-                IArrowArrayStream arrayStream = CArrowArrayStreamImporter.ImportArrayStream(_arrayStream);
+                IArrowArrayStream arrayStream = new ImportedArrayStream(_driver, _arrayStream);
                 _arrayStream = null;
                 return arrayStream;
             }
@@ -1992,7 +1992,7 @@ namespace Apache.Arrow.Adbc.C
                 }
                 if (_arrayStream != null)
                 {
-                    CArrowArrayStream.Free(_arrayStream);
+                    ImportedArrayStream.FreeStream(_arrayStream);
                     _arrayStream = null;
                 }
             }
