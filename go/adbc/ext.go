@@ -108,17 +108,17 @@ func IngestStream(ctx context.Context, cnxn Connection, reader array.RecordReade
 
 	// Set other options if provided
 	if opt.Catalog != "" {
-		if err = stmt.SetOption(OptionValueIngestTargetCatalog, opt.Catalog); err != nil {
+		if err = stmt.SetOption(OptionKeyIngestTargetCatalog, opt.Catalog); err != nil {
 			return -1, fmt.Errorf("error during ingestion: target_catalog=%s: %w", opt.Catalog, err)
 		}
 	}
 	if opt.DBSchema != "" {
-		if err = stmt.SetOption(OptionValueIngestTargetDBSchema, opt.DBSchema); err != nil {
+		if err = stmt.SetOption(OptionKeyIngestTargetDBSchema, opt.DBSchema); err != nil {
 			return -1, fmt.Errorf("error during ingestion: target_db_schema=%s: %w", opt.DBSchema, err)
 		}
 	}
 	if opt.Temporary {
-		if err = stmt.SetOption(OptionValueIngestTemporary, OptionValueEnabled); err != nil {
+		if err = stmt.SetOption(OptionKeyIngestTemporary, OptionValueEnabled); err != nil {
 			return -1, fmt.Errorf("error during ingestion: temporary=true: %w", err)
 		}
 	}
@@ -175,17 +175,17 @@ func IngestStreamContext(ctx context.Context, cnxn ConnectionWithContext, reader
 
 	// Set other options if provided
 	if opt.Catalog != "" {
-		if err = stmt.SetOption(ctx, OptionValueIngestTargetCatalog, opt.Catalog); err != nil {
+		if err = stmt.SetOption(ctx, OptionKeyIngestTargetCatalog, opt.Catalog); err != nil {
 			return -1, fmt.Errorf("error during ingestion: target_catalog=%s: %w", opt.Catalog, err)
 		}
 	}
 	if opt.DBSchema != "" {
-		if err = stmt.SetOption(ctx, OptionValueIngestTargetDBSchema, opt.DBSchema); err != nil {
+		if err = stmt.SetOption(ctx, OptionKeyIngestTargetDBSchema, opt.DBSchema); err != nil {
 			return -1, fmt.Errorf("error during ingestion: target_db_schema=%s: %w", opt.DBSchema, err)
 		}
 	}
 	if opt.Temporary {
-		if err = stmt.SetOption(ctx, OptionValueIngestTemporary, OptionValueEnabled); err != nil {
+		if err = stmt.SetOption(ctx, OptionKeyIngestTemporary, OptionValueEnabled); err != nil {
 			return -1, fmt.Errorf("error during ingestion: temporary=true: %w", err)
 		}
 	}
