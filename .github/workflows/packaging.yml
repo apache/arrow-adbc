@@ -447,7 +447,7 @@ jobs:
           mv apache-arrow-adbc-$VERSION.tar.gz adbc/ci/linux-packages/
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@824c0e29fdfc7d689c191c27acc969d2d04b7dd8  # v1.331.0
+        uses: ruby/setup-ruby@7f797815d8adceb1c412e7abefdd1ab4abc47a5f  # v1.335.0
         with:
           ruby-version: ruby
 
@@ -460,7 +460,7 @@ jobs:
           lookup-only: true
 
       - name: Login to GitHub Container registry
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f  # v4.6.0
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6  # v4.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -1062,7 +1062,7 @@ jobs:
 
       - name: Install Python 3.11
         id: python311
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           architecture: ${{ matrix.python_arch }}
           check-latest: true
@@ -1071,7 +1071,7 @@ jobs:
 
       - name: Install Python 3.12
         id: python312
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           architecture: ${{ matrix.python_arch }}
           check-latest: true
@@ -1080,7 +1080,7 @@ jobs:
 
       - name: Install Python 3.13
         id: python313
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           architecture: ${{ matrix.python_arch }}
           check-latest: true
@@ -1089,7 +1089,7 @@ jobs:
 
       - name: Install Python 3.14
         id: python314
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           architecture: ${{ matrix.python_arch }}
           check-latest: true
@@ -1098,7 +1098,7 @@ jobs:
 
       - name: Install Python 3.14t
         id: python314t
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           architecture: ${{ matrix.python_arch }}
           check-latest: true
@@ -1107,7 +1107,7 @@ jobs:
 
       - name: Install Python 3.15
         id: python315
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           architecture: ${{ matrix.python_arch }}
           check-latest: true
@@ -1116,7 +1116,7 @@ jobs:
 
       - name: Install Python 3.15t
         id: python315t
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           architecture: ${{ matrix.python_arch }}
           check-latest: true
@@ -1541,7 +1541,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.13'
       - name: Clean

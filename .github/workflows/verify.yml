@@ -64,7 +64,7 @@ jobs:
       - name: Install Python 3.11
         if: matrix.os == 'windows-11-arm'
         id: python311
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           architecture: arm64
           check-latest: true
@@ -74,7 +74,7 @@ jobs:
       - name: Install Python 3.12
         if: matrix.os == 'windows-11-arm'
         id: python312
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           architecture: arm64
           check-latest: true
@@ -83,7 +83,7 @@ jobs:
       - name: Install Python 3.13
         if: matrix.os == 'windows-11-arm'
         id: python313
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           architecture: arm64
           check-latest: true
@@ -92,7 +92,7 @@ jobs:
       - name: Install Python 3.14
         if: matrix.os == 'windows-11-arm'
         id: python314
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           architecture: arm64
           check-latest: true
@@ -101,7 +101,7 @@ jobs:
       - name: Install Python 3.14t
         if: matrix.os == 'windows-11-arm'
         id: python314t
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           architecture: arm64
           check-latest: true
@@ -110,7 +110,7 @@ jobs:
       - name: Install Python 3.15
         if: matrix.os == 'windows-11-arm'
         id: python315
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           architecture: arm64
           check-latest: true
@@ -119,7 +119,7 @@ jobs:
       - name: Install Python 3.15t
         if: matrix.os == 'windows-11-arm'
         id: python315t
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           architecture: arm64
           check-latest: true
