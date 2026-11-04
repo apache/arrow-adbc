@@ -21,7 +21,6 @@ resolver = "3"
 
 [workspace.package]
 version = "0.26.0"
-description = "Rust implementation of Arrow Database Connectivity (ADBC)"
 edition = "2024"
 rust-version = "1.85"
 authors = ["Apache Arrow <dev@arrow.apache.org>"]

@@ -647,9 +647,7 @@ impl<'a> DriverLibrary<'a> {
             .rfind(['/', '\\'])
             .map_or(filename, |pos| &filename[pos + 1..]);
         // remove all extensions
-        let basename = filename
-            .find('.')
-            .map_or_else(|| filename, |pos| &filename[..pos]);
+        let basename = filename.find('.').map_or(filename, |pos| &filename[..pos]);
         // strip the lib prefix on unix-like systems
         let name = basename
             .strip_prefix(env::consts::DLL_PREFIX)
