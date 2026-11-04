@@ -61,8 +61,15 @@ impl DriverInfo {
             )
         })?;
 
-        let manifest = DeTable::parse(&contents)
-            .map_err(|e| Error::with_message_and_status(e.to_string(), Status::InvalidArguments))?;
+        let manifest = DeTable::parse(&contents).map_err(|e| {
+            Error::with_message_and_status(
+                format!(
+                    "Could not parse manifest '{}': {e}",
+                    manifest_file.display()
+                ),
+                Status::InvalidArguments,
+            )
+        })?;
 
         let manifest_version = manifest
             .get_ref()
@@ -73,7 +80,10 @@ impl DriverInfo {
 
         if manifest_version != "1" {
             return Err(Error::with_message_and_status(
-                format!("Unsupported manifest version: {manifest_version}"),
+                format!(
+                    "Unsupported manifest version: {manifest_version}. Manifest: {}",
+                    manifest_file.display()
+                ),
                 Status::InvalidArguments,
             ));
         }
@@ -95,16 +105,32 @@ impl DriverInfo {
             // If the value is a table, we look for the specific key for this OS and architecture.
             Some(DeValue::Table(driver)) => {
                 let key = format!("{os}_{arch}{extra}");
-                let path = driver
-                    .get(key.as_str())
-                    .and_then(|v| v.get_ref().as_str())
-                    .unwrap_or_default();
+                let path = driver.get(key.as_str()).ok_or_else(|| {
+                    Error::with_message_and_status(
+                        format!(
+                            "Driver path not found in manifest '{}' for current architecture '{key}'. Architectures found: {}",
+                            manifest_file.display(),
+                            driver.keys().map(|key| key.as_ref().as_ref()).collect::<Vec<&str>>().join(" ")
+                        ),
+                        Status::NotFound,
+                    )
+                })?;
+                let path = path.get_ref().as_str().ok_or_else(|| {
+                    Error::with_message_and_status(
+                        format!(
+                            "Driver path in manifest '{}' for current architecture '{key}' was not a string",
+                            manifest_file.display()
+                        ),
+                        Status::InvalidArguments,
+                    )
+                })?;
                 Ok(PathBuf::from(path))
             }
             Some(driver) => Err(Error::with_message_and_status(
                 format!(
-                    "Driver.shared must be a string or a table, found '{}'",
-                    driver.type_str()
+                    "Driver.shared must be a string or a table, found '{}'. Manifest: {}",
+                    driver.type_str(),
+                    manifest_file.display()
                 ),
                 Status::InvalidArguments,
             )),
@@ -121,7 +147,7 @@ impl DriverInfo {
             return Err(Error::with_message_and_status(
                 format!(
                     "Manifest '{}' found empty string for library path of Driver.shared.{os}_{arch}{extra}",
-                    lib_path.display()
+                    manifest_file.display()
                 ),
                 Status::InvalidArguments,
             ));
@@ -135,7 +161,10 @@ impl DriverInfo {
                 match val.as_str() {
                     Some(s) => Ok(s.as_bytes().to_vec()),
                     None => Err(Error::with_message_and_status(
-                        "Driver entrypoint must be a string".to_string(),
+                        format!(
+                            "Driver entrypoint must be a string. Manifest: {}",
+                            manifest_file.display()
+                        ),
                         Status::InvalidArguments,
                     )),
                 }
@@ -278,6 +307,15 @@ impl<'a> DriverLibrary<'a> {
     }
 
     pub fn load_library(filename: impl AsRef<OsStr>) -> Result<libloading::Library> {
+        let load_error = |e| {
+            Error::with_message_and_status(
+                format!(
+                    "Could not load '{}': Error with dynamic library: {e}",
+                    Path::new(filename.as_ref()).display()
+                ),
+                Status::NotFound,
+            )
+        };
         // By default, go builds the libraries with '-Wl -z nodelete' which does not
         // unload the go runtime. This isn't respected on mac ( https://github.com/golang/go/issues/11100#issuecomment-932638093 )
         // so we need to explicitly load the library with RTLD_NODELETE( which prevents unloading )
@@ -320,15 +358,14 @@ impl<'a> DriverLibrary<'a> {
                 libloading::os::unix::RTLD_NOW | libloading::os::unix::RTLD_LOCAL | RTLD_NODELETE,
             )
             .map(Into::into)
-            .map_err(libloading_error_to_adbc_error)?
+            .map_err(load_error)?
         };
         // on windows, we emulate the same behaviour by using the GET_MODULE_HANDLE_EX_FLAG_PIN. The `.pin()`
         // function implements this.
         #[cfg(windows)]
         let library: libloading::Library = unsafe {
             let library: libloading::os::windows::Library =
-                libloading::os::windows::Library::new(filename.as_ref())
-                    .map_err(libloading_error_to_adbc_error)?;
+                libloading::os::windows::Library::new(filename.as_ref()).map_err(load_error)?;
             library.pin().map_err(libloading_error_to_adbc_error)?;
             library.into()
         };
@@ -379,12 +416,21 @@ impl<'a> DriverLibrary<'a> {
         let mut trace = Vec::new();
 
         let driver_path = Path::new(name.as_ref());
+        if driver_path.as_os_str().is_empty() {
+            return Err(Error::with_message_and_status(
+                "Driver name is empty",
+                Status::InvalidArguments,
+            ));
+        }
         let allow_relative = load_flags & LOAD_FLAG_ALLOW_RELATIVE_PATHS != 0;
 
         let result = if let Some(ext) = driver_path.extension() {
             if !allow_relative && driver_path.is_relative() {
                 Err(Error::with_message_and_status(
-                    "Relative paths are not allowed",
+                    format!(
+                        "Driver path '{}' is relative and relative paths are not allowed",
+                        driver_path.display()
+                    ),
                     Status::InvalidArguments,
                 ))
             } else if ext == "toml" {
@@ -450,6 +496,7 @@ impl<'a> DriverLibrary<'a> {
                 trace,
             ) {
                 Ok(result) => return Ok(result),
+                Err(err) if err.status == Status::InvalidArguments => return Err(err),
                 Err(err) => trace.push(err),
             }
         }
@@ -460,6 +507,7 @@ impl<'a> DriverLibrary<'a> {
         if let Some(additional_search_paths) = additional_search_paths {
             match DriverLibrary::search_path_list(driver_path, &additional_search_paths, trace) {
                 Ok(result) => return Ok(result),
+                Err(err) if err.status == Status::InvalidArguments => return Err(err),
                 Err(err) => trace.push(err),
             }
         }
@@ -473,6 +521,7 @@ impl<'a> DriverLibrary<'a> {
                     .join("drivers");
                 match DriverLibrary::search_path_list(driver_path, &[conda_path], trace) {
                     Ok(result) => return Ok(result),
+                    Err(err) if err.status == Status::InvalidArguments => return Err(err),
                     Err(err) => trace.push(err),
                 }
             }
@@ -496,6 +545,7 @@ impl<'a> DriverLibrary<'a> {
                 trace,
             ) {
                 Ok(result) => return Ok(result),
+                Err(err) if err.status == Status::InvalidArguments => return Err(err),
                 Err(err) => trace.push(err),
             }
         }
@@ -517,6 +567,7 @@ impl<'a> DriverLibrary<'a> {
                 trace,
             ) {
                 Ok(result) => return Ok(result),
+                Err(err) if err.status == Status::InvalidArguments => return Err(err),
                 Err(err) => trace.push(err),
             }
         }
@@ -560,6 +611,7 @@ impl<'a> DriverLibrary<'a> {
         path_list.extend(get_search_paths(load_flags & !LOAD_FLAG_SEARCH_ENV));
         match DriverLibrary::search_path_list(driver_path, &path_list, trace) {
             Ok(hit) => return Ok(hit),
+            Err(err) if err.status == Status::InvalidArguments => return Err(err),
             Err(err) => trace.push(err),
         };
 
@@ -597,6 +649,9 @@ impl<'a> DriverLibrary<'a> {
                 if full_path.is_file() {
                     match DriverLibrary::load_library_from_manifest(&full_path) {
                         Ok(hit) => return Some(Ok(hit)),
+                        Err(err) if err.status == Status::InvalidArguments => {
+                            return Some(Err(err));
+                        }
                         Err(err) => trace.push(err),
                     }
                 }
@@ -1281,7 +1336,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg_attr(not(feature = "driver_manager_test_lib"), ignore)]
     fn test_manifest_wrong_arch() {
         let manifest_wrong_arch = format!(
             r#"
@@ -1298,14 +1352,18 @@ mod tests {
             write_manifest_to_tempfile(PathBuf::from("test_sqlite.toml"), manifest_wrong_arch);
 
         let err = ManagedDriver::load_from_name(
-            manifest_path,
+            &manifest_path,
             None,
             AdbcVersion::V100,
             adbc_core::LOAD_FLAG_DEFAULT,
             None,
         )
         .unwrap_err();
-        assert_eq!(err.status, Status::InvalidArguments);
+        assert_eq!(err.status, Status::NotFound);
+        assert!(err.message.contains(&manifest_path.display().to_string()));
+        let (os, arch, extra) = arch_triplet();
+        assert!(err.message.contains(&format!("{os}_{arch}{extra}")));
+        assert!(err.message.contains("Architectures found: non-existing"));
 
         tmp_dir
             .close()
@@ -1687,6 +1745,240 @@ mod tests {
         assert!(
             trace.contains("Error with dynamic library"),
             "Expected dynamic library load error in driver load trace, got:\n{trace}"
+        );
+    }
+
+    // When a driver shared library can't be loaded directly or through a
+    // manifest, we return NotFound.
+    #[test]
+    fn test_load_from_name_missing_or_invalid_driver() {
+        let tmp_dir = tempfile::Builder::new()
+            .prefix("adbc_tests")
+            .tempdir()
+            .expect("Failed to create temporary directory for driver manager test");
+
+        let missing_dir = tmp_dir.path().join("missing");
+        let missing_library = missing_dir.join(libloading::library_filename("adbc_test_driver"));
+        let missing_library_no_ext = missing_dir.join("adbc_test_driver");
+        let relative_missing_library =
+            PathBuf::from(libloading::library_filename("adbc_test_driver_7c8f5482"));
+
+        let invalid_library = tmp_dir
+            .path()
+            .join(libloading::library_filename("adbc_test_invalid_driver"));
+        std::fs::write(&invalid_library, "this is not a shared library")
+            .expect("Failed to write invalid driver library");
+        let invalid_library_no_ext = tmp_dir.path().join("adbc_test_invalid_driver_no_ext");
+        std::fs::write(&invalid_library_no_ext, "this is not a shared library")
+            .expect("Failed to write invalid driver library without extension");
+
+        let write_manifest = |name: &str, library: &Path| {
+            let manifest_path = tmp_dir.path().join(name);
+            let manifest = format!(
+                "manifest_version = 1\n\n[Driver]\nshared = '{}'\n",
+                library.display()
+            );
+            std::fs::write(&manifest_path, manifest).expect("Failed to write driver manifest");
+            manifest_path
+        };
+        let manifest_missing_library = write_manifest("missing_library.toml", &missing_library);
+        let manifest_invalid_library = write_manifest("invalid_library.toml", &invalid_library);
+        // An absolute path without an extension uses the manifest next to it
+        write_manifest("colocated_invalid_library.toml", &invalid_library);
+        let colocated_invalid_library = tmp_dir.path().join("colocated_invalid_library");
+        write_manifest("colocated_missing_library.toml", &missing_library);
+        let colocated_missing_library = tmp_dir.path().join("colocated_missing_library");
+
+        // (case, driver to load, library that fails to load)
+        let cases: Vec<(&str, &Path, &Path)> = vec![
+            ("missing library", &missing_library, &missing_library),
+            (
+                "missing library without extension",
+                &missing_library_no_ext,
+                &missing_library_no_ext,
+            ),
+            (
+                "missing relative library",
+                &relative_missing_library,
+                &relative_missing_library,
+            ),
+            ("invalid library", &invalid_library, &invalid_library),
+            (
+                "invalid library without extension",
+                &invalid_library_no_ext,
+                &invalid_library_no_ext,
+            ),
+            (
+                "manifest with missing library",
+                &manifest_missing_library,
+                &missing_library,
+            ),
+            (
+                "manifest with invalid library",
+                &manifest_invalid_library,
+                &invalid_library,
+            ),
+            (
+                "path without extension, with a manifest next to it pointing at a missing library",
+                &colocated_missing_library,
+                &missing_library,
+            ),
+            (
+                "path without extension, with a manifest next to it pointing at an invalid library",
+                &colocated_invalid_library,
+                &invalid_library,
+            ),
+        ];
+
+        // Check every case before failing so all mismatches are reported at once
+        let mut failures = Vec::new();
+        for (case, driver, library) in cases {
+            let err = ManagedDriver::load_from_name(
+                driver,
+                None,
+                AdbcVersion::V100,
+                adbc_core::LOAD_FLAG_DEFAULT,
+                None,
+            )
+            .unwrap_err();
+
+            if err.status != Status::NotFound
+                || !err.message.contains(&library.display().to_string())
+                || !err.message.contains("Error with dynamic library")
+            {
+                failures.push(format!("{case}: {:?}: {}", err.status, err.message));
+            }
+        }
+        assert!(
+            failures.is_empty(),
+            "Expected NotFound with the library path and load error in the message:\n{}",
+            failures.join("\n")
+        );
+
+        tmp_dir
+            .close()
+            .expect("Failed to close/remove temporary directory");
+    }
+
+    /// When a manifest can't be found or parsed, we return InvalidArguments.
+    #[test]
+    fn test_load_from_name_invalid_manifest_by_path_or_name() {
+        let tmp_dir = tempfile::tempdir().expect("Failed to create manifest test directory");
+        let (os, arch, extra) = arch_triplet();
+        let platform = format!("{os}_{arch}{extra}");
+        let cases = [
+            ("invalid_toml", "[Driver\n".to_string()),
+            ("missing_shared", "manifest_version = 1\n".to_string()),
+            ("unsupported_version", "manifest_version = 2\n".to_string()),
+            ("invalid_shared_type", "[Driver]\nshared = 1\n".to_string()),
+            ("empty_shared_path", "[Driver]\nshared = ''\n".to_string()),
+            (
+                "invalid_platform_path_type",
+                format!("[Driver.shared]\n{platform} = 1\n"),
+            ),
+            (
+                "empty_platform_path",
+                format!("[Driver.shared]\n{platform} = ''\n"),
+            ),
+            (
+                "invalid_entrypoint_type",
+                "[Driver]\nshared = 'missing_library'\nentrypoint = 1\n".to_string(),
+            ),
+        ];
+
+        for (name, contents) in cases {
+            let manifest_path = tmp_dir.path().join(format!("{name}.toml"));
+            std::fs::write(&manifest_path, contents).expect("Failed to write invalid manifest");
+
+            // Invalid manifests must be reported, including when found by name.
+            for driver in [manifest_path.as_path(), Path::new(name)] {
+                let err = ManagedDriver::load_from_name(
+                    driver,
+                    None,
+                    AdbcVersion::V100,
+                    0,
+                    Some(vec![tmp_dir.path().to_path_buf()]),
+                )
+                .unwrap_err();
+                assert_eq!(err.status, Status::InvalidArguments, "{name}: {err}");
+                assert!(
+                    err.message.contains(&manifest_path.display().to_string()),
+                    "{name}: {err}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_missing_manifest() {
+        let tmp_dir = tempfile::tempdir().expect("Failed to create manifest test directory");
+        for manifest_path in [
+            tmp_dir.path().join("missing.toml"),
+            PathBuf::from("adbc_test_missing_manifest_7c8f5482.toml"),
+        ] {
+            let err = ManagedDriver::load_from_name(
+                &manifest_path,
+                None,
+                AdbcVersion::V100,
+                LOAD_FLAG_ALLOW_RELATIVE_PATHS,
+                None,
+            )
+            .unwrap_err();
+            assert_eq!(err.status, Status::InvalidArguments);
+            assert!(err.message.contains(&manifest_path.display().to_string()));
+            assert!(err.message.contains("Could not read manifest"));
+        }
+    }
+
+    #[test]
+    fn test_empty_driver_name() {
+        let err = ManagedDriver::load_from_name("", None, AdbcVersion::V100, 0, None).unwrap_err();
+        assert_eq!(err.status, Status::InvalidArguments);
+        assert_eq!(err.message, "Driver name is empty");
+    }
+
+    #[test]
+    fn test_relative_driver_path_disallowed() {
+        for driver in [
+            PathBuf::from(libloading::library_filename("adbc_test_driver")),
+            PathBuf::from("drivers").join(libloading::library_filename("adbc_test_driver")),
+            PathBuf::from("drivers/test_driver.toml"),
+        ] {
+            let err = ManagedDriver::load_from_name(
+                &driver,
+                None,
+                AdbcVersion::V100,
+                adbc_core::LOAD_FLAG_DEFAULT & !LOAD_FLAG_ALLOW_RELATIVE_PATHS,
+                None,
+            )
+            .unwrap_err();
+            assert_eq!(err.status, Status::InvalidArguments);
+            assert!(err.message.contains(&driver.display().to_string()));
+            assert!(err.message.contains("relative paths are not allowed"));
+        }
+    }
+
+    #[test]
+    fn test_load_dynamic_missing_driver() {
+        let tmp_dir = tempfile::tempdir().expect("Failed to create driver test directory");
+        let filename = libloading::library_filename("adbc_test_missing_driver_7c8f5482");
+        let missing_library = tmp_dir.path().join(&filename);
+        let err =
+            ManagedDriver::load_dynamic_from_filename(&missing_library, None, AdbcVersion::V100)
+                .unwrap_err();
+        assert_eq!(err.status, Status::NotFound);
+        assert!(err.message.contains(&missing_library.display().to_string()));
+
+        let err = ManagedDriver::load_dynamic_from_name(
+            "adbc_test_missing_driver_7c8f5482",
+            None,
+            AdbcVersion::V100,
+        )
+        .unwrap_err();
+        assert_eq!(err.status, Status::NotFound);
+        assert!(
+            err.message
+                .contains(&filename.to_string_lossy().to_string())
         );
     }
 
