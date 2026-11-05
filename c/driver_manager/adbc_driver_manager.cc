@@ -64,6 +64,7 @@
 #include <filesystem>
 #include <functional>
 #include <string>
+#include <system_error>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -507,7 +508,8 @@ std::optional<ParseDriverUriResult> InternalAdbcParseDriverUri(std::string_view 
   }
 
 #ifdef _WIN32
-  if (std::filesystem::exists(std::filesystem::path(str))) {
+  std::error_code ec;  // Treat errors like !exists
+  if (std::filesystem::exists(std::filesystem::path(str), ec)) {
     // No scheme, just a path
     return ParseDriverUriResult{str, std::nullopt, std::nullopt};
   }

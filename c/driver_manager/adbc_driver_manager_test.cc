@@ -1457,9 +1457,13 @@ TEST(DriverManagerFilesystemError, LongNameInSearchPath) {
                                          ADBC_LOAD_FLAG_DEFAULT,
                                          search_dir.string().c_str(), &driver, &error));
   EXPECT_EQ(status, ADBC_STATUS_NOT_FOUND);
+#if !defined(_WIN32)
+  // MSVC's std::filesystem reports a too-long name as "not found" rather than
+  // an error, so there's no error message to check on Windows.
   EXPECT_THAT(error.message, ::testing::HasSubstr(
                                  "could not access " +
                                  (search_dir / (driver_name + ".toml")).string() + " ("));
+#endif
 
   if (error.release) {
     error.release(&error);
@@ -1479,7 +1483,7 @@ TEST(DriverManagerFilesystemError, LongNameAbsolutePath) {
   EXPECT_NO_THROW(status = AdbcFindLoadDriver(driver_path.c_str(), nullptr,
                                               ADBC_VERSION_1_1_0, ADBC_LOAD_FLAG_DEFAULT,
                                               nullptr, &driver, &error));
-  EXPECT_NE(status, ADBC_STATUS_OK);
+  EXPECT_EQ(status, ADBC_STATUS_NOT_FOUND);
 
   if (error.release) {
     error.release(&error);
@@ -2198,8 +2202,12 @@ TEST_F(ConnectionProfiles, LongProfileFileName) {
   AdbcStatusCode status = ADBC_STATUS_OK;
   EXPECT_NO_THROW(status = AdbcDatabaseInit(&database.value, &error));
   EXPECT_EQ(status, ADBC_STATUS_NOT_FOUND);
+#if !defined(_WIN32)
+  // MSVC's std::filesystem reports a too-long name as "not found" rather than
+  // an error, so there's no error message to check on Windows.
   EXPECT_THAT(error.message, ::testing::HasSubstr("Could not access profile file " +
                                                   profile_path + ": "));
+#endif
 }
 
 TEST_F(ConnectionProfiles, LongProfileNameInSearchPath) {
@@ -2214,9 +2222,13 @@ TEST_F(ConnectionProfiles, LongProfileNameInSearchPath) {
   AdbcStatusCode status = ADBC_STATUS_OK;
   EXPECT_NO_THROW(status = AdbcDatabaseInit(&database.value, &error));
   EXPECT_EQ(status, ADBC_STATUS_NOT_FOUND);
+#if !defined(_WIN32)
+  // MSVC's std::filesystem reports a too-long name as "not found" rather than
+  // an error, so there's no error message to check on Windows.
   EXPECT_THAT(error.message, ::testing::HasSubstr(
                                  "could not access " +
                                  (temp_dir / (profile_name + ".toml")).string() + " ("));
+#endif
   UnsetProfilePath();
 }
 
