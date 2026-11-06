@@ -711,6 +711,25 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// \see ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA
 #define ADBC_INFO_FEATURE_ERROR_METADATA 250
 
+/// \brief Whether the driver supports getting rich error metadata as a variant (type: bool).
+/// \since ADBC API revision 1.2.0
+/// \see AdbcConnectionGetInfo
+/// \see AdbcErrorGetDetailCount
+/// \see AdbcErrorGetDetail
+/// \see AdbcErrorFromArrayStream
+/// \see ADBC_ERROR_VENDOR_CODE_PRIVATE_DATA
+#define ADBC_INFO_FEATURE_RICH_ERROR_METADATA 251
+
+/// \brief Whether the driver can make callbacks through a warnings handler (type: bool).
+/// \since ADBC API revision 1.2.0
+/// \see AdbcConnectionSetWarningHandler
+#define ADBC_INFO_FEATURE_WARNING_CALLBACK 252
+
+/// \brief Whether the driver can make callbacks through a credential handler (type: bool).
+/// \since ADBC API revision 1.2.0
+/// \see AdbcConnectionSetCredentialHandler
+#define ADBC_INFO_FEATURE_CREDENTIAL_CALLBACK 253
+
 /// \defgroup adbc-catalog-metadata ADBC Catalog Metadata Constants
 /// Constants for catalog metadata.
 /// @{
