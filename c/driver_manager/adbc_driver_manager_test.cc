@@ -2185,9 +2185,6 @@ TEST_F(ConnectionProfiles, ProfileNotFound) {
   UnsetProfilePath();
 }
 
-// A profile filename longer than the filesystem allows (usually 255 bytes)
-// makes the OS report an error (ENAMETOOLONG) instead of "not found". That
-// must not escape the driver manager as a C++ exception.
 TEST_F(ConnectionProfiles, LongProfileFileName) {
   std::string profile_path = (temp_dir / (std::string(300, 'x') + ".toml")).string();
 
