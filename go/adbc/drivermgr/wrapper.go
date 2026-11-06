@@ -852,16 +852,18 @@ type cancellationReader struct {
 func (r *cancellationReader) stopWatching() {
 	r.stmt.stopWatching(r.watch)
 }
+
+// Retain and Release count references to the wrapper, which holds a single
+// reference to the underlying reader until its own count reaches zero.
 func (r *cancellationReader) Retain() {
-	r.RecordReader.Retain()
 	r.refs.Add(1)
 }
 
 func (r *cancellationReader) Release() {
 	if r.refs.Add(-1) == 0 {
 		r.stopWatching()
+		r.RecordReader.Release()
 	}
-	r.RecordReader.Release()
 }
 
 func (r *cancellationReader) Next() bool {
