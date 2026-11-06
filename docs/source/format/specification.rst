@@ -63,6 +63,44 @@ implementations will support this.
 - Go: ``OptionKeyAutoCommit``
 - Java: :jmember:`org.apache.arrow.adbc.core.AdbcConnection#setAutoCommit(boolean)`
 
+.. _specification-credential-refresh:
+
+Credential Refresh
+------------------
+
+.. note:: Since API revision 1.2.0
+
+Drivers may support an application-provided callback to acquire updated
+credentials after an authentication failure.  This complements driver-managed
+refresh when credential acquisition requires application-specific services.
+It can also allow fetching an existing result stream to continue without
+opening a new connection.
+
+In C, applications register a :c:type:`AdbcCredentialHandler` using
+:c:func:`AdbcConnectionSetCredentialHandler`.  The callback receives a borrowed,
+read-only source error.  Its details identify the requested credential and
+the expected response; drivers should use
+:ref:`specification-typed-error-details` to describe this context.
+
+The callback returns updated credentials as a single-row Arrow record batch
+through output-only schema and array parameters.  A separate output error
+describes acquisition failures without modifying the source error.  The
+driver owns and releases all populated outputs, regardless of success.
+Returning :c:macro:`ADBC_STATUS_NOT_IMPLEMENTED` declines the request and
+preserves the original failure.  Other failure statuses stop the refresh
+attempt and are reported with the callback's error, if provided, or the
+original diagnostic otherwise.
+
+Callbacks may block and run on any thread, but are serialized per connection.
+Successful replacement or removal of a handler, and connection release, wait
+for outstanding invocations before the application can release callback state.
+Applications must not reenter the connection from the callback.
+
+Refreshing credentials does not authorize unsafe retries.  Drivers must not
+replay potentially executed statements or duplicate or omit result rows.
+Only one callback and retry are permitted for a single failed request;
+subsequent requests may independently need refreshed credentials.
+
 Metadata
 --------
 
@@ -221,8 +259,47 @@ expanded while preserving ABI.
 
 .. _Googleapis ErrorDetails: https://github.com/googleapis/googleapis/blob/master/google/rpc/error_details.proto
 
+.. _specification-typed-error-details:
+
+Strongly-Typed Error Details
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Drivers may expose structured error details using the existing rich error
+metadata API, without changing its binary values or requiring a new API.
+The following well-known keys together encode an unshredded `Parquet Variant`_:
+
+- ``adbc.error_details.metadata`` contains the Variant metadata bytes.
+- ``adbc.error_details.value`` contains the Variant value bytes.
+
+Both keys must be present together and occur at most once each.  The Variant
+must contain an object mapping detail names to typed values.  Names and their
+meanings are driver-defined unless standardized by ADBC, and clients must
+ignore unrecognized fields.  A missing component or invalid encoding must
+not be treated as an empty detail object.  The bytes have the same ownership
+and lifetime as other error metadata.
+
+Drivers may continue exposing other error detail keys, including legacy
+representations of the same information.  Duplicated values should agree.
+This convention is introduced with API revision 1.2.0 but can also be used by
+1.1.0 implementations; no existing error detail API is deprecated.
+
+In C, the keys are defined by :c:macro:`ADBC_ERROR_DETAILS_METADATA` and
+:c:macro:`ADBC_ERROR_DETAILS_VALUE`.
+
+.. _Parquet Variant: https://github.com/apache/parquet-format/blob/master/VariantEncoding.md
+
 Changelog
 =========
+
+Version 1.2.0 (Draft)
+---------------------
+
+:ref:`specification-credential-refresh` adds an optional connection callback
+for application-managed credential acquisition, with immutable error input
+and separate credential and error outputs.
+
+:ref:`specification-typed-error-details` defines a backwards-compatible
+convention for carrying typed error details as a Parquet Variant.
 
 Version 1.1.0
 -------------
