@@ -1440,9 +1440,6 @@ TEST(DriverManagerNotFound, RelativePathWithLibraryExtension) {
                               ADBC_LOAD_FLAG_DEFAULT);
 }
 
-// A filename longer than the filesystem allows (usually 255 bytes) makes the
-// OS report an error (ENAMETOOLONG) instead of "not found". That must not
-// escape the driver manager as a C++ exception.
 TEST(DriverManagerFilesystemError, LongNameInSearchPath) {
   std::filesystem::path search_dir =
       std::filesystem::temp_directory_path() / "adbc_filesystem_error_test";
