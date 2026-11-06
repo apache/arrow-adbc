@@ -1152,7 +1152,7 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// The type is char*.
 #define ADBC_METADATA_COLLECTION "adbc.metadata.collection"
 
-/// \brief Filter the collection on the literal catalog name.
+/// \brief Filter the collection on the exact catalog name.
 ///
 /// The type is char*.
 #define ADBC_METADATA_FILTER_CATALOG "adbc.metadata.filter.catalog"
@@ -1166,7 +1166,7 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// The type is char*.
 #define ADBC_METADATA_FILTER_PATTERN_CATALOG "adbc.metadata.filter_pattern.catalog"
 
-/// \brief Filter the collection on the literal schema name.
+/// \brief Filter the collection on the exact schema name.
 ///
 /// The type is char*.
 #define ADBC_METADATA_FILTER_DB_SCHEMA "adbc.metadata.filter.schema"
@@ -1180,7 +1180,7 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// The type is char*.
 #define ADBC_METADATA_FILTER_PATTERN_DB_SCHEMA "adbc.metadata.filter_pattern.schema"
 
-/// \brief Filter the collection on the literal table name.
+/// \brief Filter the collection on the exact table name.
 ///
 /// The type is char*.
 #define ADBC_METADATA_FILTER_TABLE "adbc.metadata.filter.table"
@@ -1193,7 +1193,7 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// The type is char*.
 #define ADBC_METADATA_FILTER_PATTERN_TABLE "adbc.metadata.filter_pattern.table"
 
-/// \brief Filter the collection on the literal column name.
+/// \brief Filter the collection on the exact column name.
 ///
 /// The type is char*.
 #define ADBC_METADATA_FILTER_COLUMN "adbc.metadata.filter.column"
@@ -1213,25 +1213,25 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// The type is char*.
 #define ADBC_METADATA_FILTER_TABLE_TYPES "adbc.metadata.filter.table_types"
 
-/// \brief Filter the collection on the literal catalog name of the foreign
+/// \brief Filter the collection on the exact catalog name of the foreign
 ///   key.
 ///
 /// The type is char*.
 #define ADBC_METADATA_FILTER_FOREIGN_CATALOG "adbc.metadata.filter.foreign_catalog"
 
-/// \brief Filter the collection on the literal schema name of the foreign
+/// \brief Filter the collection on the exact schema name of the foreign
 ///   key.
 ///
 /// The type is char*.
 #define ADBC_METADATA_FILTER_FOREIGN_DB_SCHEMA "adbc.metadata.filter.foreign_schema"
 
-/// \brief Filter the collection on the literal catalog name of the foreign
+/// \brief Filter the collection on the exact catalog name of the foreign
 ///   key.
 ///
 /// The type is char*.
 #define ADBC_METADATA_FILTER_FOREIGN_TABLE "adbc.metadata.filter.foreign_table"
 
-/// \brief Filter the collection on the literal constraint name.
+/// \brief Filter the collection on the exact constraint name.
 ///
 /// The type is char*.
 #define ADBC_METADATA_FILTER_CONSTRAINT "adbc.metadata.filter.constraint"
@@ -1251,7 +1251,7 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// The type is char*.
 #define ADBC_METADATA_FILTER_CONSTRAINT_TYPES "adbc.metadata.filter.constraint_types"
 
-/// \brief Filter the collection on the literal routine name.
+/// \brief Filter the collection on the exact routine name.
 ///
 /// The type is char*.
 #define ADBC_METADATA_FILTER_ROUTINE "adbc.metadata.filter.routine"
@@ -1283,7 +1283,7 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// | Field Name               | Field Type                   | Comments |
 /// |--------------------------|------------------------------|----------|
 /// | collection_name          | utf8 not null                | (1)      |
-/// | collection_description   | utf8                         | (2)      |
+/// | collection_remarks       | utf8                         | (2)      |
 /// | collection_schema        | extension<arrow.schema_json> |          |
 /// | collection_filters       | list<FILTER_SCHEMA>          |          |
 ///
@@ -1297,11 +1297,17 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// |--------------------------|------------------------------|----------|
 /// | filter_name              | utf8 not null                | (1)      |
 /// | filter_type              | int8 not null                | (2)      |
-/// | required                 | bool not null                |          |
-/// | filter_documentation     | utf8                         |          |
+/// | filter_required          | bool not null                |          |
+/// | filter_remarks           | utf8                         | (3)      |
 ///
 /// (1) The option key used to set the filter.
 /// (2) A bitfield of ADBC_OPTION_TYPE values.
+/// (3) Documentation for the filter.
+///
+/// Filters that support both exact and pattern matches should be listed
+/// twice (as they are different options), but it is suggested to omit
+/// the documentation on the pattern match (unless there are pattern-
+/// specific notes).
 #define ADBC_METADATA_COLLECTION_META "meta"
 
 /// \brief The "catalogs" collection returns the catalogs defined in the
