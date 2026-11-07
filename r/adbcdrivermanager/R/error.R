@@ -75,6 +75,11 @@ stop_for_error <- function(status, error) {
     # Store the listified error information
     cnd$error <- error
 
+    # Always temporarily raise warning.length to its maximum so driver manager
+    # errors don't get truncated
+    old_options <- options(warning.length = 8170L)
+    on.exit(options(old_options), add = TRUE)
+
     stop(cnd)
   }
 }
