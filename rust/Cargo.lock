@@ -49,6 +49,8 @@ version = "0.26.0"
 dependencies = [
  "adbc_core",
  "arrow-array",
+ "arrow-buffer",
+ "arrow-data",
  "arrow-schema",
 ]
 

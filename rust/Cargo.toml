@@ -36,9 +36,13 @@ categories = ["database"]
 adbc_core = { path = "./core", version = "0.26.0" }
 adbc_driver_manager = { path = "./driver_manager", version = "0.26.0" }
 adbc_ffi = { path = "./ffi", version = "0.26.0" }
-arrow-array = { version = ">=58, <61", default-features = false, features = [
+# arrow >= 59 realigns under-aligned buffers imported through the C Data
+# Interface (arrow-rs#10030). Older versions panic on buffers that are only
+# 8-byte aligned (e.g. Decimal128 from JVM-based drivers).
+arrow-array = { version = ">=59, <61", default-features = false, features = [
     "ffi",
 ] }
-arrow-buffer = { version = ">=58, <61", default-features = false }
-arrow-schema = { version = ">=58, <61", default-features = false }
-arrow-select = { version = ">=58, <61", default-features = false }
+arrow-buffer = { version = ">=59, <61", default-features = false }
+arrow-data = { version = ">=59, <61", default-features = false }
+arrow-schema = { version = ">=59, <61", default-features = false }
+arrow-select = { version = ">=59, <61", default-features = false }
