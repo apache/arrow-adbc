@@ -2428,6 +2428,28 @@ TEST_F(PostgresStatementTest, BindUpsertWithSlicedListParameter) {
   ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
 }
 
+// Regression test for https://github.com/apache/arrow-adbc/issues/4999.
+TEST_F(PostgresStatementTest, SqlQueryTrailingWhitespace) {
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT 1; \t\r\n", &error),
+              IsOkStatus(&error));
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(
+      AdbcStatementExecuteQuery(&statement, &reader.stream.value, nullptr, &error),
+      IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+  ASSERT_EQ(reader.schema->n_children, 1);
+  ASSERT_EQ(reader.fields[0].type, NANOARROW_TYPE_INT32);
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NE(reader.array->release, nullptr);
+  ASSERT_EQ(reader.array->length, 1);
+  ASSERT_NO_FATAL_FAILURE(
+      adbc_validation::CompareArray<int32_t>(reader.array_view->children[0], {1}));
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_EQ(reader.array->release, nullptr);
+}
+
 TEST_F(PostgresStatementTest, SqlExecuteCopyZeroRowOutputError) {
   ASSERT_THAT(quirks()->DropTable(&connection, "adbc_test", &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
