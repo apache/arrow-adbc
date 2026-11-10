@@ -28,6 +28,7 @@
 #include <cstring>
 #include <memory>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -187,7 +188,47 @@ AdbcStatusCode PostgresDatabase::Connect(PGconn** conn, struct AdbcError* error)
         "[libpq] Must set database option 'uri' before creating a connection");
     return ADBC_STATUS_INVALID_STATE;
   }
+  char* parse_error = nullptr;
+  PQconninfoOption* options = PQconninfoParse(uri_.c_str(), &parse_error);
+  if (!options) {
+    if (!parse_error) {
+      InternalAdbcSetError(error, "[libpq] Failed to allocate connection options");
+      return ADBC_STATUS_INTERNAL;
+    }
+    // Only emit fixed diagnostics: libpq messages may contain credentials,
+    // including in malformed option names. Unknown/localized messages stay generic.
+    std::string_view message(parse_error);
+    const char* diagnostic = nullptr;
+    if (message.starts_with("invalid percent-encoded token:")) {
+      diagnostic = "invalid percent-encoded token";
+    } else if (message.starts_with("forbidden value %00 in percent-encoded value:")) {
+      diagnostic = "forbidden value %00 in percent-encoded value";
+    } else if (message.starts_with("invalid URI query parameter:")) {
+      diagnostic = "invalid URI query parameter";
+    } else if (message.starts_with("invalid connection option ")) {
+      diagnostic = "invalid connection option";
+    } else if (message.starts_with("missing \"=\" after ")) {
+      diagnostic = "missing key/value separator in connection string";
+    } else if (message.starts_with(
+                   "missing key/value separator \"=\" in URI query parameter:")) {
+      diagnostic = "missing key/value separator in URI query parameter";
+    } else if (message == "unterminated quoted string in connection info string\n") {
+      diagnostic = "unterminated quoted string in connection info string";
+    }
+    PQfreemem(parse_error);
+    if (diagnostic) {
+      InternalAdbcSetError(error, "[libpq] Invalid connection string: %s", diagnostic);
+    } else {
+      InternalAdbcSetError(error, "[libpq] Invalid connection string");
+    }
+    return ADBC_STATUS_INVALID_ARGUMENT;
+  }
+  PQconninfoFree(options);
   *conn = PQconnectdb(uri_.c_str());
+  if (!*conn) {
+    InternalAdbcSetError(error, "[libpq] Failed to allocate connection");
+    return ADBC_STATUS_INTERNAL;
+  }
   if (PQstatus(*conn) != CONNECTION_OK) {
     InternalAdbcSetError(error, "%s%s",
                          "[libpq] Failed to connect: ", PQerrorMessage(*conn));

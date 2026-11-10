@@ -1369,3 +1369,35 @@ INSTANTIATE_TEST_SUITE_P(FloatTypes, SqliteFloatParamTest,
 
                              // NANOARROW_TYPE_FLOAT,
                              NANOARROW_TYPE_DOUBLE));
+
+TEST(SqliteUriErrors, InvalidInputDoesNotLeak) {
+  for (const char* uri :
+       {"file:test?mode=sentinel_secret", "sqlite://test?cache=sentinel_secret",
+        "file:test?vfs=sentinel_secret"}) {
+    struct AdbcError error = {};
+    adbc_validation::Handle<struct AdbcDatabase> database;
+    ASSERT_EQ(ADBC_STATUS_OK, AdbcDatabaseNew(&database.value, &error));
+    ASSERT_EQ(ADBC_STATUS_OK, AdbcDatabaseSetOption(&database.value, "uri", uri, &error));
+    ASSERT_EQ(ADBC_STATUS_INVALID_ARGUMENT, AdbcDatabaseInit(&database.value, &error));
+    ASSERT_NE(nullptr, error.message);
+    EXPECT_THAT(error.message, ::testing::Not(::testing::HasSubstr("sentinel")));
+    if (error.release) error.release(&error);
+  }
+}
+
+TEST(SqliteUriErrors, OpenFailureDoesNotLeak) {
+  struct AdbcError error = {};
+  adbc_validation::Handle<struct AdbcDatabase> database;
+  const auto path = std::filesystem::temp_directory_path() /
+                    "adbc-sentinel-nonexistent-parent" / "database.db";
+  ASSERT_FALSE(std::filesystem::exists(path.parent_path()));
+  const std::string uri = "file:" + path.string() + "?mode=ro";
+  ASSERT_EQ(ADBC_STATUS_OK, AdbcDatabaseNew(&database.value, &error));
+  ASSERT_EQ(ADBC_STATUS_OK,
+            AdbcDatabaseSetOption(&database.value, "uri", uri.c_str(), &error));
+  ASSERT_EQ(ADBC_STATUS_IO, AdbcDatabaseInit(&database.value, &error));
+  ASSERT_NE(nullptr, error.message);
+  EXPECT_THAT(error.message, ::testing::Not(::testing::HasSubstr("sentinel")));
+  EXPECT_THAT(error.message, ::testing::HasSubstr("failed to open database"));
+  if (error.release) error.release(&error);
+}
