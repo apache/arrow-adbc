@@ -54,7 +54,7 @@
     <PackageVersion Include="System.Threading.Channels" Version="9.0.8" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio"
-                    Version="4.0.0"
+                    Version="4.0.1"
                     Condition="'$(TargetFramework)' != 'net472'" />
     <PackageVersion Include="xunit.runner.visualstudio"
                     Version="2.8.2"
