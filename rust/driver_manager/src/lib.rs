@@ -122,6 +122,8 @@ use adbc_ffi::options::{
     set_option_connection_raw, set_option_database, set_option_statement_raw,
 };
 use arrow_array::ffi::{FFI_ArrowSchema, to_ffi};
+// TODO: Remove this once the minimum supported Arrow version is 60.1.0.
+#[allow(deprecated)]
 use arrow_array::ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream};
 use arrow_array::{Array, RecordBatch, RecordBatchReader, StructArray};
 
@@ -1074,6 +1076,8 @@ impl Connection for ManagedConnection {
         let method = driver_method!(driver, ConnectionGetInfo);
         let status = unsafe { method(connection, codes_ptr, codes_len, &mut stream, &mut error) };
         check_status(status, error)?;
+        // TODO: Remove this once the minimum supported Arrow version is 60.1.0.
+        #[allow(deprecated)]
         let reader = ArrowArrayStreamReader::try_new(stream)?;
         Ok(Box::new(reader))
     }
@@ -1143,6 +1147,8 @@ impl Connection for ManagedConnection {
         };
         check_status(status, error)?;
 
+        // TODO: Remove this once the minimum supported Arrow version is 60.1.0.
+        #[allow(deprecated)]
         let reader = ArrowArrayStreamReader::try_new(stream)?;
         Ok(Box::new(reader))
     }
@@ -1192,6 +1198,8 @@ impl Connection for ManagedConnection {
             )
         };
         check_status(status, error)?;
+        // TODO: Remove this once the minimum supported Arrow version is 60.1.0.
+        #[allow(deprecated)]
         let reader = ArrowArrayStreamReader::try_new(stream)?;
         Ok(Box::new(reader))
     }
@@ -1216,6 +1224,8 @@ impl Connection for ManagedConnection {
         let method = driver_method!(driver, ConnectionGetStatisticNames);
         let status = unsafe { method(connection, &mut stream, &mut error) };
         check_status(status, error)?;
+        // TODO: Remove this once the minimum supported Arrow version is 60.1.0.
+        #[allow(deprecated)]
         let reader = ArrowArrayStreamReader::try_new(stream)?;
         Ok(Box::new(reader))
     }
@@ -1273,6 +1283,8 @@ impl Connection for ManagedConnection {
         let method = driver_method!(driver, ConnectionGetTableTypes);
         let status = unsafe { method(connection, &mut stream, &mut error) };
         check_status(status, error)?;
+        // TODO: Remove this once the minimum supported Arrow version is 60.1.0.
+        #[allow(deprecated)]
         let reader = ArrowArrayStreamReader::try_new(stream)?;
         Ok(Box::new(reader))
     }
@@ -1303,6 +1315,8 @@ impl Connection for ManagedConnection {
             )
         };
         check_status(status, error)?;
+        // TODO: Remove this once the minimum supported Arrow version is 60.1.0.
+        #[allow(deprecated)]
         let reader = ArrowArrayStreamReader::try_new(stream)?;
         Ok(Box::new(reader))
     }
@@ -1416,6 +1430,8 @@ impl Statement for ManagedStatement {
         let mut stream = FFI_ArrowArrayStream::empty();
         let status = unsafe { method(statement, &mut stream, null_mut(), &mut error) };
         check_status(status, error)?;
+        // TODO: Remove this once the minimum supported Arrow version is 60.1.0.
+        #[allow(deprecated)]
         let reader = ArrowArrayStreamReader::try_new(stream)?;
         Ok(Box::new(reader))
     }
