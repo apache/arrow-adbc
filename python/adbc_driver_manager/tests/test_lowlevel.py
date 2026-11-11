@@ -235,6 +235,10 @@ def test_connection_init() -> None:
         with adbc_driver_manager.AdbcConnection(db, **{option: 42}) as conn:
             assert conn.get_option_int(option) == 42
 
+        option = "adbc.connection.autocommit"
+        with adbc_driver_manager.AdbcConnection(db, **{option: True}) as conn:
+            assert conn.get_option(option) == "true"
+
         # test different data types
         with pytest.raises(
             adbc_driver_manager.NotSupportedError,
