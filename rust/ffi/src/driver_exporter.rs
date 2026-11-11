@@ -23,6 +23,8 @@ use std::sync::Mutex;
 
 use arrow_array::StructArray;
 use arrow_array::ffi::{FFI_ArrowArray, FFI_ArrowSchema, from_ffi};
+// TODO: Remove this once the minimum supported Arrow version is 60.1.0.
+#[allow(deprecated)]
 use arrow_array::ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream};
 use arrow_schema::DataType;
 
@@ -1816,6 +1818,8 @@ extern "C" fn statement_bind_stream<DriverType: Driver>(
         let mut stmt = check_err!(exported.try_statement(), error);
         let statement = &mut *stmt;
 
+        // TODO: Remove this once the minimum supported Arrow version is 60.1.0.
+        #[allow(deprecated)]
         let reader = check_err!(unsafe { ArrowArrayStreamReader::from_raw(stream) }, error);
         let reader = Box::new(reader);
         check_err!(statement.bind_stream(reader), error);
