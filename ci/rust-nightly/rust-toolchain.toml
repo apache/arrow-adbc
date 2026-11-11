@@ -16,6 +16,6 @@
 # under the License.
 
 [toolchain]
-channel = "nightly-2026-11-03"
+channel = "nightly-2026-11-10"
 profile = "minimal"
 components = ["clippy"]
