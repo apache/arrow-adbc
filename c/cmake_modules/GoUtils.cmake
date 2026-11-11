@@ -209,7 +209,7 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
     endif()
 
     set(GO_LDFLAGS
-        "-ldflags;\"${ARG_SHARED_LINK_FLAGS};-X;github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase.infoDriverVersion=v${ADBC_VERSION};-a;${EXTLDFLAGS}\""
+        "-ldflags;\"${ARG_SHARED_LINK_FLAGS};-X;github.com/apache/arrow-adbc/go/driver/internal/driverbase.infoDriverVersion=v${ADBC_VERSION};-a;${EXTLDFLAGS}\""
     )
 
     set(LIBOUT_SHARED "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME_SHARED}")
