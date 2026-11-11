@@ -38,5 +38,9 @@ adbc_core.workspace = true
 arrow-array.workspace = true
 arrow-schema.workspace = true
 
+[dev-dependencies]
+arrow-buffer.workspace = true
+arrow-data.workspace = true
+
 [package.metadata.docs.rs]
 all-features = true

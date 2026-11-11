@@ -2079,6 +2079,55 @@ mod tests {
     use crate::types::FFI_AdbcErrorV100;
     use std::ptr::{null, null_mut};
 
+    /// Drivers may export buffers that only meet the C Data Interface's
+    /// recommended 8-byte alignment, while arrow-rs requires 16 bytes for
+    /// i128. Importing such data must realign it instead of panicking.
+    /// See https://github.com/apache/arrow-adbc/issues/2526.
+    #[test]
+    fn test_import_under_aligned_buffers() {
+        use arrow_array::{Array, Decimal128Array, RecordBatch};
+        use arrow_buffer::Buffer;
+        use arrow_data::ArrayData;
+        use arrow_schema::{Field, Fields};
+
+        let decimal_type = DataType::Decimal128(10, 2);
+        let aligned = Buffer::from_vec(vec![0_i128, 1, 2]);
+        let under_aligned = aligned.slice(8);
+        assert_eq!(under_aligned.as_ptr().align_offset(8), 0);
+        assert_ne!(under_aligned.as_ptr().align_offset(16), 0);
+
+        let child = unsafe {
+            ArrayData::builder(decimal_type.clone())
+                .len(2)
+                .add_buffer(under_aligned)
+                .build_unchecked()
+        };
+        let struct_type =
+            DataType::Struct(Fields::from(vec![Field::new("d", decimal_type, false)]));
+        let data = unsafe {
+            ArrayData::builder(struct_type.clone())
+                .len(2)
+                .add_child_data(child)
+                .build_unchecked()
+        };
+
+        // Same import path as `statement_bind`; `ArrowArrayStreamReader`
+        // (used by `statement_bind_stream` and the driver manager) goes
+        // through `from_ffi_and_data_type`, which aligns the same way.
+        let schema = FFI_ArrowSchema::try_from(&struct_type).unwrap();
+        let imported = unsafe { from_ffi(FFI_ArrowArray::new(&data), &schema) }.unwrap();
+        let batch = RecordBatch::from(StructArray::from(imported));
+
+        let column = batch
+            .column(0)
+            .as_any()
+            .downcast_ref::<Decimal128Array>()
+            .unwrap();
+        assert_eq!(column.values().inner().as_ptr().align_offset(16), 0);
+        assert_eq!(column.value(0), 1_i128 << 64);
+        assert_eq!(column.value(1), 2_i128 << 64);
+    }
+
     #[test]
     fn test_error_details_null() {
         unsafe {
