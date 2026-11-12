@@ -101,6 +101,16 @@ def test_read_partition_cancel(test_dbapi):
         )
 
 
+def test_read_partition_fetch_cancels_connection(test_dbapi):
+    # The stream from a partition belongs to the connection, so a SIGINT
+    # during a fetch must cancel the connection, not the statement.
+    with test_dbapi.cursor() as cur:
+        partitions, _ = cur.adbc_execute_partitions("SELECT 1")
+        cur.adbc_read_partition(partitions[0])
+        assert cur._results._cancel == test_dbapi.adbc_connection.cancel
+        assert cur.fetchone() == (5,)
+
+
 def test_query_error_fetch(test_dbapi):
     with test_dbapi.cursor() as cur:
         cur.execute("error_do_get")
