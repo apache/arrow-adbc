@@ -155,6 +155,10 @@ html_theme_options = {
 }
 # The favicons are linked in _templates/base.html
 
+# -- Options for sphinx-design -----------------------------------------------
+
+sd_card_legacy_separators = False
+
 # -- Options for sphinx-recipe -----------------------------------------------
 
 recipe_repo_url_template = (
