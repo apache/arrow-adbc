@@ -559,9 +559,6 @@ def test_child_tracking(sqlite_raw) -> None:
     with adbc_driver_manager.AdbcDatabase(driver="adbc_driver_sqlite") as db:
         with adbc_driver_manager.AdbcConnection(db) as conn:
             with adbc_driver_manager.AdbcStatement(conn):
-                stmt = adbc_driver_manager.AdbcStatement(conn)
-                stmt.close()
-                stmt.close()
                 with pytest.raises(
                     RuntimeError,
                     match="Cannot close AdbcDatabase with open AdbcConnection",
@@ -576,6 +573,20 @@ def test_child_tracking(sqlite_raw) -> None:
                 RuntimeError, match="Cannot close AdbcDatabase with open AdbcConnection"
             ):
                 db.close()
+
+
+@pytest.mark.sqlite
+def test_statement_close_twice(sqlite_raw) -> None:
+    _, conn = sqlite_raw
+    with adbc_driver_manager.AdbcStatement(conn):
+        stmt = adbc_driver_manager.AdbcStatement(conn)
+        stmt.close()
+        stmt.close()
+        with pytest.raises(
+            RuntimeError,
+            match="Cannot close AdbcConnection with open AdbcStatement",
+        ):
+            conn.close()
 
 
 @pytest.mark.sqlite
