@@ -570,12 +570,24 @@ class SqliteDatabase : public driver::Database<SqliteDatabase> {
                              /*zVfs=*/nullptr);
     if (rc != SQLITE_OK) {
       Status status;
-      if (conn_) {
-        status = status::fmt::IO("failed to open '{}': {}", uri_, sqlite3_errmsg(conn));
+      if (conn) {
+        std::string_view message = sqlite3_errmsg(conn);
+        if ((rc == SQLITE_ERROR || rc == SQLITE_PERM) &&
+            (message.starts_with("invalid uri authority:") ||
+             message.starts_with("no such access mode:") ||
+             message.starts_with("no such cache mode:") ||
+             message.starts_with("access mode not allowed:") ||
+             message.starts_with("cache mode not allowed:") ||
+             message.starts_with("no such vfs:"))) {
+          status = status::fmt::InvalidArgument("invalid database URI: {}",
+                                                message.substr(0, message.find(':')));
+        } else {
+          status = status::fmt::IO("failed to open database: {}", sqlite3_errstr(rc));
+        }
+        (void)sqlite3_close(conn);
       } else {
-        status = status::fmt::IO("failed to open '{}': failed to allocate memory", uri_);
+        status = status::IO("failed to open database: failed to allocate memory");
       }
-      (void)sqlite3_close(conn);
       return status;
     }
     return conn;

@@ -3729,3 +3729,29 @@ INSTANTIATE_TEST_SUITE_P(Decimal128FixtureRoundTrip, PostgresDecimalFixtureRound
                          testing::Bool(), [](const testing::TestParamInfo<bool>& info) {
                            return info.param ? "SlowPath" : "FastPath";
                          });
+
+TEST(PostgresUriErrors, InvalidInputDoesNotLeak) {
+  for (const auto& [uri, diagnostic] : std::vector<std::pair<const char*, const char*>>{
+           {"postgresql://user:sentinel%ZZ@localhost/db",
+            "invalid percent-encoded token"},
+           {"host=localhost sentinel_secret",
+            "missing key/value separator in connection string"},
+           {"postgresql://user:sentinel%00@localhost/db",
+            "forbidden value %00 in percent-encoded value"},
+           {"postgresql://localhost/db?sentinel=value", "invalid URI query parameter"},
+           {"sentinel=value", "invalid connection option"},
+           {"postgresql://localhost/db?sentinel",
+            "missing key/value separator in URI query parameter"},
+           {"password='sentinel",
+            "unterminated quoted string in connection info string"}}) {
+    struct AdbcError error = {};
+    adbc_validation::Handle<struct AdbcDatabase> database;
+    ASSERT_EQ(ADBC_STATUS_OK, AdbcDatabaseNew(&database.value, &error));
+    ASSERT_EQ(ADBC_STATUS_OK, AdbcDatabaseSetOption(&database.value, "uri", uri, &error));
+    ASSERT_EQ(ADBC_STATUS_INVALID_ARGUMENT, AdbcDatabaseInit(&database.value, &error));
+    ASSERT_NE(nullptr, error.message);
+    EXPECT_THAT(error.message, ::testing::Not(::testing::HasSubstr("sentinel")));
+    EXPECT_THAT(error.message, ::testing::HasSubstr(diagnostic));
+    if (error.release) error.release(&error);
+  }
+}

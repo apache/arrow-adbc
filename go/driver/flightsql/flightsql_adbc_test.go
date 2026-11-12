@@ -1379,7 +1379,7 @@ func TestFlightSQLSchemeInvalidURIs(t *testing.T) {
 		name string
 		uri  string
 	}{
-		{"unrecognized transport", "flightsql://localhost:1234?transport=bogus"},
+		{"unrecognized transport", "flightsql://user:sentinel@localhost:1234?transport=sentinel"},
 		{"host with unix transport", "flightsql://localhost:1234/socket?transport=unix"},
 		{"path with tcp transport", "flightsql://localhost:1234/socket?transport=tcp"},
 		{"path with default (tls) transport", "flightsql://localhost:1234/socket"},
@@ -1396,6 +1396,36 @@ func TestFlightSQLSchemeInvalidURIs(t *testing.T) {
 
 			_, err = db.Open(context.Background())
 			require.Error(t, err)
+			require.NotContains(t, err.Error(), tt.uri)
+			require.NotContains(t, err.Error(), "sentinel")
+			var adbcErr adbc.Error
+			require.ErrorAs(t, err, &adbcErr)
+			require.Equal(t, adbc.StatusInvalidArgument, adbcErr.Code)
+		})
+	}
+}
+
+func TestMalformedURISecrets(t *testing.T) {
+	drv := driver.NewDriver(memory.DefaultAllocator)
+	for _, tc := range []struct{ uri, diagnostic string }{
+		{"grpc://user:sentinel%ZZ@localhost", "invalid URL escape"},
+		{"grpc://localhost:sentinel", "invalid port"},
+		{"grpc://user:sentinel@bad host/db", "invalid character in host name"},
+		{"grpc://user:sentinel@[::1/db", "missing ']' in host"},
+		{":sentinel", "missing protocol scheme"},
+		{"grpc://host/\nsentinel", "net/url: invalid control character in URL"},
+		{"grpc://bad user:sentinel@host/db", "net/url: invalid userinfo"},
+		{"1:sentinel", "first path segment in URL cannot contain colon"},
+	} {
+		t.Run(tc.diagnostic, func(t *testing.T) {
+			_, err := drv.NewDatabase(map[string]string{adbc.OptionKeyURI: tc.uri})
+			require.Error(t, err)
+			require.NotContains(t, err.Error(), "sentinel")
+			var adbcErr adbc.Error
+			require.ErrorAs(t, err, &adbcErr)
+			require.Equal(t, adbc.StatusInvalidArgument, adbcErr.Code)
+			require.Equal(t, "Invalid URI: "+tc.diagnostic, adbcErr.Msg)
+			require.Nil(t, errors.Unwrap(err))
 		})
 	}
 }
