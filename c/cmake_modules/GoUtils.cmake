@@ -179,6 +179,9 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
   list(APPEND GO_ENV_VARS "CGO_ENABLED=1")
   list(APPEND GO_ENV_VARS "CGO_CFLAGS=${GO_FLAGS}")
   list(APPEND GO_ENV_VARS "CGO_CXXFLAGS=${GO_FLAGS}")
+  if(NOT "${ADBC_GO_CC}" STREQUAL "")
+    list(APPEND GO_ENV_VARS "CC=${ADBC_GO_CC}")
+  endif()
 
   if(BUILD_SHARED)
     set(LIB_NAME_SHARED
@@ -206,7 +209,7 @@ function(add_go_lib GO_MOD_DIR GO_LIBNAME)
     endif()
 
     set(GO_LDFLAGS
-        "-ldflags;\"${ARG_SHARED_LINK_FLAGS};-X;github.com/apache/arrow-adbc/go/adbc/driver/internal/driverbase.infoDriverVersion=v${ADBC_VERSION};-a;${EXTLDFLAGS}\""
+        "-ldflags;\"${ARG_SHARED_LINK_FLAGS};-X;github.com/apache/arrow-adbc/go/driver/internal/driverbase.infoDriverVersion=v${ADBC_VERSION};-a;${EXTLDFLAGS}\""
     )
 
     set(LIBOUT_SHARED "${CMAKE_CURRENT_BINARY_DIR}/${LIB_NAME_SHARED}")

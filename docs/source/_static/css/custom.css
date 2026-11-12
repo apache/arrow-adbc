@@ -132,16 +132,89 @@ table.driver-table th .th-hint {
     opacity: 0.75;
 }
 
-/* Shrink the sidebar logo slightly */
-.sidebar-logo {
-    max-width: 95%;
+/* The sidebar logo is the horizontal lockup, inlined as an SVG (see
+   _templates/sidebar/brand.html). Shrink it slightly. */
+.sidebar-logo-container svg {
+    display: block;
+    height: auto;
     margin-left: 0;
     margin-right: auto;
+    width: 95%;
 }
 
-/* Emphasize and align the documentation title in the sidebar */
+/* The documentation title in the sidebar: quieter than the logo's bold
+   "ADBC" above it, and aligned with the logo's left edge */
 .sidebar-brand-text {
-    font-weight: 700;
-    margin-left: 12px;
-    font-size: 1.6rem;
+    font-weight: 400;
+    margin-left: 0;
+    font-size: 1.15rem;
+}
+
+/* Logos inlined as SVGs filled with currentColor (the sidebar logo and those
+   on the visual identity page) are pure black, or pure white in dark mode. */
+.sidebar-logo-container,
+div.vi-logo {
+    color: #000000;
+}
+
+body[data-theme="dark"] .sidebar-logo-container,
+body[data-theme="dark"] div.vi-logo {
+    color: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+    body:not([data-theme="light"]) .sidebar-logo-container,
+    body:not([data-theme="light"]) div.vi-logo {
+        color: #ffffff;
+    }
+}
+
+/* Visual identity page: room between a logo and the text under it. */
+img.vi-logo {
+    margin-bottom: 1.5rem;
+}
+
+div.vi-logo svg {
+    display: block;
+    height: auto;
+    margin: 0 auto 1.5rem;
+    max-width: 100%;
+}
+
+/* The logos' points touch the edges of their SVGs, so when a browser rounds
+   an SVG's box to whole pixels it can clip a point. Draw past the edges. */
+.sidebar-logo-container svg,
+div.vi-logo svg {
+    overflow: visible;
+}
+
+div.vi-logo-top svg {
+    width: 360px;
+}
+
+div.vi-logo-lockup svg {
+    width: 260px;
+}
+
+div.vi-logo-mark svg {
+    width: 110px;
+}
+
+div.vi-logo-badge svg {
+    width: 140px;
+}
+
+/* The white sticker needs a shadow to stand out on the light page. */
+img.vi-sticker {
+    filter: drop-shadow(0 3px 7px rgba(0, 0, 0, 0.6));
+}
+
+body[data-theme="dark"] img.vi-sticker {
+    filter: none;
+}
+
+@media (prefers-color-scheme: dark) {
+    body:not([data-theme="light"]) img.vi-sticker {
+        filter: none;
+    }
 }

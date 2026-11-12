@@ -1,0 +1,201 @@
+// Licensed to the Apache Software Foundation (ASF) under one
+// or more contributor license agreements.  See the NOTICE file
+// distributed with this work for additional information
+// regarding copyright ownership.  The ASF licenses this file
+// to you under the Apache License, Version 2.0 (the
+// "License"); you may not use this file except in compliance
+// with the License.  You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing,
+// software distributed under the License is distributed on an
+// "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, either express or implied.  See the License for the
+// specific language governing permissions and limitations
+// under the License.
+
+// part: metadata
+
+[tags]
+sql-type-name = "ARRAY"
+field-type-name = ["_bool", "_int8", "_text", "_bool", "_int8", "_text"]
+
+// part: input_schema
+
+{
+    "format": "+s",
+    "children": [
+        {
+            "name": "idx",
+            "format": "l",
+            "flags": ["nullable"]
+        },
+        {
+            "name": "bools",
+            "format": "+w:3",
+            "flags": ["nullable"],
+            "children": [
+                {
+                    "name": "item",
+                    "format": "b",
+                    "flags": ["nullable"]
+                }
+            ]
+        },
+        {
+            "name": "ints",
+            "format": "+w:3",
+            "flags": ["nullable"],
+            "children": [
+                {
+                    "name": "item",
+                    "format": "l",
+                    "flags": ["nullable"]
+                }
+            ]
+        },
+        {
+            "name": "strings",
+            "format": "+w:3",
+            "flags": ["nullable"],
+            "children": [
+                {
+                    "name": "item",
+                    "format": "u",
+                    "flags": ["nullable"]
+                }
+            ]
+        },
+        {
+            "name": "empty_bools",
+            "format": "+w:0",
+            "flags": ["nullable"],
+            "children": [
+                {
+                    "name": "item",
+                    "format": "b",
+                    "flags": ["nullable"]
+                }
+            ]
+        },
+        {
+            "name": "empty_ints",
+            "format": "+w:0",
+            "flags": ["nullable"],
+            "children": [
+                {
+                    "name": "item",
+                    "format": "l",
+                    "flags": ["nullable"]
+                }
+            ]
+        },
+        {
+            "name": "empty_strings",
+            "format": "+w:0",
+            "flags": ["nullable"],
+            "children": [
+                {
+                    "name": "item",
+                    "format": "u",
+                    "flags": ["nullable"]
+                }
+            ]
+        }
+    ]
+}
+
+// part: input
+
+{"idx": 0, "bools": null, "ints": null, "strings": null, "empty_bools": null, "empty_ints": null, "empty_strings": null}
+{"idx": 1, "bools": [true, false, true], "ints": [-9223372036854775808, 0, 9223372036854775807], "strings": ["", "hello", "NULL"], "empty_bools": [], "empty_ints": [], "empty_strings": []}
+{"idx": 2, "bools": [true, null, false], "ints": [-1, null, 42], "strings": ["hello", null, ""], "empty_bools": [], "empty_ints": [], "empty_strings": []}
+{"idx": 3, "bools": [null, null, null], "ints": [null, null, null], "strings": [null, null, null], "empty_bools": [], "empty_ints": [], "empty_strings": []}
+{"idx": 4, "bools": [false, true, false], "ints": [0, 1, -1], "strings": ["", "NULL", "world"], "empty_bools": [], "empty_ints": [], "empty_strings": []}
+
+// PostgreSQL returns variable-size lists for array columns.
+// part: expected_schema
+
+{
+    "format": "+s",
+    "children": [
+        {
+            "name": "idx",
+            "format": "l",
+            "flags": ["nullable"]
+        },
+        {
+            "name": "bools",
+            "format": "+l",
+            "flags": ["nullable"],
+            "children": [
+                {
+                    "name": "item",
+                    "format": "b",
+                    "flags": ["nullable"]
+                }
+            ]
+        },
+        {
+            "name": "ints",
+            "format": "+l",
+            "flags": ["nullable"],
+            "children": [
+                {
+                    "name": "item",
+                    "format": "l",
+                    "flags": ["nullable"]
+                }
+            ]
+        },
+        {
+            "name": "strings",
+            "format": "+l",
+            "flags": ["nullable"],
+            "children": [
+                {
+                    "name": "item",
+                    "format": "u",
+                    "flags": ["nullable"]
+                }
+            ]
+        },
+        {
+            "name": "empty_bools",
+            "format": "+l",
+            "flags": ["nullable"],
+            "children": [
+                {
+                    "name": "item",
+                    "format": "b",
+                    "flags": ["nullable"]
+                }
+            ]
+        },
+        {
+            "name": "empty_ints",
+            "format": "+l",
+            "flags": ["nullable"],
+            "children": [
+                {
+                    "name": "item",
+                    "format": "l",
+                    "flags": ["nullable"]
+                }
+            ]
+        },
+        {
+            "name": "empty_strings",
+            "format": "+l",
+            "flags": ["nullable"],
+            "children": [
+                {
+                    "name": "item",
+                    "format": "u",
+                    "flags": ["nullable"]
+                }
+            ]
+        }
+    ]
+}

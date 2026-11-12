@@ -24,6 +24,7 @@ on:
     paths:
       - "c/**"
       - "ci/**"
+      - "!ci/rust-nightly/**"
       - "glib/**"
       - "go/**"
       - "python/**"
@@ -35,6 +36,7 @@ on:
     paths:
       - "c/**"
       - "ci/**"
+      - "!ci/rust-nightly/**"
       - "glib/**"
       - "go/**"
       - "python/**"
@@ -81,9 +83,9 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5  # v4.0.1
+      - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb  # v4.1.0
         with:
-          miniforge-version: latest
+          miniforge-version: 26.7.2-1
           use-mamba: true
       - name: Install Dependencies
         run: |
@@ -101,7 +103,7 @@ jobs:
         run: |
           .\ci\scripts\cpp_build.ps1 $pwd ${{ github.workspace }}\build
 
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: driver-manager-${{ matrix.os }}
           retention-days: 3
@@ -135,9 +137,9 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5  # v4.0.1
+      - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb  # v4.1.0
         with:
-          miniforge-version: latest
+          miniforge-version: 26.7.2-1
           use-mamba: true
       - name: Install Dependencies
         run: |
@@ -146,20 +148,12 @@ jobs:
           # Force bundled gtest
           mamba uninstall gtest
 
-      - name: Build Driver Manager
+      - name: Build Drivers
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_MANAGER: "1"
           BUILD_DRIVER_MANAGER_USER_CONFIG_TEST: "1"
-        run: .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
-      - name: Build Driver PostgreSQL
-        env:
-          BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
-        run: .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
-      - name: Build Driver SQLite
-        env:
-          BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
         run: .\ci\scripts\cpp_build.ps1 $pwd $pwd\build
       - name: Test Driver Manager
@@ -172,6 +166,26 @@ jobs:
         env:
           BUILD_ALL: "0"
           BUILD_DRIVER_SQLITE: "1"
+        run: .\ci\scripts\cpp_test.ps1 $pwd\build
+      - name: Start PostgreSQL
+        run: |
+          "root" | Set-Content "$env:RUNNER_TEMP\postgres_password"
+          & "$env:PGBIN\initdb.exe" `
+            --pgdata="$env:RUNNER_TEMP\pgdata" `
+            --username postgres `
+            --pwfile="$env:RUNNER_TEMP\postgres_password" `
+            --auth="scram-sha-256" `
+            --encoding="UTF-8" `
+            --locale="en_US.UTF-8" `
+            --no-instructions
+          if (-not $?) { throw "Failed to initialize PostgreSQL" }
+          & "$env:PGBIN\pg_ctl.exe" start --pgdata="$env:RUNNER_TEMP\pgdata"
+          if (-not $?) { throw "Failed to start PostgreSQL" }
+      - name: Test Driver PostgreSQL
+        env:
+          BUILD_ALL: "0"
+          BUILD_DRIVER_POSTGRESQL: "1"
+          ADBC_POSTGRESQL_TEST_URI: "postgresql://postgres:root@localhost:5432/postgres"
         run: .\ci\scripts\cpp_test.ps1 $pwd\build
 
   # ------------------------------------------------------------
@@ -207,9 +221,9 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5  # v4.0.1
+      - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb  # v4.1.0
         with:
-          miniforge-version: latest
+          miniforge-version: 26.7.2-1
           use-mamba: true
       - name: Install Dependencies
         run: |
@@ -222,7 +236,7 @@ jobs:
           cache: true
           cache-dependency-path: go/adbc/go.sum
 
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: driver-manager-${{ matrix.os }}
           path: ${{ github.workspace }}/build
@@ -252,7 +266,8 @@ jobs:
     strategy:
       matrix:
         os: ["windows-latest"]
-        python: ["3.10", "3.14"]
+        # TODO(lidavidm): 3.14 -> 3.15 once conda packages are available
+        python: ["3.11", "3.14"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -317,9 +332,9 @@ jobs:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
 
-      - uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5  # v4.0.1
+      - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb  # v4.1.0
         with:
-          miniforge-version: latest
+          miniforge-version: 26.7.2-1
           use-mamba: true
       - name: Install Dependencies
         run: |
@@ -328,7 +343,7 @@ jobs:
             --file ci\conda_env_cpp.txt `
             --file ci\conda_env_python.txt
 
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: driver-manager-${{ matrix.os }}
           path: ${{ github.workspace }}/build

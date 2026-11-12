@@ -313,22 +313,22 @@ void ConnectionTest::TestMetadataGetTableSchemaDbSchema() {
   ASSERT_THAT(AdbcConnectionNew(&connection, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcConnectionInit(&connection, &database, &error), IsOkStatus(&error));
 
-  auto status = quirks()->EnsureDbSchema(&connection, "otherschema", &error);
+  const std::string db_schema = quirks()->secondary_db_schema();
+  auto status = quirks()->EnsureDbSchema(&connection, db_schema, &error);
   if (status == ADBC_STATUS_NOT_IMPLEMENTED) {
     GTEST_SKIP() << "Schema not supported";
     return;
   }
   ASSERT_THAT(status, IsOkStatus(&error));
 
-  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", "otherschema", &error),
+  ASSERT_THAT(quirks()->DropTable(&connection, "bulk_ingest", db_schema, &error),
               IsOkStatus(&error));
-  ASSERT_THAT(
-      quirks()->CreateSampleTable(&connection, "bulk_ingest", "otherschema", &error),
-      IsOkStatus(&error));
+  ASSERT_THAT(quirks()->CreateSampleTable(&connection, "bulk_ingest", db_schema, &error),
+              IsOkStatus(&error));
 
   Handle<ArrowSchema> schema;
   ASSERT_THAT(AdbcConnectionGetTableSchema(&connection, /*catalog=*/nullptr,
-                                           /*db_schema=*/"otherschema", "bulk_ingest",
+                                           /*db_schema=*/db_schema.c_str(), "bulk_ingest",
                                            &schema.value, &error),
               IsOkStatus(&error));
 

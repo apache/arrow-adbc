@@ -17,6 +17,12 @@
 
 sqlite3_dep = dependency('sqlite3')
 
+configure_file(
+    input: 'config.h.in',
+    output: 'config.h',
+    configuration: {'ADBC_VERSION': meson.project_version()},
+)
+
 time_t_size = meson.get_compiler('c').sizeof(
     'time_t',
     prefix: '#include <sys/types.h>',

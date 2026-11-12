@@ -191,3 +191,171 @@ func (s *statementContextAdapter) Bind(ctx context.Context, values arrow.RecordB
 func (s *statementContextAdapter) BindStream(ctx context.Context, stream array.RecordReader) error {
 	return s.stmt.BindStream(ctx, stream)
 }
+
+var (
+	_ GetSetOptionsWithContext = (*databaseContextAdapter)(nil)
+	_ GetSetOptionsWithContext = (*connectionContextAdapter)(nil)
+	_ GetSetOptionsWithContext = (*statementContextAdapter)(nil)
+)
+
+// The typed option methods below forward to the wrapped value's
+// GetSetOptions (or PostInitOptions for SetOption) when it implements them.
+// The context cannot be propagated since those methods don't accept one.
+// Unsupported getters return StatusNotFound and unsupported setters return
+// StatusNotImplemented, matching the GetSetOptions contract.
+
+func optionNotFound(key string) error {
+	return Error{Code: StatusNotFound, Msg: "option not found: " + key}
+}
+
+func optionNotImplemented(key string) error {
+	return Error{Code: StatusNotImplemented, Msg: "option not supported: " + key}
+}
+
+func setStringOption(target any, key, value string) error {
+	if opts, ok := target.(PostInitOptions); ok {
+		return opts.SetOption(key, value)
+	}
+	return optionNotImplemented(key)
+}
+
+func setBytesOption(target any, key string, value []byte) error {
+	if opts, ok := target.(GetSetOptions); ok {
+		return opts.SetOptionBytes(key, value)
+	}
+	return optionNotImplemented(key)
+}
+
+func setIntOption(target any, key string, value int64) error {
+	if opts, ok := target.(GetSetOptions); ok {
+		return opts.SetOptionInt(key, value)
+	}
+	return optionNotImplemented(key)
+}
+
+func setDoubleOption(target any, key string, value float64) error {
+	if opts, ok := target.(GetSetOptions); ok {
+		return opts.SetOptionDouble(key, value)
+	}
+	return optionNotImplemented(key)
+}
+
+func getStringOption(target any, key string) (string, error) {
+	if opts, ok := target.(GetSetOptions); ok {
+		return opts.GetOption(key)
+	}
+	return "", optionNotFound(key)
+}
+
+func getBytesOption(target any, key string) ([]byte, error) {
+	if opts, ok := target.(GetSetOptions); ok {
+		return opts.GetOptionBytes(key)
+	}
+	return nil, optionNotFound(key)
+}
+
+func getIntOption(target any, key string) (int64, error) {
+	if opts, ok := target.(GetSetOptions); ok {
+		return opts.GetOptionInt(key)
+	}
+	return 0, optionNotFound(key)
+}
+
+func getDoubleOption(target any, key string) (float64, error) {
+	if opts, ok := target.(GetSetOptions); ok {
+		return opts.GetOptionDouble(key)
+	}
+	return 0, optionNotFound(key)
+}
+
+func (d *databaseContextAdapter) SetOption(_ context.Context, key, value string) error {
+	return setStringOption(d.db, key, value)
+}
+
+func (d *databaseContextAdapter) SetOptionBytes(_ context.Context, key string, value []byte) error {
+	return setBytesOption(d.db, key, value)
+}
+
+func (d *databaseContextAdapter) SetOptionInt(_ context.Context, key string, value int64) error {
+	return setIntOption(d.db, key, value)
+}
+
+func (d *databaseContextAdapter) SetOptionDouble(_ context.Context, key string, value float64) error {
+	return setDoubleOption(d.db, key, value)
+}
+
+func (d *databaseContextAdapter) GetOption(_ context.Context, key string) (string, error) {
+	return getStringOption(d.db, key)
+}
+
+func (d *databaseContextAdapter) GetOptionBytes(_ context.Context, key string) ([]byte, error) {
+	return getBytesOption(d.db, key)
+}
+
+func (d *databaseContextAdapter) GetOptionInt(_ context.Context, key string) (int64, error) {
+	return getIntOption(d.db, key)
+}
+
+func (d *databaseContextAdapter) GetOptionDouble(_ context.Context, key string) (float64, error) {
+	return getDoubleOption(d.db, key)
+}
+
+func (c *connectionContextAdapter) SetOption(_ context.Context, key, value string) error {
+	return setStringOption(c.conn, key, value)
+}
+
+func (c *connectionContextAdapter) SetOptionBytes(_ context.Context, key string, value []byte) error {
+	return setBytesOption(c.conn, key, value)
+}
+
+func (c *connectionContextAdapter) SetOptionInt(_ context.Context, key string, value int64) error {
+	return setIntOption(c.conn, key, value)
+}
+
+func (c *connectionContextAdapter) SetOptionDouble(_ context.Context, key string, value float64) error {
+	return setDoubleOption(c.conn, key, value)
+}
+
+func (c *connectionContextAdapter) GetOption(_ context.Context, key string) (string, error) {
+	return getStringOption(c.conn, key)
+}
+
+func (c *connectionContextAdapter) GetOptionBytes(_ context.Context, key string) ([]byte, error) {
+	return getBytesOption(c.conn, key)
+}
+
+func (c *connectionContextAdapter) GetOptionInt(_ context.Context, key string) (int64, error) {
+	return getIntOption(c.conn, key)
+}
+
+func (c *connectionContextAdapter) GetOptionDouble(_ context.Context, key string) (float64, error) {
+	return getDoubleOption(c.conn, key)
+}
+
+func (s *statementContextAdapter) SetOptionBytes(_ context.Context, key string, value []byte) error {
+	return setBytesOption(s.stmt, key, value)
+}
+
+func (s *statementContextAdapter) SetOptionInt(_ context.Context, key string, value int64) error {
+	return setIntOption(s.stmt, key, value)
+}
+
+func (s *statementContextAdapter) SetOptionDouble(_ context.Context, key string, value float64) error {
+	return setDoubleOption(s.stmt, key, value)
+}
+
+func (s *statementContextAdapter) GetOption(_ context.Context, key string) (string, error) {
+	return getStringOption(s.stmt, key)
+}
+
+func (s *statementContextAdapter) GetOptionBytes(_ context.Context, key string) ([]byte, error) {
+	return getBytesOption(s.stmt, key)
+}
+
+func (s *statementContextAdapter) GetOptionInt(_ context.Context, key string) (int64, error) {
+	return getIntOption(s.stmt, key)
+}
+
+func (s *statementContextAdapter) GetOptionDouble(_ context.Context, key string) (float64, error) {
+	return getDoubleOption(s.stmt, key)
+}

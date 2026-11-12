@@ -212,19 +212,49 @@ macro_rules! driver_method {
     };
 }
 
-impl From<FFI_AdbcPartitions> for Partitions {
-    fn from(value: FFI_AdbcPartitions) -> Self {
-        let mut partitions = Vec::with_capacity(value.num_partitions);
-        for p in 0..value.num_partitions {
-            let partition = unsafe {
-                let ptr = *value.partitions.add(p);
-                let len = *value.partition_lengths.add(p);
-                std::slice::from_raw_parts(ptr, len)
-            };
-            partitions.push(partition.to_vec());
-        }
-        partitions
+/// Copy FFI partitions into owned Rust partitions, releasing the FFI value.
+///
+/// Null arrays are accepted only when there are no partitions. Null partition
+/// data pointers are accepted only for zero-length partitions.
+///
+/// # Safety
+///
+/// Non-null arrays must be aligned and contain `num_partitions` initialized
+/// entries. Each nonempty, non-null partition must point to an initialized,
+/// readable allocation of at least its corresponding length.  Each array or
+/// partition must fit within a single allocation, with a byte size no greater
+/// than `isize::MAX`. This memory must remain valid and must not be mutated
+/// during the import. If present, the release callback must be safe to call
+/// with this value, including when import returns an error.
+pub unsafe fn import_partitions(value: FFI_AdbcPartitions) -> Result<Partitions, Error> {
+    if value.num_partitions == 0 {
+        return Ok(Vec::new());
+    } else if value.partitions.is_null() || value.partition_lengths.is_null() {
+        return Err(Error::with_message_and_status(
+            "partition arrays must not be null when num_partitions is nonzero",
+            Status::Internal,
+        ));
     }
+
+    let mut partitions = Vec::with_capacity(value.num_partitions);
+    for p in 0..value.num_partitions {
+        // SAFETY: The caller guarantees readable, initialized metadata arrays.
+        let (ptr, len) = unsafe { (*value.partitions.add(p), *value.partition_lengths.add(p)) };
+        if len == 0 {
+            partitions.push(Vec::new());
+            continue;
+        }
+        if ptr.is_null() {
+            return Err(Error::with_message_and_status(
+                format!("partition {p} data pointer must not be null when its length is nonzero"),
+                Status::Internal,
+            ));
+        }
+        // SAFETY: The caller guarantees the non-null partition is readable for len bytes.
+        let partition = unsafe { std::slice::from_raw_parts(ptr, len) };
+        partitions.push(partition.to_vec());
+    }
+    Ok(partitions)
 }
 
 // Taken from `Vec::into_raw_parts` which is currently nightly-only.
@@ -278,9 +308,13 @@ unsafe extern "C" fn release_ffi_partitions(partitions: *mut FFI_AdbcPartitions)
     match partitions.as_mut() {
         None => (),
         Some(partitions) => {
+            if partitions.release.take().is_none() {
+                return;
+            }
+
             // SAFETY: `partitions.private_data` was necessarily obtained with `Box::into_raw`.
             // Additionally, the boxed data is necessarily `PartitionsPrivateData`.
-            // Finally, C should call the release function only once.
+            // The release callback was cleared above to prevent repeated deallocation.
             let private_data = Box::from_raw(partitions.private_data as *mut PartitionsPrivateData);
 
             #[allow(clippy::needless_range_loop)]
@@ -315,6 +349,10 @@ unsafe extern "C" fn release_ffi_partitions(partitions: *mut FFI_AdbcPartitions)
             drop(partitions_vec);
 
             drop(private_data);
+            partitions.num_partitions = 0;
+            partitions.partitions = null_mut();
+            partitions.partition_lengths = null_mut();
+            partitions.private_data = null_mut();
         }
     }
 }
@@ -703,11 +741,143 @@ mod tests {
     }
 
     #[test]
-    fn test_partitions_roundtrip() {
-        let partitions_expected: Partitions = vec![b"A".into(), b"BB".into(), b"CCC".into()];
-        let partitions_ffi: FFI_AdbcPartitions = partitions_expected.clone().into();
-        let partitions_actual: Partitions = partitions_ffi.into();
-        assert_eq!(partitions_expected, partitions_actual);
+    fn test_partitions_roundtrip() -> Result<(), Error> {
+        let inputs: [Partitions; 3] = [
+            vec![],
+            vec![vec![], Vec::with_capacity(8)],
+            vec![b"A".into(), vec![], b"BB".into(), b"CCC".into()],
+        ];
+        for partitions_expected in inputs {
+            let partitions_ffi: FFI_AdbcPartitions = partitions_expected.clone().into();
+            // SAFETY: The metadata, allocations, and callback come from the Rust exporter.
+            let partitions_actual = unsafe { import_partitions(partitions_ffi) }?;
+            assert_eq!(partitions_expected, partitions_actual);
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn test_import_partitions_null_pointers_and_release() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        unsafe extern "C" fn release(partitions: *mut FFI_AdbcPartitions) {
+            // SAFETY: Each test input points to a live local counter, and Drop
+            // passes a valid pointer to the consumed FFI value.
+            unsafe {
+                let partitions = &mut *partitions;
+                let counter = &*partitions.private_data.cast::<AtomicUsize>();
+                counter.fetch_add(1, Ordering::SeqCst);
+                partitions.release = None;
+            }
+        }
+
+        let counter = AtomicUsize::new(0);
+        let mut data = *b"A";
+        let mut pointers = [data.as_mut_ptr(), null_mut()];
+        let mut lengths = [1, 1];
+        let mut empty_lengths = [1, 0];
+        let pointers_ptr = pointers.as_mut_ptr();
+        let lengths_ptr = lengths.as_mut_ptr();
+        let empty_lengths_ptr = empty_lengths.as_mut_ptr();
+        let inputs = [
+            (0, null_mut(), null_mut(), Some(vec![])),
+            (1, null_mut(), null_mut(), None),
+            (1, null_mut(), lengths_ptr, None),
+            (1, pointers_ptr, null_mut(), None),
+            (1, pointers_ptr.wrapping_add(1), lengths_ptr, None),
+            (2, pointers_ptr, lengths_ptr, None),
+            (
+                2,
+                pointers_ptr,
+                empty_lengths_ptr,
+                Some(vec![b"A".to_vec(), vec![]]),
+            ),
+        ];
+
+        for (num_partitions, partitions, partition_lengths, expected) in inputs {
+            counter.store(0, Ordering::SeqCst);
+            let value = FFI_AdbcPartitions {
+                num_partitions,
+                partitions,
+                partition_lengths,
+                private_data: (&counter as *const AtomicUsize).cast_mut().cast(),
+                release: Some(release),
+            };
+            // SAFETY: All non-null arrays and nonempty data refer to live local
+            // allocations of sufficient size. The callback only accesses the counter.
+            let result = unsafe { import_partitions(value) };
+            match (result, expected) {
+                (Ok(actual), Some(expected)) => assert_eq!(actual, expected),
+                (Err(error), None) => {
+                    assert_eq!(error.status, Status::Internal);
+                    assert!(error.message.contains("null"));
+                }
+                (actual, expected) => {
+                    assert_eq!(actual.ok(), expected, "unexpected import result");
+                }
+            }
+            assert_eq!(counter.load(Ordering::SeqCst), 1);
+        }
+    }
+
+    #[test]
+    fn test_release_ffi_partitions_nulls_fields() {
+        let mut partition = Vec::with_capacity(16);
+        partition.extend_from_slice(b"partition");
+        let inputs: [Partitions; 3] = [
+            vec![],
+            vec![vec![], Vec::with_capacity(8)],
+            vec![b"A".to_vec(), partition],
+        ];
+
+        for input in inputs {
+            let mut partitions: FFI_AdbcPartitions = input.into();
+            assert!(!partitions.partitions.is_null());
+            assert!(!partitions.partition_lengths.is_null());
+            assert!(!partitions.private_data.is_null());
+
+            if let Some(release) = partitions.release {
+                unsafe { release(&mut partitions) };
+            } else {
+                assert!(partitions.release.is_some(), "expected a release callback");
+            }
+
+            assert!(partitions.release.is_none());
+            assert_eq!(partitions.num_partitions, 0);
+            assert!(partitions.partitions.is_null());
+            assert!(partitions.partition_lengths.is_null());
+            assert!(partitions.private_data.is_null());
+            drop(partitions);
+        }
+    }
+
+    #[test]
+    fn test_release_ffi_partitions_idempotent() {
+        let mut partitions: FFI_AdbcPartitions = vec![b"partition".to_vec()].into();
+        if let Some(release) = partitions.release {
+            unsafe {
+                release(&mut partitions);
+                release(&mut partitions);
+            }
+        } else {
+            assert!(partitions.release.is_some(), "expected a release callback");
+        }
+        assert!(partitions.release.is_none());
+        drop(partitions);
+    }
+
+    #[test]
+    fn test_release_ffi_partitions_null_and_default() {
+        let mut partitions = FFI_AdbcPartitions::default();
+        unsafe {
+            release_ffi_partitions(null_mut());
+            release_ffi_partitions(&mut partitions);
+        }
+        assert!(partitions.release.is_none());
+        assert_eq!(partitions.num_partitions, 0);
+        assert!(partitions.partitions.is_null());
+        assert!(partitions.partition_lengths.is_null());
+        assert!(partitions.private_data.is_null());
     }
 
     #[test]

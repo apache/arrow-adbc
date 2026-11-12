@@ -111,8 +111,10 @@ Status PqResultHelper::Execute(const std::vector<std::string>& params,
 }
 
 Status PqResultHelper::ExecuteCopy() {
-  // Remove trailing semicolon(s) from the query before feeding it into COPY
-  while (!query_.empty() && query_.back() == ';') {
+  // Remove trailing semicolons and whitespace before feeding the query into COPY
+  while (!query_.empty() &&
+         (query_.back() == ';' || query_.back() == ' ' || query_.back() == '\t' ||
+          query_.back() == '\r' || query_.back() == '\n')) {
     query_.pop_back();
   }
 
@@ -183,7 +185,8 @@ Status PqResultHelper::ResolveOutputTypes(PostgresTypeResolver& type_resolver,
       pg_type = PostgresType::Unnamed(pg_oid);
     }
 
-    root_type.AppendChild(PQfname(result_, i), pg_type);
+    root_type.AppendChild(PQfname(result_, i),
+                          pg_type.WithTypeModifier(PQfmod(result_, i)));
   }
 
   *result_types = root_type;

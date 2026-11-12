@@ -126,8 +126,8 @@ function setup_build_vars {
         export CIBW_BUILD='*-manylinux_*'
         export CIBW_PLATFORM="linux"
     fi
-    # No PyPy, no Python 3.8, no Python 3.9
-    export CIBW_SKIP="pp* cp38-* cp39-* ${CIBW_SKIP}"
+    # No PyPy, no EOL Python versions
+    export CIBW_SKIP="pp* cp38-* cp39-* cp310-* ${CIBW_SKIP}"
     export CIBW_MANYLINUX_X86_64_IMAGE="manylinux_2_28"
     export CIBW_MANYLINUX_AARCH64_IMAGE="manylinux_2_28"
 }

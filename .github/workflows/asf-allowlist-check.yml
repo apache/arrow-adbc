@@ -39,6 +39,7 @@ jobs:
   gha:
     name: "Analyze Actions"
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
@@ -50,6 +51,6 @@ jobs:
 
     # Analyze workflows with Zizmor
     - name: Run zizmor 🌈
-      uses: zizmorcore/zizmor-action@70fb788f84895a7701f5643d103d587e460b5c99 # v0.6.3
+      uses: zizmorcore/zizmor-action@45d7276c9ca790aabd705e31ca99c6185c3e76dd # v0.8.1
       with:
         advanced-security: false

@@ -72,7 +72,9 @@ Before creating a Release Candidate
 
 1. Regenerate the LICENSE.txt (see CONTRIBUTING.md and ci/licenses/README.md) and create a pull request if any changes were needed. Generally, only the license for Go-based drivers will need to be regenerated.
 
-2. Set up your shell environment:
+2. Update the list of ADBC drivers in the documentation (:ref:`driver-table`), ensuring drivers from third parties are represented (e.g. from the ADBC Driver Foundry).
+
+3. Set up your shell environment:
 
    .. code-block::
 
@@ -82,13 +84,13 @@ Before creating a Release Candidate
       # Activate conda environment
       mamba activate adbc
 
-3. Ensure merged pull requests and closed issues have their milestone set appropriately:
+4. Ensure merged pull requests and closed issues have their milestone set appropriately:
 
    .. code-block::
 
       ./dev/release/assign-milestone.sh
 
-4. Create a fresh clone of the latest apache/arrow repo, which is used by several steps below.
+5. Create a fresh clone of the latest apache/arrow repo, which is used by several steps below.
 
    .. warning:: Make sure an up-to-date clone is used, so that the Linux packaging scripts in particular are in sync, else there is the possibility of corrupting the shared Linux package repositories.
 
@@ -384,6 +386,14 @@ Be sure to go through on the following checklist:
    :class-title: sd-fs-5
    :class-container: sd-shadow-md
 
+   The script will walk you through the following steps:
+
+   1. Create the tag ``go/adbc/vX.Y.Z``
+   2. Push the tag
+   3. Update ``go/driver/go.mod`` to reference the new tag
+   4. Create the tag ``go/driver/vX.Y.Z``
+   5. Push the tag
+
    .. code-block:: Bash
 
       # dev/release/post-04-go.sh
@@ -570,5 +580,14 @@ Be sure to go through on the following checklist:
    .. code-block:: Bash
 
       dev/release/post-11-announce.sh
+
+.. dropdown:: Update ``dbc`` CDN
+   :class-title: sd-fs-5
+   :class-container: sd-shadow-md
+
+   Notify the maintainers of the ``dbc`` CDN (https://dbc-cdn.columnar.tech/)
+   that the drivers have been updated, either on `GitHub
+   <https://github.com/columnar-tech/dbc/discussions>`_ or via `email
+   <mailto:hello@columnar.tech>`.
 
 .. _nightly-website.yml: https://github.com/apache/arrow-adbc/actions/workflows/nightly-website.yml

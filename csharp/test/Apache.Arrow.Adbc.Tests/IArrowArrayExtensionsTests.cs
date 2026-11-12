@@ -113,5 +113,44 @@ namespace Apache.Arrow.Adbc.Tests
             Assert.Equal(t, t64ns.Data.DataType.GetValueConverter().Invoke(t64ns, 0));
 #endif
         }
+
+        [Fact]
+        public void ValidateExtensionTypes()
+        {
+            Guid guid = Guid.NewGuid();
+            GuidArray guidArray = new GuidArray.Builder().Append(guid).AppendNull().Build();
+            Assert.Equal(guid, guidArray.ValueAt(0));
+            Assert.Null(guidArray.ValueAt(1));
+            Assert.Equal(guid, guidArray.Data.DataType.GetValueConverter().Invoke(guidArray, 0));
+            Assert.Null(guidArray.Data.DataType.GetValueConverter().Invoke(guidArray, 1));
+
+            Bool8Array bool8Array = new Bool8Array.Builder().Append(true).Build();
+            Assert.Equal(true, bool8Array.ValueAt(0));
+            Assert.Equal(true, bool8Array.Data.DataType.GetValueConverter().Invoke(bool8Array, 0));
+
+            DateTimeOffset value = new DateTimeOffset(2026, 10, 18, 9, 30, 15, TimeSpan.FromHours(5.5));
+            TimestampWithOffsetArray timestampArray = new TimestampWithOffsetArray.Builder().Append(value).Build();
+            Assert.Equal(value.Offset, ((DateTimeOffset)timestampArray.ValueAt(0)!).Offset);
+            Assert.Equal(value, timestampArray.Data.DataType.GetValueConverter().Invoke(timestampArray, 0));
+
+            // Unrecognized extension types fall back to their storage
+            ExtensionArray storageOnly = new ExtensionArray(new OpaqueType(), new Int32Array.Builder().Append(7).Build());
+            Assert.Equal(7, storageOnly.ValueAt(0));
+            Assert.Equal(7, storageOnly.Data.DataType.GetValueConverter().Invoke(storageOnly, 0));
+
+            // The storage of a uuid column is fixed size binary
+            Assert.Equal(GuidArray.GuidToBytes(guid), guidArray.Storage.ValueAt(0));
+            Assert.Equal(GuidArray.GuidToBytes(guid), guidArray.Storage.Data.DataType.GetValueConverter().Invoke(guidArray.Storage, 0));
+        }
+
+        private sealed class OpaqueType : ExtensionType
+        {
+            public OpaqueType() : base(Int32Type.Default) { }
+
+            public override string Name => "test.opaque";
+            public override string ExtensionMetadata => "";
+
+            public override ExtensionArray CreateArray(IArrowArray storageArray) => new ExtensionArray(this, storageArray);
+        }
     }
 }

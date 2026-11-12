@@ -19,6 +19,7 @@
 #include <filesystem>  // NOLINT [build/c++17]
 #include <limits>
 #include <optional>
+#include <regex>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -146,7 +147,7 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
   bool supports_bulk_ingest_temporary() const override { return true; }
   bool supports_concurrent_statements() const override { return true; }
   bool supports_metadata_current_catalog() const override { return true; }
-  bool supports_metadata_current_db_schema() const override { return false; }
+  bool supports_metadata_current_db_schema() const override { return true; }
   bool supports_get_option() const override { return true; }
   std::optional<adbc_validation::SqlInfoValue> supports_get_sql_info(
       uint32_t info_code) const override {
@@ -154,7 +155,7 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
       case ADBC_INFO_DRIVER_NAME:
         return "ADBC SQLite Driver";
       case ADBC_INFO_DRIVER_VERSION:
-        return "(unknown)";
+        return "v1.";
       case ADBC_INFO_VENDOR_NAME:
         return "SQLite";
       case ADBC_INFO_VENDOR_VERSION:
@@ -298,7 +299,9 @@ TEST_F(SqliteConnectionTest, GetInfoMetadata) {
         }
         case ADBC_INFO_DRIVER_VERSION: {
           ArrowStringView val = ArrowArrayViewGetStringUnsafe(str_child, offset);
-          EXPECT_EQ("(unknown)", std::string(val.data, val.size_bytes));
+          EXPECT_TRUE(
+              std::regex_match(std::string(val.data, val.size_bytes),
+                               std::regex("v[0-9]+\\.[0-9]+\\.[0-9]+(-SNAPSHOT)?")));
           break;
         }
         case ADBC_INFO_VENDOR_NAME: {
@@ -593,6 +596,62 @@ class SqliteStatementTest : public ::testing::Test,
 };
 ADBCV_TEST_STATEMENT(SqliteStatementTest)
 
+TEST_F(SqliteStatementTest, SqlIngestRollback) {
+  // Regression test for https://github.com/apache/arrow-adbc/issues/4828
+  // A failed ingest shouldn't leave a dangling transaction
+  ASSERT_THAT(quirks()->DropTable(&connection, "test_rollback", &error),
+              adbc_validation::IsOkStatus(&error));
+
+  std::string table = "test_rollback";
+  adbc_validation::Handle<struct ArrowSchema> schema;
+  adbc_validation::Handle<struct ArrowArray> array;
+  struct ArrowError na_error;
+  ASSERT_THAT(
+      adbc_validation::MakeSchema(&schema.value, {{"index", NANOARROW_TYPE_INT64}}),
+      adbc_validation::IsOkErrno());
+  ASSERT_THAT((adbc_validation::MakeBatch<int64_t>(&schema.value, &array.value, &na_error,
+                                                   {42, -42, std::nullopt})),
+              adbc_validation::IsOkErrno(&na_error));
+
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  {
+    int64_t txn_state = 0;
+    ASSERT_THAT(AdbcConnectionGetOptionInt(&connection, "adbc.sqlite.txn_state",
+                                           &txn_state, &error),
+                adbc_validation::IsOkStatus(&error));
+    ASSERT_EQ(0, txn_state);
+  }
+
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_TARGET_TABLE,
+                                     table.c_str(), &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, ADBC_INGEST_OPTION_MODE,
+                                     ADBC_INGEST_OPTION_MODE_APPEND, &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              adbc_validation::IsStatus(ADBC_STATUS_INTERNAL, &error));
+
+  {
+    // Need to do something nontrivial for txn_state to be meaningful
+    ASSERT_THAT(AdbcStatementSetSqlQuery(
+                    &statement, "CREATE TABLE IF NOT EXISTS foobar (a INT)", &error),
+                adbc_validation::IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+                adbc_validation::IsOkStatus(&error));
+
+    int64_t txn_state = 0;
+    ASSERT_THAT(AdbcConnectionGetOptionInt(&connection, "adbc.sqlite.txn_state",
+                                           &txn_state, &error),
+                adbc_validation::IsOkStatus(&error));
+    ASSERT_EQ(0, txn_state);
+  }
+}
+
 TEST_F(SqliteStatementTest, SqlIngestNameEscaping) {
   ASSERT_THAT(quirks()->DropTable(&connection, "test-table", &error),
               adbc_validation::IsOkStatus(&error));
@@ -622,6 +681,155 @@ TEST_F(SqliteStatementTest, SqlIngestNameEscaping) {
   ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
               adbc_validation::IsOkStatus(&error));
   ASSERT_EQ(3, rows_affected);
+}
+
+TEST_F(SqliteStatementTest, RowsAffectedDdlAndDml) {
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  const std::vector<std::pair<const char*, int64_t>> queries = {
+      {"CREATE TABLE affected_rows (value INTEGER)", 0},
+      {"INSERT INTO affected_rows VALUES (1), (2), (3)", 3},
+      {"CREATE TABLE affected_rows_other (value INTEGER)", 0},
+      {"CREATE INDEX affected_rows_idx ON affected_rows(value)", 0},
+      {"DROP TABLE affected_rows_other", 0},
+      {"UPDATE affected_rows SET value = value + 10 WHERE value = 1", 1},
+      {"UPDATE affected_rows SET value = value + 10 WHERE value = 99", 0},
+      {"DELETE FROM affected_rows WHERE value = 2", 1},
+      {"DELETE FROM affected_rows WHERE value = 99", 0},
+      {"CREATE TABLE affected_rows_audit (value INTEGER)", 0},
+      {"CREATE TRIGGER affected_rows_trigger AFTER INSERT ON affected_rows "
+       "BEGIN INSERT INTO affected_rows_audit VALUES (new.value); END",
+       0},
+      {"INSERT INTO affected_rows VALUES (4), (5), (6)", 3},
+      {"SELECT * FROM affected_rows_audit", 3},
+      {"DELETE FROM affected_rows", 5},
+      {"DROP INDEX affected_rows_idx", 0},
+      {"DROP TABLE affected_rows", 0},
+      {"DROP TABLE affected_rows_audit", 0},
+  };
+  for (const auto& [query, expected_rows] : queries) {
+    SCOPED_TRACE(query);
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query, &error),
+                adbc_validation::IsOkStatus(&error));
+    int64_t rows_affected = -1;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+                adbc_validation::IsOkStatus(&error));
+    ASSERT_EQ(expected_rows, rows_affected);
+  }
+}
+
+TEST_F(SqliteStatementTest, RowsAffectedBoundParameters) {
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement, "CREATE TABLE affected_rows_bound (value INTEGER)", &error),
+              adbc_validation::IsOkStatus(&error));
+  int64_t rows_affected = -1;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_EQ(0, rows_affected);
+
+  auto bind_values = [&](std::vector<std::optional<int64_t>> values) {
+    adbc_validation::Handle<struct ArrowSchema> schema;
+    adbc_validation::Handle<struct ArrowArray> array;
+    struct ArrowError na_error = {};
+    ASSERT_THAT(
+        adbc_validation::MakeSchema(&schema.value, {{"value", NANOARROW_TYPE_INT64}}),
+        adbc_validation::IsOkErrno());
+    ASSERT_THAT(adbc_validation::MakeBatch<int64_t>(&schema.value, &array.value,
+                                                    &na_error, values),
+                adbc_validation::IsOkErrno(&na_error));
+    ASSERT_THAT(AdbcStatementBind(&statement, &array.value, &schema.value, &error),
+                adbc_validation::IsOkStatus(&error));
+  };
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement, "INSERT INTO affected_rows_bound VALUES (?)", &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementPrepare(&statement, &error),
+              adbc_validation::IsOkStatus(&error));
+  for (int execution = 0; execution < 2; execution++) {
+    ASSERT_NO_FATAL_FAILURE(bind_values({1, 2, 3}));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+                adbc_validation::IsOkStatus(&error));
+    ASSERT_EQ(3, rows_affected);
+  }
+
+  ASSERT_THAT(
+      AdbcStatementSetSqlQuery(
+          &statement, "UPDATE affected_rows_bound SET value = value + 10 WHERE value = ?",
+          &error),
+      adbc_validation::IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(bind_values({1, 99, 3}));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_EQ(4, rows_affected);
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement, "DELETE FROM affected_rows_bound WHERE value = ?", &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(bind_values({11, 99, 13}));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, &rows_affected, &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_EQ(4, rows_affected);
+
+  ASSERT_THAT(quirks()->DropTable(&connection, "affected_rows_bound", &error),
+              adbc_validation::IsOkStatus(&error));
+}
+
+TEST_F(SqliteStatementTest, ConstraintError) {
+  ASSERT_THAT(quirks()->DropTable(&connection, "constrainttable", &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  for (const auto& stmt : {
+           "CREATE TABLE constrainttable (id INTEGER PRIMARY KEY)",
+           "INSERT INTO constrainttable (id) VALUES (1)",
+       }) {
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, stmt, &error),
+                adbc_validation::IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+                adbc_validation::IsOkStatus(&error));
+  }
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement, "INSERT INTO constrainttable (id) VALUES (1)", &error),
+              adbc_validation::IsOkStatus(&error));
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                        &reader.rows_affected, &error),
+              adbc_validation::IsStatus(ADBC_STATUS_INTEGRITY, &error));
+  EXPECT_THAT(error.message,
+              ::testing::HasSubstr("UNIQUE constraint failed: constrainttable.id"));
+}
+
+TEST_F(SqliteStatementTest, ConstraintErrorNoStream) {
+  ASSERT_THAT(quirks()->DropTable(&connection, "constrainttable", &error),
+              adbc_validation::IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error),
+              adbc_validation::IsOkStatus(&error));
+
+  for (const auto& stmt : {
+           "CREATE TABLE constrainttable (id INTEGER PRIMARY KEY)",
+           "INSERT INTO constrainttable (id) VALUES (1)",
+       }) {
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, stmt, &error),
+                adbc_validation::IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+                adbc_validation::IsOkStatus(&error));
+  }
+
+  ASSERT_THAT(AdbcStatementSetSqlQuery(
+                  &statement, "INSERT INTO constrainttable (id) VALUES (1)", &error),
+              adbc_validation::IsOkStatus(&error));
+
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              adbc_validation::IsStatus(ADBC_STATUS_INTEGRITY, &error));
+  EXPECT_THAT(error.message,
+              ::testing::HasSubstr("UNIQUE constraint failed: constrainttable.id"));
 }
 
 // -- SQLite Specific Tests ------------------------------------------
@@ -1161,3 +1369,35 @@ INSTANTIATE_TEST_SUITE_P(FloatTypes, SqliteFloatParamTest,
 
                              // NANOARROW_TYPE_FLOAT,
                              NANOARROW_TYPE_DOUBLE));
+
+TEST(SqliteUriErrors, InvalidInputDoesNotLeak) {
+  for (const char* uri :
+       {"file:test?mode=sentinel_secret", "sqlite://test?cache=sentinel_secret",
+        "file:test?vfs=sentinel_secret"}) {
+    struct AdbcError error = {};
+    adbc_validation::Handle<struct AdbcDatabase> database;
+    ASSERT_EQ(ADBC_STATUS_OK, AdbcDatabaseNew(&database.value, &error));
+    ASSERT_EQ(ADBC_STATUS_OK, AdbcDatabaseSetOption(&database.value, "uri", uri, &error));
+    ASSERT_EQ(ADBC_STATUS_INVALID_ARGUMENT, AdbcDatabaseInit(&database.value, &error));
+    ASSERT_NE(nullptr, error.message);
+    EXPECT_THAT(error.message, ::testing::Not(::testing::HasSubstr("sentinel")));
+    if (error.release) error.release(&error);
+  }
+}
+
+TEST(SqliteUriErrors, OpenFailureDoesNotLeak) {
+  struct AdbcError error = {};
+  adbc_validation::Handle<struct AdbcDatabase> database;
+  const auto path = std::filesystem::temp_directory_path() /
+                    "adbc-sentinel-nonexistent-parent" / "database.db";
+  ASSERT_FALSE(std::filesystem::exists(path.parent_path()));
+  const std::string uri = "file:" + path.string() + "?mode=ro";
+  ASSERT_EQ(ADBC_STATUS_OK, AdbcDatabaseNew(&database.value, &error));
+  ASSERT_EQ(ADBC_STATUS_OK,
+            AdbcDatabaseSetOption(&database.value, "uri", uri.c_str(), &error));
+  ASSERT_EQ(ADBC_STATUS_IO, AdbcDatabaseInit(&database.value, &error));
+  ASSERT_NE(nullptr, error.message);
+  EXPECT_THAT(error.message, ::testing::Not(::testing::HasSubstr("sentinel")));
+  EXPECT_THAT(error.message, ::testing::HasSubstr("failed to open database"));
+  if (error.release) error.release(&error);
+}

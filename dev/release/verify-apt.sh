@@ -140,6 +140,14 @@ fi
 
 ${APT_UPDATE}
 
+case "${distribution}-${code_name}" in
+  debian-trixie)
+    # Work around Arrow's missing OpenTelemetry runtime dependency.
+    # Seems to stem from https://github.com/apache/arrow/pull/50650
+    ${APT_INSTALL} opentelemetry-cpp
+    ;;
+esac
+
 echo "::endgroup::"
 
 

@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.C;
@@ -115,6 +116,109 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         [Fact]
+        public void ExecuteUpdateRoundTripsWithoutAResultStream()
+        {
+            var fixture = new FixtureDriver();
+
+            // The importer's ExecuteUpdate passes a null stream to StatementExecuteQuery
+            using AdbcDriver imported = CAdbcDriverImporter.Load(CreateAdapter(fixture));
+            using AdbcDatabase db = imported.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+            stmt.SqlQuery = "UPDATE";
+
+            Assert.Equal(3, stmt.ExecuteUpdate().AffectedRows);
+            Assert.False(fixture.LastStatement!.WasExecuted);
+        }
+
+        [Fact]
+        public void ExecutePartitionedRoundTrips()
+        {
+            var fixture = new FixtureDriver();
+
+            using AdbcDriver imported = CAdbcDriverImporter.Load(CreateAdapter(fixture));
+            using AdbcDatabase db = imported.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+            stmt.SqlQuery = "PARTITIONS";
+
+            PartitionedResult result = stmt.ExecutePartitioned();
+
+            Assert.Equal(5, result.AffectedRows);
+            Assert.Equal("answer", Assert.Single(result.Schema.FieldsList).Name);
+            Assert.Equal(2, result.PartitionDescriptors.Count);
+            Assert.Equal(new byte[] { 1, 2 }, result.PartitionDescriptors[0].Descriptor.ToArray());
+            Assert.Equal(new byte[] { 3 }, result.PartitionDescriptors[1].Descriptor.ToArray());
+        }
+
+        [Fact]
+        public void ExecutePartitionedFailureDoesNotReleaseGarbage()
+        {
+            var fixture = new FixtureDriver();
+
+            using AdbcDriver imported = CAdbcDriverImporter.Load(CreateAdapter(fixture));
+            using AdbcDatabase db = imported.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+
+            // The producer fails without writing the partitions struct
+            stmt.SqlQuery = "SELECT 1";
+            for (int i = 0; i < 20; i++)
+            {
+                Assert.Equal(AdbcStatusCode.NotImplemented, Assert.ThrowsAny<AdbcException>(() => stmt.ExecutePartitioned()).Status);
+            }
+        }
+
+        [Fact]
+        public void MissingFunctionsReportNotImplemented()
+        {
+            // A driver that leaves these entries empty gets the importer's defaults, which
+            // must be callable through the same delegate types as a real implementation.
+            var fixture = new FixtureDriver();
+            AdbcDriverInit adapter = (int version, ref CAdbcDriver nativeDriver, ref CAdbcError error) =>
+            {
+                AdbcStatusCode status = CallExporter(version, ref nativeDriver, ref error, fixture);
+                unsafe
+                {
+                    nativeDriver.ConnectionCommit = default;
+                    nativeDriver.ConnectionRollback = default;
+                    nativeDriver.ConnectionCancel = default;
+                    nativeDriver.StatementCancel = default;
+                }
+                return status;
+            };
+
+            using AdbcDriver imported = CAdbcDriverImporter.Load(adapter);
+            using AdbcDatabase db = imported.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+
+            Assert.Equal(AdbcStatusCode.NotImplemented, Assert.ThrowsAny<AdbcException>(() => conn.Commit()).Status);
+            Assert.Equal(AdbcStatusCode.NotImplemented, Assert.ThrowsAny<AdbcException>(() => conn.Rollback()).Status);
+            Assert.Equal(AdbcStatusCode.NotImplemented, Assert.ThrowsAny<AdbcException>(() => conn.Cancel()).Status);
+            Assert.Equal(AdbcStatusCode.NotImplemented, Assert.ThrowsAny<AdbcException>(() => stmt.Cancel()).Status);
+        }
+
+        [Theory]
+        [InlineData(null)]
+        [InlineData("42000")]
+        public void VendorCodePropagates(string? sqlState)
+        {
+            var fixture = new FixtureDriver { ThrowOnExecute = new VendorException(sqlState, 1234) };
+
+            using AdbcDriver imported = CAdbcDriverImporter.Load(CreateAdapter(fixture));
+            using AdbcDatabase db = imported.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+            stmt.SqlQuery = "SELECT 1";
+
+            AdbcException ex = Assert.ThrowsAny<AdbcException>(() => stmt.ExecuteQuery());
+            Assert.Equal(AdbcStatusCode.IOError, ex.Status);
+            Assert.Equal(1234, ex.NativeError);
+            Assert.Equal(sqlState, ex.SqlState);
+        }
+
+        [Fact]
         public void StatementSetOptionIsMarshaledToProducer()
         {
             var fixture = new FixtureDriver();
@@ -208,6 +312,85 @@ namespace Apache.Arrow.Adbc.Tests
             Assert.Equal(AdbcStatusCode.NotImplemented, ex.Status);
         }
 
+#if NET5_0_OR_GREATER
+        private static int s_staleErrorReleases;
+
+        [Fact]
+        public unsafe void ExporterReleasesAnExistingErrorThroughItsOwnCallback()
+        {
+            var fixture = new FixtureDriver { ThrowOnOpen = new AdbcException("open failed", AdbcStatusCode.InvalidState) };
+
+            CAdbcDriver driver = default;
+            CAdbcError initError = default;
+            Assert.Equal(AdbcStatusCode.Success, CAdbcDriverExporter.AdbcDriverInit(AdbcVersion.Version_1_0_0, &driver, &initError, fixture));
+
+            CAdbcDatabase database = default;
+            CAdbcError error = default;
+            Assert.Equal(AdbcStatusCode.Success, driver.DatabaseNew(&database, &error));
+
+            // An error left over from an earlier call, owned by someone else
+            error.message = (byte*)Marshal.StringToCoTaskMemUTF8("stale");
+            error.release = &ReleaseStaleError;
+            s_staleErrorReleases = 0;
+
+            Assert.Equal(AdbcStatusCode.InvalidState, driver.DatabaseInit(&database, &error));
+            Assert.Equal(1, s_staleErrorReleases);
+            Assert.Equal("open failed", Marshal.PtrToStringUTF8((IntPtr)error.message));
+            error.release(&error);
+
+            // The error is optional
+            Assert.Equal(AdbcStatusCode.InvalidState, driver.DatabaseInit(&database, null));
+
+            Assert.Equal(AdbcStatusCode.Success, driver.DatabaseRelease(&database, &error));
+            Assert.Equal(AdbcStatusCode.Success, driver.release(&driver, &error));
+        }
+
+        private static unsafe delegate* unmanaged<CAdbcDatabase*, CAdbcError*, AdbcStatusCode> s_realDatabaseRelease;
+        private static int s_databaseReleases;
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public unsafe void FailedOpenReleasesTheDatabaseWithoutHidingTheError(bool objectParameters)
+        {
+            var fixture = new FixtureDriver { ThrowOnOpen = new AdbcException("open failed", AdbcStatusCode.InvalidState) };
+            AdbcDriverInit adapter = (int version, ref CAdbcDriver nativeDriver, ref CAdbcError error) =>
+            {
+                AdbcStatusCode status = CallExporter(version, ref nativeDriver, ref error, fixture);
+                s_realDatabaseRelease = nativeDriver.DatabaseRelease;
+                nativeDriver.DatabaseRelease = &FailingDatabaseRelease;
+                return status;
+            };
+
+            using AdbcDriver imported = CAdbcDriverImporter.Load(adapter);
+            s_databaseReleases = 0;
+
+            AdbcException ex = Assert.ThrowsAny<AdbcException>(() => objectParameters
+                ? imported.Open(new Dictionary<string, object>())
+                : imported.Open(new Dictionary<string, string>()));
+            Assert.Equal(AdbcStatusCode.InvalidState, ex.Status);
+            Assert.Contains("open failed", ex.Message);
+            Assert.Equal(1, s_databaseReleases);
+        }
+
+        [UnmanagedCallersOnly]
+        private static unsafe AdbcStatusCode FailingDatabaseRelease(CAdbcDatabase* database, CAdbcError* error)
+        {
+            s_databaseReleases++;
+            s_realDatabaseRelease(database, error);
+            return AdbcStatusCode.IOError;
+        }
+
+        [UnmanagedCallersOnly]
+        private static unsafe void ReleaseStaleError(CAdbcError* error)
+        {
+            s_staleErrorReleases++;
+            Marshal.FreeCoTaskMem((IntPtr)error->message);
+            error->message = null;
+            error->release = default;
+        }
+#endif
+
         private static AdbcStatusCode CallExporter(int version, ref CAdbcDriver nativeDriver, ref CAdbcError error, AdbcDriver driver)
         {
             unsafe
@@ -241,9 +424,12 @@ namespace Apache.Arrow.Adbc.Tests
             public FixtureConnection? LastConnection { get; private set; }
             public FixtureStatement? LastStatement { get; private set; }
             public Exception? ThrowOnExecute { get; set; }
+            public Exception? ThrowOnOpen { get; set; }
 
             public override AdbcDatabase Open(IReadOnlyDictionary<string, string> parameters)
             {
+                if (ThrowOnOpen != null) { throw ThrowOnOpen; }
+
                 var db = new FixtureDatabase(this, parameters);
                 LastDatabase = db;
                 return db;
@@ -347,11 +533,41 @@ namespace Apache.Arrow.Adbc.Tests
             }
 
             public override UpdateResult ExecuteUpdate()
-                => throw AdbcException.NotImplemented("fixture does not support ExecuteUpdate");
+                => _sqlQuery == "UPDATE" ? new UpdateResult(3) : throw AdbcException.NotImplemented("fixture does not support ExecuteUpdate");
+
+            public override PartitionedResult ExecutePartitioned()
+            {
+                if (_sqlQuery != "PARTITIONS")
+                {
+                    return base.ExecutePartitioned();
+                }
+
+                return new PartitionedResult(BuildResultSchema(), 5, new[]
+                {
+                    new PartitionDescriptor(new byte[] { 1, 2 }),
+                    new PartitionDescriptor(new byte[] { 3 }),
+                });
+            }
 
             private static Schema BuildResultSchema() => new Schema.Builder()
                 .Field(f => f.Name("answer").DataType(Int32Type.Default).Nullable(false))
                 .Build();
+        }
+
+        private sealed class VendorException : AdbcException
+        {
+            private readonly string? _sqlState;
+            private readonly int _nativeError;
+
+            public VendorException(string? sqlState, int nativeError)
+                : base("vendor failure", AdbcStatusCode.IOError)
+            {
+                _sqlState = sqlState;
+                _nativeError = nativeError;
+            }
+
+            public override string? SqlState => _sqlState;
+            public override int NativeError => _nativeError;
         }
 
         private sealed class SingleBatchStream : IArrowArrayStream

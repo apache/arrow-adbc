@@ -80,5 +80,30 @@ These properties are:
 
 - __AdbcConnectionTimeout__ - This specifies the connection timeout value. The value needs to be in the form (driver.property.name, integer, unit) where the unit is one of `s` or `ms`, For example, `AdbcConnectionTimeout=(adbc.snowflake.sql.client_option.client_timeout,30,s)` would set the connection timeout to 30 seconds.
 - __AdbcCommandTimeout__ - This specifies the command timeout value. This follows the same pattern as `AdbcConnectionTimeout` and sets the `AdbcCommandTimeoutProperty` and `CommandTimeout` values on the `AdbcCommand` object.
-- __StructBehavior__ - This specifies the StructBehavior when working with Arrow Struct arrays. The valid values are `JsonString` (the default) or `Strict` (treat the struct as a native type). If using JsonString, the return ArrowType will be StringType and the result a string value. If using Strict, the return ArrowType will be StructType and the result a Dictionary<string, object?>.
+- __StructBehavior__ - This specifies the StructBehavior when working with Arrow Struct arrays. The valid values are `JsonString` (the default) or `Strict` (treat the struct as a native type). If using JsonString, the return ArrowType will be StringType and the result a string value. If using Strict, the return ArrowType will be StructType and the result a Dictionary<string, object?>. The same setting applies to Variant values (see below).
 - __DecimalBehavior__ - This specifies the DecimalBehavior when parsing decimal values from Arrow libraries. The valid values are `UseSqlDecimal` or `OverflowDecimalAsString` where values like Decimal256 are treated as strings.
+
+## Extension Types
+The client understands these [canonical Arrow extension types](https://arrow.apache.org/docs/format/CanonicalExtensions.html):
+
+| Extension type | .NET type | Parameter DbType |
+|---|---|---|
+| `arrow.uuid` | `Guid` | `DbType.Guid` |
+| `arrow.bool8` | `bool` | |
+| `arrow.timestamp_with_offset` | `DateTimeOffset` (with the original offset) | |
+| `arrow.parquet.variant` | A JSON `string` with `StructBehavior=JsonString`, or the equivalent .NET value (a `Dictionary<string, object?>`, `List<object?>` or scalar) with `StructBehavior=Strict` | |
+
+Drivers loaded through the C API return extension types as field metadata on the storage type; the client recognizes these and
+`AdbcDataReader.GetArrowArray` returns the corresponding extension array. Additional extension types can be recognized by
+registering their definitions with `ExtensionTypeRegistry.Default`. Values of any other extension type are returned as their storage values.
+
+Reading a shredded variant requires the shredding support in the `Apache.Arrow.Operations` package, which the client doesn't reference.
+Applications that expect shredded results can reference that package and enable it once at startup:
+
+```csharp
+Apache.Arrow.Adbc.Extensions.ShreddedVariants.Reader = (array, index) => array.GetLogicalVariantValue(index);
+```
+
+Without this, reading a shredded variant throws `NotSupportedException`.
+
+Parameters with `DbType.DateTimeOffset` are bound as UTC timestamps, so the original offset is not sent to the driver.

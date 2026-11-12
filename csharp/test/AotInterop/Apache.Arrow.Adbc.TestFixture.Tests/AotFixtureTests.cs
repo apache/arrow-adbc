@@ -50,10 +50,15 @@ namespace Apache.Arrow.Adbc.TestFixture.Tests
         private static AdbcDriver LoadFixture()
         {
             string? path = ResolveFixturePath();
+            SkipIfFixtureUnavailable(path);
+            return CAdbcDriverImporter.Load(path!);
+        }
+
+        private static void SkipIfFixtureUnavailable(string? path)
+        {
             Skip.IfNot(
                 path != null,
                 $"Set {FixturePathEnvVar} to the AOT-published Apache.Arrow.Adbc.TestFixture.Native shared library to run this test.");
-            return CAdbcDriverImporter.Load(path!);
         }
 
         [SkippableFact]
@@ -61,6 +66,68 @@ namespace Apache.Arrow.Adbc.TestFixture.Tests
         {
             using AdbcDriver driver = LoadFixture();
             Assert.Equal(AdbcVersion.Version_1_1_0, driver.DriverVersion);
+        }
+
+        [SkippableFact]
+        public void DriverManagerFallsBackToStandardEntrypoint()
+        {
+            string? fixturePath = ResolveFixturePath();
+            SkipIfFixtureUnavailable(fixturePath);
+            string? fixtureParent = Path.GetDirectoryName(fixturePath);
+            Skip.IfNot(!string.IsNullOrEmpty(fixtureParent), "The AOT fixture path must have a parent directory.");
+            string directory = Path.Combine(fixtureParent!, Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(directory);
+            string renamedPath = Path.Combine(directory, "adbc_driver_fixture" + Path.GetExtension(fixturePath));
+            File.Copy(fixturePath!, renamedPath);
+
+            try
+            {
+                using AdbcDriver driver = Apache.Arrow.Adbc.DriverManager.AdbcDriverManager.LoadDriver(renamedPath);
+                Assert.Equal(AdbcVersion.Version_1_1_0, driver.DriverVersion);
+            }
+            finally
+            {
+                // DriverManager keeps native drivers loaded for the process lifetime.
+                // Windows therefore prevents deleting the copied DLL while the test
+                // process is alive; the CI workspace is disposable.
+                if (!OperatingSystem.IsWindows())
+                {
+                    Directory.Delete(directory, recursive: true);
+                }
+            }
+        }
+
+        [SkippableFact]
+        public void FindLoadDriverManifestWithoutEntrypointFallsBackToStandardEntrypoint()
+        {
+            string? fixturePath = ResolveFixturePath();
+            SkipIfFixtureUnavailable(fixturePath);
+            string? fixtureParent = Path.GetDirectoryName(fixturePath);
+            Skip.IfNot(!string.IsNullOrEmpty(fixtureParent), "The AOT fixture path must have a parent directory.");
+            string directory = Path.Combine(fixtureParent!, Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(directory);
+            string renamedName = "adbc_driver_fixture";
+            string renamedPath = Path.Combine(directory, renamedName + Path.GetExtension(fixturePath));
+            File.Copy(fixturePath!, renamedPath);
+            File.WriteAllText(
+                Path.Combine(directory, renamedName + ".toml"),
+                "manifest_version = 1\n[Driver]\nshared = \"" + Path.GetFileName(renamedPath) + "\"\n");
+
+            try
+            {
+                using AdbcDriver driver = Apache.Arrow.Adbc.DriverManager.AdbcDriverManager.FindLoadDriver(
+                    renamedName,
+                    loadOptions: Apache.Arrow.Adbc.DriverManager.AdbcLoadFlags.Default,
+                    additionalSearchPathList: directory);
+                Assert.Equal(AdbcVersion.Version_1_1_0, driver.DriverVersion);
+            }
+            finally
+            {
+                if (!OperatingSystem.IsWindows())
+                {
+                    Directory.Delete(directory, recursive: true);
+                }
+            }
         }
 
         [SkippableFact]
@@ -162,6 +229,84 @@ namespace Apache.Arrow.Adbc.TestFixture.Tests
             AdbcException ex = Assert.ThrowsAny<AdbcException>(
                 () => conn.GetObjects(AdbcConnection.GetObjectsDepth.All, null, null, null, null, null));
             Assert.Equal(AdbcStatusCode.NotImplemented, ex.Status);
+        }
+
+        [SkippableFact]
+        public void ConnectionOptionsRoundTripThroughAotBoundary()
+        {
+            using AdbcDriver driver = LoadFixture();
+            using AdbcDatabase db = driver.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(new Dictionary<string, string> { { "conn.user", "alice" } });
+
+            Assert.Equal("alice", conn.GetOption("conn.user"));
+            Assert.True(conn.AutoCommit);
+
+            conn.SetOptionInt64("conn.timeout", 42);
+            Assert.Equal(42L, conn.GetOptionInt64("conn.timeout"));
+
+            AdbcException ex = Assert.ThrowsAny<AdbcException>(() => conn.GetOption("conn.missing"));
+            Assert.Equal(AdbcStatusCode.NotFound, ex.Status);
+        }
+
+        [SkippableFact]
+        public void StatementProgressIsReadable()
+        {
+            using AdbcDriver driver = LoadFixture();
+            using AdbcDatabase db = driver.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+
+            Assert.Equal(0.5, stmt.GetOptionDouble(AdbcOptions.Statement.Progress));
+        }
+
+        [SkippableFact]
+        public void ErrorDetailsCrossAotBoundary()
+        {
+            using AdbcDriver driver = LoadFixture();
+            using AdbcDatabase db = driver.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+            stmt.SqlQuery = "FAIL";
+
+            AdbcException ex = Assert.ThrowsAny<AdbcException>(() => stmt.ExecuteQuery());
+            Assert.Equal(AdbcStatusCode.InvalidArgument, ex.Status);
+            Assert.Equal("42000", ex.SqlState);
+            KeyValuePair<string, byte[]> detail = Assert.Single(ex.Details);
+            Assert.Equal("fixture.detail", detail.Key);
+            Assert.Equal(new byte[] { 1, 2, 3 }, detail.Value);
+        }
+
+        [SkippableFact]
+        public async Task StreamErrorDetailsCrossAotBoundary()
+        {
+            using AdbcDriver driver = LoadFixture();
+            using AdbcDatabase db = driver.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+            stmt.SqlQuery = "FAIL_STREAM";
+
+            using IArrowArrayStream stream = stmt.ExecuteQuery().Stream!;
+            AdbcException ex = await Assert.ThrowsAnyAsync<AdbcException>(async () => await stream.ReadNextRecordBatchAsync());
+            Assert.Equal(AdbcStatusCode.InvalidArgument, ex.Status);
+            Assert.Equal("42000", ex.SqlState);
+            KeyValuePair<string, byte[]> detail = Assert.Single(ex.Details);
+            Assert.Equal("fixture.detail", detail.Key);
+            Assert.Equal(new byte[] { 1, 2, 3 }, detail.Value);
+        }
+
+        [SkippableFact]
+        public async Task ExecuteQueryAsyncWithTokenRoundTrips()
+        {
+            using AdbcDriver driver = LoadFixture();
+            using AdbcDatabase db = driver.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = await db.ConnectAsync(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+            stmt.SqlQuery = "SELECT 1";
+
+            using var cts = new System.Threading.CancellationTokenSource();
+            QueryResult result = await stmt.ExecuteQueryAsync(cts.Token);
+            using IArrowArrayStream stream = result.Stream!;
+            Assert.Equal("key", stream.Schema.FieldsList[0].Name);
         }
     }
 }

@@ -297,7 +297,7 @@ install_go() {
     return 0
   fi
 
-  local version=1.24.2
+  local version=1.26.11
   show_info "Installing go version ${version}..."
 
   local arch="$(uname -m)"
@@ -415,14 +415,14 @@ maybe_setup_conda() {
       conda deactivate || :
     fi
     # Ensure that conda is installed
-    install_conda
+    install_conda || return 1
     # Create environment
     if ! conda env list | cut -d" " -f 1 | grep $env; then
-      mamba create -y -n $env python=${pyver} ${pymarker}
+      mamba create -y -n $env python=${pyver} ${pymarker} || return 1
     fi
     # Install dependencies
     if [ $# -gt 0 ]; then
-      mamba install -y -n $env $@
+      mamba install -y -n $env $@ || return 1
     fi
     # Activate the environment
     conda activate $env
@@ -462,7 +462,7 @@ maybe_setup_virtualenv() {
     fi
     # Check that python interpreter exists
     if ! command -v "${python}" &> /dev/null; then
-      echo "Couldn't locate python interpreter with version ${pyver}"
+      echo "Couldn't locate python interpreter with version ${pyver} ($python)"
       echo "Call the script with USE_CONDA=1 to test all of the python versions."
       return 1
     else
@@ -511,7 +511,7 @@ test_cpp() {
   maybe_setup_conda \
     --file ci/conda_env_cpp.txt \
     compilers \
-    go python || exit 1
+    go-cgo python || exit 1
 
   if [ "${USE_CONDA}" -gt 0 ]; then
     export CMAKE_PREFIX_PATH="${CONDA_BACKUP_CMAKE_PREFIX_PATH}:${CMAKE_PREFIX_PATH}"
@@ -661,7 +661,7 @@ test_go() {
   # apache/arrow-adbc#517: `go build` calls git. Don't assume system
   # has git; even if it's there, go_build.sh sets DYLD_LIBRARY_PATH
   # which can interfere with system git.
-  maybe_setup_conda compilers git go || exit 1
+  maybe_setup_conda compilers git go-cgo || exit 1
 
   if [ "${USE_CONDA}" -gt 0 ]; then
     # The CMake setup forces RPATH to be the Conda prefix
@@ -725,7 +725,7 @@ ensure_source_directory() {
   source "${ADBC_SOURCE_DIR}/dev/release/versions.env"
   echo "Versions:"
   echo "Release: ${RELEASE} (requested: ${VERSION})"
-  echo "C#: ${VERSION_CSHARP}"
+  echo "C#: ${VERSION_CSHARP_CORE} (core), ${VERSION_CSHARP} (drivers)"
   echo "Java: ${VERSION_JAVA}"
   echo "C/C++/GLib/Go/Python/Ruby: ${VERSION_NATIVE}"
   echo "R: ${VERSION_R}"
@@ -821,7 +821,7 @@ test_unix_wheels() {
   local arch="${1}"
   local platform="${2}"
 
-  local python_versions="${TEST_PYTHON_VERSIONS:-3.10 3.11 3.12 3.13 3.14 3.14t}"
+  local python_versions="${TEST_PYTHON_VERSIONS:-3.11 3.12 3.13 3.14 3.14t 3.15 3.15t}"
 
   for python in ${python_versions}; do
     local pyver=${python/t}
@@ -838,6 +838,7 @@ test_unix_wheels() {
         adbc_*-cp${pyver/.}-cp${python/.}-${platform}*${arch}*.whl \
         adbc_*-py3-none-${platform}*${arch}*.whl
     ${ADBC_DIR}/ci/scripts/python_wheel_unix_test.sh ${ADBC_DIR}
+    unset PYTHON_GIL
   done
 }
 
@@ -887,7 +888,7 @@ test_wheels() {
 
 test_jars() {
   show_header "Testing Java jars"
-  maybe_setup_conda maven python || exit 1
+  maybe_setup_conda maven openjdk=17 python || exit 1
 
   local root_poms=()
   shopt -s nullglob
@@ -913,11 +914,25 @@ print(version.text)
   show_info "ADBC Java version: ${java_version}"
 
   local -r maven_repository="${ARROW_TMPDIR}/maven-repository"
-  local -r maven_repository_argument="-Dmaven.repo.local=${maven_repository}"
+  local -r maven_arguments=(
+    -B
+    -e
+    # Recheck missing artifacts instead of reusing cached resolution failures.
+    -U
+    "-Dmaven.repo.local=${maven_repository}"
+    # Retry transient download failures in Maven's native HTTP transport.
+    -Dmaven.resolver.transport=native
+    -Daether.connector.http.retryHandler.count=5
+    -Daether.connector.http.retryHandler.interval=5000
+    -Daether.connector.http.retryHandler.serviceUnavailable=429,500,502,503,504
+    # Maven 3.10+ uses Resolver 2, which renamed the HTTP transport properties.
+    -Daether.transport.http.retryHandler.count=5
+    -Daether.transport.http.retryHandler.interval=5000
+    -Daether.transport.http.retryHandler.serviceUnavailable=429,500,502,503,504
+  )
   mkdir -p "${maven_repository}"
 
-  mvn -B install:install-file \
-      "${maven_repository_argument}" \
+  mvn "${maven_arguments[@]}" install:install-file \
       "-Dfile=${root_pom}" \
       "-DpomFile=${root_pom}" \
       -Dpackaging=pom
@@ -944,16 +959,14 @@ print(version.text)
       fi
     done
 
-    mvn -B install:install-file \
-        "${maven_repository_argument}" \
+    mvn "${maven_arguments[@]}" install:install-file \
         "-Dfile=${jar_path}" \
         "-DpomFile=${pom_path}" \
         "-Dsources=${sources_path}" \
         "-Djavadoc=${javadoc_path}"
   done
 
-  mvn -B test \
-      "${maven_repository_argument}" \
+  mvn "${maven_arguments[@]}" test \
       "-Dadbc.version=${java_version}" \
       -f "${SOURCE_DIR}/verify/java/pom.xml"
 }

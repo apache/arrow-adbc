@@ -17,20 +17,29 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using Apache.Arrow.Ipc;
+using Apache.Arrow.Operations.Shredding;
+using Apache.Arrow.Scalars.Variant;
 using Apache.Arrow.Types;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests
 {
     public class ImportedDuckDbTests : IClassFixture<DuckDbFixture>
     {
         readonly DuckDbFixture _duckDb;
+        readonly ITestOutputHelper _output;
 
-        public ImportedDuckDbTests(DuckDbFixture duckDb)
+        public ImportedDuckDbTests(DuckDbFixture duckDb, ITestOutputHelper output)
         {
             _duckDb = duckDb;
+            _output = output;
         }
 
         [Fact]
@@ -210,6 +219,198 @@ namespace Apache.Arrow.Adbc.Tests
             Assert.Equal(6, GetResultCount(statement3, "SELECT * from main.ingested"));
         }
 
+        [SkippableFact]
+        public async Task ReadVariant()
+        {
+            using var database = _duckDb.OpenDatabase("readvariant.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+
+            RequireVariantSupport(statement);
+            statement.SqlQuery = """
+                SELECT v FROM (VALUES
+                    (1, 42::VARIANT),
+                    (2, 'hello'::VARIANT),
+                    (3, {'name': 'widget', 'sizes': [1, 2]}::VARIANT),
+                    (4, NULL::VARIANT)
+                ) AS variants(id, v) ORDER BY id
+                """;
+            using var stream = statement.ExecuteQuery().Stream;
+            Assert.NotNull(stream);
+            Field field = stream.Schema.FieldsList[0];
+            Assert.Equal("arrow.parquet.variant", field.Metadata["ARROW:extension:name"]);
+
+            using var batch = await stream.ReadNextRecordBatchAsync();
+            Assert.NotNull(batch);
+            // The C Data Interface imports extension arrays as storage plus field metadata.
+            var variants = new VariantArray(batch.Column(0));
+            Assert.Equal(4, variants.Length);
+            Assert.Equal(42, variants.GetVariantValue(0).AsInt32());
+            Assert.Equal("hello", variants.GetVariantValue(1).AsString());
+            var obj = variants.GetVariantValue(2).AsObject();
+            Assert.Equal("widget", obj["name"].AsString());
+            Assert.Equal(new[] { 1, 2 }, obj["sizes"].AsArray().Select(value => value.AsInt32()));
+            Assert.True(variants.IsNull(3));
+            Assert.Null(await stream.ReadNextRecordBatchAsync());
+        }
+
+        [SkippableFact]
+        public async Task IngestVariant()
+        {
+            using var database = _duckDb.OpenDatabase("ingestvariant.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+            RequireVariantSupport(statement);
+            using var variants = new VariantArray.Builder()
+                .Append(VariantValue.FromInt8(42))
+                .Append(VariantValue.FromString("hello"))
+                .Append(VariantValue.FromObject(new Dictionary<string, VariantValue>
+                {
+                    { "name", VariantValue.FromString("widget") },
+                    { "sizes", VariantValue.FromArray(VariantValue.FromInt8(1), VariantValue.FromInt8(2)) },
+                }))
+                .Append(VariantValue.Null)
+                .AppendNull()
+                .Build();
+            var schema = new Schema([
+                new Field("id", Int32Type.Default, false),
+                new Field("v", variants.ExtensionType, true),
+            ], null);
+            using var batch = new RecordBatch(schema, [
+                new Int32Array.Builder().AppendRange([1, 2, 3, 4, 5]).Build(),
+                variants,
+            ], variants.Length);
+            using (var ingest = connection.BulkIngest("variants", BulkIngestMode.Create))
+            {
+                ingest.Bind(batch, schema);
+                ingest.ExecuteUpdate();
+            }
+
+            Assert.Equal("VARIANT", GetScalarString(statement, """
+                SELECT data_type FROM information_schema.columns
+                WHERE table_name = 'variants' AND column_name = 'v'
+                """));
+
+            statement.SqlQuery = "SELECT v FROM variants ORDER BY id";
+            using var stream = statement.ExecuteQuery().Stream;
+            Assert.NotNull(stream);
+            using var result = await stream.ReadNextRecordBatchAsync();
+            Assert.NotNull(result);
+            Assert.Equal("arrow.parquet.variant", stream.Schema.FieldsList[0].Metadata["ARROW:extension:name"]);
+            var values = new VariantArray(result.Column(0));
+            Assert.Equal(variants.Length, values.Length);
+            for (int i = 0; i < variants.Length; i++)
+            {
+                Assert.Equal(variants.IsNull(i), values.IsNull(i));
+                if (!variants.IsNull(i))
+                {
+                    Assert.Equal(variants.GetVariantValue(i), values.GetVariantValue(i));
+                }
+            }
+            Assert.Null(await stream.ReadNextRecordBatchAsync());
+        }
+
+        [SkippableFact]
+        public async Task ReadShreddedVariant()
+        {
+            using var database = _duckDb.OpenDatabase("readshreddedvariant.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+            RequireVariantSupport(statement);
+
+            statement.SqlQuery = "SET variant_minimum_shredding_size = 0";
+            statement.ExecuteUpdate();
+            statement.SqlQuery = "CREATE TABLE variants(id INTEGER, v VARIANT)";
+            statement.ExecuteUpdate();
+            statement.SqlQuery = """
+                INSERT INTO variants VALUES
+                    (1, {'name': 'first', 'value': 1, 'extra': [1, 2]}::VARIANT),
+                    (2, {'name': 'second', 'value': 2}::VARIANT),
+                    (3, {'name': 'third', 'value': 3}::VARIANT),
+                    (4, 'residual'::VARIANT),
+                    (5, NULL::VARIANT)
+                """;
+            statement.ExecuteUpdate();
+            statement.SqlQuery = "CHECKPOINT";
+            statement.ExecuteUpdate();
+            Assert.Equal("SHREDDED_VECTOR", GetScalarString(statement, "SELECT DISTINCT vector_type(v) FROM variants"));
+
+            statement.SqlQuery = "SELECT v FROM variants ORDER BY id";
+            using var stream = statement.ExecuteQuery().Stream;
+            Assert.NotNull(stream);
+            Assert.Equal("arrow.parquet.variant", stream.Schema.FieldsList[0].Metadata["ARROW:extension:name"]);
+            using var batch = await stream.ReadNextRecordBatchAsync();
+            Assert.NotNull(batch);
+            var variants = new VariantArray(batch.Column(0));
+
+            // DuckDB exports internally shredded values as unshredded Arrow variants.
+            Assert.False(variants.IsShredded);
+            Assert.Equal(5, variants.Length);
+            Assert.Equal(new[] { "first", "second", "third" },
+                Enumerable.Range(0, 3).Select(i => variants.GetVariantValue(i).AsObject()["name"].AsString()));
+            Assert.Equal(new[] { 1, 2, 3 },
+                Enumerable.Range(0, 3).Select(i => variants.GetVariantValue(i).AsObject()["value"].AsInt32()));
+            Assert.Equal(new[] { 1, 2 },
+                variants.GetVariantValue(0).AsObject()["extra"].AsArray().Select(value => value.AsInt32()));
+            Assert.Equal("residual", variants.GetVariantValue(3).AsString());
+            Assert.True(variants.IsNull(4));
+            Assert.Null(await stream.ReadNextRecordBatchAsync());
+        }
+
+        [SkippableTheory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void IngestShreddedVariantIsNotSupported(bool shredObject)
+        {
+            using var database = _duckDb.OpenDatabase($"ingestshreddedvariant{shredObject}.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+            RequireVariantSupport(statement);
+
+            ShredSchema shredSchema = shredObject
+                ? ShredSchema.ForObject(new Dictionary<string, ShredSchema>
+                {
+                    { "value", ShredSchema.Primitive(ShredType.Int32) },
+                })
+                : ShredSchema.Primitive(ShredType.Int32);
+            VariantValue typed = shredObject
+                ? VariantValue.FromObject(new Dictionary<string, VariantValue>
+                {
+                    { "value", VariantValue.FromInt32(42) },
+                    { "extra", VariantValue.FromString("unshredded field") },
+                })
+                : VariantValue.FromInt32(42);
+            VariantValue[] expected = [typed, VariantValue.FromString("residual"), VariantValue.Null];
+            var (metadata, rows) = VariantShredder.Shred(expected, shredSchema);
+            using var variants = ShreddedVariantArrayBuilder.Build(shredSchema, metadata, rows);
+            Assert.True(variants.IsShredded);
+            IArrowArray? typedValues = variants.TypedValueArray;
+            Assert.NotNull(typedValues);
+            Assert.False(typedValues.IsNull(0));
+            Assert.True(typedValues.IsNull(1));
+            Assert.False(variants.GetValueBytes(1).IsEmpty);
+            if (shredObject)
+            {
+                Assert.False(variants.GetValueBytes(0).IsEmpty);
+            }
+            for (int i = 0; i < expected.Length; i++)
+            {
+                Assert.Equal(expected[i], variants.GetLogicalVariantValue(i));
+            }
+
+            var schema = new Schema([new Field("v", variants.ExtensionType, true)], null);
+            using var batch = new RecordBatch(schema, [variants], variants.Length);
+            using var ingest = connection.BulkIngest("variants", BulkIngestMode.Create);
+            AdbcException exception = Assert.ThrowsAny<AdbcException>(() =>
+            {
+                ingest.Bind(batch, schema);
+                ingest.ExecuteUpdate();
+            });
+            _output.WriteLine($"Shredded ingestion: {exception.Status}: {exception.Message}");
+            Assert.Contains("typed_value", exception.Message);
+            Assert.Contains("not supported", exception.Message);
+        }
+
         [Fact]
         public void PrepareAndBind()
         {
@@ -277,6 +478,424 @@ namespace Apache.Arrow.Adbc.Tests
             Assert.Equal(3, found.Count);
             found.ExceptWith(["system", "tablecatalogs", "temp"]);
             Assert.Empty(found);
+        }
+
+        [Fact]
+        public void DriverVersionIs11()
+        {
+            Assert.Equal(AdbcVersion.Version_1_1_0, _duckDb.DriverVersion);
+        }
+
+        [Fact]
+        public void ExecuteSchema()
+        {
+            using var database = _duckDb.OpenDatabase("executeschema.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+
+            statement.SqlQuery = "CREATE TABLE test(foo INTEGER, bar VARCHAR, baz DOUBLE);";
+            statement.ExecuteUpdate();
+
+            statement.SqlQuery = "SELECT foo, bar, baz, foo + 1 AS foo1 FROM test";
+            Schema schema = statement.ExecuteSchema();
+
+            Assert.Equal(4, schema.FieldsList.Count);
+            Assert.Equal("foo", schema.FieldsList[0].Name);
+            Assert.Equal(ArrowTypeId.Int32, schema.FieldsList[0].DataType.TypeId);
+            Assert.Equal("bar", schema.FieldsList[1].Name);
+            Assert.Equal(ArrowTypeId.String, schema.FieldsList[1].DataType.TypeId);
+            Assert.Equal("baz", schema.FieldsList[2].Name);
+            Assert.Equal(ArrowTypeId.Double, schema.FieldsList[2].DataType.TypeId);
+            Assert.Equal("foo1", schema.FieldsList[3].Name);
+            Assert.Equal(ArrowTypeId.Int32, schema.FieldsList[3].DataType.TypeId);
+
+            // The schema should match what's actually returned on execution
+            var results = statement.ExecuteQuery();
+            using var stream = results.Stream;
+            Assert.NotNull(stream);
+            Assert.Equal(schema.FieldsList.Count, stream.Schema.FieldsList.Count);
+            for (int i = 0; i < schema.FieldsList.Count; i++)
+            {
+                Assert.Equal(schema.FieldsList[i].Name, stream.Schema.FieldsList[i].Name);
+                Assert.Equal(schema.FieldsList[i].DataType.TypeId, stream.Schema.FieldsList[i].DataType.TypeId);
+            }
+        }
+
+        [Fact]
+        public void ExecuteSchemaDoesNotExecute()
+        {
+            using var database = _duckDb.OpenDatabase("executeschemanoexec.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+
+            statement.SqlQuery = "CREATE TABLE test(foo INTEGER);";
+            statement.ExecuteUpdate();
+
+            statement.SqlQuery = "INSERT INTO test VALUES (1), (2) RETURNING foo";
+            Schema schema = statement.ExecuteSchema();
+            Assert.Single(schema.FieldsList);
+            Assert.Equal(ArrowTypeId.Int32, schema.FieldsList[0].DataType.TypeId);
+
+            Assert.Equal(0, GetResultCount(statement, "SELECT * FROM test"));
+        }
+
+        [Fact]
+        public void CancelIdle()
+        {
+            using var database = _duckDb.OpenDatabase("cancelidle.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+
+            // Cancelling with nothing in progress is a no-op, and doesn't break later use
+            connection.Cancel();
+            statement.Cancel();
+
+            Assert.Equal(3, GetResultCount(statement, "SELECT * FROM range(3)"));
+        }
+
+        [Fact]
+        public async Task CancelStatement()
+        {
+            using var database = _duckDb.OpenDatabase("cancelstatement.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+
+            statement.SqlQuery = "SELECT count(*) FROM range(1000000000000)";
+            Task<long> query = Task.Run(() => GetResultCount(statement.ExecuteQuery()));
+
+            await CancelUntilCompleteAsync(statement.Cancel, query);
+            AdbcException exception = await Assert.ThrowsAnyAsync<AdbcException>(() => query);
+            // DuckDB reports interruption as InvalidArgument rather than Cancelled
+            Assert.Contains("Interrupted", exception.Message);
+        }
+
+        [Fact]
+        public async Task CancelConnection()
+        {
+            using var database = _duckDb.OpenDatabase("cancelconnection.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+
+            statement.SqlQuery = "SELECT count(*) FROM range(1000000000000)";
+            Task<long> query = Task.Run(() => GetResultCount(statement.ExecuteQuery()));
+
+            await CancelUntilCompleteAsync(connection.Cancel, query);
+            AdbcException exception = await Assert.ThrowsAnyAsync<AdbcException>(() => query);
+            // DuckDB reports interruption as InvalidArgument rather than Cancelled
+            Assert.Contains("Interrupted", exception.Message);
+        }
+
+        [Fact]
+        public void DatabaseGetOption()
+        {
+            using var database = _duckDb.OpenDatabase("dbgetoption.db");
+
+            Assert.EndsWith("dbgetoption.db", database.GetOption("path"));
+            Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => database.GetOption("unknown")).Status);
+        }
+
+        [Fact]
+        public void TypedDatabaseOptionsAreAppliedAtOpen()
+        {
+            // A long goes through DatabaseSetOptionInt rather than DatabaseSetOption
+            using var database = _duckDb.OpenDatabase("typedopen.db", new Dictionary<string, object> { { "threads", 3L } });
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+
+            Assert.Equal("3", GetScalarString(statement, "SELECT current_setting('threads')::VARCHAR"));
+            Assert.Equal("3", database.GetOption("threads"));
+        }
+
+        [Fact]
+        public async Task OpenAndConnectAsync()
+        {
+            using var database = await _duckDb.OpenDatabaseAsync("openasync.db");
+            using var connection = await database.ConnectAsync(null);
+            using var statement = connection.CreateStatement();
+
+            Assert.Equal(3, GetResultCount(statement, "SELECT * FROM range(3)"));
+        }
+
+        [Fact]
+        public void StandardConnectionOptionsComeFromTheDriver()
+        {
+            using var database = _duckDb.OpenDatabase("standardoptions.db");
+            using var connection = database.Connect(null);
+
+            // Nothing has been set through this connection, so these are read from DuckDB
+            Assert.True(connection.AutoCommit);
+            Assert.Equal(AdbcOptions.Enabled, connection.GetOption(AdbcOptions.Connection.Autocommit));
+
+            connection.AutoCommit = false;
+            Assert.Equal(AdbcOptions.Disabled, connection.GetOption(AdbcOptions.Connection.Autocommit));
+
+            // In DuckDB 1.5.6, reading the current catalog or schema causes a later attempt
+            // to disable autocommit to be silently ignored, so these are checked last.
+            Assert.Equal("standardoptions", connection.CurrentCatalog);
+            Assert.Equal("main", connection.CurrentDbSchema);
+        }
+
+        [Fact]
+        public async Task SetCurrentDbSchema()
+        {
+            using var database = _duckDb.OpenDatabase("currentschema.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+
+            statement.SqlQuery = "CREATE SCHEMA other";
+            statement.ExecuteUpdate();
+
+            await connection.SetOptionAsync(AdbcOptions.Connection.CurrentDbSchema, "other");
+            Assert.Equal("other", await connection.GetOptionAsync(AdbcOptions.Connection.CurrentDbSchema));
+            Assert.Equal("other", connection.CurrentDbSchema);
+
+            statement.SqlQuery = "CREATE TABLE unqualified(x INTEGER)";
+            statement.ExecuteUpdate();
+            Assert.Equal("other", GetScalarString(statement, "SELECT schema_name FROM duckdb_tables() WHERE table_name = 'unqualified'"));
+
+            connection.CurrentDbSchema = "main";
+            Assert.Equal("main", GetScalarString(statement, "SELECT current_schema()"));
+        }
+
+        [Fact]
+        public void ConnectWithTypedOptions()
+        {
+            using var database = _duckDb.OpenDatabase("connecttyped.db");
+
+            // The bool is sent to DuckDB as the string "false". (That it's sent before the
+            // connection is initialized is covered by ExportedDriverRoundTrip11Tests.)
+            using var connection = database.ConnectWithTypedOptions(new Dictionary<string, object>
+            {
+                { AdbcOptions.Connection.Autocommit, false },
+            });
+
+            Assert.Equal(AdbcOptions.Disabled, connection.GetOption(AdbcOptions.Connection.Autocommit));
+            Assert.False(connection.AutoCommit);
+        }
+
+        [Fact]
+        public async Task ConnectWithTypedOptionsAsync()
+        {
+            using var database = _duckDb.OpenDatabase("connecttypedasync.db");
+
+            using var connection = await database.ConnectWithTypedOptionsAsync(new Dictionary<string, object>
+            {
+                { AdbcOptions.Connection.Autocommit, false },
+            });
+
+            Assert.Equal(AdbcOptions.Disabled, connection.GetOption(AdbcOptions.Connection.Autocommit));
+        }
+
+        [Fact]
+        public void UnsupportedOptions()
+        {
+            using var database = _duckDb.OpenDatabase("unsupportedoptions.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+
+            Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => database.GetOptionInt64("unknown")).Status);
+            Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => database.GetOptionDouble("unknown")).Status);
+            Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => database.GetOptionBytes("unknown")).Status);
+            Assert.Equal(AdbcStatusCode.NotImplemented, Assert.ThrowsAny<AdbcException>(() => database.SetOptionBytes("unknown", new byte[] { 1 })).Status);
+            // DuckDB 1.5.6 accepts unknown string, integer and double options on an open
+            // database without reporting an error, so those setters aren't checked here.
+
+            Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => connection.GetOption("unknown")).Status);
+            Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => connection.GetOptionInt64("unknown")).Status);
+            Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => connection.GetOptionDouble("unknown")).Status);
+            Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => connection.GetOptionBytes("unknown")).Status);
+            Assert.Equal(AdbcStatusCode.NotImplemented, Assert.ThrowsAny<AdbcException>(() => connection.SetOption("unknown", "x")).Status);
+            Assert.Equal(AdbcStatusCode.NotImplemented, Assert.ThrowsAny<AdbcException>(() => connection.SetOptionDouble("unknown", 1.5)).Status);
+            Assert.Equal(AdbcStatusCode.NotImplemented, Assert.ThrowsAny<AdbcException>(() => connection.SetOptionBytes("unknown", new byte[] { 1 })).Status);
+
+            Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => statement.GetOption("unknown")).Status);
+            Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => statement.GetOptionInt64("unknown")).Status);
+            Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => statement.GetOptionDouble("unknown")).Status);
+            Assert.Equal(AdbcStatusCode.NotFound, Assert.ThrowsAny<AdbcException>(() => statement.GetOptionBytes("unknown")).Status);
+            Assert.Equal(AdbcStatusCode.NotImplemented, Assert.ThrowsAny<AdbcException>(() => statement.SetOptionDouble("unknown", 1.5)).Status);
+            Assert.Equal(AdbcStatusCode.NotImplemented, Assert.ThrowsAny<AdbcException>(() => statement.SetOptionBytes("unknown", new byte[] { 1 })).Status);
+
+            // The spec says NotImplemented, but DuckDB 1.5.6 returns InvalidArgument for
+            // unknown string and integer statement options. Accept either so a DuckDB fix
+            // doesn't break this.
+            AdbcStatusCode[] unknownStatementOption = { AdbcStatusCode.NotImplemented, AdbcStatusCode.InvalidArgument };
+            Assert.Contains(Assert.ThrowsAny<AdbcException>(() => statement.SetOption("unknown", "x")).Status, unknownStatementOption);
+            Assert.Contains(Assert.ThrowsAny<AdbcException>(() => statement.SetOptionInt64("unknown", 1)).Status, unknownStatementOption);
+        }
+
+        [Fact]
+        public void StatementGetOption()
+        {
+            using var database = _duckDb.OpenDatabase("statementoption.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+
+            statement.SetOption(AdbcOptions.Ingest.TargetTable, "target");
+            Assert.Equal("target", statement.GetOption(AdbcOptions.Ingest.TargetTable));
+        }
+
+        [Fact]
+        public void ErrorDetails()
+        {
+            using var database = _duckDb.OpenDatabase("errordetails.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+
+            statement.SqlQuery = "SELECT CAST('abc' AS INTEGER)";
+            AdbcException exception = Assert.ThrowsAny<AdbcException>(() => statement.ExecuteQuery());
+
+            Assert.Equal(AdbcStatusCode.InvalidArgument, exception.Status);
+            Assert.Contains("Conversion Error", exception.Message);
+            KeyValuePair<string, byte[]> detail = Assert.Single(exception.Details, d => d.Key == "duckdb:error_type");
+            Assert.Equal("Conversion", Encoding.UTF8.GetString(detail.Value));
+
+            // The 1.1 error layout reuses the vendor code field, so it mustn't leak through
+            Assert.Equal(0, exception.NativeError);
+        }
+
+        [Fact]
+        public async Task Statistics()
+        {
+            using var database = _duckDb.OpenDatabase("statistics.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+
+            using (IArrowArrayStream names = connection.GetStatisticsNames())
+            {
+                Assert.Equal(new[] { "statistic_name", "statistic_key" }, names.Schema.FieldsList.Select(f => f.Name));
+                Assert.Equal(ArrowTypeId.String, names.Schema.FieldsList[0].DataType.TypeId);
+                Assert.Equal(ArrowTypeId.Int16, names.Schema.FieldsList[1].DataType.TypeId);
+            }
+
+            statement.SqlQuery = "CREATE TABLE stats AS SELECT * FROM range(10) r(x)";
+            statement.ExecuteUpdate();
+
+            using IArrowArrayStream statistics = connection.GetStatistics(null, null, "stats", approximate: false);
+            Assert.Equal(new[] { "catalog_name", "catalog_db_schemas" }, statistics.Schema.FieldsList.Select(f => f.Name));
+
+            var catalogs = new List<string?>();
+            RecordBatch? batch;
+            while ((batch = await statistics.ReadNextRecordBatchAsync()) != null)
+            {
+                using (batch)
+                {
+                    StringArray names = (StringArray)batch.Column(0);
+                    for (int i = 0; i < names.Length; i++)
+                    {
+                        catalogs.Add(names.GetString(i));
+                    }
+                }
+            }
+            Assert.Contains("statistics", catalogs);
+        }
+
+        [Fact]
+        public async Task ExecuteAsyncWithCancellationToken()
+        {
+            using var database = _duckDb.OpenDatabase("executeasync.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+            using var cts = new CancellationTokenSource();
+
+            statement.SqlQuery = "CREATE TABLE test(x INTEGER)";
+            await statement.ExecuteUpdateAsync(cts.Token);
+
+            statement.SqlQuery = "INSERT INTO test VALUES (1), (2)";
+            UpdateResult update = await statement.ExecuteUpdateAsync(cts.Token);
+            Assert.Equal(2, update.AffectedRows);
+
+            statement.SqlQuery = "SELECT * FROM test";
+            QueryResult result = await statement.ExecuteQueryAsync(cts.Token);
+            Assert.Equal(2, GetResultCount(result));
+        }
+
+        [Fact]
+        public async Task CancellationTokenCancelsQuery()
+        {
+            using var database = _duckDb.OpenDatabase("canceltoken.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+            using var cts = new CancellationTokenSource();
+
+            statement.SqlQuery = "SELECT count(*) FROM range(1000000000000)";
+            Task<QueryResult> query = statement.ExecuteQueryAsync(cts.Token).AsTask();
+
+            await Task.Delay(500);
+            cts.Cancel();
+
+            // The token calls Cancel once. Keep cancelling in case that happened before
+            // DuckDB started the query; the token stays cancelled either way.
+            await CancelUntilCompleteAsync(statement.Cancel, query);
+            OperationCanceledException exception = await Assert.ThrowsAnyAsync<OperationCanceledException>(() => query);
+            Assert.Equal(cts.Token, exception.CancellationToken);
+
+            // There's no inner exception if the token was cancelled before the work started
+            if (exception.InnerException != null)
+            {
+                // DuckDB reports interruption as InvalidArgument rather than Cancelled
+                Assert.Contains("Interrupted", Assert.IsAssignableFrom<AdbcException>(exception.InnerException).Message);
+            }
+        }
+
+        [Fact]
+        public async Task TransactionsAsync()
+        {
+            using var database = _duckDb.OpenDatabase("transactionsasync.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+
+            statement.SqlQuery = "CREATE TABLE test(x INTEGER)";
+            statement.ExecuteUpdate();
+
+            connection.AutoCommit = false;
+
+            statement.SqlQuery = "INSERT INTO test VALUES (1)";
+            statement.ExecuteUpdate();
+            await connection.RollbackAsync();
+            Assert.Equal(0, GetResultCount(statement, "SELECT * FROM test"));
+
+            // The inserting connection can see its own uncommitted row, so check from another one
+            using var observer = database.Connect(null);
+            using var observerStatement = observer.CreateStatement();
+
+            statement.SqlQuery = "INSERT INTO test VALUES (2)";
+            statement.ExecuteUpdate();
+            Assert.Equal(0, GetResultCount(observerStatement, "SELECT * FROM test"));
+            await connection.CommitAsync();
+            Assert.Equal(1, GetResultCount(observerStatement, "SELECT * FROM test"));
+        }
+
+        /// <summary>
+        /// Calls <paramref name="cancel"/> until <paramref name="query"/> finishes. DuckDB clears
+        /// an interrupt when a query begins, so a single Cancel that arrives before the query
+        /// has started (as it can on a busy CI runner) would leave the query running indefinitely.
+        /// </summary>
+        private static async Task CancelUntilCompleteAsync(Action cancel, Task query)
+        {
+            DateTime deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
+            while (!query.IsCompleted && DateTime.UtcNow < deadline)
+            {
+                cancel();
+                await Task.WhenAny(query, Task.Delay(250));
+            }
+            Assert.True(query.IsCompleted, "The query was not cancelled");
+        }
+
+        private void RequireVariantSupport(AdbcStatement statement)
+        {
+            string? version = GetScalarString(statement, "SELECT version()");
+            Assert.NotNull(version);
+            _output.WriteLine($"DuckDB version: {version}");
+            Skip.If(Version.Parse(version.TrimStart('v').Split('-')[0]).Major < 2,
+                "Reading and ingesting arrow.parquet.variant requires DuckDB 2.0 or later.");
+        }
+
+        private static string? GetScalarString(AdbcStatement statement, string query)
+        {
+            statement.SqlQuery = query;
+            using IArrowArrayStream stream = statement.ExecuteQuery().Stream ?? throw new InvalidOperationException("no results found");
+            using RecordBatch batch = stream.ReadNextRecordBatchAsync().Result ?? throw new InvalidOperationException("no rows found");
+            return ((StringArray)batch.Column(0)).GetString(0);
         }
 
         private static long GetResultCount(AdbcStatement statement, string query)

@@ -81,6 +81,8 @@ class Status {
     }
   }
 
+  std::string message() const { return impl_ ? impl_->message : ""; }
+
   /// \brief Export this status to an AdbcError.
   AdbcStatusCode ToAdbc(AdbcError* adbc_error) const {
     if (impl_ == nullptr) return ADBC_STATUS_OK;
@@ -338,6 +340,7 @@ STATUS_CTOR(Internal, INTERNAL)
 STATUS_CTOR(InvalidArgument, INVALID_ARGUMENT)
 STATUS_CTOR(InvalidState, INVALID_STATE)
 STATUS_CTOR(IO, IO)
+STATUS_CTOR(Integrity, INTEGRITY)
 STATUS_CTOR(NotFound, NOT_FOUND)
 STATUS_CTOR(NotImplemented, NOT_IMPLEMENTED)
 STATUS_CTOR(Unknown, UNKNOWN)

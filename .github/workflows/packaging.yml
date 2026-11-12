@@ -25,6 +25,7 @@ on:
       - ".env"
       - "c/**"
       - "ci/**"
+      - "!ci/rust-nightly/**"
       - "dev/release/verify-apt.sh"
       - "dev/release/verify-yum.sh"
       - "glib/**"
@@ -87,7 +88,7 @@ jobs:
             apache-arrow-adbc-${VERSION} \
             $(git log -n 1 --format=%h)
 
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: source
           retention-days: 7
@@ -101,11 +102,12 @@ jobs:
       - source
 
     strategy:
+      max-parallel: 2
       matrix:
         os: ["ubuntu-latest", "windows-latest", "macos-15-intel"]
 
     steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: source
 
@@ -138,7 +140,7 @@ jobs:
           popd
 
       - name: Upload Go binaries
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: go-${{ matrix.os }}
           retention-days: 7
@@ -153,7 +155,7 @@ jobs:
       - go-binaries
 
     steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: source
 
@@ -175,7 +177,7 @@ jobs:
         env:
           GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
 
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: go-*
           path: adbc/go/adbc/pkg
@@ -196,7 +198,7 @@ jobs:
           popd
 
       - name: Archive nupkg
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: csharp
           retention-days: 7
@@ -210,7 +212,7 @@ jobs:
     needs:
       - source
     steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: source
 
@@ -247,7 +249,7 @@ jobs:
           popd
 
       - name: Archive docs
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: docs
           retention-days: 2
@@ -260,6 +262,7 @@ jobs:
       - source
     runs-on: ${{ matrix.runner }}
     strategy:
+      max-parallel: 2
       matrix:
         include:
           - { os: Linux, arch: amd64, runner: ubuntu-latest }
@@ -268,7 +271,7 @@ jobs:
           - { os: Windows, arch: amd64, runner: windows-latest }
 
     steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: source
       - name: Extract source archive
@@ -302,7 +305,7 @@ jobs:
           ls -laR artifacts
           mv artifacts artifacts-${{ matrix.os }}-${{ matrix.arch }}
           tar czf artifacts-${{ matrix.os }}-${{ matrix.arch }}.tgz artifacts-${{ matrix.os }}-${{ matrix.arch }}
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: jni-artifacts-${{ matrix.os }}-${{ matrix.arch }}
           retention-days: 7
@@ -316,11 +319,11 @@ jobs:
       - source
       - java-jni
     steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: source
 
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           path: artifacts
           pattern: jni-artifacts-*
@@ -378,7 +381,7 @@ jobs:
           fi
 
       - name: Archive JARs
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: java
           retention-days: 7
@@ -392,6 +395,7 @@ jobs:
     needs:
       - source
     strategy:
+      max-parallel: 2
       fail-fast: false
       matrix:
         target:
@@ -402,7 +406,7 @@ jobs:
           - ubuntu-jammy
           - ubuntu-noble
     steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: source
 
@@ -443,7 +447,7 @@ jobs:
           mv apache-arrow-adbc-$VERSION.tar.gz adbc/ci/linux-packages/
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@95ef2b042f9d7a56d8268cba8559e2842e2ad01b  # v1.321.0
+        uses: ruby/setup-ruby@de492cf36cbab201753d720ce4f4e336cd688c94  # v1.336.0
         with:
           ruby-version: ruby
 
@@ -456,7 +460,7 @@ jobs:
           lookup-only: true
 
       - name: Login to GitHub Container registry
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f  # v4.6.0
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6  # v4.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -480,7 +484,7 @@ jobs:
           tar czf ${{ matrix.target }}.tar.gz ${DISTRIBUTION}
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ matrix.target }}
           retention-days: 7
@@ -534,7 +538,7 @@ jobs:
         # TODO: "linux_aarch64_"
         arch: ["linux_64_"]
     steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: source
 
@@ -569,7 +573,7 @@ jobs:
           popd
 
       - name: Archive Conda packages
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: python-${{ matrix.arch }}-conda
           retention-days: 7
@@ -603,7 +607,7 @@ jobs:
       run:
         shell: bash -l -eo pipefail {0}
     steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: source
 
@@ -627,9 +631,9 @@ jobs:
           GITHUB_EVENT_INPUTS_UPLOAD_ARTIFACTS: ${{ github.event.inputs.upload_artifacts }}
           GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
 
-      - uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5  # v4.0.1
+      - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb  # v4.1.0
         with:
-          miniforge-version: latest
+          miniforge-version: 26.7.2-1
           use-only-tar-bz2: false
           use-mamba: true
 
@@ -646,7 +650,7 @@ jobs:
           ./adbc/ci/scripts/python_conda_build.sh $(pwd)/adbc ${ARCH_CONDA_FORGE}.yaml $(pwd)/adbc/build
 
       - name: Archive Conda packages
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: python-${{ matrix.arch }}-conda
           retention-days: 7
@@ -666,6 +670,7 @@ jobs:
     needs:
       - source
     strategy:
+      max-parallel: 2
       fail-fast: false
       matrix:
         arch: ["amd64", "arm64v8"]
@@ -677,7 +682,7 @@ jobs:
             platform: "linux/arm64/v8"
             runs_on: "ubuntu-24.04-arm"
     steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: source
 
@@ -720,7 +725,7 @@ jobs:
           popd
 
       - name: Archive wheels
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: python-${{ matrix.arch }}-manylinux${{ matrix.manylinux_version }}
           retention-days: 7
@@ -729,14 +734,6 @@ jobs:
             adbc/python/adbc_driver_manager/repaired_wheels/*.whl
             adbc/python/adbc_driver_postgresql/repaired_wheels/*.whl
             adbc/python/adbc_driver_sqlite/repaired_wheels/*.whl
-
-      - name: Test wheel 3.10
-        env:
-          ARCH: ${{ matrix.arch }}
-          PLATFORM: ${{ matrix.platform }}
-        run: |
-          pushd adbc
-          env PYTHON=3.10 docker compose run python-wheel-manylinux-test
 
       - name: Test wheel 3.11
         env:
@@ -778,12 +775,29 @@ jobs:
           pushd adbc
           env PYTHON=3.14t docker compose run python-wheel-manylinux-freethreaded-test
 
+      - name: Test wheel 3.15
+        env:
+          ARCH: ${{ matrix.arch }}
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          pushd adbc
+          env PYTHON=3.15 docker compose run python-wheel-manylinux-test
+
+      - name: Test wheel 3.15t
+        env:
+          ARCH: ${{ matrix.arch }}
+          PLATFORM: ${{ matrix.platform }}
+        run: |
+          pushd adbc
+          env PYTHON=3.15t docker compose run python-wheel-manylinux-freethreaded-test
+
   python-macos:
     name: "Python ${{ matrix.arch }} macOS"
     runs-on: ${{ matrix.os }}
     needs:
       - source
     strategy:
+      max-parallel: 1
       fail-fast: false
       matrix:
         os: ["macos-15-intel", "macos-latest"]
@@ -798,7 +812,7 @@ jobs:
       # Where to install vcpkg
       VCPKG_ROOT: "${{ github.workspace }}/vcpkg"
     steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: source
 
@@ -857,7 +871,7 @@ jobs:
           popd
 
       - name: Archive wheels
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: python-${{ matrix.arch }}-macos
           retention-days: 7
@@ -870,16 +884,6 @@ jobs:
       # N.B. delocate (called above) will install these Python versions for
       # us. You can get the interpreter path by inspecting CI output (search
       # for "Building cp314-macos"...)
-
-      - name: Test wheel 3.10
-        run: |
-          pushd adbc
-
-          /Library/Frameworks/Python.framework/Versions/3.10/bin/python3.10 -m venv test-env-310
-          source test-env-310/bin/activate
-          export PYTHON_VERSION=3.10
-          ./ci/scripts/python_wheel_unix_test.sh $(pwd)
-          deactivate
 
       - name: Test wheel 3.11
         run: |
@@ -932,6 +936,27 @@ jobs:
           ./ci/scripts/python_wheel_unix_test.sh $(pwd)
           deactivate
 
+      - name: Test wheel 3.15
+        run: |
+          pushd adbc
+
+          /Library/Frameworks/Python.framework/Versions/3.15/bin/python3.15 -m venv test-env-315
+          source test-env-315/bin/activate
+          export PYTHON_VERSION=3.15
+          ./ci/scripts/python_wheel_unix_test.sh $(pwd)
+          deactivate
+
+      - name: Test wheel 3.15t
+        run: |
+          pushd adbc
+
+          /Library/Frameworks/PythonT.framework/Versions/3.15/bin/python3.15t -m venv test-env-315t
+          source test-env-315t/bin/activate
+          export PYTHON_GIL=0
+          export PYTHON_VERSION=3.15t
+          ./ci/scripts/python_wheel_unix_test.sh $(pwd)
+          deactivate
+
       - name: Assemble logs
         if: failure()
         run: |
@@ -945,7 +970,7 @@ jobs:
 
       - name: Upload failure logs
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: vcpkg-logs-${{ matrix.os }}-${{ matrix.arch }}
           retention-days: 7
@@ -957,6 +982,7 @@ jobs:
     needs:
       - source
     strategy:
+      max-parallel: 1
       fail-fast: false
       matrix:
         include:
@@ -966,7 +992,7 @@ jobs:
       VCPKG_DEFAULT_TRIPLET: ${{ matrix.python_arch }}-windows-static-release
       VCPKG_ROOT: "${{ github.workspace }}/vcpkg"
     steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: source
 
@@ -1004,7 +1030,7 @@ jobs:
       - name: Install MSYS2
         if: matrix.arch == 'arm64'
         id: msys2
-        uses: msys2/setup-msys2@66cd2cce69caa17b53920067426061ca1de3a884 # v2.32.0
+        uses: msys2/setup-msys2@ec48f7c5447b3140e2b088413ae3a55687bccb6e # v2.33.0
         with:
           msystem: CLANGARM64
           update: true
@@ -1034,19 +1060,9 @@ jobs:
           cache: false  # disable to protect against cache poisoning
           cache-dependency-path: adbc/go/adbc/go.sum
 
-      - name: Install Python 3.10
-        if: matrix.arch == 'amd64'
-        id: python310
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          architecture: ${{ matrix.python_arch }}
-          check-latest: true
-          python-version: "3.10"
-          update-environment: false
-
       - name: Install Python 3.11
         id: python311
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           architecture: ${{ matrix.python_arch }}
           check-latest: true
@@ -1055,7 +1071,7 @@ jobs:
 
       - name: Install Python 3.12
         id: python312
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           architecture: ${{ matrix.python_arch }}
           check-latest: true
@@ -1064,7 +1080,7 @@ jobs:
 
       - name: Install Python 3.13
         id: python313
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           architecture: ${{ matrix.python_arch }}
           check-latest: true
@@ -1073,7 +1089,7 @@ jobs:
 
       - name: Install Python 3.14
         id: python314
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           architecture: ${{ matrix.python_arch }}
           check-latest: true
@@ -1082,11 +1098,29 @@ jobs:
 
       - name: Install Python 3.14t
         id: python314t
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           architecture: ${{ matrix.python_arch }}
           check-latest: true
           python-version: "3.14t"
+          update-environment: false
+
+      - name: Install Python 3.15
+        id: python315
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          architecture: ${{ matrix.python_arch }}
+          check-latest: true
+          python-version: "3.15"
+          update-environment: false
+
+      - name: Install Python 3.15t
+        id: python315t
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          architecture: ${{ matrix.python_arch }}
+          check-latest: true
+          python-version: "3.15t"
           update-environment: false
 
       - name: Build driver wheels
@@ -1107,22 +1141,24 @@ jobs:
       - name: Build driver manager wheels
         shell: pwsh
         env:
-          PYTHON_310: ${{ steps.python310.outputs.python-path }}
           PYTHON_311: ${{ steps.python311.outputs.python-path }}
           PYTHON_312: ${{ steps.python312.outputs.python-path }}
           PYTHON_313: ${{ steps.python313.outputs.python-path }}
           PYTHON_314: ${{ steps.python314.outputs.python-path }}
           PYTHON_314T: ${{ steps.python314t.outputs.python-path }}
+          PYTHON_315: ${{ steps.python315.outputs.python-path }}
+          PYTHON_315T: ${{ steps.python315t.outputs.python-path }}
           SETUPTOOLS_SCM_PRETEND_VERSION: ${{ env.VERSION }}
         run: |
           $OriginalPath = $env:PATH
           $Pythons = @(
-            @{ Version = "3.10"; Path = $env:PYTHON_310 },
             @{ Version = "3.11"; Path = $env:PYTHON_311 },
             @{ Version = "3.12"; Path = $env:PYTHON_312 },
             @{ Version = "3.13"; Path = $env:PYTHON_313 },
             @{ Version = "3.14"; Path = $env:PYTHON_314 },
-            @{ Version = "3.14t"; Path = $env:PYTHON_314T }
+            @{ Version = "3.14t"; Path = $env:PYTHON_314T },
+            @{ Version = "3.15"; Path = $env:PYTHON_315 },
+            @{ Version = "3.15t"; Path = $env:PYTHON_315T }
           )
           Set-Location adbc
           foreach ($Python in $Pythons) {
@@ -1139,7 +1175,7 @@ jobs:
           }
 
       - name: Archive wheels
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: python-windows-${{ matrix.arch }}
           retention-days: 7
@@ -1153,22 +1189,24 @@ jobs:
       - name: Test wheel
         shell: pwsh
         env:
-          PYTHON_310: ${{ steps.python310.outputs.python-path }}
           PYTHON_311: ${{ steps.python311.outputs.python-path }}
           PYTHON_312: ${{ steps.python312.outputs.python-path }}
           PYTHON_313: ${{ steps.python313.outputs.python-path }}
           PYTHON_314: ${{ steps.python314.outputs.python-path }}
           PYTHON_314T: ${{ steps.python314t.outputs.python-path }}
+          PYTHON_315: ${{ steps.python315.outputs.python-path }}
+          PYTHON_315T: ${{ steps.python315t.outputs.python-path }}
         run: |
           $DriverDir = Join-Path $PWD "adbc/build/bin"
           $OriginalPath = "$DriverDir;$env:PATH"
           $Pythons = @(
-            @{ Version = "3.10"; Path = $env:PYTHON_310 },
             @{ Version = "3.11"; Path = $env:PYTHON_311 },
             @{ Version = "3.12"; Path = $env:PYTHON_312 },
             @{ Version = "3.13"; Path = $env:PYTHON_313 },
             @{ Version = "3.14"; Path = $env:PYTHON_314 },
-            @{ Version = "3.14t"; Path = $env:PYTHON_314T }
+            @{ Version = "3.14t"; Path = $env:PYTHON_314T },
+            @{ Version = "3.15"; Path = $env:PYTHON_315 },
+            @{ Version = "3.15t"; Path = $env:PYTHON_315T }
           )
           Set-Location adbc
           foreach ($Python in $Pythons) {
@@ -1176,6 +1214,7 @@ jobs:
               continue
             }
             Write-Host "::group::Testing wheels with Python $($Python.Version)"
+            Remove-Item -Path Env:PYTHON_GIL -ErrorAction SilentlyContinue
             $env:PYTHON_VERSION = $Python.Version
             $PythonDir = Split-Path $Python.Path
             $env:PATH = "$PythonDir;$OriginalPath"
@@ -1197,7 +1236,7 @@ jobs:
     needs:
       - source
     steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: source
 
@@ -1231,7 +1270,7 @@ jobs:
           popd
 
       - name: Archive sdist
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: python-sdist
           retention-days: 7
@@ -1253,6 +1292,7 @@ jobs:
     needs:
       - source
     strategy:
+      max-parallel: 2
       fail-fast: false
       matrix:
         settings:
@@ -1269,7 +1309,7 @@ jobs:
           - host: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
     steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: source
 
@@ -1283,7 +1323,7 @@ jobs:
           mv apache-arrow-adbc-${VERSION} adbc
 
       - name: Setup Node
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           package-manager-cache: false
@@ -1309,7 +1349,7 @@ jobs:
         run: codesign --sign - *.node
 
       - name: Upload Node.js binaries
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: bindings-${{ matrix.settings.target }}
           path: adbc/javascript/*.node
@@ -1322,7 +1362,7 @@ jobs:
       - source
       - node-binaries
     steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: source
 
@@ -1336,7 +1376,7 @@ jobs:
           mv apache-arrow-adbc-${VERSION} adbc
 
       - name: Setup Node
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           package-manager-cache: false
@@ -1355,7 +1395,7 @@ jobs:
         run: npm run build:ci && npm run build:ts
 
       - name: Download Node.js binaries
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: bindings-*
           path: adbc/javascript/artifacts
@@ -1375,7 +1415,7 @@ jobs:
           done
 
       - name: Upload Node.js packages
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: node-packages
           retention-days: 7
@@ -1402,7 +1442,7 @@ jobs:
       contents: write
     steps:
       - name: Get All Artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           path: release-artifacts
       - name: Release
@@ -1464,12 +1504,12 @@ jobs:
           persist-credentials: true
           submodules: recursive
       - name: Get All Artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           path: conda-packages
-      - uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5  # v4.0.1
+      - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb  # v4.1.0
         with:
-          miniforge-version: latest
+          miniforge-version: 26.7.2-1
           use-only-tar-bz2: false
           use-mamba: true
       - name: Install Dependencies
@@ -1501,7 +1541,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.13'
       - name: Clean
@@ -1530,7 +1570,7 @@ jobs:
           persist-credentials: true
           submodules: recursive
       - name: Get All Artifacts
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           path: nightly-artifacts
       - name: Upload
@@ -1556,4 +1596,5 @@ jobs:
         env:
           GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }} # zizmor: ignore[secrets-outside-env]
           NPM_REGISTRY: https://npm.fury.io/arrow-adbc-nightlies/
+          NPM_TAG: nightly
           NPM_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }} # zizmor: ignore[secrets-outside-env]

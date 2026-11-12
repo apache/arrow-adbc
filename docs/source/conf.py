@@ -29,17 +29,18 @@ sys.path.append(str(Path("./ext").resolve()))
 
 project = "ADBC"
 copyright = f"""2022–{datetime.date.today().year} The Apache Software Foundation.
-Apache Arrow, Arrow, Apache, the Apache logo, and the Apache Arrow project logo are
-either registered trademarks or trademarks of The Apache Software Foundation in the
-United States and other countries."""
+Apache Arrow, Arrow, Apache Arrow ADBC, ADBC, Apache, the Apache logo, the Apache
+Arrow project logo, and the ADBC subproject logo are either registered trademarks or
+trademarks of The Apache Software Foundation in the United States and other
+countries."""
 author = "the Apache Arrow Developers"
-release = "25 (dev)"
+release = "26 (dev)"
 # Needed to generate version switcher
 version = release
 # Override Sphinx's default title to capitalize "Documentation"
 html_title = f"{project} {release} Documentation"
 # For linking to latest downloads
-latest_release = "24"
+latest_release = "25"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -148,13 +149,11 @@ html_css_files = [
 html_static_path = ["_static"]
 html_theme = "furo"
 html_theme_options = {
-    "dark_logo": "logo-dark.png",
-    "light_logo": "logo-light.png",
     "source_repository": "https://github.com/apache/arrow-adbc/",
     "source_branch": "main",
     "source_directory": "docs/source/",
 }
-html_favicon = "_static/favicon.ico"
+# The favicons are linked in _templates/base.html
 
 # -- Options for sphinx-recipe -----------------------------------------------
 

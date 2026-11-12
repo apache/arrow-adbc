@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Data.SqlTypes;
+using Apache.Arrow.Arrays;
 using Apache.Arrow.Scalars;
 using Apache.Arrow.Types;
 
@@ -31,13 +32,13 @@ namespace Apache.Arrow.Adbc.Client
         /// Converts an Arrow <see cref="Schema"/> to a
         /// <see cref="DataTable"/> schema.
         /// </summary>
-        /// <param name="schema">The Arrow schema</param>
+        /// <param name="fields">The fields of the Arrow schema</param>
         /// <param name="adbcStatement">The AdbcStatement to use</param>
         /// <exception cref="ArgumentNullException"></exception>
-        public static DataTable ConvertArrowSchema(Schema schema, AdbcStatement adbcStatement, DecimalBehavior decimalBehavior, StructBehavior structBehavior)
+        public static DataTable ConvertArrowSchema(IReadOnlyList<Field> fields, AdbcStatement adbcStatement, DecimalBehavior decimalBehavior, StructBehavior structBehavior)
         {
-            if (schema == null)
-                throw new ArgumentNullException(nameof(schema));
+            if (fields == null)
+                throw new ArgumentNullException(nameof(fields));
 
             if (adbcStatement == null)
                 throw new ArgumentNullException(nameof(adbcStatement));
@@ -54,7 +55,7 @@ namespace Apache.Arrow.Adbc.Client
 
             int columnOrdinal = 0;
 
-            foreach (Field f in schema.FieldsList)
+            foreach (Field f in fields)
             {
                 DataRow row = table.NewRow();
 
@@ -127,8 +128,9 @@ namespace Apache.Arrow.Adbc.Client
             switch (f.DataType.TypeId)
             {
                 case ArrowTypeId.List:
-                    ListType list = (ListType)f.DataType;
-                    IArrowType valueType = list.ValueDataType;
+                case ArrowTypeId.LargeList:
+                case ArrowTypeId.FixedSizeList:
+                    IArrowType valueType = ((NestedType)f.DataType).Fields[0].DataType;
                     return GetArrowArrayType(valueType);
                 default:
                     return GetArrowType(f, decimalBehavior, structBehavior);
@@ -140,6 +142,7 @@ namespace Apache.Arrow.Adbc.Client
             switch (f.DataType.TypeId)
             {
                 case ArrowTypeId.Binary:
+                case ArrowTypeId.FixedSizedBinary:
                     return typeof(byte[]);
 
                 case ArrowTypeId.Boolean:
@@ -214,6 +217,23 @@ namespace Apache.Arrow.Adbc.Client
                     }
                     goto default;
 
+                case ArrowTypeId.Extension:
+                    switch (f.DataType)
+                    {
+                        case GuidType:
+                            return typeof(Guid);
+                        case Bool8Type:
+                            return typeof(bool);
+                        case TimestampWithOffsetType:
+                            return typeof(DateTimeOffset);
+                        case VariantType:
+                            return structBehavior == StructBehavior.JsonString ? typeof(string) : typeof(object);
+                        default:
+                            // Unrecognized extension types are surfaced as their storage values.
+                            ExtensionType extensionType = (ExtensionType)f.DataType;
+                            return ConvertArrowType(new Field(f.Name, extensionType.StorageType, f.IsNullable), decimalBehavior, structBehavior);
+                    }
+
                 default:
                     return f.DataType.GetType();
             }
@@ -266,6 +286,26 @@ namespace Apache.Arrow.Adbc.Client
                     return typeof(NullArray);
                 case ArrowTypeId.List:
                     return typeof(ListArray);
+                case ArrowTypeId.LargeList:
+                    return typeof(LargeListArray);
+                case ArrowTypeId.FixedSizeList:
+                    return typeof(FixedSizeListArray);
+                case ArrowTypeId.FixedSizedBinary:
+                    return typeof(FixedSizeBinaryArray);
+                case ArrowTypeId.Extension:
+                    switch (dataType)
+                    {
+                        case GuidType:
+                            return typeof(GuidArray);
+                        case Bool8Type:
+                            return typeof(Bool8Array);
+                        case TimestampWithOffsetType:
+                            return typeof(TimestampWithOffsetArray);
+                        case VariantType:
+                            return typeof(VariantArray);
+                        default:
+                            return typeof(ExtensionArray);
+                    }
             }
 
             throw new InvalidCastException($"Cannot determine the array type for {dataType.Name}");
@@ -273,15 +313,16 @@ namespace Apache.Arrow.Adbc.Client
 
         /// <summary>
         /// Get the IArrowType based on the input IArrowType and the desired <see cref="StructBehavior"/>.
-        /// If it's a StructType and the desired behavior is a JsonString then this returns StringType.
+        /// If it's a StructType or VariantType and the desired behavior is a JsonString then this returns StringType.
         /// Otherwise, it returns the input IArrowType.
         /// </summary>
         /// <param name="defaultType">The default IArrowType to return.</param>
-        /// <param name="structBehavior">Desired behavior if the IArrowType is a StructType.</param>
+        /// <param name="structBehavior">Desired behavior if the IArrowType is a StructType or VariantType.</param>
         /// <returns></returns>
         public static IArrowType GetArrowTypeBasedOnRequestedBehavior(IArrowType defaultType, StructBehavior structBehavior)
         {
-            return defaultType.TypeId == ArrowTypeId.Struct && structBehavior == StructBehavior.JsonString ? StringType.Default : defaultType;
+            bool isJsonType = defaultType.TypeId == ArrowTypeId.Struct || defaultType is VariantType;
+            return isJsonType && structBehavior == StructBehavior.JsonString ? StringType.Default : defaultType;
         }
     }
 }

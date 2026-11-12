@@ -439,7 +439,7 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
       case ADBC_INFO_DRIVER_NAME:
         return "ADBC SQLite Driver";
       case ADBC_INFO_DRIVER_VERSION:
-        return "(unknown)";
+        return "v1.";
       case ADBC_INFO_VENDOR_NAME:
         return "SQLite";
       case ADBC_INFO_VENDOR_VERSION:
@@ -449,6 +449,7 @@ class SqliteQuirks : public adbc_validation::DriverQuirks {
     }
   }
   bool supports_metadata_current_catalog() const override { return true; }
+  bool supports_metadata_current_db_schema() const override { return true; }
   std::string catalog() const override { return "main"; }
 };
 
@@ -709,15 +710,15 @@ class DriverManifest : public ::testing::Test {
         {"publisher", "arrow-adbc"},
         {"version", "X.Y.Z"},
         {"ADBC",
-         toml::table{
-             {"version", "1.1.0"},
+         toml::table {
+           {"version", "1.1.0"},
          }},
         {"Driver",
-         toml::table{
-             {"shared",
-              toml::table{
-                  {InternalAdbcCurrentArch(), driver_path.string()},
-              }},
+         toml::table {
+           {"shared",
+            toml::table {
+              {InternalAdbcCurrentArch(), driver_path.string()},
+            }},
          }},
     };
 
@@ -1361,6 +1362,130 @@ TEST_F(DriverManifest, CondaPrefix) {
     ASSERT_THAT(error.message,
                 ::testing::HasSubstr("not enabled at build time: Conda prefix"));
   }
+}
+
+// A driver that does not exist should be reported as NOT_FOUND no matter how
+// it was specified or which search locations are enabled.
+namespace {
+constexpr const char* kMissingDriverName =
+    "adbc_test_driver_manager_missing_driver_7c8f5482";
+
+void ExpectMissingDriverNotFound(const std::string& driver_name,
+                                 AdbcLoadFlags load_options,
+                                 const char* additional_search_path_list = nullptr) {
+  SCOPED_TRACE("driver=" + driver_name + " load_options=" + std::to_string(load_options));
+  struct AdbcDriver driver = {};
+  struct AdbcError error = {};
+  EXPECT_THAT(
+      AdbcFindLoadDriver(driver_name.c_str(), nullptr, ADBC_VERSION_1_1_0, load_options,
+                         additional_search_path_list, &driver, &error),
+      IsStatus(ADBC_STATUS_NOT_FOUND, &error));
+  if (error.release) {
+    error.release(&error);
+  }
+  if (driver.release) {
+    driver.release(&driver, nullptr);
+  }
+}
+
+std::string MissingDriverDir() {
+  return (std::filesystem::temp_directory_path() / "adbc_missing_driver_dir_7c8f5482")
+      .string();
+}
+
+std::string PlatformLibraryName(const std::string& name) {
+#if defined(_WIN32)
+  return name + ".dll";
+#elif defined(__APPLE__)
+  return "lib" + name + ".dylib";
+#else
+  return "lib" + name + ".so";
+#endif
+}
+}  // namespace
+
+TEST(DriverManagerNotFound, BareNameAllLoadFlags) {
+  constexpr AdbcLoadFlags kAllFlags =
+      ADBC_LOAD_FLAG_SEARCH_ENV | ADBC_LOAD_FLAG_SEARCH_USER |
+      ADBC_LOAD_FLAG_SEARCH_SYSTEM | ADBC_LOAD_FLAG_ALLOW_RELATIVE_PATHS;
+  for (AdbcLoadFlags flags = 0; flags <= kAllFlags; ++flags) {
+    ExpectMissingDriverNotFound(kMissingDriverName, flags);
+  }
+}
+
+TEST(DriverManagerNotFound, BareNameAdditionalSearchPath) {
+  std::string search_path = MissingDriverDir();
+  ExpectMissingDriverNotFound(kMissingDriverName, ADBC_LOAD_FLAG_DEFAULT,
+                              search_path.c_str());
+  ExpectMissingDriverNotFound(kMissingDriverName, 0, search_path.c_str());
+}
+
+TEST(DriverManagerNotFound, AbsolutePathWithoutExtension) {
+  std::string path =
+      (std::filesystem::path(MissingDriverDir()) / kMissingDriverName).string();
+  ExpectMissingDriverNotFound(path, ADBC_LOAD_FLAG_DEFAULT);
+  ExpectMissingDriverNotFound(path, 0);
+}
+
+TEST(DriverManagerNotFound, AbsolutePathWithLibraryExtension) {
+  std::string path = (std::filesystem::path(MissingDriverDir()) /
+                      PlatformLibraryName(kMissingDriverName))
+                         .string();
+  ExpectMissingDriverNotFound(path, ADBC_LOAD_FLAG_DEFAULT);
+  ExpectMissingDriverNotFound(path, 0);
+}
+
+TEST(DriverManagerNotFound, RelativePathWithLibraryExtension) {
+  ExpectMissingDriverNotFound(PlatformLibraryName(kMissingDriverName),
+                              ADBC_LOAD_FLAG_DEFAULT);
+}
+
+TEST(DriverManagerFilesystemError, LongNameInSearchPath) {
+  std::filesystem::path search_dir =
+      std::filesystem::temp_directory_path() / "adbc_filesystem_error_test";
+  std::filesystem::create_directories(search_dir);
+  std::string driver_name(300, 'x');
+
+  struct AdbcDriver driver = {};
+  struct AdbcError error = {};
+  AdbcStatusCode status = ADBC_STATUS_OK;
+  EXPECT_NO_THROW(status =
+                      AdbcFindLoadDriver(driver_name.c_str(), nullptr, ADBC_VERSION_1_1_0,
+                                         ADBC_LOAD_FLAG_DEFAULT,
+                                         search_dir.string().c_str(), &driver, &error));
+  EXPECT_EQ(status, ADBC_STATUS_NOT_FOUND);
+#if !defined(_WIN32)
+  // MSVC's std::filesystem reports a too-long name as "not found" rather than
+  // an error, so there's no error message to check on Windows.
+  EXPECT_THAT(error.message, ::testing::HasSubstr(
+                                 "could not access " +
+                                 (search_dir / (driver_name + ".toml")).string() + " ("));
+#endif
+
+  if (error.release) {
+    error.release(&error);
+  }
+  std::filesystem::remove_all(search_dir);
+}
+
+TEST(DriverManagerFilesystemError, LongNameAbsolutePath) {
+  std::filesystem::path search_dir =
+      std::filesystem::temp_directory_path() / "adbc_filesystem_error_test";
+  std::filesystem::create_directories(search_dir);
+  std::string driver_path = (search_dir / std::string(300, 'x')).string();
+
+  struct AdbcDriver driver = {};
+  struct AdbcError error = {};
+  AdbcStatusCode status = ADBC_STATUS_OK;
+  EXPECT_NO_THROW(status = AdbcFindLoadDriver(driver_path.c_str(), nullptr,
+                                              ADBC_VERSION_1_1_0, ADBC_LOAD_FLAG_DEFAULT,
+                                              nullptr, &driver, &error));
+  EXPECT_EQ(status, ADBC_STATUS_NOT_FOUND);
+
+  if (error.release) {
+    error.release(&error);
+  }
+  std::filesystem::remove_all(search_dir);
 }
 
 TEST_F(DriverManifest, ImplicitUri) {
@@ -2057,6 +2182,47 @@ TEST_F(ConnectionProfiles, ProfileNotFound) {
                                    "Also searched these paths for profiles:\n\t" +
                                    "ADBC_PROFILE_PATH: " + temp_dir.string() + "\n\t"));
   ASSERT_THAT(AdbcDatabaseRelease(&database.value, &error), IsOkStatus(&error));
+  UnsetProfilePath();
+}
+
+TEST_F(ConnectionProfiles, LongProfileFileName) {
+  std::string profile_path = (temp_dir / (std::string(300, 'x') + ".toml")).string();
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(
+      AdbcDatabaseSetOption(&database.value, "profile", profile_path.c_str(), &error),
+      IsOkStatus(&error));
+  AdbcStatusCode status = ADBC_STATUS_OK;
+  EXPECT_NO_THROW(status = AdbcDatabaseInit(&database.value, &error));
+  EXPECT_EQ(status, ADBC_STATUS_NOT_FOUND);
+#if !defined(_WIN32)
+  // MSVC's std::filesystem reports a too-long name as "not found" rather than
+  // an error, so there's no error message to check on Windows.
+  EXPECT_THAT(error.message, ::testing::HasSubstr("Could not access profile file " +
+                                                  profile_path + ": "));
+#endif
+}
+
+TEST_F(ConnectionProfiles, LongProfileNameInSearchPath) {
+  SetProfilePath(temp_dir.string().c_str());
+  std::string profile_name(300, 'x');
+
+  adbc_validation::Handle<struct AdbcDatabase> database;
+  ASSERT_THAT(AdbcDatabaseNew(&database.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(
+      AdbcDatabaseSetOption(&database.value, "profile", profile_name.c_str(), &error),
+      IsOkStatus(&error));
+  AdbcStatusCode status = ADBC_STATUS_OK;
+  EXPECT_NO_THROW(status = AdbcDatabaseInit(&database.value, &error));
+  EXPECT_EQ(status, ADBC_STATUS_NOT_FOUND);
+#if !defined(_WIN32)
+  // MSVC's std::filesystem reports a too-long name as "not found" rather than
+  // an error, so there's no error message to check on Windows.
+  EXPECT_THAT(error.message, ::testing::HasSubstr(
+                                 "could not access " +
+                                 (temp_dir / (profile_name + ".toml")).string() + " ("));
+#endif
   UnsetProfilePath();
 }
 

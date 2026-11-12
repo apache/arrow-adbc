@@ -18,7 +18,7 @@
 ARG FROM=almalinux:8
 FROM ${FROM}
 
-ENV IMAGE_VERSION=2026-01-27
+ENV IMAGE_VERSION=2026-11-10
 
 ARG DEBUG
 
@@ -31,6 +31,7 @@ RUN \
     ccache \
     cmake \
     gcc-c++ \
+    gcc-toolset-14 \
     gobject-introspection-devel \
     libpq-devel \
     make \

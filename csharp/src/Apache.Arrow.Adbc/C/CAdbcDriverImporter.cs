@@ -48,9 +48,23 @@ namespace Apache.Arrow.Adbc.C
         /// Loads an <see cref="AdbcDriver"/> from the file system.
         /// </summary>
         /// <param name="file">The path to the driver to load</param>
-        /// <param name="canUnload">Whether the driver can be safely unloaded</param>
+        /// <param name="canUnload">Whether the driver can be safely unloaded. A driver compiled with
+        /// NativeAOT can't be, because its runtime's threads keep running code in the library.</param>
         /// <param name="entryPoint">The name of the entry point. If not provided, the name AdbcDriverInit will be used.</param>
-        public static AdbcDriver Load(string file, bool canUnload, string? entryPoint = null)
+        public static AdbcDriver Load(string file, bool canUnload, string? entryPoint = null) =>
+            Load(file, canUnload, entryPoint, fallbackEntryPoint: null);
+
+        /// <summary>
+        /// Loads a native driver, trying the fallback entry point when the requested symbol is absent.
+        /// </summary>
+        internal static AdbcDriver LoadWithFallback(string file, string entryPoint, string fallbackEntryPoint) =>
+            Load(file, canUnload: false, entryPoint, fallbackEntryPoint);
+
+        private static AdbcDriver Load(
+            string file,
+            bool canUnload,
+            string? entryPoint,
+            string? fallbackEntryPoint)
         {
             if (file == null)
             {
@@ -65,16 +79,31 @@ namespace Apache.Arrow.Adbc.C
             IntPtr library = NativeLibrary.Load(file);
             if (library == IntPtr.Zero)
             {
-                throw new ArgumentException("unable to load library", nameof(file));
+                // Only reachable with the netstandard2.0 NativeLibrary shim; the
+                // runtime's NativeLibrary.Load throws DllNotFoundException itself.
+                throw new DllNotFoundException($"Unable to load shared library '{file}'.");
             }
 
             try
             {
                 entryPoint = entryPoint ?? driverInit;
-                IntPtr export = NativeLibrary.GetExport(library, entryPoint);
+                IntPtr export;
+                try
+                {
+                    export = NativeLibrary.GetExport(library, entryPoint);
+                }
+                catch (EntryPointNotFoundException) when (fallbackEntryPoint != null)
+                {
+                    export = IntPtr.Zero;
+                }
+                // The runtime's NativeLibrary.GetExport throws for a missing export,
+                // but the netstandard2.0 NativeLibrary shim returns IntPtr.Zero
+                if (export == IntPtr.Zero && fallbackEntryPoint != null)
+                {
+                    export = NativeLibrary.GetExport(library, fallbackEntryPoint);
+                }
                 if (export == IntPtr.Zero)
                 {
-                    if (canUnload) { NativeLibrary.Free(library); }
                     throw new ArgumentException($"Unable to find {entryPoint} export", nameof(file));
                 }
 
@@ -260,6 +289,14 @@ namespace Apache.Arrow.Adbc.C
                 }
             }
 
+            private OptionFunctions? _databaseOptions;
+            private OptionFunctions? _connectionOptions;
+            private OptionFunctions? _statementOptions;
+
+            internal OptionFunctions DatabaseOptions => _databaseOptions ??= OptionFunctions.ForDatabase(ref Driver11);
+            internal OptionFunctions ConnectionOptions => _connectionOptions ??= OptionFunctions.ForConnection(ref Driver11);
+            internal OptionFunctions StatementOptions => _statementOptions ??= OptionFunctions.ForStatement(ref Driver11);
+
             internal unsafe ref CAdbcDriver DriverUnsafe
             {
                 get
@@ -301,7 +338,7 @@ namespace Apache.Arrow.Adbc.C
                 ImportedAdbcDatabase? result = null;
                 try
                 {
-                    using (CallHelper caller = new CallHelper())
+                    using (CallHelper caller = new CallHelper(this))
                     {
                         caller.Call(Driver.DatabaseNew, ref nativeDatabase);
 
@@ -319,9 +356,16 @@ namespace Apache.Arrow.Adbc.C
                 {
                     if (result == null && nativeDatabase.private_data != null)
                     {
-                        using (CallHelper caller = new CallHelper())
+                        // Don't let a failed release hide the error that got us here
+                        try
                         {
-                            caller.Call(Driver.DatabaseRelease, ref nativeDatabase);
+                            using (CallHelper caller = new CallHelper())
+                            {
+                                caller.Call(Driver.DatabaseRelease, ref nativeDatabase);
+                            }
+                        }
+                        catch (AdbcException)
+                        {
                         }
                     }
                 }
@@ -334,26 +378,71 @@ namespace Apache.Arrow.Adbc.C
             {
                 if (parameters == null) throw new ArgumentNullException(nameof(parameters));
 
-                CAdbcDatabase nativeDatabase = new CAdbcDatabase();
-                using (CallHelper caller = new CallHelper())
+                if (_version < AdbcVersion.Version_1_1_0)
                 {
-                    caller.Call(Driver.DatabaseNew, ref nativeDatabase);
+                    return base.Open(parameters);
+                }
 
+                CAdbcDatabase nativeDatabase = new CAdbcDatabase();
+                ImportedAdbcDatabase? result = null;
+                try
+                {
+                    using (CallHelper caller = new CallHelper(this))
+                    {
+                        caller.Call(Driver.DatabaseNew, ref nativeDatabase);
+                    }
+
+                    OptionFunctions functions = DatabaseOptions;
+                    CAdbcDatabase* database = &nativeDatabase;
                     foreach (KeyValuePair<string, object> pair in parameters)
                     {
-                        switch (pair.Value)
+                        if (AdbcOptionValue.TryGetInt64(pair.Value, out long l))
                         {
-                            case int intValue:
-                            case long longValue:
-                                // TODO!
-                                break;
+                            SetOptionInt64(this, functions.SetOptionInt, database, pair.Key, l);
+                        }
+                        else if (AdbcOptionValue.TryGetDouble(pair.Value, out double d))
+                        {
+                            SetOptionDouble(this, functions.SetOptionDouble, database, pair.Key, d);
+                        }
+                        else if (AdbcOptionValue.TryGetBytes(pair.Value, out ReadOnlyMemory<byte> bytes))
+                        {
+                            SetOptionBytes(this, functions.SetOptionBytes, database, pair.Key, bytes.Span);
+                        }
+                        else
+                        {
+                            using (CallHelper caller = new CallHelper(this))
+                            {
+                                caller.Call(Driver.DatabaseSetOption, ref nativeDatabase, pair.Key, AdbcOptionValue.ToOptionString(pair.Key, pair.Value));
+                            }
                         }
                     }
 
-                    caller.Call(Driver.DatabaseInit, ref nativeDatabase);
+                    using (CallHelper caller = new CallHelper(this))
+                    {
+                        caller.Call(Driver.DatabaseInit, ref nativeDatabase);
+                    }
+
+                    result = new ImportedAdbcDatabase(this, nativeDatabase);
+                }
+                finally
+                {
+                    if (result == null && nativeDatabase.private_data != null)
+                    {
+                        // Don't let a failed release hide the error that got us here
+                        try
+                        {
+                            using (CallHelper caller = new CallHelper())
+                            {
+                                caller.Call(Driver.DatabaseRelease, ref nativeDatabase);
+                            }
+                        }
+                        catch (AdbcException)
+                        {
+                        }
+                    }
                 }
 
-                return new ImportedAdbcDatabase(this, nativeDatabase);
+                return result;
             }
 
             public unsafe override void Dispose()
@@ -407,34 +496,100 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override AdbcConnection Connect(IReadOnlyDictionary<string, string>? options)
             {
+                return Connect(connection =>
+                {
+                    if (options != null)
+                    {
+                        foreach (KeyValuePair<string, string> pair in options)
+                        {
+                            SetConnectionOption(connection, pair.Key, pair.Value);
+                        }
+                    }
+                });
+            }
+
+            /// <inheritdoc />
+            public unsafe override AdbcConnection ConnectWithTypedOptions(IReadOnlyDictionary<string, object>? options)
+            {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0)
+                {
+                    return base.ConnectWithTypedOptions(options);
+                }
+
+                return Connect(connection =>
+                {
+                    if (options == null)
+                    {
+                        return;
+                    }
+
+                    OptionFunctions functions = _driver.ConnectionOptions;
+                    foreach (KeyValuePair<string, object> pair in options)
+                    {
+                        if (AdbcOptionValue.TryGetInt64(pair.Value, out long l))
+                        {
+                            CAdbcDriverImporter.SetOptionInt64(_driver, functions.SetOptionInt, connection, pair.Key, l);
+                        }
+                        else if (AdbcOptionValue.TryGetDouble(pair.Value, out double d))
+                        {
+                            CAdbcDriverImporter.SetOptionDouble(_driver, functions.SetOptionDouble, connection, pair.Key, d);
+                        }
+                        else if (AdbcOptionValue.TryGetBytes(pair.Value, out ReadOnlyMemory<byte> bytes))
+                        {
+                            CAdbcDriverImporter.SetOptionBytes(_driver, functions.SetOptionBytes, connection, pair.Key, bytes.Span);
+                        }
+                        else
+                        {
+                            SetConnectionOption(connection, pair.Key, AdbcOptionValue.ToOptionString(pair.Key, pair.Value));
+                        }
+                    }
+                });
+            }
+
+            private unsafe delegate void ConfigureConnection(CAdbcConnection* connection);
+
+            private unsafe void SetConnectionOption(CAdbcConnection* connection, string key, string value)
+            {
+                using (CallHelper caller = new CallHelper(_driver))
+                {
+                    caller.Call(Driver.ConnectionSetOption, ref *connection, key, value);
+                }
+            }
+
+            private unsafe AdbcConnection Connect(ConfigureConnection configure)
+            {
                 CAdbcConnection nativeConnection = new CAdbcConnection();
                 ImportedAdbcConnection? result = null;
                 try
                 {
-                    using (CallHelper caller = new CallHelper())
+                    using (CallHelper caller = new CallHelper(_driver))
                     {
                         caller.Call(Driver.ConnectionNew, ref nativeConnection);
-
-                        if (options != null)
-                        {
-                            foreach (KeyValuePair<string, string> pair in options)
-                            {
-                                caller.Call(Driver.ConnectionSetOption, ref nativeConnection, pair.Key, pair.Value);
-                            }
-                        }
-
-                        caller.Call(Driver.ConnectionInit, ref nativeConnection, ref _nativeDatabase);
-
-                        result = new ImportedAdbcConnection(_driver, nativeConnection);
                     }
+
+                    configure(&nativeConnection);
+
+                    using (CallHelper caller = new CallHelper(_driver))
+                    {
+                        caller.Call(Driver.ConnectionInit, ref nativeConnection, ref _nativeDatabase);
+                    }
+
+                    result = new ImportedAdbcConnection(_driver, nativeConnection);
                 }
                 finally
                 {
                     if (result == null && nativeConnection.private_data != null)
                     {
-                        using (CallHelper caller = new CallHelper())
+                        // Don't let a failed release hide the error that got us here
+                        try
                         {
-                            caller.Call(Driver.ConnectionRelease, ref nativeConnection);
+                            using (CallHelper caller = new CallHelper(_driver))
+                            {
+                                caller.Call(Driver.ConnectionRelease, ref nativeConnection);
+                            }
+                        }
+                        catch (AdbcException)
+                        {
                         }
                     }
                 }
@@ -444,9 +599,84 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override void SetOption(string key, string value)
             {
-                using (CallHelper caller = new CallHelper())
+                using (CallHelper caller = new CallHelper(_driver))
                 {
                     caller.Call(Driver.DatabaseSetOption, ref _nativeDatabase, key, value);
+                }
+            }
+
+            public unsafe override void SetOptionInt64(string key, long value)
+            {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0) { base.SetOptionInt64(key, value); return; }
+                fixed (CAdbcDatabase* database = &_nativeDatabase)
+                {
+                    CAdbcDriverImporter.SetOptionInt64(_driver, Options.SetOptionInt, database, key, value);
+                }
+            }
+
+            public unsafe override void SetOptionDouble(string key, double value)
+            {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0) { base.SetOptionDouble(key, value); return; }
+                fixed (CAdbcDatabase* database = &_nativeDatabase)
+                {
+                    CAdbcDriverImporter.SetOptionDouble(_driver, Options.SetOptionDouble, database, key, value);
+                }
+            }
+
+            public unsafe override void SetOptionBytes(string key, ReadOnlySpan<byte> value)
+            {
+                fixed (CAdbcDatabase* database = &_nativeDatabase)
+                {
+                    CAdbcDriverImporter.SetOptionBytes(_driver, Options.SetOptionBytes, database, key, value);
+                }
+            }
+
+            public unsafe override string GetOption(string key)
+            {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0) { return base.GetOption(key); }
+
+                fixed (CAdbcDatabase* database = &_nativeDatabase)
+                {
+                    return GetOptionString(_driver, Options.GetOption, database, key);
+                }
+            }
+
+            public unsafe override long GetOptionInt64(string key)
+            {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0) { return base.GetOptionInt64(key); }
+
+                fixed (CAdbcDatabase* database = &_nativeDatabase)
+                {
+                    return CAdbcDriverImporter.GetOptionInt64(_driver, Options.GetOptionInt, database, key);
+                }
+            }
+
+            public unsafe override double GetOptionDouble(string key)
+            {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0) { return base.GetOptionDouble(key); }
+
+                fixed (CAdbcDatabase* database = &_nativeDatabase)
+                {
+                    return CAdbcDriverImporter.GetOptionDouble(_driver, Options.GetOptionDouble, database, key);
+                }
+            }
+
+            public unsafe override byte[] GetOptionBytes(string key)
+            {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0) { return base.GetOptionBytes(key); }
+
+                fixed (CAdbcDatabase* database = &_nativeDatabase)
+                {
+                    return GetOptionBuffer(_driver, Options.GetOptionBytes, database, key);
+                }
+            }
+
+            private OptionFunctions Options
+            {
+                get
+                {
+                    if (_disposed) { throw new ObjectDisposedException(nameof(ImportedAdbcDatabase)); }
+                    return _driver.DatabaseOptions;
                 }
             }
 
@@ -466,7 +696,7 @@ namespace Apache.Arrow.Adbc.C
                     {
                         if (_nativeDatabase.private_data != default)
                         {
-                            using (CallHelper caller = new CallHelper())
+                            using (CallHelper caller = new CallHelper(_driver))
                             {
                                 caller.Call(_driver.DriverUnsafe.DatabaseRelease, ref _nativeDatabase);
                             }
@@ -526,9 +756,14 @@ namespace Apache.Arrow.Adbc.C
                 }
             }
 
+            private bool IsVersion1_1 => _driver.DriverVersion >= AdbcVersion.Version_1_1_0;
+
             public override bool AutoCommit
             {
-                get => _autoCommit ?? throw AdbcException.NotImplemented("no value has been set for AutoCommit");
+                get => _autoCommit ??
+                    (TryGetNativeOption(AdbcOptions.Connection.Autocommit, AdbcOptions.GetEnabled, out bool value)
+                        ? value
+                        : throw AdbcException.NotImplemented("no value has been set for AutoCommit"));
                 set
                 {
                     SetOption(AdbcOptions.Connection.Autocommit, AdbcOptions.GetEnabled(value));
@@ -538,7 +773,10 @@ namespace Apache.Arrow.Adbc.C
 
             public override IsolationLevel IsolationLevel
             {
-                get => _isolationLevel ?? IsolationLevel.Default;
+                get => _isolationLevel ??
+                    (TryGetNativeOption(AdbcOptions.Connection.IsolationLevel, AdbcOptions.GetIsolationLevel, out IsolationLevel level)
+                        ? level
+                        : IsolationLevel.Default);
                 set
                 {
                     SetOption(AdbcOptions.Connection.IsolationLevel, AdbcOptions.GetIsolationLevel(value));
@@ -548,11 +786,183 @@ namespace Apache.Arrow.Adbc.C
 
             public override bool ReadOnly
             {
-                get => _readOnly ?? throw AdbcException.NotImplemented("no value has been set for ReadOnly");
+                get => _readOnly ??
+                    (TryGetNativeOption(AdbcOptions.Connection.ReadOnly, AdbcOptions.GetEnabled, out bool value)
+                        ? value
+                        : throw AdbcException.NotImplemented("no value has been set for ReadOnly"));
                 set
                 {
                     SetOption(AdbcOptions.Connection.ReadOnly, AdbcOptions.GetEnabled(value));
                     _readOnly = value;
+                }
+            }
+
+            public override string? CurrentCatalog
+            {
+                get => GetOptionOrNull(AdbcOptions.Connection.CurrentCatalog);
+            }
+
+            public override string? CurrentDbSchema
+            {
+                get => GetOptionOrNull(AdbcOptions.Connection.CurrentDbSchema);
+            }
+
+            /// <summary>
+            /// Asks an ADBC 1.1 driver for a value that hasn't been set through this object.
+            /// Any failure yields null so that callers keep their ADBC 1.0 behavior.
+            /// </summary>
+            private bool TryGetNativeOption<T>(string key, Func<string, T> parse, out T value)
+            {
+                if (IsVersion1_1)
+                {
+                    try
+                    {
+                        value = parse(GetOption(key));
+                        return true;
+                    }
+                    catch (AdbcException)
+                    {
+                    }
+                    catch (NotSupportedException)
+                    {
+                        // The driver reported a value that isn't one of the standard ones
+                    }
+                }
+
+                value = default!;
+                return false;
+            }
+
+            private string? GetOptionOrNull(string key)
+            {
+                // A 1.0 driver can't report the value. Don't call GetOption, whose 1.0
+                // fallback reads these properties.
+                if (!IsVersion1_1)
+                {
+                    return null;
+                }
+
+                try
+                {
+                    return GetOption(key);
+                }
+                catch (AdbcException e) when (e.Status == AdbcStatusCode.NotFound || e.Status == AdbcStatusCode.NotImplemented)
+                {
+                    return null;
+                }
+            }
+
+            private OptionFunctions Options
+            {
+                get
+                {
+                    if (_disposed) { throw new ObjectDisposedException(nameof(ImportedAdbcConnection)); }
+                    return _driver.ConnectionOptions;
+                }
+            }
+
+            public unsafe override void SetOptionInt64(string key, long value)
+            {
+                if (!IsVersion1_1) { base.SetOptionInt64(key, value); return; }
+                fixed (CAdbcConnection* connection = &_nativeConnection)
+                {
+                    CAdbcDriverImporter.SetOptionInt64(_driver, Options.SetOptionInt, connection, key, value);
+                }
+            }
+
+            public unsafe override void SetOptionDouble(string key, double value)
+            {
+                if (!IsVersion1_1) { base.SetOptionDouble(key, value); return; }
+                fixed (CAdbcConnection* connection = &_nativeConnection)
+                {
+                    CAdbcDriverImporter.SetOptionDouble(_driver, Options.SetOptionDouble, connection, key, value);
+                }
+            }
+
+            public unsafe override void SetOptionBytes(string key, ReadOnlySpan<byte> value)
+            {
+                fixed (CAdbcConnection* connection = &_nativeConnection)
+                {
+                    CAdbcDriverImporter.SetOptionBytes(_driver, Options.SetOptionBytes, connection, key, value);
+                }
+            }
+
+            public unsafe override string GetOption(string key)
+            {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0) { return base.GetOption(key); }
+
+                fixed (CAdbcConnection* connection = &_nativeConnection)
+                {
+                    return GetOptionString(_driver, Options.GetOption, connection, key);
+                }
+            }
+
+            public unsafe override long GetOptionInt64(string key)
+            {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0) { return base.GetOptionInt64(key); }
+
+                fixed (CAdbcConnection* connection = &_nativeConnection)
+                {
+                    return CAdbcDriverImporter.GetOptionInt64(_driver, Options.GetOptionInt, connection, key);
+                }
+            }
+
+            public unsafe override double GetOptionDouble(string key)
+            {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0) { return base.GetOptionDouble(key); }
+
+                fixed (CAdbcConnection* connection = &_nativeConnection)
+                {
+                    return CAdbcDriverImporter.GetOptionDouble(_driver, Options.GetOptionDouble, connection, key);
+                }
+            }
+
+            public unsafe override byte[] GetOptionBytes(string key)
+            {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0) { return base.GetOptionBytes(key); }
+
+                fixed (CAdbcConnection* connection = &_nativeConnection)
+                {
+                    return GetOptionBuffer(_driver, Options.GetOptionBytes, connection, key);
+                }
+            }
+
+            public unsafe override IArrowArrayStream GetStatistics(string? catalogPattern, string? schemaPattern, string tableNamePattern, bool approximate)
+            {
+                using (Utf8Helper utf8Catalog = new Utf8Helper(catalogPattern))
+                using (Utf8Helper utf8Schema = new Utf8Helper(schemaPattern))
+                using (Utf8Helper utf8Table = new Utf8Helper(tableNamePattern))
+                using (CallHelper caller = new CallHelper(_driver))
+                {
+                    fixed (CAdbcConnection* connection = &_nativeConnection)
+                    {
+                        caller.TranslateCode(
+#if NET5_0_OR_GREATER
+                            Driver11.ConnectionGetStatistics
+#else
+                            Marshal.GetDelegateForFunctionPointer<ConnectionGetStatistics>(Driver11.ConnectionGetStatistics)
+#endif
+                            (connection, utf8Catalog, utf8Schema, utf8Table, approximate ? (byte)1 : (byte)0, caller.CreateStream(), &caller._error));
+                        return caller.ImportStream();
+                    }
+                }
+            }
+
+            public unsafe override IArrowArrayStream GetStatisticsNames()
+            {
+                using (CallHelper caller = new CallHelper(_driver))
+                {
+                    fixed (CAdbcConnection* connection = &_nativeConnection)
+                    {
+                        caller.TranslateCode(
+#if NET5_0_OR_GREATER
+                            Driver11.ConnectionGetStatisticNames
+#else
+                            Marshal.GetDelegateForFunctionPointer<ConnectionGetStatisticNames>(Driver11.ConnectionGetStatisticNames)
+#endif
+                            (connection, caller.CreateStream(), &caller._error));
+                        return caller.ImportStream();
+                    }
                 }
             }
 
@@ -562,7 +972,7 @@ namespace Apache.Arrow.Adbc.C
                 ImportedAdbcStatement? result = null;
                 try
                 {
-                    using (CallHelper caller = new CallHelper())
+                    using (CallHelper caller = new CallHelper(_driver))
                     {
                         fixed (CAdbcConnection* connection = &_nativeConnection)
                         {
@@ -582,9 +992,16 @@ namespace Apache.Arrow.Adbc.C
                 {
                     if (result == null && nativeStatement.private_data != null)
                     {
-                        using (CallHelper caller = new CallHelper())
+                        // Don't let a failed release hide the error that got us here
+                        try
                         {
-                            caller.Call(Driver.StatementRelease, ref nativeStatement);
+                            using (CallHelper caller = new CallHelper(_driver))
+                            {
+                                caller.Call(Driver.StatementRelease, ref nativeStatement);
+                            }
+                        }
+                        catch (AdbcException)
+                        {
                         }
                     }
                 }
@@ -594,7 +1011,7 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override IArrowArrayStream GetInfo(IReadOnlyList<AdbcInfoCode> codes)
             {
-                using (CallHelper caller = new CallHelper())
+                using (CallHelper caller = new CallHelper(_driver))
                 {
                     Span<AdbcInfoCode> span = codes.AsSpan();
                     fixed (CAdbcConnection* connection = &_nativeConnection)
@@ -634,7 +1051,7 @@ namespace Apache.Arrow.Adbc.C
                     using (Utf8Helper utf8Schema = new Utf8Helper(dbSchemaPattern))
                     using (Utf8Helper utf8Table = new Utf8Helper(tableNamePattern))
                     using (Utf8Helper utf8Column = new Utf8Helper(columnNamePattern))
-                    using (CallHelper caller = new CallHelper())
+                    using (CallHelper caller = new CallHelper(_driver))
                     {
                         fixed (CAdbcConnection* connection = &_nativeConnection)
                         {
@@ -664,7 +1081,7 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override IArrowArrayStream GetTableTypes()
             {
-                using (CallHelper caller = new CallHelper())
+                using (CallHelper caller = new CallHelper(_driver))
                 {
                     fixed (CAdbcConnection* connection = &_nativeConnection)
                     {
@@ -685,7 +1102,7 @@ namespace Apache.Arrow.Adbc.C
                 using (Utf8Helper utf8Catalog = new Utf8Helper(catalog))
                 using (Utf8Helper utf8Schema = new Utf8Helper(db_schema))
                 using (Utf8Helper utf8Table = new Utf8Helper(table_name))
-                using (CallHelper caller = new CallHelper())
+                using (CallHelper caller = new CallHelper(_driver))
                 {
                     fixed (CAdbcConnection* connection = &_nativeConnection)
                     {
@@ -754,7 +1171,7 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override void Commit()
             {
-                using (CallHelper caller = new CallHelper())
+                using (CallHelper caller = new CallHelper(_driver))
                 {
                     caller.Call(Driver.ConnectionCommit, ref _nativeConnection);
                 }
@@ -762,7 +1179,7 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override void Rollback()
             {
-                using (CallHelper caller = new CallHelper())
+                using (CallHelper caller = new CallHelper(_driver))
                 {
                     caller.Call(Driver.ConnectionRollback, ref _nativeConnection);
                 }
@@ -770,7 +1187,7 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override void Cancel()
             {
-                using (CallHelper caller = new CallHelper())
+                using (CallHelper caller = new CallHelper(_driver))
                 {
                     caller.Call(Driver11.ConnectionCancel, ref _nativeConnection);
                 }
@@ -778,7 +1195,7 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override void SetOption(string key, string value)
             {
-                using (CallHelper caller = new CallHelper())
+                using (CallHelper caller = new CallHelper(_driver))
                 {
                     caller.Call(Driver.ConnectionSetOption, ref _nativeConnection, key, value);
                 }
@@ -800,7 +1217,7 @@ namespace Apache.Arrow.Adbc.C
                     {
                         if (_nativeConnection.private_data != default)
                         {
-                            using (CallHelper caller = new CallHelper())
+                            using (CallHelper caller = new CallHelper(_driver))
                             {
                                 caller.Call(_driver.DriverUnsafe.ConnectionRelease, ref _nativeConnection);
                             }
@@ -872,7 +1289,7 @@ namespace Apache.Arrow.Adbc.C
                 get => _substraitPlan;
                 set
                 {
-                    using (CallHelper caller = new CallHelper())
+                    using (CallHelper caller = new CallHelper(_driver))
                     {
                         fixed (CAdbcStatement* statement = &_nativeStatement)
                         fixed (byte* substraitPlan = value)
@@ -892,7 +1309,7 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override void Bind(RecordBatch batch, Schema schema)
             {
-                using (CallHelper caller = new CallHelper())
+                using (CallHelper caller = new CallHelper(_driver))
                 {
                     fixed (CAdbcStatement* statement = &_nativeStatement)
                     {
@@ -916,7 +1333,7 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override void BindStream(IArrowArrayStream stream)
             {
-                using (CallHelper caller = new CallHelper())
+                using (CallHelper caller = new CallHelper(_driver))
                 {
                     fixed (CAdbcStatement* statement = &_nativeStatement)
                     {
@@ -937,7 +1354,7 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override QueryResult ExecuteQuery()
             {
-                using (CallHelper caller = new CallHelper())
+                using (CallHelper caller = new CallHelper(_driver))
                 {
                     fixed (CAdbcStatement* statement = &_nativeStatement)
                     {
@@ -957,7 +1374,7 @@ namespace Apache.Arrow.Adbc.C
 
             public override unsafe Schema ExecuteSchema()
             {
-                using (CallHelper caller = new CallHelper())
+                using (CallHelper caller = new CallHelper(_driver))
                 {
                     fixed (CAdbcStatement* statement = &_nativeStatement)
                     {
@@ -976,7 +1393,7 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override UpdateResult ExecuteUpdate()
             {
-                using (CallHelper caller = new CallHelper())
+                using (CallHelper caller = new CallHelper(_driver))
                 {
                     fixed (CAdbcStatement* statement = &_nativeStatement)
                     {
@@ -996,7 +1413,7 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override PartitionedResult ExecutePartitioned()
             {
-                using (CallHelper caller = new CallHelper())
+                using (CallHelper caller = new CallHelper(_driver))
                 {
                     fixed (CAdbcStatement* statement = &_nativeStatement)
                     {
@@ -1005,6 +1422,9 @@ namespace Apache.Arrow.Adbc.C
                         try
                         {
                             nativePartitions = (CAdbcPartitions*)Marshal.AllocHGlobal(sizeof(CAdbcPartitions));
+                            // AllocHGlobal doesn't zero memory, and a failing driver may not write
+                            // the struct, so release must start out null.
+                            *nativePartitions = default;
                             caller.TranslateCode(
 #if NET5_0_OR_GREATER
                                 Driver.StatementExecutePartitions
@@ -1023,17 +1443,17 @@ namespace Apache.Arrow.Adbc.C
                         }
                         finally
                         {
-                            if (nativePartitions->release != null)
-                            {
-#if NET5_0_OR_GREATER
-                                nativePartitions->release(nativePartitions);
-#else
-                                Marshal.GetDelegateForFunctionPointer<PartitionsRelease>(nativePartitions->release)(nativePartitions);
-#endif
-                            }
-
                             if (nativePartitions != null)
                             {
+                                if (nativePartitions->release != default)
+                                {
+#if NET5_0_OR_GREATER
+                                    nativePartitions->release(nativePartitions);
+#else
+                                    Marshal.GetDelegateForFunctionPointer<PartitionsRelease>(nativePartitions->release)(nativePartitions);
+#endif
+                                }
+
                                 Marshal.FreeHGlobal((IntPtr)nativePartitions);
                             }
                         }
@@ -1043,7 +1463,7 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override Schema GetParameterSchema()
             {
-                using (CallHelper caller = new CallHelper())
+                using (CallHelper caller = new CallHelper(_driver))
                 {
                     fixed (CAdbcStatement* statement = &_nativeStatement)
                     {
@@ -1061,7 +1481,7 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override void Prepare()
             {
-                using (CallHelper caller = new CallHelper())
+                using (CallHelper caller = new CallHelper(_driver))
                 {
                     fixed (CAdbcStatement* statement = &_nativeStatement)
                     {
@@ -1078,15 +1498,90 @@ namespace Apache.Arrow.Adbc.C
 
             public unsafe override void SetOption(string key, string value)
             {
-                using (CallHelper caller = new CallHelper())
+                using (CallHelper caller = new CallHelper(_driver))
                 {
                     caller.Call(Driver.StatementSetOption, ref _nativeStatement, key, value);
                 }
             }
 
+            private OptionFunctions Options
+            {
+                get
+                {
+                    if (_disposed) { throw new ObjectDisposedException(nameof(ImportedAdbcStatement)); }
+                    return _driver.StatementOptions;
+                }
+            }
+
+            public unsafe override void SetOptionInt64(string key, long value)
+            {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0) { base.SetOptionInt64(key, value); return; }
+                fixed (CAdbcStatement* statement = &_nativeStatement)
+                {
+                    CAdbcDriverImporter.SetOptionInt64(_driver, Options.SetOptionInt, statement, key, value);
+                }
+            }
+
+            public unsafe override void SetOptionDouble(string key, double value)
+            {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0) { base.SetOptionDouble(key, value); return; }
+                fixed (CAdbcStatement* statement = &_nativeStatement)
+                {
+                    CAdbcDriverImporter.SetOptionDouble(_driver, Options.SetOptionDouble, statement, key, value);
+                }
+            }
+
+            public unsafe override void SetOptionBytes(string key, ReadOnlySpan<byte> value)
+            {
+                fixed (CAdbcStatement* statement = &_nativeStatement)
+                {
+                    CAdbcDriverImporter.SetOptionBytes(_driver, Options.SetOptionBytes, statement, key, value);
+                }
+            }
+
+            public unsafe override string GetOption(string key)
+            {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0) { return base.GetOption(key); }
+
+                fixed (CAdbcStatement* statement = &_nativeStatement)
+                {
+                    return GetOptionString(_driver, Options.GetOption, statement, key);
+                }
+            }
+
+            public unsafe override long GetOptionInt64(string key)
+            {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0) { return base.GetOptionInt64(key); }
+
+                fixed (CAdbcStatement* statement = &_nativeStatement)
+                {
+                    return CAdbcDriverImporter.GetOptionInt64(_driver, Options.GetOptionInt, statement, key);
+                }
+            }
+
+            public unsafe override double GetOptionDouble(string key)
+            {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0) { return base.GetOptionDouble(key); }
+
+                fixed (CAdbcStatement* statement = &_nativeStatement)
+                {
+                    return CAdbcDriverImporter.GetOptionDouble(_driver, Options.GetOptionDouble, statement, key);
+                }
+            }
+
+            public unsafe override byte[] GetOptionBytes(string key)
+            {
+                if (_driver.DriverVersion < AdbcVersion.Version_1_1_0) { return base.GetOptionBytes(key); }
+
+                fixed (CAdbcStatement* statement = &_nativeStatement)
+                {
+                    return GetOptionBuffer(_driver, Options.GetOptionBytes, statement, key);
+                }
+            }
+
             public unsafe override void Cancel()
             {
-                using (CallHelper caller = new CallHelper())
+                using (CallHelper caller = new CallHelper(_driver))
                 {
                     caller.Call(Driver11.StatementCancel, ref _nativeStatement);
                 }
@@ -1108,7 +1603,7 @@ namespace Apache.Arrow.Adbc.C
                     {
                         if (_nativeStatement.private_data != default)
                         {
-                            using (CallHelper caller = new CallHelper())
+                            using (CallHelper caller = new CallHelper(_driver))
                             {
                                 caller.Call(_driver.DriverUnsafe.StatementRelease, ref _nativeStatement);
                             }
@@ -1131,7 +1626,7 @@ namespace Apache.Arrow.Adbc.C
                 fixed (CAdbcStatement* statement = &_nativeStatement)
                 {
                     using (Utf8Helper query = new Utf8Helper(sqlQuery))
-                    using (CallHelper caller = new CallHelper())
+                    using (CallHelper caller = new CallHelper(_driver))
                     {
                         caller.TranslateCode(
 #if NET5_0_OR_GREATER
@@ -1149,8 +1644,9 @@ namespace Apache.Arrow.Adbc.C
         {
             private readonly string? _sqlState;
             private readonly int _nativeError;
+            private readonly IReadOnlyList<KeyValuePair<string, byte[]>>? _details;
 
-            public unsafe ImportedAdbcException(ref CAdbcError error, AdbcStatusCode statusCode)
+            public unsafe ImportedAdbcException(ref CAdbcError error, AdbcStatusCode statusCode, IReadOnlyList<KeyValuePair<string, byte[]>>? details = null)
                 : base(MarshalExtensions.PtrToStringUTF8(error.message) ?? "Undefined error", statusCode)
             {
                 if (error.sqlstate0 != 0)
@@ -1159,12 +1655,17 @@ namespace Apache.Arrow.Adbc.C
                     {
                         _sqlState = Encoding.ASCII.GetString(&fixedError->sqlstate0, 5);
                     }
+                }
+                if (error.vendor_code != CAdbcDriverExporter.ErrorVendorCodePrivateData)
+                {
                     _nativeError = error.vendor_code;
                 }
+                _details = details;
             }
 
             public override string? SqlState => _sqlState;
             public override int NativeError => _nativeError;
+            public override IReadOnlyList<KeyValuePair<string, byte[]>> Details => _details ?? base.Details;
         }
 
         /// <summary>
@@ -1193,62 +1694,6 @@ namespace Apache.Arrow.Adbc.C
         }
 
         /// <summary>
-        /// Assists with fetching values of arbitrary length
-        /// </summary>
-        private struct GetBufferHelper : IDisposable
-        {
-            const int DefaultLength = 256;
-
-            private IntPtr _buffer;
-            public IntPtr Length;
-
-            public GetBufferHelper()
-            {
-                Length = (IntPtr)DefaultLength;
-                _buffer = Marshal.AllocHGlobal(Length);
-            }
-
-            public bool RequiresRetry()
-            {
-                if (checked((uint)Length) <= DefaultLength)
-                {
-                    return false;
-                }
-
-                Marshal.FreeHGlobal(_buffer);
-                _buffer = IntPtr.Zero;
-                _buffer = Marshal.AllocHGlobal(Length);
-                return true;
-            }
-
-            public unsafe string AsString()
-            {
-                return Encoding.UTF8.GetString((byte*)_buffer, checked((int)Length));
-            }
-
-            public unsafe byte[] AsBytes()
-            {
-                byte[] result = new byte[checked((int)Length)];
-                fixed (byte* ptr = result)
-                {
-                    Buffer.MemoryCopy((byte*)_buffer, ptr, result.Length, result.Length);
-                }
-                return result;
-            }
-
-            public static unsafe implicit operator byte*(GetBufferHelper s) { return (byte*)s._buffer; }
-
-            public void Dispose()
-            {
-                if (_buffer != IntPtr.Zero)
-                {
-                    Marshal.FreeHGlobal(_buffer);
-                    _buffer = IntPtr.Zero;
-                }
-            }
-        }
-
-        /// <summary>
         /// Assists with delegate calls and handling error codes
         /// </summary>
         private unsafe struct CallHelper : IDisposable
@@ -1257,6 +1702,21 @@ namespace Apache.Arrow.Adbc.C
             private CArrowSchema* _schema;
             private CArrowArray* _array;
             private CArrowArrayStream* _arrayStream;
+            private readonly ImportedAdbcDriver? _driver;
+
+            /// <summary>
+            /// Creates a helper for calling into <paramref name="driver"/>. For an ADBC 1.1.0
+            /// driver this requests extended error information (see <see cref="AdbcException.Details"/>).
+            /// </summary>
+            public CallHelper(ImportedAdbcDriver driver)
+            {
+                this = default;
+                _driver = driver;
+                if (driver.DriverVersion >= AdbcVersion.Version_1_1_0)
+                {
+                    _error.vendor_code = CAdbcDriverExporter.ErrorVendorCodePrivateData;
+                }
+            }
 
             public CArrowSchema* Schema => _schema;
             public CArrowArray* Array => _array;
@@ -1316,7 +1776,7 @@ namespace Apache.Arrow.Adbc.C
             public IArrowArrayStream ImportStream()
             {
                 Debug.Assert(_arrayStream != null);
-                IArrowArrayStream arrayStream = CArrowArrayStreamImporter.ImportArrayStream(_arrayStream);
+                IArrowArrayStream arrayStream = new ImportedArrayStream(_driver, _arrayStream);
                 _arrayStream = null;
                 return arrayStream;
             }
@@ -1383,37 +1843,6 @@ namespace Apache.Arrow.Adbc.C
 #else
                         TranslateCode(Marshal.GetDelegateForFunctionPointer<DatabaseSetOption>(fn)(db, utf8Key, utf8Value, e));
 #endif
-                    }
-                }
-            }
-
-#if NET5_0_OR_GREATER
-            public unsafe string Call(delegate* unmanaged<CAdbcDatabase*, byte*, byte*, nint*, CAdbcError*, AdbcStatusCode> fn, ref CAdbcDatabase nativeDatabase, string key)
-#else
-            public unsafe string Call(IntPtr fn, ref CAdbcDatabase nativeDatabase, string key)
-#endif
-            {
-                fixed (CAdbcDatabase* db = &nativeDatabase)
-                fixed (CAdbcError* e = &_error)
-                {
-                    using (Utf8Helper utf8Key = new Utf8Helper(key))
-                    using (GetBufferHelper value = new GetBufferHelper())
-                    {
-#if NET5_0_OR_GREATER
-                        TranslateCode(fn(db, utf8Key, value, &value.Length, e));
-#else
-                        TranslateCode(Marshal.GetDelegateForFunctionPointer<DatabaseGetOption>(fn)(db, utf8Key, value, &value.Length, e));
-#endif
-                        if (value.RequiresRetry())
-                        {
-#if NET5_0_OR_GREATER
-                            TranslateCode(fn(db, utf8Key, value, &value.Length, e));
-#else
-                            TranslateCode(Marshal.GetDelegateForFunctionPointer<DatabaseGetOption>(fn)(db, utf8Key, value, &value.Length, e));
-#endif
-                        }
-
-                        return value.AsString();
                     }
                 }
             }
@@ -1563,7 +1992,7 @@ namespace Apache.Arrow.Adbc.C
                 }
                 if (_arrayStream != null)
                 {
-                    CArrowArrayStream.Free(_arrayStream);
+                    ImportedArrayStream.FreeStream(_arrayStream);
                     _arrayStream = null;
                 }
             }
@@ -1572,7 +2001,12 @@ namespace Apache.Arrow.Adbc.C
             {
                 if (statusCode != AdbcStatusCode.Success)
                 {
-                    ImportedAdbcException exception = new ImportedAdbcException(ref _error, statusCode);
+                    IReadOnlyList<KeyValuePair<string, byte[]>>? details;
+                    fixed (CAdbcError* error = &_error)
+                    {
+                        details = ReadErrorDetails(_driver, error);
+                    }
+                    ImportedAdbcException exception = new ImportedAdbcException(ref _error, statusCode, details);
 
                     Dispose();
 

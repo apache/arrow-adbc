@@ -21,7 +21,8 @@ version = "0.1.0"
 requires-python = ">=3.13"
 dependencies = [
     "adbc-drivers-validation",
+    "hypothesis>=6.168.3",
 ]
 
 [tool.uv.sources]
-adbc-drivers-validation = { git = "https://github.com/adbc-drivers/validation", rev = "575a41bfd96b09d9d8a057d0ea1e66a27a315475" }
+adbc-drivers-validation = { git = "https://github.com/adbc-drivers/validation", rev = "82bca5acbedbef21fadceb5f1022e87561e1c185" }

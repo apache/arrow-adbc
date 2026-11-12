@@ -44,18 +44,87 @@ defaults:
     shell: bash
 
 jobs:
-  binary-unix:
+  binary:
     name: "Verify Binaries/${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: ["macos-15-intel", "macos-latest", "ubuntu-latest", "windows-latest"]
+        os: ["macos-15-intel", "macos-latest", "ubuntu-latest", "windows-latest", "windows-11-arm"]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
+      - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb  # v4.1.0
+        if: matrix.os == 'windows-latest'
+        with:
+          miniforge-version: 26.7.2-1
+          use-mamba: true
+      - name: Install Python 3.11
+        if: matrix.os == 'windows-11-arm'
+        id: python311
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          architecture: arm64
+          check-latest: true
+          python-version: "3.11"
+          # Keep this interpreter on PATH for the artifact downloader.
+          update-environment: true
+      - name: Install Python 3.12
+        if: matrix.os == 'windows-11-arm'
+        id: python312
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          architecture: arm64
+          check-latest: true
+          python-version: "3.12"
+          update-environment: false
+      - name: Install Python 3.13
+        if: matrix.os == 'windows-11-arm'
+        id: python313
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          architecture: arm64
+          check-latest: true
+          python-version: "3.13"
+          update-environment: false
+      - name: Install Python 3.14
+        if: matrix.os == 'windows-11-arm'
+        id: python314
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          architecture: arm64
+          check-latest: true
+          python-version: "3.14"
+          update-environment: false
+      - name: Install Python 3.14t
+        if: matrix.os == 'windows-11-arm'
+        id: python314t
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          architecture: arm64
+          check-latest: true
+          python-version: "3.14t"
+          update-environment: false
+      - name: Install Python 3.15
+        if: matrix.os == 'windows-11-arm'
+        id: python315
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          architecture: arm64
+          check-latest: true
+          python-version: "3.15"
+          update-environment: false
+      - name: Install Python 3.15t
+        if: matrix.os == 'windows-11-arm'
+        id: python315t
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          architecture: arm64
+          check-latest: true
+          python-version: "3.15t"
+          update-environment: false
       # No Docker on M1
       - name: Skip Binary Verifiction
         if: matrix.os == 'macos-latest'
@@ -63,7 +132,11 @@ jobs:
           echo "TEST_APT=0" | tee -a $GITHUB_ENV
           echo "TEST_YUM=0" | tee -a $GITHUB_ENV
       - name: Verify
+        if: runner.os != 'Windows'
         env:
+          # /tmp is too small on Ubuntu 26.04-based runners
+          # (https://github.com/actions/runner-images/issues/14777)
+          ARROW_TMPDIR: ${{ runner.temp }}/adbc-verify
           CI: "false"
           REPOSITORY: ${{ github.repository }}
           TEST_DEFAULT: "0"
@@ -77,6 +150,30 @@ jobs:
         run: |
           ./dev/release/verify-release-candidate.sh ${INPUTS_VERSION} ${INPUTS_RC}
 
+      - name: Verify
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          CI: "false"
+          PYTHON_311_PATH: ${{ steps.python311.outputs.python-path }}
+          PYTHON_312_PATH: ${{ steps.python312.outputs.python-path }}
+          PYTHON_313_PATH: ${{ steps.python313.outputs.python-path }}
+          PYTHON_314_PATH: ${{ steps.python314.outputs.python-path }}
+          PYTHON_314T_PATH: ${{ steps.python314t.outputs.python-path }}
+          PYTHON_315_PATH: ${{ steps.python315.outputs.python-path }}
+          PYTHON_315T_PATH: ${{ steps.python315t.outputs.python-path }}
+          REPOSITORY: ${{ github.repository }}
+          TEST_DEFAULT: "0"
+          TEST_BINARIES: "1"
+          USE_CONDA: "1"
+          VERBOSE: "1"
+          # Make this available to download_rc_binaries.py
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          INPUTS_VERSION: ${{ inputs.version }}
+          INPUTS_RC: ${{ inputs.rc }}
+        run: |
+          ./dev/release/verify-release-candidate.ps1 $env:INPUTS_VERSION $env:INPUTS_RC
+
   source-conda:
     name: "Verify Source (Conda)/${{ matrix.os }}"
     runs-on: ${{ matrix.os }}
@@ -89,11 +186,11 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
           submodules: recursive
-      - uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5  # v4.0.1
+      - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb  # v4.1.0
         # The Unix script will set up conda itself
         if: matrix.os == 'windows-latest'
         with:
-          miniforge-version: latest
+          miniforge-version: 26.7.2-1
           use-mamba: true
       - name: Work around ASAN issue (GH-1617)
         if: matrix.os == 'ubuntu-latest'
@@ -120,6 +217,8 @@ jobs:
       - name: Verify
         if: matrix.os != 'windows-latest'
         env:
+          # /tmp is too small on Ubuntu 26.04-based runners (https://github.com/actions/runner-images/issues/14777)
+          ARROW_TMPDIR: ${{ runner.temp }}/adbc-verify
           CI: "false"
           REPOSITORY: ${{ github.repository }}
           TEST_DEFAULT: "0"

@@ -55,6 +55,10 @@ driver in the table below is packaged this way.
      - ``bigquery``
      - Foundry
      - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/bigquery|GitHub repository`
+   * - `Apache Cassandra <https://adbc-drivers.org/drivers/cassandra/>`__
+     - ``cassandra``
+     - Foundry
+     - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/cassandra|GitHub repository`
    * - `chDB <https://clickhouse.com/docs/chdb/install/adbc>`__
      - ``chdb``
      - Vendor
@@ -71,6 +75,10 @@ driver in the table below is packaged this way.
      - ``datafusion``
      - Foundry
      - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/datafusion|GitHub repository`
+   * - `Apache Druid <https://adbc-drivers.org/drivers/druid/>`__
+     - ``druid``
+     - Foundry
+     - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/druid|GitHub repository`
    * - :doc:`DuckDB <duckdb>` [#duckdb]_
      - ``duckdb``
      - Vendor
@@ -79,10 +87,14 @@ driver in the table below is packaged this way.
      - ``exasol``
      - Vendor
      - :iconlink:`fa-brands fa-github|https://github.com/exasol/adbc-driver-exasol|GitHub repository`
+   * - `Firebolt <https://adbc-drivers.org/drivers/firebolt/>`__
+     - ``firebolt``
+     - Foundry
+     - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/firebolt|GitHub repository`
    * - :doc:`Apache Arrow Flight SQL <flight_sql>` [#compat-flightsql]_
      - ``flightsql``
      - ASF
-     - :iconlink:`fa-brands fa-github|https://github.com/apache/arrow-adbc/tree/main/go/adbc/driver/flightsql|GitHub repository`
+     - :iconlink:`fa-brands fa-github|https://github.com/apache/arrow-adbc/tree/main/go/driver/flightsql|GitHub repository`
    * - `Microsoft SQL Server <https://adbc-drivers.org/drivers/mssql/>`__
      - ``mssql``
      - Foundry
@@ -141,7 +153,7 @@ driver in the table below is packaged this way.
    ``duckdb`` driver fetches a prebuilt binary. This driver is also compatible
    with MotherDuck.
 .. [#compat-flightsql] This driver works with Flight SQL-compatible systems,
-   including Apache Doris, Dremio, GizmoSQL, InfluxDB, Sail, and StarRocks.
+   including Apache Doris, Dremio, GizmoSQL, InfluxDB, Sail, StarRocks, and Teradata.
 .. [#compat-mysql] This driver also works with MySQL-compatible systems including
    TiDB and Vitess.
 .. [#compat-postgresql] This driver also works with PostgreSQL wire

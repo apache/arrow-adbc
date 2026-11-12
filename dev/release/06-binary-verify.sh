@@ -81,7 +81,7 @@ I would like to propose the following release candidate (RC${rc_number}) of Apac
 The subcomponents are versioned independently:
 
 - C/C++/GLib/Go/Python/Ruby: ${VERSION_NATIVE}
-- C#: ${VERSION_CSHARP}
+- C#: ${VERSION_CSHARP_CORE} (core), ${VERSION_CSHARP} (drivers)
 - Java: ${VERSION_JAVA}
 - R: ${VERSION_R}
 - Rust: ${VERSION_RUST}

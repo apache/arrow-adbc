@@ -31,6 +31,11 @@ namespace Apache.Arrow.Adbc.C
     internal unsafe delegate CAdbcErrorDetail ErrorGetDetail(CAdbcError* error, int index);
     internal unsafe delegate CAdbcError* ErrorFromArrayStream(CArrowArrayStream* stream, AdbcStatusCode* status);
 
+    internal unsafe delegate int ArrayStreamGetSchema(CArrowArrayStream* stream, CArrowSchema* schema);
+    internal unsafe delegate int ArrayStreamGetNext(CArrowArrayStream* stream, CArrowArray* array);
+    internal unsafe delegate byte* ArrayStreamGetLastError(CArrowArrayStream* stream);
+    internal unsafe delegate void ArrayStreamRelease(CArrowArrayStream* stream);
+
     internal unsafe delegate AdbcStatusCode DatabaseGetOption(CAdbcDatabase* database, byte* name, byte* value, nint* length, CAdbcError* error);
     internal unsafe delegate AdbcStatusCode DatabaseGetOptionBytes(CAdbcDatabase* database, byte* name, byte* value, nint* length, CAdbcError* error);
     internal unsafe delegate AdbcStatusCode DatabaseGetOptionDouble(CAdbcDatabase* database, byte* name, double* value, CAdbcError* error);
@@ -79,5 +84,14 @@ namespace Apache.Arrow.Adbc.C
     internal unsafe delegate AdbcStatusCode StatementSetOptionInt(CAdbcStatement* statement, byte* name, long value, CAdbcError* error);
     internal unsafe delegate AdbcStatusCode StatementSetSqlQuery(CAdbcStatement* statement, byte* text, CAdbcError* error);
     internal unsafe delegate AdbcStatusCode StatementSetSubstraitPlan(CAdbcStatement* statement, byte* plan, int length, CAdbcError* error);
+
+    // Shapes shared by the database, connection and statement option functions, with the
+    // handle passed as void*. The importer uses these to call any of them through one code path.
+    internal unsafe delegate AdbcStatusCode HandleGetOption(void* handle, byte* name, byte* value, nint* length, CAdbcError* error);
+    internal unsafe delegate AdbcStatusCode HandleGetOptionDouble(void* handle, byte* name, double* value, CAdbcError* error);
+    internal unsafe delegate AdbcStatusCode HandleGetOptionInt(void* handle, byte* name, long* value, CAdbcError* error);
+    internal unsafe delegate AdbcStatusCode HandleSetOptionBytes(void* handle, byte* name, byte* value, nint length, CAdbcError* error);
+    internal unsafe delegate AdbcStatusCode HandleSetOptionDouble(void* handle, byte* name, double value, CAdbcError* error);
+    internal unsafe delegate AdbcStatusCode HandleSetOptionInt(void* handle, byte* name, long value, CAdbcError* error);
 #endif
 }

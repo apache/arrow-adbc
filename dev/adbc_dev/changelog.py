@@ -86,7 +86,8 @@ def format_changelog(
         "### Versions",
         "",
         f"- C/C++/GLib/Go/Python/Ruby: {release['VERSION_NATIVE']}",
-        f"- C#: {release['VERSION_CSHARP']}",
+        f"- C#: {release['VERSION_CSHARP_CORE']} (core), "
+        f"{release['VERSION_CSHARP']} (drivers)",
         f"- Java: {release['VERSION_JAVA']}",
         f"- R: {release['VERSION_R']}",
         f"- Rust: {release['VERSION_RUST']}",

@@ -17,6 +17,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
 
 namespace Apache.Arrow.Adbc
@@ -25,7 +27,12 @@ namespace Apache.Arrow.Adbc
     /// Provides methods for query execution, managing prepared statements,
     /// using transactions, and so on.
     /// </summary>
-    public abstract class AdbcConnection : IDisposable
+    /// <remarks>
+    /// Each asynchronous method has a default implementation that runs the
+    /// corresponding synchronous method on the thread pool and responds to its
+    /// <see cref="CancellationToken"/> by calling <see cref="Cancel"/>.
+    /// </remarks>
+    public abstract class AdbcConnection : IDisposable, IAsyncDisposable
     {
         private bool _autoCommit = true;
         private bool _readOnly = false;
@@ -37,6 +44,15 @@ namespace Apache.Arrow.Adbc
         public virtual void Commit()
         {
             throw AdbcException.NotImplemented("Connection does not support transactions");
+        }
+
+        /// <summary>
+        /// Asynchronously commit the pending transaction.
+        /// </summary>
+        /// <param name="cancellationToken">A token used to cancel the operation.</param>
+        public virtual Task CommitAsync(CancellationToken cancellationToken = default)
+        {
+            return AdbcAsync.Run(Commit, Cancel, cancellationToken);
         }
 
         /// <summary>
@@ -72,10 +88,23 @@ namespace Apache.Arrow.Adbc
         }
 
         /// <summary>
+        /// Asynchronously releases the resources used by the connection.
+        /// </summary>
+        /// <remarks>
+        /// The default implementation calls <see cref="Dispose"/>.
+        /// </remarks>
+        public virtual ValueTask DisposeAsync()
+        {
+            Dispose();
+            return default;
+        }
+
+        /// <summary>
         /// Get metadata about the driver/database.
         /// </summary>
         /// <param name="codes">
-        /// The metadata items to fetch.
+        /// The metadata items to fetch. An empty list requests all of the items the
+        /// driver supports; this is what a NULL list means in the C API.
         /// </param>
         /// <returns>
         /// Metadata about the driver and/or database
@@ -87,6 +116,22 @@ namespace Apache.Arrow.Adbc
                 throw new ArgumentNullException(nameof(codes));
 
             throw AdbcException.NotImplemented("Connection does not support GetInfo");
+        }
+
+        /// <summary>
+        /// Asynchronously get metadata about the driver/database.
+        /// </summary>
+        /// <param name="codes">
+        /// The metadata items to fetch. An empty list requests all of the items the
+        /// driver supports.
+        /// </param>
+        /// <param name="cancellationToken">A token used to cancel the operation.</param>
+        /// <returns>
+        /// Metadata about the driver and/or database
+        /// </returns>
+        public virtual Task<IArrowArrayStream> GetInfoAsync(IReadOnlyList<AdbcInfoCode> codes, CancellationToken cancellationToken = default)
+        {
+            return AdbcAsync.Run(() => GetInfo(codes), Cancel, cancellationToken);
         }
 
         /// <summary>
@@ -130,6 +175,29 @@ namespace Apache.Arrow.Adbc
             IReadOnlyList<string>? tableTypes,
             string? columnNamePattern);
 
+        /// <summary>
+        /// Asynchronously get a hierarchical view of all catalogs, database schemas,
+        /// tables, and columns.
+        /// </summary>
+        /// <remarks>
+        /// See <see cref="GetObjects"/> for a description of the parameters.
+        /// </remarks>
+        /// <param name="cancellationToken">A token used to cancel the operation.</param>
+        public virtual Task<IArrowArrayStream> GetObjectsAsync(
+            GetObjectsDepth depth,
+            string? catalogPattern,
+            string? dbSchemaPattern,
+            string? tableNamePattern,
+            IReadOnlyList<string>? tableTypes,
+            string? columnNamePattern,
+            CancellationToken cancellationToken = default)
+        {
+            return AdbcAsync.Run(
+                () => GetObjects(depth, catalogPattern, dbSchemaPattern, tableNamePattern, tableTypes, columnNamePattern),
+                Cancel,
+                cancellationToken);
+        }
+
         public enum GetObjectsDepth
         {
             /// <summary>
@@ -169,9 +237,36 @@ namespace Apache.Arrow.Adbc
         public abstract Schema GetTableSchema(string? catalog, string? dbSchema, string tableName);
 
         /// <summary>
+        /// Asynchronously get the Arrow schema of a database table.
+        /// </summary>
+        /// <param name="catalog">
+        /// The catalog of the table (or null).
+        /// </param>
+        /// <param name="dbSchema">
+        /// The database schema of the table (or null).
+        /// </param>
+        /// <param name="tableName">
+        /// The table name.
+        /// </param>
+        /// <param name="cancellationToken">A token used to cancel the operation.</param>
+        public virtual Task<Schema> GetTableSchemaAsync(string? catalog, string? dbSchema, string tableName, CancellationToken cancellationToken = default)
+        {
+            return AdbcAsync.Run(() => GetTableSchema(catalog, dbSchema, tableName), Cancel, cancellationToken);
+        }
+
+        /// <summary>
         /// Get a list of table types supported by the database.
         /// </summary>
         public abstract IArrowArrayStream GetTableTypes();
+
+        /// <summary>
+        /// Asynchronously get a list of table types supported by the database.
+        /// </summary>
+        /// <param name="cancellationToken">A token used to cancel the operation.</param>
+        public virtual Task<IArrowArrayStream> GetTableTypesAsync(CancellationToken cancellationToken = default)
+        {
+            return AdbcAsync.Run(GetTableTypes, Cancel, cancellationToken);
+        }
 
         /// <summary>
         /// Options may be set before AdbcConnectionInit.  Some drivers may
@@ -182,6 +277,170 @@ namespace Apache.Arrow.Adbc
         public virtual void SetOption(string key, string value)
         {
             throw AdbcException.NotImplemented("Connection does not support setting options");
+        }
+
+        /// <summary>
+        /// Asynchronously sets a string-valued option.
+        /// </summary>
+        /// <param name="key">Option name</param>
+        /// <param name="value">Option value</param>
+        /// <param name="cancellationToken">A token used to cancel the operation.</param>
+        /// <remarks>
+        /// Some options, such as <see cref="AdbcOptions.Connection.Autocommit"/> or
+        /// <see cref="AdbcOptions.Connection.CurrentCatalog"/>, may require a round
+        /// trip to the server. Drivers for which that's the case should override this
+        /// method. The default implementation runs <see cref="SetOption(string, string)"/>
+        /// on the thread pool.
+        /// </remarks>
+        public virtual Task SetOptionAsync(string key, string value, CancellationToken cancellationToken = default)
+        {
+            return AdbcAsync.Run(() => SetOption(key, value), Cancel, cancellationToken);
+        }
+
+        /// <summary>
+        /// Sets an integer-valued option.
+        /// </summary>
+        /// <param name="key">Option name</param>
+        /// <param name="value">Option value</param>
+        /// <remarks>
+        /// Added in ADBC 1.1.0. The default implementation converts the value to
+        /// a string and calls <see cref="SetOption(string, string)"/>.
+        /// </remarks>
+        public virtual void SetOptionInt64(string key, long value)
+        {
+            SetOption(key, AdbcOptionValue.FormatInt64(value));
+        }
+
+        /// <summary>
+        /// Sets a floating-point-valued option.
+        /// </summary>
+        /// <param name="key">Option name</param>
+        /// <param name="value">Option value</param>
+        /// <remarks>
+        /// Added in ADBC 1.1.0. The default implementation converts the value to
+        /// a string and calls <see cref="SetOption(string, string)"/>.
+        /// </remarks>
+        public virtual void SetOptionDouble(string key, double value)
+        {
+            SetOption(key, AdbcOptionValue.FormatDouble(value));
+        }
+
+        /// <summary>
+        /// Sets a binary-valued option.
+        /// </summary>
+        /// <param name="key">Option name</param>
+        /// <param name="value">Option value. Implementations must copy the data if they retain it.</param>
+        /// <remarks>Added in ADBC 1.1.0.</remarks>
+        public virtual void SetOptionBytes(string key, ReadOnlySpan<byte> value)
+        {
+            throw AdbcException.NotImplemented("Connection does not support binary options");
+        }
+
+        /// <summary>
+        /// Gets the value of a string-valued option.
+        /// </summary>
+        /// <param name="key">Option name</param>
+        /// <returns>The option value.</returns>
+        /// <exception cref="AdbcException">
+        /// With <see cref="AdbcStatusCode.NotFound"/> if the option is not recognized or has no value.
+        /// </exception>
+        /// <remarks>
+        /// Added in ADBC 1.1.0. The default implementation answers the standard
+        /// options defined in <see cref="AdbcOptions.Connection"/> from the
+        /// <see cref="AutoCommit"/>, <see cref="ReadOnly"/>, <see cref="IsolationLevel"/>,
+        /// <see cref="CurrentCatalog"/> and <see cref="CurrentDbSchema"/> properties.
+        /// Drivers that override it should call the base implementation for keys they
+        /// don't recognize.
+        /// </remarks>
+        public virtual string GetOption(string key)
+        {
+            switch (key)
+            {
+                case AdbcOptions.Connection.Autocommit:
+                    return GetPropertyOption(key, () => AdbcOptions.GetEnabled(AutoCommit));
+                case AdbcOptions.Connection.ReadOnly:
+                    return GetPropertyOption(key, () => AdbcOptions.GetEnabled(ReadOnly));
+                case AdbcOptions.Connection.IsolationLevel:
+                    return GetPropertyOption(key, () => AdbcOptions.GetIsolationLevel(IsolationLevel));
+                case AdbcOptions.Connection.CurrentCatalog:
+                    return GetPropertyOption(key, () => CurrentCatalog);
+                case AdbcOptions.Connection.CurrentDbSchema:
+                    return GetPropertyOption(key, () => CurrentDbSchema);
+                default:
+                    throw AdbcOptionValue.NotFound(key);
+            }
+        }
+
+        private static string GetPropertyOption(string key, Func<string?> getter)
+        {
+            string? value;
+            try
+            {
+                value = getter();
+            }
+            catch (AdbcException e) when (e.Status == AdbcStatusCode.NotImplemented)
+            {
+                // The driver doesn't override the property, or has no value for it.
+                // GetOption reports that as NotFound.
+                throw AdbcOptionValue.NotFound(key);
+            }
+            return value ?? throw AdbcOptionValue.NotFound(key);
+        }
+
+        /// <summary>
+        /// Asynchronously gets the value of a string-valued option.
+        /// </summary>
+        /// <param name="key">Option name</param>
+        /// <param name="cancellationToken">A token used to cancel the operation.</param>
+        /// <returns>The option value.</returns>
+        /// <remarks>
+        /// Some options, such as <see cref="AdbcOptions.Connection.CurrentDbSchema"/>,
+        /// may require a round trip to the server. Drivers for which that's the case
+        /// should override this method. The default implementation runs
+        /// <see cref="GetOption(string)"/> on the thread pool.
+        /// </remarks>
+        public virtual Task<string> GetOptionAsync(string key, CancellationToken cancellationToken = default)
+        {
+            return AdbcAsync.Run(() => GetOption(key), Cancel, cancellationToken);
+        }
+
+        /// <summary>
+        /// Gets the value of an integer-valued option.
+        /// </summary>
+        /// <param name="key">Option name</param>
+        /// <returns>The option value.</returns>
+        /// <remarks>
+        /// Added in ADBC 1.1.0. The default implementation parses the result of
+        /// <see cref="GetOption(string)"/>.
+        /// </remarks>
+        public virtual long GetOptionInt64(string key)
+        {
+            return AdbcOptionValue.ParseInt64(key, GetOption(key));
+        }
+
+        /// <summary>
+        /// Gets the value of a floating-point-valued option.
+        /// </summary>
+        /// <param name="key">Option name</param>
+        /// <returns>The option value.</returns>
+        /// <remarks>
+        /// Added in ADBC 1.1.0. The default implementation parses the result of
+        /// <see cref="GetOption(string)"/>.
+        /// </remarks>
+        public virtual double GetOptionDouble(string key)
+        {
+            return AdbcOptionValue.ParseDouble(key, GetOption(key));
+        }
+
+        /// <summary>
+        /// Gets the value of a binary-valued option.
+        /// </summary>
+        /// <param name="key">Option name</param>
+        /// <returns>The option value.</returns>
+        /// <remarks>Added in ADBC 1.1.0.</remarks>
+        public virtual byte[] GetOptionBytes(string key)
+        {
+            throw AdbcOptionValue.NotFound(key);
         }
 
         /// <summary>
@@ -196,11 +455,32 @@ namespace Apache.Arrow.Adbc
         }
 
         /// <summary>
+        /// Asynchronously create a result set from a serialized PartitionDescriptor.
+        /// </summary>
+        /// <param name="partition">
+        /// The partition descriptor.
+        /// </param>
+        /// <param name="cancellationToken">A token used to cancel the operation.</param>
+        public virtual Task<IArrowArrayStream> ReadPartitionAsync(PartitionDescriptor partition, CancellationToken cancellationToken = default)
+        {
+            return AdbcAsync.Run(() => ReadPartition(partition), Cancel, cancellationToken);
+        }
+
+        /// <summary>
         /// Rollback the pending transaction.
         /// </summary>
         public virtual void Rollback()
         {
             throw AdbcException.NotImplemented("Connection does not support transactions");
+        }
+
+        /// <summary>
+        /// Asynchronously rollback the pending transaction.
+        /// </summary>
+        /// <param name="cancellationToken">A token used to cancel the operation.</param>
+        public virtual Task RollbackAsync(CancellationToken cancellationToken = default)
+        {
+            return AdbcAsync.Run(Rollback, Cancel, cancellationToken);
         }
 
         /// <summary>
@@ -231,6 +511,32 @@ namespace Apache.Arrow.Adbc
         }
 
         /// <summary>
+        /// Gets or sets the current catalog.
+        /// </summary>
+        /// <remarks>
+        /// Added in ADBC 1.1.0. The default setter calls <see cref="SetOption(string, string)"/>
+        /// with <see cref="AdbcOptions.Connection.CurrentCatalog"/>.
+        /// </remarks>
+        public virtual string? CurrentCatalog
+        {
+            get => throw AdbcException.NotImplemented("Connection does not support getting the current catalog");
+            set => SetOption(AdbcOptions.Connection.CurrentCatalog, value ?? throw new ArgumentNullException(nameof(value)));
+        }
+
+        /// <summary>
+        /// Gets or sets the current database schema.
+        /// </summary>
+        /// <remarks>
+        /// Added in ADBC 1.1.0. The default setter calls <see cref="SetOption(string, string)"/>
+        /// with <see cref="AdbcOptions.Connection.CurrentDbSchema"/>.
+        /// </remarks>
+        public virtual string? CurrentDbSchema
+        {
+            get => throw AdbcException.NotImplemented("Connection does not support getting the current database schema");
+            set => SetOption(AdbcOptions.Connection.CurrentDbSchema, value ?? throw new ArgumentNullException(nameof(value)));
+        }
+
+        /// <summary>
         /// Attempts to cancel an in-progress operation on a connection.
         /// </summary>
         /// <remarks>
@@ -254,6 +560,15 @@ namespace Apache.Arrow.Adbc
         }
 
         /// <summary>
+        /// Asynchronously gets the names of statistics specific to this driver.
+        /// </summary>
+        /// <param name="cancellationToken">A token used to cancel the operation.</param>
+        public virtual Task<IArrowArrayStream> GetStatisticsNamesAsync(CancellationToken cancellationToken = default)
+        {
+            return AdbcAsync.Run(GetStatisticsNames, Cancel, cancellationToken);
+        }
+
+        /// <summary>
         /// Gets statistics about the data distribution of table(s)
         /// </summary>
         /// <param name="catalogPattern">The catalog or null. May be a search pattern.</param>
@@ -264,6 +579,20 @@ namespace Apache.Arrow.Adbc
         public virtual IArrowArrayStream GetStatistics(string? catalogPattern, string? schemaPattern, string tableNamePattern, bool approximate)
         {
             throw AdbcException.NotImplemented("Connection does not support statistics");
+        }
+
+        /// <summary>
+        /// Asynchronously gets statistics about the data distribution of table(s)
+        /// </summary>
+        /// <param name="catalogPattern">The catalog or null. May be a search pattern.</param>
+        /// <param name="schemaPattern">The schema or null. May be a search pattern.</param>
+        /// <param name="tableNamePattern">The table name or null. May be a search pattern.</param>
+        /// <param name="approximate">If false, consumer desires exact statistics regardless of cost</param>
+        /// <param name="cancellationToken">A token used to cancel the operation.</param>
+        /// <returns>A result describing the statistics for the table(s)</returns>
+        public virtual Task<IArrowArrayStream> GetStatisticsAsync(string? catalogPattern, string? schemaPattern, string tableNamePattern, bool approximate, CancellationToken cancellationToken = default)
+        {
+            return AdbcAsync.Run(() => GetStatistics(catalogPattern, schemaPattern, tableNamePattern, approximate), Cancel, cancellationToken);
         }
     }
 }

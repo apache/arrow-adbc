@@ -117,14 +117,14 @@ fi
 PKG_LIBS="$PKG_LIBS $SYMBOL_ARGS"
 
 sed \
-  -e "s|@gobin@|$GO_BIN|" \
+  -e "s|@gobin@|$GO_BIN|g" \
   -e "s|@libs@|$PKG_LIBS|" \
   -e "s|@cc@|$CC|" \
   -e "s|@cxx@|$CXX|" \
   -e "s|@nproc@|$GOMAXPROCS|" \
   src/Makevars.in > src/Makevars
 
-if [ -f "src/go/adbc/pkg/flightsql/driver.go" ]; then
+if [ -f "src/go/driver/flightsql/pkg/driver.go" ]; then
   echo "Found vendored ADBC FlightSQL driver"
   exit 0
 fi

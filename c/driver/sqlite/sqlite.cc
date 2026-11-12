@@ -31,7 +31,46 @@
 #include "driver/framework/database.h"
 #include "driver/framework/statement.h"
 #include "driver/framework/status.h"
+#include "driver/sqlite/config.h"
 #include "driver/sqlite/statement_reader.h"
+
+#if defined(__has_builtin)
+#if __has_builtin(__builtin_available)
+#define HAVE_BUILTIN_AVAILABLE
+#endif
+#endif
+
+#if SQLITE_VERSION_NUMBER < 3037000
+// Polyfill for older versions
+sqlite3_int64 polyfill_total_changes64(sqlite3* db) {
+  return static_cast<sqlite3_int64>(sqlite3_total_changes(db));
+}
+
+sqlite3_int64 polyfill_changes64(sqlite3* db) {
+  return static_cast<sqlite3_int64>(sqlite3_changes(db));
+}
+#elif defined(HAVE_BUILTIN_AVAILABLE)
+// Must branch at runtime for macOS
+sqlite3_int64 polyfill_total_changes64(sqlite3* db) {
+  if (__builtin_available(macOS 12.3, *)) {
+    return sqlite3_total_changes64(db);
+  }
+  return static_cast<sqlite3_int64>(sqlite3_total_changes(db));
+}
+
+sqlite3_int64 polyfill_changes64(sqlite3* db) {
+  if (__builtin_available(macOS 12.3, *)) {
+    return sqlite3_changes64(db);
+  }
+  return static_cast<sqlite3_int64>(sqlite3_changes(db));
+}
+#else
+sqlite3_int64 polyfill_total_changes64(sqlite3* db) {
+  return sqlite3_total_changes64(db);
+}
+
+sqlite3_int64 polyfill_changes64(sqlite3* db) { return sqlite3_changes64(db); }
+#endif
 
 namespace adbc::sqlite {
 
@@ -53,6 +92,7 @@ constexpr std::string_view kConnectionOptionLoadExtensionEntrypoint =
 /// The batch size for query results (and for initial type inference)
 constexpr std::string_view kStatementOptionBatchRows = "adbc.sqlite.query.batch_rows";
 constexpr std::string_view kStatementOptionBindByName = "adbc.statement.bind_by_name";
+constexpr std::string_view kOptionTxnState = "adbc.sqlite.txn_state";
 constexpr int kDefaultBatchSize = 1024;
 
 std::string_view GetColumnText(sqlite3_stmt* stmt, int index) {
@@ -331,7 +371,7 @@ struct SqliteGetObjectsHelper : public driver::GetObjectsHelper {
     // XXX: because we're saving the SqliteQuery, we also need to save the string builder
     columns_query.Reset();
     columns_query.Append(
-        R"(SELECT cid, name, type, 'notnull', dflt_value FROM pragma_table_info(%Q, %Q) WHERE NAME LIKE ?)",
+        R"(SELECT cid, name, type, "notnull", dflt_value FROM pragma_table_info(%Q, %Q) WHERE NAME LIKE ?)",
         table.data(), catalog.data());
     std::string_view query;
     UNWRAP_RESULT(query, columns_query.GetString());
@@ -530,12 +570,24 @@ class SqliteDatabase : public driver::Database<SqliteDatabase> {
                              /*zVfs=*/nullptr);
     if (rc != SQLITE_OK) {
       Status status;
-      if (conn_) {
-        status = status::fmt::IO("failed to open '{}': {}", uri_, sqlite3_errmsg(conn));
+      if (conn) {
+        std::string_view message = sqlite3_errmsg(conn);
+        if ((rc == SQLITE_ERROR || rc == SQLITE_PERM) &&
+            (message.starts_with("invalid uri authority:") ||
+             message.starts_with("no such access mode:") ||
+             message.starts_with("no such cache mode:") ||
+             message.starts_with("access mode not allowed:") ||
+             message.starts_with("cache mode not allowed:") ||
+             message.starts_with("no such vfs:"))) {
+          status = status::fmt::InvalidArgument("invalid database URI: {}",
+                                                message.substr(0, message.find(':')));
+        } else {
+          status = status::fmt::IO("failed to open database: {}", sqlite3_errstr(rc));
+        }
+        (void)sqlite3_close(conn);
       } else {
-        status = status::fmt::IO("failed to open '{}': failed to allocate memory", uri_);
+        status = status::IO("failed to open database: failed to allocate memory");
       }
-      (void)sqlite3_close(conn);
       return status;
     }
     return conn;
@@ -618,6 +670,7 @@ class SqliteConnection : public driver::Connection<SqliteConnection> {
   }
 
   Result<std::optional<std::string>> GetCurrentCatalogImpl() { return "main"; }
+  Result<std::optional<std::string>> GetCurrentSchemaImpl() { return ""; }
 
   Result<std::unique_ptr<driver::GetObjectsHelper>> GetObjectsImpl() {
     return std::make_unique<SqliteGetObjectsHelper>(conn_);
@@ -690,11 +743,10 @@ class SqliteConnection : public driver::Connection<SqliteConnection> {
           result.emplace_back(code, "ADBC SQLite Driver");
           break;
         case ADBC_INFO_DRIVER_VERSION:
-          // TODO(lidavidm): fill in driver version
-          result.emplace_back(code, "(unknown)");
+          result.emplace_back(code, "v" SQLITE_DRIVER_VERSION_STRING);
           break;
         case ADBC_INFO_DRIVER_ARROW_VERSION:
-          result.emplace_back(code, NANOARROW_VERSION);
+          result.emplace_back(code, "v" NANOARROW_VERSION);
           break;
         case ADBC_INFO_DRIVER_ADBC_VERSION:
           result.emplace_back(code, static_cast<int64_t>(ADBC_VERSION_1_1_0));
@@ -739,6 +791,19 @@ class SqliteConnection : public driver::Connection<SqliteConnection> {
     if (key == kStatementOptionBatchRows) {
       return driver::Option(
           static_cast<int64_t>(batch_size_.value_or(kDefaultBatchSize)));
+    } else if (key == kOptionTxnState) {
+#if SQLITE_VERSION_NUMBER < 3034000
+      return status::NotImplemented(
+          "this version of SQLite does not support sqlite3_txn_state");
+#elif defined(HAVE_BUILTIN_AVAILABLE)
+      if (__builtin_available(macOS 12.0, *)) {
+        return driver::Option(static_cast<int64_t>(sqlite3_txn_state(conn_, nullptr)));
+      }
+      return status::NotImplemented(
+          "this version of SQLite does not support sqlite3_txn_state");
+#else
+      return driver::Option(static_cast<int64_t>(sqlite3_txn_state(conn_, nullptr)));
+#endif
     }
     return Base::GetOption(key);
   }
@@ -872,7 +937,7 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
       return status::fmt::InvalidState("{} Cannot set both {} and {}", kErrorPrefix,
                                        ADBC_INGEST_OPTION_TARGET_CATALOG,
                                        ADBC_INGEST_OPTION_TEMPORARY);
-    } else if (state.target_schema) {
+    } else if (state.target_schema && !state.target_schema->empty()) {
       return status::fmt::NotImplemented("{} {} not supported", kErrorPrefix,
                                          ADBC_INGEST_OPTION_TARGET_DB_SCHEMA);
     } else if (!state.target_table) {
@@ -964,6 +1029,9 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
         default:
           break;
       }
+      if (!(view.schema->flags & ARROW_FLAG_NULLABLE)) {
+        create_query.Append(" NOT NULL");
+      }
     }
 
     create_query.Append(")");
@@ -994,7 +1062,12 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
     }
     switch (state.table_does_not_exist_) {
       case Base::TableDoesNotExist::kCreate: {
-        UNWRAP_STATUS(::adbc::sqlite::SqliteQuery::Execute(conn_, create));
+        auto status = ::adbc::sqlite::SqliteQuery::Execute(conn_, create);
+        if (status.message().find("already exists") != std::string::npos) {
+          return Status(ADBC_STATUS_ALREADY_EXISTS, status.message());
+        } else if (!status.ok()) {
+          return status;
+        }
         break;
       }
       case Base::TableDoesNotExist::kFail:
@@ -1015,9 +1088,25 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
       int rc = sqlite3_prepare_v2(conn_, insert.data(), static_cast<int>(insert.size()),
                                   &stmt, /*pzTail=*/nullptr);
       if (rc != SQLITE_OK) {
+        std::string err = sqlite3_errmsg(conn_);
         std::ignore = sqlite3_finalize(stmt);
-        return status::fmt::Internal("failed to prepare: {}\nquery was: {}",
-                                     sqlite3_errmsg(conn_), insert);
+        InternalAdbcSqliteBinderRelease(&binder_);
+
+        std::string message =
+            fmt::format("failed to prepare: {}\nquery was: {}", err, insert);
+        if (is_autocommit) {
+          auto status = ::adbc::sqlite::SqliteQuery::Execute(conn_, "ROLLBACK");
+          if (!status.ok()) {
+            message += fmt::format("\nfailed to rollback: {}", status.message());
+          }
+        }
+
+        // XXX: we don't have a good way of detecting schema conflicts vs other errors
+        if (err.find("has no column") != std::string::npos ||
+            err.find("no such column") != std::string::npos) {
+          return Status(ADBC_STATUS_ALREADY_EXISTS, std::move(message));
+        }
+        return Status(ADBC_STATUS_INTERNAL, std::move(message));
       }
     }
     assert(stmt != nullptr);
@@ -1047,6 +1136,7 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
       row_count++;
     }
     std::ignore = sqlite3_finalize(stmt);
+    InternalAdbcSqliteBinderRelease(&binder_);
 
     if (is_autocommit) {
       if (status_code == ADBC_STATUS_OK) {
@@ -1120,19 +1210,28 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
         }
       }
 
+      const sqlite3_int64 total_changes = polyfill_total_changes64(conn_);
       while (sqlite3_step(stmt_) == SQLITE_ROW) {
         output_rows++;
       }
 
-      if (sqlite3_column_count(stmt_) == 0) {
-        changed_rows += sqlite3_changes(conn_);
+      // NOTE(apache/arrow-adbc#4820): only count sqlite3_total_changes when
+      // it actually changed from before
+      if (sqlite3_column_count(stmt_) == 0 &&
+          polyfill_total_changes64(conn_) != total_changes) {
+        changed_rows += polyfill_changes64(conn_);
       }
 
       if (!binder_.schema.release) break;
     }
     InternalAdbcSqliteBinderRelease(&binder_);
 
-    if (sqlite3_reset(stmt_) != SQLITE_OK) {
+    int rc = sqlite3_reset(stmt_);
+    if (rc == SQLITE_CONSTRAINT) {
+      const char* msg = sqlite3_errmsg(conn_);
+      return status::fmt::Integrity("failed to execute query: {}",
+                                    msg ? msg : "(unknown error)");
+    } else if (rc != SQLITE_OK) {
       const char* msg = sqlite3_errmsg(conn_);
       return status::fmt::IO("failed to execute query: {}",
                              msg ? msg : "(unknown error)");

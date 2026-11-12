@@ -143,7 +143,7 @@ static AdbcStatusCode ArrowDate32ToIsoString(int32_t value, char** buf,
   }
   time_t time = (time_t)(value * SECONDS_PER_DAY);
 #else
-  time_t time = value * SECONDS_PER_DAY;
+  time_t time = (int64_t)value * SECONDS_PER_DAY;
 #endif
 
   struct tm broken_down_time;
@@ -169,9 +169,14 @@ static AdbcStatusCode ArrowDate32ToIsoString(int32_t value, char** buf,
     return ADBC_STATUS_IO;
   }
 
-  if (strftime(tsstr, strlen + 1, "%Y-%m-%d", &broken_down_time) == 0) {
-    InternalAdbcSetError(error, "Call to strftime for date %" PRId32 " with failed",
-                         value);
+  // Whether %Y pads years < 1000 is platform dependent
+  // https://github.com/python/cpython/issues/120713
+  // Specifiers like %04Y are not portable; format manually instead
+  int written = snprintf(tsstr, strlen + 1, "%04" PRId64 "-%02d-%02d",
+                         (int64_t)broken_down_time.tm_year + 1900,
+                         broken_down_time.tm_mon + 1, broken_down_time.tm_mday);
+  if (written != strlen) {
+    InternalAdbcSetError(error, "Could not format date %" PRId32, value);
     free(tsstr);
     return ADBC_STATUS_INVALID_ARGUMENT;
   }
@@ -207,13 +212,13 @@ static AdbcStatusCode ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUni
       break;
   }
 
+  int64_t seconds = value / scale;
   rem = value % scale;
   if (rem < 0) {
-    value -= scale;
+    // Floor the quotient without subtracting from a possibly INT64_MIN value.
+    seconds--;
     rem = scale + rem;
   }
-
-  const int64_t seconds = value / scale;
 
 #if SIZEOF_TIME_T < 8
   if ((seconds > INT32_MAX) || (seconds < INT32_MIN)) {
@@ -253,9 +258,14 @@ static AdbcStatusCode ArrowTimestampToIsoString(int64_t value, enum ArrowTimeUni
     return ADBC_STATUS_IO;
   }
 
-  if (strftime(tsstr, strlen, "%Y-%m-%dT%H:%M:%S", &broken_down_time) == 0) {
-    InternalAdbcSetError(error,
-                         "Call to strftime for timestamp %" PRId64 " with unit %d failed",
+  // %Y does not consistently pad early years across platforms (see above)
+  int written =
+      snprintf(tsstr, strlen + 1, "%04" PRId64 "-%02d-%02dT%02d:%02d:%02d",
+               (int64_t)broken_down_time.tm_year + 1900, broken_down_time.tm_mon + 1,
+               broken_down_time.tm_mday, broken_down_time.tm_hour,
+               broken_down_time.tm_min, broken_down_time.tm_sec);
+  if (written != 19) {
+    InternalAdbcSetError(error, "Could not format timestamp %" PRId64 " with unit %d",
                          value, unit);
     free(tsstr);
     return ADBC_STATUS_INVALID_ARGUMENT;
@@ -1231,14 +1241,16 @@ AdbcStatusCode InternalAdbcSqliteExportReader(sqlite3* db, sqlite3_stmt* stmt,
           }
         }
         continue;
-      } else if (rc == SQLITE_ERROR) {
+      } else if (rc == SQLITE_CONSTRAINT) {
+        InternalAdbcSetError(error, "%s", sqlite3_errmsg(db));
+        status = ADBC_STATUS_INTEGRITY;
+        (void)sqlite3_reset(stmt);
+        break;
+      } else if (rc != SQLITE_ROW) {
         InternalAdbcSetError(error, "Failed to step query: %s", sqlite3_errmsg(db));
         status = ADBC_STATUS_IO;
         // Reset here so that we don't get an error again in StatementRelease
         (void)sqlite3_reset(stmt);
-        break;
-      } else if (rc != SQLITE_ROW) {
-        status = ADBC_STATUS_INTERNAL;
         break;
       }
 

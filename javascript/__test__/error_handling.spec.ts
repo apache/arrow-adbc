@@ -190,3 +190,15 @@ test('error: conn.queryStream() error during iteration throws AdbcError', async 
   assert.ok(error instanceof AdbcError)
   assert.match((error as AdbcError).message, /no such table/i)
 })
+
+test('error: missing driver throws NotFound', () => {
+  assert.throws(
+    () => new AdbcDatabase({ driver: 'adbc_test_driver_manager_missing_driver_7c8f5482' }),
+    (e: unknown) => {
+      assert.ok(e instanceof AdbcError)
+      assert.strictEqual(e.code, 'NotFound', e.message)
+      assert.match(e.message, /Driver not found/)
+      return true
+    },
+  )
+})

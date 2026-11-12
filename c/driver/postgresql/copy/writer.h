@@ -33,6 +33,14 @@
 #include "../postgres_util.h"
 #include "copy_common.h"
 
+#if defined(__SIZEOF_INT128__)
+__extension__ using UInt128 = unsigned __int128;
+#else
+#include "vendor/boost/int128.hpp"
+
+using UInt128 = boost::int128::uint128;
+#endif
+
 namespace adbcpq {
 
 // The maximum value in seconds that can be converted into microseconds
@@ -355,7 +363,6 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
     ArrowDecimalInit(&decimal, bitwidth_, precision_, scale_);
     ArrowArrayViewGetDecimalUnsafe(array_view_, index, &decimal);
 
-#if defined(__SIZEOF_INT128__)
     if constexpr (T == NANOARROW_TYPE_DECIMAL128) {
       if (!disable_fast_path_) {
         const ArrowErrorCode fast_res = WriteDecimal128Fast(buffer, &decimal, error);
@@ -364,7 +371,6 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
         }
       }
     }
-#endif
 
     const int16_t sign = ArrowDecimalSign(&decimal) > 0 ? kNumericPos : kNumericNeg;
 
@@ -405,10 +411,9 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
     int16_t dscale =
         static_cast<int16_t>((std::max)(0, parts.effective_scale - trailing_zeros));
 
-    // Optimize: remove trailing zero digit groups from fractional part
+    // Optimize: remove trailing zero digit groups
     int n_int_digit_groups = int_digits.size();
-    while (static_cast<int>(all_digits.size()) > n_int_digit_groups &&
-           all_digits.back() == 0) {
+    while (!all_digits.empty() && all_digits.back() == 0) {
       all_digits.pop_back();
     }
 
@@ -450,9 +455,6 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
   }
 
  private:
-#if defined(__SIZEOF_INT128__)
-  __extension__ using UInt128 = unsigned __int128;
-
   ArrowErrorCode WriteDecimal128Fast(ArrowBuffer* buffer, struct ArrowDecimal* decimal,
                                      ArrowError* error) const {
     constexpr int kDecDigits = 4;
@@ -573,7 +575,6 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
     }
     return true;
   }
-#endif
 
   // Helper struct for organizing data flow between functions
   struct DecimalParts {
@@ -596,9 +597,10 @@ class PostgresCopyNumericFieldWriter : public PostgresCopyFieldWriter {
     const int16_t sign = ArrowDecimalSign(decimal) > 0 ? kNumericPos : kNumericNeg;
     const bool is_negative = sign == kNumericNeg ? true : false;
     if (is_negative) {
-      buf[0] = ~buf[0] + 1;
-      for (size_t i = 1; i < nwords; i++) {
-        buf[i] = ~buf[i];
+      uint64_t carry = 1;
+      for (size_t i = 0; i < nwords; i++) {
+        buf[i] = ~buf[i] + carry;
+        carry = carry && buf[i] == 0;
       }
     }
 
@@ -872,7 +874,7 @@ class PostgresCopyListFieldWriter : public PostgresCopyFieldWriter {
     }
 
     constexpr int32_t ndim = 1;
-    constexpr int32_t has_null_flags = 0;
+    int32_t has_null_flags = 0;
 
     // TODO: the LARGE_LIST should use 64 bit indexes
     int32_t start, end;
@@ -899,8 +901,21 @@ class PostgresCopyListFieldWriter : public PostgresCopyFieldWriter {
     // directly to our buffer
     nanoarrow::UniqueBuffer tmp;
     ArrowBufferInit(tmp.get());
+    const auto* child_view = array_view_->children[0];
     for (auto i = start; i < end; ++i) {
-      NANOARROW_RETURN_NOT_OK(child_->Write(tmp.get(), i, error));
+      bool is_null = ArrowArrayViewIsNull(child_view, i);
+      if (!is_null && child_view->dictionary != nullptr) {
+        const int64_t dict_index = ArrowArrayViewGetIntUnsafe(child_view, i);
+        is_null = ArrowArrayViewIsNull(child_view->dictionary, dict_index);
+      }
+      if (is_null) {
+        has_null_flags = 1;
+        constexpr int32_t field_size_bytes = -1;
+        NANOARROW_RETURN_NOT_OK(
+            WriteChecked<int32_t>(tmp.get(), field_size_bytes, error));
+      } else {
+        NANOARROW_RETURN_NOT_OK(child_->Write(tmp.get(), i, error));
+      }
     }
     const int32_t field_size_bytes = sizeof(ndim) + sizeof(has_null_flags) +
                                      sizeof(child_oid_) + sizeof(dim) * ndim +
@@ -923,6 +938,34 @@ class PostgresCopyListFieldWriter : public PostgresCopyFieldWriter {
  private:
   const uint32_t child_oid_;
   std::unique_ptr<PostgresCopyFieldWriter> child_;
+};
+
+template <enum ArrowTimeUnit TU>
+class PostgresCopyTimeFieldWriter : public PostgresCopyFieldWriter {
+ public:
+  ArrowErrorCode Write(ArrowBuffer* buffer, int64_t index, ArrowError* error) override {
+    constexpr int32_t field_size_bytes = sizeof(int64_t);
+    NANOARROW_RETURN_NOT_OK(WriteChecked<int32_t>(buffer, field_size_bytes, error));
+
+    // We assume data is valid, so multiply can't overflow
+    int64_t value = ArrowArrayViewGetIntUnsafe(array_view_, index);
+    switch (TU) {
+      case NANOARROW_TIME_UNIT_SECOND:
+        value *= 1000000;
+        break;
+      case NANOARROW_TIME_UNIT_MILLI:
+        value *= 1000;
+        break;
+      case NANOARROW_TIME_UNIT_MICRO:
+        break;
+      case NANOARROW_TIME_UNIT_NANO:
+        // We truncate; at some point we should add an option to control behavior
+        value /= 1000;
+        break;
+    }
+
+    return WriteChecked<int64_t>(buffer, value, error);
+  }
 };
 
 template <enum ArrowTimeUnit TU>
@@ -1074,12 +1117,29 @@ static inline ArrowErrorCode MakeCopyFieldWriter(
       *out = T::Create<T>(array_view);
       return NANOARROW_OK;
     }
+    case NANOARROW_TYPE_TIME32:
     case NANOARROW_TYPE_TIME64: {
       switch (schema_view.time_unit) {
-        case NANOARROW_TIME_UNIT_MICRO:
-          using T = PostgresCopyNetworkEndianFieldWriter<int64_t>;
+        case NANOARROW_TIME_UNIT_SECOND: {
+          using T = PostgresCopyTimeFieldWriter<NANOARROW_TIME_UNIT_SECOND>;
           *out = T::Create<T>(array_view);
           return NANOARROW_OK;
+        }
+        case NANOARROW_TIME_UNIT_MILLI: {
+          using T = PostgresCopyTimeFieldWriter<NANOARROW_TIME_UNIT_MILLI>;
+          *out = T::Create<T>(array_view);
+          return NANOARROW_OK;
+        }
+        case NANOARROW_TIME_UNIT_MICRO: {
+          using T = PostgresCopyTimeFieldWriter<NANOARROW_TIME_UNIT_MICRO>;
+          *out = T::Create<T>(array_view);
+          return NANOARROW_OK;
+        }
+        case NANOARROW_TIME_UNIT_NANO: {
+          using T = PostgresCopyTimeFieldWriter<NANOARROW_TIME_UNIT_NANO>;
+          *out = T::Create<T>(array_view);
+          return NANOARROW_OK;
+        }
         default:
           return ADBC_STATUS_NOT_IMPLEMENTED;
       }

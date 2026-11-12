@@ -36,6 +36,8 @@ namespace Apache.Arrow.Adbc.DriverManager
     /// </summary>
     public static class AdbcDriverManager
     {
+        private const string DefaultNativeEntrypoint = "AdbcDriverInit";
+
         /// <summary>
         /// The environment variable that specifies additional driver search paths.
         /// </summary>
@@ -132,7 +134,42 @@ namespace Apache.Arrow.Adbc.DriverManager
                 typeName: null,
                 manifestPath: null,
                 loadMethod: loadMethod,
-                () => CAdbcDriverImporter.Load(driverPath, resolvedEntrypoint));
+                () => ImportNativeDriver(
+                    driverPath,
+                    () => entrypoint == null
+                        ? CAdbcDriverImporter.LoadWithFallback(
+                            driverPath,
+                            resolvedEntrypoint,
+                            DefaultNativeEntrypoint)
+                        : CAdbcDriverImporter.Load(driverPath, resolvedEntrypoint)));
+        }
+
+        /// <summary>
+        /// Runs a native driver import, reporting a library that is missing or
+        /// cannot be loaded as <see cref="AdbcStatusCode.NotFound"/> to match the
+        /// C/C++ and Rust driver managers. The underlying load error is kept as
+        /// the inner exception.
+        /// </summary>
+        private static AdbcDriver ImportNativeDriver(string driverPath, Func<AdbcDriver> import)
+        {
+            if (!File.Exists(driverPath))
+            {
+                throw new AdbcException(
+                    $"Driver library file not found: '{driverPath}'.",
+                    AdbcStatusCode.NotFound);
+            }
+
+            try
+            {
+                return import();
+            }
+            catch (Exception ex) when (ex is DllNotFoundException || ex is BadImageFormatException)
+            {
+                throw new AdbcException(
+                    $"Could not load driver library '{driverPath}': {ex.Message}",
+                    AdbcStatusCode.NotFound,
+                    ex);
+            }
         }
 
         // -----------------------------------------------------------------------
@@ -454,6 +491,8 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// <c>string → string</c> dictionary.  Integer and double values are formatted
         /// using <see cref="CultureInfo.InvariantCulture"/>. The merged dictionary is
         /// passed to <see cref="AdbcDriver.Open(IReadOnlyDictionary{string,string})"/>.
+        /// Use <see cref="OpenDatabaseFromProfileWithTypedOptions"/> to preserve the
+        /// types of integer and double options.
         /// The <c>entrypoint</c> option (if any) is consumed by the driver manager
         /// and is not forwarded to the driver.
         /// </para>
@@ -506,6 +545,8 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// </list>
         /// The merged dictionary, minus any <c>entrypoint</c> entry, is passed to
         /// <see cref="AdbcDriver.Open(IReadOnlyDictionary{string,string})"/>.
+        /// Use <see cref="OpenDatabaseFromProfileWithTypedOptions"/> to preserve the
+        /// types of integer and double options.
         /// </para>
         /// </remarks>
         /// <param name="profile">The connection profile specifying the driver and options.</param>
@@ -539,6 +580,71 @@ namespace Apache.Arrow.Adbc.DriverManager
             if (mergedOptions.TryGetValue(EntrypointOptionKey, out string? entrypointValue))
             {
                 entrypoint = entrypointValue;
+                mergedOptions.Remove(EntrypointOptionKey);
+            }
+
+            AdbcDriver driver = LoadDriverFromProfile(profile, entrypoint, loadOptions, additionalSearchPathList);
+            return driver.Open(mergedOptions);
+        }
+
+        /// <summary>
+        /// Loads the driver specified by <paramref name="profile"/> and opens a database,
+        /// merging profile options with explicitly provided typed options.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// This behaves like
+        /// <see cref="OpenDatabaseFromProfile(ConnectionProfile, IReadOnlyDictionary{string, string}, AdbcLoadFlags, string)"/>
+        /// except that the profile's integer and double options keep their types, and
+        /// <paramref name="explicitOptions"/> may carry strings, integers,
+        /// floating-point numbers or byte arrays. Options are merged as described by
+        /// <see cref="BuildTypedOptions"/> and passed to
+        /// <see cref="AdbcDriver.Open(IReadOnlyDictionary{string,object})"/>, so drivers
+        /// implementing ADBC 1.1 or later receive integer and double values through
+        /// their typed option setters.
+        /// </para>
+        /// <para>
+        /// Some drivers only accept a given option through the string setter and reject
+        /// it when it arrives as an integer or double. Use this method only when the
+        /// driver is known to accept typed values for the options being set.
+        /// </para>
+        /// <para>
+        /// If present, the <c>entrypoint</c> option must be a string.
+        /// </para>
+        /// </remarks>
+        /// <param name="profile">The connection profile specifying the driver and options.</param>
+        /// <param name="explicitOptions">
+        /// Additional options to merge with profile options. Explicit options override profile
+        /// options for the same key. May be <c>null</c> or empty.
+        /// </param>
+        /// <param name="loadOptions">Flags controlling directory search for native drivers.</param>
+        /// <param name="additionalSearchPathList">
+        /// An optional extra search path list for native driver discovery.
+        /// </param>
+        /// <returns>An open <see cref="AdbcDatabase"/>.</returns>
+        public static AdbcDatabase OpenDatabaseFromProfileWithTypedOptions(
+            ConnectionProfile profile,
+            IReadOnlyDictionary<string, object>? explicitOptions,
+            AdbcLoadFlags loadOptions = AdbcLoadFlags.Default,
+            string? additionalSearchPathList = null)
+        {
+            if (profile == null) throw new ArgumentNullException(nameof(profile));
+
+            Dictionary<string, object> mergedOptions = new Dictionary<string, object>(StringComparer.Ordinal);
+            foreach (KeyValuePair<string, object> kv in BuildTypedOptions(profile, explicitOptions))
+            {
+                mergedOptions[kv.Key] = kv.Value;
+            }
+
+            // entrypoint is a driver-manager option, not a driver option: pull it out
+            // of the bag before opening the database. When set, it overrides any
+            // entrypoint declared by a driver manifest found via FindLoadDriver.
+            string? entrypoint = null;
+            if (mergedOptions.TryGetValue(EntrypointOptionKey, out object? entrypointValue))
+            {
+                entrypoint = entrypointValue as string ?? throw new AdbcException(
+                    $"The '{EntrypointOptionKey}' option must be a string.",
+                    AdbcStatusCode.InvalidArgument);
                 mergedOptions.Remove(EntrypointOptionKey);
             }
 
@@ -610,6 +716,61 @@ namespace Apache.Arrow.Adbc.DriverManager
             return merged;
         }
 
+        /// <summary>
+        /// Merges options from a profile with explicitly provided options into a flat
+        /// <c>string → object</c> dictionary suitable for passing to
+        /// <see cref="AdbcDriver.Open(IReadOnlyDictionary{string,object})"/>.
+        /// </summary>
+        /// <remarks>
+        /// <para>
+        /// Unlike <see cref="BuildStringOptions(ConnectionProfile, IReadOnlyDictionary{string, string})"/>,
+        /// integer options are kept as <see cref="long"/> and double options as
+        /// <see cref="double"/>, so that drivers implementing ADBC 1.1 or later receive
+        /// them through their typed option setters.
+        /// </para>
+        /// <para>
+        /// Options are merged in the following order (later values override earlier ones):
+        /// <list type="number">
+        ///   <item>Profile integer options</item>
+        ///   <item>Profile double options</item>
+        ///   <item>Profile string options</item>
+        ///   <item>Explicit options from <paramref name="explicitOptions"/></item>
+        /// </list>
+        /// </para>
+        /// </remarks>
+        /// <param name="profile">The connection profile containing base options.</param>
+        /// <param name="explicitOptions">
+        /// Additional options that override profile options. May be <c>null</c> or empty.
+        /// </param>
+        /// <returns>A merged dictionary of all options.</returns>
+        public static IReadOnlyDictionary<string, object> BuildTypedOptions(
+            ConnectionProfile profile,
+            IReadOnlyDictionary<string, object>? explicitOptions = null)
+        {
+            if (profile == null) throw new ArgumentNullException(nameof(profile));
+
+            var merged = new Dictionary<string, object>(StringComparer.Ordinal);
+
+            // Profile options first (in order: int, double, string)
+            foreach (var kv in profile.IntOptions)
+                merged[kv.Key] = kv.Value;
+
+            foreach (var kv in profile.DoubleOptions)
+                merged[kv.Key] = kv.Value;
+
+            foreach (var kv in profile.StringOptions)
+                merged[kv.Key] = kv.Value;
+
+            // Explicit options last – they override profile options
+            if (explicitOptions != null)
+            {
+                foreach (var kv in explicitOptions)
+                    merged[kv.Key] = kv.Value;
+            }
+
+            return merged;
+        }
+
         // -----------------------------------------------------------------------
         // Helpers – derive entrypoint, search directories, manifest loading
         // -----------------------------------------------------------------------
@@ -618,34 +779,48 @@ namespace Apache.Arrow.Adbc.DriverManager
         /// Derives a candidate entrypoint symbol name from a driver file path.
         /// </summary>
         /// <remarks>
-        /// The convention used by the Go-based ADBC drivers is to strip leading
-        /// <c>lib</c> and any extension, then append <c>Init</c>. For example,
-        /// <c>libadbc_driver_postgresql.so</c> yields <c>AdbcDriverPostgresqlInit</c>.
+        /// This matches the default entrypoint derivation used by the other ADBC
+        /// driver managers: strip any directory and all extensions, strip a leading
+        /// <c>lib</c>, split the remainder on underscores and hyphens, capitalize the
+        /// first letter of each part and join them, prefix <c>Adbc</c> if the result
+        /// doesn't already start with it, then append <c>Init</c>. For example:
+        /// <list type="bullet">
+        /// <item><c>libadbc_driver_sqlite.so.2.0.0</c> yields <c>AdbcDriverSqliteInit</c></item>
+        /// <item><c>adbc_driver_sqlite.dll</c> yields <c>AdbcDriverSqliteInit</c></item>
+        /// <item><c>proprietary_driver.dll</c> yields <c>AdbcProprietaryDriverInit</c></item>
+        /// </list>
         /// Falls back to <c>AdbcDriverInit</c> when no better candidate can be formed.
         /// </remarks>
         public static string DeriveEntrypoint(string driverPath)
         {
-            string baseName = Path.GetFileNameWithoutExtension(driverPath);
+            // Treat both '/' and '\' as directory separators on all platforms.
+            string baseName = driverPath.Substring(driverPath.LastIndexOfAny(new[] { '/', '\\' }) + 1);
+
+            // Remove all extensions (e.g. ".so.2.0.0").
+            int dot = baseName.IndexOf('.');
+            if (dot >= 0)
+                baseName = baseName.Substring(0, dot);
 
             // Strip leading "lib" prefix common on POSIX platforms.
-            if (baseName.StartsWith("lib", StringComparison.OrdinalIgnoreCase))
+            if (baseName.StartsWith("lib", StringComparison.Ordinal))
                 baseName = baseName.Substring(3);
 
-            // Strip "adbc_driver_" or "adbc_" prefix to get a shorter stem.
-            const string adbcDriverPrefix = "adbc_driver_";
-            const string adbcPrefix = "adbc_";
+            var sb = new System.Text.StringBuilder();
+            foreach (string part in baseName.Split('_', '-'))
+            {
+                if (part.Length == 0)
+                    continue;
+                sb.Append(char.ToUpperInvariant(part[0]));
+                sb.Append(part, 1, part.Length - 1);
+            }
 
-            if (baseName.StartsWith(adbcDriverPrefix, StringComparison.OrdinalIgnoreCase))
-                baseName = baseName.Substring(adbcDriverPrefix.Length);
-            else if (baseName.StartsWith(adbcPrefix, StringComparison.OrdinalIgnoreCase))
-                baseName = baseName.Substring(adbcPrefix.Length);
+            if (sb.Length == 0)
+                return DefaultNativeEntrypoint;
 
-            if (string.IsNullOrEmpty(baseName))
-                return "AdbcDriverInit";
-
-            // Convert snake_case to PascalCase.
-            string pascal = ToPascalCase(baseName);
-            return $"AdbcDriver{pascal}Init";
+            string entrypoint = sb.ToString();
+            if (!entrypoint.StartsWith("Adbc", StringComparison.Ordinal))
+                entrypoint = "Adbc" + entrypoint;
+            return entrypoint + "Init";
         }
 
         private static AdbcDriver LoadFromAbsolutePath(string path, string? entrypoint)
@@ -708,17 +883,22 @@ namespace Apache.Arrow.Adbc.DriverManager
 
         private static AdbcDriver LoadFromManifest(string manifestPath, string? entrypoint)
         {
+            // A manifest that can't be read is an invalid argument, as in the
+            // C/C++ and Rust driver managers
             if (!File.Exists(manifestPath))
             {
                 throw new AdbcException(
-                    $"Driver manifest file not found.",
-                    AdbcStatusCode.NotFound);
+                    $"Driver manifest file not found: '{manifestPath}'.",
+                    AdbcStatusCode.InvalidArgument);
             }
 
             DriverManifest manifest = DriverManifest.LoadFromFile(manifestPath);
 
             // Caller-supplied entrypoint wins over the manifest's. Falls back to
-            // a derived native symbol name only when neither is provided.
+            // a derived native symbol name only when neither is provided. Keep
+            // that provenance so the standard native fallback is not applied to
+            // an explicit caller- or manifest-selected symbol.
+            bool allowNativeFallback = entrypoint == null && manifest.Entrypoint == null;
             string resolvedEntrypoint = entrypoint
                 ?? manifest.Entrypoint
                 ?? DeriveEntrypoint(manifest.LibraryPath);
@@ -726,7 +906,12 @@ namespace Apache.Arrow.Adbc.DriverManager
             string? manifestDir = Path.GetDirectoryName(Path.GetFullPath(manifestPath));
             string resolvedPath = ResolveManifestPath(manifest.LibraryPath, manifestDir);
 
-            return LoadByEntrypointScheme(resolvedPath, resolvedEntrypoint, manifestPath, nameof(LoadFromManifest));
+            return LoadByEntrypointScheme(
+                resolvedPath,
+                resolvedEntrypoint,
+                manifestPath,
+                nameof(LoadFromManifest),
+                allowNativeFallback);
         }
 
         /// <summary>Returns <c>true</c> if <paramref name="entrypoint"/> uses a managed-runtime scheme prefix.</summary>
@@ -763,7 +948,8 @@ namespace Apache.Arrow.Adbc.DriverManager
             string driverPath,
             string entrypoint,
             string? manifestPath,
-            string loadMethod)
+            string loadMethod,
+            bool allowNativeFallback = false)
         {
             if (entrypoint.StartsWith(DotnetEntrypointScheme, StringComparison.Ordinal))
             {
@@ -794,7 +980,14 @@ namespace Apache.Arrow.Adbc.DriverManager
                 typeName: null,
                 manifestPath: manifestPath,
                 loadMethod: loadMethod,
-                () => CAdbcDriverImporter.Load(driverPath, entrypoint));
+                () => ImportNativeDriver(
+                    driverPath,
+                    () => allowNativeFallback
+                        ? CAdbcDriverImporter.LoadWithFallback(
+                            driverPath,
+                            entrypoint,
+                            DefaultNativeEntrypoint)
+                        : CAdbcDriverImporter.Load(driverPath, entrypoint)));
         }
 
         /// <summary>
@@ -838,8 +1031,9 @@ namespace Apache.Arrow.Adbc.DriverManager
 
             // 2. Try native library extensions. If a matching file exists but fails
             // to load (e.g., corrupt binary, wrong architecture, missing entrypoint),
-            // surface that concrete error rather than silently degrading to a generic
-            // NotFound -- the file is clearly the user's intended driver.
+            // stop here rather than trying other directories -- the file is clearly
+            // the user's intended driver. A library that cannot be loaded is reported
+            // as NotFound with the concrete error attached (see ImportNativeDriver).
             foreach (string nativeExt in GetPlatformExtensions())
             {
                 string libPath = Path.Combine(dir, driverName + nativeExt);
@@ -1041,29 +1235,6 @@ namespace Apache.Arrow.Adbc.DriverManager
                     $"Driver name must not contain null characters.",
                     nameof(driverName));
             }
-        }
-
-        private static string ToPascalCase(string snake)
-        {
-            var sb = new System.Text.StringBuilder();
-            bool upperNext = true;
-            foreach (char c in snake)
-            {
-                if (c == '_')
-                {
-                    upperNext = true;
-                }
-                else if (upperNext)
-                {
-                    sb.Append(char.ToUpperInvariant(c));
-                    upperNext = false;
-                }
-                else
-                {
-                    sb.Append(char.ToLowerInvariant(c));
-                }
-            }
-            return sb.ToString();
         }
     }
 }

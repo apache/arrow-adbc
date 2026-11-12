@@ -73,7 +73,8 @@ static const char* kCatalogQueryAll = "SELECT datname FROM pg_catalog.pg_databas
 // because it will always be the currently connected database.
 static const char* kSchemaQueryAll =
     "SELECT nspname FROM pg_catalog.pg_namespace WHERE "
-    "nspname !~ '^pg_' AND nspname <> 'information_schema'";
+    "(nspname !~ '^pg_' OR oid = pg_my_temp_schema()) "
+    "AND nspname <> 'information_schema'";
 
 // Parameterized on schema_name, relkind
 // Note that when binding relkind as a string it must look like {"r", "v", ...}

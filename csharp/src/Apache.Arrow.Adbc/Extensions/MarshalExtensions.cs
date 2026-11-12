@@ -59,7 +59,7 @@ namespace Apache.Arrow.Adbc.Extensions
 
             int nb = Encoding.UTF8.GetMaxByteCount(s.Length);
 
-            IntPtr pMem = Marshal.AllocHGlobal(nb + 1);
+            IntPtr pMem = Marshal.AllocCoTaskMem(nb + 1);
 
             int nbWritten;
             byte* pbMem = (byte*)pMem;

@@ -22,6 +22,11 @@
 {% set rel_docs_top = pagename.split('/') | map(attribute='notfound', default='..') | join('/') %}
 
 {% block extrahead %}
+{#- sizes on the .ico keeps Chrome from preferring it over the SVG, which
+    turns white in dark mode. -#}
+<link rel="icon" href="{{ pathto('_static/favicon.ico', 1) }}" sizes="32x32">
+<link rel="icon" href="{{ pathto('_static/favicon.svg', 1) }}" type="image/svg+xml">
+<link rel="apple-touch-icon" href="{{ pathto('_static/apple-touch-icon.png', 1) }}">
 <script>
   const currentVersion = "{{ version }}";
   const versionsRoot = "{{ rel_docs_top }}";

@@ -55,7 +55,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
           submodules: recursive
-      - uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           cache: "maven"
           distribution: "temurin"
@@ -81,7 +81,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
           submodules: recursive
-      - uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           cache: "maven"
           distribution: "temurin"
@@ -122,7 +122,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           cache: "maven"
           distribution: "temurin"
@@ -176,11 +176,23 @@ jobs:
       # I think static and shared conflict on Windows so build static separately
       - name: Build driver manager (Windows)
         if: matrix.os == 'Windows'
-        # TODO(https://github.com/apache/arrow-adbc/issues/4269): remove cmd.exe usage
-        shell: cmd # zizmor: ignore[misfeature]
+        shell: pwsh
         run: |
-          cmake -G "Visual Studio 18 2026" -A x64 -DADBC_BUILD_SHARED=OFF -DADBC_BUILD_STATIC=ON -DCMAKE_VERBOSE_MAKEFILE=ON -DADBC_DRIVER_MANAGER=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_INSTALL_PREFIX=%cd%\build\${{ matrix.vcpkg_arch }} -B %cd%\buildmanager %cd%\c || exit /B 1
-          cmake --build %cd%\buildmanager --config Debug --target install --verbose -j || exit /B 1
+          $buildDir = Join-Path $PWD.Path 'buildmanager'
+          $installPrefix = Join-Path $PWD.Path 'build/${{ matrix.vcpkg_arch }}'
+          $sourceDir = Join-Path $PWD.Path 'c'
+          cmake -G 'Visual Studio 18 2026' -A x64 `
+            '-DADBC_BUILD_SHARED=OFF' `
+            '-DADBC_BUILD_STATIC=ON' `
+            '-DCMAKE_VERBOSE_MAKEFILE=ON' `
+            '-DADBC_DRIVER_MANAGER=ON' `
+            '-DCMAKE_BUILD_TYPE=RelWithDebInfo' `
+            "-DCMAKE_INSTALL_PREFIX=$installPrefix" `
+            -B $buildDir `
+            $sourceDir
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build $buildDir --config Debug --target install --verbose -j
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Build JNI artifacts
         run: |
@@ -210,7 +222,7 @@ jobs:
           ls -laR artifacts
           mv artifacts artifacts-${{ matrix.os }}-${{ matrix.arch }}
           tar czf artifacts-${{ matrix.os }}-${{ matrix.arch }}.tgz artifacts-${{ matrix.os }}-${{ matrix.arch }}
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: jni-artifacts-${{ matrix.os }}-${{ matrix.arch }}
           retention-days: 7
@@ -227,7 +239,7 @@ jobs:
           fi
       - name: Upload failure logs
         if: failure()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: jni-debug-logs-${{ matrix.os }}-${{ matrix.arch }}
           retention-days: 7
@@ -257,12 +269,12 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
           submodules: recursive
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           path: artifacts
           pattern: jni-artifacts-*
           merge-multiple: true
-      - uses: actions/setup-java@dd06d9cba3e5552c54d9f8ea23572deb30010f7c # v6.0.0
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           cache: "maven"
           distribution: "temurin"

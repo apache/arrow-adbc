@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.Collections.Generic;
 
 namespace Apache.Arrow.Adbc
 {
@@ -91,6 +92,19 @@ namespace Apache.Arrow.Adbc
         public virtual int NativeError
         {
             get => 0;
+        }
+
+        /// <summary>
+        /// Gets additional driver-specific details about the error, as
+        /// key-value pairs. The values are arbitrary binary data.
+        /// </summary>
+        /// <remarks>
+        /// Added in ADBC 1.1.0. These are surfaced across the C API via
+        /// <c>AdbcErrorGetDetailCount</c> and <c>AdbcErrorGetDetail</c>.
+        /// </remarks>
+        public virtual IReadOnlyList<KeyValuePair<string, byte[]>> Details
+        {
+            get => System.Array.Empty<KeyValuePair<string, byte[]>>();
         }
     }
 }

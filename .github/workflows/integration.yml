@@ -24,6 +24,7 @@ on:
     paths:
       - "c/**"
       - "ci/**"
+      - "!ci/rust-nightly/**"
       - "go/**"
       - "python/**"
       - "compose.yaml"
@@ -34,6 +35,7 @@ on:
     paths:
       - "c/**"
       - "ci/**"
+      - "!ci/rust-nightly/**"
       - "go/**"
       - "python/**"
       - "compose.yaml"
@@ -72,9 +74,9 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5  # v4.0.1
+      - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb  # v4.1.0
         with:
-          miniforge-version: latest
+          miniforge-version: 26.7.2-1
           use-only-tar-bz2: false
           use-mamba: true
       - name: Install Dependencies
@@ -122,9 +124,9 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5  # v4.0.1
+      - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb  # v4.1.0
         with:
-          miniforge-version: latest
+          miniforge-version: 26.7.2-1
           use-only-tar-bz2: false
           use-mamba: true
       - name: Install Dependencies
@@ -174,6 +176,61 @@ jobs:
         run: |
           docker compose down
 
+  sqlite:
+    name: "SQLite Validation"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Free up disk space
+        run: |
+          # Preinstalled tools use a lot of disk space, free up some space
+          # https://github.com/actions/runner-images/issues/2840
+          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Get Date
+        id: get-date
+        run: |
+          echo "today=$(/bin/date -u '+%Y%m%d')" >> $GITHUB_OUTPUT
+      - name: Cache Conda
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/conda_pkgs_dir
+          key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
+      - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb  # v4.1.0
+        with:
+          miniforge-version: 26.7.2-1
+          use-only-tar-bz2: false
+          use-mamba: true
+      - name: Install Dependencies
+        run: |
+          ./ci/scripts/remamba.sh install -c conda-forge \
+            --file ci/conda_env_cpp.txt \
+            --file ci/conda_env_python.txt
+      - name: Work around ASAN issue (GH-1617)
+        run: |
+          sudo sysctl vm.mmap_rnd_bits=28
+      - name: Build SQLite Driver
+        env:
+          BUILD_ALL: "OFF"
+          BUILD_DRIVER_MANAGER: "ON"
+          BUILD_DRIVER_SQLITE: "ON"
+        run: |
+          ./ci/scripts/cpp_build.sh "$(pwd)" "$(pwd)/build"
+          ./ci/scripts/python_build.sh "$(pwd)" "$(pwd)/build"
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+      - name: Run SQLite validation suite
+        env:
+          ADBC_USE_ASAN: "ON"
+          ADBC_USE_UBSAN: "ON"
+          BUILD_ALL: "0"
+          BUILD_DRIVER_SQLITE: "1"
+        run: |
+          export PYTHONPATH="$(pwd)/python/adbc_driver_manager"
+          uv --project=./c/driver/sqlite/validation/ run \
+            ci/scripts/validate.sh "$(pwd)"
+
   postgresql-build:
     name: "PostgreSQL Build"
     runs-on: ubuntu-latest
@@ -196,9 +253,9 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5  # v4.0.1
+      - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb  # v4.1.0
         with:
-          miniforge-version: latest
+          miniforge-version: 26.7.2-1
           use-only-tar-bz2: false
           use-mamba: true
       - name: Install Dependencies
@@ -226,7 +283,7 @@ jobs:
             build \
             python/adbc_driver_manager \
             python/adbc_driver_postgresql
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: postgresql-build
           retention-days: 3
@@ -255,9 +312,9 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5  # v4.0.1
+      - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb  # v4.1.0
         with:
-          miniforge-version: latest
+          miniforge-version: 26.7.2-1
           use-only-tar-bz2: false
           use-mamba: true
       - name: Install Dependencies
@@ -269,8 +326,8 @@ jobs:
       - name: Work around ASAN issue (GH-1617)
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
-      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: postgresql-build
       - name: Extract PostgreSQL build
@@ -295,6 +352,9 @@ jobs:
             if [ "$postgres_version" = "18" ]; then
               uv --project=./c/driver/postgresql/validation/ run \
                 ci/scripts/validate.sh "$(pwd)" --vendor postgresql
+              env POSTGRES_TYPE_RESOLVER_MODE=builtin \
+                uv --project=./c/driver/postgresql/validation/ run \
+                  ci/scripts/validate.sh "$(pwd)" --vendor postgresql
             fi
             docker compose stop postgres-test
             docker compose rm --force --stop --volumes postgres-test
@@ -319,6 +379,11 @@ jobs:
             vendor: alloydb-omni
             uri: postgresql://localhost:5440/postgres?user=postgres&password=password
             experimental: false
+          - name: CedarDB
+            service: cedardb-test
+            vendor: cedardb
+            uri: postgresql://localhost:5433/postgres?user=postgres&password=CedarDB2026%21
+            experimental: false
           - name: Citus
             service: citus-test
             vendor: citus
@@ -327,13 +392,18 @@ jobs:
           - name: CockroachDB
             service: cockroachdb-test
             vendor: cockroachdb
-            uri: postgresql://root@localhost:5435/postgres?sslmode=disable
+            uri: postgresql://root@localhost:5435/postgres?sslmode=disable&options=-c%20experimental_enable_temp_tables%3Don
             experimental: false
           - name: CrateDB
             service: cratedb-test
             vendor: cratedb
             uri: postgresql://crate@localhost:5436/doc?sslmode=disable
             experimental: true
+          - name: Materialize
+            service: materialize-test
+            vendor: materialize
+            uri: postgresql://materialize@localhost:5441/materialize?sslmode=disable
+            experimental: false
           - name: ParadeDB
             service: paradedb-test
             vendor: paradedb
@@ -349,13 +419,6 @@ jobs:
             vendor: yugabytedb
             uri: postgresql://localhost:5439/yugabyte?user=yugabyte&password=yugabyte
             experimental: false
-          # Currently fails, but could be supported in the future.
-          # https://github.com/apache/arrow-adbc/issues/1755
-          # - name: CedarDB
-          #   service: cedardb-test
-          #   vendor: cedardb
-          #   uri: postgresql://localhost:5433/postgres?user=postgres&password=CedarDB2026%21
-          #   experimental: true
     steps:
       - name: Free up disk space
         run: |
@@ -375,9 +438,9 @@ jobs:
         with:
           path: ~/conda_pkgs_dir
           key: conda-${{ runner.os }}-${{ steps.get-date.outputs.today }}-${{ env.CACHE_NUMBER }}-${{ hashFiles('ci/**') }}
-      - uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5  # v4.0.1
+      - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb  # v4.1.0
         with:
-          miniforge-version: latest
+          miniforge-version: 26.7.2-1
           use-only-tar-bz2: false
           use-mamba: true
       - name: Install Dependencies
@@ -389,8 +452,8 @@ jobs:
       - name: Work around ASAN issue (GH-1617)
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
-      - uses: astral-sh/setup-uv@20cfd1bf945f4377ade1205e4dbc17946fc9a30d  # v10.0.1
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2  # v10.3.3
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: postgresql-build
       - name: Extract PostgreSQL build
@@ -401,12 +464,26 @@ jobs:
         run: |
           docker compose up --wait --detach "${{ matrix.service }}"
       - name: Run validation suite
+        # Currently fails, but could be supported in the future.
+        # https://github.com/apache/arrow-adbc/issues/1755
+        if: matrix.vendor != 'cedardb'
         env:
           ADBC_POSTGRESQL_TEST_URI: ${{ matrix.uri }}
           ADBC_USE_ASAN: "ON"
           ADBC_USE_UBSAN: "ON"
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
+        run: |
+          uv --project=./c/driver/postgresql/validation/ run \
+            ci/scripts/validate.sh "$(pwd)" --vendor "${{ matrix.vendor }}"
+      - name: Run validation suite (with alternate type resolver)
+        env:
+          ADBC_POSTGRESQL_TEST_URI: ${{ matrix.uri }}
+          ADBC_USE_ASAN: "ON"
+          ADBC_USE_UBSAN: "ON"
+          BUILD_ALL: "0"
+          BUILD_DRIVER_POSTGRESQL: "1"
+          POSTGRES_TYPE_RESOLVER_MODE: "builtin"
         run: |
           uv --project=./c/driver/postgresql/validation/ run \
             ci/scripts/validate.sh "$(pwd)" --vendor "${{ matrix.vendor }}"

@@ -28,22 +28,19 @@ main() {
   local -r source_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   local -r source_top_dir="$(cd "${source_dir}/../../" && pwd)"
 
+  local -r base_dir="$1"
+  shift
+
   pushd "${source_top_dir}"
+  mkdir -p "$base_dir"
 
   for f in "$@"; do
     fn=$(basename $f)
-    if [[ "$fn" == "adbc.h" || "$fn" == "adbc_driver_manager.h" ]]; then
-        if ! diff -q "$f" "go/adbc/drivermgr/arrow-adbc/$fn" &>/dev/null; then
-            >&2 echo "OUT OF SYNC: $f differs from go/adbc/drivermgr/arrow-adbc/$fn"
-            >&2 echo "Copying $f to go/adbc/drivermgr/arrow-adbc/$fn"
-            cp "$f" "go/adbc/drivermgr/arrow-adbc/$fn"
-        fi
-    else
-        if ! diff -q "$f" "go/adbc/drivermgr/$fn" &>/dev/null; then
-            >&2 echo "OUT OF SYNC: $f differs from go/adbc/drivermgr/$fn"
-            >&2 echo "Copying $f to go/adbc/drivermgr/$fn"
-            cp "$f" "go/adbc/drivermgr/$fn"
-        fi
+    target_fn="$base_dir/$fn"
+    if ! diff -q "$f" "$target_fn" &>/dev/null; then
+        >&2 echo "OUT OF SYNC: $f differs $target_fn"
+        >&2 echo "Copying $f to $target_fn"
+        cp "$f" "$target_fn"
     fi
   done
 

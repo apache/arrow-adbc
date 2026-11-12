@@ -25,6 +25,7 @@
 #include <filesystem>
 #include <locale>
 #include <string>
+#include <system_error>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -427,8 +428,14 @@ AdbcStatusCode AdbcProfileProviderFilesystem(const char* profile_name,
   std::filesystem::path profile_path(profile_name);
   if (profile_path.has_extension()) {
     if (HasExtension(profile_path, ".toml")) {
-      if (!std::filesystem::exists(profile_path)) {
-        SetError(error, "Profile file does not exist: " + profile_path.string());
+      std::error_code ec;
+      if (!std::filesystem::exists(profile_path, ec)) {
+        if (ec) {
+          SetError(error, "Could not access profile file " + profile_path.string() +
+                              ": " + ec.message());
+        } else {
+          SetError(error, "Profile file does not exist: " + profile_path.string());
+        }
         return ADBC_STATUS_NOT_FOUND;
       }
 
@@ -461,7 +468,8 @@ AdbcStatusCode AdbcProfileProviderFilesystem(const char* profile_name,
 
     std::filesystem::path full_path = search_path / profile_path;
     full_path.replace_extension(".toml");
-    if (std::filesystem::exists(full_path)) {
+    std::error_code ec;
+    if (std::filesystem::exists(full_path, ec)) {
       OwnedError intermediate_error;
 
       FilesystemProfile profile;
@@ -493,6 +501,10 @@ AdbcStatusCode AdbcProfileProviderFilesystem(const char* profile_name,
         message += "could not load the profile";
       }
       extra_debug_info.emplace_back(SearchPathSource::kOtherError, std::move(message));
+    } else if (ec) {
+      extra_debug_info.emplace_back(
+          SearchPathSource::kOtherError,
+          "could not access " + full_path.string() + " (" + ec.message() + ")");
     }
   }
 

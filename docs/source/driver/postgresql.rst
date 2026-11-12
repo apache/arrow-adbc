@@ -299,6 +299,22 @@ being read or written.
                 overflow/underflow; an error will be returned if this would be
                 the case.
 
+Result Field Metadata
+~~~~~~~~~~~~~~~~~~~~~
+
+The driver attaches the following PostgreSQL metadata to Arrow result fields:
+
+``POSTGRESQL:type``
+    The PostgreSQL type name, such as ``int4`` or ``numeric``.
+
+``POSTGRESQL:typmod``
+    The type modifier for a top-level numeric column, returned by
+    `PQfmod <https://www.postgresql.org/docs/18/libpq-exec.html#LIBPQ-PQFMOD>`_,
+    as a signed decimal string.  Encodes precision and scale using
+    PostgreSQL's `numeric typmod encoding
+    <https://github.com/postgres/postgres/blob/REL_18_0/src/backend/utils/adt/numeric.c#L891-L947>`_.
+    Value is ``-1`` if no modifier is available.
+
 Unknown Types
 ~~~~~~~~~~~~~
 
@@ -316,11 +332,64 @@ returned a binary column from when it returned a binary column as a fallback.
              column, but this has been deprecated in favor of the Opaque type
              and you should not rely on this key continuing to exist.
 
-Software Versions
-=================
+Resolving Composite and User-Defined Types
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+PostgreSQL allows users to define their own types. On top of that, databases
+may use the PostgreSQL wire protocol and binary format but not necessarily the
+same data types. The driver has to somehow determine which Arrow type to use
+for a given PostgreSQL type.
+
+By default, the driver will query system tables upon initial connection to
+determine the type mapping, and to be able to understand user-defined and
+composite types. This can result in a significant startup cost, however,
+especially if the database contains many tables, columns, and/or user-defined
+types; some users have reported that initial connection takes several minutes!
+(Note that in PostgreSQL, every table automatically has a user-defined type
+defined for it.)
+
+Starting in driver version 1.13 (ADBC release 25), the driver now has an
+alternative: by setting the database option
+``adbc.postgresql.type_resolver_mode`` to ``builtin`` on initial connect, the
+driver will skip these queries and instead use a hardcoded table of *type
+OIDs*. In this mode, the driver will be unable to read composite and
+user-defined types, because it does not have the necessary information. We
+cannot guarantee compatibility with non-PostgreSQL database vendors that use
+the PostgreSQL wire protocol in this mode.
+
+We plan to improve support here: eventually, the driver will start with the
+hardcoded type table and will fetch type information on-the-fly as necessary.
+
+Software Versions & Vendor Compatibility
+========================================
 
 For Python wheels, the shipped version of the PostgreSQL client libraries is
 18.4.  For conda-forge packages, the version of libpq is the same as the
 version of libpq in your Conda environment.
 
-The PostgreSQL driver is tested against PostgreSQL versions 14 through 18.
+The PostgreSQL driver is tested against the following DBMSes, which all use
+the PostgreSQL wire protocol:
+
+- PostgreSQL (version 14 through 18)
+- Citus
+- CockroachDB
+- CrateDB
+- Google AlloyDB Omni
+- Materialize
+- ParadeDB
+- TimescaleDB
+- YugabyteDB
+
+Note that for vendors besides PostgreSQL, certain features and/or data types
+may not be supported. In particular, COPY query execution (see above) is often
+not supported.
+
+We are aware that the driver is not currently compatible with the following
+vendors:
+
+- CedarDB v2026-8-13 (unless the "builtin" type resolver is used, see above)
+
+The driver does not and will not support the following vendors:
+
+- Amazon Redshift (note that a dedicated driver is available for Redshift from
+  a third party, see :ref:`driver-table`)

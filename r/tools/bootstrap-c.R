@@ -17,7 +17,7 @@
 
 exclude <- Sys.getenv("ADBC_R_BOOTSTRAP_EXCLUDE", "")
 
-source_files <- list.files("../../c", "\\.(h|c|cc|hpp)$", recursive = TRUE)
+source_files <- list.files("../../c", "\\.(h|c|cc|hpp|in)?$", recursive = TRUE)
 
 # Apply excludes that apply to all drivers
 source_files <- source_files[!grepl("_test\\.cc", source_files)]

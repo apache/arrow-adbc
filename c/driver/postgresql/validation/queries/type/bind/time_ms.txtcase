@@ -15,7 +15,28 @@
 // specific language governing permissions and limitations
 // under the License.
 
-
 // part: metadata
 
-skip = "COPY Writer not implemented"
+[tags]
+sql-type-name = "time"
+
+// part: expected_schema
+
+{
+    "format": "+s",
+    "children": [
+        {
+            "name": "res",
+            "format": "ttu",
+            "flags": ["nullable"]
+        }
+    ]
+}
+
+// part: expected
+
+{"res": 0}
+{"res": null}
+{"res": 49531123000}
+{"res": 45045500000}
+{"res": 86399999000}

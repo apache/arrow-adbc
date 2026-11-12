@@ -105,6 +105,7 @@ class ConnectionTest < Test::Unit::TestCase
       info = @connection.info
       [
         :vendor_version,
+        :driver_version,
         :driver_arrow_version,
       ].each do |version_name|
         next unless info.key?(version_name)
@@ -114,7 +115,7 @@ class ConnectionTest < Test::Unit::TestCase
                      vendor_name: "SQLite",
                      vendor_version: "X.Y.Z",
                      driver_name: "ADBC SQLite Driver",
-                     driver_version: "(unknown)",
+                     driver_version: "X.Y.Z",
                      driver_arrow_version: "X.Y.Z",
                      driver_adbc_version: ADBC::VERSION_1_1_0,
                    },
@@ -169,7 +170,7 @@ class ConnectionTest < Test::Unit::TestCase
   end
 
   def test_driver_version
-    assert_equal("(unknown)", normalize_version(@connection.driver_version))
+    assert_equal("X.Y.Z", normalize_version(@connection.driver_version))
   end
 
   def test_driver_arrow_version
@@ -178,6 +179,6 @@ class ConnectionTest < Test::Unit::TestCase
 
   private
   def normalize_version(version)
-    version&.gsub(/\A\d+\.\d+\.\d+(?:-SNAPSHOT)?\z/, "X.Y.Z")
+    version&.gsub(/\Av?\d+\.\d+\.\d+(?:-SNAPSHOT)?\z/, "X.Y.Z")
   end
 end
