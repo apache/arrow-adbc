@@ -894,7 +894,7 @@ cdef class AdbcConnection(_AdbcHandle):
                         &self.connection, c_key, c_value, &c_error)
                     if status != ADBC_STATUS_OK:
                         AdbcConnectionRelease(&self.connection, NULL)
-            if isinstance(value, int):
+            elif isinstance(value, int):
                 c_value_int = value
                 with nogil:
                     status = AdbcConnectionSetOptionInt(
