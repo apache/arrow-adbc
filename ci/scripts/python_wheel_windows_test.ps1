@@ -62,7 +62,7 @@ foreach ($Component in $Components) {
     if (-not $?) { throw "Failed to install the $Component wheel" }
 }
 
-python -m pip install pytest typing-extensions
+python -m pip install pytest
 if (-not $?) { throw "Failed to install Python test dependencies" }
 
 foreach ($Component in $Components) {

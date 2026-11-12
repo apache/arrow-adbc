@@ -24,7 +24,6 @@ license-files = ["LICENSE.txt", "NOTICE.txt"]
 readme = "README.md"
 requires-python = ">=3.11"
 dynamic = ["version"]
-dependencies = ["typing-extensions"]
 
 [project.optional-dependencies]
 dbapi = ["pandas", "pyarrow>=14.0.1"]

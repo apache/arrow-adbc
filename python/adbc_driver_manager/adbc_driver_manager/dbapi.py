@@ -47,7 +47,18 @@ import time
 import typing
 import warnings
 import weakref
-from typing import Any, Dict, List, Literal, Mapping, NoReturn, Optional, Tuple, Union
+from typing import (
+    Any,
+    Dict,
+    List,
+    Literal,
+    Mapping,
+    NoReturn,
+    Optional,
+    Self,
+    Tuple,
+    Union,
+)
 
 try:
     import pyarrow
@@ -64,10 +75,16 @@ from . import _dbapi_backend, _lib
 from ._lib import _blocking_call
 
 if typing.TYPE_CHECKING:
+    import sys
+
     import pandas
     import polars
     import pyarrow
-    from typing_extensions import CapsuleType, Self
+
+    if sys.version_info >= (3, 13):
+        from types import CapsuleType
+    else:
+        from typing_extensions import CapsuleType
 
     from ._reader import AdbcRecordBatchReader
 

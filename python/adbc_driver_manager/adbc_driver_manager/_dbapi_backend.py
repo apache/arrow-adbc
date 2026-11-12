@@ -29,7 +29,12 @@ import typing
 from . import _lib
 
 if typing.TYPE_CHECKING:
-    from typing_extensions import CapsuleType
+    import sys
+
+    if sys.version_info >= (3, 13):
+        from types import CapsuleType
+    else:
+        from typing_extensions import CapsuleType
 
 
 class DbapiBackend(abc.ABC):
