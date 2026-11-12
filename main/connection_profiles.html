@@ -20,7 +20,7 @@
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=6a604523" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=9e8d8061" />
     <link rel="stylesheet" type="text/css" href="_static/fontawesome/css/all.min.css?v=3bd1cf1d" />
@@ -431,8 +431,8 @@ Secrets are injected from environment variables with <code class="docutils liter
 rather than being written into the file:</p>
 <div class="sd-tab-set docutils">
 <input checked="checked" id="sd-tab-item-0" name="sd-tab-set-0" type="radio">
-<label class="sd-tab-label" for="sd-tab-item-0">
-PostgreSQL</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-0-content" class="sd-tab-label" for="sd-tab-item-0">
+PostgreSQL</label><div class="sd-tab-content docutils" id="sd-tab-item-0-content">
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">profile_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
 <span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"postgresql"</span>
 
@@ -442,8 +442,8 @@ PostgreSQL</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-1" name="sd-tab-set-0" type="radio">
-<label class="sd-tab-label" for="sd-tab-item-1">
-BigQuery</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-1-content" class="sd-tab-label" for="sd-tab-item-1">
+BigQuery</label><div class="sd-tab-content docutils" id="sd-tab-item-1-content">
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">profile_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
 <span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"bigquery"</span>
 
@@ -454,8 +454,8 @@ BigQuery</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-2" name="sd-tab-set-0" type="radio">
-<label class="sd-tab-label" for="sd-tab-item-2">
-Redshift</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-2-content" class="sd-tab-label" for="sd-tab-item-2">
+Redshift</label><div class="sd-tab-content docutils" id="sd-tab-item-2-content">
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">profile_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
 <span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"redshift"</span>
 
@@ -468,8 +468,8 @@ Redshift</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-3" name="sd-tab-set-0" type="radio">
-<label class="sd-tab-label" for="sd-tab-item-3">
-Snowflake</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-3-content" class="sd-tab-label" for="sd-tab-item-3">
+Snowflake</label><div class="sd-tab-content docutils" id="sd-tab-item-3-content">
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">profile_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
 <span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"snowflake"</span>
 
@@ -486,8 +486,8 @@ Snowflake</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-4" name="sd-tab-set-0" type="radio">
-<label class="sd-tab-label" for="sd-tab-item-4">
-StarRocks</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-4-content" class="sd-tab-label" for="sd-tab-item-4">
+StarRocks</label><div class="sd-tab-content docutils" id="sd-tab-item-4-content">
 <div class="highlight-toml notranslate"><div class="highlight"><pre><span></span><span class="n">profile_version</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span>
 <span class="n">driver</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"flightsql"</span>
 
@@ -516,8 +516,8 @@ the profile name—the TOML file’s name without the <code class="docutils lite
 the <code class="docutils literal notranslate"><span class="pre">profile://</span></code> scheme:</p>
 <div class="sd-tab-set docutils">
 <input checked="checked" id="sd-tab-item-5" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" for="sd-tab-item-5">
-C/C++</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-5-content" class="sd-tab-label" for="sd-tab-item-5">
+C/C++</label><div class="sd-tab-content docutils" id="sd-tab-item-5-content">
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="n">AdbcDatabase</span><span class="w"> </span><span class="n">database</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{};</span>
 <span class="n">AdbcDatabaseNew</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
 <span class="n">AdbcDatabaseSetOption</span><span class="p">(</span><span class="o">&amp;</span><span class="n">database</span><span class="p">,</span><span class="w"> </span><span class="s">"uri"</span><span class="p">,</span><span class="w"> </span><span class="s">"profile://myprofile"</span><span class="p">,</span><span class="w"> </span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
@@ -527,8 +527,8 @@ C/C++</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-6" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" for="sd-tab-item-6">
-Go</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-6-content" class="sd-tab-label" for="sd-tab-item-6">
+Go</label><div class="sd-tab-content docutils" id="sd-tab-item-6-content">
 <div class="highlight-go notranslate"><div class="highlight"><pre><span></span><span class="kd">var</span><span class="w"> </span><span class="nx">drv</span><span class="w"> </span><span class="nx">drivermgr</span><span class="p">.</span><span class="nx">Driver</span>
 
 <span class="nx">db</span><span class="p">,</span><span class="w"> </span><span class="nx">err</span><span class="w"> </span><span class="o">:=</span><span class="w"> </span><span class="nx">drv</span><span class="p">.</span><span class="nx">NewDatabase</span><span class="p">(</span><span class="kt">map</span><span class="p">[</span><span class="kt">string</span><span class="p">]</span><span class="kt">string</span><span class="p">{</span>
@@ -538,8 +538,8 @@ Go</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-7" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" for="sd-tab-item-7">
-Java</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-7-content" class="sd-tab-label" for="sd-tab-item-7">
+Java</label><div class="sd-tab-content docutils" id="sd-tab-item-7-content">
 <div class="highlight-java notranslate"><div class="highlight"><pre><span></span><span class="n">Map</span><span class="o">&lt;</span><span class="n">String</span><span class="p">,</span><span class="w"> </span><span class="n">Object</span><span class="o">&gt;</span><span class="w"> </span><span class="n">params</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">HashMap</span><span class="o">&lt;&gt;</span><span class="p">();</span>
 <span class="n">JniDriver</span><span class="p">.</span><span class="na">PARAM_URI</span><span class="p">.</span><span class="na">set</span><span class="p">(</span><span class="n">params</span><span class="p">,</span><span class="w"> </span><span class="s">"profile://myprofile"</span><span class="p">);</span>
 
@@ -549,8 +549,8 @@ Java</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-8" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" for="sd-tab-item-8">
-JavaScript</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-8-content" class="sd-tab-label" for="sd-tab-item-8">
+JavaScript</label><div class="sd-tab-content docutils" id="sd-tab-item-8-content">
 <div class="highlight-javascript notranslate"><div class="highlight"><pre><span></span><span class="k">import</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nx">AdbcDatabase</span><span class="w"> </span><span class="p">}</span><span class="w"> </span><span class="kr">from</span><span class="w"> </span><span class="s1">'@apache-arrow/adbc-driver-manager'</span><span class="p">;</span>
 
 <span class="kd">const</span><span class="w"> </span><span class="nx">db</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="ow">new</span><span class="w"> </span><span class="nx">AdbcDatabase</span><span class="p">({</span>
@@ -560,8 +560,8 @@ JavaScript</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-9" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" for="sd-tab-item-9">
-Python</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-9-content" class="sd-tab-label" for="sd-tab-item-9">
+Python</label><div class="sd-tab-content docutils" id="sd-tab-item-9-content">
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">adbc_driver_manager</span><span class="w"> </span><span class="kn">import</span> <span class="n">dbapi</span>
 
 <span class="k">with</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">uri</span><span class="o">=</span><span class="s2">"profile://myprofile"</span><span class="p">)</span> <span class="k">as</span> <span class="n">con</span><span class="p">:</span>
@@ -570,8 +570,8 @@ Python</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-10" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" for="sd-tab-item-10">
-R</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-10-content" class="sd-tab-label" for="sd-tab-item-10">
+R</label><div class="sd-tab-content docutils" id="sd-tab-item-10-content">
 <div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">library</span><span class="p">(</span><span class="n">adbcdrivermanager</span><span class="p">)</span>
 
 <span class="n">db</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_database_init</span><span class="p">(</span><span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"profile://myprofile"</span><span class="p">)</span>
@@ -580,8 +580,8 @@ R</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-11" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" for="sd-tab-item-11">
-Ruby</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-11-content" class="sd-tab-label" for="sd-tab-item-11">
+Ruby</label><div class="sd-tab-content docutils" id="sd-tab-item-11-content">
 <div class="highlight-ruby notranslate"><div class="highlight"><pre><span></span><span class="n">database</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="no">ADBC</span><span class="o">::</span><span class="no">Database</span><span class="o">.</span><span class="n">new</span>
 <span class="n">database</span><span class="o">.</span><span class="n">set_option</span><span class="p">(</span><span class="s2">"uri"</span><span class="p">,</span><span class="w"> </span><span class="s2">"profile://myprofile"</span><span class="p">)</span>
 <span class="n">database</span><span class="o">.</span><span class="n">set_load_flags</span><span class="p">(</span><span class="no">ADBC</span><span class="o">::</span><span class="no">LoadFlags</span><span class="o">::</span><span class="no">DEFAULT</span><span class="p">)</span>
@@ -590,8 +590,8 @@ Ruby</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-12" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" for="sd-tab-item-12">
-Rust</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-12-content" class="sd-tab-label" for="sd-tab-item-12">
+Rust</label><div class="sd-tab-content docutils" id="sd-tab-item-12-content">
 <div class="highlight-rust notranslate"><div class="highlight"><pre><span></span><span class="kd">let</span><span class="w"> </span><span class="n">uri</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"profile://myprofile"</span><span class="p">;</span>
 <span class="kd">let</span><span class="w"> </span><span class="n">db</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ManagedDatabase</span><span class="p">::</span><span class="n">from_uri</span><span class="p">(</span>
 <span class="w">    </span><span class="n">uri</span><span class="p">,</span><span class="w"> </span><span class="nb">None</span><span class="p">,</span><span class="w"> </span><span class="n">AdbcVersion</span><span class="p">::</span><span class="n">default</span><span class="p">(),</span><span class="w"> </span><span class="n">LOAD_FLAG_DEFAULT</span><span class="p">,</span><span class="w"> </span><span class="nb">None</span><span class="p">,</span>
@@ -663,7 +663,7 @@ countries.
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="_static/copybutton.js?v=f281be69"></script>
-    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script data-sd-tabs-storage-prefix="sphinx-design-tab-id-" src="_static/design-tabs.js?v=fcb327ea"></script>
     
 <script async defer src="../version.js"></script></body>
 </html>

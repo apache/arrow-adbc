@@ -20,7 +20,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=6a604523" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=9e8d8061" />
     <link rel="stylesheet" type="text/css" href="../_static/fontawesome/css/all.min.css?v=3bd1cf1d" />
@@ -457,8 +457,8 @@ non-default entrypoint.</p>
 file path to the dynamic library as the driver name.</p>
 <div class="sd-tab-set docutils">
 <input checked="checked" id="sd-tab-item-0" name="sd-tab-set-0" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-0">
-C/C++</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-0-content" class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-0">
+C/C++</label><div class="sd-tab-content docutils" id="sd-tab-item-0-content">
 <p>You can specify the driver to load using the <code class="docutils literal notranslate"><span class="pre">driver</span></code> option to the
 driver manager or you can use <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc__driver__manager_8h.html#ac9a4db661a21cca1bbb47a4bd47f9ad0" title="(in ADBC C vversion)"><code class="xref c c-func docutils literal notranslate"><span class="pre">AdbcLoadDriver()</span></code></a> to directly load
 the driver.</p>
@@ -489,8 +489,8 @@ the driver.</p>
 </div>
 </div>
 <input id="sd-tab-item-1" name="sd-tab-set-0" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="glib" for="sd-tab-item-1">
-GLib</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-1-content" class="sd-tab-label" data-sync-group="tab" data-sync-id="glib" for="sd-tab-item-1">
+GLib</label><div class="sd-tab-content docutils" id="sd-tab-item-1-content">
 <p>You can use it as a driver via <code class="docutils literal notranslate"><span class="pre">GADBCDatabase</span></code></p>
 <div class="highlight-c notranslate"><div class="highlight"><pre><span></span><span class="n">GError</span><span class="w"> </span><span class="o">*</span><span class="n">error</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">NULL</span><span class="p">;</span>
 <span class="n">GADBCDatabase</span><span class="w"> </span><span class="o">*</span><span class="n">database</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">gadbc_database_new</span><span class="p">(</span><span class="o">&amp;</span><span class="n">error</span><span class="p">);</span>
@@ -504,8 +504,8 @@ GLib</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-2" name="sd-tab-set-0" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-2">
-Go</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-2-content" class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-2">
+Go</label><div class="sd-tab-content docutils" id="sd-tab-item-2-content">
 <p>Loading a driver in Go is similar:</p>
 <div class="highlight-go notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="p">(</span>
 <span class="w">  </span><span class="s">"context"</span>
@@ -530,8 +530,8 @@ Go</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-3" name="sd-tab-set-0" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-3">
-Python</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-3-content" class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-3">
+Python</label><div class="sd-tab-content docutils" id="sd-tab-item-3-content">
 <p>You can use the <code class="docutils literal notranslate"><span class="pre">DBAPI</span></code> interface as follows:</p>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_manager</span>
 
@@ -542,8 +542,8 @@ Python</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-4" name="sd-tab-set-0" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="r" for="sd-tab-item-4">
-R</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-4-content" class="sd-tab-label" data-sync-group="tab" data-sync-id="r" for="sd-tab-item-4">
+R</label><div class="sd-tab-content docutils" id="sd-tab-item-4-content">
 <p>You can use the <code class="docutils literal notranslate"><span class="pre">DBAPI</span></code> interface as follows:</p>
 <div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">library</span><span class="p">(</span><span class="n">adbcdrivermanager</span><span class="p">)</span>
 <span class="n">con</span><span class="w"> </span><span class="o">&lt;-</span><span class="w"> </span><span class="nf">adbc_driver</span><span class="p">(</span><span class="s">"/path/to/libadbc_driver.so"</span><span class="p">)</span><span class="w"> </span><span class="o">|&gt;</span>
@@ -553,8 +553,8 @@ R</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-5" name="sd-tab-set-0" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="ruby" for="sd-tab-item-5">
-Ruby</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-5-content" class="sd-tab-label" data-sync-group="tab" data-sync-id="ruby" for="sd-tab-item-5">
+Ruby</label><div class="sd-tab-content docutils" id="sd-tab-item-5-content">
 <p>You can use the <code class="docutils literal notranslate"><span class="pre">ADBC::Database</span></code> as follows:</p>
 <div class="highlight-ruby notranslate"><div class="highlight"><pre><span></span><span class="nb">require</span><span class="w"> </span><span class="s2">"adbc"</span>
 
@@ -565,8 +565,8 @@ Ruby</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-6" name="sd-tab-set-0" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="rust" for="sd-tab-item-6">
-Rust</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-6-content" class="sd-tab-label" data-sync-group="tab" data-sync-id="rust" for="sd-tab-item-6">
+Rust</label><div class="sd-tab-content docutils" id="sd-tab-item-6-content">
 <p>Rust has a <code class="docutils literal notranslate"><span class="pre">ManagedDriver</span></code> type with static methods for loading drivers:</p>
 <div class="highlight-rust notranslate"><div class="highlight"><pre><span></span><span class="k">use</span><span class="w"> </span><span class="n">adbc_core</span><span class="p">::</span><span class="n">options</span><span class="p">::</span><span class="n">AdbcVersion</span><span class="p">;</span>
 <span class="k">use</span><span class="w"> </span><span class="n">adbc_core</span><span class="p">::</span><span class="n">driver_manager</span><span class="p">::</span><span class="n">ManagedDriver</span><span class="p">;</span>
@@ -780,8 +780,8 @@ a <code class="docutils literal notranslate"><span class="pre">.toml</span></cod
 to control which directories will be searched for manifests, with the behavior being slightly different based on the platform.</p>
 <div class="sd-tab-set docutils">
 <input checked="checked" id="sd-tab-item-7" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-7">
-C/C++</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-7-content" class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-7">
+C/C++</label><div class="sd-tab-content docutils" id="sd-tab-item-7-content">
 <p>The type <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc__driver__manager_8h.html#aa16189c0130657033e15736baf973d48" title="(in ADBC C vversion)"><code class="xref c c-type docutils literal notranslate"><span class="pre">AdbcLoadFlags</span></code></a> is a set of bitflags to control the directories to be searched. The flags are</p>
 <ul class="simple">
 <li><p><a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc__driver__manager_8h.html#af7c295dbe97a76960e2187057fa9a10c" title="(in ADBC C vversion)"><code class="xref c c-macro docutils literal notranslate"><span class="pre">ADBC_LOAD_FLAG_SEARCH_ENV</span></code></a> - search the directory paths in the environment variable
@@ -794,8 +794,8 @@ C/C++</label><div class="sd-tab-content docutils">
 <p>These can either be provided to <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc__driver__manager_8h.html#aae6277269e0a97e44365282c0635190a" title="(in ADBC C vversion)"><code class="xref c c-func docutils literal notranslate"><span class="pre">AdbcFindLoadDriver()</span></code></a> or by using <a class="reference external" href="https://arrow.apache.org/adbc/main/cpp/api/adbc__driver__manager_8h.html#a1efdaf7971a26a3c4073cc045a07970f" title="(in ADBC C vversion)"><code class="xref c c-func docutils literal notranslate"><span class="pre">AdbcDriverManagerDatabaseSetLoadFlags()</span></code></a>.</p>
 </div>
 <input id="sd-tab-item-8" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="glib" for="sd-tab-item-8">
-GLib</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-8-content" class="sd-tab-label" data-sync-group="tab" data-sync-id="glib" for="sd-tab-item-8">
+GLib</label><div class="sd-tab-content docutils" id="sd-tab-item-8-content">
 <p>The type <code class="docutils literal notranslate"><span class="pre">GADBCLoadFlags</span></code> is a set of bitflags to control the directories to be searched. The flags are</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">GADBC_LOAD_SEARCH_ENV</span></code> - search the directory paths in the environment variable
@@ -808,8 +808,8 @@ GLib</label><div class="sd-tab-content docutils">
 <p>These can be provided by using <code class="docutils literal notranslate"><span class="pre">gadbc_database_set_load_flags()</span></code>.</p>
 </div>
 <input id="sd-tab-item-9" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-9">
-Go</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-9-content" class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-9">
+Go</label><div class="sd-tab-content docutils" id="sd-tab-item-9-content">
 <p>The <code class="docutils literal notranslate"><span class="pre">drivermgr</span></code> package by default will use the default load flags, which enable searching the environment variable, user
 configuration directory, and system configuration directory. You can set the flags to use by passing the option
 <code class="docutils literal notranslate"><span class="pre">drivermgr.LoadFlagsOptionKey</span></code> with the value being the <code class="docutils literal notranslate"><span class="pre">strconv.Itoa</span></code> of the flags you want to use when you call <code class="docutils literal notranslate"><span class="pre">NewDatabase</span></code>
@@ -824,20 +824,20 @@ or <code class="docutils literal notranslate"><span class="pre">NewDatabaseWithC
 </ul>
 </div>
 <input id="sd-tab-item-10" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-10">
-Python</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-10-content" class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-10">
+Python</label><div class="sd-tab-content docutils" id="sd-tab-item-10-content">
 <p>Passing the option <code class="docutils literal notranslate"><span class="pre">load_flags</span></code> as an option to <code class="docutils literal notranslate"><span class="pre">AdbcDatabase</span></code> (or via <code class="docutils literal notranslate"><span class="pre">db_kwargs</span></code> in <code class="docutils literal notranslate"><span class="pre">adbc_driver_manager.dbapi.connect</span></code>) will
 allow you to control the directories to be searched by using the value of the option as the bitmask for the load flag desired.</p>
 </div>
 <input id="sd-tab-item-11" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="r" for="sd-tab-item-11">
-R</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-11-content" class="sd-tab-label" data-sync-group="tab" data-sync-id="r" for="sd-tab-item-11">
+R</label><div class="sd-tab-content docutils" id="sd-tab-item-11-content">
 <p>Use <code class="docutils literal notranslate"><span class="pre">adbc_driver(...,</span> <span class="pre">load_flags</span> <span class="pre">=</span> <span class="pre">adbc_load_flags())</span></code> to pass options to the driver manager
 regarding how to locate drivers specified by manifest.</p>
 </div>
 <input id="sd-tab-item-12" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="ruby" for="sd-tab-item-12">
-Ruby</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-12-content" class="sd-tab-label" data-sync-group="tab" data-sync-id="ruby" for="sd-tab-item-12">
+Ruby</label><div class="sd-tab-content docutils" id="sd-tab-item-12-content">
 <p>The class <code class="docutils literal notranslate"><span class="pre">ADBC::LoadFlags</span></code> is a set of bitflags to control the directories to be searched. The flags are</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">ADBC::LoadFlags::SEARCH_ENV</span></code> - search the directory paths in the environment variable
@@ -852,8 +852,8 @@ Passing the option <code class="docutils literal notranslate"><span class="pre">
 allow you to control the directories to be searched by using the value of the option as the bitmask for the load flag desired.</p>
 </div>
 <input id="sd-tab-item-13" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="rust" for="sd-tab-item-13">
-Rust</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-13-content" class="sd-tab-label" data-sync-group="tab" data-sync-id="rust" for="sd-tab-item-13">
+Rust</label><div class="sd-tab-content docutils" id="sd-tab-item-13-content">
 <p>The <code class="docutils literal notranslate"><span class="pre">ManagedDriver</span></code> type has a method <code class="docutils literal notranslate"><span class="pre">load_from_name</span></code> which takes an optional <code class="docutils literal notranslate"><span class="pre">load_flags</span></code> parameter. The flags as a <code class="docutils literal notranslate"><span class="pre">u32</span></code> with
 the type <code class="docutils literal notranslate"><span class="pre">adbc_core::driver_manager::LoadFlags</span></code>, which has the following constants:</p>
 <ul class="simple">
@@ -1063,7 +1063,7 @@ countries.
     <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../_static/copybutton.js?v=f281be69"></script>
-    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script data-sd-tabs-storage-prefix="sphinx-design-tab-id-" src="../_static/design-tabs.js?v=fcb327ea"></script>
     
 <script async defer src="../../version.js"></script></body>
 </html>

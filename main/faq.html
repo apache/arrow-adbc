@@ -20,7 +20,7 @@
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=6a604523" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="_static/css/custom.css?v=9e8d8061" />
     <link rel="stylesheet" type="text/css" href="_static/fontawesome/css/all.min.css?v=3bd1cf1d" />
@@ -466,27 +466,27 @@ otherwise columnar systems can implement to bypass this wrapper.</p>
 demonstrates that a performant Arrow-based API can be built on top.
 However, it is still an awkward fit for Arrow:</p>
 <ul class="simple">
-<li><p class="sd-card-text">Nulls (‘indicator’ values) are <a class="reference external" href="https://docs.microsoft.com/en-us/sql/odbc/reference/develop-app/using-length-and-indicator-values?view=sql-server-ver15">represented as integers</a>, requiring
+<li><p>Nulls (‘indicator’ values) are <a class="reference external" href="https://docs.microsoft.com/en-us/sql/odbc/reference/develop-app/using-length-and-indicator-values?view=sql-server-ver15">represented as integers</a>, requiring
 conversion.</p></li>
-<li><p class="sd-card-text"><a class="reference external" href="https://docs.microsoft.com/en-us/sql/odbc/reference/develop-app/allocating-and-freeing-buffers?view=sql-server-ver15">Result buffers are caller-allocated</a>.  This can force unnecessarily
+<li><p><a class="reference external" href="https://docs.microsoft.com/en-us/sql/odbc/reference/develop-app/allocating-and-freeing-buffers?view=sql-server-ver15">Result buffers are caller-allocated</a>.  This can force unnecessarily
 copying data. ADBC uses the C Data Interface instead, eliminating copies
 when possible (e.g. if the driver uses Flight SQL).</p></li>
-<li><p class="sd-card-text">Some data types are represented differently, and require conversion.
+<li><p>Some data types are represented differently, and require conversion.
 <a class="reference external" href="https://docs.microsoft.com/en-us/sql/odbc/reference/appendixes/transferring-data-in-its-binary-form?view=sql-server-ver15">SQL_C_BINARY</a> can sidestep this for drivers and applications that
 cooperate, but then applications would have to treat Arrow-based and
 non-Arrow-based data sources differently.</p>
 <ul>
-<li><p class="sd-card-text"><a class="reference external" href="https://docs.microsoft.com/en-us/sql/odbc/reference/develop-app/character-data-and-c-strings?view=sql-server-ver15">Strings must be null-terminated</a>, which would require a copy into an
+<li><p><a class="reference external" href="https://docs.microsoft.com/en-us/sql/odbc/reference/develop-app/character-data-and-c-strings?view=sql-server-ver15">Strings must be null-terminated</a>, which would require a copy into an
 Arrow array, or require that the application handle null terminated
 strings in an array.</p></li>
-<li><p class="sd-card-text">It is implementation-defined whether strings may have embedded nulls,
+<li><p>It is implementation-defined whether strings may have embedded nulls,
 but Arrow specifies UTF-8 strings for which 0x00 is a valid byte.</p></li>
-<li><p class="sd-card-text">Because buffers are caller-allocated, the driver and application must
+<li><p>Because buffers are caller-allocated, the driver and application must
 cooperate to handle large strings; <a class="reference external" href="https://docs.microsoft.com/en-us/sql/odbc/reference/develop-app/data-length-buffer-length-and-truncation?view=sql-server-ver15">the driver must truncate the
 value</a>, and the application can try to fetch the value again.</p></li>
-<li><p class="sd-card-text">ODBC uses length buffers rather than offsets, requiring another
+<li><p>ODBC uses length buffers rather than offsets, requiring another
 conversion to/from Arrow string arrays.</p></li>
-<li><p class="sd-card-text"><a class="reference external" href="https://docs.microsoft.com/en-us/sql/odbc/reference/appendixes/c-interval-structure?view=sql-server-ver15">Time intervals use different representations</a>.</p></li>
+<li><p><a class="reference external" href="https://docs.microsoft.com/en-us/sql/odbc/reference/appendixes/c-interval-structure?view=sql-server-ver15">Time intervals use different representations</a>.</p></li>
 </ul>
 </li>
 </ul>
@@ -715,7 +715,7 @@ countries.
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>
     <script src="_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="_static/copybutton.js?v=f281be69"></script>
-    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    <script data-sd-tabs-storage-prefix="sphinx-design-tab-id-" src="_static/design-tabs.js?v=fcb327ea"></script>
     
 <script async defer src="../version.js"></script></body>
 </html>

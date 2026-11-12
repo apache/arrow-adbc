@@ -20,7 +20,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=6a604523" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=9e8d8061" />
     <link rel="stylesheet" type="text/css" href="../_static/fontawesome/css/all.min.css?v=3bd1cf1d" />
@@ -510,8 +510,8 @@ there is community consensus.</p>
 <h3>Create or update the corresponding maintenance branch<a class="headerlink" href="#create-or-update-the-corresponding-maintenance-branch" title="Link to this heading">¶</a></h3>
 <div class="sd-tab-set docutils">
 <input checked="checked" id="sd-tab-item-0" name="sd-tab-set-0" type="radio">
-<label class="sd-tab-label" for="sd-tab-item-0">
-Initial Release Candidate</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-0-content" class="sd-tab-label" for="sd-tab-item-0">
+Initial Release Candidate</label><div class="sd-tab-content docutils" id="sd-tab-item-0-content">
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># Execute the following from an up to date master branch.</span>
 <span class="c1"># This will create a branch locally called maint-X.Y.Z.</span>
 <span class="c1"># X.Y.Z corresponds with the Major, Minor and Patch version number</span>
@@ -523,8 +523,8 @@ Initial Release Candidate</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-1" name="sd-tab-set-0" type="radio">
-<label class="sd-tab-label" for="sd-tab-item-1">
-Follow up Release Candidates</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-1-content" class="sd-tab-label" for="sd-tab-item-1">
+Follow up Release Candidates</label><div class="sd-tab-content docutils" id="sd-tab-item-1-content">
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">git</span> <span class="n">switch</span> <span class="n">maint</span><span class="o">-</span><span class="n">X</span><span class="o">.</span><span class="n">Y</span><span class="o">.</span><span class="n">Z</span>
 <span class="c1"># Remove the commits that created the changelog and bumped the</span>
 <span class="c1"># versions, since 01-prepare.sh will redo those steps</span>
@@ -722,11 +722,11 @@ multiple times.</p></li>
 <summary class="sd-summary-title sd-card-header sd-fs-5">
 <span class="sd-summary-text">Close the GitHub milestone/project</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <ul class="simple">
-<li><p class="sd-card-text">Open <a class="reference external" href="https://github.com/orgs/apache/projects">https://github.com/orgs/apache/projects</a> and find the project</p></li>
-<li><p class="sd-card-text">Click “…” for the project</p></li>
-<li><p class="sd-card-text">Select “Close”</p></li>
-<li><p class="sd-card-text">Open <a class="reference external" href="https://github.com/apache/arrow-adbc/milestones">https://github.com/apache/arrow-adbc/milestones</a> and find the milestone</p></li>
-<li><p class="sd-card-text">Click “Close”</p></li>
+<li><p>Open <a class="reference external" href="https://github.com/orgs/apache/projects">https://github.com/orgs/apache/projects</a> and find the project</p></li>
+<li><p>Click “…” for the project</p></li>
+<li><p>Select “Close”</p></li>
+<li><p>Open <a class="reference external" href="https://github.com/apache/arrow-adbc/milestones">https://github.com/apache/arrow-adbc/milestones</a> and find the milestone</p></li>
+<li><p>Click “Close”</p></li>
 </ul>
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3 sd-shadow-md">
@@ -771,9 +771,9 @@ dev/release/post-02-binary.sh<span class="w"> </span>&lt;rc-number&gt;
 <summary class="sd-summary-title sd-card-header sd-fs-5">
 <span class="sd-summary-text">Publish Maven packages</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <ul class="simple">
-<li><p class="sd-card-text">Logon to the Apache repository: <a class="reference external" href="https://repository.apache.org/#stagingRepositories">https://repository.apache.org/#stagingRepositories</a></p></li>
-<li><p class="sd-card-text">Select the Arrow staging repository you created for RC: <code class="docutils literal notranslate"><span class="pre">orgapachearrow-XXXX</span></code></p></li>
-<li><p class="sd-card-text">Click the <code class="docutils literal notranslate"><span class="pre">release</span></code> button</p></li>
+<li><p>Logon to the Apache repository: <a class="reference external" href="https://repository.apache.org/#stagingRepositories">https://repository.apache.org/#stagingRepositories</a></p></li>
+<li><p>Select the Arrow staging repository you created for RC: <code class="docutils literal notranslate"><span class="pre">orgapachearrow-XXXX</span></code></p></li>
+<li><p>Click the <code class="docutils literal notranslate"><span class="pre">release</span></code> button</p></li>
 </ul>
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3 sd-shadow-md">
@@ -781,11 +781,11 @@ dev/release/post-02-binary.sh<span class="w"> </span>&lt;rc-number&gt;
 <span class="sd-summary-text">Update tags for Go modules</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">The script will walk you through the following steps:</p>
 <ol class="arabic simple">
-<li><p class="sd-card-text">Create the tag <code class="docutils literal notranslate"><span class="pre">go/adbc/vX.Y.Z</span></code></p></li>
-<li><p class="sd-card-text">Push the tag</p></li>
-<li><p class="sd-card-text">Update <code class="docutils literal notranslate"><span class="pre">go/driver/go.mod</span></code> to reference the new tag</p></li>
-<li><p class="sd-card-text">Create the tag <code class="docutils literal notranslate"><span class="pre">go/driver/vX.Y.Z</span></code></p></li>
-<li><p class="sd-card-text">Push the tag</p></li>
+<li><p>Create the tag <code class="docutils literal notranslate"><span class="pre">go/adbc/vX.Y.Z</span></code></p></li>
+<li><p>Push the tag</p></li>
+<li><p>Update <code class="docutils literal notranslate"><span class="pre">go/driver/go.mod</span></code> to reference the new tag</p></li>
+<li><p>Create the tag <code class="docutils literal notranslate"><span class="pre">go/driver/vX.Y.Z</span></code></p></li>
+<li><p>Push the tag</p></li>
 </ol>
 <div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span><span class="c1"># dev/release/post-04-go.sh</span>
 dev/release/post-04-go.sh
@@ -881,8 +881,8 @@ dev/release/post-09-npm.sh
 <p class="sd-card-text">Homebrew automatically updates formulae every 3 hours so the release manager can just check that this happens.</p>
 <p class="sd-card-text">Visit <a class="reference external" href="https://github.com/Homebrew/homebrew-core/pulls?q=is%3Apr+adbc">https://github.com/Homebrew/homebrew-core/pulls?q=is%3Apr+adbc</a> and look for separate PRs from BrewTestBot for each of these formulae:</p>
 <ul class="simple">
-<li><p class="sd-card-text">apache-arrow-adbc</p></li>
-<li><p class="sd-card-text">apache-arrow-adbc-glib</p></li>
+<li><p>apache-arrow-adbc</p></li>
+<li><p>apache-arrow-adbc-glib</p></li>
 </ul>
 <p class="sd-card-text">If the formulae aren’t automatically updated on schedule, run the following to create PRs updating them:</p>
 <div class="highlight-Bash notranslate"><div class="highlight"><pre><span></span>brew<span class="w"> </span>tap<span class="w"> </span>homebrew/core
@@ -1046,7 +1046,7 @@ countries.
     <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../_static/copybutton.js?v=f281be69"></script>
-    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script data-sd-tabs-storage-prefix="sphinx-design-tab-id-" src="../_static/design-tabs.js?v=fcb327ea"></script>
     
 <script async defer src="../../version.js"></script></body>
 </html>

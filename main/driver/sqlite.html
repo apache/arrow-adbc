@@ -20,7 +20,7 @@
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=7bdb33bb" />
     <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
-    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=6a604523" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
     <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=9e8d8061" />
     <link rel="stylesheet" type="text/css" href="../_static/fontawesome/css/all.min.css?v=3bd1cf1d" />
@@ -433,24 +433,24 @@ not received attention to optimization.</p>
 <h2>Installation<a class="headerlink" href="#installation" title="Link to this heading">¶</a></h2>
 <div class="sd-tab-set docutils">
 <input checked="checked" id="sd-tab-item-0" name="sd-tab-set-0" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-0">
-C/C++</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-0-content" class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-0">
+C/C++</label><div class="sd-tab-content docutils" id="sd-tab-item-0-content">
 <p>Install <a class="reference external" href="https://anaconda.org/conda-forge/libadbc-driver-sqlite">libadbc-driver-sqlite</a> from conda-forge:</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>mamba<span class="w"> </span>install<span class="w"> </span>libadbc-driver-sqlite
 </pre></div>
 </div>
 </div>
 <input id="sd-tab-item-1" name="sd-tab-set-0" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-1">
-Go</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-1-content" class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-1">
+Go</label><div class="sd-tab-content docutils" id="sd-tab-item-1-content">
 <p>Install the C/C++ driver, then use the Go driver manager.  Requires CGO.</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>go<span class="w"> </span>get<span class="w"> </span>github.com/apache/arrow-adbc/go/adbc/drivermgr
 </pre></div>
 </div>
 </div>
 <input id="sd-tab-item-2" name="sd-tab-set-0" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-2">
-Python</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-2-content" class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-2">
+Python</label><div class="sd-tab-content docutils" id="sd-tab-item-2-content">
 <p>Install <a class="reference external" href="https://anaconda.org/conda-forge/adbc-driver-sqlite">adbc-driver-sqlite</a> from conda-forge:</p>
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span>mamba<span class="w"> </span>install<span class="w"> </span>adbc-driver-sqlite
 </pre></div>
@@ -461,8 +461,8 @@ Python</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-3" name="sd-tab-set-0" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="r" for="sd-tab-item-3">
-R</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-3-content" class="sd-tab-label" data-sync-group="tab" data-sync-id="r" for="sd-tab-item-3">
+R</label><div class="sd-tab-content docutils" id="sd-tab-item-3-content">
 <p>Install <a class="reference external" href="https://cran.r-project.org/web/packages/adbcsqlite/index.html">adbcsqlite</a> from CRAN:</p>
 <div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">install.packages</span><span class="p">(</span><span class="s">"adbcsqlite"</span><span class="p">)</span>
 </pre></div>
@@ -498,8 +498,8 @@ URI must not itself start with <code class="docutils literal notranslate"><span 
 shared across all connections.</p>
 <div class="sd-tab-set docutils">
 <input checked="checked" id="sd-tab-item-4" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-4">
-C++</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-4-content" class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-4">
+C++</label><div class="sd-tab-content docutils" id="sd-tab-item-4-content">
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="cp">#include</span><span class="w"> </span><span class="cpf">"arrow-adbc/adbc.h"</span>
 
 <span class="c1">// Ignoring error handling</span>
@@ -512,8 +512,8 @@ C++</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-5" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-5">
-Python</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-5-content" class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-5">
+Python</label><div class="sd-tab-content docutils" id="sd-tab-item-5-content">
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_sqlite.dbapi</span>
 
 <span class="k">with</span> <span class="n">adbc_driver_sqlite</span><span class="o">.</span><span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
@@ -523,8 +523,8 @@ Python</label><div class="sd-tab-content docutils">
 <p>For more examples, see <a class="reference internal" href="../python/recipe/sqlite.html"><span class="doc">SQLite Recipes</span></a>.</p>
 </div>
 <input id="sd-tab-item-6" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="r" for="sd-tab-item-6">
-R</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-6-content" class="sd-tab-label" data-sync-group="tab" data-sync-id="r" for="sd-tab-item-6">
+R</label><div class="sd-tab-content docutils" id="sd-tab-item-6-content">
 <div class="highlight-r notranslate"><div class="highlight"><pre><span></span><span class="nf">library</span><span class="p">(</span><span class="n">adbcdrivermanager</span><span class="p">)</span>
 
 <span class="c1"># Use the driver manager to connect to a database</span>
@@ -534,8 +534,8 @@ R</label><div class="sd-tab-content docutils">
 </div>
 </div>
 <input id="sd-tab-item-7" name="sd-tab-set-1" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-7">
-Go</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-7-content" class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-7">
+Go</label><div class="sd-tab-content docutils" id="sd-tab-item-7-content">
 <p>You must have <cite>libadbc_driver_sqlite.so</cite> on your LD_LIBRARY_PATH,
 or in the same directory as the executable when you run this. This
 requires CGO and loads the C++ ADBC sqlite driver.</p>
@@ -610,22 +610,22 @@ to load.  This will not load the extension yet.</p>
 <h4>Example<a class="headerlink" href="#example" title="Link to this heading">¶</a></h4>
 <div class="sd-tab-set docutils">
 <input checked="checked" id="sd-tab-item-8" name="sd-tab-set-2" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-8">
-C/C++</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-8-content" class="sd-tab-label" data-sync-group="tab" data-sync-id="cpp" for="sd-tab-item-8">
+C/C++</label><div class="sd-tab-content docutils" id="sd-tab-item-8-content">
 <div class="highlight-cpp notranslate"><div class="highlight"><pre><span></span><span class="c1">// TODO</span>
 </pre></div>
 </div>
 </div>
 <input id="sd-tab-item-9" name="sd-tab-set-2" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-9">
-Go</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-9-content" class="sd-tab-label" data-sync-group="tab" data-sync-id="go" for="sd-tab-item-9">
+Go</label><div class="sd-tab-content docutils" id="sd-tab-item-9-content">
 <div class="highlight-go notranslate"><div class="highlight"><pre><span></span><span class="c1">// TODO</span>
 </pre></div>
 </div>
 </div>
 <input id="sd-tab-item-10" name="sd-tab-set-2" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-10">
-Python</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-10-content" class="sd-tab-label" data-sync-group="tab" data-sync-id="python" for="sd-tab-item-10">
+Python</label><div class="sd-tab-content docutils" id="sd-tab-item-10-content">
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">adbc_driver_sqlite.dbapi</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">dbapi</span>
 
 <span class="k">with</span> <span class="n">dbapi</span><span class="o">.</span><span class="n">connect</span><span class="p">()</span> <span class="k">as</span> <span class="n">conn</span><span class="p">:</span>
@@ -646,8 +646,8 @@ example, <a class="reference external" href="https://github.com/phiresky/sqlite-
 </div>
 </div>
 <input id="sd-tab-item-11" name="sd-tab-set-2" type="radio">
-<label class="sd-tab-label" data-sync-group="tab" data-sync-id="r" for="sd-tab-item-11">
-R</label><div class="sd-tab-content docutils">
+<label aria-controls="sd-tab-item-11-content" class="sd-tab-label" data-sync-group="tab" data-sync-id="r" for="sd-tab-item-11">
+R</label><div class="sd-tab-content docutils" id="sd-tab-item-11-content">
 <div class="highlight-shell notranslate"><div class="highlight"><pre><span></span><span class="c1"># TODO</span>
 </pre></div>
 </div>
@@ -764,7 +764,7 @@ countries.
     <script src="../_static/scripts/furo.js?v=46bd48cc"></script>
     <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
     <script src="../_static/copybutton.js?v=f281be69"></script>
-    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script data-sd-tabs-storage-prefix="sphinx-design-tab-id-" src="../_static/design-tabs.js?v=fcb327ea"></script>
     
 <script async defer src="../../version.js"></script></body>
 </html>
