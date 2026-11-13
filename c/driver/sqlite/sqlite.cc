@@ -1154,6 +1154,8 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
 
   Result<int64_t> ExecuteQueryImpl(ArrowArrayStream* stream) {
     struct AdbcError error = ADBC_ERROR_INIT;
+    // Statement may have run to completion already; required with SQLITE_OMIT_AUTORESET
+    (void)sqlite3_reset(stmt_);
     UNWRAP_STATUS(BindImpl(false));
 
     const int64_t expected = sqlite3_bind_parameter_count(stmt_);
