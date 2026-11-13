@@ -1551,10 +1551,10 @@ cdef class AdbcStatement(_AdbcHandle):
         """Release the handle to the statement."""
         cdef CAdbcError c_error = empty_error()
         cdef CAdbcStatusCode status
-        self.connection._close_child()
         with self._lock:
             if self.statement.private_data == NULL:
                 return
+            self.connection._close_child()
 
             with nogil:
                 status = AdbcStatementRelease(&self.statement, &c_error)

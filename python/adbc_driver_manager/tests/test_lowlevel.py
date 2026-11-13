@@ -580,6 +580,20 @@ def test_child_tracking(sqlite_raw) -> None:
 
 
 @pytest.mark.sqlite
+def test_statement_close_twice(sqlite_raw) -> None:
+    _, conn = sqlite_raw
+    with adbc_driver_manager.AdbcStatement(conn):
+        stmt = adbc_driver_manager.AdbcStatement(conn)
+        stmt.close()
+        stmt.close()
+        with pytest.raises(
+            RuntimeError,
+            match="Cannot close AdbcConnection with open AdbcStatement",
+        ):
+            conn.close()
+
+
+@pytest.mark.sqlite
 def test_pycapsule(sqlite_raw) -> None:
     _, conn = sqlite_raw
     handle = conn.get_table_types()
