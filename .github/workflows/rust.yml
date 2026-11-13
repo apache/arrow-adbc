@@ -231,13 +231,19 @@ jobs:
         env:
           RUST_BACKTRACE: "1"
         working-directory: rust
-        run: >
+        run: |
+          # cargo test does not put cdylibs where tests can load them
+          # (https://github.com/rust-lang/cargo/issues/8311)
+          cargo build --workspace
           cargo test --all-targets --workspace
       - name: Test (All Features)
         env:
           RUST_BACKTRACE: "1"
         working-directory: rust
-        run: >
+        run: |
+          # cargo test does not put cdylibs where tests can load them
+          # (https://github.com/rust-lang/cargo/issues/8311)
+          cargo build --all-features --workspace
           cargo test --all-targets --all-features --workspace
       - name: Doctests
         env:

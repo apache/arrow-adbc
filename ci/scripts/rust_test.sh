@@ -32,5 +32,8 @@ case "$(uname)" in
     MINGW*|MSYS*) EXT="dll" ;;
 esac
 export ADBC_DRIVER_MANAGER_TEST_LIB="${cpp_libs_dir}/lib/libadbc_driver_sqlite.${EXT:-}"
+# cargo test does not put cdylibs where tests can load them
+# (https://github.com/rust-lang/cargo/issues/8311)
+cargo build --all-features --workspace
 cargo test --all-features --workspace
 popd
