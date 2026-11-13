@@ -19,11 +19,14 @@
 
 import enum
 import pathlib
+import sys
 import typing
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, List, Optional, ParamSpec, Tuple, Union
 
-import typing_extensions
-from typing_extensions import CapsuleType
+if sys.version_info >= (3, 13):
+    from types import CapsuleType
+else:
+    from typing_extensions import CapsuleType
 
 INGEST_OPTION_MODE: str
 INGEST_OPTION_MODE_APPEND: str
@@ -236,7 +239,7 @@ def _test_error(
     sqlstate: Optional[str],
 ) -> Error: ...
 
-_P = typing_extensions.ParamSpec("_P")
+_P = ParamSpec("_P")
 _T = typing.TypeVar("_T")
 
 def _blocking_call(
