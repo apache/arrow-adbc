@@ -62,6 +62,11 @@ void StatementTest::TearDownTest() {
   }
 }
 
+void StatementTest::ResetTest() {
+  TearDownTest();
+  SetUpTest();
+}
+
 void StatementTest::TestNewInit() {
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
