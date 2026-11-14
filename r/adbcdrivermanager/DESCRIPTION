@@ -16,6 +16,8 @@ License: Apache License (>= 2)
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 Suggests:
+    later,
+    promises,
     testthat (>= 3.0.0),
     withr
 Config/testthat/edition: 3
