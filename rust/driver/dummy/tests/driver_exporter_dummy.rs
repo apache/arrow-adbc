@@ -25,6 +25,8 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use arrow_array::cast::AsArray;
+// TODO: Remove this once the minimum supported Arrow version is 60.1.0.
+#[allow(deprecated)]
 use arrow_array::ffi_stream::{ArrowArrayStreamReader, FFI_ArrowArrayStream};
 use arrow_array::types::UInt32Type;
 use arrow_array::{Array, Float64Array, Int64Array, RecordBatch, RecordBatchReader, StringArray};
@@ -440,6 +442,8 @@ fn test_connection_get_info_ignores_unrecognized_codes() {
             "an unrecognized info code must be ignored, not fail the call"
         );
 
+        // TODO: Remove this once the minimum supported Arrow version is 60.1.0.
+        #[allow(deprecated)]
         let info = concat_reader(ArrowArrayStreamReader::try_new(stream).unwrap());
         let returned_codes: HashSet<u32> = info
             .column(0)

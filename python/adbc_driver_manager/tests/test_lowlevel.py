@@ -235,6 +235,10 @@ def test_connection_init() -> None:
         with adbc_driver_manager.AdbcConnection(db, **{option: 42}) as conn:
             assert conn.get_option_int(option) == 42
 
+        option = "adbc.connection.autocommit"
+        with adbc_driver_manager.AdbcConnection(db, **{option: True}) as conn:
+            assert conn.get_option(option) == "true"
+
         # test different data types
         with pytest.raises(
             adbc_driver_manager.NotSupportedError,
@@ -573,6 +577,20 @@ def test_child_tracking(sqlite_raw) -> None:
                 RuntimeError, match="Cannot close AdbcDatabase with open AdbcConnection"
             ):
                 db.close()
+
+
+@pytest.mark.sqlite
+def test_statement_close_twice(sqlite_raw) -> None:
+    _, conn = sqlite_raw
+    with adbc_driver_manager.AdbcStatement(conn):
+        stmt = adbc_driver_manager.AdbcStatement(conn)
+        stmt.close()
+        stmt.close()
+        with pytest.raises(
+            RuntimeError,
+            match="Cannot close AdbcConnection with open AdbcStatement",
+        ):
+            conn.close()
 
 
 @pytest.mark.sqlite

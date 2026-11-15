@@ -894,7 +894,7 @@ cdef class AdbcConnection(_AdbcHandle):
                         &self.connection, c_key, c_value, &c_error)
                     if status != ADBC_STATUS_OK:
                         AdbcConnectionRelease(&self.connection, NULL)
-            if isinstance(value, int):
+            elif isinstance(value, int):
                 c_value_int = value
                 with nogil:
                     status = AdbcConnectionSetOptionInt(
@@ -1551,10 +1551,10 @@ cdef class AdbcStatement(_AdbcHandle):
         """Release the handle to the statement."""
         cdef CAdbcError c_error = empty_error()
         cdef CAdbcStatusCode status
-        self.connection._close_child()
         with self._lock:
             if self.statement.private_data == NULL:
                 return
+            self.connection._close_child()
 
             with nogil:
                 status = AdbcStatementRelease(&self.statement, &c_error)

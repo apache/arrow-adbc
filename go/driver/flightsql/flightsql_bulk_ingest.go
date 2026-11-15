@@ -150,6 +150,9 @@ func (s *statement) executeIngest(ctx context.Context) (nRows int64, err error) 
 	}
 
 	ingestOpts := buildExecuteIngestOpts(opts)
+	if s.cnxn.txn != nil {
+		ingestOpts.TransactionId = s.cnxn.txn.ID()
+	}
 
 	// Get the record reader to ingest
 	var rdr array.RecordReader

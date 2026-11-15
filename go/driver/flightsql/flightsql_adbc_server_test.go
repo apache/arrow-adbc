@@ -2747,6 +2747,14 @@ func (srv *BulkIngestTestServer) DoPutCommandStatementIngest(ctx context.Context
 	return totalRows, nil
 }
 
+func (srv *BulkIngestTestServer) BeginTransaction(context.Context, flightsql.ActionBeginTransactionRequest) ([]byte, error) {
+	return []byte("ingest-txn"), nil
+}
+
+func (srv *BulkIngestTestServer) EndTransaction(context.Context, flightsql.ActionEndTransactionRequest) error {
+	return nil
+}
+
 func (srv *BulkIngestTestServer) GetIngestedData() []arrow.RecordBatch {
 	srv.mu.Lock()
 	defer srv.mu.Unlock()
@@ -2776,6 +2784,7 @@ type BulkIngestTests struct {
 
 func (suite *BulkIngestTests) SetupSuite() {
 	suite.server = &BulkIngestTestServer{}
+	suite.Require().NoError(suite.server.RegisterSqlInfo(flightsql.SqlInfoFlightSqlServerTransaction, int32(flightsql.SqlTransactionTransaction)))
 	suite.DoSetupSuite(suite.server, nil, nil)
 }
 
@@ -2825,6 +2834,36 @@ func (suite *BulkIngestTests) TestBulkIngestCreate() {
 	requests := suite.server.GetIngestRequests()
 	suite.Require().Len(requests, 1)
 	suite.Equal("test_table", requests[0].GetTable())
+	suite.Empty(requests[0].GetTransactionId())
+}
+
+func (suite *BulkIngestTests) TestBulkIngestInTransaction() {
+	suite.Require().NoError(suite.cnxn.(adbc.PostInitOptions).SetOption(adbc.OptionKeyAutoCommit, adbc.OptionValueDisabled))
+
+	stmt, err := suite.cnxn.NewStatement()
+	suite.Require().NoError(err)
+	defer validation.CheckedClose(suite.T(), stmt)
+
+	suite.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestTargetTable, "test_table"))
+	suite.Require().NoError(stmt.SetOption(adbc.OptionKeyIngestMode, adbc.OptionValueIngestModeAppend))
+
+	schema := arrow.NewSchema([]arrow.Field{
+		{Name: "id", Type: arrow.PrimitiveTypes.Int64, Nullable: false},
+	}, nil)
+	bldr := array.NewRecordBuilder(memory.DefaultAllocator, schema)
+	defer bldr.Release()
+	bldr.Field(0).(*array.Int64Builder).AppendValues([]int64{1, 2}, nil)
+	rec := bldr.NewRecordBatch()
+	defer rec.Release()
+
+	suite.Require().NoError(stmt.Bind(context.Background(), rec))
+	nRows, err := stmt.ExecuteUpdate(context.Background())
+	suite.Require().NoError(err)
+	suite.Equal(int64(2), nRows)
+
+	requests := suite.server.GetIngestRequests()
+	suite.Require().Len(requests, 1)
+	suite.Equal([]byte("ingest-txn"), requests[0].GetTransactionId())
 }
 
 func (suite *BulkIngestTests) TestBulkIngestAppend() {

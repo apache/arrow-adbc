@@ -400,9 +400,9 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 	}
 
 	var uri *url.URL
-	uri, err = url.Parse(loc)
+	uri, err = parseLocation(loc)
 	if err != nil {
-		return nil, adbc.Error{Msg: fmt.Sprintf("Invalid URI '%s': %s", loc, err), Code: adbc.StatusInvalidArgument}
+		return nil, err
 	}
 	creds := d.creds
 
@@ -418,24 +418,24 @@ func getFlightClient(ctx context.Context, loc string, d *databaseImpl, authMiddl
 		switch transport {
 		case "", "tls":
 			if uri.Path != "" {
-				return nil, adbc.Error{Msg: fmt.Sprintf("Invalid URI '%s': a socket path is only valid with transport=unix", loc), Code: adbc.StatusInvalidArgument}
+				return nil, adbc.Error{Msg: "Invalid URI: a socket path is only valid with transport=unix", Code: adbc.StatusInvalidArgument}
 			}
 		case "tcp":
 			if uri.Path != "" {
-				return nil, adbc.Error{Msg: fmt.Sprintf("Invalid URI '%s': a socket path is only valid with transport=unix", loc), Code: adbc.StatusInvalidArgument}
+				return nil, adbc.Error{Msg: "Invalid URI: a socket path is only valid with transport=unix", Code: adbc.StatusInvalidArgument}
 			}
 			creds = insecure.NewCredentials()
 		case "unix":
 			if uri.Host != "" {
-				return nil, adbc.Error{Msg: fmt.Sprintf("Invalid URI '%s': a host is not valid with transport=unix", loc), Code: adbc.StatusInvalidArgument}
+				return nil, adbc.Error{Msg: "Invalid URI: a host is not valid with transport=unix", Code: adbc.StatusInvalidArgument}
 			}
 			if uri.Path == "" {
-				return nil, adbc.Error{Msg: fmt.Sprintf("Invalid URI '%s': transport=unix requires a socket path", loc), Code: adbc.StatusInvalidArgument}
+				return nil, adbc.Error{Msg: "Invalid URI: transport=unix requires a socket path", Code: adbc.StatusInvalidArgument}
 			}
 			creds = insecure.NewCredentials()
 			target = "unix:" + uri.Path
 		default:
-			return nil, adbc.Error{Msg: fmt.Sprintf("Invalid URI '%s': unrecognized transport '%s' (expected 'tls', 'tcp', or 'unix')", loc, transport), Code: adbc.StatusInvalidArgument}
+			return nil, adbc.Error{Msg: "Invalid URI: unrecognized transport (expected 'tls', 'tcp', or 'unix')", Code: adbc.StatusInvalidArgument}
 		}
 	}
 

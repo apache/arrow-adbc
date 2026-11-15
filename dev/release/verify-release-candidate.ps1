@@ -169,7 +169,7 @@ function Test-PythonWheels($PythonVersion, $PythonPath) {
         & $PythonPath -m pip install --no-deps --force-reinstall $WheelPaths
         if (-not $?) { throw "Failed to install Python $($PythonVersion) wheels" }
 
-        $TestDependencies = @("pytest", "typing-extensions")
+        $TestDependencies = @("pytest")
         if ($IsWindowsPlatform -and -not $IsWindowsArm) {
             $TestDependencies += @("pyarrow", "pandas", "protobuf")
         }

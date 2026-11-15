@@ -98,6 +98,20 @@ namespace Apache.Arrow.Adbc.Tests.Client
             }
         }
 
+        [Fact]
+        public void TestIsDBNull()
+        {
+            AdbcDataReader rdr = GetMoqDataReaderForIntegers();
+
+            List<bool> isNull = new List<bool>();
+            while (rdr.Read())
+            {
+                isNull.Add(rdr.IsDBNull(0));
+            }
+
+            Assert.Equal(new[] { false, false, false, true, false }, isNull);
+        }
+
         private AdbcDataReader GetMoqDataReader(DecimalBehavior decimalBehavior, string value, int precision, int scale)
         {
             SqlDecimal sqlDecimal = SqlDecimal.Parse(value);

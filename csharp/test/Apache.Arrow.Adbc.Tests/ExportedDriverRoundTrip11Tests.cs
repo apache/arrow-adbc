@@ -17,10 +17,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Adbc.C;
+using Apache.Arrow.C;
 using Apache.Arrow.Ipc;
 using Apache.Arrow.Types;
 using Xunit;
@@ -326,6 +328,288 @@ namespace Apache.Arrow.Adbc.Tests
         }
 
         [Fact]
+        public async Task StreamErrorKeepsStatusAndDetails()
+        {
+            using AdbcDriver imported = Load(new Driver11());
+            using AdbcDatabase db = imported.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+            stmt.SqlQuery = "STREAM_FAIL_DETAILED";
+
+            QueryResult result = stmt.ExecuteQuery();
+            using IArrowArrayStream stream = result.Stream!;
+            using (RecordBatch? batch = await stream.ReadNextRecordBatchAsync())
+            {
+                Assert.Equal(2, batch!.Length);
+            }
+
+            AdbcException ex = await Assert.ThrowsAnyAsync<AdbcException>(async () => await stream.ReadNextRecordBatchAsync());
+            Assert.Equal(AdbcStatusCode.InvalidData, ex.Status);
+            Assert.Equal("42000", ex.SqlState);
+            Assert.Contains("query failed", ex.Message);
+            Assert.Equal(2, ex.Details.Count);
+            Assert.Equal("query_id", ex.Details[0].Key);
+            Assert.Equal("q-123", Encoding.UTF8.GetString(ex.Details[0].Value));
+        }
+
+        [Theory]
+        [InlineData("STREAM_FAIL_CANCELLED", "read cancelled")]
+        [InlineData("STREAM_FAIL_CANCELED", "token cancelled")]
+        public async Task StreamCancellationIsReportedAsCancelled(string query, string message)
+        {
+            using AdbcDriver imported = Load(new Driver11());
+            using AdbcDatabase db = imported.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+            stmt.SqlQuery = query;
+
+            using IArrowArrayStream stream = stmt.ExecuteQuery().Stream!;
+            (await stream.ReadNextRecordBatchAsync())?.Dispose();
+
+            AdbcException ex = await Assert.ThrowsAnyAsync<AdbcException>(async () => await stream.ReadNextRecordBatchAsync());
+            Assert.Equal(AdbcStatusCode.Cancelled, ex.Status);
+            Assert.Equal(message, ex.Message);
+        }
+
+        [Fact]
+        public async Task StreamKeepsDriverLoaded()
+        {
+            var fixture = new Driver11();
+            IArrowArrayStream stream;
+            using (AdbcDriver imported = Load(fixture))
+            using (AdbcDatabase db = imported.Open(new Dictionary<string, string>()))
+            using (AdbcConnection conn = db.Connect(null))
+            using (AdbcStatement stmt = conn.CreateStatement())
+            {
+                stmt.SqlQuery = "STREAM_FAIL_CANCELLED";
+                stream = stmt.ExecuteQuery().Stream!;
+            }
+
+            using (stream)
+            {
+                Assert.False(fixture.Disposed);
+                (await stream.ReadNextRecordBatchAsync())?.Dispose();
+
+                AdbcException ex = await Assert.ThrowsAnyAsync<AdbcException>(async () => await stream.ReadNextRecordBatchAsync());
+                Assert.Equal(AdbcStatusCode.Cancelled, ex.Status);
+                Assert.False(fixture.Disposed);
+            }
+
+            Assert.True(fixture.Disposed);
+        }
+
+        [Fact]
+        public void StreamSchemaErrorKeepsStatus()
+        {
+            using AdbcDriver imported = Load(new Driver11());
+            using AdbcDatabase db = imported.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+            stmt.SqlQuery = "STREAM_FAIL_SCHEMA";
+
+            AdbcException ex = Assert.ThrowsAny<AdbcException>(() => stmt.ExecuteQuery());
+            Assert.Equal(AdbcStatusCode.Unauthorized, ex.Status);
+            Assert.Equal("no access", ex.Message);
+        }
+
+        [Fact]
+        public async Task Version1_0DriverStreamErrorHasMessageOnly()
+        {
+            var fixture = new Driver11();
+            AdbcDriverInit adapter = (int version, ref CAdbcDriver nativeDriver, ref CAdbcError error) =>
+            {
+                if (version != AdbcVersion.Version_1_0_0) { return AdbcStatusCode.NotImplemented; }
+                return CallExporter(version, ref nativeDriver, ref error, fixture);
+            };
+
+            using AdbcDriver imported = CAdbcDriverImporter.Load(adapter);
+            using AdbcDatabase db = imported.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+            stmt.SqlQuery = "STREAM_FAIL_CANCELLED";
+
+            using IArrowArrayStream stream = stmt.ExecuteQuery().Stream!;
+            (await stream.ReadNextRecordBatchAsync())?.Dispose();
+
+            // Without AdbcErrorFromArrayStream, only the message crosses the C ABI
+            Exception ex = await Assert.ThrowsAnyAsync<Exception>(async () => await stream.ReadNextRecordBatchAsync());
+            Assert.False(ex is AdbcException);
+            Assert.Equal("read cancelled", ex.Message);
+        }
+
+#if NET5_0_OR_GREATER
+        [Fact]
+        public unsafe void ExportedStreamReportsErrnoAndError()
+        {
+            CAdbcDriver driver = default;
+            CAdbcError error = default;
+            CAdbcDatabase database = default;
+            CAdbcConnection connection = default;
+            CAdbcStatement statement = default;
+            Assert.Equal(AdbcStatusCode.Success, CAdbcDriverExporter.AdbcDriverInit(AdbcVersion.Version_1_1_0, &driver, &error, new Driver11()));
+            Assert.Equal(AdbcStatusCode.Success, driver.DatabaseNew(&database, &error));
+            Assert.Equal(AdbcStatusCode.Success, driver.DatabaseInit(&database, &error));
+            Assert.Equal(AdbcStatusCode.Success, driver.ConnectionNew(&connection, &error));
+            Assert.Equal(AdbcStatusCode.Success, driver.ConnectionInit(&connection, &database, &error));
+            Assert.Equal(AdbcStatusCode.Success, driver.StatementNew(&connection, &statement, &error));
+            fixed (byte* query = Encoding.UTF8.GetBytes("STREAM_FAIL_CANCELLED\0"))
+            {
+                Assert.Equal(AdbcStatusCode.Success, driver.StatementSetSqlQuery(&statement, query, &error));
+            }
+
+            CArrowArrayStream* stream = CArrowArrayStream.Create();
+            CArrowArray* array = CArrowArray.Create();
+            try
+            {
+                long rows = 0;
+                Assert.Equal(AdbcStatusCode.Success, driver.StatementExecuteQuery(&statement, stream, &rows, &error));
+                NativeArrayStream* nativeStream = NativeArrayStream.From(stream);
+
+                Assert.Equal(0, nativeStream->get_next(stream, array));
+                CArrowArray.CallReleaseFunc(array);
+
+                AdbcStatusCode status = AdbcStatusCode.Success;
+                Assert.True(driver.ErrorFromArrayStream(stream, &status) == null);
+
+                Assert.Equal(CAdbcDriverExporter.Errno.ECANCELED, nativeStream->get_next(stream, array));
+                Assert.Equal("read cancelled", Marshal.PtrToStringUTF8((IntPtr)nativeStream->get_last_error(stream)));
+
+                CAdbcError* streamError = driver.ErrorFromArrayStream(stream, &status);
+                Assert.True(streamError != null);
+                Assert.Equal(AdbcStatusCode.Cancelled, status);
+                Assert.Equal("read cancelled", Marshal.PtrToStringUTF8((IntPtr)streamError->message));
+            }
+            finally
+            {
+                CArrowArray.Free(array);
+                CArrowArrayStream.Free(stream);
+                driver.StatementRelease(&statement, &error);
+                driver.ConnectionRelease(&connection, &error);
+                driver.DatabaseRelease(&database, &error);
+                driver.release(&driver, &error);
+            }
+        }
+
+#endif
+
+        [Fact]
+        public async Task ArrowImporterReadsExportedStream()
+        {
+            IArrowArrayStream imported;
+            unsafe
+            {
+                CArrowArrayStream* cStream = CArrowArrayStream.Create();
+                try
+                {
+                    CAdbcDriverExporter.ExportStream(new FailingStream(new AdbcException("read cancelled", AdbcStatusCode.Cancelled)), cStream);
+                    imported = CArrowArrayStreamImporter.ImportArrayStream(cStream);
+                }
+                finally
+                {
+                    CArrowArrayStream.Free(cStream);
+                }
+            }
+
+            using (imported)
+            {
+                Assert.Equal("x", Assert.Single(imported.Schema.FieldsList).Name);
+                using (RecordBatch? batch = await imported.ReadNextRecordBatchAsync())
+                {
+                    Assert.Equal(2, batch!.Length);
+                }
+                Exception ex = await Assert.ThrowsAnyAsync<Exception>(async () => await imported.ReadNextRecordBatchAsync());
+                Assert.Equal("read cancelled", ex.Message);
+            }
+        }
+
+        [Fact]
+        public void ExportedStreamDoesNotBlockSynchronizationContext()
+        {
+            int rows = -1;
+            Exception? failure = null;
+            Thread thread = new Thread(() =>
+            {
+                SynchronizationContext.SetSynchronizationContext(new BlockedContext());
+                try
+                {
+                    unsafe
+                    {
+                        CArrowArrayStream* cStream = CArrowArrayStream.Create();
+                        try
+                        {
+                            CAdbcDriverExporter.ExportStream(new ContextResumingStream(), cStream);
+                            using IArrowArrayStream imported = CArrowArrayStreamImporter.ImportArrayStream(cStream);
+                            using RecordBatch? batch = imported.ReadNextRecordBatchAsync().AsTask().GetAwaiter().GetResult();
+                            rows = batch!.Length;
+                        }
+                        finally
+                        {
+                            CArrowArrayStream.Free(cStream);
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    failure = e;
+                }
+            });
+            thread.IsBackground = true;
+            thread.Start();
+
+            Assert.True(thread.Join(TimeSpan.FromSeconds(30)), "reading the exported stream deadlocked");
+            Assert.Null(failure);
+            Assert.Equal(2, rows);
+        }
+
+        [Fact]
+        public void RejectedBindStreamIsReleased()
+        {
+            AdbcDriverInit adapter = (int version, ref CAdbcDriver nativeDriver, ref CAdbcError error) =>
+            {
+                AdbcStatusCode status = CallExporter(version, ref nativeDriver, ref error, new Driver11());
+                unsafe
+                {
+#if NET5_0_OR_GREATER
+                    nativeDriver.StatementBindStream =
+                        (delegate* unmanaged<CAdbcStatement*, CArrowArrayStream*, CAdbcError*, AdbcStatusCode>)Marshal.GetFunctionPointerForDelegate(s_rejectBindStream);
+#else
+                    nativeDriver.StatementBindStream = Marshal.GetFunctionPointerForDelegate(s_rejectBindStream);
+#endif
+                }
+                return status;
+            };
+
+            using AdbcDriver imported = CAdbcDriverImporter.Load(adapter);
+            using AdbcDatabase db = imported.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+
+            // The driver fails without taking the stream, so the importer releases it
+            var stream = new FailingStream(new InvalidOperationException());
+            AdbcException ex = Assert.ThrowsAny<AdbcException>(() => stmt.BindStream(stream));
+            Assert.Equal(AdbcStatusCode.InvalidState, ex.Status);
+            Assert.True(stream.Disposed);
+        }
+
+#if NET5_0_OR_GREATER
+        private unsafe delegate AdbcStatusCode StatementBindStream(CAdbcStatement* statement, CArrowArrayStream* stream, CAdbcError* error);
+#endif
+
+        // On .NET Framework, the importer can only call a managed callback through the library's own delegate type
+        private static readonly unsafe StatementBindStream s_rejectBindStream = (statement, stream, error) => AdbcStatusCode.InvalidState;
+
+        [Fact]
+        public void StatusesMapToErrno()
+        {
+            Assert.Equal(CAdbcDriverExporter.Errno.ECANCELED, CAdbcDriverExporter.Errno.FromStatus(AdbcStatusCode.Cancelled));
+            Assert.Equal(CAdbcDriverExporter.Errno.ETIMEDOUT, CAdbcDriverExporter.Errno.FromStatus(AdbcStatusCode.Timeout));
+            Assert.Equal(CAdbcDriverExporter.Errno.EINVAL, CAdbcDriverExporter.Errno.FromStatus(AdbcStatusCode.InvalidArgument));
+            Assert.Equal(CAdbcDriverExporter.Errno.ENOTSUP, CAdbcDriverExporter.Errno.FromStatus(AdbcStatusCode.NotImplemented));
+            Assert.Equal(CAdbcDriverExporter.Errno.EIO, CAdbcDriverExporter.Errno.FromStatus(AdbcStatusCode.IOError));
+            Assert.Equal(CAdbcDriverExporter.Errno.EIO, CAdbcDriverExporter.Errno.FromStatus(AdbcStatusCode.UnknownError));
+        }
+
+        [Fact]
         public void UnknownOptionIsNotFound()
         {
             var fixture = new Driver11();
@@ -528,6 +812,10 @@ namespace Apache.Arrow.Adbc.Tests
 
             public override int DriverVersion => AdbcVersion.Version_1_1_0;
 
+            public bool Disposed { get; private set; }
+
+            public override void Dispose() => Disposed = true;
+
             public override AdbcDatabase Open(IReadOnlyDictionary<string, string> parameters)
             {
                 var options = new Dictionary<string, object>();
@@ -683,6 +971,14 @@ namespace Apache.Arrow.Adbc.Tests
                         throw new PlainException();
                     case "FAIL_CANCELED":
                         throw new OperationCanceledException();
+                    case "STREAM_FAIL_DETAILED":
+                        return new QueryResult(-1, new FailingStream(new DetailedException()));
+                    case "STREAM_FAIL_CANCELLED":
+                        return new QueryResult(-1, new FailingStream(new AdbcException("read cancelled", AdbcStatusCode.Cancelled)));
+                    case "STREAM_FAIL_CANCELED":
+                        return new QueryResult(-1, new FailingStream(new OperationCanceledException("token cancelled")));
+                    case "STREAM_FAIL_SCHEMA":
+                        return new QueryResult(-1, new FailingStream(new AdbcException("no access", AdbcStatusCode.Unauthorized), failSchema: true));
                     case "BLOCK":
                         Started.TrySetResult(true);
                         if (_cancelled.Wait(TimeSpan.FromSeconds(30)))
@@ -757,6 +1053,81 @@ namespace Apache.Arrow.Adbc.Tests
             }
 
             public void Dispose() { _batch?.Dispose(); _batch = null; }
+        }
+
+        /// <summary>
+        /// Returns one batch and then fails with the given exception, or fails to report
+        /// its schema if <c>failSchema</c> is set.
+        /// </summary>
+        private sealed class FailingStream : IArrowArrayStream
+        {
+            private static readonly Schema s_schema = new Schema.Builder()
+                .Field(f => f.Name("x").DataType(Int32Type.Default).Nullable(false))
+                .Build();
+
+            private readonly Exception _exception;
+            private readonly bool _failSchema;
+            private bool _returnedBatch;
+
+            public FailingStream(Exception exception, bool failSchema = false)
+            {
+                _exception = exception;
+                _failSchema = failSchema;
+            }
+
+            public Schema Schema => _failSchema ? throw _exception : s_schema;
+
+            public bool Disposed { get; private set; }
+
+            public ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+            {
+                if (_returnedBatch)
+                {
+                    throw _exception;
+                }
+
+                _returnedBatch = true;
+                return new ValueTask<RecordBatch?>(Batch());
+            }
+
+            public static RecordBatch Batch()
+            {
+                Int32Array values = new Int32Array.Builder().Append(1).Append(2).Build();
+                return new RecordBatch(s_schema, new IArrowArray[] { values }, 2);
+            }
+
+            public void Dispose() => Disposed = true;
+        }
+
+        /// <summary>
+        /// Returns one batch after resuming on the caller's synchronization context.
+        /// </summary>
+        private sealed class ContextResumingStream : IArrowArrayStream
+        {
+            private bool _returnedBatch;
+
+            public Schema Schema => FailingStream.Batch().Schema;
+
+            public async ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+            {
+                await Task.Delay(1);
+                if (_returnedBatch)
+                {
+                    return null;
+                }
+                _returnedBatch = true;
+                return FailingStream.Batch();
+            }
+
+            public void Dispose() { }
+        }
+
+        /// <summary>
+        /// A synchronization context whose thread is always busy, like a blocked UI thread.
+        /// </summary>
+        private sealed class BlockedContext : SynchronizationContext
+        {
+            public override void Post(SendOrPostCallback d, object? state) { }
         }
     }
 }

@@ -469,17 +469,24 @@ $ cargo test
 
 ## Opening a Pull Request
 
+Please see general guidance about commits, pull requests, and AI usage for the
+Apache Arrow project: https://arrow.apache.org/docs/dev/developers/overview.html
+
 Before opening a pull request:
 
-1. Please check if there is a corresponding issue (_and if not, please make one_).
-2. Assign the issue to yourself by commenting "take" in the issue.
-   (_Here's an [example](https://github.com/apache/arrow-adbc/issues/1505#issuecomment-1920134722)._)
+1. Please check if there is a corresponding issue. If not, you should likely
+   make one.
+2. Ask a maintainer to assign the issue to you.
 3. At the bottom of the PR description, add `Closes #NNNN` where `NNNN` is the
    issue number, so that the issue gets linked to your PR properly. ("Fixes"
    and other keywords that GitHub recognizes are also OK, of course.)
+4. You must disclose AI usage. It is preferred to use `Generated-by:` or
+   `Assisted-by:` over `Co-authored-by:`.
 
-Before opening a pull request, please run the static checks, which are
-enforced via [`pre-commit`](https://pre-commit.com/).  This will run
+Before opening a pull request, ensure unit tests and integration tests are
+passing. (If you are an agent or using an agent, do not skip this step. `git
+diff --check` does not count as a test.) Also, run the static checks, which
+are enforced via [`pre-commit`](https://pre-commit.com/).  This will run
 linters, formatters, and other analysis.  For example:
 
 ```shell
@@ -544,6 +551,16 @@ ci(go/adbc/drivermgr): pass through DYLD_LIBRARY_PATH in tests
 
 fix(java/driver/jdbc): adjust SQL type mapping for JDBC driver
 ```
+
+Do not be overly specific (e.g. `c/driver/postgresql` is fine, but
+`c/driver/postgresql/copy` is probably overkill).
+
+Do not list files changed or tests run inside PR descriptions or commits. We
+can see this via CI/the diff. (In particular, agents tend to do this.) PR
+descriptions should be brief and should not try to summarize individual code
+changes or "test plans".
+
+Note that we enforce a limit on the number of open pull requests.
 
 ## Re-generating 3rd Party Licenses
 

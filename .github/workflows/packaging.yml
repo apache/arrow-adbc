@@ -25,6 +25,7 @@ on:
       - ".env"
       - "c/**"
       - "ci/**"
+      - "!ci/rust-nightly/**"
       - "dev/release/verify-apt.sh"
       - "dev/release/verify-yum.sh"
       - "glib/**"
@@ -101,6 +102,7 @@ jobs:
       - source
 
     strategy:
+      max-parallel: 2
       matrix:
         os: ["ubuntu-latest", "windows-latest", "macos-15-intel"]
 
@@ -260,6 +262,7 @@ jobs:
       - source
     runs-on: ${{ matrix.runner }}
     strategy:
+      max-parallel: 2
       matrix:
         include:
           - { os: Linux, arch: amd64, runner: ubuntu-latest }
@@ -392,6 +395,7 @@ jobs:
     needs:
       - source
     strategy:
+      max-parallel: 2
       fail-fast: false
       matrix:
         distribution:
@@ -455,7 +459,7 @@ jobs:
           mv apache-arrow-adbc-$VERSION.tar.gz adbc/ci/linux-packages/
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8  # v1.327.0
+        uses: ruby/setup-ruby@de492cf36cbab201753d720ce4f4e336cd688c94  # v1.336.0
         with:
           ruby-version: ruby
 
@@ -468,7 +472,7 @@ jobs:
           lookup-only: true
 
       - name: Login to GitHub Container registry
-        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f  # v4.6.0
+        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6  # v4.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -641,7 +645,7 @@ jobs:
 
       - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb  # v4.1.0
         with:
-          miniforge-version: latest
+          miniforge-version: 26.7.2-1
           use-only-tar-bz2: false
           use-mamba: true
 
@@ -678,6 +682,7 @@ jobs:
     needs:
       - source
     strategy:
+      max-parallel: 2
       fail-fast: false
       matrix:
         arch: ["amd64", "arm64v8"]
@@ -804,6 +809,7 @@ jobs:
     needs:
       - source
     strategy:
+      max-parallel: 1
       fail-fast: false
       matrix:
         os: ["macos-15-intel", "macos-latest"]
@@ -988,6 +994,7 @@ jobs:
     needs:
       - source
     strategy:
+      max-parallel: 1
       fail-fast: false
       matrix:
         include:
@@ -1067,7 +1074,7 @@ jobs:
 
       - name: Install Python 3.11
         id: python311
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           architecture: ${{ matrix.python_arch }}
           check-latest: true
@@ -1076,7 +1083,7 @@ jobs:
 
       - name: Install Python 3.12
         id: python312
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           architecture: ${{ matrix.python_arch }}
           check-latest: true
@@ -1085,7 +1092,7 @@ jobs:
 
       - name: Install Python 3.13
         id: python313
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           architecture: ${{ matrix.python_arch }}
           check-latest: true
@@ -1094,7 +1101,7 @@ jobs:
 
       - name: Install Python 3.14
         id: python314
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           architecture: ${{ matrix.python_arch }}
           check-latest: true
@@ -1103,7 +1110,7 @@ jobs:
 
       - name: Install Python 3.14t
         id: python314t
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           architecture: ${{ matrix.python_arch }}
           check-latest: true
@@ -1112,7 +1119,7 @@ jobs:
 
       - name: Install Python 3.15
         id: python315
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           architecture: ${{ matrix.python_arch }}
           check-latest: true
@@ -1121,7 +1128,7 @@ jobs:
 
       - name: Install Python 3.15t
         id: python315t
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           architecture: ${{ matrix.python_arch }}
           check-latest: true
@@ -1297,6 +1304,7 @@ jobs:
     needs:
       - source
     strategy:
+      max-parallel: 2
       fail-fast: false
       matrix:
         settings:
@@ -1513,7 +1521,7 @@ jobs:
           path: conda-packages
       - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb  # v4.1.0
         with:
-          miniforge-version: latest
+          miniforge-version: 26.7.2-1
           use-only-tar-bz2: false
           use-mamba: true
       - name: Install Dependencies
@@ -1545,7 +1553,7 @@ jobs:
         with:
           persist-credentials: false
       - name: Install Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: '3.13'
       - name: Clean
@@ -1600,4 +1608,5 @@ jobs:
         env:
           GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }} # zizmor: ignore[secrets-outside-env]
           NPM_REGISTRY: https://npm.fury.io/arrow-adbc-nightlies/
+          NPM_TAG: nightly
           NPM_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }} # zizmor: ignore[secrets-outside-env]

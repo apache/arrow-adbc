@@ -48,4 +48,31 @@ namespace Apache.Arrow.Adbc.Tests.DriverManager
         public override AdbcConnection Connect(IReadOnlyDictionary<string, string>? options) =>
             throw new System.NotImplementedException();
     }
+
+    /// <summary>
+    /// Minimal in-memory AdbcDriver that accepts typed options, used to verify that
+    /// the driver manager preserves option types.
+    /// </summary>
+    public sealed class FakeTypedAdbcDriver : AdbcDriver
+    {
+        public override AdbcDatabase Open(IReadOnlyDictionary<string, string> parameters) =>
+            throw new System.InvalidOperationException("Expected the typed Open overload to be called.");
+
+        public override AdbcDatabase Open(IReadOnlyDictionary<string, object> parameters) =>
+            new FakeTypedAdbcDatabase(parameters);
+    }
+
+    /// <summary>Minimal in-memory AdbcDatabase returned by <see cref="FakeTypedAdbcDriver"/>.</summary>
+    public sealed class FakeTypedAdbcDatabase : AdbcDatabase
+    {
+        public IReadOnlyDictionary<string, object> Parameters { get; }
+
+        public FakeTypedAdbcDatabase(IReadOnlyDictionary<string, object> parameters)
+        {
+            Parameters = parameters;
+        }
+
+        public override AdbcConnection Connect(IReadOnlyDictionary<string, string>? options) =>
+            throw new System.NotImplementedException();
+    }
 }

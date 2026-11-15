@@ -38,6 +38,7 @@
 #include <cctype>
 #include <filesystem>
 #include <string>
+#include <system_error>
 #include <utility>
 #include <vector>
 
@@ -294,8 +295,13 @@ SearchPaths GetSearchPaths(const AdbcLoadFlags levels) {
   if (levels & ADBC_LOAD_FLAG_SEARCH_USER) {
     // Check the user configuration directory
     std::filesystem::path user_config_dir = InternalAdbcUserConfigDir() / kDriversSubdir;
-    if (!user_config_dir.empty() && std::filesystem::exists(user_config_dir)) {
+    std::error_code ec;
+    if (!user_config_dir.empty() && std::filesystem::exists(user_config_dir, ec)) {
       paths.emplace_back(SearchPathSource::kUser, std::move(user_config_dir));
+    } else if (ec) {
+      paths.emplace_back(
+          SearchPathSource::kOtherError,
+          "user config dir: " + user_config_dir.string() + " (" + ec.message() + ")");
     } else {
       paths.emplace_back(SearchPathSource::kDoesNotExist, std::move(user_config_dir));
     }
@@ -307,8 +313,13 @@ SearchPaths GetSearchPaths(const AdbcLoadFlags levels) {
     // as we're not on Windows
 #if !defined(_WIN32)
     const std::filesystem::path system_config_dir = InternalAdbcSystemConfigDir();
-    if (std::filesystem::exists(system_config_dir)) {
+    std::error_code ec;  // Treat errors like !exists
+    if (std::filesystem::exists(system_config_dir, ec)) {
       paths.emplace_back(SearchPathSource::kSystem, std::move(system_config_dir));
+    } else if (ec) {
+      paths.emplace_back(
+          SearchPathSource::kOtherError,
+          "system config dir: " + system_config_dir.string() + " (" + ec.message() + ")");
     } else {
       paths.emplace_back(SearchPathSource::kDoesNotExist, std::move(system_config_dir));
     }
@@ -376,7 +387,8 @@ AdbcStatusCode ManagedLibrary::GetDriverInfo(
     // if we have an absolute path without an extension, first see if there's a
     // toml file with the same name.
     driver_path.replace_extension(".toml");
-    if (std::filesystem::exists(driver_path)) {
+    std::error_code ec;  // Treat errors like !exists
+    if (std::filesystem::exists(driver_path, ec)) {
       auto status = LoadDriverManifest(driver_path, info, error);
       if (status == ADBC_STATUS_OK) {
         return Load(info.lib_path.native(), {}, error);
@@ -443,7 +455,8 @@ AdbcStatusCode ManagedLibrary::SearchPathsForDriver(
 
     // check for toml first, then dll
     full_path.replace_extension(".toml");
-    if (std::filesystem::exists(full_path)) {
+    std::error_code ec;
+    if (std::filesystem::exists(full_path, ec)) {
       OwnedError intermediate_error;
 
       auto status = LoadDriverManifest(full_path, info, &intermediate_error.error);
@@ -487,6 +500,10 @@ AdbcStatusCode ManagedLibrary::SearchPathsForDriver(
       }
 
       extra_debug_info.emplace_back(SearchPathSource::kOtherError, std::move(message));
+    } else if (ec) {
+      extra_debug_info.emplace_back(
+          SearchPathSource::kOtherError,
+          "could not access " + full_path.string() + " (" + ec.message() + ")");
     }
 
     // remove the .toml extension; Load will add the DLL/SO/DYLIB suffix

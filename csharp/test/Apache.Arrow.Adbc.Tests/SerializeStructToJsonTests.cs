@@ -80,6 +80,30 @@ namespace Apache.Arrow.Adbc.Tests
         public void Double() => AssertJson("{\"f\":3.25}", DoubleType.Default, new DoubleArray.Builder().Append(3.25).Build());
 
         [Fact]
+        public void NonFiniteFloat()
+        {
+            var values = new FloatArray.Builder().Append(float.NaN).Append(float.PositiveInfinity).Append(float.NegativeInfinity).Build();
+            var s = SingleFieldStruct("f", FloatType.Default, values);
+            Assert.Equal("{\"f\":\"NaN\"}", SerializeRow(s, 0));
+            Assert.Equal("{\"f\":\"Infinity\"}", SerializeRow(s, 1));
+            Assert.Equal("{\"f\":\"-Infinity\"}", SerializeRow(s, 2));
+        }
+
+        [Fact]
+        public void NonFiniteDouble()
+        {
+            var values = new DoubleArray.Builder().Append(double.NaN).Append(double.PositiveInfinity).Append(double.NegativeInfinity).Build();
+            var s = SingleFieldStruct("f", DoubleType.Default, values);
+            Assert.Equal("{\"f\":\"NaN\"}", SerializeRow(s, 0));
+            Assert.Equal("{\"f\":\"Infinity\"}", SerializeRow(s, 1));
+            Assert.Equal("{\"f\":\"-Infinity\"}", SerializeRow(s, 2));
+
+            // The struct result keeps the actual values
+            var obj = (Dictionary<string, object?>)s.ValueAt(0, StructResultType.Object)!;
+            Assert.True(double.IsNaN((double)obj["f"]!));
+        }
+
+        [Fact]
         public void String() => AssertJson("{\"f\":\"hi\"}", StringType.Default, new StringArray.Builder().Append("hi").Build());
 
         [Fact]

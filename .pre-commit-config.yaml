@@ -45,11 +45,6 @@ repos:
     hooks:
       - id: clang-format
         types_or: [c, c++]
-  - repo: https://github.com/cheshirekow/cmake-format-precommit
-    rev: e2c2116d86a80e72e7146a06e68b7c228afc6319  # v0.6.13
-    hooks:
-    - id: cmake-format
-      args: [--in-place]
   - repo: https://github.com/cpplint/cpplint
     rev: 350702a4d39395571bd118c9a3cff0a573488d61  # 2.0.2
     hooks:
@@ -72,7 +67,7 @@ repos:
       entry: bash -c 'cd go/driver && golangci-lint run --fix --timeout 5m'
       types_or: [go, go-mod]
   - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
-    rev: a6273196190bb0f68caf1dc68073cf62c719f725  # v2.14.0
+    rev: 4380fbb73a154b5f5624794c1c78d9719ccc860f  # frozen: v2.16.0
     hooks:
     - id: pretty-format-golang
       args: [--autofix]

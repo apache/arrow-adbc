@@ -23,18 +23,23 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Apache.Arrow.Ipc;
+using Apache.Arrow.Operations.Shredding;
+using Apache.Arrow.Scalars.Variant;
 using Apache.Arrow.Types;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Apache.Arrow.Adbc.Tests
 {
     public class ImportedDuckDbTests : IClassFixture<DuckDbFixture>
     {
         readonly DuckDbFixture _duckDb;
+        readonly ITestOutputHelper _output;
 
-        public ImportedDuckDbTests(DuckDbFixture duckDb)
+        public ImportedDuckDbTests(DuckDbFixture duckDb, ITestOutputHelper output)
         {
             _duckDb = duckDb;
+            _output = output;
         }
 
         [Fact]
@@ -212,6 +217,198 @@ namespace Apache.Arrow.Adbc.Tests
             statement3.ExecuteUpdate();
 
             Assert.Equal(6, GetResultCount(statement3, "SELECT * from main.ingested"));
+        }
+
+        [SkippableFact]
+        public async Task ReadVariant()
+        {
+            using var database = _duckDb.OpenDatabase("readvariant.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+
+            RequireVariantSupport(statement);
+            statement.SqlQuery = """
+                SELECT v FROM (VALUES
+                    (1, 42::VARIANT),
+                    (2, 'hello'::VARIANT),
+                    (3, {'name': 'widget', 'sizes': [1, 2]}::VARIANT),
+                    (4, NULL::VARIANT)
+                ) AS variants(id, v) ORDER BY id
+                """;
+            using var stream = statement.ExecuteQuery().Stream;
+            Assert.NotNull(stream);
+            Field field = stream.Schema.FieldsList[0];
+            Assert.Equal("arrow.parquet.variant", field.Metadata["ARROW:extension:name"]);
+
+            using var batch = await stream.ReadNextRecordBatchAsync();
+            Assert.NotNull(batch);
+            // The C Data Interface imports extension arrays as storage plus field metadata.
+            var variants = new VariantArray(batch.Column(0));
+            Assert.Equal(4, variants.Length);
+            Assert.Equal(42, variants.GetVariantValue(0).AsInt32());
+            Assert.Equal("hello", variants.GetVariantValue(1).AsString());
+            var obj = variants.GetVariantValue(2).AsObject();
+            Assert.Equal("widget", obj["name"].AsString());
+            Assert.Equal(new[] { 1, 2 }, obj["sizes"].AsArray().Select(value => value.AsInt32()));
+            Assert.True(variants.IsNull(3));
+            Assert.Null(await stream.ReadNextRecordBatchAsync());
+        }
+
+        [SkippableFact]
+        public async Task IngestVariant()
+        {
+            using var database = _duckDb.OpenDatabase("ingestvariant.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+            RequireVariantSupport(statement);
+            using var variants = new VariantArray.Builder()
+                .Append(VariantValue.FromInt8(42))
+                .Append(VariantValue.FromString("hello"))
+                .Append(VariantValue.FromObject(new Dictionary<string, VariantValue>
+                {
+                    { "name", VariantValue.FromString("widget") },
+                    { "sizes", VariantValue.FromArray(VariantValue.FromInt8(1), VariantValue.FromInt8(2)) },
+                }))
+                .Append(VariantValue.Null)
+                .AppendNull()
+                .Build();
+            var schema = new Schema([
+                new Field("id", Int32Type.Default, false),
+                new Field("v", variants.ExtensionType, true),
+            ], null);
+            using var batch = new RecordBatch(schema, [
+                new Int32Array.Builder().AppendRange([1, 2, 3, 4, 5]).Build(),
+                variants,
+            ], variants.Length);
+            using (var ingest = connection.BulkIngest("variants", BulkIngestMode.Create))
+            {
+                ingest.Bind(batch, schema);
+                ingest.ExecuteUpdate();
+            }
+
+            Assert.Equal("VARIANT", GetScalarString(statement, """
+                SELECT data_type FROM information_schema.columns
+                WHERE table_name = 'variants' AND column_name = 'v'
+                """));
+
+            statement.SqlQuery = "SELECT v FROM variants ORDER BY id";
+            using var stream = statement.ExecuteQuery().Stream;
+            Assert.NotNull(stream);
+            using var result = await stream.ReadNextRecordBatchAsync();
+            Assert.NotNull(result);
+            Assert.Equal("arrow.parquet.variant", stream.Schema.FieldsList[0].Metadata["ARROW:extension:name"]);
+            var values = new VariantArray(result.Column(0));
+            Assert.Equal(variants.Length, values.Length);
+            for (int i = 0; i < variants.Length; i++)
+            {
+                Assert.Equal(variants.IsNull(i), values.IsNull(i));
+                if (!variants.IsNull(i))
+                {
+                    Assert.Equal(variants.GetVariantValue(i), values.GetVariantValue(i));
+                }
+            }
+            Assert.Null(await stream.ReadNextRecordBatchAsync());
+        }
+
+        [SkippableFact]
+        public async Task ReadShreddedVariant()
+        {
+            using var database = _duckDb.OpenDatabase("readshreddedvariant.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+            RequireVariantSupport(statement);
+
+            statement.SqlQuery = "SET variant_minimum_shredding_size = 0";
+            statement.ExecuteUpdate();
+            statement.SqlQuery = "CREATE TABLE variants(id INTEGER, v VARIANT)";
+            statement.ExecuteUpdate();
+            statement.SqlQuery = """
+                INSERT INTO variants VALUES
+                    (1, {'name': 'first', 'value': 1, 'extra': [1, 2]}::VARIANT),
+                    (2, {'name': 'second', 'value': 2}::VARIANT),
+                    (3, {'name': 'third', 'value': 3}::VARIANT),
+                    (4, 'residual'::VARIANT),
+                    (5, NULL::VARIANT)
+                """;
+            statement.ExecuteUpdate();
+            statement.SqlQuery = "CHECKPOINT";
+            statement.ExecuteUpdate();
+            Assert.Equal("SHREDDED_VECTOR", GetScalarString(statement, "SELECT DISTINCT vector_type(v) FROM variants"));
+
+            statement.SqlQuery = "SELECT v FROM variants ORDER BY id";
+            using var stream = statement.ExecuteQuery().Stream;
+            Assert.NotNull(stream);
+            Assert.Equal("arrow.parquet.variant", stream.Schema.FieldsList[0].Metadata["ARROW:extension:name"]);
+            using var batch = await stream.ReadNextRecordBatchAsync();
+            Assert.NotNull(batch);
+            var variants = new VariantArray(batch.Column(0));
+
+            // DuckDB exports internally shredded values as unshredded Arrow variants.
+            Assert.False(variants.IsShredded);
+            Assert.Equal(5, variants.Length);
+            Assert.Equal(new[] { "first", "second", "third" },
+                Enumerable.Range(0, 3).Select(i => variants.GetVariantValue(i).AsObject()["name"].AsString()));
+            Assert.Equal(new[] { 1, 2, 3 },
+                Enumerable.Range(0, 3).Select(i => variants.GetVariantValue(i).AsObject()["value"].AsInt32()));
+            Assert.Equal(new[] { 1, 2 },
+                variants.GetVariantValue(0).AsObject()["extra"].AsArray().Select(value => value.AsInt32()));
+            Assert.Equal("residual", variants.GetVariantValue(3).AsString());
+            Assert.True(variants.IsNull(4));
+            Assert.Null(await stream.ReadNextRecordBatchAsync());
+        }
+
+        [SkippableTheory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public void IngestShreddedVariantIsNotSupported(bool shredObject)
+        {
+            using var database = _duckDb.OpenDatabase($"ingestshreddedvariant{shredObject}.db");
+            using var connection = database.Connect(null);
+            using var statement = connection.CreateStatement();
+            RequireVariantSupport(statement);
+
+            ShredSchema shredSchema = shredObject
+                ? ShredSchema.ForObject(new Dictionary<string, ShredSchema>
+                {
+                    { "value", ShredSchema.Primitive(ShredType.Int32) },
+                })
+                : ShredSchema.Primitive(ShredType.Int32);
+            VariantValue typed = shredObject
+                ? VariantValue.FromObject(new Dictionary<string, VariantValue>
+                {
+                    { "value", VariantValue.FromInt32(42) },
+                    { "extra", VariantValue.FromString("unshredded field") },
+                })
+                : VariantValue.FromInt32(42);
+            VariantValue[] expected = [typed, VariantValue.FromString("residual"), VariantValue.Null];
+            var (metadata, rows) = VariantShredder.Shred(expected, shredSchema);
+            using var variants = ShreddedVariantArrayBuilder.Build(shredSchema, metadata, rows);
+            Assert.True(variants.IsShredded);
+            IArrowArray? typedValues = variants.TypedValueArray;
+            Assert.NotNull(typedValues);
+            Assert.False(typedValues.IsNull(0));
+            Assert.True(typedValues.IsNull(1));
+            Assert.False(variants.GetValueBytes(1).IsEmpty);
+            if (shredObject)
+            {
+                Assert.False(variants.GetValueBytes(0).IsEmpty);
+            }
+            for (int i = 0; i < expected.Length; i++)
+            {
+                Assert.Equal(expected[i], variants.GetLogicalVariantValue(i));
+            }
+
+            var schema = new Schema([new Field("v", variants.ExtensionType, true)], null);
+            using var batch = new RecordBatch(schema, [variants], variants.Length);
+            using var ingest = connection.BulkIngest("variants", BulkIngestMode.Create);
+            AdbcException exception = Assert.ThrowsAny<AdbcException>(() =>
+            {
+                ingest.Bind(batch, schema);
+                ingest.ExecuteUpdate();
+            });
+            _output.WriteLine($"Shredded ingestion: {exception.Status}: {exception.Message}");
+            Assert.Contains("typed_value", exception.Message);
+            Assert.Contains("not supported", exception.Message);
         }
 
         [Fact]
@@ -682,6 +879,15 @@ namespace Apache.Arrow.Adbc.Tests
                 await Task.WhenAny(query, Task.Delay(250));
             }
             Assert.True(query.IsCompleted, "The query was not cancelled");
+        }
+
+        private void RequireVariantSupport(AdbcStatement statement)
+        {
+            string? version = GetScalarString(statement, "SELECT version()");
+            Assert.NotNull(version);
+            _output.WriteLine($"DuckDB version: {version}");
+            Skip.If(Version.Parse(version.TrimStart('v').Split('-')[0]).Major < 2,
+                "Reading and ingesting arrow.parquet.variant requires DuckDB 2.0 or later.");
         }
 
         private static string? GetScalarString(AdbcStatement statement, string query)

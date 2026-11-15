@@ -105,7 +105,7 @@ jobs:
         uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb  # v4.1.0
         if: runner.os == 'Windows' && runner.arch == 'X64'
         with:
-          miniforge-version: latest
+          miniforge-version: 26.7.2-1
       - name: Install Dependencies
         if: runner.os == 'Windows' && runner.arch == 'X64'
         run: |

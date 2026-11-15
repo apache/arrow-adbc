@@ -250,18 +250,24 @@ const (
 	OptionKeyMaxProgress              = "adbc.statement.exec.max_progress"
 	OptionKeyIngestTargetTable        = "adbc.ingest.target_table"
 	OptionKeyIngestMode               = "adbc.ingest.mode"
+	OptionKeyIngestTargetCatalog      = "adbc.ingest.target_catalog"
+	OptionKeyIngestTargetDBSchema     = "adbc.ingest.target_db_schema"
+	OptionKeyIngestTemporary          = "adbc.ingest.temporary"
 	OptionKeyIsolationLevel           = "adbc.connection.transaction.isolation_level"
 	OptionKeyReadOnly                 = "adbc.connection.readonly"
 	OptionValueIngestModeCreate       = "adbc.ingest.mode.create"
 	OptionValueIngestModeAppend       = "adbc.ingest.mode.append"
 	OptionValueIngestModeReplace      = "adbc.ingest.mode.replace"
 	OptionValueIngestModeCreateAppend = "adbc.ingest.mode.create_append"
-	OptionValueIngestTargetCatalog    = "adbc.ingest.target_catalog"
-	OptionValueIngestTargetDBSchema   = "adbc.ingest.target_db_schema"
-	OptionValueIngestTemporary        = "adbc.ingest.temporary"
-	OptionKeyURI                      = "uri"
-	OptionKeyUsername                 = "username"
-	OptionKeyPassword                 = "password"
+	// Deprecated: use OptionKeyIngestTargetCatalog.
+	OptionValueIngestTargetCatalog = OptionKeyIngestTargetCatalog
+	// Deprecated: use OptionKeyIngestTargetDBSchema.
+	OptionValueIngestTargetDBSchema = OptionKeyIngestTargetDBSchema
+	// Deprecated: use OptionKeyIngestTemporary.
+	OptionValueIngestTemporary = OptionKeyIngestTemporary
+	OptionKeyURI               = "uri"
+	OptionKeyUsername          = "username"
+	OptionKeyPassword          = "password"
 	// EXPERIMENTAL. Sets/Gets the trace parent on OpenTelemetry traces
 	OptionKeyTelemetryTraceParent = "adbc.telemetry.trace_parent"
 	// EXPERIMENTAL. Selects the OpenTelemetry traces exporter when the

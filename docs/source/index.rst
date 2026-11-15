@@ -88,8 +88,9 @@ Why ADBC?
       eliminating copies and conversions for blazing-fast transfer
       to and from Arrow-native databases and engines.
 
-      +++
-      Learn about Apache Arrow
+      .. card-footer::
+
+         Learn about Apache Arrow
 
    .. grid-item-card:: Multi-database
       :link: driver/index
@@ -99,8 +100,9 @@ Why ADBC?
       even ones that aren't Arrow-native. ADBC drivers optimize conversion
       to/from Arrow where required.
 
-      +++
-      See Supported Drivers
+      .. card-footer::
+
+         See Supported Drivers
 
    .. grid-item-card:: Cross-language
       :link: client_libraries
@@ -110,8 +112,9 @@ Why ADBC?
       Rust, and more. Use idiomatic APIs like DBAPI in Python,
       ``database/sql`` in Go, and DBI in R.
 
-      +++
-      See Client Libraries
+      .. card-footer::
+
+         See Client Libraries
 
    .. grid-item-card:: Full-featured
       :link: format/comparison
@@ -121,8 +124,9 @@ Why ADBC?
       schemas, and more.  ADBC handles common tasks without having to pull in
       another database client.
 
-      +++
-      Compare to Other APIs
+      .. card-footer::
+
+         Compare to Other APIs
 
 More Resources
 --------------

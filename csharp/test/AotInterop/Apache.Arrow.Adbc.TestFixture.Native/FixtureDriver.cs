@@ -157,6 +157,10 @@ namespace Apache.Arrow.Adbc.TestFixture.Native
             {
                 throw new DetailedException();
             }
+            if (_sqlQuery == "FAIL_STREAM")
+            {
+                return new QueryResult(-1, new FailingStream(ResultSchema(), new DetailedException()));
+            }
 
             _executed = true;
 
@@ -253,5 +257,27 @@ namespace Apache.Arrow.Adbc.TestFixture.Native
         }
 
         public void Dispose() { _batch?.Dispose(); _batch = null; }
+    }
+
+    /// <summary>
+    /// IArrowArrayStream that fails on its first read, after the result was handed out.
+    /// </summary>
+    internal sealed class FailingStream : IArrowArrayStream
+    {
+        private readonly Schema _schema;
+        private readonly Exception _exception;
+
+        public FailingStream(Schema schema, Exception exception)
+        {
+            _schema = schema;
+            _exception = exception;
+        }
+
+        public Schema Schema => _schema;
+
+        public ValueTask<RecordBatch?> ReadNextRecordBatchAsync(CancellationToken cancellationToken = default)
+            => throw _exception;
+
+        public void Dispose() { }
     }
 }

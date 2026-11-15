@@ -42,6 +42,7 @@ import (
 	"context"
 	"errors"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/apache/arrow-adbc/go/adbc"
@@ -170,8 +171,8 @@ func (d *driverImpl) NewDatabaseWithOptionsContext(ctx context.Context, opts map
 		userDialOpts: userDialOpts,
 	}
 
-	if db.uri, err = url.Parse(uri); err != nil {
-		return nil, adbc.Error{Msg: err.Error(), Code: adbc.StatusInvalidArgument}
+	if db.uri, err = parseLocation(uri); err != nil {
+		return nil, err
 	}
 
 	// Use WithMaxMsgSize(16 MiB) since Flight services tend to send large messages
@@ -194,4 +195,39 @@ func (d *driverImpl) NewDatabase(opts map[string]string) (adbc.Database, error) 
 
 func (d *driverImpl) NewDatabaseWithContext(ctx context.Context, opts map[string]string) (adbc.Database, error) {
 	return d.NewDatabaseWithOptionsContext(ctx, opts)
+}
+
+// parseLocation preserves only known safe URL diagnostics, omitting input values.
+func parseLocation(location string) (*url.URL, error) {
+	uri, err := url.Parse(location)
+	if err != nil {
+		message := "Invalid URI"
+		if urlErr, ok := err.(*url.Error); ok {
+			diagnostic := urlErr.Err.Error()
+			switch {
+			case strings.HasPrefix(diagnostic, "invalid URL escape "):
+				diagnostic = "invalid URL escape"
+			case strings.HasPrefix(diagnostic, "invalid character "):
+				diagnostic = "invalid character in host name"
+			case strings.HasPrefix(diagnostic, "invalid port "):
+				diagnostic = "invalid port"
+			case strings.HasPrefix(diagnostic, "invalid host: "):
+				diagnostic = "invalid host"
+			case diagnostic == "missing protocol scheme",
+				diagnostic == "net/url: invalid control character in URL",
+				diagnostic == "net/url: invalid userinfo",
+				diagnostic == "invalid IP-literal",
+				diagnostic == "missing ']' in host",
+				diagnostic == "first path segment in URL cannot contain colon":
+				// These diagnostics contain no input values.
+			default:
+				diagnostic = ""
+			}
+			if diagnostic != "" {
+				message += ": " + diagnostic
+			}
+		}
+		return nil, adbc.Error{Msg: message, Code: adbc.StatusInvalidArgument}
+	}
+	return uri, nil
 }

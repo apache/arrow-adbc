@@ -48,7 +48,8 @@ namespace Apache.Arrow.Adbc.C
         /// Loads an <see cref="AdbcDriver"/> from the file system.
         /// </summary>
         /// <param name="file">The path to the driver to load</param>
-        /// <param name="canUnload">Whether the driver can be safely unloaded</param>
+        /// <param name="canUnload">Whether the driver can be safely unloaded. A driver compiled with
+        /// NativeAOT can't be, because its runtime's threads keep running code in the library.</param>
         /// <param name="entryPoint">The name of the entry point. If not provided, the name AdbcDriverInit will be used.</param>
         public static AdbcDriver Load(string file, bool canUnload, string? entryPoint = null) =>
             Load(file, canUnload, entryPoint, fallbackEntryPoint: null);
@@ -78,7 +79,9 @@ namespace Apache.Arrow.Adbc.C
             IntPtr library = NativeLibrary.Load(file);
             if (library == IntPtr.Zero)
             {
-                throw new ArgumentException("unable to load library", nameof(file));
+                // Only reachable with the netstandard2.0 NativeLibrary shim; the
+                // runtime's NativeLibrary.Load throws DllNotFoundException itself.
+                throw new DllNotFoundException($"Unable to load shared library '{file}'.");
             }
 
             try
@@ -91,11 +94,16 @@ namespace Apache.Arrow.Adbc.C
                 }
                 catch (EntryPointNotFoundException) when (fallbackEntryPoint != null)
                 {
+                    export = IntPtr.Zero;
+                }
+                // The runtime's NativeLibrary.GetExport throws for a missing export,
+                // but the netstandard2.0 NativeLibrary shim returns IntPtr.Zero
+                if (export == IntPtr.Zero && fallbackEntryPoint != null)
+                {
                     export = NativeLibrary.GetExport(library, fallbackEntryPoint);
                 }
                 if (export == IntPtr.Zero)
                 {
-                    if (canUnload) { NativeLibrary.Free(library); }
                     throw new ArgumentException($"Unable to find {entryPoint} export", nameof(file));
                 }
 
@@ -1768,7 +1776,7 @@ namespace Apache.Arrow.Adbc.C
             public IArrowArrayStream ImportStream()
             {
                 Debug.Assert(_arrayStream != null);
-                IArrowArrayStream arrayStream = CArrowArrayStreamImporter.ImportArrayStream(_arrayStream);
+                IArrowArrayStream arrayStream = new ImportedArrayStream(_driver, _arrayStream);
                 _arrayStream = null;
                 return arrayStream;
             }
@@ -1984,7 +1992,7 @@ namespace Apache.Arrow.Adbc.C
                 }
                 if (_arrayStream != null)
                 {
-                    CArrowArrayStream.Free(_arrayStream);
+                    ImportedArrayStream.FreeStream(_arrayStream);
                     _arrayStream = null;
                 }
             }

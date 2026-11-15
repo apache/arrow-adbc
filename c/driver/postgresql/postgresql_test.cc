@@ -2428,6 +2428,28 @@ TEST_F(PostgresStatementTest, BindUpsertWithSlicedListParameter) {
   ASSERT_THAT(AdbcStatementRelease(&statement, &error), IsOkStatus(&error));
 }
 
+// Regression test for https://github.com/apache/arrow-adbc/issues/4999.
+TEST_F(PostgresStatementTest, SqlQueryTrailingWhitespace) {
+  ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT 1; \t\r\n", &error),
+              IsOkStatus(&error));
+
+  adbc_validation::StreamReader reader;
+  ASSERT_THAT(
+      AdbcStatementExecuteQuery(&statement, &reader.stream.value, nullptr, &error),
+      IsOkStatus(&error));
+  ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+  ASSERT_EQ(reader.schema->n_children, 1);
+  ASSERT_EQ(reader.fields[0].type, NANOARROW_TYPE_INT32);
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_NE(reader.array->release, nullptr);
+  ASSERT_EQ(reader.array->length, 1);
+  ASSERT_NO_FATAL_FAILURE(
+      adbc_validation::CompareArray<int32_t>(reader.array_view->children[0], {1}));
+  ASSERT_NO_FATAL_FAILURE(reader.Next());
+  ASSERT_EQ(reader.array->release, nullptr);
+}
+
 TEST_F(PostgresStatementTest, SqlExecuteCopyZeroRowOutputError) {
   ASSERT_THAT(quirks()->DropTable(&connection, "adbc_test", &error), IsOkStatus(&error));
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
@@ -3707,3 +3729,29 @@ INSTANTIATE_TEST_SUITE_P(Decimal128FixtureRoundTrip, PostgresDecimalFixtureRound
                          testing::Bool(), [](const testing::TestParamInfo<bool>& info) {
                            return info.param ? "SlowPath" : "FastPath";
                          });
+
+TEST(PostgresUriErrors, InvalidInputDoesNotLeak) {
+  for (const auto& [uri, diagnostic] : std::vector<std::pair<const char*, const char*>>{
+           {"postgresql://user:sentinel%ZZ@localhost/db",
+            "invalid percent-encoded token"},
+           {"host=localhost sentinel_secret",
+            "missing key/value separator in connection string"},
+           {"postgresql://user:sentinel%00@localhost/db",
+            "forbidden value %00 in percent-encoded value"},
+           {"postgresql://localhost/db?sentinel=value", "invalid URI query parameter"},
+           {"sentinel=value", "invalid connection option"},
+           {"postgresql://localhost/db?sentinel",
+            "missing key/value separator in URI query parameter"},
+           {"password='sentinel",
+            "unterminated quoted string in connection info string"}}) {
+    struct AdbcError error = {};
+    adbc_validation::Handle<struct AdbcDatabase> database;
+    ASSERT_EQ(ADBC_STATUS_OK, AdbcDatabaseNew(&database.value, &error));
+    ASSERT_EQ(ADBC_STATUS_OK, AdbcDatabaseSetOption(&database.value, "uri", uri, &error));
+    ASSERT_EQ(ADBC_STATUS_INVALID_ARGUMENT, AdbcDatabaseInit(&database.value, &error));
+    ASSERT_NE(nullptr, error.message);
+    EXPECT_THAT(error.message, ::testing::Not(::testing::HasSubstr("sentinel")));
+    EXPECT_THAT(error.message, ::testing::HasSubstr(diagnostic));
+    if (error.release) error.release(&error);
+  }
+}

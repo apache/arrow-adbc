@@ -18,6 +18,7 @@
 #pragma once
 
 #include <array>
+#include <atomic>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -69,7 +70,7 @@ class PostgresDatabase {
   bool use_copy() const { return use_copy_; }
 
  private:
-  int32_t open_connections_;
+  std::atomic<int32_t> open_connections_;
   std::string uri_;
   std::shared_ptr<PostgresTypeResolver> type_resolver_;
   std::array<int, 3> postgres_server_version_{};

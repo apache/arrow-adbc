@@ -277,6 +277,24 @@ namespace Apache.Arrow.Adbc.TestFixture.Tests
         }
 
         [SkippableFact]
+        public async Task StreamErrorDetailsCrossAotBoundary()
+        {
+            using AdbcDriver driver = LoadFixture();
+            using AdbcDatabase db = driver.Open(new Dictionary<string, string>());
+            using AdbcConnection conn = db.Connect(null);
+            using AdbcStatement stmt = conn.CreateStatement();
+            stmt.SqlQuery = "FAIL_STREAM";
+
+            using IArrowArrayStream stream = stmt.ExecuteQuery().Stream!;
+            AdbcException ex = await Assert.ThrowsAnyAsync<AdbcException>(async () => await stream.ReadNextRecordBatchAsync());
+            Assert.Equal(AdbcStatusCode.InvalidArgument, ex.Status);
+            Assert.Equal("42000", ex.SqlState);
+            KeyValuePair<string, byte[]> detail = Assert.Single(ex.Details);
+            Assert.Equal("fixture.detail", detail.Key);
+            Assert.Equal(new byte[] { 1, 2, 3 }, detail.Value);
+        }
+
+        [SkippableFact]
         public async Task ExecuteQueryAsyncWithTokenRoundTrips()
         {
             using AdbcDriver driver = LoadFixture();

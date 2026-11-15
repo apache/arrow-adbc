@@ -42,7 +42,7 @@ main() {
 
   local -r tmp=$(mktemp -d -t "arrow-post-csharp.XXXXX")
 
-  header "Downloading C# packages for ${VERSION_CSHARP}"
+  header "Downloading C# packages for ${VERSION_CSHARP_CORE} (core) and ${VERSION_CSHARP} (drivers)"
 
   gh release download \
      --repo "${REPOSITORY}" \
@@ -52,12 +52,12 @@ main() {
      --pattern "*.snupkg"
 
   local base_names=()
-  base_names+=(Apache.Arrow.Adbc.${VERSION_CSHARP})
-  base_names+=(Apache.Arrow.Adbc.Client.${VERSION_CSHARP})
+  base_names+=(Apache.Arrow.Adbc.${VERSION_CSHARP_CORE})
+  base_names+=(Apache.Arrow.Adbc.Client.${VERSION_CSHARP_CORE})
   base_names+=(Apache.Arrow.Adbc.Drivers.Interop.FlightSql.${VERSION_CSHARP})
-  base_names+=(Apache.Arrow.Adbc.Telemetry.Traces.Exporters.${VERSION_CSHARP})
-  base_names+=(Apache.Arrow.Adbc.Telemetry.Traces.Listeners.${VERSION_CSHARP})
-  base_names+=(Apache.Arrow.Adbc.Testing.${VERSION_CSHARP})
+  base_names+=(Apache.Arrow.Adbc.Telemetry.Traces.Exporters.${VERSION_CSHARP_CORE})
+  base_names+=(Apache.Arrow.Adbc.Telemetry.Traces.Listeners.${VERSION_CSHARP_CORE})
+  base_names+=(Apache.Arrow.Adbc.Testing.${VERSION_CSHARP_CORE})
   for base_name in "${base_names[@]}"; do
     dotnet nuget push \
       "${tmp}/${base_name}.nupkg" \
@@ -68,7 +68,7 @@ main() {
   rm -rf "${tmp}"
 
   echo "Success! The released NuGet package is available here:"
-  echo "  https://www.nuget.org/packages/Apache.Arrow.Adbc/${VERSION_CSHARP}"
+  echo "  https://www.nuget.org/packages/Apache.Arrow.Adbc/${VERSION_CSHARP_CORE}"
 }
 
 main "$@"

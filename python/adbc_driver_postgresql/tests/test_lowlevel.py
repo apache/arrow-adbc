@@ -52,7 +52,8 @@ def test_version() -> None:
 
 def test_failed_connection() -> None:
     with pytest.raises(
-        adbc_driver_manager.OperationalError, match=".*libpq.*Failed to connect.*"
+        adbc_driver_manager.ProgrammingError,
+        match=".*libpq.*Invalid connection string.*",
     ):
         adbc_driver_postgresql.connect("invalid")
 

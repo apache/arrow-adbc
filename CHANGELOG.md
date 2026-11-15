@@ -1494,3 +1494,110 @@
 ### Performance Improvements
 
 - **c/driver/postgresql**: speed up decimal128 COPY encoding (#4498)
+
+## ADBC Libraries 25 (2026-10-21)
+
+### Versions
+
+- C/C++/GLib/Go/Python/Ruby: 1.13.0
+- C#: 1.0.0 (core), 0.25.0 (drivers)
+- Java: 0.25.0
+- R: 0.25.0
+- Rust: 0.25.0
+
+### Breaking Changes
+
+- ⚠️ **go**: split Flight SQL into its own module (#4754)
+- ⚠️ **rust/ffi**: importing partitions is unsafe (#4876)
+- ⚠️ **rust/ffi**: require `Send` for exported types (#4874)
+
+### New Features
+
+- **c**: add source context to manifest and profile parse errors (#4633)
+- **c**: require C++20 as the baseline (#4610)
+- **c/driver/postgresql**: add `POSTGRESQL:type` metadata (#4687)
+- **c/driver/postgresql**: expose numeric result type modifiers (#4798)
+- **c/driver/postgresql**: implement COPY writer for time types (#4819)
+- **c/driver/postgresql**: set use_copy on connect (#4750)
+- **c/driver/postgresql**: support bind/query arrow.uuid <=> uuid (#4612)
+- **c/driver/postgresql**: use preinitialized type resolver (#4775)
+- **c/driver/sqlite**: ensure batch rows option can be retrieved (#4645)
+- **c/driver_manager**: polyfill numeric options for 1.0 drivers (#4774)
+- **csharp**: add ADBC 1.1 support to the base classes and C interop (#4885)
+- **csharp**: add async and cancellation support to the base classes (#4895)
+- **csharp**: collect garbage when an exported driver goes idle (#4917)
+- **csharp**: support extension types in the ADO.NET client (#4919)
+- **csharp**: support typed options in connection profiles (#4914)
+- **csharp**: version core packages as 1.0, separately from drivers (#4923)
+- **csharp/src/Client**: use the cancellable statement APIs in AdbcCommand (#4901)
+- **dev/release**: verify binary JARs on Unix-like platforms (#4646)
+- **dev/release**: verify binary JARs on Windows (#4624)
+- ⚠️ **go**: split Flight SQL into its own module (#4754)
+- **go/adbc**: require go1.26 and bump toolchain to 1.26.8 (#4748)
+- **go/adbc/driver/flightsql**: handle is_update in prepared stmts (#4161)
+- **go/adbc/driver/flightsql**: promote safe call headers into FlightSQL spans (#4570)
+- **java/driver/flight-sql**: support flightsql:// URI scheme (#4539)
+- **javascript**: publish a win32-arm64 native package (#4634)
+- **rust**: define cancellation in a sensible way (#3905)
+
+### Bugfixes
+
+- **c/driver/postgresql**: add missing space in error messages (#4756)
+- **c/driver/postgresql**: check child nulls in ingest (#4848)
+- **c/driver/postgresql**: drain all results post-query (#4710)
+- **c/driver/postgresql**: fix ingestion of certain negative decimal values (#4850)
+- **c/driver/postgresql**: improve SQLSTATE error mapping (#4587)
+- **c/driver/postgresql**: show temporary schemas in GetObjects (#4824)
+- **c/driver/postgresql**: use fmt for error messages (#4627)
+- **c/driver/sqlite**: bring driver up to par, enable validation (#4845)
+- **c/driver/sqlite**: clean up dangling txn on failed ingest (#4843)
+- **c/driver/sqlite**: format extreme time/date values properly (#4841)
+- **c/driver/sqlite**: handle other error codes (#4842)
+- **c/driver/sqlite**: only count rows_affected when applicable (#4826)
+- **c/validation**: allow configuring the secondary database schema (#4793)
+- **c/validation**: compare widened ingestion values (#4778)
+- **c/validation**: exercise binary view input in ingestion test (#4777)
+- **csharp**: build net472 on all platforms so the Testing package ships it (#4605)
+- **csharp**: fall back to the standard driver entrypoint (#4815)
+- **csharp**: fix bugs in the C driver importer and exporter (#4884)
+- **csharp**: match the driver manager spec for entry point name (#4912)
+- **csharp**: return true from AdbcDataReader.IsDBNull for null values (#4920)
+- **csharp**: serialize NaN and infinity in struct JSON (#4921)
+- **csharp**: update Microsoft.SourceLink.GitHub for vulnerability (#4772)
+- **csharp/src/Client**: stop blocking on async calls in the ADO.NET wrapper (#4716)
+- **csharp/src/Drivers/BigQuery**: harden metadata query identifier and pattern handling (#4757)
+- **go/adbc/driver**: corrects 'none' trace exporter handling (#4822)
+- **go/adbc/drivermgr**: terminate GetObjects table_types with NULL (#4596)
+- **go/adbc/pkg**: treat the "warn" log level as warning (#4881)
+- **go/adbc/sqldriver**: return owned copies of string/binary values (#4625)
+- **python/adbc_driver_manager**: allow more key types in get_option (#4734)
+- **python/adbc_driver_manager**: pass table_types filter to GetObjects (#4712)
+- **python/adbc_driver_manager**: reimport PyArrow if installed mid-session (#4641)
+- **rust/driver_manager**: allow cancel to be truly concurrent (#4858)
+- **rust/driver_manager**: load with RTLD_NOW (#4665)
+- **rust/ffi**: avoid potential overlapping &mut in exporter (#4875)
+- **rust/ffi**: avoid undefined behavior in exported drivers (#4871)
+- **rust/ffi**: clear release callback on partitions after release (#4873)
+- **rust/ffi**: don't assume errors have extended info (#4872)
+- ⚠️ **rust/ffi**: importing partitions is unsafe (#4876)
+- ⚠️ **rust/ffi**: require `Send` for exported types (#4874)
+
+### Documentation Improvements
+
+- add Teradata to Flight SQL compatible systems (#4792)
+- add adbcBridge to the Tools & Integrations page (#4733)
+- add chdb to drivers table (#4707)
+- add presto to drivers table (#4732)
+- describe Windows/PowerShell verification as well (#4662)
+- fix chdb url in drivers table (#4708)
+- make sure release maintainer updates arrow clone (#4607)
+- update OG image to use new ADBC logo lockup (#4886)
+- update drivers list (#4897)
+- update java entry to include kotlin and scala (#4896)
+- update link for DuckDB ADBC scanner extension (#4816)
+- use better example version number in verification docs (#4598)
+- use new logo and add visual identity page (#4870)
+
+### Performance Improvements
+
+- **c/driver/postgresql**: vendor boost.int128 for Windows (#4847)

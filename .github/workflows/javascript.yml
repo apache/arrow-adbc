@@ -48,6 +48,7 @@ permissions:
 jobs:
   lint:
     name: Lint
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -81,6 +82,7 @@ jobs:
         run: npm run check:rust
 
   build:
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -135,6 +137,7 @@ jobs:
 
   test:
     name: Test ${{ matrix.settings.target }}
+    timeout-minutes: 15
     needs: build
     runs-on: ${{ matrix.settings.host }}
     strategy:

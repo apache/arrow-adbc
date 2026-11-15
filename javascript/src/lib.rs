@@ -27,6 +27,7 @@ use napi::bindgen_prelude::{
   AsyncTask, Buffer, Error, JsObjectValue, Result, Status, ToNapiValue, Unknown,
 };
 use napi::{Env, Task};
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -376,8 +377,8 @@ impl Task for CreateStatementTask {
 
   fn resolve(&mut self, _env: Env, output: Self::Output) -> Result<Self::JsValue> {
     Ok(_NativeAdbcStatement {
-      inner: Some(Arc::new(Mutex::new(output))),
-      stream_sender: None,
+      inner: RefCell::new(Some(Arc::new(Mutex::new(output)))),
+      stream_sender: RefCell::new(None),
     })
   }
 
@@ -538,17 +539,29 @@ impl Task for RollbackTask {
 
 #[napi]
 pub struct _NativeAdbcStatement {
-  inner: Option<Arc<Mutex<CoreStatement>>>,
-  stream_sender: Option<std::sync::mpsc::Sender<Vec<u8>>>,
+  inner: RefCell<Option<Arc<Mutex<CoreStatement>>>>,
+  stream_sender: RefCell<Option<std::sync::mpsc::Sender<Vec<u8>>>>,
+}
+
+impl _NativeAdbcStatement {
+  fn statement(&self) -> Result<Arc<Mutex<CoreStatement>>> {
+    self
+      .inner
+      .try_borrow()
+      .map_err(|e| Error::from_reason(e.to_string()))?
+      .as_ref()
+      .cloned()
+      .ok_or_else(closed_err)
+  }
 }
 
 #[napi]
 impl _NativeAdbcStatement {
   #[napi]
   pub fn set_sql_query(&self, env: Env, query: String) -> Result<()> {
-    let mutex = self.inner.as_ref().ok_or_else(closed_err)?;
+    let mutex = self.statement()?;
     let mut stmt = mutex
-      .lock()
+      .try_lock()
       .map_err(|e| Error::from_reason(e.to_string()))?;
     stmt
       .set_sql_query(&query)
@@ -557,9 +570,9 @@ impl _NativeAdbcStatement {
 
   #[napi]
   pub fn set_option(&self, env: Env, key: String, value: String) -> Result<()> {
-    let mutex = self.inner.as_ref().ok_or_else(closed_err)?;
+    let mutex = self.statement()?;
     let mut stmt = mutex
-      .lock()
+      .try_lock()
       .map_err(|e| Error::from_reason(e.to_string()))?;
     stmt
       .set_option(&key, &value)
@@ -568,7 +581,7 @@ impl _NativeAdbcStatement {
 
   #[napi]
   pub fn execute_query(&self) -> Result<AsyncTask<ExecuteQueryTask>> {
-    let mutex = self.inner.as_ref().ok_or_else(closed_err)?;
+    let mutex = self.statement()?;
     Ok(AsyncTask::new(ExecuteQueryTask {
       statement: mutex.clone(),
       adbc_err: None,
@@ -577,7 +590,7 @@ impl _NativeAdbcStatement {
 
   #[napi]
   pub fn execute_update(&self) -> Result<AsyncTask<ExecuteUpdateTask>> {
-    let mutex = self.inner.as_ref().ok_or_else(closed_err)?;
+    let mutex = self.statement()?;
     Ok(AsyncTask::new(ExecuteUpdateTask {
       statement: mutex.clone(),
       adbc_err: None,
@@ -586,7 +599,7 @@ impl _NativeAdbcStatement {
 
   #[napi]
   pub fn bind(&self, data: Buffer) -> Result<AsyncTask<BindTask>> {
-    let mutex = self.inner.as_ref().ok_or_else(closed_err)?;
+    let mutex = self.statement()?;
     Ok(AsyncTask::new(BindTask {
       statement: mutex.clone(),
       data: data.to_vec(),
@@ -596,13 +609,16 @@ impl _NativeAdbcStatement {
 
   #[napi]
   pub fn start_bind_stream_execute(
-    &mut self,
+    &self,
     schema_bytes: Buffer,
   ) -> Result<AsyncTask<BindStreamExecuteTask>> {
-    let mutex = self.inner.as_ref().ok_or_else(closed_err)?;
+    let mutex = self.statement()?;
     // Unbounded channel: a bounded channel would block the JS main thread.
     let (sender, receiver) = std::sync::mpsc::channel::<Vec<u8>>();
-    self.stream_sender = Some(sender);
+    *self
+      .stream_sender
+      .try_borrow_mut()
+      .map_err(|e| Error::from_reason(e.to_string()))? = Some(sender);
     Ok(AsyncTask::new(BindStreamExecuteTask {
       statement: mutex.clone(),
       schema_bytes: schema_bytes.to_vec(),
@@ -612,11 +628,14 @@ impl _NativeAdbcStatement {
   }
 
   #[napi]
-  pub fn start_bind_stream(&mut self, schema_bytes: Buffer) -> Result<AsyncTask<BindStreamTask>> {
-    let mutex = self.inner.as_ref().ok_or_else(closed_err)?;
+  pub fn start_bind_stream(&self, schema_bytes: Buffer) -> Result<AsyncTask<BindStreamTask>> {
+    let mutex = self.statement()?;
     // Unbounded channel: a bounded channel would block the JS main thread.
     let (sender, receiver) = std::sync::mpsc::channel::<Vec<u8>>();
-    self.stream_sender = Some(sender);
+    *self
+      .stream_sender
+      .try_borrow_mut()
+      .map_err(|e| Error::from_reason(e.to_string()))? = Some(sender);
     Ok(AsyncTask::new(BindStreamTask {
       statement: mutex.clone(),
       schema_bytes: schema_bytes.to_vec(),
@@ -627,8 +646,11 @@ impl _NativeAdbcStatement {
 
   #[napi]
   pub fn push_batch(&self, data: Buffer) -> Result<()> {
-    let sender = self
+    let guard = self
       .stream_sender
+      .try_borrow()
+      .map_err(|e| Error::from_reason(e.to_string()))?;
+    let sender = guard
       .as_ref()
       .ok_or_else(|| Error::new(Status::GenericFailure, "No active bind stream"))?;
     sender
@@ -638,15 +660,27 @@ impl _NativeAdbcStatement {
   }
 
   #[napi]
-  pub fn end_stream(&mut self) -> Result<()> {
-    self.stream_sender.take();
+  pub fn end_stream(&self) -> Result<()> {
+    self
+      .stream_sender
+      .try_borrow_mut()
+      .map_err(|e| Error::from_reason(e.to_string()))?
+      .take();
     Ok(())
   }
 
   #[napi]
-  pub fn close(&mut self) -> Result<()> {
-    self.inner.take();
-    self.stream_sender.take();
+  pub fn close(&self) -> Result<()> {
+    self
+      .inner
+      .try_borrow_mut()
+      .map_err(|e| Error::from_reason(e.to_string()))?
+      .take();
+    self
+      .stream_sender
+      .try_borrow_mut()
+      .map_err(|e| Error::from_reason(e.to_string()))?
+      .take();
     Ok(())
   }
 }
