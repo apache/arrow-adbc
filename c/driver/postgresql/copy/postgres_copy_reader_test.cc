@@ -703,6 +703,46 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadJsonb) {
   ASSERT_EQ(std::string(data_buffer + 9, 9), "[4, 5, 6]");
 }
 
+TEST(PostgresCopyUtilsTest, JsonbInvalidLength) {
+  const uint8_t buffer[] = {0x01};
+  const struct {
+    int32_t field_size_bytes;
+    int64_t input_size_bytes;
+  } cases[] = {{0, 0}, {0, 1}, {1, 0}, {2, 1}};
+
+  for (const auto& test_case : cases) {
+    SCOPED_TRACE(test_case.field_size_bytes);
+    SCOPED_TRACE(test_case.input_size_bytes);
+
+    nanoarrow::UniqueSchema schema;
+    ASSERT_EQ(NANOARROW_OK, ArrowSchemaInitFromType(schema.get(), NANOARROW_TYPE_STRING));
+
+    nanoarrow::UniqueArray array;
+    ASSERT_EQ(NANOARROW_OK, ArrowArrayInitFromSchema(array.get(), schema.get(), nullptr));
+    ASSERT_EQ(NANOARROW_OK, ArrowArrayStartAppending(array.get()));
+
+    PostgresCopyJsonbFieldReader reader;
+    ASSERT_EQ(NANOARROW_OK, reader.InitSchema(schema.get()));
+    ASSERT_EQ(NANOARROW_OK, reader.InitArray(array.get()));
+
+    ArrowBufferView data;
+    data.data.as_uint8 = buffer;
+    data.size_bytes = test_case.input_size_bytes;
+    ArrowError error = {};
+    ASSERT_EQ(EINVAL,
+              reader.Read(&data, test_case.field_size_bytes, array.get(), &error));
+    ASSERT_NE(error.message[0], '\0');
+    ASSERT_EQ(data.data.as_uint8, buffer);
+    ASSERT_EQ(data.size_bytes, test_case.input_size_bytes);
+    ASSERT_EQ(array->length, 0);
+    ASSERT_EQ(ArrowArrayBuffer(array.get(), 1)->size_bytes, sizeof(int32_t));
+    ASSERT_EQ(ArrowArrayBuffer(array.get(), 2)->size_bytes, 0);
+    ASSERT_EQ(NANOARROW_OK, ArrowArrayFinishBuilding(
+                                array.get(), NANOARROW_VALIDATION_LEVEL_FULL, &error))
+        << error.message;
+  }
+}
+
 TEST(PostgresCopyUtilsTest, PostgresCopyReadBinary) {
   ArrowBufferView data;
   data.data.as_uint8 = kTestPgCopyBinary;
