@@ -35,7 +35,7 @@
 /// but not concurrent access.  Specific implementations may permit
 /// multiple threads.
 ///
-/// \version 1.1.0
+/// \version 1.2.0
 
 #pragma once
 
@@ -1095,17 +1095,56 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 
 /// \defgroup adbc-statement-metadata-collection Metadata Collections
 ///
-/// Fetch (catalog) metadata from the database. On a statement, set
+/// Fetch (catalog) metadata from the database, without needing to know
+/// vendor-specific special tables. On a statement, set
 /// ADBC_METADATA_COLLECTION to one of the collection names below, and set any
 /// filters via the options defined below. (There are driver/vendor-specific
-/// collections and filters as well.) Then call AdbcStatementExecuteQuery or
-/// AdbcStatementExecuteSchema. The result is an Arrow dataset with a schema
-/// defined by the collection. For example, a client may request a list of
-/// tables in the database, or a list of supported data types.
+/// collections and filters as well.) Then call:
 ///
-/// All drivers must implement a collection called "meta" (which is aliased to
-/// NULL and blank string) that defines the available collections. See
-/// ADBC_METADATA_COLLECTION_META.
+/// - AdbcStatementExecuteQuery to fetch the metadata as an Arrow dataset.
+/// - AdbcStatementExecuteSchema to get the schema of the metadata collection
+///   without fetching.
+/// - AdbcStatementBind/AdbcStatementBindStream to set filters; see below for
+///   details.
+/// - AdbcStatementGetParameterSchema to get supported filters (if any); see
+///   below for details.
+/// - AdbcStatementExecutePartitions to fetch the metadata, potentially in a
+///   way that supports incremental/parallel fetching. Drivers that do not
+///   support this should return ADBC_STATUS_NOT_IMPLEMENTED.
+///
+/// For AdbcStatementExecuteQuery and AdbcStatementExecutePartitions, the
+/// result is an Arrow dataset with a schema defined by the collection. For
+/// example, a client may request a list of tables in the database, or a list
+/// of supported data types.
+///
+/// Clients may supply filters for the metadata collection by supplying bind
+/// parameters as if this were a regular query. Each field is a separate
+/// filter; all filters are ANDed together. If multiple rows of filters are
+/// bound, the driver returns the union of the results. Filters may be defined
+/// to support both exact and pattern matching (see "search pattern" in \ref
+/// adbc-connection-metadata); these are defined as separate filters, but it
+/// is an error to provide both for the same field in the same row.
+///
+/// The definition of filters may be inspected at runtime via
+/// AdbcStatementGetParameterSchema. Each field of the schema is a filter;
+/// nullable fields mean the filter can be omitted (and does not need to be
+/// bound; the field may be omitted from the bind schema), while not null
+/// fields mean the filter is required. The field name is the filter name, and
+/// if bound, the bind schema must use the same exact name. The field type is
+/// the filter type. Drivers may provide documentation in field metadata under
+/// the key `ADBC:metadata:filter:remarks`. Filters that support both exact
+/// and pattern matches should be listed twice by the driver (as they are
+/// different options), but it is suggested to omit the documentation on the
+/// pattern match (unless there are pattern- specific notes).
+///
+/// Filters should be either utf8, int64, float64, or binary, a list of one of
+/// the previous types, or a union of one or more of the previous types to
+/// indicate that more than one type is acceptable. When binding, the union
+/// type is not required (for example, it is acceptable to just provide a
+/// `string` filter for `union[string, int]`).
+///
+/// Drivers must implement a collection called "meta" that defines the
+/// available collections. See ADBC_METADATA_COLLECTION_META.
 ///
 /// Drivers may also implement AdbcStatementRequestSchema to (1) request
 /// different data types and (2) drop fields from the result. Drivers are not
@@ -1113,15 +1152,19 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// like reordering collection fields. Drivers are encouraged to use this to
 /// give applications flexibility over output type and shape (e.g. reducing
 /// memory pressure by run-end-encoding or dictionary-encoding primary key
-/// columns; optimizing queries by using simpler queries and eliminating joins
-/// if the application drops certain columns).
+/// columns; using simpler queries and eliminating joins if the application
+/// drops certain columns). Unless requested, however, drivers should return
+/// the type specified below and not substitute a logically equivalent type
+/// (e.g. utf8 below should be a string array by default, and not a utf8view
+/// or large string or other type).
 ///
 /// Drivers may add more fields at the end of standard schemas to reflect
-/// vendor-specific metadata. Applications must access these using an offset
-/// from the end of the schema and cannot assume that the index of the field
-/// will remain stable.  Drivers must add the fields at the end and must
-/// prefix field names with the vendor/driver name to differentiate them
-/// (e.g. 'POSTGRESQL:owner', not just 'owner').
+/// vendor-specific metadata. Applications must access these by name or using
+/// an offset from the end of the schema and cannot assume that the index of
+/// the field will remain stable.  Hence, it is discouraged to access these
+/// fields by ordinal as this is brittle.  Drivers must add the fields at the
+/// end and must prefix field names with the vendor/driver name to
+/// differentiate them (e.g. 'POSTGRESQL:owner', not just 'owner').
 ///
 /// Similarly, future standard revisions may add more fields to existing
 /// standard schemas. Applications must not assume the number of fields is
@@ -1134,9 +1177,10 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// Drivers may not necessarily accept filter options or other options before
 /// the collection name option is set.
 ///
-/// This is intended to replace AdbcConnectionGetObjects, but both APIs will
-/// be supported for the time being. AdbcConnectionGetObjects may be
-/// deprecated in a future revision.
+/// This is intended to replace AdbcConnectionGetObjects and
+/// AdbcConnectionGetTableTypes, but both APIs will be supported for the time
+/// being. A driver that implements either API should implement both APIs.
+/// AdbcConnectionGetObjects may be deprecated in a future revision.
 ///
 /// \since ADBC API revision 1.2.0
 ///
@@ -1144,12 +1188,14 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 
 /// \brief Prepare to fetch a metadata collection.
 ///
-/// The type is char*.
+/// If not recognized, the driver returns ADBC_STATUS_INVALID_ARGUMENT.
+///
+/// The type is utf8.
 #define ADBC_METADATA_COLLECTION "adbc.metadata.collection"
 
-/// \brief Filter the collection on the literal catalog name.
+/// \brief Filter the collection on the exact catalog name.
 ///
-/// The type is char*.
+/// The type is utf8.
 #define ADBC_METADATA_FILTER_CATALOG "adbc.metadata.filter.catalog"
 
 /// \brief Filter the collection on the catalog name, matching a search
@@ -1158,155 +1204,122 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// If both this and ADBC_METADATA_FILTER_CATALOG are set, then the last set
 /// option wins.
 ///
-/// The type is char*.
+/// The type is utf8.
 #define ADBC_METADATA_FILTER_PATTERN_CATALOG "adbc.metadata.filter_pattern.catalog"
 
-/// \brief Filter the collection on the literal schema name.
+/// \brief Filter the collection on the exact schema name.
 ///
-/// The type is char*.
-#define ADBC_METADATA_FILTER_DB_SCHEMA "adbc.metadata.filter.schema"
+/// The type is utf8.
+#define ADBC_METADATA_FILTER_DB_SCHEMA "adbc.metadata.filter.db_schema"
 
 /// \brief Filter the collection on the schema name, matching a search
 ///   pattern.
 ///
-/// If both this and ADBC_METADATA_FILTER_DB_SCHEMA are set, then the last set
-/// option wins.
-///
-/// The type is char*.
-#define ADBC_METADATA_FILTER_PATERN_DB_SCHEMA "adbc.metadata.filter_pattern.schema"
+/// The type is utf8.
+#define ADBC_METADATA_FILTER_PATTERN_DB_SCHEMA "adbc.metadata.filter_pattern.db_schema"
 
-/// \brief Filter the collection on the literal table name.
+/// \brief Filter the collection on the exact table name.
 ///
-/// The type is char*.
+/// The type is utf8.
 #define ADBC_METADATA_FILTER_TABLE "adbc.metadata.filter.table"
 
 /// \brief Filter the collection on the table name, matching a search pattern.
 ///
-/// If both this and ADBC_METADATA_FILTER_TABLE are set, then the last set
-/// option wins.
-///
-/// The type is char*.
+/// The type is utf8.
 #define ADBC_METADATA_FILTER_PATTERN_TABLE "adbc.metadata.filter_pattern.table"
 
-/// \brief Filter the collection on the literal column name.
+/// \brief Filter the collection on the exact column name.
 ///
-/// The type is char*.
+/// The type is utf8.
 #define ADBC_METADATA_FILTER_COLUMN "adbc.metadata.filter.column"
 
 /// \brief Filter the collection on the column name, matching a search
 ///   pattern.
 ///
-/// If both this and ADBC_METADATA_FILTER_COLUMN are set, then the last set
-/// option wins.
-///
-/// The type is char*.
+/// The type is utf8.
 #define ADBC_METADATA_FILTER_PATTERN_COLUMN "adbc.metadata.filter_pattern.column"
 
 /// \brief Filter the collection on the table types.
 ///
-/// Separator: comma (',').
-/// The type is char*.
+/// The type is utf8.
 #define ADBC_METADATA_FILTER_TABLE_TYPES "adbc.metadata.filter.table_types"
 
-/// \brief Filter the collection on the literal catalog name of the foreign
-///   key.
+/// \brief Filter the collection on the exact catalog name of the foreign
+///   key-referencing table.
 ///
-/// The type is char*.
+/// The type is utf8.
 #define ADBC_METADATA_FILTER_FOREIGN_CATALOG "adbc.metadata.filter.foreign_catalog"
 
-/// \brief Filter the collection on the literal catalog name of the foreign
-///   key.
+/// \brief Filter the collection on the exact schema name of the foreign
+///   key-referencing table.
 ///
-/// The type is char*.
+/// The type is utf8.
 #define ADBC_METADATA_FILTER_FOREIGN_DB_SCHEMA "adbc.metadata.filter.foreign_schema"
 
-/// \brief Filter the collection on the literal catalog name of the foreign
-///   key.
+/// \brief Filter the collection on the exact table name of the foreign
+///   key-referencing table.
 ///
-/// The type is char*.
+/// The type is utf8.
 #define ADBC_METADATA_FILTER_FOREIGN_TABLE "adbc.metadata.filter.foreign_table"
 
-/// \brief Filter the collection on the literal constraint name.
+/// \brief Filter the collection on the exact constraint name.
 ///
-/// The type is char*.
+/// The type is utf8.
 #define ADBC_METADATA_FILTER_CONSTRAINT "adbc.metadata.filter.constraint"
 
 /// \brief Filter the collection on the constraint name, matching a search
 ///   pattern.
 ///
-/// If both this and ADBC_METADATA_FILTER_CONSTRAINT are set, then the last set
-/// option wins.
-///
-/// The type is char*.
+/// The type is utf8.
 #define ADBC_METADATA_FILTER_PATTERN_CONSTRAINT "adbc.metadata.filter_pattern.constraint"
 
 /// \brief Filter the collection on the constraint types.
 ///
-/// Separator: comma (',').
-/// The type is char*.
+/// The type is list[utf8].
 #define ADBC_METADATA_FILTER_CONSTRAINT_TYPES "adbc.metadata.filter.constraint_types"
 
-/// \brief Filter the collection on the literal routine name.
+/// \brief Filter the collection on the exact routine name.
 ///
-/// The type is char*.
+/// The type is utf8.
 #define ADBC_METADATA_FILTER_ROUTINE "adbc.metadata.filter.routine"
 
 /// \brief Filter the collection on the routine name, matching a search
 ///   pattern.
 ///
-/// If both this and ADBC_METADATA_FILTER_ROUTINE are set, then the last set
-/// option wins.
-///
-/// The type is char*.
+/// The type is utf8.
 #define ADBC_METADATA_FILTER_PATTERN_ROUTINE "adbc.metadata.filter_pattern.routine"
 
 /// \brief Filter the collection on the routine types.
 ///
-/// Separator: comma (',').
-/// The type is char*.
+/// The type is list[utf8].
 #define ADBC_METADATA_FILTER_ROUTINE_TYPES "adbc.metadata.filter.routine_types"
-
-/// \brief Only show namespaces in the given multi-part namespace.
-///
-/// Separator: ASCII unit separator (0x1F).
-/// The type is char*.
-#define ADBC_METADATA_FILTER_NAMESPACE "adbc.metadata.filter.namespace"
-
-/// \brief Only show namespaces with the given name. This filter only applies
-///   to the last namespace component.
-///
-/// The type is char*.
-#define ADBC_METADATA_FILTER_NAMESPACE_NAME "adbc.metadata.filter.namespace_name"
 
 /// \brief Get or set a pagination token.
 ///
 /// Some drivers may support this to allow fetching a large metadata
 /// collection in multiple calls. If the pagination token could not be used,
 /// the driver should return an error.
+///
+/// The type is utf8.
 #define ADBC_METADATA_OPTION_PAGINATION_TOKEN "adbc.metadata.pagination_token"
 
 /// \brief The "meta" collection returns the available metadata collections.
 ///
 /// | Field Name               | Field Type                   | Comments |
 /// |--------------------------|------------------------------|----------|
-/// | collection_name          | utf8 not null                |          |
-/// | collection_description   | utf8                         |          |
-/// | collection_schema        | extension<arrow.schema_json> |          |
-/// | collection_filters       | list<FILTER_SCHEMA>          |          |
+/// | collection_name          | utf8 not null                | (1)      |
+/// | collection_remarks       | utf8                         | (2)      |
 ///
-/// FILTER_SCHEMA is a Struct with fields:
-///
-/// | Field Name               | Field Type                   | Comments |
-/// |--------------------------|------------------------------|----------|
-/// | filter_description       | utf8                         |          |
-/// | required                 | bool not null                |          |
+/// (1) The name used to retrieve the collection.
+/// (2) A description of the collection's contents. Not required for
+///     collections defined in this header.
 #define ADBC_METADATA_COLLECTION_META "meta"
 
 /// \brief The "catalogs" collection returns the catalogs defined in the
 ///   database.
 ///
-/// Some systems may not have the concept of catalogs, in which case this
-/// collection should contain a single entry with an empty, non-null name.
+/// Some systems may not have the concept of catalogs, in which case it is
+/// recommended that this collection should contain no rows.
 ///
 /// | Field Name               | Field Type                   | Comments |
 /// |--------------------------|------------------------------|----------|
@@ -1323,14 +1336,15 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// \brief The "schemas" collection returns the schemas defined in the
 ///   database.
 ///
-/// Some systems may not have the concept of schemas, in which case this
-/// collection should contain a single entry per catalog with an empty,
-/// non-null name.
+/// Some systems may not have the concept of catalogs or schemas. If
+/// catalogs are not supported, it is recommended to set catalog_name to
+/// NULL. If schemas are not supported, it is recommended that this
+/// collection should contain no rows.
 ///
 /// | Field Name               | Field Type                   | Comments |
 /// |--------------------------|------------------------------|----------|
 /// | catalog_name             | utf8                         |          |
-/// | db_schema_name           | utf8                         |          |
+/// | db_schema_name           | utf8 not null                |          |
 /// | db_schema_remarks        | utf8                         | (1)      |
 ///
 /// (1) A description of the schema.
@@ -1341,6 +1355,14 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// - ADBC_METADATA_FILTER_DB_SCHEMA
 /// - ADBC_METADATA_FILTER_PATTERN_DB_SCHEMA
 #define ADBC_METADATA_COLLECTION_SCHEMAS "schemas"
+
+/// \brief The "catalogs" collection returns the table types defined in the
+///   database.
+///
+/// | Field Name               | Field Type                   |
+/// |--------------------------|------------------------------|
+/// | table_type               | utf8 not null                |
+#define ADBC_METADATA_COLLECTION_TABLE_TYPES "table_types"
 
 /// \brief The "tables" collection returns the tables defined in the
 ///   database.
@@ -1380,7 +1402,7 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// | table_name               | utf8 not null                |          |
 /// | column_name              | utf8 not null                |          |
 /// | ordinal_position         | int32                        | (1)      |
-/// | remarks                  | utf8                         | (2)      |
+/// | column_remarks           | utf8                         | (2)      |
 /// | xdbc_data_type           | int16                        | (3)      |
 /// | xdbc_type_name           | utf8                         | (3)      |
 /// | xdbc_column_size         | int32                        | (3)      |
@@ -1397,7 +1419,7 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// | xdbc_scope_table         | utf8                         | (3)      |
 /// | xdbc_is_autoincrement    | bool                         | (3)      |
 /// | xdbc_is_generatedcolumn  | bool                         | (3)      |
-/// | xdbc_source_data_type    | bool                         | (3)      |
+/// | xdbc_source_data_type    | int16                        | (3)      |
 ///
 /// 1. The column's ordinal position in the table (starting from 1).
 /// 2. Database-specific description of the column.
@@ -1434,7 +1456,7 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// | fk_name                  | utf8                    |          |
 /// | key_seq                  | int16                   | (1)      |
 /// | constraint_update_rule   | int16                   | (2)      |
-/// | constraint_delete_rule   | int16                   | (3)      |
+/// | constraint_delete_rule   | int16                   | (2)      |
 /// | constraint_enforced      | bool                    | (3)      |
 /// | constraint_deferrability | int16                   | (4)      |
 /// | constraint_match_type    | int16                   | (5)      |
@@ -1450,7 +1472,7 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// 5. How the foreign key constraint should be matched.  The value is one of
 ///    the ADBC_CONSTRAINT_MATCH_ constants.
 ///
-/// Filters:
+/// Supported filters:
 /// - ADBC_METADATA_FILTER_CATALOG (applies to fk_catalog_name)
 /// - ADBC_METADATA_FILTER_DB_SCHEMA (applies to fk_schema_name)
 /// - ADBC_METADATA_FILTER_TABLE (required; applies to fk_table_name)
@@ -1473,7 +1495,7 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// | fk_name                  | utf8                    |          |
 /// | key_seq                  | int16                   | (1)      |
 /// | constraint_update_rule   | int16                   | (2)      |
-/// | constraint_delete_rule   | int16                   | (3)      |
+/// | constraint_delete_rule   | int16                   | (2)      |
 /// | constraint_enforced      | bool                    | (3)      |
 /// | constraint_deferrability | int16                   | (4)      |
 /// | constraint_match_type    | int16                   | (5)      |
@@ -1489,13 +1511,10 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// 5. How the foreign key constraint should be matched.  The value is one of
 ///    the ADBC_CONSTRAINT_MATCH_ constants.
 ///
-/// Filters:
+/// Supported filters:
 /// - ADBC_METADATA_FILTER_CATALOG (applies to pk_catalog_name)
 /// - ADBC_METADATA_FILTER_DB_SCHEMA (applies to pk_schema_name)
 /// - ADBC_METADATA_FILTER_TABLE (required; applies to pk_table_name)
-/// - ADBC_METADATA_FILTER_FOREIGN_CATALOG (applies to fk_catalog_name)
-/// - ADBC_METADATA_FILTER_FOREIGN_DB_SCHEMA (applies to fk_schema_name)
-/// - ADBC_METADATA_FILTER_FOREIGN_TABLE (required; applies to fk_table_name)
 #define ADBC_METADATA_COLLECTION_EXPORTED_KEYS "exported_keys"
 
 /// \brief The "cross_reference" collection, given a "parent" table and a
@@ -1516,7 +1535,7 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// | fk_name                  | utf8                    |          |
 /// | key_seq                  | int16                   | (1)      |
 /// | constraint_update_rule   | int16                   | (2)      |
-/// | constraint_delete_rule   | int16                   | (3)      |
+/// | constraint_delete_rule   | int16                   | (2)      |
 /// | constraint_enforced      | bool                    | (3)      |
 /// | constraint_deferrability | int16                   | (4)      |
 /// | constraint_match_type    | int16                   | (5)      |
@@ -1532,13 +1551,13 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// 5. How the foreign key constraint should be matched.  The value is one of
 ///    the ADBC_CONSTRAINT_MATCH_ constants.
 ///
-/// Filters:
-/// 1. The catalog of the parent table; required but may be NULL.
-/// 2. The schema of the parent table; required but may be NULL.
-/// 3. The name of the parent table; required.
-/// 4. The catalog of the foreign table; required but may be NULL.
-/// 5. The schema of the foreign table; required but may be NULL.
-/// 6. The name of the foreign table; required.
+/// Supported filters:
+/// - ADBC_METADATA_FILTER_CATALOG (applies to pk_catalog_name)
+/// - ADBC_METADATA_FILTER_DB_SCHEMA (applies to pk_schema_name)
+/// - ADBC_METADATA_FILTER_TABLE (required; applies to pk_table_name)
+/// - ADBC_METADATA_FILTER_FOREIGN_CATALOG (applies to fk_catalog_name)
+/// - ADBC_METADATA_FILTER_FOREIGN_DB_SCHEMA (applies to fk_schema_name)
+/// - ADBC_METADATA_FILTER_FOREIGN_TABLE (required; applies to fk_table_name)
 #define ADBC_METADATA_COLLECTION_CROSS_REFERENCE "cross_reference"
 
 /// \brief The "constraints" collection describes constraints on the selected
@@ -1619,8 +1638,6 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// - ADBC_METADATA_FILTER_PATTERN_CATALOG
 /// - ADBC_METADATA_FILTER_DB_SCHEMA
 /// - ADBC_METADATA_FILTER_PATTERN_DB_SCHEMA
-/// - ADBC_METADATA_FILTER_TABLE
-/// - ADBC_METADATA_FILTER_PATTERN_TABLE
 /// - ADBC_METADATA_FILTER_ROUTINE
 /// - ADBC_METADATA_FILTER_PATTERN_ROUTINE
 /// - ADBC_METADATA_FILTER_ROUTINE_TYPES
@@ -1674,25 +1691,6 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// - ADBC_METADATA_FILTER_COLUMN
 /// - ADBC_METADATA_FILTER_PATTERN_COLUMN
 #define ADBC_METADATA_COLLECTION_ROUTINE_COLUMNS "routine_columns"
-
-/// \brief The "namespaces" collection returns a level of namespaces defined
-///   in the database.
-///
-/// This collection generally results in an "N+1" query pattern. This is
-/// intended for systems that do not follow the SQL catalog-schema-table
-/// hierarchy; for systems that do, collections like "catalogs", "schemas",
-/// and "tables" will be more efficient as they can return multiple levels at
-/// once.
-///
-/// | Field Name               | Field Type                   | Comments |
-/// |--------------------------|------------------------------|----------|
-/// | namespace_parent         | list<utf8 not null> not null |          |
-/// | namespace_name           | utf8 not null                |          |
-///
-/// Supported filters:
-/// - ADBC_METADATA_FILTER_NAMESPACE
-/// - ADBC_METADATA_FILTER_NAMESPACE_NAME
-#define ADBC_METADATA_COLLECTION_NAMESPACES "namespaces"
 
 /// @}
 
@@ -1769,6 +1767,8 @@ struct ADBC_EXPORT AdbcConnection {
 /// Statements are not required to be thread-safe, but they can be
 /// used from multiple threads so long as clients take care to
 /// serialize accesses to a statement.
+///
+/// The statement state machine is as follows:
 struct ADBC_EXPORT AdbcStatement {
   /// \brief Opaque implementation-defined state.
   /// This field is NULLPTR iff the connection is uninitialized/freed.
@@ -2780,6 +2780,9 @@ AdbcStatusCode AdbcConnectionGetInfo(struct AdbcConnection* connection,
 ///
 /// This AdbcConnection must outlive the returned ArrowArrayStream.
 ///
+/// This API may be deprecated in a future revision in favor of
+/// ADBC_METADATA_COLLECTION.
+///
 /// \param[in] connection The database connection.
 /// \param[in] depth The level of nesting to display. If 0, display
 ///   all levels. If 1, display only catalogs (i.e.  catalog_schemas
@@ -3262,7 +3265,7 @@ AdbcStatusCode AdbcStatementExecuteSchema(struct AdbcStatement* statement,
                                           struct ArrowSchema* schema,
                                           struct AdbcError* error);
 
-/// \brief Request the schema of the next statement execution
+/// \brief Request the schema of the next statement execution.
 ///
 /// Allows the caller to request a specific schema based on prior
 /// information or user input. This may be used to ensure a
@@ -3270,16 +3273,16 @@ AdbcStatusCode AdbcStatementExecuteSchema(struct AdbcStatement* statement,
 /// with row-based types (e.g., SQLite) or a database whose types
 /// are implemented with row-based parameters where Arrow prefers
 /// type-level parameters (e.g., NUMERIC for PostgreSQL). The
-/// schema request is intended to modify only the types or
-/// widen the nullability of types in the original schema;
-/// column reordering or changing the number of returned columns
-/// is not a goal of this feature.
+/// schema request is intended to modify only the types or widen
+/// the nullability of types in the original schema; column
+/// reordering or changing the number of returned columns of a
+/// result set in a query is not a goal of this feature.
 ///
 /// The provided schema is a request and not a guarantee (i.e.,
 /// callers must use the schema provided by the output stream to
 /// interpret the result).
 ///
-/// Calling AdbcStatementRequestSchema() must not affect the result
+/// Calling AdbcStatementRequestSchema must not affect the result
 /// of AdbcStatementExecuteSchema (which always infers its result
 /// from the input query).
 ///
