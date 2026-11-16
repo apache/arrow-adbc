@@ -464,6 +464,7 @@ The Rust components are a standard Rust project.
 ```shell
 $ pushd rust
 # Build and run tests
+$ cargo build
 $ cargo test
 ```
 

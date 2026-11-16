@@ -39,6 +39,8 @@ To run the integration tests you must:
 1. Build the official ADBC SQLite driver by following the [documentation](../CONTRIBUTING.md).
 1. Place the resulting object file into your dynamic loader path or set
    `LD_LIBRARY_PATH/DYLD_LIBRARY_PATH` appropriately.
+1. Run `cargo build --all-features --workspace` (to build the dummy driver's
+   shared library, which `cargo test` alone does not place on the library path)
 1. Run `cargo test --all-features --workspace`
 
 ## Writing Drivers
