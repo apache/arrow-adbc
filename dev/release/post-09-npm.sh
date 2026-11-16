@@ -46,7 +46,7 @@ main() {
 
   header "Uploading Node.js packages for ${RELEASE}"
 
-  DRY_RUN="${DRY_RUN:-0}" "${SOURCE_TOP_DIR}/ci/scripts/node_npm_upload.sh" "${tmp}"
+  DRY_RUN="${DRY_RUN:-0}" "${SOURCE_TOP_DIR}/dev/release/node_npm_upload.sh" "${tmp}"
 
   rm -rf "${tmp}"
 

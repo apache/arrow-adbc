@@ -21,7 +21,6 @@ source "${SOURCE_DIR}/versions.env"
 update_versions() {
   local type=$1
 
-  local conda_version="${VERSION_NATIVE}"
   local csharp_version="${VERSION_CSHARP}"
   local csharp_core_version="${VERSION_CSHARP_CORE}"
   local js_version="${VERSION_JS}"
@@ -63,7 +62,6 @@ update_versions() {
 
   header "Updating versions for release ${RELEASE}"
   echo "C: ${c_version}"
-  echo "Conda: ${conda_version}"
   echo "C# (core): ${csharp_core_version}"
   echo "C# (drivers): ${csharp_version}"
   echo "Docs: ${docs_version}"
@@ -84,12 +82,6 @@ update_versions() {
   sed -i.bak -E "s/ version: '.+',/ version: '${c_version}',/g" meson.build
   rm meson.build.bak
   git add meson.build
-  popd
-
-  pushd "${ADBC_DIR}/ci/conda/"
-  sed -i.bak -E "s/version: .+/version: ${conda_version}/g" meta.yaml
-  rm meta.yaml.bak
-  git add meta.yaml
   popd
 
   sed -i.bak \

@@ -27,7 +27,6 @@ repos:
     - id: check-shebang-scripts-are-executable
     - id: check-xml
     - id: check-yaml
-      exclude: ci/conda/meta.yaml
     - id: end-of-file-fixer
       exclude: "^(r/.*?/_snaps/.*?.md)|(.*\\.patch)$"
     - id: mixed-line-ending

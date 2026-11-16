@@ -263,14 +263,6 @@ which is made available under the Creative Commons CC0 license.
 
 --------------------------------------------------------------------------------
 
-The files under ci/conda/.ci-support have the following license
-
-BSD 3-clause license
-Copyright (c) 2015-2022, conda-forge
-All rights reserved.
-
---------------------------------------------------------------------------------
-
 The files under c/vendor/fmt contain code from {fmt}, version 12.2.0.
 {fmt} is under the MIT license:
 
