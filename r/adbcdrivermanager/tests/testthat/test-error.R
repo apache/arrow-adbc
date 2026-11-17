@@ -47,19 +47,27 @@ test_that("stop_for_error() does not truncate long error messages", {
   old_options <- options(warning.length = 1000L)
   on.exit(options(old_options))
 
+  # The long message comes from the driver search paths, which the error lists
+  # in full, rather than from an over-long filename component: a name over 255
+  # bytes is not a filename that any filesystem accepts.
+  search_dirs <- file.path(tempdir(), paste0(strrep("s", 200), seq_len(6)))
+
   warning_length_while_signalled <- NULL
   had_error <- FALSE
-  tryCatch(
-    withCallingHandlers(
-      adbc_driver(paste0("not_a_driver_", strrep("x", 1000))),
+  withr::with_envvar(
+    list(ADBC_DRIVER_PATH = paste(search_dirs, collapse = .Platform$path.sep)),
+    tryCatch(
+      withCallingHandlers(
+        adbc_driver("not_a_driver"),
+        adbc_status = function(e) {
+          warning_length_while_signalled <<- getOption("warning.length")
+        }
+      ),
       adbc_status = function(e) {
-        warning_length_while_signalled <<- getOption("warning.length")
+        had_error <<- TRUE
+        expect_gt(nchar(conditionMessage(e), type = "bytes"), 1000)
       }
-    ),
-    adbc_status = function(e) {
-      had_error <<- TRUE
-      expect_gt(nchar(conditionMessage(e), type = "bytes"), 1000)
-    }
+    )
   )
 
   expect_true(had_error)
