@@ -95,7 +95,7 @@ driver in the table below is packaged this way.
      - ``flightsql``
      - ASF
      - :iconlink:`fa-brands fa-github|https://github.com/apache/arrow-adbc/tree/main/go/driver/flightsql|GitHub repository`
-   * - `MotherDuck <https://adbc-drivers.org/drivers/motherduck/>`__ [#motherduck]_
+   * - `MotherDuck <https://adbc-drivers.org/drivers/motherduck/>`__
      - ``motherduck``
      - Foundry
      - :iconlink:`fa-brands fa-github|https://github.com/adbc-drivers/motherduck|GitHub repository`
@@ -158,8 +158,6 @@ driver in the table below is packaged this way.
    with MotherDuck.
 .. [#compat-flightsql] This driver works with Flight SQL-compatible systems,
    including Apache Doris, Dremio, GizmoSQL, InfluxDB, Sail, StarRocks, and Teradata.
-.. [#motherduck] This driver is currently available as a prerelease. Install it
-   with ``dbc install --pre motherduck``.
 .. [#compat-mysql] This driver also works with MySQL-compatible systems including
    TiDB and Vitess.
 .. [#compat-postgresql] This driver also works with PostgreSQL wire
