@@ -22,6 +22,7 @@
 #include <limits>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -212,7 +213,30 @@ class PostgresCopyNetworkEndianFieldReader : public PostgresCopyFieldReader {
       return EINVAL;
     }
 
-    T value = kOffset + ReadUnsafe<T>(data);
+    T value = ReadUnsafe<T>(data);
+    if constexpr (kOffset != 0) {
+      // PostgreSQL encodes temporal infinities as the signed extrema.
+      if (value == (std::numeric_limits<T>::min)() ||
+          value == (std::numeric_limits<T>::max)()) [[unlikely]] {
+        ArrowErrorSet(error, "PostgreSQL infinity cannot be represented as Arrow %s",
+                      ArrowTypeString(schema_view_.type));
+        return EINVAL;
+      }
+
+      bool in_range;
+      if constexpr (std::is_same_v<T, int32_t>) {
+        in_range = psnip_safe_int32_add(&value, value, kOffset);
+      } else {
+        in_range = psnip_safe_int64_add(&value, value, kOffset);
+      }
+      if (!in_range) [[unlikely]] {
+        ArrowErrorSet(error,
+                      "PostgreSQL value is out of range for Arrow %s after Unix epoch "
+                      "conversion",
+                      ArrowTypeString(schema_view_.type));
+        return EINVAL;
+      }
+    }
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppend(data_, &value, sizeof(T)));
     return AppendValid(array);
   }
