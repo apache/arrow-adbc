@@ -1154,8 +1154,19 @@ class SqliteStatement : public driver::Statement<SqliteStatement> {
 
   Result<int64_t> ExecuteQueryImpl(ArrowArrayStream* stream) {
     struct AdbcError error = ADBC_ERROR_INIT;
-    // Statement may have run to completion already; required with SQLITE_OMIT_AUTORESET
-    (void)sqlite3_reset(stmt_);
+    // A previous result stream may have been released before reaching SQLITE_DONE
+    // (required with SQLITE_OMIT_AUTORESET). Resetting can then surface a deferred
+    // failure of that previous execution (e.g. SQLITE_BUSY on commit).
+    int rc = sqlite3_reset(stmt_);
+    if (rc == SQLITE_CONSTRAINT) {
+      const char* msg = sqlite3_errmsg(conn_);
+      return status::fmt::Integrity("{} previous execution failed: {}", kErrorPrefix,
+                                    msg ? msg : "(unknown error)");
+    } else if (rc != SQLITE_OK) {
+      const char* msg = sqlite3_errmsg(conn_);
+      return status::fmt::IO("{} previous execution failed: {}", kErrorPrefix,
+                             msg ? msg : "(unknown error)");
+    }
     UNWRAP_STATUS(BindImpl(false));
 
     const int64_t expected = sqlite3_bind_parameter_count(stmt_);
