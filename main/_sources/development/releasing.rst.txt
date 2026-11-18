@@ -495,6 +495,11 @@ Be sure to go through on the following checklist:
       # dev/release/post-09-npm.sh
       dev/release/post-09-npm.sh
 
+   This will only `stage the packages
+   <https://github.blog/changelog/2026-07-08-npm-install-time-security-and-gat-bypass2fa-deprecation/#2fa-bypass-tokens-will-no-longer-publish-directly>`_. Afterwards,
+   you must log in to NPM and approve each package (presenting your 2FA token
+   each time).
+
 .. dropdown:: Update conda-forge packages
    :class-title: sd-fs-5
    :class-container: sd-shadow-md
