@@ -174,12 +174,16 @@ fn test_filesystem_profile_nested_options() {
         .map(|(k, _)| k.as_ref().to_string())
         .collect();
 
-    assert!(option_keys.contains(&"uri".to_string()));
-    assert!(option_keys.contains(&"connection.timeout".to_string()));
-    assert!(option_keys.contains(&"connection.retry".to_string()));
-    assert!(option_keys.contains(&"connection.pool.max_size".to_string()));
-    assert!(option_keys.contains(&"connection.pool.min_size".to_string()));
-    assert!(option_keys.contains(&"connection.pool.idle_timeout".to_string()));
+    assert!(option_keys.iter().any(|i| i == "uri"));
+    assert!(option_keys.iter().any(|i| i == "connection.timeout"));
+    assert!(option_keys.iter().any(|i| i == "connection.retry"));
+    assert!(option_keys.iter().any(|i| i == "connection.pool.max_size"));
+    assert!(option_keys.iter().any(|i| i == "connection.pool.min_size"));
+    assert!(
+        option_keys
+            .iter()
+            .any(|i| i == "connection.pool.idle_timeout")
+    );
 
     tmp_dir
         .close()
