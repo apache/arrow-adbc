@@ -73,7 +73,7 @@ inline int64_t ReadUnsafe(ArrowBufferView* data) {
 
 template <typename T>
 ArrowErrorCode ReadChecked(ArrowBufferView* data, T* out, ArrowError* error) {
-  if (data->size_bytes < static_cast<int64_t>(sizeof(T))) {
+  if (data->size_bytes < static_cast<int64_t>(sizeof(T))) [[unlikely]] {
     ArrowErrorSet(error, "Unexpected end of input (expected %d bytes but found %ld)",
                   static_cast<int>(sizeof(T)),
                   static_cast<long>(data->size_bytes));  // NOLINT(runtime/int)
@@ -158,9 +158,16 @@ class PostgresCopyBooleanFieldReader : public PostgresCopyFieldReader {
       return ArrowArrayAppendNull(array, 1);
     }
 
-    if (field_size_bytes != 1) {
+    if (field_size_bytes != 1) [[unlikely]] {
       ArrowErrorSet(error, "Expected field with one byte but found field with %d bytes",
                     static_cast<int>(field_size_bytes));  // NOLINT(runtime/int)
+      return EINVAL;
+    }
+
+    if (field_size_bytes > data->size_bytes) [[unlikely]] {
+      ArrowErrorSet(error, "Expected %d bytes of field data but got %d bytes of input",
+                    static_cast<int>(field_size_bytes),
+                    static_cast<int>(data->size_bytes));  // NOLINT(runtime/int)
       return EINVAL;
     }
 
@@ -191,10 +198,17 @@ class PostgresCopyNetworkEndianFieldReader : public PostgresCopyFieldReader {
       return ArrowArrayAppendNull(array, 1);
     }
 
-    if (field_size_bytes != static_cast<int32_t>(sizeof(T))) {
+    if (field_size_bytes != static_cast<int32_t>(sizeof(T))) [[unlikely]] {
       ArrowErrorSet(error, "Expected field with %d bytes but found field with %d bytes",
                     static_cast<int>(sizeof(T)),
                     static_cast<int>(field_size_bytes));  // NOLINT(runtime/int)
+      return EINVAL;
+    }
+
+    if (field_size_bytes > data->size_bytes) [[unlikely]] {
+      ArrowErrorSet(error, "Expected %d bytes of field data but got %d bytes of input",
+                    static_cast<int>(field_size_bytes),
+                    static_cast<int>(data->size_bytes));  // NOLINT(runtime/int)
       return EINVAL;
     }
 
@@ -213,10 +227,17 @@ class PostgresCopyIntervalFieldReader : public PostgresCopyFieldReader {
       return ArrowArrayAppendNull(array, 1);
     }
 
-    if (field_size_bytes != 16) {
+    if (field_size_bytes != 16) [[unlikely]] {
       ArrowErrorSet(error, "Expected field with %d bytes but found field with %d bytes",
                     16,
                     static_cast<int>(field_size_bytes));  // NOLINT(runtime/int)
+      return EINVAL;
+    }
+
+    if (field_size_bytes > data->size_bytes) [[unlikely]] {
+      ArrowErrorSet(error, "Expected %d bytes of field data but got %d bytes of input",
+                    static_cast<int>(field_size_bytes),
+                    static_cast<int>(data->size_bytes));  // NOLINT(runtime/int)
       return EINVAL;
     }
 
@@ -224,7 +245,8 @@ class PostgresCopyIntervalFieldReader : public PostgresCopyFieldReader {
     const int64_t time_usec = ReadUnsafe<int64_t>(data);
     int64_t time;
 
-    if (time_usec > kMaxSafeMicrosToNanos || time_usec < kMinSafeMicrosToNanos) {
+    if (time_usec > kMaxSafeMicrosToNanos || time_usec < kMinSafeMicrosToNanos)
+        [[unlikely]] {
       ArrowErrorSet(error,
                     "[libpq] Interval with time value %" PRId64
                     " usec would overflow when converting to nanoseconds",
@@ -265,7 +287,7 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
     }
 
     // Read the input
-    if (data->size_bytes < static_cast<int64_t>(4 * sizeof(int16_t))) {
+    if (data->size_bytes < static_cast<int64_t>(4 * sizeof(int16_t))) [[unlikely]] {
       ArrowErrorSet(error,
                     "Expected at least %d bytes of field data for numeric copy data but "
                     "only %d bytes of input remain",
@@ -279,7 +301,7 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
     uint16_t sign = ReadUnsafe<uint16_t>(data);
     uint16_t dscale = ReadUnsafe<uint16_t>(data);
 
-    if (data->size_bytes < static_cast<int64_t>(ndigits * sizeof(int16_t))) {
+    if (data->size_bytes < static_cast<int64_t>(ndigits * sizeof(int16_t))) [[unlikely]] {
       ArrowErrorSet(error,
                     "Expected at least %d bytes of field data for numeric digits copy "
                     "data but only %d bytes of input remain",
@@ -318,7 +340,7 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
 
     if (!special_value.empty()) {
       if ((data_->size_bytes + static_cast<int64_t>(special_value.size())) >
-          static_cast<int64_t>((std::numeric_limits<int32_t>::max)())) {
+          static_cast<int64_t>((std::numeric_limits<int32_t>::max)())) [[unlikely]] {
         return EOVERFLOW;
       }
 
@@ -401,7 +423,7 @@ class PostgresCopyNumericFieldReader : public PostgresCopyFieldReader {
 
     // Update data buffer size and add offsets
     if ((data_->size_bytes + actual_chars_required) >
-        static_cast<int64_t>((std::numeric_limits<int32_t>::max)())) {
+        static_cast<int64_t>((std::numeric_limits<int32_t>::max)())) [[unlikely]] {
       return EOVERFLOW;
     }
     data_->size_bytes += actual_chars_required;
@@ -437,7 +459,7 @@ class PostgresCopyBinaryFieldReader : public PostgresCopyFieldReader {
       return ArrowArrayAppendNull(array, 1);
     }
 
-    if (field_size_bytes > data->size_bytes) {
+    if (field_size_bytes > data->size_bytes) [[unlikely]] {
       ArrowErrorSet(error, "Expected %d bytes of field data but got %d bytes of input",
                     static_cast<int>(field_size_bytes),
                     static_cast<int>(data->size_bytes));  // NOLINT(runtime/int)
@@ -446,7 +468,8 @@ class PostgresCopyBinaryFieldReader : public PostgresCopyFieldReader {
 
     int32_t* offsets = reinterpret_cast<int32_t*>(offsets_->data);
     int32_t next_offset = 0;
-    if (!psnip_safe_int32_add(&next_offset, offsets[array->length], field_size_bytes)) {
+    if (!psnip_safe_int32_add(&next_offset, offsets[array->length], field_size_bytes))
+        [[unlikely]] {
       return EOVERFLOW;
     }
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(offsets_, next_offset));
@@ -470,14 +493,14 @@ class PostgresCopyFixedSizeBinaryFieldReader : public PostgresCopyFieldReader {
       return ArrowArrayAppendNull(array, 1);
     }
 
-    if (field_size_bytes != schema_view_.fixed_size) {
+    if (field_size_bytes != schema_view_.fixed_size) [[unlikely]] {
       ArrowErrorSet(error, "Expected field with %d bytes but found field with %d bytes",
                     static_cast<int>(schema_view_.fixed_size),
                     static_cast<int>(field_size_bytes));  // NOLINT(runtime/int)
       return EINVAL;
     }
 
-    if (field_size_bytes > data->size_bytes) {
+    if (field_size_bytes > data->size_bytes) [[unlikely]] {
       ArrowErrorSet(error, "Expected %d bytes of field data but got %d bytes of input",
                     static_cast<int>(field_size_bytes),
                     static_cast<int>(data->size_bytes));  // NOLINT(runtime/int)
@@ -505,12 +528,12 @@ class PostgresCopyJsonbFieldReader : public PostgresCopyFieldReader {
       return ArrowArrayAppendNull(array, 1);
     }
 
-    if (field_size_bytes == 0) {
+    if (field_size_bytes == 0) [[unlikely]] {
       ArrowErrorSet(error, "Expected at least one byte of JSONB field data");
       return EINVAL;
     }
 
-    if (field_size_bytes > data->size_bytes) {
+    if (field_size_bytes > data->size_bytes) [[unlikely]] {
       ArrowErrorSet(error, "Expected %d bytes of field data but got %d bytes of input",
                     static_cast<int>(field_size_bytes),
                     static_cast<int>(data->size_bytes));  // NOLINT(runtime/int)
@@ -519,7 +542,7 @@ class PostgresCopyJsonbFieldReader : public PostgresCopyFieldReader {
 
     int8_t version;
     NANOARROW_RETURN_NOT_OK(ReadChecked<int8_t>(data, &version, error));
-    if (version != 1) {
+    if (version != 1) [[unlikely]] {
       ArrowErrorSet(error, "Expected JSONB binary version 0x01 but got %d",
                     static_cast<int>(version));
       return EINVAL;
@@ -529,7 +552,8 @@ class PostgresCopyJsonbFieldReader : public PostgresCopyFieldReader {
 
     int32_t* offsets = reinterpret_cast<int32_t*>(offsets_->data);
     int32_t next_offset = 0;
-    if (!psnip_safe_int32_add(&next_offset, offsets[array->length], field_size_bytes)) {
+    if (!psnip_safe_int32_add(&next_offset, offsets[array->length], field_size_bytes))
+        [[unlikely]] {
       return EOVERFLOW;
     }
     NANOARROW_RETURN_NOT_OK(ArrowBufferAppendInt32(offsets_, next_offset));
@@ -581,7 +605,7 @@ class PostgresCopyArrayFieldReader : public PostgresCopyFieldReader {
     // We could validate the OID here, but this is a poor fit for all cases
     // (e.g. testing) since the OID can be specific to each database
 
-    if (n_dim < 0) {
+    if (n_dim < 0) [[unlikely]] {
       ArrowErrorSet(error, "Expected array n_dim > 0 but got %d",
                     static_cast<int>(n_dim));  // NOLINT(runtime/int)
       return EINVAL;
@@ -601,7 +625,7 @@ class PostgresCopyArrayFieldReader : public PostgresCopyFieldReader {
 
       int32_t lower_bound;
       NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(data, &lower_bound, error));
-      if (lower_bound != 0 && lower_bound != 1) {
+      if (lower_bound != 0 && lower_bound != 1) [[unlikely]] {
         ArrowErrorSet(error,
                       "Array value with lower bound not in {0, 1} is not supported");
         return EINVAL;
@@ -621,7 +645,7 @@ class PostgresCopyArrayFieldReader : public PostgresCopyFieldReader {
     }
 
     int64_t bytes_read = data->data.as_uint8 - data0;
-    if (bytes_read != field_size_bytes) {
+    if (bytes_read != field_size_bytes) [[unlikely]] {
       ArrowErrorSet(error, "Expected to read %d bytes from array field but read %d bytes",
                     static_cast<int>(field_size_bytes),
                     static_cast<int>(bytes_read));  // NOLINT(runtime/int)
@@ -674,7 +698,7 @@ class PostgresCopyRecordFieldReader : public PostgresCopyFieldReader {
 
     int32_t n_fields;
     NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(data, &n_fields, error));
-    if (n_fields != array->n_children) {
+    if (n_fields != array->n_children) [[unlikely]] {
       ArrowErrorSet(error, "Expected nested record type to have %ld fields but got %d",
                     static_cast<long>(array->n_children),  // NOLINT(runtime/int)
                     static_cast<int>(n_fields));           // NOLINT(runtime/int)
@@ -694,20 +718,20 @@ class PostgresCopyRecordFieldReader : public PostgresCopyFieldReader {
       // appended to. This leaves array in a valid state in the specific case
       // where EOVERFLOW was returned so that a higher level caller can attempt
       // to try again after creating a new array.
-      if (result == EOVERFLOW) {
+      if (result == EOVERFLOW) [[unlikely]] {
         for (int16_t j = 0; j < i; j++) {
           array->children[j]->length--;
         }
       }
 
-      if (result != NANOARROW_OK) {
+      if (result != NANOARROW_OK) [[unlikely]] {
         return result;
       }
     }
 
     // field size == -1 means don't check (e.g., for a top-level row tuple)
     int64_t bytes_read = data->data.as_uint8 - data0;
-    if (field_size_bytes != -1 && bytes_read != field_size_bytes) {
+    if (field_size_bytes != -1 && bytes_read != field_size_bytes) [[unlikely]] {
       ArrowErrorSet(error,
                     "Expected to read %d bytes from record field but read %d bytes",
                     static_cast<int>(field_size_bytes),
@@ -757,7 +781,7 @@ class PostgresCopyFieldTupleReader : public PostgresCopyFieldReader {
     NANOARROW_RETURN_NOT_OK(ReadChecked<int16_t>(data, &n_fields, error));
     if (n_fields == -1) {
       return ENODATA;
-    } else if (n_fields != array->n_children) {
+    } else if (n_fields != array->n_children) [[unlikely]] {
       ArrowErrorSet(error,
                     "Expected -1 for end-of-stream or number of fields in output array "
                     "(%ld) but got %d",
@@ -776,13 +800,13 @@ class PostgresCopyFieldTupleReader : public PostgresCopyFieldReader {
       // appended to. This leaves array in a valid state in the specific case
       // where EOVERFLOW was returned so that a higher level caller can attempt
       // to try again after creating a new array.
-      if (result == EOVERFLOW) {
+      if (result == EOVERFLOW) [[unlikely]] {
         for (int16_t j = 0; j < i; j++) {
           array->children[j]->length--;
         }
       }
 
-      if (result != NANOARROW_OK) {
+      if (result != NANOARROW_OK) [[unlikely]] {
         return result;
       }
     }
@@ -905,7 +929,7 @@ static inline ArrowErrorCode MakeCopyFieldReader(
     case NANOARROW_TYPE_LIST:
       switch (pg_type.type_id()) {
         case PostgresTypeId::kArray: {
-          if (pg_type.n_children() != 1) {
+          if (pg_type.n_children() != 1) [[unlikely]] {
             ArrowErrorSet(
                 error, "Expected Postgres array type to have one child but found %ld",
                 static_cast<long>(pg_type.n_children()));  // NOLINT(runtime/int)
@@ -943,7 +967,7 @@ static inline ArrowErrorCode MakeCopyFieldReader(
     case NANOARROW_TYPE_STRUCT:
       switch (pg_type.type_id()) {
         case PostgresTypeId::kRecord: {
-          if (pg_type.n_children() != schema->n_children) {
+          if (pg_type.n_children() != schema->n_children) [[unlikely]] {
             ArrowErrorSet(error,
                           "Can't convert Postgres record type with %ld children to Arrow "
                           "struct type with %ld children",
@@ -1018,7 +1042,7 @@ static inline ArrowErrorCode MakeCopyFieldReader(
 class PostgresCopyStreamReader {
  public:
   ArrowErrorCode Init(PostgresType pg_type) {
-    if (pg_type.type_id() != PostgresTypeId::kRecord) {
+    if (pg_type.type_id() != PostgresTypeId::kRecord) [[unlikely]] {
       return EINVAL;
     }
 
@@ -1031,7 +1055,7 @@ class PostgresCopyStreamReader {
   int64_t array_size_approx_bytes() const { return array_size_approx_bytes_; }
 
   ArrowErrorCode SetOutputSchema(ArrowSchema* schema, ArrowError* error) {
-    if (std::string(schema_->format) != "+s") {
+    if (std::string(schema_->format) != "+s") [[unlikely]] {
       ArrowErrorSet(
           error,
           "Expected output schema of type struct but got output schema with format '%s'",
@@ -1039,7 +1063,7 @@ class PostgresCopyStreamReader {
       return EINVAL;
     }
 
-    if (schema_->n_children != root_reader_.InputType().n_children()) {
+    if (schema_->n_children != root_reader_.InputType().n_children()) [[unlikely]] {
       ArrowErrorSet(error,
                     "Expected output schema with %ld columns to match Postgres input but "
                     "got schema with %ld columns",
@@ -1062,7 +1086,7 @@ class PostgresCopyStreamReader {
   }
 
   ArrowErrorCode InitFieldReaders(ArrowError* error) {
-    if (schema_->release == nullptr) {
+    if (schema_->release == nullptr) [[unlikely]] {
       return EINVAL;
     }
 
@@ -1081,7 +1105,8 @@ class PostgresCopyStreamReader {
   }
 
   ArrowErrorCode ReadHeader(ArrowBufferView* data, ArrowError* error) {
-    if (data->size_bytes < static_cast<int64_t>(sizeof(kPgCopyBinarySignature))) {
+    if (data->size_bytes < static_cast<int64_t>(sizeof(kPgCopyBinarySignature)))
+        [[unlikely]] {
       ArrowErrorSet(
           error,
           "Expected PGCOPY signature of %ld bytes at beginning of stream but "
@@ -1092,7 +1117,7 @@ class PostgresCopyStreamReader {
     }
 
     if (memcmp(data->data.data, kPgCopyBinarySignature, sizeof(kPgCopyBinarySignature)) !=
-        0) {
+        0) [[unlikely]] {
       ArrowErrorSet(error, "Invalid PGCOPY signature at beginning of stream");
       return EINVAL;
     }
@@ -1105,7 +1130,7 @@ class PostgresCopyStreamReader {
     uint32_t extension_length;
     NANOARROW_RETURN_NOT_OK(ReadChecked<uint32_t>(data, &extension_length, error));
 
-    if (data->size_bytes < static_cast<int64_t>(extension_length)) {
+    if (data->size_bytes < static_cast<int64_t>(extension_length)) [[unlikely]] {
       ArrowErrorSet(error,
                     "Expected %ld bytes of extension metadata at start of stream but "
                     "found %ld bytes of input",
@@ -1139,7 +1164,7 @@ class PostgresCopyStreamReader {
   }
 
   ArrowErrorCode GetArray(ArrowArray* out, ArrowError* error) {
-    if (array_->release == nullptr) {
+    if (array_->release == nullptr) [[unlikely]] {
       return EINVAL;
     }
 
