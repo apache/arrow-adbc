@@ -18,6 +18,7 @@
 #include <cstring>
 #include <filesystem>  // NOLINT [build/c++17]
 #include <limits>
+#include <memory>
 #include <optional>
 #include <regex>
 #include <string>
@@ -830,6 +831,75 @@ TEST_F(SqliteStatementTest, ConstraintErrorNoStream) {
               adbc_validation::IsStatus(ADBC_STATUS_INTEGRITY, &error));
   EXPECT_THAT(error.message,
               ::testing::HasSubstr("UNIQUE constraint failed: constrainttable.id"));
+}
+
+// A statement whose result stream is released before completion can fail when
+// it is reset (https://www.sqlite.org/c3ref/reset.html); re-executing it must
+// report that failure.
+TEST(SqliteStatement, ReexecuteReportsDeferredFailure) {
+  const std::string path =
+      (std::filesystem::temp_directory_path() / "adbc_sqlite_deferred_failure.db")
+          .string();
+  std::error_code ec;
+  std::filesystem::remove(path, ec);
+
+  {
+    // Hold a read transaction on another connection so that inserts can't commit
+    sqlite3* other = nullptr;
+    ASSERT_EQ(SQLITE_OK, sqlite3_open(path.c_str(), &other));
+    std::unique_ptr<sqlite3, decltype(&sqlite3_close)> other_guard(other, &sqlite3_close);
+
+    // Create the table, then keep a read transaction open: the ADBC insert below can't
+    // commit while it's held
+    ASSERT_EQ(SQLITE_OK, sqlite3_exec(other,
+                                      "CREATE TABLE deferred (id INTEGER); BEGIN; "
+                                      "SELECT * FROM deferred",
+                                      nullptr, nullptr, nullptr));
+
+    struct AdbcError error = ADBC_ERROR_INIT;
+    adbc_validation::Handle<struct AdbcDatabase> database;
+    adbc_validation::Handle<struct AdbcConnection> connection;
+    adbc_validation::Handle<struct AdbcStatement> statement;
+    constexpr const char* kBatchRows = "adbc.sqlite.query.batch_rows";
+
+    ASSERT_THAT(AdbcDatabaseNew(&database.value, &error),
+                adbc_validation::IsOkStatus(&error));
+    ASSERT_THAT(AdbcDatabaseSetOption(&database.value, "uri", path.c_str(), &error),
+                adbc_validation::IsOkStatus(&error));
+    ASSERT_THAT(AdbcDatabaseInit(&database.value, &error),
+                adbc_validation::IsOkStatus(&error));
+    ASSERT_THAT(AdbcConnectionNew(&connection.value, &error),
+                adbc_validation::IsOkStatus(&error));
+    ASSERT_THAT(AdbcConnectionInit(&connection.value, &database.value, &error),
+                adbc_validation::IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementNew(&connection.value, &statement.value, &error),
+                adbc_validation::IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetOptionInt(&statement.value, kBatchRows, 1, &error),
+                adbc_validation::IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementSetSqlQuery(
+                    &statement.value, "INSERT INTO deferred VALUES (1), (2) RETURNING id",
+                    &error),
+                adbc_validation::IsOkStatus(&error));
+    ASSERT_THAT(AdbcStatementPrepare(&statement.value, &error),
+                adbc_validation::IsOkStatus(&error));
+
+    {
+      // Only the first row is read, so the statement does not run to completion
+      adbc_validation::StreamReader reader;
+      ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, &reader.stream.value,
+                                            &reader.rows_affected, &error),
+                  adbc_validation::IsOkStatus(&error));
+    }
+
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement.value, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                adbc_validation::IsStatus(ADBC_STATUS_IO, &error));
+    EXPECT_THAT(error.message, ::testing::HasSubstr("previous execution failed"));
+    error.release(&error);
+  }
+
+  std::filesystem::remove(path, ec);
 }
 
 // -- SQLite Specific Tests ------------------------------------------
