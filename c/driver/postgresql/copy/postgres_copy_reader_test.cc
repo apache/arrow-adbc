@@ -16,6 +16,7 @@
 // under the License.
 
 #include <cstring>
+#include <limits>
 #include <memory>
 #include <string>
 #include <vector>
@@ -1140,6 +1141,39 @@ void CheckInvalidFieldSize(PostgresCopyFieldReader* reader, ArrowArray* array,
   ASSERT_EQ(array->length, output_length);
 }
 
+template <typename T, typename U>
+void CheckTemporalPayload(PostgresTypeId type_id, T value, U network_value,
+                          const char* expected_error, T expected_value = 0) {
+  SCOPED_TRACE(value);
+  PostgresType type(type_id);
+  nanoarrow::UniqueSchema schema;
+  ArrowSchemaInit(schema.get());
+  ASSERT_EQ(type.SetSchema(schema.get(), "PostgreSQL Tester"), NANOARROW_OK);
+  ArrowError error{};
+  std::unique_ptr<PostgresCopyFieldReader> reader;
+  ASSERT_EQ(MakeCopyFieldReader(type, schema.get(), &reader, &error), NANOARROW_OK)
+      << error.message;
+  nanoarrow::UniqueArray array;
+  ASSERT_NO_FATAL_FAILURE(InitReaderForTest(reader.get(), schema.get(), &array));
+
+  ArrowBufferView data;
+  data.data.data = &network_value;
+  data.size_bytes = sizeof(network_value);
+  const int result = reader->Read(&data, sizeof(network_value), array.get(), &error);
+  const ArrowBuffer* buffer = ArrowArrayBuffer(array.get(), 1);
+  if (expected_error) {
+    EXPECT_EQ(result, EINVAL);
+    EXPECT_NE(std::string(error.message).find(expected_error), std::string::npos);
+    EXPECT_EQ(array->length, 0);
+    EXPECT_EQ(buffer->size_bytes, 0);
+  } else {
+    ASSERT_EQ(result, NANOARROW_OK) << error.message;
+    EXPECT_EQ(array->length, 1);
+    ASSERT_EQ(buffer->size_bytes, sizeof(T));
+    EXPECT_EQ(std::memcmp(buffer->data, &expected_value, sizeof(T)), 0);
+  }
+}
+
 }  // namespace
 
 TEST(FieldReaderInvalidInputTest, Boolean) {
@@ -1284,6 +1318,45 @@ TEST(FieldReaderInvalidInputTest, Timestamp) {
                         "Expected field with 8 bytes but found field with 7 bytes");
   CheckInvalidFieldSize(reader.get(), array.get(), 9,
                         "Expected field with 8 bytes but found field with 9 bytes");
+}
+
+TEST(FieldReaderInvalidInputTest, DateEpochRange) {
+  constexpr auto kMin = (std::numeric_limits<int32_t>::min)();
+  constexpr auto kMax = (std::numeric_limits<int32_t>::max)();
+  for (int32_t value : {kMin, kMax}) {
+    CheckTemporalPayload(PostgresTypeId::kDate, value, ToNetworkInt32(value), "infinity");
+  }
+  constexpr int32_t kEpoch = 10957;
+  constexpr int32_t kFirstInRange = kMin + 1;
+  constexpr int32_t kLastInRange = kMax - kEpoch;
+  CheckTemporalPayload(PostgresTypeId::kDate, kFirstInRange,
+                       ToNetworkInt32(kFirstInRange), nullptr, kFirstInRange + kEpoch);
+  CheckTemporalPayload(PostgresTypeId::kDate, kLastInRange, ToNetworkInt32(kLastInRange),
+                       nullptr, kMax);
+  constexpr int32_t kFirstOverflow = kLastInRange + 1;
+  CheckTemporalPayload(PostgresTypeId::kDate, kFirstOverflow,
+                       ToNetworkInt32(kFirstOverflow), "out of range");
+}
+
+TEST(FieldReaderInvalidInputTest, TimestampEpochRange) {
+  constexpr auto kMin = (std::numeric_limits<int64_t>::min)();
+  constexpr auto kMax = (std::numeric_limits<int64_t>::max)();
+  constexpr int64_t kEpoch = 946684800000000;
+  constexpr int64_t kFirstInRange = kMin + 1;
+  constexpr int64_t kLastInRange = kMax - kEpoch;
+  constexpr int64_t kMaxPostgresTimestamp = 0x7fff5bb3b29fffff;
+  for (auto type : {PostgresTypeId::kTimestamp, PostgresTypeId::kTimestamptz}) {
+    SCOPED_TRACE(static_cast<int>(type));
+    for (int64_t value : {kMin, kMax}) {
+      CheckTemporalPayload(type, value, ToNetworkInt64(value), "infinity");
+    }
+    for (int64_t value : {kLastInRange + 1, kMaxPostgresTimestamp}) {
+      CheckTemporalPayload(type, value, ToNetworkInt64(value), "out of range");
+    }
+    CheckTemporalPayload(type, kFirstInRange, ToNetworkInt64(kFirstInRange), nullptr,
+                         kFirstInRange + kEpoch);
+    CheckTemporalPayload(type, kLastInRange, ToNetworkInt64(kLastInRange), nullptr, kMax);
+  }
 }
 
 TEST(FieldReaderInvalidInputTest, Interval) {
