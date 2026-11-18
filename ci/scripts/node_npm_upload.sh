@@ -75,6 +75,7 @@ main() {
     npmrc=$(mktemp)
     trap "rm -f ${npmrc}" EXIT
     echo "//${registry_key#*://}/:_authToken=${NPM_TOKEN}" > "${npmrc}"
+    local stage=""
 
     # For non-npmjs registries (e.g. Gemfury), append a nightly date suffix
     # so each publish gets a unique version
@@ -86,6 +87,9 @@ main() {
         for pkg in "${packages_dir}"/apache-arrow-adbc-driver-manager-*.tgz; do
             repack_with_version "${pkg}" "${new_version}"
         done
+    else
+        # NPM requires "npm stage publish"
+        stage="stage"
     fi
 
     # Publish platform-specific packages first, then the main package
@@ -95,13 +99,19 @@ main() {
     shopt -u nullglob
     for pkg in "${platform_pkgs[@]+"${platform_pkgs[@]}"}"; do
         echo "==== Publishing ${pkg}"
-        npm publish "${pkg}" --access public --registry "${registry}" --userconfig "${npmrc}" ${tag_flag} ${dry_run_flag}
+        npm ${stage} publish "${pkg}" --access public --registry "${registry}" --userconfig "${npmrc}" ${tag_flag} ${dry_run_flag}
     done
 
     echo "==== Publishing main package"
     local main_pkg
     main_pkg=$(set -- "${packages_dir}"/apache-arrow-adbc-driver-manager-[0-9]*.tgz; echo "$1")
-    npm publish "${main_pkg}" --access public --registry "${registry}" --userconfig "${npmrc}" ${tag_flag} ${dry_run_flag}
+    npm ${stage} publish "${main_pkg}" --access public --registry "${registry}" --userconfig "${npmrc}" ${tag_flag} ${dry_run_flag}
+
+    if [[ -n "${stage}" && "${DRY_RUN:-0}" != "1" ]]; then
+        echo "==== Confirm staged packages"
+        echo "Go to https://www.npmjs.com and approve the staged packages"
+        read -p "After approving the artifacts, press ENTER to continue..." ignored
+    fi
 }
 
 main "$@"
