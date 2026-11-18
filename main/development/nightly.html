@@ -9,10 +9,10 @@
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://arrow.apache.org/adbc/main/development/nightly.html" />
 <meta property="og:site_name" content="ADBC" />
-<meta property="og:description" content="Nightly builds of some binary packages are available. C/C++: Conda users can install nightly builds from a Conda channel: https://anaconda.org/arrow-adbc-nightlies This should be used with conda-fo..." />
+<meta property="og:description" content="Nightly builds of some binary packages are available. Java: Nightly Java packages, including the JNI bindings, can be installed from an alternative package index: https://gemfury.com/arrow-adbc-nig..." />
 <meta property="og:image" content="https://arrow.apache.org/adbc/main/_static/banner.png" />
 <meta property="og:image:alt" content="ADBC" />
-<meta name="description" content="Nightly builds of some binary packages are available. C/C++: Conda users can install nightly builds from a Conda channel: https://anaconda.org/arrow-adbc-nightlies This should be used with conda-fo..." />
+<meta name="description" content="Nightly builds of some binary packages are available. Java: Nightly Java packages, including the JNI bindings, can be installed from an alternative package index: https://gemfury.com/arrow-adbc-nig..." />
 <link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Versioning" href="versioning.html"><link rel="prev" title="Contributing" href="contributing.html">
 
     <!-- Generated with Sphinx 8.2.3 and Furo 2025.12.19 -->
@@ -444,41 +444,6 @@ there is a problem with the availability of nightly artifacts,
 please feel free to <a class="reference external" href="https://github.com/apache/arrow-adbc/issues">file an issue</a>, but we cannot
 guarantee any timely response.</p>
 </div>
-<section id="c-c">
-<h2>C/C++<a class="headerlink" href="#c-c" title="Link to this heading">¶</a></h2>
-<p>Conda users can install nightly builds from a Conda channel:
-<a class="reference external" href="https://anaconda.org/arrow-adbc-nightlies">https://anaconda.org/arrow-adbc-nightlies</a></p>
-<p>This should be used with conda-forge.  Example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mamba</span> <span class="n">install</span> <span class="o">-</span><span class="n">c</span> <span class="n">conda</span><span class="o">-</span><span class="n">forge</span> <span class="o">-</span><span class="n">c</span> <span class="n">arrow</span><span class="o">-</span><span class="n">adbc</span><span class="o">-</span><span class="n">nightlies</span> <span class="n">adbc</span><span class="o">-</span><span class="n">driver</span><span class="o">-</span><span class="n">manager</span>
-</pre></div>
-</div>
-<p>Both C/C++ and Python packages are available.</p>
-<div class="table-wrapper docutils container" id="id1">
-<table class="docutils align-default" id="id1">
-<caption><span class="caption-text">Supported platforms for nightly Conda packages</span><a class="headerlink" href="#id1" title="Link to this table">¶</a></caption>
-<thead>
-<tr class="row-odd"><th class="head"><p>Operating System</p></th>
-<th class="head"><p>AMD64 (x86_64)</p></th>
-<th class="head"><p>AArch64</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p>Linux</p></td>
-<td><p>Yes ✅</p></td>
-<td><p>No ❌</p></td>
-</tr>
-<tr class="row-odd"><td><p>macOS</p></td>
-<td><p>Yes ✅</p></td>
-<td><p>No ❌</p></td>
-</tr>
-<tr class="row-even"><td><p>Windows</p></td>
-<td><p>No ✅</p></td>
-<td><p>No ❌</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-</section>
 <section id="java">
 <h2>Java<a class="headerlink" href="#java" title="Link to this heading">¶</a></h2>
 <p>Nightly Java packages, including the JNI bindings, can be installed from an
@@ -521,9 +486,9 @@ alternative package index: <a class="reference external" href="https://gemfury.c
       <span class="n">adbc</span><span class="o">-</span><span class="n">driver</span><span class="o">-</span><span class="n">manager</span>
 </pre></div>
 </div>
-<div class="table-wrapper docutils container" id="id2">
-<table class="docutils align-default" id="id2">
-<caption><span class="caption-text">Supported platforms for nightly Python wheels</span><a class="headerlink" href="#id2" title="Link to this table">¶</a></caption>
+<div class="table-wrapper docutils container" id="id1">
+<table class="docutils align-default" id="id1">
+<caption><span class="caption-text">Supported platforms for nightly Python wheels</span><a class="headerlink" href="#id1" title="Link to this table">¶</a></caption>
 <thead>
 <tr class="row-odd"><th class="head"><p>Operating System</p></th>
 <th class="head"><p>AMD64 (x86_64)</p></th>
@@ -609,7 +574,6 @@ countries.
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Nightly Packages</a><ul>
-<li><a class="reference internal" href="#c-c">C/C++</a></li>
 <li><a class="reference internal" href="#java">Java</a></li>
 <li><a class="reference internal" href="#python">Python</a></li>
 </ul>

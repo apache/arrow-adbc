@@ -36,37 +36,6 @@ Nightly builds of some binary packages are available.
              <https://github.com/apache/arrow-adbc/issues>`_, but we cannot
              guarantee any timely response.
 
-C/C++
-=====
-
-Conda users can install nightly builds from a Conda channel:
-https://anaconda.org/arrow-adbc-nightlies
-
-This should be used with conda-forge.  Example::
-
-  mamba install -c conda-forge -c arrow-adbc-nightlies adbc-driver-manager
-
-Both C/C++ and Python packages are available.
-
-.. list-table:: Supported platforms for nightly Conda packages
-   :header-rows: 1
-
-   * - Operating System
-     - AMD64 (x86_64)
-     - AArch64
-
-   * - Linux
-     - Yes ✅
-     - No ❌
-
-   * - macOS
-     - Yes ✅
-     - No ❌
-
-   * - Windows
-     - No ✅
-     - No ❌
-
 Java
 ====
 
