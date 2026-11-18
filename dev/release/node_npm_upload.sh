@@ -22,7 +22,7 @@
 # nightly date suffix to the version (e.g. 0.23.0-nightly.20260330) to avoid
 # "version already exists" errors.
 #
-# Usage: ./ci/scripts/node_npm_upload.sh <packages_dir>
+# Usage: ./dev/release/node_npm_upload.sh <packages_dir>
 #
 # Environment variables:
 #   NPM_TOKEN           npm authentication token (required)

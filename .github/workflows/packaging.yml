@@ -523,147 +523,6 @@ jobs:
           rake --trace ${TASK_NAMESPACE}:test
           popd
 
-  python-conda-linux:
-    name: "Python ${{ matrix.arch }} Conda"
-    runs-on: ubuntu-latest
-    # No need for Conda packages during release
-    # if: "!startsWith(github.ref, 'refs/tags/')"
-    # TODO(apache/arrow-adbc#468): disable for now
-    if: false
-    needs:
-      - source
-    strategy:
-      fail-fast: false
-      matrix:
-        # TODO: "linux_aarch64_"
-        arch: ["linux_64_"]
-    steps:
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: source
-
-      - name: Extract source archive
-        id: version
-        run: |
-          source_archive=$(echo apache-arrow-adbc-*.tar.gz)
-          VERSION=${source_archive#apache-arrow-adbc-}
-          VERSION=${VERSION%.tar.gz}
-          echo "VERSION=${VERSION}" | tee -a $GITHUB_ENV
-
-          tar xf apache-arrow-adbc-${VERSION}.tar.gz
-          mv apache-arrow-adbc-${VERSION} adbc
-
-      - name: Show inputs
-        run: |
-          echo "upload_artifacts: ${GITHUB_EVENT_INPUTS_UPLOAD_ARTIFACTS}" >> $GITHUB_STEP_SUMMARY
-          echo "schedule: ${GITHUB_EVENT_SCHEDULE}" >> GITHUB_STEP_SUMMARY
-          echo "ref: ${GITHUB_REF}" >> GITHUB_STEP_SUMMARY
-        env:
-          GITHUB_EVENT_INPUTS_UPLOAD_ARTIFACTS: ${{ github.event.inputs.upload_artifacts }}
-          GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
-
-      - name: Build Conda package
-        env:
-          ARCH_CONDA_FORGE: ${{ matrix.arch }}
-        run: |
-          pushd adbc
-          docker compose run \
-            -e HOST_USER_ID=$(id -u) \
-            python-conda
-          popd
-
-      - name: Archive Conda packages
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: python-${{ matrix.arch }}-conda
-          retention-days: 7
-          path: |
-            adbc/build/conda/*/*.tar.bz2
-
-      - name: Test Conda packages
-        if: matrix.arch == 'linux_64_'
-        env:
-          ARCH_CONDA_FORGE: ${{ matrix.arch }}
-        run: |
-          pushd adbc
-          docker compose run \
-            python-conda-test
-          popd
-
-  python-conda-macos:
-    name: "Python ${{ matrix.arch }} Conda"
-    runs-on: macos-15-intel
-    # No need for Conda packages during release
-    # TODO(apache/arrow-adbc#468): re-enable
-    if: false
-    needs:
-      - source
-    strategy:
-      fail-fast: false
-      matrix:
-        # TODO: "osx_arm64_"
-        arch: ["osx_64_"]
-    defaults:
-      run:
-        shell: bash -l -eo pipefail {0}
-    steps:
-      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: source
-
-      - name: Extract source archive
-        id: version
-        run: |
-          source_archive=$(echo apache-arrow-adbc-*.tar.gz)
-          VERSION=${source_archive#apache-arrow-adbc-}
-          VERSION=${VERSION%.tar.gz}
-          echo "VERSION=${VERSION}" | tee -a $GITHUB_ENV
-
-          tar xf apache-arrow-adbc-$VERSION.tar.gz
-          mv apache-arrow-adbc-$VERSION adbc
-
-      - name: Show inputs
-        run: |
-          echo "upload_artifacts: ${GITHUB_EVENT_INPUTS_UPLOAD_ARTIFACTS}" >> $GITHUB_STEP_SUMMARY
-          echo "schedule: ${GITHUB_EVENT_SCHEDULE}" >> $GITHUB_STEP_SUMMARY
-          echo "ref: ${GITHUB_REF}" >> $GITHUB_STEP_SUMMARY
-        env:
-          GITHUB_EVENT_INPUTS_UPLOAD_ARTIFACTS: ${{ github.event.inputs.upload_artifacts }}
-          GITHUB_EVENT_SCHEDULE: ${{ github.event.schedule }}
-
-      - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb  # v4.1.0
-        with:
-          miniforge-version: 26.7.2-1
-          use-only-tar-bz2: false
-          use-mamba: true
-
-      - name: Install Dependencies
-        run: |
-          mamba install -c conda-forge boa conda-smithy conda-verify
-          conda config --remove channels defaults
-          conda config --add channels conda-forge
-
-      - name: Build Conda package
-        env:
-          ARCH_CONDA_FORGE: ${{ matrix.arch }}
-        run: |
-          ./adbc/ci/scripts/python_conda_build.sh $(pwd)/adbc ${ARCH_CONDA_FORGE}.yaml $(pwd)/adbc/build
-
-      - name: Archive Conda packages
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: python-${{ matrix.arch }}-conda
-          retention-days: 7
-          path: |
-            adbc/build/conda/*/*.tar.bz2
-
-      - name: Test Conda packages
-        if: matrix.arch == 'osx_64_'
-        env:
-          ARCH_CONDA_FORGE: ${{ matrix.arch }}
-        run: |
-          ./adbc/ci/scripts/python_conda_test.sh $(pwd)/adbc $(pwd)/adbc/build
-
   python-manylinux:
     name: "Python ${{ matrix.arch }} manylinux"
     runs-on: ${{ matrix.runs_on }}
@@ -1486,50 +1345,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  upload-anaconda:
-    name: "Upload packages to Anaconda.org"
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && (github.event.schedule || inputs.upload_artifacts)
-    needs:
-      - python-conda-linux
-      # TODO(apache/arrow-adbc#468): re-enable
-      # - python-conda-macos
-    defaults:
-      run:
-        shell: bash -l -eo pipefail {0}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          fetch-depth: 0
-          persist-credentials: true
-          submodules: recursive
-      - name: Get All Artifacts
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          path: conda-packages
-      - uses: conda-incubator/setup-miniconda@be893c923ea9cf1cf7cd510fbdde27c7e18cbdcb  # v4.1.0
-        with:
-          miniforge-version: 26.7.2-1
-          use-only-tar-bz2: false
-          use-mamba: true
-      - name: Install Dependencies
-        run: |
-          mamba install -c conda-forge anaconda-client
-      - name: Clean
-        continue-on-error: true
-        run: |
-          # Clean all existing packages, OK if we fail
-          ./ci/scripts/python_conda_clean.sh
-        env:
-          ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_API_TOKEN }} # zizmor: ignore[secrets-outside-env]
-      - name: Upload
-        run: |
-          ls -laR conda-packages
-          # Upload fresh packages
-          ./ci/scripts/python_conda_upload.sh conda-packages/python-*-conda/*/*.tar.bz2
-        env:
-          ANACONDA_API_TOKEN: ${{ secrets.ANACONDA_API_TOKEN }} # zizmor: ignore[secrets-outside-env]
-
   # This takes a while due to sleeping to avoid rate limits, so run it first
   # and in parallel with the builds
   clean-gemfury:
@@ -1547,7 +1362,7 @@ jobs:
       - name: Clean
         run: |
           pip install requests
-          ./ci/scripts/gemfury_clean.py
+          ./dev/release/gemfury_clean.py
         env:
           GEMFURY_API_TOKEN: ${{ secrets.GEMFURY_API_TOKEN }} # zizmor: ignore[secrets-outside-env]
 
@@ -1588,11 +1403,11 @@ jobs:
             -exec mv '{}' upload-staging \;
 
           # Java
-          ./ci/scripts/java_jar_upload.sh upload-staging/*.pom
+          ./dev/release/java_jar_upload.sh upload-staging/*.pom
           # Python
-          ./ci/scripts/python_wheel_upload.sh upload-staging/adbc_*.tar.gz upload-staging/*.whl
+          ./dev/release/python_wheel_upload.sh upload-staging/adbc_*.tar.gz upload-staging/*.whl
           # Node.js
-          ./ci/scripts/node_npm_upload.sh upload-staging
+          ./dev/release/node_npm_upload.sh upload-staging
         env:
           GEMFURY_PUSH_TOKEN: ${{ secrets.GEMFURY_PUSH_TOKEN }} # zizmor: ignore[secrets-outside-env]
           NPM_REGISTRY: https://npm.fury.io/arrow-adbc-nightlies/
