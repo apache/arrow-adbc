@@ -95,6 +95,22 @@ def test_clone(sqlite) -> None:
 
 
 @pytest.mark.sqlite
+def test_clone_autocommit(tmp_path: pathlib.Path) -> None:
+    db = tmp_path / "test.db"
+    with dbapi.connect(
+        driver="adbc_driver_sqlite", uri=db.as_uri(), autocommit=True
+    ) as conn:
+        with conn.adbc_clone() as clone:
+            with clone.cursor() as cur:
+                cur.execute("CREATE TABLE temporary (ints)")
+                cur.execute("INSERT INTO temporary VALUES (1)")
+
+        with conn.cursor() as cur:
+            cur.execute("SELECT * FROM temporary")
+            assert cur.fetchall() == [(1,)]
+
+
+@pytest.mark.sqlite
 def test_get_objects(sqlite) -> None:
     with sqlite.cursor() as cur:
         cur.execute("CREATE TABLE temporary (ints)")

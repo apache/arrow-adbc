@@ -495,7 +495,13 @@ class Connection(_Closeable):
         This is an extension and not part of the DBAPI standard.
         """
         conn = _lib.AdbcConnection(self._db._db, **(self._conn_kwargs or {}))
-        return Connection(self._db, conn)
+        return Connection(
+            self._db,
+            conn,
+            self._conn_kwargs,
+            autocommit=self._autocommit,
+            backend=self._backend,
+        )
 
     def adbc_get_info(self) -> Dict[Union[str, int], Any]:
         """
