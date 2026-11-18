@@ -179,7 +179,11 @@ fn test_filesystem_profile_nested_options() {
     assert!(option_keys.iter().any(|i| i == "connection.retry"));
     assert!(option_keys.iter().any(|i| i == "connection.pool.max_size"));
     assert!(option_keys.iter().any(|i| i == "connection.pool.min_size"));
-    assert!(option_keys.iter().any(|i| i == "connection.pool.idle_timeout"));
+    assert!(
+        option_keys
+            .iter()
+            .any(|i| i == "connection.pool.idle_timeout")
+    );
 
     tmp_dir
         .close()
