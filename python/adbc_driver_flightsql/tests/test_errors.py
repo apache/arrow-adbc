@@ -40,6 +40,11 @@ def assert_detail(e):
 
 def test_query_cancel(test_dbapi):
     with test_dbapi.cursor() as cur:
+        partitions, _ = cur.adbc_execute_partitions("SELECT 1")
+        cur.adbc_read_partition(partitions[0])
+        assert cur._results._cancel == test_dbapi.adbc_connection.cancel
+        assert cur.fetchone() == (5,)
+
         cur.execute("forever")
         cur.adbc_cancel()
         with pytest.raises(
@@ -71,6 +76,34 @@ def test_query_cancel_async(test_dbapi):
             ),
         ):
             cur.fetchone()
+
+
+def test_read_partition_cancel(test_dbapi):
+    with test_dbapi.cursor() as cur:
+        partitions, _ = cur.adbc_execute_partitions("forever")
+        assert len(partitions) == 1
+
+        errors = []
+
+        def _read():
+            try:
+                cur.adbc_read_partition(partitions[0])
+            except Exception as e:
+                errors.append(e)
+
+        t = threading.Thread(target=_read, daemon=True)
+        t.start()
+        time.sleep(2)
+        cur.adbc_cancel()
+        t.join(timeout=30)
+        assert not t.is_alive(), "cancel did not interrupt ReadPartition"
+
+        assert len(errors) == 1
+        assert isinstance(errors[0], test_dbapi.OperationalError)
+        assert str(errors[0]) == (
+            "CANCELLED: [FlightSQL] context canceled"
+            " (Canceled; ReadPartition(DoGet)). Vendor code: 1"
+        )
 
 
 def test_query_error_fetch(test_dbapi):
