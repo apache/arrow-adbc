@@ -41,6 +41,41 @@ test_that("error allocator works", {
   expect_identical(err$details, setNames(list(), character()))
 })
 
+test_that("stop_for_error() does not truncate long error messages", {
+  # Long messages (e.g., the list of paths searched for a driver manifest)
+  # should not be cut off at the default warning.length of 1000 characters
+  old_options <- options(warning.length = 1000L)
+  on.exit(options(old_options))
+
+  # The long message comes from the driver search paths, which the error lists
+  # in full, rather than from an over-long filename component: a name over 255
+  # bytes is not a filename that any filesystem accepts.
+  search_dirs <- file.path(tempdir(), paste0(strrep("s", 200), seq_len(6)))
+
+  warning_length_while_signalled <- NULL
+  had_error <- FALSE
+  withr::with_envvar(
+    list(ADBC_DRIVER_PATH = paste(search_dirs, collapse = .Platform$path.sep)),
+    tryCatch(
+      withCallingHandlers(
+        adbc_driver("not_a_driver"),
+        adbc_status = function(e) {
+          warning_length_while_signalled <<- getOption("warning.length")
+        }
+      ),
+      adbc_status = function(e) {
+        had_error <<- TRUE
+        expect_gt(nchar(conditionMessage(e), type = "bytes"), 1000)
+      }
+    )
+  )
+
+  expect_true(had_error)
+  expect_identical(warning_length_while_signalled, 8170L)
+  # The option is restored after the error was signalled
+  expect_identical(getOption("warning.length"), 1000L)
+})
+
 test_that("stop_for_error() gives a custom error class with extra info", {
   had_error <- FALSE
   tryCatch({
