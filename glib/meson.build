@@ -54,7 +54,7 @@ gi_fatal_warnings = (build_machine.system() != 'windows')
 
 adbc_build_dir = get_option('adbc_build_dir')
 if adbc_build_dir != ''
-    adbc_build_dir = meson.source_root() / adbc_build_dir
+    adbc_build_dir = meson.global_source_root() / adbc_build_dir
 endif
 
 c_compiler = meson.get_compiler('c')
