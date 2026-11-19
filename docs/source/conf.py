@@ -142,6 +142,10 @@ except ImportError:
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
+# Use the same canonical URL for the numbered release and its current/ copy.
+if release.isdecimal():
+    html_baseurl = "https://arrow.apache.org/adbc/current/"
+
 html_css_files = [
     "css/custom.css",
     "fontawesome/css/all.min.css",
