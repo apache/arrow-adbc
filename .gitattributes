@@ -16,6 +16,7 @@
 # under the License.
 
 *.stdout.txt linguist-generated
+*.kotoba linguist-language=Clojure
 c/vendor/* linguist-vendored
 go/adbc/drivermgr/arrow-adbc/adbc.h linguist-generated
 go/adbc/drivermgr/arrow-adbc/adbc_driver_manager.h linguist-generated

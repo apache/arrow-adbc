@@ -1,0 +1,39 @@
+;; Licensed to the Apache Software Foundation (ASF) under one
+;; or more contributor license agreements.  See the NOTICE file
+;; distributed with this work for additional information
+;; regarding copyright ownership.  The ASF licenses this file
+;; to you under the Apache License, Version 2.0 (the
+;; "License"); you may not use this file except in compliance
+;; with the License.  You may obtain a copy of the License at
+;;
+;;   http://www.apache.org/licenses/LICENSE-2.0
+;;
+;; Unless required by applicable law or agreed to in writing,
+;; software distributed under the License is distributed on an
+;; "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+;; KIND, either express or implied.  See the License for the
+;; specific language governing permissions and limitations
+;; under the License.
+
+(ns adbc.error
+  (:require [adbc.status :as status])
+  (:export [pack from-status status-of vendor-of ok?]))
+
+;; In-language ADBC error for the i64-v1 wasm profile.
+;; Packed as (status * 100000) + vendor-code, with vendor-code in 0..99999.
+;; SQLSTATE and message text stay on the host; this guest cannot FFI libadbc.
+
+(defn pack [code :i64 vendor :i64] :i64
+  (+ (* code 100000) vendor))
+
+(defn from-status [code :i64] :i64
+  (pack code 0))
+
+(defn status-of [err :i64] :i64
+  (quot err 100000))
+
+(defn vendor-of [err :i64] :i64
+  (- err (* (quot err 100000) 100000)))
+
+(defn ok? [err :i64] :i64
+  (status/ok? (status-of err)))
