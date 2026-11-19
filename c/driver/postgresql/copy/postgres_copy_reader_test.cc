@@ -841,6 +841,77 @@ TEST(PostgresCopyUtilsTest, PostgresCopyReadArray) {
   ASSERT_EQ(data_buffer[4], 123);
 }
 
+TEST(PostgresCopyUtilsTest, PostgresCopyReadArrayDimensionOverflow) {
+  // An int4 array with three dimensions of INT32_MAX elements each.
+  const uint8_t buffer[] = {
+      0x50, 0x47, 0x43, 0x4f, 0x50, 0x59, 0x0a, 0xff, 0x0d, 0x0a, 0x00, 0x00, 0x00,
+      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x24, 0x00,
+      0x00, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x17, 0x7f, 0xff,
+      0xff, 0xff, 0x00, 0x00, 0x00, 0x01, 0x7f, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00,
+      0x01, 0x7f, 0xff, 0xff, 0xff, 0x00, 0x00, 0x00, 0x01, 0xff, 0xff};
+  ArrowBufferView data;
+  data.data.as_uint8 = buffer;
+  data.size_bytes = sizeof(buffer);
+
+  PostgresType input_type(PostgresTypeId::kRecord);
+  input_type.AppendChild("col", PostgresType(PostgresTypeId::kInt4).Array());
+
+  PostgresCopyStreamTester tester;
+  ArrowError error = {};
+  ASSERT_EQ(tester.Init(input_type, &error), NANOARROW_OK) << error.message;
+  ASSERT_EQ(tester.ReadAll(&data, &error), EINVAL) << error.message;
+  ASSERT_STREQ(error.message, "Array element count overflow");
+}
+
+TEST(PostgresCopyUtilsTest, PostgresCopyReadArrayEmpty) {
+  const uint8_t buffer[] = {0x50, 0x47, 0x43, 0x4f, 0x50, 0x59, 0x0a, 0xff, 0x0d, 0x0a,
+                            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                            0x01, 0x00, 0x00, 0x00, 0x0c, 0x00, 0x00, 0x00, 0x00, 0x00,
+                            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x17, 0xff, 0xff};
+  ArrowBufferView data;
+  data.data.as_uint8 = buffer;
+  data.size_bytes = sizeof(buffer);
+
+  PostgresType input_type(PostgresTypeId::kRecord);
+  input_type.AppendChild("col", PostgresType(PostgresTypeId::kInt4).Array());
+
+  PostgresCopyStreamTester tester;
+  ArrowError error = {};
+  ASSERT_EQ(tester.Init(input_type, &error), NANOARROW_OK) << error.message;
+  ASSERT_EQ(tester.ReadAll(&data, &error), ENODATA) << error.message;
+  ASSERT_EQ(data.size_bytes, 0);
+
+  nanoarrow::UniqueArray array;
+  ASSERT_EQ(tester.GetArray(array.get(), &error), NANOARROW_OK) << error.message;
+  ASSERT_EQ(array->length, 1);
+  const auto* list = array->children[0];
+  ASSERT_EQ(list->null_count, 0);
+  ASSERT_EQ(list->children[0]->length, 0);
+  const auto* offsets = static_cast<const int32_t*>(list->buffers[1]);
+  ASSERT_EQ(offsets[0], 0);
+  ASSERT_EQ(offsets[1], 0);
+}
+
+TEST(PostgresCopyUtilsTest, PostgresCopyReadArrayNegativeDimensionLength) {
+  const uint8_t buffer[] = {0x50, 0x47, 0x43, 0x4f, 0x50, 0x59, 0x0a, 0xff, 0x0d, 0x0a,
+                            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                            0x01, 0x00, 0x00, 0x00, 0x14, 0x00, 0x00, 0x00, 0x01, 0x00,
+                            0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x17, 0xff, 0xff, 0xff,
+                            0xff, 0x00, 0x00, 0x00, 0x01, 0xff, 0xff};
+  ArrowBufferView data;
+  data.data.as_uint8 = buffer;
+  data.size_bytes = sizeof(buffer);
+
+  PostgresType input_type(PostgresTypeId::kRecord);
+  input_type.AppendChild("col", PostgresType(PostgresTypeId::kInt4).Array());
+
+  PostgresCopyStreamTester tester;
+  ArrowError error = {};
+  ASSERT_EQ(tester.Init(input_type, &error), NANOARROW_OK) << error.message;
+  ASSERT_EQ(tester.ReadAll(&data, &error), EINVAL) << error.message;
+  ASSERT_STREQ(error.message, "Negative array dimension length: -1");
+}
+
 TEST(PostgresCopyUtilsTest, PostgresCopyReadInt2vector) {
   ArrowBufferView data;
   data.data.as_uint8 = kTestPgCopyInt2vector;

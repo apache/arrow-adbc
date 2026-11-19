@@ -630,12 +630,12 @@ class PostgresCopyArrayFieldReader : public PostgresCopyFieldReader {
     // (e.g. testing) since the OID can be specific to each database
 
     if (n_dim < 0) [[unlikely]] {
-      ArrowErrorSet(error, "Expected array n_dim > 0 but got %d",
+      ArrowErrorSet(error, "Expected array n_dim >= 0 but got %d",
                     static_cast<int>(n_dim));  // NOLINT(runtime/int)
       return EINVAL;
     }
 
-    // This is apparently allowed
+    // PostgreSQL sends ordinary empty arrays with zero dimensions.
     if (n_dim == 0) {
       NANOARROW_RETURN_NOT_OK(ArrowArrayFinishElement(array));
       return NANOARROW_OK;
@@ -645,7 +645,14 @@ class PostgresCopyArrayFieldReader : public PostgresCopyFieldReader {
     for (int32_t i = 0; i < n_dim; i++) {
       int32_t dim_size;
       NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(data, &dim_size, error));
-      n_items *= dim_size;
+      if (dim_size < 0) [[unlikely]] {
+        ArrowErrorSet(error, "Negative array dimension length: %" PRId32, dim_size);
+        return EINVAL;
+      }
+      if (!psnip_safe_int64_mul(&n_items, n_items, dim_size)) [[unlikely]] {
+        ArrowErrorSet(error, "Array element count overflow");
+        return EINVAL;
+      }
 
       int32_t lower_bound;
       NANOARROW_RETURN_NOT_OK(ReadChecked<int32_t>(data, &lower_bound, error));
