@@ -47,7 +47,7 @@ This section covers the ADBC drivers that live in and are released from this rep
 It does not cover ADBC drivers published outside the ADBC project.
 
 - Drivers should only be used to connect to trusted databases and data sources.
-  Drivers trust the responses they receive, so issues that require a malicious or compromised database or data source (for example, a server that sends malformed responses that crash the driver, corrupt memory, or cause the driver to produce invalid Arrow data) are not considered vulnerabilities in the driver.
+- Drivers trust the responses they receive, so issues that require a malicious or compromised database or data source (for example, a server that sends malformed responses that crash the driver, corrupt memory, or cause the driver to produce invalid Arrow data) are not considered vulnerabilities in the driver.
 
 Arrow Data
 ----------
