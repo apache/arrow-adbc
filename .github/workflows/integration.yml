@@ -290,7 +290,7 @@ jobs:
           path: postgresql-build.tgz
 
   postgresql-test:
-    name: "PostgreSQL (14-18)"
+    name: "PostgreSQL (15-19)"
     needs: postgresql-build
     runs-on: ubuntu-latest
     steps:
@@ -334,7 +334,7 @@ jobs:
         run: |
           tar --extract --gzip --file postgresql-build.tgz
           echo "PYTHONPATH=$(pwd)/python/adbc_driver_manager:$(pwd)/python/adbc_driver_postgresql" >> "$GITHUB_ENV"
-      - name: Run PostgreSQL 14-18 tests
+      - name: Run PostgreSQL 15-19 tests
         env:
           ADBC_POSTGRESQL_TEST_URI: postgresql://localhost:5432/postgres?user=postgres&password=password
           ADBC_USE_ASAN: "ON"
@@ -342,14 +342,14 @@ jobs:
           BUILD_ALL: "0"
           BUILD_DRIVER_POSTGRESQL: "1"
         run: |
-          for postgres_version in 14 15 16 17 18; do
+          for postgres_version in 15 16 17 18 19; do
             echo "::group::PostgreSQL $postgres_version"
             export POSTGRES_VERSION="$postgres_version"
             docker compose up --wait --detach postgres-test
             ./ci/scripts/cpp_test.sh "$(pwd)/build"
             env PYTEST_ADDOPTS=--error-for-skips \
               ./ci/scripts/python_test.sh "$(pwd)" "$(pwd)/build"
-            if [ "$postgres_version" = "18" ]; then
+            if [ "$postgres_version" = "19" ]; then
               uv --project=./c/driver/postgresql/validation/ run \
                 ci/scripts/validate.sh "$(pwd)" --vendor postgresql
               env POSTGRES_TYPE_RESOLVER_MODE=builtin \
