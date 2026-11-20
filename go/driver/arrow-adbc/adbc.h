@@ -971,6 +971,37 @@ struct AdbcPartitions {
 
 /// @}
 
+/// \defgroup adbc-statement-action Vendor-Specific Actions (EXPERIMENTAL)
+/// A convention for drivers to expose vendor-specific actions to clients. For
+/// example, drivers may want to expose specific API requests or lower-level
+/// functionality that is not necessarily exposed via SQL.
+///
+/// To execute an action:
+///
+/// 1. Set the ADBC_ACTION option on a statement to the name of the action.
+/// 2. Optionally, call AdbcStatementGetParameterSchema to get the expected
+///    parameters for the action, or AdbcStatementExecuteSchema to get the
+///    expected result set schema.
+/// 3. If needed, bind parameters via AdbcStatementBind /
+///    AdbcStatementBindStream.
+/// 4. Execute the action via AdbcStatementExecuteQuery.
+/// 5. If a result set was produced, consume the returned ArrowArrayStream.
+///
+/// To enumerate available actions: this is currently undefined, pending the
+/// metadata collections proposal (apache/arrow-adbc#4400).
+///
+/// Drivers are not required to support actions. As of ADBC 1.1.0, this
+/// proposal is experimental and may be removed or changed in future revisions
+/// of the ADBC API.
+///
+/// @{
+
+/// \brief The name of the option for specifying an action to execute on a
+///   statement.
+#define ADBC_ACTION "adbc.action"
+
+/// @}
+
 /// @}
 
 /// \defgroup adbc-driver Driver Initialization
