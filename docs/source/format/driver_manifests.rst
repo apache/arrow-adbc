@@ -228,7 +228,8 @@ Below is an example of a driver manifest:
    unsupported = [] # list of strings such as 'async'
 
    [Driver]
-   entrypoint = 'AdbcDriverInit' # entrypoint to use if not using default
+   entrypoint = 'AdbcDriverInit' # Optional. See "entrypoint" in the Glossary.
+
    # You can provide just a single path
    # shared = '/path/to/libadbc_driver.so'
 

@@ -2380,12 +2380,17 @@ AdbcStatusCode AdbcStatementExecutePartitions(struct AdbcStatement* statement,
 ///   to load a library and call a function of this type to load the
 ///   driver.
 ///
-/// Although drivers may choose any name for this function, the
-/// recommended name is "AdbcDriverInit", or a name derived from the
-/// name of the driver's shared library as follows: remove the 'lib'
-/// prefix (on Unix systems) and all file extensions, then PascalCase
-/// the driver name, append Init, and prepend Adbc (if not already
-/// there).  For example:
+/// For maximum compatibility, export an initialization function named
+/// AdbcDriverInit with the signature defined by this typedef.
+///
+/// Also export the same initialization function under a driver-specific name.
+/// This lets applications statically link multiple drivers without name
+/// collisions.
+///
+/// Derive the driver-specific name from the shared library filename as follows:
+/// remove the 'lib' prefix (on Unix systems) and all file extensions,
+/// convert the remaining name to PascalCase, append Init, and prepend Adbc
+/// if the name does not already start with it. For example:
 ///
 /// - libadbc_driver_sqlite.so.2.0.0 -> AdbcDriverSqliteInit
 /// - adbc_driver_sqlite.dll -> AdbcDriverSqliteInit
