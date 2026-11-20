@@ -340,6 +340,7 @@ jobs:
           export HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK=1
           export HOMEBREW_NO_INSTALL_CLEANUP=1
           export HOMEBREW_NO_INSTALL_UPGRADE=1
+          brew update
           brew install --quiet postgresql@${POSTGRESQL_VERSION}
           brew link --quiet --overwrite postgresql@${POSTGRESQL_VERSION}
 
