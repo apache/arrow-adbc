@@ -1375,12 +1375,9 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// | table_type               | utf8 not null                |          |
 /// | table_definition         | utf8                         | (1)      |
 /// | table_remarks            | utf8                         | (2)      |
-/// | table_schema             | extension<arrow.schema_json> | (3)      |
 ///
 /// (1) The table or view definition (e.g. the SQL DDL statement).
 /// (2) A description of the table.
-/// (3) The Arrow schema of the table, equivalent to
-///     AdbcConnectionGetTableSchema.
 ///
 ///
 /// Supported filters:
@@ -1619,8 +1616,6 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 /// | routine_examples            | list<utf8>                   | (3)      |
 /// | routine_definition          | utf8                         | (4)      |
 /// | routine_definition_language | utf8                         | (4)      |
-/// | routine_parameter_schema    | extension<arrow.schema_json> | (5)      |
-/// | routine_result_schema       | extension<arrow.schema_json> | (5)      |
 ///
 /// 1. 'FUNCTION', 'PROCEDURE', or a vendor-specific name (e.g. 'TABLE
 ///    FUNCTION').
@@ -1630,8 +1625,6 @@ const struct AdbcError* AdbcErrorFromArrayStream(struct ArrowArrayStream* stream
 ///    syntax.
 /// 4. The definition (e.g. SQL text used to create a procedure) and the
 ///    language of the definition (e.g. SQL, Python)
-/// 5. Metadata about the accepted parameters and return values as an Arrow
-///    schema.
 ///
 /// Supported filters:
 /// - ADBC_METADATA_FILTER_CATALOG
@@ -1769,6 +1762,18 @@ struct ADBC_EXPORT AdbcConnection {
 /// serialize accesses to a statement.
 ///
 /// The statement state machine is as follows:
+///
+/// - Once initialized, the statement is in an unconfigured state.
+/// - AdbcStatementSetSqlQuery / AdbcStatementSetSubstraitPlan transition the
+///   statement to the query state.
+/// - AdbcStatementSetOption with ADBC_INGEST_OPTION_TARGET_TABLE transitions
+///   the statement to the ingest state.
+/// - AdbcStatementSetOption with ADBC_METADATA_COLLECTION transitions the
+///   statement to the metadata collection state.
+/// - From the query, ingest, or metadata collection state, the statement can
+///   be executed; the statement remains in the same state.
+/// - From the query, ingest, or metadata collection state, the statement can
+///   be transitioned to another of these states via the calls listed above.
 struct ADBC_EXPORT AdbcStatement {
   /// \brief Opaque implementation-defined state.
   /// This field is NULLPTR iff the connection is uninitialized/freed.
