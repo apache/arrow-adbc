@@ -1,6 +1,6 @@
 --------------------------------------------------------------------------------
 
-This binary distribution stataically links Go.
+This binary distribution statically links Go.
 The Go project is under the BSD 3-clause license +
 PATENTS weak patent termination clause
 (https://github.com/golang/go/blob/master/PATENTS).
