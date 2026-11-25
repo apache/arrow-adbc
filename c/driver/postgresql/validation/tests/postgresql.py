@@ -38,8 +38,8 @@ class PostgreSQLQuirks(model.DriverQuirks):
     driver = "adbc_driver_postgresql"
     driver_name = "ADBC PostgreSQL Driver"
     vendor_name = "PostgreSQL"
-    vendor_version = re.compile(r"18[0-9]{4}")
-    short_version = "18"
+    vendor_version = re.compile(r"19[0-9]{4}")
+    short_version = "19"
     features = model.DriverFeatures(
         connection_get_table_schema=True,
         connection_transactions=True,
@@ -243,11 +243,13 @@ class MaterializeQuirks(PostgreSQLQuirks):
 
 
 class ParadeDBQuirks(PostgreSQLQuirks):
-    pass
+    vendor_version = re.compile(r"18[0-9]{4}")
+    short_version = "18"
 
 
 class TimescaleDBQuirks(PostgreSQLQuirks):
-    pass
+    vendor_version = re.compile(r"18[0-9]{4}")
+    short_version = "18"
 
 
 class YugabyteDBQuirks(PostgreSQLQuirks):

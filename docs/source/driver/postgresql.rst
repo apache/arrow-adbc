@@ -370,7 +370,7 @@ version of libpq in your Conda environment.
 The PostgreSQL driver is tested against the following DBMSes, which all use
 the PostgreSQL wire protocol:
 
-- PostgreSQL (version 14 through 18)
+- PostgreSQL (version 15 through 19)
 - Citus
 - CockroachDB
 - CrateDB
