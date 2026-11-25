@@ -973,19 +973,68 @@ struct AdbcPartitions {
 
 /// \defgroup adbc-statement-action Vendor-Specific Actions (EXPERIMENTAL)
 /// A convention for drivers to expose vendor-specific actions to clients. For
-/// example, drivers may want to expose specific API requests or lower-level
-/// functionality that is not necessarily exposed via SQL.
+/// example, drivers may want to expose specific API requests or other
+/// functionality that is not necessarily exposed via SQL, so that users do
+/// not need to separately configure and instantiate a vendor-specific
+/// client. These operations generally mutate the state or data of the
+/// database.
+///
+/// For example:
+/// - BigQuery does not support updating the description of a table column via
+///   SQL, only via the API.
 ///
 /// To execute an action:
 ///
 /// 1. Set the ADBC_ACTION option on a statement to the name of the action.
-/// 2. Optionally, call AdbcStatementGetParameterSchema to get the expected
-///    parameters for the action, or AdbcStatementExecuteSchema to get the
-///    expected result set schema.
-/// 3. If needed, bind parameters via AdbcStatementBind /
-///    AdbcStatementBindStream.
+/// 2. Optionally, introspect the parameters/result set schema.
+/// 3. If needed, bind parameters to the action.
 /// 4. Execute the action via AdbcStatementExecuteQuery.
 /// 5. If a result set was produced, consume the returned ArrowArrayStream.
+///
+/// To introspect the parameters/result set schema:
+///
+/// 1. Set the ADBC_ACTION option on a statement to the name of the action.
+/// 2. Call AdbcStatementExecuteSchema to get the expected result set schema.
+/// 3. Call AdbcStatementGetOption with ADBC_BIND_TARGETS, which returns a
+///    comma-separated list of parameter sets, or an empty string if there are
+///    no parameters or only a single (unnamed) parameter set. Some actions
+///    may require multiple sets of parameters (e.g. both scalar parameters
+///    and an Arrow data stream), so this differentiates between them.
+/// 4. If needed, call AdbcStatementSetOption with ADBC_BIND_TARGET and the
+///    name of a parameter set.
+/// 5. Call AdbcStatementGetParameterSchema to get the schema of the expected
+///    parameters for the action.
+///
+/// To bind parameters to the action invocation:
+///
+/// 1. If needed, call AdbcStatementSetOption with ADBC_BIND_TARGET and the
+///    name of a parameter set.
+/// 2. Call AdbcStatementBind / AdbcStatementBindStream
+///
+/// It is driver-defined and specific to the action how to treat parameters of
+/// multiple rows. For example, some drivers may treat this as a bulk
+/// operation, executing the action once per row; others may treat the entire
+/// dataset as a single parameter. Drivers may even define actions that
+/// require both a single-row parameter set and a multi-row parameter set
+/// together. (While not implemented as such due to historical reasons, a bulk
+/// ingest would be an example of such an action: the single-row parameter set
+/// provides details like the target table, while the multi-row parameter set
+/// provides the data to ingest.)
+///
+/// Hypothetical example usage: a user wants to update the description of a
+/// column in a table.
+///
+/// 1. Set ADBC_ACTION to "vendor_name.update_column_description".
+/// 2. Call AdbcStatementGetOption with ADBC_BIND_TARGETS. This returns an
+///    empty string.
+/// 3. Call AdbcStatementGetParameterSchema, returning an Arrow schema with
+///    the fields "table_name", "column_name", and "description", all of type
+///    utf8.
+/// 4. Create a record batch with a single row, and set the values of the
+///    fields to the desired table name, column name, and new description.
+/// 5. Call AdbcStatementBind with the record batch.
+/// 6. Call AdbcStatementExecuteQuery to execute the action. This returns an
+///    empty result set, since the action does not produce any output.
 ///
 /// To enumerate available actions: this is currently undefined, pending the
 /// metadata collections proposal (apache/arrow-adbc#4400).
@@ -999,6 +1048,14 @@ struct AdbcPartitions {
 /// \brief The name of the option for specifying an action to execute on a
 ///   statement.
 #define ADBC_ACTION "adbc.action"
+
+/// \brief The name of the option specifying the parameter set to bind to.
+#define ADBC_BIND_TARGET "adbc.statement.bind_target"
+
+/// \brief The name of the option for retrieving parameter sets that can be
+///   bound to. If there are no parameter sets, or there is only a single one
+///   (unnamed), the result should be an empty string.
+#define ADBC_BIND_TARGETS "adbc.statement.bind_targets"
 
 /// @}
 
