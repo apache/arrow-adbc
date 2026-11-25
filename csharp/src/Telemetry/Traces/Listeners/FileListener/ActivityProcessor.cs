@@ -29,6 +29,13 @@ namespace Apache.Arrow.Adbc.Telemetry.Traces.Listeners.FileListener
     internal sealed class ActivityProcessor : IDisposable
     {
         private static readonly byte[] s_newLine = Encoding.UTF8.GetBytes(Environment.NewLine);
+        private static readonly JsonSerializerOptions s_serializerOptions = new()
+        {
+            Converters =             {
+                // Unredacts any redacted values in the trace when serializing to JSON, so that the full value is available in the file. This is needed since the file exporter is opt-in and users would expect to see the full value in the file.
+                new UnredactConverter(),
+            }
+        };
         private Task? _processingTask;
         private readonly Channel<Activity> _channel;
         private readonly Func<Stream, CancellationToken, Task> _streamWriterFunc;
