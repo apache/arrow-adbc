@@ -108,7 +108,7 @@ jobs:
         run: |
           ./ci/scripts/remamba.sh install -c conda-forge \
             --file ci/conda_env_cpp.txt
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -234,7 +234,7 @@ jobs:
       - name: Get required Go version
         run: |
           (. .env && echo "GO_VERSION=${GO}") >> $GITHUB_ENV
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -416,7 +416,7 @@ jobs:
       # the 'toolchain' parameter and staticcheck tends to need the latest Go
       - id: toolchain
         run: echo "GO_VERSION=$(sed -n 's/^toolchain go//p' go/adbc/go.mod)" >> "$GITHUB_OUTPUT"
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version: ${{ steps.toolchain.outputs.GO_VERSION }}
           check-latest: true
@@ -491,7 +491,7 @@ jobs:
         run: |
           ./ci/scripts/remamba.sh install -c conda-forge \
             --file ci/conda_env_cpp.txt
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
@@ -578,7 +578,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           sudo sysctl vm.mmap_rnd_bits=28
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version: "${{ env.GO_VERSION }}"
           check-latest: true
