@@ -116,9 +116,6 @@ pub trait AsyncConnection: AsyncOptionable<Option = OptionConnection> + Send {
         &mut self,
     ) -> impl std::future::Future<Output = Result<Self::StatementType>> + Send;
 
-    /// Cancel the in-progress operation on a connection.
-    fn cancel(&mut self) -> impl std::future::Future<Output = Result<()>> + Send;
-
     /// Get metadata about the database/driver.
     ///
     /// # Arguments
@@ -508,14 +505,4 @@ pub trait AsyncStatement: AsyncOptionable<Option = OptionStatement> + Send {
         &mut self,
         plan: &[u8],
     ) -> impl std::future::Future<Output = Result<()>> + Send;
-
-    /// Cancel execution of an in-progress query.
-    ///
-    /// This can be called during [AsyncStatement::execute] (or similar), or while
-    /// consuming a result set returned from such.
-    ///
-    /// # Since
-    ///
-    /// ADBC API revision 1.1.0
-    fn cancel(&mut self) -> impl std::future::Future<Output = Result<()>> + Send;
 }
