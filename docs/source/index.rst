@@ -262,4 +262,5 @@ More Resources
    faq
    glossary
    visual_identity
+   security_policy
    genindex
