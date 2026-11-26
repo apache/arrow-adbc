@@ -45,6 +45,9 @@ pub mod options;
 pub mod schemas;
 pub mod sync;
 
+#[cfg(feature = "async")]
+pub mod nonblocking;
+
 pub use sync::*;
 
 use arrow_schema::Schema;
