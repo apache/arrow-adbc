@@ -23,7 +23,6 @@
 
 #include <assert.h>
 #include <inttypes.h>
-#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <time.h>
@@ -555,6 +554,12 @@ void InternalSqliteStatementReaderInternalAdbcSetError(
   reader->error.message[sizeof(reader->error.message) - 1] = '\0';
 }
 
+static int InternalSqliteStatementReaderFormatDouble(char* output, int output_size,
+                                                     double value) {
+  sqlite3_snprintf(output_size, output, "%!.17g", value);
+  return (int)strlen(output);
+}
+
 int InternalSqliteStatementReaderGetOneValue(struct InternalSqliteStatementReader* reader,
                                              int col, struct ArrowArray* out) {
   int sqlite_type = sqlite3_column_type(reader->stmt, col);
@@ -626,10 +631,19 @@ int InternalSqliteStatementReaderGetOneValue(struct InternalSqliteStatementReade
     case NANOARROW_TYPE_STRING: {
       switch (sqlite_type) {
         case SQLITE_INTEGER:
-        case SQLITE_FLOAT:
         case SQLITE_TEXT:
         case SQLITE_BLOB:
           break;
+        case SQLITE_FLOAT: {
+          // Use the same formatter as the inference batch. SQLite versions before 3.53
+          // produce fewer digits through sqlite3_column_text(), making results depend
+          // on whether the row lands in the inference or a later batch.
+          char output[64];
+          const int size = InternalSqliteStatementReaderFormatDouble(
+              output, sizeof(output), sqlite3_column_double(reader->stmt, col));
+          struct ArrowStringView value = {.data = output, .size_bytes = size};
+          return ArrowArrayAppendString(out, value);
+        }
         default: {
           snprintf(reader->error.message, sizeof(reader->error.message),
                    "[SQLite] Type mismatch in column %d: expected STRING but got unknown "
@@ -953,27 +967,15 @@ AdbcStatusCode InternalSqliteStatementReaderAppendDoubleToBinary(
     struct ArrowBuffer* offsets, struct ArrowBuffer* binary, double value,
     int32_t* offset, struct AdbcError* error) {
   static const size_t kReserve = 64;
-  size_t buffer_size = kReserve;
-  CHECK_NA(INTERNAL, ArrowBufferReserve(binary, buffer_size), error);
+  CHECK_NA(INTERNAL, ArrowBufferReserve(binary, kReserve), error);
   char* output = (char*)(binary->data + binary->size_bytes);
-  int written = 0;
-  while (1) {
-    written = snprintf(output, buffer_size, "%e", value);
-    if (written < 0) {
-      InternalAdbcSetError(error, "Encoding error when upcasting double to string");
-      return ADBC_STATUS_INTERNAL;
-    } else if (((size_t)written) >= buffer_size) {
-      // Truncated, resize and try again
-      // Check for overflow - presumably this can never happen...?
-      if (UINT_MAX - buffer_size < buffer_size) {
-        InternalAdbcSetError(error, "Overflow when upcasting double to string");
-        return ADBC_STATUS_INTERNAL;
-      }
-      CHECK_NA(INTERNAL, ArrowBufferReserve(binary, buffer_size), error);
-      buffer_size += buffer_size;
-      continue;
-    }
-    break;
+  // SQLite's alternate-form-2 formatter is locale-independent, keeps enough
+  // significant digits to round-trip binary64.
+  const int written =
+      InternalSqliteStatementReaderFormatDouble(output, (int)kReserve, value);
+  if (written < 0 || (size_t)written >= kReserve) {
+    InternalAdbcSetError(error, "Encoding error when upcasting double to string");
+    return ADBC_STATUS_INTERNAL;
   }
   *offset += written;
   binary->size_bytes += written;
