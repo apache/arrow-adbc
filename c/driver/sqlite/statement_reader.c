@@ -554,6 +554,12 @@ void InternalSqliteStatementReaderInternalAdbcSetError(
   reader->error.message[sizeof(reader->error.message) - 1] = '\0';
 }
 
+static int InternalSqliteStatementReaderFormatDouble(char* output, int output_size,
+                                                     double value) {
+  sqlite3_snprintf(output_size, output, "%!.17g", value);
+  return (int)strlen(output);
+}
+
 int InternalSqliteStatementReaderGetOneValue(struct InternalSqliteStatementReader* reader,
                                              int col, struct ArrowArray* out) {
   int sqlite_type = sqlite3_column_type(reader->stmt, col);
@@ -625,10 +631,19 @@ int InternalSqliteStatementReaderGetOneValue(struct InternalSqliteStatementReade
     case NANOARROW_TYPE_STRING: {
       switch (sqlite_type) {
         case SQLITE_INTEGER:
-        case SQLITE_FLOAT:
         case SQLITE_TEXT:
         case SQLITE_BLOB:
           break;
+        case SQLITE_FLOAT: {
+          // Use the same formatter as the inference batch. SQLite versions before 3.53
+          // produce fewer digits through sqlite3_column_text(), making results depend
+          // on whether the row lands in the inference or a later batch.
+          char output[64];
+          const int size = InternalSqliteStatementReaderFormatDouble(
+              output, sizeof(output), sqlite3_column_double(reader->stmt, col));
+          struct ArrowStringView value = {.data = output, .size_bytes = size};
+          return ArrowArrayAppendString(out, value);
+        }
         default: {
           snprintf(reader->error.message, sizeof(reader->error.message),
                    "[SQLite] Type mismatch in column %d: expected STRING but got unknown "
@@ -957,7 +972,7 @@ AdbcStatusCode InternalSqliteStatementReaderAppendDoubleToBinary(
   // SQLite's alternate-form-2 formatter is locale-independent, keeps enough
   // significant digits to round-trip binary64.
   const int written =
-      (int)strlen(sqlite3_snprintf((int)kReserve, output, "%!.17g", value));
+      InternalSqliteStatementReaderFormatDouble(output, (int)kReserve, value);
   if (written < 0 || (size_t)written >= kReserve) {
     InternalAdbcSetError(error, "Encoding error when upcasting double to string");
     return ADBC_STATUS_INTERNAL;

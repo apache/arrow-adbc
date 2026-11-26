@@ -1099,6 +1099,43 @@ TEST_F(SqliteReaderTest, InferFloatToStringUsesDotDecimalInCommaLocale) {
   EXPECT_EQ(std::string_view(actual.data, actual.size_bytes), "1.5");
 }
 
+TEST_F(SqliteReaderTest, InferFloatToStringIsConsistentAcrossBatchSizes) {
+  const std::string query =
+      "SELECT column1 FROM (VALUES ('start'), (3.141592653589793), "
+      "(0.10000000000000002))";
+  auto read_all = [&](size_t infer_rows, std::vector<std::string>& values) {
+    adbc_validation::StreamReader reader;
+    ASSERT_NO_FATAL_FAILURE(Exec(query, infer_rows, &reader));
+    ASSERT_EQ(NANOARROW_TYPE_STRING, reader.fields[0].type);
+
+    while (true) {
+      ASSERT_EQ(0, reader.MaybeNext());
+      if (!reader.array->release) break;
+      ArrowArrayView* column = reader.array_view->children[0];
+      for (int64_t i = 0; i < column->length; i++) {
+        ASSERT_FALSE(ArrowArrayViewIsNull(column, i));
+        const ArrowStringView value = ArrowArrayViewGetStringUnsafe(column, i);
+        values.emplace_back(value.data, value.size_bytes);
+      }
+    }
+  };
+
+  std::vector<std::string> single_row_batches;
+  read_all(/*infer_rows=*/1, single_row_batches);
+  ASSERT_EQ(SQLITE_OK, sqlite3_finalize(stmt));
+  stmt = nullptr;
+
+  std::vector<std::string> one_inference_batch;
+  read_all(/*infer_rows=*/3, one_inference_batch);
+  ASSERT_EQ(SQLITE_OK, sqlite3_finalize(stmt));
+  stmt = nullptr;
+
+  const std::vector<std::string> expected = {"start", "3.1415926535897931",
+                                             "0.10000000000000002"};
+  EXPECT_EQ(expected, single_row_batches);
+  EXPECT_EQ(single_row_batches, one_inference_batch);
+}
+
 TEST_F(SqliteReaderTest, InferIntReadInt) {
   adbc_validation::StreamReader reader;
   ASSERT_NO_FATAL_FAILURE(
