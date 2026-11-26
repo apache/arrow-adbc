@@ -23,6 +23,7 @@ use std::pin::Pin;
 
 use crate::error::Result;
 use crate::options::*;
+use crate::{CancelHandle, NoOpCancellationHandle};
 
 /// Ability to configure an object by setting/getting options.
 pub trait AsyncOptionable: Send {
@@ -96,6 +97,11 @@ pub trait AsyncDatabase: AsyncOptionable<Option = OptionDatabase> + Send {
         &self,
         opts: Vec<(OptionConnection, OptionValue)>,
     ) -> impl std::future::Future<Output = Result<Self::ConnectionType>> + Send;
+
+    /// Get a handle to cancel operations on this database.
+    fn get_cancel_handle(&self) -> Box<dyn CancelHandle> {
+        Box::new(NoOpCancellationHandle)
+    }
 }
 
 /// A handle to an async ADBC connection.
@@ -115,6 +121,11 @@ pub trait AsyncConnection: AsyncOptionable<Option = OptionConnection> + Send {
     fn new_statement(
         &mut self,
     ) -> impl std::future::Future<Output = Result<Self::StatementType>> + Send;
+
+    /// Get a handle to cancel operations on this connection.
+    fn get_cancel_handle(&self) -> Box<dyn CancelHandle> {
+        Box::new(NoOpCancellationHandle)
+    }
 
     /// Get metadata about the database/driver.
     ///
@@ -505,4 +516,12 @@ pub trait AsyncStatement: AsyncOptionable<Option = OptionStatement> + Send {
         &mut self,
         plan: &[u8],
     ) -> impl std::future::Future<Output = Result<()>> + Send;
+
+    /// Get a handle to cancel operations on this statement.
+    ///
+    /// Obtain the handle before calling [AsyncStatement::execute] to request
+    /// cancellation during execution or while consuming the result stream.
+    fn get_cancel_handle(&self) -> Box<dyn CancelHandle> {
+        Box::new(NoOpCancellationHandle)
+    }
 }
