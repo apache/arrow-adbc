@@ -20,7 +20,11 @@ if host_machine.system() != 'windows'
     deps = [dl_dep]
 else
     dl_dep = declare_dependency()
-    deps = [dependency('uuid'), dependency('shell32'), dependency('advapi32')]
+    deps = [
+        dependency('uuid'), 
+        compiler_cc.find_library('shell32'),
+        compiler_cc.find_library('advapi32')
+    ]
 endif
 
 adbc_driver_manager_lib = library(
@@ -32,6 +36,7 @@ adbc_driver_manager_lib = library(
         'adbc_driver_manager_api.cc',
     ],
     include_directories: [include_dir, vendor_dir],
+    cpp_shared_args: adbc_export_args,
     install: true,
     dependencies: deps,
 )
