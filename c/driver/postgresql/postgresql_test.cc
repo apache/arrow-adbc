@@ -2580,37 +2580,73 @@ TEST_F(PostgresStatementTest, AdbcErrorBackwardsCompatibility) {
 TEST_F(PostgresStatementTest, Cancel) {
   ASSERT_THAT(AdbcStatementNew(&connection, &statement, &error), IsOkStatus(&error));
 
-  const char* query = R"(DROP TABLE IF EXISTS test_cancel;
-            CREATE TABLE test_cancel (ints INT);
-            INSERT INTO test_cancel (ints)
-            SELECT g :: INT FROM GENERATE_SERIES(1, 65536) temp(g);)";
-  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query, &error), IsOkStatus(&error));
-  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+  adbc_validation::Handle<AdbcConnection> blocker;
+  adbc_validation::Handle<AdbcStatement> lock_statement;
+  ASSERT_THAT(AdbcConnectionNew(&blocker.value, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcConnectionInit(&blocker.value, &database, &error), IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementNew(&blocker.value, &lock_statement.value, &error),
               IsOkStatus(&error));
-
-  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SELECT * FROM test_cancel", &error),
-              IsOkStatus(&error));
-  adbc_validation::StreamReader reader;
-  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
-                                        &reader.rows_affected, &error),
-              IsOkStatus(&error));
-
-  ASSERT_THAT(AdbcStatementCancel(&statement, &error), IsOkStatus(&error));
-
-  int retcode = 0;
-  while (true) {
-    retcode = reader.MaybeNext();
-    if (retcode != 0 || !reader.array->release) break;
+  ASSERT_THAT(
+      AdbcStatementSetSqlQuery(
+          &lock_statement.value,
+          "SELECT pg_backend_pid() FROM pg_advisory_lock(pg_backend_pid())", &error),
+      IsOkStatus(&error));
+  int64_t lock_key;
+  {
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&lock_statement.value, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_NE(reader.array->release, nullptr);
+    ASSERT_EQ(reader.array->length, 1);
+    lock_key = ArrowArrayViewGetIntUnsafe(reader.array_view->children[0], 0);
   }
 
-  ASSERT_EQ(ECANCELED, retcode);
-  AdbcStatusCode status = ADBC_STATUS_OK;
-  const struct AdbcError* detail =
-      AdbcErrorFromArrayStream(&reader.stream.value, &status);
-  ASSERT_NE(nullptr, detail);
-  ASSERT_EQ(ADBC_STATUS_CANCELLED, status);
-  ASSERT_EQ("57014", std::string_view(detail->sqlstate, 5));
-  ASSERT_NE(0, AdbcErrorGetDetailCount(detail));
+  ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, "SET lock_timeout = '30s'", &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementExecuteQuery(&statement, nullptr, nullptr, &error),
+              IsOkStatus(&error));
+  ASSERT_THAT(AdbcStatementSetOption(&statement, "adbc.postgresql.batch_size_hint_bytes",
+                                     "1", &error),
+              IsOkStatus(&error));
+
+  // Emit enough rows to start COPY, then block so neither query can finish before cancel.
+  const std::string query =
+      "SELECT CASE WHEN i = 65536 THEN (SELECT 0 FROM pg_advisory_xact_lock(" +
+      std::to_string(lock_key) + ")) ELSE i END FROM generate_series(1, 65536) AS g(i)";
+  for (bool cancel_statement : {true, false}) {
+    ASSERT_THAT(AdbcStatementSetSqlQuery(&statement, query.c_str(), &error),
+                IsOkStatus(&error));
+    adbc_validation::StreamReader reader;
+    ASSERT_THAT(AdbcStatementExecuteQuery(&statement, &reader.stream.value,
+                                          &reader.rows_affected, &error),
+                IsOkStatus(&error));
+
+    ASSERT_NO_FATAL_FAILURE(reader.GetSchema());
+    ASSERT_NO_FATAL_FAILURE(reader.Next());
+    ASSERT_NE(reader.array->release, nullptr);
+
+    auto cancel_status = cancel_statement ? AdbcStatementCancel(&statement, &error)
+                                          : AdbcConnectionCancel(&connection, &error);
+    ASSERT_THAT(cancel_status, IsOkStatus(&error));
+
+    int retcode = 0;
+    while (true) {
+      retcode = reader.MaybeNext();
+      if (retcode != 0 || !reader.array->release) break;
+    }
+
+    ASSERT_EQ(ECANCELED, retcode);
+    AdbcStatusCode status = ADBC_STATUS_OK;
+    const struct AdbcError* detail =
+        AdbcErrorFromArrayStream(&reader.stream.value, &status);
+    ASSERT_NE(nullptr, detail);
+    ASSERT_EQ(ADBC_STATUS_CANCELLED, status);
+    ASSERT_EQ("57014", std::string_view(detail->sqlstate, 5));
+    ASSERT_NE(0, AdbcErrorGetDetailCount(detail));
+  }
 }
 
 TEST_F(PostgresStatementTest, MultipleStatementsSingleQuery) {
