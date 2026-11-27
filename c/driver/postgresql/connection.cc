@@ -461,6 +461,16 @@ void SilentNoticeProcessor(void* /*arg*/, const char* /*message*/) {}
 }  // namespace
 
 AdbcStatusCode PostgresConnection::Cancel(struct AdbcError* error) {
+#ifdef LIBPQ_HAS_ASYNC_CANCEL
+  std::lock_guard<std::mutex> lock(cancel_mutex_);
+  const int dispatched = PQcancelBlocking(cancel_);
+  if (!dispatched) {
+    InternalAdbcSetError(error, "[libpq] Failed to cancel operation: %s",
+                         PQcancelErrorMessage(cancel_));
+  }
+  PQcancelReset(cancel_);
+  if (!dispatched) return ADBC_STATUS_UNKNOWN;
+#else
   // > errbuf must be a char array of size errbufsize (the recommended size is
   // > 256 bytes).
   // https://www.postgresql.org/docs/current/libpq-cancel.html
@@ -471,6 +481,7 @@ AdbcStatusCode PostgresConnection::Cancel(struct AdbcError* error) {
     InternalAdbcSetError(error, "[libpq] Failed to cancel operation: %s", errbuf);
     return ADBC_STATUS_UNKNOWN;
   }
+#endif
   return ADBC_STATUS_OK;
 }
 
@@ -1138,7 +1149,18 @@ AdbcStatusCode PostgresConnection::Init(struct AdbcDatabase* database,
 
   RAISE_ADBC(database_->Connect(&conn_, error));
 
+#ifdef LIBPQ_HAS_ASYNC_CANCEL
+  cancel_ = PQcancelCreate(conn_);
+  if (cancel_ && PQcancelStatus(cancel_) == CONNECTION_BAD) {
+    InternalAdbcSetError(error, "[libpq] Could not initialize cancel connection: %s",
+                         PQcancelErrorMessage(cancel_));
+    PQcancelFinish(cancel_);
+    cancel_ = nullptr;
+    return ADBC_STATUS_UNKNOWN;
+  }
+#else
   cancel_ = PQgetCancel(conn_);
+#endif
   if (!cancel_) {
     InternalAdbcSetError(error, "[libpq] Could not initialize PGcancel");
     return ADBC_STATUS_UNKNOWN;
@@ -1156,7 +1178,11 @@ AdbcStatusCode PostgresConnection::Init(struct AdbcDatabase* database,
 
 AdbcStatusCode PostgresConnection::Release(struct AdbcError* error) {
   if (cancel_) {
+#ifdef LIBPQ_HAS_ASYNC_CANCEL
+    PQcancelFinish(cancel_);
+#else
     PQfreeCancel(cancel_);
+#endif
     cancel_ = nullptr;
   }
   if (conn_) {

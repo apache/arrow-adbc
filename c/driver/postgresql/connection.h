@@ -20,6 +20,7 @@
 #include <array>
 #include <cstdint>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <utility>
 #include <vector>
@@ -93,7 +94,12 @@ class PostgresConnection {
   std::shared_ptr<PostgresDatabase> database_;
   std::shared_ptr<PostgresTypeResolver> type_resolver_;
   PGconn* conn_;
+#ifdef LIBPQ_HAS_ASYNC_CANCEL
+  PGcancelConn* cancel_;
+  std::mutex cancel_mutex_;
+#else
   PGcancel* cancel_;
+#endif
   bool autocommit_;
   bool use_copy_;
   std::vector<std::pair<std::string, std::string>> post_init_options_;
