@@ -79,11 +79,16 @@ cdef extern from "arrow-adbc/adbc.h" nogil:
     cdef int ADBC_OBJECT_DEPTH_COLUMNS
 
     cdef uint32_t ADBC_INFO_VENDOR_NAME
+    cdef uint32_t ADBC_INFO_VENDOR_SQL
+    cdef uint32_t ADBC_INFO_VENDOR_SUBSTRAIT
+    cdef uint32_t ADBC_INFO_VENDOR_SUBSTRAIT_MIN_VERSION
+    cdef uint32_t ADBC_INFO_VENDOR_SUBSTRAIT_MAX_VERSION
     cdef uint32_t ADBC_INFO_VENDOR_VERSION
     cdef uint32_t ADBC_INFO_VENDOR_ARROW_VERSION
     cdef uint32_t ADBC_INFO_DRIVER_NAME
     cdef uint32_t ADBC_INFO_DRIVER_VERSION
     cdef uint32_t ADBC_INFO_DRIVER_ARROW_VERSION
+    cdef uint32_t ADBC_INFO_DRIVER_ADBC_VERSION
 
     ctypedef void (*CAdbcErrorRelease)(CAdbcError*)
     ctypedef void (*CAdbcPartitionsRelease)(CAdbcPartitions*)
